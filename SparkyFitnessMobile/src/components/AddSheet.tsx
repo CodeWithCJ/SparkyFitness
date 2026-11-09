@@ -57,6 +57,7 @@ interface AddSheetProps {
   onAddSymptoms?: () => void;
   onAddMood?: () => void;
   onAddMindfulness?: () => void;
+  onAddOralCare?: () => void;
   onRecordActivity?: () => void;
   onOpenCycle?: () => void;
   showCycleCard?: boolean;
@@ -91,6 +92,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onAddSymptoms,
       onAddMood,
       onAddMindfulness,
+      onAddOralCare,
       onRecordActivity,
       onOpenCycle,
       showCycleCard,
@@ -543,6 +545,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         }),
         icon: ADD_MENU_ITEM_ICONS.mindfulness,
         onPress: onAddMindfulness,
+      },
+      oralCare: onAddOralCare && {
+        label: labelOf('oralCare'),
+        hint: t('addSheet.oralCareHint', {
+          defaultValue: 'Brush, floss',
+        }),
+        icon: ADD_MENU_ITEM_ICONS.oralCare,
+        onPress: onAddOralCare,
       },
       askSparky: {
         label: labelOf('askSparky'),

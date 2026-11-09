@@ -1,4 +1,5 @@
 import { barcodeResultToFoodInfo } from '../../src/utils/barcodeFoods';
+import { buildExternalVariantOptions } from '../../src/utils/foodDetails';
 import type { BarcodeLookupResult } from '../../src/services/api/externalFoodSearchApi';
 
 const food: NonNullable<BarcodeLookupResult['food']> = {
@@ -70,6 +71,48 @@ describe('barcodeResultToFoodInfo', () => {
       id: 'saved-food',
       variantId: 'saved-variant',
       source: 'local',
+    });
+  });
+
+  // #3402: the server's mapping of an Open Food Facts product whose serving is
+  // "1 portion (100 g)": the 100 g default plus a 1 serving variant with the
+  // same values and no description.
+  it('labels an Open Food Facts portion with its weight', () => {
+    const portion = { calories: 125, protein: 9.5, carbs: 6.9, fat: 7 };
+    const meatballs: NonNullable<BarcodeLookupResult['food']> = {
+      name: 'Meatballs In Tomato Sauce',
+      brand: 'Cook',
+      is_custom: false,
+      provider_type: 'openfoodfacts',
+      provider_external_id: '5056517325056',
+      default_variant: {
+        ...portion,
+        serving_size: 100,
+        serving_unit: 'g',
+        is_default: true,
+      },
+      variants: [
+        { ...portion, serving_size: 100, serving_unit: 'g', is_default: true },
+        {
+          ...portion,
+          serving_size: 1,
+          serving_unit: 'serving',
+          is_default: false,
+        },
+      ],
+    };
+
+    const result = barcodeResultToFoodInfo(
+      { source: 'openfoodfacts', food: meatballs },
+      '5056517325056'
+    );
+    const options = buildExternalVariantOptions(result.externalVariants);
+
+    expect(result).toMatchObject({ servingSize: 1, servingUnit: 'serving' });
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      label: '1 serving (100 g) (125 cal)',
+      quantityUnitLabel: 'serving (100 g)',
     });
   });
 });

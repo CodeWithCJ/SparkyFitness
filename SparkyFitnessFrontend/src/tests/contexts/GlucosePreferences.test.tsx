@@ -63,7 +63,13 @@ function setup() {
 
 test('unrelated saves preserve another session unit; explicit edits save and establish a new baseline', async () => {
   const { result, client, changeOtherSession } = setup();
-  await waitFor(() => expect(result.current.timezone).toBe('America/New_York'));
+  // The provider starts on the machine's own zone, so on a machine in New York
+  // the zone alone matches before the saved preferences load. The time
+  // format only changes once they have.
+  await waitFor(() => {
+    expect(result.current.timezone).toBe('America/New_York');
+    expect(result.current.timeFormat).toBe('HH:mm');
+  });
   changeOtherSession();
   await act(async () => {
     await result.current.saveAllPreferences({ timeFormat: 'HH:mm' });
@@ -90,7 +96,13 @@ test('unrelated saves preserve another session unit; explicit edits save and est
 
 test('formats midnight sensor instants in the account zone while preserving calendar date semantics', async () => {
   const { result, client } = setup();
-  await waitFor(() => expect(result.current.timezone).toBe('America/New_York'));
+  // The provider starts on the machine's own zone, so on a machine in New York
+  // the zone alone matches before the saved preferences load. The time
+  // format only changes once they have.
+  await waitFor(() => {
+    expect(result.current.timezone).toBe('America/New_York');
+    expect(result.current.timeFormat).toBe('HH:mm');
+  });
   const midnight = new Date('2026-11-04T00:00:00Z');
   expect(result.current.formatTime(midnight, { asInstant: true })).toBe(
     '19:00'

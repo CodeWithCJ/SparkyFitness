@@ -15,6 +15,7 @@ import {
   sendMagicLinkEmail,
   sendEmailMfaCode,
 } from './services/emailService.js';
+import { resolveEmailLanguage } from './services/emailTranslations.js';
 import { createDefaultNutrientPreferencesForUser } from './services/nutrientDisplayPreferenceService.js';
 import { isPrivateNetworkAddress } from './utils/corsHelper.js';
 import { apiKey } from '@better-auth/api-key';
@@ -434,7 +435,11 @@ const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail(user.email, url);
+      await sendPasswordResetEmail(
+        user.email,
+        url,
+        await resolveEmailLanguage({ userId: user.id })
+      );
     },
     password: {
       // Use bcrypt for compatibility with existing hashes
@@ -542,6 +547,8 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       mfaEmailEnabled: {
         type: 'boolean',
@@ -549,12 +556,16 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       lastLoginAt: {
         type: 'date',
         fieldName: 'last_login_at',
         required: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
     },
   },
@@ -921,7 +932,11 @@ const auth = betterAuth({
     magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url }) => {
-        await sendMagicLinkEmail(email, url);
+        await sendMagicLinkEmail(
+          email,
+          url,
+          await resolveEmailLanguage({ email })
+        );
       },
     }),
     // The admin plugin contributes its own user/session columns, and those are
@@ -975,7 +990,11 @@ const auth = betterAuth({
       },
       otpOptions: {
         async sendOTP({ user, otp }) {
-          await sendEmailMfaCode(user.email, otp);
+          await sendEmailMfaCode(
+            user.email,
+            otp,
+            await resolveEmailLanguage({ userId: user.id })
+          );
         },
       },
     }),

@@ -2,7 +2,15 @@ name: PR Checks
 
 on:
   pull_request_target:
-    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+    types:
+      [
+        opened,
+        edited,
+        synchronize,
+        reopened,
+        ready_for_review,
+        converted_to_draft,
+      ]
   pull_request_review:
     types: [submitted, dismissed]
   pull_request_review_comment:
@@ -78,6 +86,7 @@ jobs:
             // through the sync workflow.
             const localesRoot = 'SparkyFitnessFrontend/public/locales/';
             const mobileLocalesRoot = 'SparkyFitnessMobile/src/localization/locales/';
+            const serverLocalesRoot = 'SparkyFitnessServer/locales/';
             const mobileNativeSurfaces = [
               /^SparkyFitnessMobile\/locales\/(?!en\.json$)[^/]+\.json$/,
               /^SparkyFitnessMobile\/targets\/android-widget\/res\/values-[^/]+\/widget_strings\.xml$/,
@@ -86,11 +95,13 @@ jobs:
             const nonEnLocaleFiles = changedFiles.filter(f =>
               (f.startsWith(localesRoot) && !f.startsWith(`${localesRoot}en/`)) ||
               (f.startsWith(mobileLocalesRoot) && !f.startsWith(`${mobileLocalesRoot}en/`)) ||
+              (f.startsWith(serverLocalesRoot) && !f.startsWith(`${serverLocalesRoot}en/`)) ||
               mobileNativeSurfaces.some(re => re.test(f))
             );
             const hasEnTranslationChange = changedFiles.some(f =>
               f === `${localesRoot}en/translation.json` ||
-              f === `${mobileLocalesRoot}en/translation.json`
+              f === `${mobileLocalesRoot}en/translation.json` ||
+              f === `${serverLocalesRoot}en/translation.json`
             );
             const hasSQLChanges = changedFiles.some(f => f.includes('rls_policies.sql'));
             const migrationFiles = policy.getMigrationFiles(files);

@@ -31,6 +31,7 @@ import {
   setLoadSql,
 } from '../utils/exerciseLoadSql.js';
 import {
+  aboveSpeedCeiling,
   bestSplitSeconds,
   samplesFromDistanceSeries,
   samplesFromGpsPoints,
@@ -50,14 +51,15 @@ interface SqlRow {
 const UNTRACKED_MIN_RATIO = 0.98;
 const UNTRACKED_MAX_RATIO = 1.05;
 
-/**
- * Fastest plausible speed per sport group, in metres per second (the same
- * ceilings the mobile recorder rejects glitches with). A straight-line segment
- * faster than this in a stored track is a GPS jump, not movement.
- */
 /** A sport group that has distance standards (every group but 'other'). */
 type StandardSportGroup = Exclude<PrSportGroup, 'other'>;
 
+/**
+ * Fastest plausible speed per sport group, in metres per second (the same
+ * ceilings the mobile recorder rejects glitches with). A straight-line segment
+ * faster than this in a stored track is a GPS jump, not movement, and a record
+ * time faster than this comes from a wrong duration or distance, not an effort.
+ */
 const MAX_SPEED_MPS: Record<StandardSportGroup, number> = {
   run: 12,
   walk: 7,
@@ -69,8 +71,9 @@ const MAX_SPEED_MPS: Record<StandardSportGroup, number> = {
  * Best split per standard, remembered per activity. Measuring a split reads and
  * walks a whole track, so it is done once and reused until the track changes:
  * the key carries the track's last update and size, and the sport group the
- * speed ceiling came from. A value is seconds, or null when the activity does
- * not cover the distance. In memory and bounded, oldest evicted first; a
+ * speed ceiling came from. A value is seconds, or null when no track or series
+ * gives a split for that distance (it does not cover it, or its best stretch is
+ * faster than the sport allows). In memory and bounded, oldest evicted first; a
  * restart just recomputes.
  */
 const SPLIT_CACHE_MAX_ENTRIES = 20000;
@@ -107,6 +110,12 @@ const COURSE_MAX_ACTIVITIES = 500;
 
 /** Most activities one PR request will look at. */
 const PR_MAX_ACTIVITIES = 5000;
+
+/**
+ * Longest activities the best-effort card looks through, so one faster than
+ * its sport allows is passed over for the next instead of shown.
+ */
+const BEST_EFFORT_MAX_ACTIVITIES = 10;
 
 /** A PR-query row, with the columns needed to recover its sport. */
 interface PrCandidateRow {
@@ -904,16 +913,18 @@ async function getPersonalRecordMatrix(
         const gps = gpsById.get(id);
         const series = seriesById.get(id);
         if (!gps && !series) continue;
+        const ceiling = speedCeilingById.get(id);
         // The track decides a standard when it yields a split; the series only
-        // answers the standards the track does not cover.
+        // answers the standards the track does not cover, or covers faster
+        // than the sport allows.
         const splits: Record<string, number | null> = {};
         for (const [stdKey, standardKm] of Object.entries(
           STANDARD_DISTANCE_KM
         )) {
           const meters = standardKm * 1000;
           splits[stdKey] =
-            (gps ? bestSplitSeconds(gps, meters) : null) ??
-            (series ? bestSplitSeconds(series, meters) : null);
+            (gps ? bestSplitSeconds(gps, meters, ceiling) : null) ??
+            (series ? bestSplitSeconds(series, meters, ceiling) : null);
         }
         splitsById.set(id, splits);
         const cacheKey = cacheKeys.get(id);
@@ -945,10 +956,14 @@ async function getPersonalRecordMatrix(
         if (
           seconds === null &&
           distKm >= standardKm * UNTRACKED_MIN_RATIO &&
-          distKm <= standardKm * UNTRACKED_MAX_RATIO
+          distKm <= standardKm * UNTRACKED_MAX_RATIO &&
+          !aboveSpeedCeiling(distKm * 1000, durSecs, MAX_SPEED_MPS[sportGroup])
         ) {
-          // No measured split (no track, or too short a one): the activity's
-          // own pace over this distance, for an activity that nearly matches it.
+          // No measured split (no track, or too short or too fast a one): the
+          // activity's own pace over this distance, for an activity that nearly
+          // matches it. An average faster than the sport allows is a wrong
+          // duration or distance, such as a test stopped after a few seconds
+          // but saved at its full distance, so it holds no record.
           seconds = (durSecs / distKm) * standardKm;
           basis = 'activity_pace';
         }
@@ -1026,7 +1041,8 @@ async function getPersonalRecordMatrix(
 
     // Stays a single global card rather than one per sport: a user whose
     // activities all fall outside every band wants one "longest effort", not
-    // five empty-ish sections.
+    // five empty-ish sections. It is the longest activity whose average its
+    // sport allows; a sport with no ceiling ('other') is shown as recorded.
     if (cardioPRs.length === 0) {
       const fallbackSql = `
         SELECT ee.id, ee.exercise_name, ee.category, ee.notes, ee.entry_date,
@@ -1045,11 +1061,10 @@ async function getPersonalRecordMatrix(
         WHERE ee.user_id = $1 AND ee.distance > 0.5 AND ee.duration_minutes > 0
           AND ee.exercise_name != 'Active Calories'
         ORDER BY ee.distance DESC, ee.duration_minutes ASC
-        LIMIT 1
+        LIMIT ${BEST_EFFORT_MAX_ACTIVITIES}
       `;
       const fallbackRes = await client.query(fallbackSql, [targetUserId]);
-      if (fallbackRes.rows.length > 0) {
-        const bestRow: PrCandidateRow = fallbackRes.rows[0];
+      for (const bestRow of fallbackRes.rows as PrCandidateRow[]) {
         const { sport, confidence } = classifyActivitySport({
           exerciseName: bestRow.exercise_name,
           category: bestRow.category,
@@ -1061,6 +1076,16 @@ async function getPersonalRecordMatrix(
         const sportGroup = toPrSportGroup(sport);
         const distKm = parseFloat(String(bestRow.distance));
         const durMins = parseFloat(String(bestRow.duration_minutes));
+        if (
+          sportGroup !== 'other' &&
+          aboveSpeedCeiling(
+            distKm * 1000,
+            durMins * 60,
+            MAX_SPEED_MPS[sportGroup]
+          )
+        ) {
+          continue;
+        }
         const totalSecs = Math.round(durMins * 60);
         const paceSecs = Math.round(totalSecs / distKm);
         const entryDateStr =
@@ -1089,6 +1114,7 @@ async function getPersonalRecordMatrix(
           ),
           achievedAt: entryDateStr,
         });
+        break;
       }
     }
 

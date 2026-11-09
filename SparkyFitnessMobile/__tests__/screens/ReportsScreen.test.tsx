@@ -83,6 +83,7 @@ describe('ReportsScreen', () => {
       'substances',
       'measurements',
       'heartRate',
+      'oralCare',
       'compare',
     ]);
     expect(queryByTestId('reports-link-sleep')).toBeNull();

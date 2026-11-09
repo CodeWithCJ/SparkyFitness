@@ -9,6 +9,7 @@ import moodRepository, {
 } from '../models/moodRepository.js';
 import fastingRepository from '../models/fastingRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
+import * as oralCareService from '../services/oralCareService.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 import { CustomCategoryExistsError } from '../utils/errors.js';
 
@@ -86,6 +87,10 @@ vi.mock('../models/sleepRepository', () => ({
   default: {
     getSleepEntriesByUserIdAndDateRange: vi.fn(),
   },
+}));
+vi.mock('../services/oralCareService', () => ({
+  MAX_HISTORY_DAYS: 366,
+  getHistory: vi.fn(),
 }));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
@@ -2102,5 +2107,58 @@ describe('check-in tool output size and local times', () => {
     expect(result).not.toContain('1780000000000');
     expect(result).toContain('"value":"(raw data series, not shown)"');
     expect(result).toContain('"value":"40.25"');
+  });
+});
+
+describe('get_oral_care_summary', () => {
+  it('reads the last 7 days by default and reports the goal and streak', async () => {
+    vi.mocked(oralCareService.getHistory).mockResolvedValue({
+      settings: { daily_target: 2, target_seconds: 120 },
+      days: [
+        {
+          date: '2026-11-08',
+          brushing_count: 2,
+          brushing_seconds: 250,
+          goal_met: true,
+          other_count: 1,
+        },
+      ],
+      streak: 4,
+      best_streak: 9,
+      recent_custom_labels: [],
+    });
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_oral_care_summary', end_date: '2026-11-08' },
+      opts
+    );
+    expect(oralCareService.getHistory).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      '2026-11-02',
+      '2026-11-08'
+    );
+    expect(String(result)).toContain('"daily_brushing_goal":2');
+    expect(String(result)).toContain('"current_streak_days":4');
+  });
+
+  it('caps a long range at 366 days', async () => {
+    vi.mocked(oralCareService.getHistory).mockResolvedValue({
+      settings: { daily_target: 2, target_seconds: 120 },
+      days: [],
+      streak: 0,
+      best_streak: 0,
+      recent_custom_labels: [],
+    });
+    await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_oral_care_summary',
+        start_date: '2020-01-01',
+        end_date: '2026-11-08',
+      },
+      opts
+    );
+    expect(vi.mocked(oralCareService.getHistory).mock.calls[0]![2]).toBe(
+      '2025-11-08'
+    );
   });
 });

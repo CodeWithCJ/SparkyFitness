@@ -14,6 +14,7 @@ import {
   useFitnessTests,
 } from '../services/fitnessTestService';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import { formatDayLabel } from '../utils/dayLabel';
 import { formatLocalizedNumber } from '../localization';
@@ -36,6 +37,7 @@ type Props = RootStackScreenProps<'FitnessTestResult'>;
 const FitnessTestResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const unit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { tests, loaded, refetch } = useFitnessTests();
@@ -98,7 +100,10 @@ const FitnessTestResultScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -231,7 +236,7 @@ const FitnessTestResultScreen: React.FC<Props> = ({ navigation, route }) => {
           </>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

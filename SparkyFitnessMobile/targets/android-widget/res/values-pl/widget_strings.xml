@@ -35,7 +35,7 @@
     <string name="widget_water_status_expired">Logowanie wygasło. Otwórz SparkyFitness</string>
     <string name="widget_water_status_unreachable">Nie udało się połączyć z Twoim serwerem</string>
     <string name="widget_water_status_failed">Nie udało się zapisać wody</string>
-    <string name="widget_water_status_nothing_to_remove">Brak zapisanego tutak napoju do usunięcia</string>
+    <string name="widget_water_status_nothing_to_remove">Brak zapisanego tutaj napoju do usunięcia</string>
     <string name="widget_preview_water_amount">1 250 / 2 000 ml</string>
     <string name="widget_open_diary">Otwórz dziennik</string>
     <string name="widget_open_fasting">Otwórz post</string>
@@ -44,4 +44,7 @@
     <string name="widget_food">Produkty</string>
     <string name="widget_burned">Spalone</string>
     <string name="widget_amount_of_goal">%1$s / %2$s</string>
+    <string name="widget_kj_left">Pozostało %1$s kJ</string>
+    <string name="widget_kj_left_empty">Pozostało - kJ</string>
+    <string name="widget_kj_eaten">Zjedzone %1$s kJ</string>
 </resources>

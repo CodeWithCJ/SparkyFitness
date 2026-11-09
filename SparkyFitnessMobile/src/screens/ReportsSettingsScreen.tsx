@@ -14,6 +14,7 @@ import { useServerConnection } from '../hooks/useServerConnection';
 import {
   EXERCISE_SECTIONS,
   HEART_RATE_SECTIONS,
+  ORAL_CARE_SECTIONS,
   HYDRATION_SECTIONS,
   MEASUREMENTS_SECTIONS,
   MOOD_SECTIONS,
@@ -239,6 +240,22 @@ const SECTION_LABELS: Record<
   'heartRate.zones': (t) =>
     t('reportsSettings.sections.heartRateZones', {
       defaultValue: 'Intensity zones',
+    }),
+  'oralCare.overview': (t) =>
+    t('reportsSettings.sections.overview', { defaultValue: 'Key figures' }),
+  'oralCare.insights': (t) =>
+    t('reportsSettings.sections.insights', { defaultValue: 'What stood out' }),
+  'oralCare.brushesChart': (t) =>
+    t('reportsSettings.sections.oralCareBrushesChart', {
+      defaultValue: 'Brushes per day chart',
+    }),
+  'oralCare.minutesChart': (t) =>
+    t('reportsSettings.sections.oralCareMinutesChart', {
+      defaultValue: 'Minutes brushing chart',
+    }),
+  'oralCare.summary': (t) =>
+    t('reportsSettings.sections.oralCareSummary', {
+      defaultValue: 'Streaks and other care',
     }),
 };
 
@@ -533,6 +550,14 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
           }),
           'reports-section',
           HEART_RATE_SECTIONS,
+          sectionLabel
+        )}
+        {renderSections(
+          t('reportsSettings.oralCareSections', {
+            defaultValue: 'Oral care report',
+          }),
+          'reports-section',
+          ORAL_CARE_SECTIONS,
           sectionLabel
         )}
       </ScrollView>

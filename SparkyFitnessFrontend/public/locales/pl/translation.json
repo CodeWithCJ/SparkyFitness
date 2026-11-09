@@ -13,7 +13,8 @@
     "foodLog": "Dziennik posiłków",
     "wellness": "Samopoczucie",
     "symptoms": "Objawy",
-    "sparkyFitnessV": "SparkyFitness v{{version}}"
+    "sparkyFitnessV": "SparkyFitness v{{version}}",
+    "labs": "Wyniki badań"
   },
   "aboutDialog": {
     "title": "O SparkyFitness",
@@ -63,8 +64,6 @@
       "categoryStrength": "Siłowe",
       "categoryCardio": "Kardio",
       "categoryYoga": "Joga",
-      "caloriesPerHourLabel": "Kalorie na godzinę",
-      "caloriesPerHourHint": "Pozostaw puste, aby użyć systemowych obliczeń ({{newExerciseCalories}} kcal/h).",
       "descriptionLabel": "Opis",
       "sourceLabel": "Źródło",
       "forceStatic": "Statyczne",
@@ -101,7 +100,9 @@
       "addCustomTag": "Dodaj „{{tag}}”",
       "replaceTitle": "Zamień ćwiczenie",
       "replaceSuccess": "Ćwiczenie zamienione",
-      "suggestedTab": "Proponowane"
+      "suggestedTab": "Proponowane",
+      "caloriesPerHourWithUnit": "Kalorie/godz. ({{unit}})",
+      "caloriesPerHourHintWithUnit": "Pozostaw puste, aby użyć obliczonych przez system kalorii na godzinę ({{newExerciseCalories}} {{unit}}/godz.)."
     },
     "addWorkoutPresetDialog": {
       "searchResultsTitle": "Wyniki wyszukiwania",
@@ -188,7 +189,6 @@
       "caloriesWarning": "Spalone kalorie zostaną przeliczone przy zapisie. Wpisz wartość, aby ją nadpisać.",
       "exerciseLabel": "Ćwiczenie",
       "unknownExercise": "Nieznane ćwiczenie",
-      "caloriesBurnedOptionalLabel": "Spalone kalorie (opcjonalnie)",
       "caloriesBurnedPlaceholder": "Wpisz kalorie, aby nadpisać obliczenia",
       "caloriesBurnedHint": "Kalorie zostaną automatycznie obliczone przy zapisie, jeśli pole pozostanie puste.",
       "distanceLabel": "Dystans",
@@ -208,10 +208,11 @@
       "setLabel": "Seria",
       "syncedProviderBackup": "Kopia zapasowa zsynchronizowana z dostawcą (chroniona)",
       "telemetryHeader": "Metryki telemetrii i aktywności",
-      "caloriesAppliedLabel": "Kalorie liczone do dziennej sumy (opcjonalnie)",
       "caloriesAppliedPlaceholder": "Puste pole zlicza powyższe spalone kalorie",
       "caloriesAppliedHint": "Wpisz 0, gdy trening z zegarka już zlicza tę sesję. Estymata spalonych kalorii jest zachowana.",
-      "caloriesAppliedLinkedHint": "Liczone kalorie pochodzą z powiązania treningów. Zarządzaj tym powiązaniem z poziomu treningu ręcznego."
+      "caloriesAppliedLinkedHint": "Liczone kalorie pochodzą z powiązania treningów. Zarządzaj tym powiązaniem z poziomu treningu ręcznego.",
+      "caloriesBurnedOptionalWithUnit": "Spalone kalorie ({{unit}}, opcjonalnie)",
+      "caloriesAppliedWithUnit": "Kalorie wliczane do sumy dziennej ({{unit}}, opcjonalnie)"
     },
     "activityDetailsEditor": {
       "fieldNamePlaceholder": "np. 'Pogoda', 'Samopoczucie'",
@@ -1116,7 +1117,46 @@
     "weightTrendWithRate": "Trend {{weight}} · {{rate}} tygodniowo",
     "weightTrendWithForecast": "Trend {{weight}} · prognozowane osiągnięcie celu: {{date}}",
     "compareTab": "Porównanie",
-    "heartRateTab": "Analiza tętna"
+    "heartRateTab": "Analiza tętna",
+    "nutritionPeriodSummary": "Podsumowanie żywienia",
+    "glucose": {
+      "title": "Glukoza we krwi",
+      "description": "Zarejestrowane odczyty z Apple Health, w tym dane Dexcom CGM. Dane z Apple Health mogą docierać z opóźnieniem.",
+      "unit": "Jednostka",
+      "source": "Źródło",
+      "error": "Nie udało się wczytać odczytów glukozy.",
+      "loading": "Wczytywanie odczytów glukozy…",
+      "empty": "Brak odczytów glukozy w tym okresie. Włącz udostępnianie Dexcom do Apple Health, zezwól SparkyFitness na odczyt glukozy we krwi i zsynchronizuj dane z aplikacji na iOS.",
+      "chartLabel": "Odczyty glukozy w czasie",
+      "foods": "Zapisane produkty · znaczniki posiłków",
+      "foodError": "Nie udało się wczytać zapisanych produktów.",
+      "mealNote": "Znaczniki posiłków pokazują zapisane czasy, a nie zmierzoną odpowiedź na produkt. Produkty bez zapisanego czasu nie są umieszczane na krzywej.",
+      "layerMeal": "Produkty",
+      "layerExercise": "Trening",
+      "layerSleep": "Sen",
+      "layerMedication": "Leki",
+      "layerStress": "Stres",
+      "layerCaffeine": "Kofeina",
+      "layerAlcohol": "Alkohol",
+      "layerHydration": "Nawodnienie",
+      "context": "Zarejestrowany kontekst · wyświetlane warstwy",
+      "contextLoading": "Wczytywanie zarejestrowanego kontekstu…",
+      "contextError": "Nie udało się wczytać zarejestrowanego kontekstu.",
+      "noTime": "Czas nie został zapisany",
+      "carbs": "Węglowodany",
+      "day": "Dzień",
+      "unavailable": "Część kontekstu jest niedostępna:",
+      "events": "Zarejestrowane zdarzenia i sumy dzienne",
+      "contextNote": "To są zarejestrowane zdarzenia, a nie udowodnione przyczyny. Czasy zakończenia ćwiczeń używają zarejestrowanego czasu trwania. Wpisy bez czasu i sumy dzienne nie są umieszczane na krzywej.",
+      "dailyTotal": "Suma dzienna",
+      "dailyAverage": "Średnia dzienna",
+      "zoomIn": "Powiększ",
+      "zoomOut": "Pomniejsz",
+      "earlier": "Wcześniej",
+      "later": "Później",
+      "resetZoom": "Resetuj powiększenie",
+      "windowEvents": "Zdarzenia w widoku"
+    }
   },
   "exerciseReportsDashboard": {
     "compareTo": "Porównaj z",
@@ -1603,7 +1643,11 @@
       "wednesday": "Środa",
       "thursday": "Czwartek",
       "friday": "Piątek",
-      "saturday": "Sobota"
+      "saturday": "Sobota",
+      "temperatureUnit": "Jednostka temperatury",
+      "celsius": "Celsjusz (°C)",
+      "fahrenheit": "Fahrenheit (°F)",
+      "glucoseUnit": "Jednostka glukozy"
     },
     "waterTracking": {
       "title": "Śledzenie wody",
@@ -1850,7 +1894,10 @@
         "allowPrivateNetworkAiDescription": "Zezwalaj na łączenie z punktami końcowymi AI hostowanymi na prywatnych adresach IP (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost).",
         "supportsAudioInput": "Pokazuj tę konfigurację na liście Głos",
         "supportsAudioInputDescription": "Włącz tylko wtedy, gdy wybrany model akceptuje pliki audio. Po wybraniu tej konfiguracji dla Głosu nagrane audio zostanie wysłane do tego modelu w celu transkrypcji.",
-        "audioInputProviderUnsupported": "Transkrypcja głosowa nie jest jeszcze obsługiwana dla tego typu dostawcy."
+        "audioInputProviderUnsupported": "Transkrypcja głosowa nie jest jeszcze obsługiwana dla tego typu dostawcy.",
+        "loadModels": "Wczytaj modele",
+        "loadingModels": "Wczytywanie modeli…",
+        "openCodeGoModelsLoadFailed": "Nie udało się wczytać modeli OpenCode Go. Sprawdź klucz API i spróbuj ponownie."
       },
       "userSettings": {
         "title": "Usługi AI",
@@ -1957,7 +2004,10 @@
         "supportsAudioInputDescription": "Włącz tylko wtedy, gdy wybrany model akceptuje pliki audio. Po wybraniu tej konfiguracji dla Głosu nagrane audio zostanie wysłane do tego modelu w celu transkrypcji.",
         "audioInputProviderUnsupported": "Transkrypcja głosowa nie jest jeszcze obsługiwana dla tego typu dostawcy.",
         "activeVoiceProvider": "Konfiguracja Głosu",
-        "systemVoiceFree": "Rozpoznawanie systemowe (bezpłatne)"
+        "systemVoiceFree": "Rozpoznawanie systemowe (bezpłatne)",
+        "loadModels": "Wczytaj modele",
+        "loadingModels": "Wczytywanie modeli…",
+        "openCodeGoModelsLoadFailed": "Nie udało się wczytać modeli OpenCode Go. Sprawdź klucz API i spróbuj ponownie."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -1971,7 +2021,8 @@
         "anthropic": "Anthropic",
         "xai": "xAI (Grok)",
         "meta": "Meta",
-        "perplexity": "Perplexity AI"
+        "perplexity": "Perplexity AI",
+        "opencodeGo": "OpenCode Go"
       },
       "test": {
         "successTitle": "Połączenie działa",
@@ -2699,7 +2750,11 @@
       "europeMcpeuCorosComNot": "Europa (mcpeu.coros.com) <span>(jeszcze nietestowane)</span>",
       "mainlandChinaMcpcnCorosCom": "Chiny kontynentalne (mcpcn.coros.com) <span>(jeszcze nietestowane)</span>",
       "ensureLocalUrl": "Upewnij się też, że lokalny adres URL jest poprawny, jeśli testujesz lokalnie.",
-      "stravaCallbackNote": "Uwaga: adres URL wywołania zwrotnego Strava na serwerze jest skonfigurowany na: <strong>{{value}}</strong>"
+      "stravaCallbackNote": "Uwaga: adres URL wywołania zwrotnego Strava na serwerze jest skonfigurowany na: <strong>{{value}}</strong>",
+      "garminServiceUnreachable": "Usługa Garmin niedostępna",
+      "garminServiceUnreachableDescription": "SparkyFitness nie może połączyć się z usługą Garmin, więc dane Garmina nie mogą być synchronizowane. Sprawdź, czy mikrousługa Garmin działa.",
+      "hevyDaily": "Codziennie o 21:00",
+      "hevyDailyHelp": "Codzienna synchronizacja Hevy odbywa się o 21:00 lub później według Twojej strefy czasowej SparkyFitness. Za ten wieczór liczy się tylko udana synchronizacja o 21:00 lub później. Synchronizacja automatyczna wymaga aktywnego dostawcy."
     },
     "externalProviderList": {
       "dragToReorderProvider": "Przeciągnij, aby zmienić kolejność dostawców",
@@ -2789,7 +2844,9 @@
       "urlLabel": "Adres URL:",
       "appIdLabel": "App ID:",
       "appKeyLabel": "App Key:",
-      "syncLabel": "Synchronizacja:"
+      "syncLabel": "Synchronizacja:",
+      "neverSynced": "Ostatnia synchronizacja: nigdy",
+      "garminServiceUnreachable": "Usługa Garmin niedostępna. Synchronizacja nie jest możliwa."
     },
     "providerSpecificFields": {
       "appURL": "Adres URL aplikacji",
@@ -2937,7 +2994,9 @@
         "enforceMfaForAllUsers": "Wymuś MFA dla wszystkich użytkowników",
         "enablePasskeyLogin": "Włącz logowanie kluczem dostępu",
         "emergencyFailSafePasskeyDescription": "Jeśli logowanie kluczem dostępu zostało wyłączone i nie możesz się już zalogować, wymuś jego ponowne włączenie za pomocą:",
-        "emergencyFailSafeIfYou": "<strong>Awarystyczne zabezpieczenie:</strong> jeśli kiedykolwiek stracisz dostęp do konta, możesz wymusić włączenie logowania e-mail/hasło, ustawiając następującą zmienną środowiskową na serwerze i uruchamiając go ponownie:"
+        "emergencyFailSafeIfYou": "<strong>Awarystyczne zabezpieczenie:</strong> jeśli kiedykolwiek stracisz dostęp do konta, możesz wymusić włączenie logowania e-mail/hasło, ustawiając następującą zmienną środowiskową na serwerze i uruchamiając go ponownie:",
+        "enableMagicLinkLogin": "Włącz logowanie magicznym linkiem",
+        "emergencyFailSafeMagicLinkDescription": "Jeśli logowanie magicznym linkiem zostało wyłączone i nie możesz się zalogować, wymuś jego ponowne włączenie przez:"
       },
       "oidcProviderManagement": {
         "title": "Zarządzanie OIDC",
@@ -3662,8 +3721,6 @@
       "timeCalorieBreakdown": "Podział czasu i kalorii",
       "movingTimeSec": "Czas w ruchu (s)",
       "elapsedTimeSec": "Czas całkowity (s)",
-      "activeCaloriesKcal": "Kalorie aktywne (kcal)",
-      "restingCaloriesKcal": "Kalorie w spoczynku (kcal)",
       "trainingLoadPerformance": "Obciążenie treningowe i wydolność",
       "trainingLoad": "Obciążenie treningowe",
       "aerobicEffect05": "Efekt tlenowy (0-5)",
@@ -3678,7 +3735,9 @@
       "humidity": "Wilgotność (%)",
       "gearName": "Nazwa sprzętu",
       "eGNikePegasus40": "np. Nike Pegasus 40",
-      "exercise": "Ćwiczenie"
+      "exercise": "Ćwiczenie",
+      "activeCaloriesWithUnit": "Aktywne kalorie ({{unit}})",
+      "restingCaloriesWithUnit": "Kalorie w spoczynku ({{unit}})"
     },
     "editMealFoodEntryDialog": {
       "modifyTheFoodsAndQuantities": "Zmodyfikuj produkty i ilości dla tego konkretnego zapisanego wpisu posiłku.",
@@ -4386,10 +4445,10 @@
     "pProteing": "B: {{protein}}g",
     "cCarbsg": "W: {{carbs}}g",
     "fFatg": "T: {{fat}}g",
-    "totalKcalPGC": "<strong>Suma:</strong> {{totalCalories}} kcal | B: {{totalProtein}}g | W: {{totalCarbs}}g | T: {{totalFat}}g",
     "pTotalProteing": "B: {{totalProtein}}g",
     "cTotalCarbsg": "W: {{totalCarbs}}g",
-    "fTotalFatg": "T: {{totalFat}}g"
+    "fTotalFatg": "T: {{totalFat}}g",
+    "totalEnergyPGC": "<strong>Razem:</strong> {{totalCalories}} | B: {{totalProtein}}g | W: {{totalCarbs}}g | T: {{totalFat}}g"
   },
   "workoutPresetForm": {
     "createTitle": "Stwórz nowy szablon treningu",
@@ -4886,7 +4945,9 @@
       "bmiMethod": "Metoda BMI"
     },
     "useExternalBmr": "Używaj zmierzonego BMR z wpisów dnia i zsynchronizowanych urządzeń",
-    "useExternalBmrHint": "Domyślnie wyłączone — dopóki nie włączysz tej opcji, zawsze używany jest wybrany wzór. Po włączeniu BMR zapisany we wpisie dnia albo zsynchronizowany z inteligentnej wagi lub od dostawcy danych zdrowotnych zastępuje wzór dla tego dnia, pod warunkiem że jest fizjologicznie wiarygodny. Niektóre urządzenia raportują BMR jako narastającą dzienną sumę, a nie tempo metaboliczne — dlatego ta opcja jest dobrowolna."
+    "useExternalBmrHint": "Domyślnie wyłączone — dopóki nie włączysz tej opcji, zawsze używany jest wybrany wzór. Po włączeniu BMR zapisany we wpisie dnia albo zsynchronizowany z inteligentnej wagi lub od dostawcy danych zdrowotnych zastępuje wzór dla tego dnia, pod warunkiem że jest fizjologicznie wiarygodny. Niektóre urządzenia raportują BMR jako narastającą dzienną sumę, a nie tempo metaboliczne — dlatego ta opcja jest dobrowolna.",
+    "adjustMacrosWithExercise": "Dopasuj procentowe cele makroskładników do kalorii z treningu",
+    "adjustMacrosWithExerciseHint": "Zwiększa cele białka, węglowodanów i tłuszczów według zapisanych procentów, gdy trening dodaje kalorie do dziennego budżetu. Respektuje ustawienia odpracowania kalorii z treningu. Cele wpisane w gramach pozostają bez zmian. Zmiany obowiązują od dzisiaj; wcześniejsze dni zachowują swoje ustawienie."
   },
   "sync": {
     "syncAll": "Synchronizuj dane wszystkich aktywnych dostawców",
@@ -5439,7 +5500,6 @@
       "afterMeal": "Po posiłku",
       "startDate": "Data rozpoczęcia (opcjonalnie)",
       "endDate": "Data zakończenia (opcjonalnie)",
-      "supplementDoseScalingCalories": "Każdy wpis obejmuje {{dose}} porcji: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Każdy wpis obejmuje {{dose}} porcji, czyli {{dose}} razy wartości odżywcze podane na porcję.",
       "servingUnit": "porcja",
       "servingsPerLog": "Liczba porcji na wpis",
@@ -5448,7 +5508,8 @@
       "doseAmount": "Dawka (zastąpienie)",
       "startDateRequired": "Data rozpoczęcia (wymagana)",
       "time": "Pora dnia",
-      "weekdays": "Wybierz dni"
+      "weekdays": "Wybierz dni",
+      "supplementDoseScalingEnergy": "Każdy zapis liczy {{dose}} porcje: {{dose}} x {{perDose}} {{unit}} = {{total}} {{unit}}."
     },
     "reports": {
       "logTableTitle": "Tabela przyjmowania leków",
@@ -7086,7 +7147,6 @@
       "targetHoursDesc": "Czas trwania w godzinach do ukończenia postu.",
       "targetEatingHours": "Docelowe godziny jedzenia",
       "targetEatingHoursDesc": "Czas trwania okna żywieniowego w godzinach.",
-      "calorieThreshold": "Próg kalorii (kcal)",
       "calorieThresholdHint": "Przekąski lub napoje poniżej tej wartości (np. czarna kawa, woda, elektrolity) nie przerwą postu ani nie spowodują jego ponownego rozpoczęcia.",
       "preEndAlert": "Ostrzeżenie przed celem (minuty)",
       "preEndAlertHint": "Ile minut przed osiągnięciem docelowego celu postu otrzymać powiadomienie przypominające.",
@@ -7097,7 +7157,8 @@
       "saved": "Ustawienia postu zaktualizowane pomyślnie.",
       "error": "Nie udało się zapisać ustawień postu.",
       "errorLoading": "Nie udało się wczytać ustawień.",
-      "retry": "Spróbuj ponownie"
+      "retry": "Spróbuj ponownie",
+      "calorieThresholdWithUnit": "Próg kalorii ({{unit}})"
     },
     "endFastDialog": {
       "fastCompleted": "Post zakończony! 🎉",
@@ -7220,7 +7281,14 @@
     "intervalsAthleteId": "ID sportowca",
     "intervalsAthleteIdPlaceholder": "Wprowadź ID sportowca (i12345)",
     "intervalsApiKeyPlaceholder": "Wprowadź klucz API",
-    "intervalsDisconnectConfirm": "Na pewno odłączyć Intervals.icu? To dezaktywuje integrację do ponownego włączenia."
+    "intervalsDisconnectConfirm": "Na pewno odłączyć Intervals.icu? To dezaktywuje integrację do ponownego włączenia.",
+    "garminServiceUnreachableTitle": "Garmin niedostępny",
+    "garminServiceUnreachable": "Usługa Garmin jest niedostępna. Sprawdź, czy mikrousługa Garmin działa.",
+    "garminSyncIncompleteTitle": "Synchronizacja Garmina niekompletna",
+    "garminSyncPhaseHealth": "Zdrowie",
+    "garminSyncPhaseActivities": "Aktywności",
+    "garminSyncPhaseNutrition": "Żywienie",
+    "garminSyncIncomplete": "Nie udało się zsynchronizować części danych Garmina ({{phases}}). Spróbuj ponownie później."
   },
   "mealCreation": {
     "convertToMeal": "Utwórz posiłek z dziennika",
@@ -7553,7 +7621,7 @@
     "editInMealBuilder": "Edytuj w kreatorze posiłków",
     "loggedSuccess": "Posiłek pomyślnie zapisany w dzienniku.",
     "openInMealBuilder": "Otwórz w kreatorze posiłków",
-    "kcalPGCG": "{{calories_kcal}} kcal · B: {{protein_g}}g · W: {{carbs_g}}g · T: {{fat_g}}g"
+    "energyPGCG": "{{calories_kcal}} {{unit}} · B: {{protein_g}}g · W: {{carbs_g}}g · T: {{fat_g}}g"
   },
   "waterContainerManager": {
     "title": "Zarządzaj pojemnikami na wodę",
@@ -8431,7 +8499,8 @@
         "relief": "Ulga",
         "slept": "Sen",
         "food": "Dzień wcześniej",
-        "water": "Woda"
+        "water": "Woda",
+        "impact": "Wpływ na dzień"
       },
       "factorsTitle": "Co poprzedzało",
       "factorsHint": "Ile z Twoich ostatnich {{n}} epizodów miało każdy z tych czynników. To opisuje, co się zdarzyło; nie pokazuje przyczyny.",
@@ -10120,5 +10189,179 @@
     "legendElevated": "Podwyższone poza treningiem",
     "vsSevenDayAvg": "{{diff}} bpm wobec śr. z 7 dni",
     "minIntoWorkout": "po {{min}} min treningu"
+  },
+  "labs": {
+    "add": "Dodaj wynik badania",
+    "changeMarker": "Zmień",
+    "chartEmpty": "Brak wyników",
+    "chartOtherUnits_one": "{{count}} wynik w innej jednostce nie jest wyświetlany na wykresie.",
+    "chartOtherUnits_few": "{{count}} wyniki w innych jednostkach nie są wyświetlane na wykresie.",
+    "chartOtherUnits_many": "{{count}} wyników w innych jednostkach nie jest wyświetlanych na wykresie.",
+    "createCustom": "Dodaj „{{name}}” jako nowy wskaźnik",
+    "date": "Data badania",
+    "dateFuture": "Data badania nie może być w przyszłości.",
+    "deleteFailed": "Nie udało się usunąć wyniku",
+    "deleteMessage": "Usunąć ten wynik badania?",
+    "deleteTitle": "Usuń wynik",
+    "empty": "Nie masz jeszcze wyników badań. Dodaj wynik, np. HbA1c, LDL lub witaminę D, i śledź go w czasie.",
+    "latest": "Najnowszy",
+    "loadFailed": "Nie udało się wczytać wyników badań.",
+    "noMatches": "Brak pasujących wskaźników",
+    "noResults": "Brak wyników",
+    "notesPlaceholder": "Dodaj notatkę (opcjonalnie)",
+    "rangeHigh": "Górna",
+    "rangeInvalid": "Podaj liczby; wartość dolna nie może przekraczać górnej.",
+    "rangeLow": "Dolna",
+    "rangeOptional": "Zakres referencyjny (opcjonalnie)",
+    "referenceRange": "Zakres referencyjny: {{range}}",
+    "saveFailed": "Nie udało się zapisać wyniku badania",
+    "searchPlaceholder": "Szukaj wskaźników (HbA1c, LDL, ...)",
+    "status": {
+      "high": "Powyżej normy",
+      "inRange": "W normie",
+      "low": "Poniżej normy"
+    },
+    "unit": "Jednostka",
+    "value": "Wynik",
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "Glukoza na czczo",
+      "total_cholesterol": "Cholesterol całkowity",
+      "hdl": "Cholesterol HDL",
+      "ldl": "Cholesterol LDL",
+      "triglycerides": "Triglicerydy",
+      "vitamin_d": "Witamina D (25-OH)",
+      "tsh": "TSH",
+      "ferritin": "Ferrytyna",
+      "vitamin_b12": "Witamina B12",
+      "creatinine": "Kreatynina",
+      "egfr": "eGFR",
+      "alt": "ALT",
+      "ast": "AST",
+      "non_hdl": "Cholesterol nie-HDL",
+      "apob": "Apolipoproteina B",
+      "vldl": "Cholesterol VLDL",
+      "fasting_insulin": "Insulina na czczo",
+      "wbc": "Leukocyty",
+      "rbc": "Erytrocyty",
+      "hemoglobin": "Hemoglobina",
+      "hematocrit": "Hematokryt",
+      "mcv": "MCV",
+      "platelets": "Płytki krwi",
+      "sodium": "Sód",
+      "potassium": "Potas",
+      "chloride": "Chlorki",
+      "bicarbonate": "Wodorowęglany (CO2)",
+      "calcium": "Wapń",
+      "magnesium": "Magnez",
+      "phosphorus": "Fosfor",
+      "bun": "Azot mocznika (BUN)",
+      "uric_acid": "Kwas moczowy",
+      "albumin": "Albumina",
+      "total_protein": "Białko całkowite",
+      "alp": "Fosfataza zasadowa",
+      "total_bilirubin": "Bilirubina całkowita",
+      "ggt": "GGT",
+      "free_t4": "Wolna T4 (FT4)",
+      "free_t3": "Wolna T3 (FT3)",
+      "iron": "Żelazo",
+      "tibc": "Całkowita zdolność wiązania żelaza (TIBC)",
+      "transferrin_saturation": "Nasycenie transferyny",
+      "folate": "Foliany",
+      "crp": "hs-CRP",
+      "esr": "OB (ESR)",
+      "homocysteine": "Homocysteina",
+      "cortisol": "Kortyzol (poranny)",
+      "psa": "PSA",
+      "testosterone": "Testosteron (całkowity)",
+      "estradiol": "Estradiol",
+      "lipoprotein_a": "Lipoproteina(a)",
+      "ketones": "Ketony (beta-hydroksymaślan)",
+      "c_peptide": "Peptyd C",
+      "fructosamine": "Fruktozamina",
+      "neutrophils": "Neutrofile",
+      "lymphocytes": "Limfocyty",
+      "monocytes": "Monocyty",
+      "eosinophils": "Eozynofile",
+      "mch": "MCH",
+      "mchc": "MCHC",
+      "rdw": "RDW",
+      "mpv": "MPV",
+      "globulin": "Globuliny",
+      "direct_bilirubin": "Bilirubina bezpośrednia",
+      "anion_gap": "Przerwa anionowa",
+      "bun_creatinine_ratio": "Stosunek azotu mocznika do kreatyniny (BUN/kreatynina)",
+      "cystatin_c": "Cystatyna C",
+      "urine_albumin_creatinine": "Stosunek albuminy do kreatyniny w moczu",
+      "amylase": "Amylaza",
+      "lipase": "Lipaza",
+      "ldh": "LDH",
+      "ck": "Kinaza kreatynowa",
+      "ammonia": "Amoniak",
+      "zinc": "Cynk",
+      "copper": "Miedź",
+      "selenium": "Selen",
+      "vitamin_b6": "Witamina B6",
+      "vitamin_a": "Witamina A",
+      "vitamin_e": "Witamina E",
+      "pth": "PTH",
+      "igf_1": "IGF-1",
+      "dhea_s": "DHEA-S",
+      "free_testosterone": "Testosteron wolny",
+      "shbg": "SHBG",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "Progesteron",
+      "prolactin": "Prolaktyna",
+      "tpo_antibodies": "Przeciwciała anty-TPO"
+    },
+    "rangeFromReport": "Użyj zakresu wydrukowanego na wyniku. Zostanie zapisany z tym wynikiem.",
+    "import": {
+      "blocked": {
+        "duplicate": "Już uwzględniono z tego badania."
+      },
+      "chooseAnother": "Wybierz inne badanie",
+      "cta": "Importuj z wyniku badania",
+      "includeRow": "Uwzględnij {{name}}",
+      "newMarker": "Nowy wskaźnik",
+      "reading": "Odczytywanie wyniku...",
+      "saveCount_one": "Zapisz {{count}} wynik",
+      "saveCount_few": "Zapisz {{count}} wyniki",
+      "saveCount_many": "Zapisz {{count}} wyników",
+      "saved_one": "Zapisano {{count}} wynik",
+      "saved_few": "Zapisano {{count}} wyniki",
+      "saved_many": "Zapisano {{count}} wyników",
+      "scanFailed": "Nie udało się odczytać tego badania.",
+      "valueFor": "Wynik dla {{name}}",
+      "deleteTitle": "Usuń zaimportowane wyniki",
+      "deleteMessage": "Usunąć wszystkie wyniki zaimportowane z badania oraz każdy własny wskaźnik, który pozostał pusty? Wyniki wpisane samodzielnie zostają.",
+      "deleted_one": "Usunięto {{count}} zaimportowany wynik",
+      "deleted_few": "Usunięto {{count}} zaimportowane wyniki",
+      "deleted_many": "Usunięto {{count}} zaimportowanych wyników",
+      "deleteFailed": "Nie udało się usunąć zaimportowanych wyników",
+      "saveFailed": "Nie udało się zapisać badania. Nic nie zapisano.",
+      "warning": {
+        "unit": "Twoje wcześniejsze wyniki używają jednostki {{earlierUnit}}, a to badanie używa {{reportUnit}}. Jednostki nie są przeliczane."
+      },
+      "chooseFile": "Wybierz plik PDF lub zdjęcie",
+      "introWeb": "Wybierz PDF wyniku badania albo jego zdjęcie lub zrzut ekranu. Twój dostawca AI go odczyta, a Ty przejrzysz wyniki, zanim cokolwiek zostanie zapisane. Samo badanie nie jest przechowywane.",
+      "editHintWeb": "Sprawdź wartości względem wyniku badania. Każdy wynik zapisywany jest z jednostką i zakresem referencyjnym pokazanym tutaj: tym, co wydrukowano na wyniku, albo domyślnym wskaźnika, gdy wynik nie podaje żadnego.",
+      "tooLarge": "Ten plik jest za duży, aby go odczytać (limit 14 MB).",
+      "nothingFound": "W tym badaniu nie znaleziono wyników.",
+      "readFailed": "Nie udało się otworzyć tego pliku.",
+      "photoTooLarge": "To zdjęcie jest za duże, aby je odczytać (limit 6 MB). Spróbuj mniejszego zdjęcia lub zrzutu ekranu.",
+      "lockedAfterFailedSave": "Zapis nie został ukończony, dlatego ten przegląd jest zablokowany: ponowne zapisanie wysyła dokładnie ten sam raport i jest przechowywany tylko raz. Aby zmienić wartości, wybierz raport ponownie.",
+      "unconfirmedNoKey": "Zapis nie został ukończony, a ta przeglądarka nie może oznaczyć raportu tak, aby ponowne zapisanie zapisało go tylko raz. Raport może się jeszcze zapisywać. Zamknij to okno i sprawdź swoje wyniki laboratoryjne za kilka minut, zanim ponownie coś zaimportujesz, aby nie zapisać go dwukrotnie."
+    },
+    "moreActions": "Więcej działań",
+    "deleteMarker": "Usuń wskaźnik i wszystkie wyniki",
+    "deleteMarkerTitle": "Usuń wskaźnik",
+    "deleteMarkerMessage": "Usunąć {{name}} i wszystkie jego wyniki? Tej operacji nie można cofnąć.",
+    "deleteMarkerFailed": "Nie udało się usunąć wskaźnika",
+    "labName": "Laboratorium",
+    "notes": "Notatki",
+    "valueInvalid": "Podaj wskaźnik i wynik liczbowy.",
+    "historyCutOff": "Historia pokazuje co najwyżej {{count}} najnowszych wyników.",
+    "dateInvalid": "Podaj datę badania."
   }
 }

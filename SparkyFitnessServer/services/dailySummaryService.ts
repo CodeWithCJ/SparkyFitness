@@ -17,7 +17,10 @@ import {
   resolveDeviceProjectionSnapshot,
   sumFoodEntryCalories,
 } from './calorieBalanceService.js';
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import type {
+  CalorieCyclingDay,
+  ExerciseSessionResponse,
+} from '@workspace/shared';
 import {
   resolveSupplementTotals,
   withCalorieRuleDefaults,
@@ -246,6 +249,12 @@ export async function getDailySummary({
       hipsCm: measured(measurements?.hips),
     },
     adjustedGoals: computedAdjustedGoals,
+    // Calorie cycling on this day (#2327), when the user has it switched on.
+    ...(adjustedGoalData?.calorie_cycling
+      ? {
+          calorieCycling: adjustedGoalData.calorie_cycling as CalorieCyclingDay,
+        }
+      : {}),
     // Exposed separately as well as folded into `calorieBalance.eaten`, so the Diary can
     // show what supplements contributed instead of leaving a gap between the headline
     // total and the food rows underneath it.

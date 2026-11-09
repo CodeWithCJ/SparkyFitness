@@ -66,7 +66,10 @@
     "more": "więcej",
     "undo": "Cofnij",
     "all": "Wszystko",
-    "builtIn": "Wbudowane"
+    "builtIn": "Wbudowane",
+    "kcalUnit": "kcal",
+    "kJUnit": "kJ",
+    "energy": "Energia"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -128,7 +131,8 @@
       "wearOs": "Wear OS",
       "customMeasurements": "Własne pomiary",
       "heartRateZones": "Strefy tętna",
-      "heartRateZonesSubtitle": "Maksymalne i spoczynkowe tętno, metoda stref"
+      "heartRateZonesSubtitle": "Maksymalne i spoczynkowe tętno, metoda stref",
+      "nfcTags": "Tagi NFC"
     },
     "theme": {
       "title": "Motyw",
@@ -152,6 +156,12 @@
     "cameraShutter": {
       "title": "Dźwięk migawki",
       "subtitle": "Odtwarzaj dźwięk podczas robienia zdjęć."
+    },
+    "glucoseUnit": {
+      "title": "Jednostka glukozy",
+      "subtitle": "Dla wykresów glukozy.",
+      "saveFailed": "Nie udało się zapisać jednostki glukozy.",
+      "loadFailed": "Nie udało się wczytać ustawienia. Dotknij, aby spróbować ponownie."
     }
   },
   "languageSettings": {
@@ -186,7 +196,6 @@
     "emptyForDate": "Brak wpisów żywieniowych dla tej daty",
     "diaryForDate": "Dziennik rodzinny · {{date}}",
     "openMeal": "Otwórz posiłek {{meal}}",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Nienazwany produkt",
     "selectAll": "Zaznacz wszystko",
     "deselectAll": "Odznacz wszystko",
@@ -194,15 +203,12 @@
     "selectFood": "Zaznacz {{food}}",
     "deselectFood": "Odznacz {{food}}",
     "continue": "Kontynuuj",
-    "nutritionSummary": "{{calories}} kcal · B {{protein}} g · W {{carbs}} g · T {{fat}} g",
-    "selectedNutrition": "Wybrano: {{calories}} kcal · B {{protein}} g · W {{carbs}} g · T {{fat}} g",
     "copyReview": "Sprawdź kopiowanie",
     "copyFrom": "Kopiowanie od {{name}}",
     "copyMealTitle": "Posiłek: {{meal}}",
     "quantityForFood": "Ilość produktu {{food}}",
     "quantityMustBePositive": "Wprowadź ilość większą od zera.",
     "copyNutrition": "Wartości odżywcze do skopiowania",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g białka",
     "copyCarbs": "{{carbs}} g węglowodanów",
     "copyFat": "{{fat}} g tłuszczu",
@@ -242,7 +248,11 @@
     "copyOwnStaleGuidance": "Twój ostatni posiłek otwiera się do przeglądu.",
     "copyServerUpdateRequired": "Wymagana aktualizacja serwera",
     "copyServerUpdateGuidance": "Zaktualizuj serwer SparkyFitness, aby kopiować produkty do członków rodziny.",
-    "copyMealTypesFailed": "Nie udało się wczytać posiłków docelowych. Spróbuj ponownie."
+    "copyMealTypesFailed": "Nie udało się wczytać posiłków docelowych. Spróbuj ponownie.",
+    "mealCaloriesWithUnit": "{{calories}} {{unit}}",
+    "nutritionSummaryWithUnit": "{{calories}} {{unit}} · B {{protein}} g · W {{carbs}} g · T {{fat}} g",
+    "selectedNutritionWithUnit": "Wybrano: {{calories}} {{unit}} · B {{protein}} g · W {{carbs}} g · T {{fat}} g",
+    "copyCaloriesWithUnit": "{{calories}} {{unit}}"
   },
   "notifications": {
     "title": "Powiadomienia",
@@ -411,7 +421,8 @@
     "setDetail": {
       "addNote": "Dodaj notatkę do tej serii…",
       "notesForSet": "Notatki dla serii {{setNumber}}",
-      "notes": "Notatki serii"
+      "notes": "Notatki serii",
+      "deleteSet": "Usuń serię"
     },
     "setRow": {
       "changeType": "Zmień typ serii {{setNumber}}",
@@ -448,7 +459,6 @@
       "changeMetric": "Zmień kolumnę metryki",
       "notesForSet": "Notatki do serii {{number}}",
       "addSet": "Dodaj serię: „{{name}}”",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Dodaj serię",
       "viewImages": "Zobacz zdjęcia: {{name}}",
       "heartRateFor": "Średnie tętno dla {{name}}",
@@ -490,6 +500,43 @@
       "setOf": "Seria {{number}} z {{total}}",
       "warmupOf": "Rozgrzewka {{number}} z {{total}}",
       "then": "Potem {{name}}"
+    },
+    "focus": {
+      "media": {
+        "minimize": "Zmniejsz",
+        "minimizeLabel": "Zmniejsz zdjęcie: {{name}}",
+        "expandLabel": "Powiększ zdjęcie: {{name}}",
+        "expandHint": "Przytrzymaj długo, aby otworzyć pełny ekran",
+        "pause": "Wstrzymaj",
+        "play": "Odtwórz",
+        "pauseLabel": "Wstrzymaj animację: {{name}}",
+        "playLabel": "Odtwórz animację: {{name}}",
+        "openFullScreen": "Pokaż zdjęcie {{name}} na pełnym ekranie",
+        "openFullScreenHint": "Otwiera zdjęcie, aby można było przybliżyć"
+      },
+      "sets": {
+        "weightHeader": "Ciężar ({{unit}})",
+        "weightInput": "Ciężar dla serii {{setNumber}}",
+        "repsInput": "Powtórzenia dla serii {{setNumber}}",
+        "effortInput": "{{metric}} dla serii {{setNumber}}",
+        "increaseWeight": "Zwiększ ciężar dla serii {{setNumber}}",
+        "decreaseWeight": "Zmniejsz ciężar dla serii {{setNumber}}",
+        "increaseReps": "Zwiększ powtórzenia dla serii {{setNumber}}",
+        "decreaseReps": "Zmniejsz powtórzenia dla serii {{setNumber}}"
+      },
+      "chips": {
+        "label": "Ćwiczenie {{number}} z {{total}}, {{name}}, {{status}}",
+        "done": "ukończone",
+        "inProgress": "w trakcie",
+        "todo": "nierozpoczęte"
+      },
+      "plan": "Plan: {{sets}} × {{reps}}",
+      "lastTime": "Ostatnio: {{sets}}",
+      "previous": "Poprzednie",
+      "next": "Następne",
+      "previousLabel": "Poprzednie ćwiczenie: {{name}}",
+      "nextLabel": "Następne ćwiczenie: {{name}}",
+      "backToCurrent": "Wróć do bieżącego"
     }
   },
   "addSheet": {
@@ -616,7 +663,9 @@
       "routes": "Trasy",
       "routesSubtitle": "Rysuj, importuj i zapisuj trasy do naśladowania",
       "equipment": "Sprzęt",
-      "equipmentSubtitle": "Buty i pozostały ekwipunek"
+      "equipmentSubtitle": "Buty i pozostały ekwipunek",
+      "labResults": "Wyniki badań",
+      "labResultsSubtitle": "Badania krwi i inne wskaźniki w czasie"
     },
     "duplicateExercise": "Zduplikuj ćwiczenie",
     "symptomLog": "Zapis objawu",
@@ -670,7 +719,11 @@
     "heartRateZonesSettings": "Strefy tętna",
     "routeEdit": "Edytuj trasę",
     "routeGenerate": "Wygeneruj trasę",
-    "compareReport": "Porównaj"
+    "compareReport": "Porównaj",
+    "labResults": "Wyniki badań",
+    "labResultDetail": "Wynik badania",
+    "labResultAdd": "Dodaj wynik badania",
+    "labReportImport": "Import wyniku"
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -734,7 +787,9 @@
     "appleStandTime": "Czas stania (Apple)",
     "unknown": "Metryka zdrowotna",
     "bodyWaterMass": "Masa wody w ciele",
-    "mindfulness": "Uważność"
+    "mindfulness": "Uważność",
+    "sleepingWristTemperature": "Temperatura nadgarstka podczas snu",
+    "overnightBodyTemperature": "Temperatura ciała w nocy"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -876,7 +931,6 @@
     "healthTrends": "Trendy zdrowotne",
     "consumed": "Spożyte",
     "remaining": "pozostało",
-    "ofCalories": "z {{value}} kcal",
     "burned": "Spalone",
     "hydration": "Nawodnienie",
     "ofVolume": "z {{value}} {{unit}}",
@@ -896,7 +950,8 @@
     "perPress": "{{value}} {{unit}}",
     "logDrinkFailed": "Nie udało się zapisać tego napoju",
     "exerciseStatistics": "Statystyki",
-    "reportsLink": "Raporty"
+    "reportsLink": "Raporty",
+    "ofCaloriesWithUnit": "z {{value}} {{unit}}"
   },
   "syncScreen": {
     "healthConnectSettings": "ustawieniach Health Connect",
@@ -1014,7 +1069,6 @@
     "exerciseCaloriesDescription": "Określa, jaka część kalorii z ćwiczeń jest dodawana do dziennego celu.",
     "activityLevel": "Poziom aktywności",
     "activityBaseline": "Używany jako wartość bazowa dla TDEE.",
-    "adaptiveFallback": "Szacunek zapasowy do czasu zebrania wystarczającej ilości danych — a później nadal wyznacza limity wiarygodności. Twój zmierzony TDEE jest ograniczane do ±500 kcal od BMR × ten mnożnik.",
     "allowNegative": "Zezwalaj na niższą prognozę zapasową",
     "negativeDescription": "Gdy suma z urządzenia jest niedostępna, pozwól, aby zapasowe BMR + kalorie aktywności obniżyły Twój cel.",
     "includeResting": "Uwzględniaj kalorie spoczynkowe",
@@ -1121,7 +1175,16 @@
       "invalidRate": "Wprowadź tempo powyżej 0 i do {{max}} kg na tydzień.",
       "dailyAdjustment": "Szacowana korekta dzienna: {{sign}}{{amount}} {{unit}}",
       "estimateHint": "Twój tygodniowy cel jest przeliczany na dzienną korektę kalorii. To estymacja; skonfigurowany bezpieczny limit może ograniczać utratę masy ciała."
-    }
+    },
+    "adjustMacrosWithExercise": "Dopasuj procentowe cele makroskładników do kalorii z treningu",
+    "adjustMacrosWithExerciseHint": "Zwiększa cele białka, węglowodanów i tłuszczów według zapisanych procentów, gdy trening dodaje kalorie do dziennego budżetu. Respektuje ustawienia odpracowania kalorii z treningu. Cele wpisane w gramach pozostają bez zmian. Zmiany obowiązują od dzisiaj; wcześniejsze dni zachowują swoje ustawienie.",
+    "useMoveRingActiveCalories": "Używaj pierścienia Move dla kalorii aktywnych",
+    "useMoveRingActiveCaloriesHint": "Domyślnie wyłączone: kalorie aktywne pochodzą z łącznej energii aktywnej z Apple Health. Po włączeniu pochodzą z pierścienia Move, więc zgadzają się z aplikacją Fitness. Pierścień liczy to, co mierzą Twój Apple Watch i iPhone, a treningi zapisane do Apple Health przez inne aplikacje też mogą się do niego doliczać. Dzień bez pierścienia, np. gdy dostęp do Aktywności jest wyłączony, używa łącznej energii aktywnej. Dotyczy dni synchronizowanych po zmianie.",
+    "adaptiveFallbackWithUnit": "Szacowanie zapasowe, dopóki nie zbierzesz wystarczającej liczby danych śledzenia, a potem nadal określa limity wiarygodności. Zmierzony TDEE jest ograniczony do ±{{amount}} {{unit}} od BMR × ten mnożnik.",
+    "energyUnitLabel": "Jednostka energii",
+    "energyUnitKcal": "Kalorie (kcal)",
+    "energyUnitKj": "Kilojoule (kJ)",
+    "energyUnitDescription": "Sposób wyświetlania i wpisywania energii w aplikacji, widżetach i na zegarku. Zmienia też aplikację webową."
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1166,7 +1229,9 @@
     "mood": "Nastrój",
     "moodSubtitle": "Pokazuje dzisiejszy nastrój, trend z 7 dni i szybkie zapisywanie",
     "trainingLoad": "Obciążenie treningowe",
-    "trainingLoadSubtitle": "Pokazuje ten tydzień na tle Twojego zwykłego treningu, z przypomnieniem o odpoczynku"
+    "trainingLoadSubtitle": "Pokazuje ten tydzień na tle Twojego zwykłego treningu, z przypomnieniem o odpoczynku",
+    "labResults": "Wyniki badań",
+    "labResultsSubtitle": "Pokazuje najnowsze wyniki badań i to, które są poza normą"
   },
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1265,7 +1330,16 @@
     "warmupCalculator": "Kalkulator rozgrzewki",
     "warmupCalculatorSubtitle": "Ramp i ciężary, do których zaokrągla, dla serii rozgrzewkowych dodawanych do ćwiczenia.",
     "nowCard": "Karta „Teraz”",
-    "nowCardSubtitle": "Przypnij serię do wykonania nad listą ćwiczeń: cel dużą czcionką, zdjęcie ćwiczenia, co będzie dalej i przycisk Zamień, aby najpierw zrobić inne ćwiczenie."
+    "nowCardSubtitle": "Przypnij serię do wykonania nad listą ćwiczeń: cel dużą czcionką, zdjęcie ćwiczenia, co będzie dalej i przycisk Zamień, aby najpierw zrobić inne ćwiczenie.",
+    "workoutView": "Widok treningu",
+    "workoutViewSubtitle": "Lista pokazuje wszystkie ćwiczenia w jednej przewijanej liście; Tryb skupienia pokazuje jedno ćwiczenie naraz z dużą kartą zdjęcia.",
+    "workoutViewGuidedSubtitle": "Treningi z narracją zawsze używają listy. Tryb skupienia obowiązuje, gdy tryb prowadzony jest wyłączony.",
+    "workoutViewList": "Lista",
+    "workoutViewFocus": "Tryb skupienia",
+    "focusMedia": "Zdjęcie ćwiczenia",
+    "focusMediaSubtitle": "Otwiera widok skupienia z dużą kartą zdjęcia lub małą miniaturą. Możesz to zmienić w trakcie treningu.",
+    "focusMediaLarge": "Duże",
+    "focusMediaSmall": "Małe"
   },
   "restPeriod": {
     "title": "Czas przerwy",
@@ -1722,26 +1796,26 @@
       "dosesToday": "Dawki dzisiaj",
       "doses": "Dawki",
       "windowAdherence_one": "przestrzeganie ({{count}} dzień)",
-      "windowAdherence_few": "",
-      "windowAdherence_many": "",
+      "windowAdherence_few": "przestrzeganie ({{count}} dni)",
+      "windowAdherence_many": "przestrzeganie ({{count}} dni)",
       "perfectDays_one": "Idealne dni ({{count}} d)",
-      "perfectDays_few": "",
-      "perfectDays_many": "",
+      "perfectDays_few": "Idealne dni ({{count}} d)",
+      "perfectDays_many": "Idealne dni ({{count}} d)",
       "ringA11y_one": "{{pct}} procent przestrzegania przez {{count}} dzień",
-      "ringA11y_few": "",
-      "ringA11y_many": "",
+      "ringA11y_few": "{{pct}} procent przestrzegania przez {{count}} dni",
+      "ringA11y_many": "{{pct}} procent przestrzegania przez {{count}} dni",
       "ringLabel_one": "{{count}} dzień",
-      "ringLabel_few": "",
-      "ringLabel_many": "",
+      "ringLabel_few": "{{count}} dni",
+      "ringLabel_many": "{{count}} dni",
       "lastDays_one": "Ostatni {{count}} dzień",
-      "lastDays_few": "",
-      "lastDays_many": "",
+      "lastDays_few": "Ostatnie {{count}} dni",
+      "lastDays_many": "Ostatnie {{count}} dni",
       "streak_one": "seria {{count}} dnia",
-      "streak_few": "",
-      "streak_many": "",
+      "streak_few": "seria {{count}} dni",
+      "streak_many": "seria {{count}} dni",
       "barPrn_one": "{{date}}: {{count}} dawka w razie potrzeby",
-      "barPrn_few": "",
-      "barPrn_many": "",
+      "barPrn_few": "{{date}}: {{count}} dawki w razie potrzeby",
+      "barPrn_many": "{{date}}: {{count}} dawek w razie potrzeby",
       "barNone": "{{date}}: brak dawek",
       "barTaken": "{{date}}: przyjęto {{taken}} z {{due}}",
       "viewingDate": "Wyświetlanie {{date}}",
@@ -1753,11 +1827,11 @@
       "noneToday": "Brak zaplanowanych dawek na dzisiaj.",
       "noneDay": "Brak zaplanowanych dawek na ten dzień.",
       "loggedToday_one": "{{completed}} z {{count}} dawki zapisano dzisiaj.",
-      "loggedToday_few": "",
-      "loggedToday_many": "",
+      "loggedToday_few": "{{completed}} z {{count}} dawek zapisano dzisiaj.",
+      "loggedToday_many": "{{completed}} z {{count}} dawek zapisano dzisiaj.",
       "loggedDay_one": "{{completed}} z {{count}} dawki zapisano na ten dzień.",
-      "loggedDay_few": "",
-      "loggedDay_many": ""
+      "loggedDay_few": "{{completed}} z {{count}} dawek zapisano na ten dzień.",
+      "loggedDay_many": "{{completed}} z {{count}} dawek zapisano na ten dzień."
     },
     "today": {
       "dueToday": "Do przyjęcia dzisiaj",
@@ -1789,8 +1863,8 @@
       "allMedications": "Wszystkie leki",
       "allSupplements": "Wszystkie suplementy",
       "monthTotal_one": "{{count}} dawka zapisana w {{month}}",
-      "monthTotal_few": "",
-      "monthTotal_many": "",
+      "monthTotal_few": "{{count}} dawki zapisane w {{month}}",
+      "monthTotal_many": "{{count}} dawek zapisanych w {{month}}",
       "previousMonth": "Poprzedni miesiąc",
       "nextMonth": "Następny miesiąc",
       "allTaken": "Wszystkie dawki przyjęte",
@@ -1801,17 +1875,17 @@
       "sideEffect": "Objaw niepożądany",
       "generalSymptom": "Objaw ogólny",
       "tooltipTaken_one": "{{count}} przyjęta",
-      "tooltipTaken_few": "",
-      "tooltipTaken_many": "",
+      "tooltipTaken_few": "{{count}} przyjęte",
+      "tooltipTaken_many": "{{count}} przyjętych",
       "tooltipPrn_one": "{{count}} w razie potrzeby",
-      "tooltipPrn_few": "",
-      "tooltipPrn_many": "",
+      "tooltipPrn_few": "{{count}} w razie potrzeby",
+      "tooltipPrn_many": "{{count}} w razie potrzeby",
       "tooltipSkipped_one": "{{count}} pominięta",
-      "tooltipSkipped_few": "",
-      "tooltipSkipped_many": "",
+      "tooltipSkipped_few": "{{count}} pominięte",
+      "tooltipSkipped_many": "{{count}} pominiętych",
       "tooltipSnoozed_one": "{{count}} odłożona",
-      "tooltipSnoozed_few": "",
-      "tooltipSnoozed_many": "",
+      "tooltipSnoozed_few": "{{count}} odłożone",
+      "tooltipSnoozed_many": "{{count}} odłożonych",
       "tooltipSymptoms": "Objawy: {{names}}"
     },
     "dayLog": {
@@ -1995,7 +2069,6 @@
     "forceStatic": "Statyczne",
     "mechanicCompound": "Złożone",
     "mechanicIsolation": "Izolowane",
-    "caloriesPerHour": "Kalorie na godzinę",
     "muscles": "Mięśnie",
     "classification": "Klasyfikacja",
     "selectValue": "Wybierz…",
@@ -2262,7 +2335,6 @@
     "setCount_few": "{{formattedCount}} serie",
     "setCount_many": "{{formattedCount}} serii",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "unknownExercise": "Nieznane ćwiczenie",
     "addNotePlaceholder": "Dodaj notatkę…",
     "setOf_one": "Seria {{number}} z {{count}}",
@@ -2290,8 +2362,9 @@
     "doAnotherFirst": "Najpierw zrób inne ćwiczenie…",
     "swapTitle": "Zamień: {{name}}",
     "doNowSets_one": "Zrób teraz · {{count}} seria",
-    "doNowSets_few": "",
-    "doNowSets_many": ""
+    "doNowSets_few": "Zrób teraz · {{count}} serie",
+    "doNowSets_many": "Zrób teraz · {{count}} serii",
+    "caloriesPerHourWithUnit": "Kalorie na godzinę ({{unit}})"
   },
   "cycleCard": {
     "mode": {
@@ -2537,8 +2610,6 @@
     "protein": "białko",
     "carbs": "węglowodany",
     "fat": "tłuszcz",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "proteinAmount": "białka",
     "carbsAmount": "węglowodanów",
     "fatAmount": "tłuszczu",
@@ -2552,7 +2623,6 @@
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
   },
   "exerciseSummary": {
@@ -2572,7 +2642,6 @@
     "unknownFood": "Nieznany produkt",
     "adjustServing": "Dostosuj porcję",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "deleteFood": "Usuń produkt"
   },
   "exerciseRow": {
@@ -2690,7 +2759,7 @@
       "bmr": "BMR",
       "muscleMassWithUnit": "Masa mięśniowa ({{unit}})",
       "boneMassWithUnit": "Masa kostna ({{unit}})",
-      "bmrWithUnit": "BMR (kcal)"
+      "bmrWithUnitInUnit": "BMR ({{unit}})"
     },
     "validation": {
       "invalid": "Nieprawidłowe: {{label}}",
@@ -2705,7 +2774,7 @@
       "bodyFatRange": "Zawartość tkanki tłuszczowej (%) musi wynosić od 0 do 100.",
       "min": "Musi wynosić co najmniej {{min}}.",
       "bodyWaterRange": "Woda w organizmie % musi mieścić się w zakresie 0–100.",
-      "bmrRange": "BMR musi mieścić się w zakresie 600–6000 kcal."
+      "bmrRangeWithUnit": "BMR musi mieścić się w zakresie od {{min}} do {{max}} {{unit}}."
     },
     "nothingToSave": "Brak danych do zapisania",
     "enterValue": "Wpisz wartość lub wyczyść co najmniej jedno pole.",
@@ -2785,7 +2854,9 @@
       "noMatch": "Brak produktu dla tego kodu",
       "nextSteps": "Możesz zeskanować etykietę żywieniową lub wprowadzić dane ręcznie.",
       "scanLabel": "Skanuj etykietę żywieniową",
-      "addManually": "Dodaj produkt ręcznie"
+      "addManually": "Dodaj produkt ręcznie",
+      "searching": "Wyszukiwanie kodu kreskowego…",
+      "retry": "Ponów wyszukiwanie"
     },
     "photo": {
       "frameMeal": "Umieść cały posiłek w kadrze",
@@ -2794,7 +2865,9 @@
       "logManually": "Zapisz ręcznie"
     },
     "barcode": {
-      "typeInstead": "Wpisz kod kreskowy"
+      "typeInstead": "Wpisz kod kreskowy",
+      "scanAgain": "Skanuj ponownie",
+      "restartCamera": "Uruchom aparat ponownie"
     },
     "manual": {
       "title": "Wpisz kod kreskowy",
@@ -2816,7 +2889,11 @@
     "labelReadOnDevice": "Etykieta odczytana na tym iPhonie",
     "labelReadByServer": "Etykieta odczytana przez AI serwera",
     "retryWithServer": "Odczytaj ponownie przez AI serwera",
-    "retryOnDevice": "Odczytaj ponownie na tym iPhonie"
+    "retryOnDevice": "Odczytaj ponownie na tym iPhonie",
+    "camera": {
+      "unavailable": "Aparat niedostępny",
+      "restartHelp": "Uruchom aparat ponownie, aby spróbować jeszcze raz."
+    }
   },
   "cycleToday": {
     "menstrualFlow": "Krwawienie miesiączkowe",
@@ -3069,11 +3146,11 @@
     "title": "Podsumowanie",
     "collapse": "Zwiń tę sekcję",
     "expand": "Rozwiń tę sekcję",
-    "projectedTdee": "Ekstrapolowane TDEE: {{value}} kcal",
-    "goalModeTarget": "Cel trybu celu: {{value}} kcal",
     "healthConnectProjectionSource": "Suma kalorii z Health Connect",
     "fallbackProjectionSource": "Zapasowo: BMR + aktywne kalorie",
-    "legacyProjectionSource": "Ekstrapolacja z urządzenia"
+    "legacyProjectionSource": "Ekstrapolacja z urządzenia",
+    "projectedTdeeWithUnit": "Prognozowany TDEE: {{value}} {{unit}}",
+    "goalModeTargetWithUnit": "Cel Trybu celu: {{value}} {{unit}}"
   },
   "dateRange": {
     "removeTitle": "Wybierz zakres dat do usunięcia",
@@ -3103,7 +3180,6 @@
     "servingSize": "Wielkość porcji",
     "servingUnit": "Jednostka porcji",
     "autoScaleNutrition": "Automatycznie przelicz wartości odżywcze",
-    "caloriesRequired": "Kalorie (kcal) *",
     "ai": {
       "couldNotEstimate": "Nie udało się oszacować",
       "noTrustedDefault": "Produkt nie ma zaufanej wartości domyślnej, na której można oprzeć przeliczenie.",
@@ -3161,7 +3237,8 @@
     "sodiumShort": "sód",
     "saltShort": "sól",
     "sodiumOption": "Sód (mg)",
-    "saltOption": "Sól (g)"
+    "saltOption": "Sól (g)",
+    "caloriesRequiredWithUnit": "Kalorie ({{unit}}) *"
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",
@@ -3689,7 +3766,6 @@
     "showMore": "Pokaż więcej",
     "best": "Najlepszy wynik ({{unit}})",
     "last": "Ostatni wynik ({{unit}})",
-    "caloriesPerHour": "Kalorie / godz.",
     "equipment": "Sprzęt",
     "primaryMuscles": "Główne partie mięśni",
     "secondaryMuscles": "Dodatkowe partie mięśni",
@@ -3709,7 +3785,8 @@
     "duplicate": "Duplikuj ćwiczenie",
     "viewImages": "Wyświetl obrazy na pełnym ekranie",
     "duplicateName": "{{name}} (kopia)",
-    "deleteSheetTitle": "Usuń ćwiczenie"
+    "deleteSheetTitle": "Usuń ćwiczenie",
+    "caloriesPerHourWithUnit": "{{unit}} / godz."
   },
   "mealTypeSettings": {
     "reorder": "Zmień kolejność: {{name}}",
@@ -3760,7 +3837,6 @@
     "protein": "białko",
     "carbs": "węglowodany",
     "fat": "tłuszcz",
-    "calories": "kcal",
     "viewLinkedMeal": "Wyświetl połączony posiłek {{name}}",
     "logMeal": "Zarejestruj posiłek",
     "deleting": "Usuwanie…",
@@ -3803,7 +3879,9 @@
       "selectFoodInstead": "Wybierz produkt zamiast innego posiłku.",
       "savedFoodUnitFailed": "Zapisano produkt, ale nie nową jednostkę",
       "savedFoodUnitFailedDetails": "Możesz nadal dodać produkt, a następnie ponownie spróbować zapisać tę jednostkę.",
-      "chooseDifferentServing": "Wybierz inną porcję."
+      "chooseDifferentServing": "Wybierz inną porcję.",
+      "tagNeedsSavedServing": "Wybierz jedną z porcji tego produktu",
+      "tagNeedsSavedServingDetails": "Tag zapisuje za każdym razem zapisaną porcję, więc porcja zmieniona tutaj nie może być użyta."
     },
     "actions": {
       "adjustNutrition": "Dostosuj wartości odżywcze",
@@ -3988,7 +4066,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "kcal",
       "foods": "produkty",
       "meals": "posiłki",
       "meal": "Posiłek",
@@ -4053,7 +4130,8 @@
       "calories": "Kalorie",
       "avgHeartRate": "Śr. tętno",
       "maxHeartRate": "Maks. tętno",
-      "effort": "Wysiłek"
+      "effort": "Wysiłek",
+      "energy": "Energia"
     },
     "errors": {
       "needsExercise": "Trening musi zawierać ćwiczenie",
@@ -4609,12 +4687,12 @@
       "count_few": "{{count}} składniki",
       "count_many": "{{count}} składników",
       "totals": "Suma",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}B · {{carbs}}W · {{fat}}T",
       "addFood": "Dodaj produkt",
       "addedFood": "Produkt",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
-      "pickedFoodNote": "Dodano z Twoich produktów. Usuń go i dodaj ponownie, aby zmienić ilość."
+      "pickedFoodNote": "Dodano z Twoich produktów. Usuń go i dodaj ponownie, aby zmienić ilość.",
+      "rowSummaryWithUnit": "{{grams}} g · {{calories}} {{energyUnit}}",
+      "macroSummaryWithUnit": "{{calories}} {{unit}} · {{protein}}B · {{carbs}}W · {{fat}}T",
+      "pickedRowSummaryWithUnit": "{{quantity}} {{unit}} · {{calories}} {{energyUnit}}"
     },
     "match": {
       "useYourFood": "Z Twoich produktów: {{name}} · dotknij, aby użyć",
@@ -4677,10 +4755,10 @@
       "activity": "Aktywność",
       "duration": "Czas trwania (min)",
       "distance": "Dystans ({{unit}})",
-      "calories": "Kalorie",
       "avgHeartRate": "Średnie tętno (bpm)",
       "notes": "Notatki",
-      "notesPlaceholder": "Opcjonalne notatki…"
+      "notesPlaceholder": "Opcjonalne notatki…",
+      "caloriesWithUnit": "Kalorie ({{unit}})"
     },
     "actions": {
       "useYesterday": "Użyj wczoraj",
@@ -4721,7 +4799,7 @@
       "addFood": "Dodaj produkt",
       "copyMeal": "Kopiuj posiłek na inny dzień"
     },
-    "targetCalories": "Cel: {{calories}} kcal"
+    "targetCaloriesWithUnit": "Cel: {{calories}} {{unit}}"
   },
   "nutrientTrends": {
     "title": "Trendy: {{nutrient}}",
@@ -5056,12 +5134,12 @@
       "title": "Kalorie",
       "loadFailed": "Nie udało się wczytać danych o kaloriach",
       "empty": "Brak danych o kaloriach za ten okres",
-      "tooltip": "{{formattedCount}} kcal spożyte",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "Inne",
       "avgCalories": "Śr.",
-      "avgCaloriesValue": "{{formattedCount}} kcal",
-      "noAverage": "—"
+      "noAverage": "—",
+      "tooltipWithUnit": "spożyto {{formattedCount}} {{unit}}",
+      "avgCaloriesValueWithUnit": "{{formattedCount}} {{unit}}"
     },
     "allTrendsHidden": "Wszystkie wykresy są ukryte. Wybierz, które pokazać w ustawieniach pulpitu.",
     "noTrendData": "Brak danych do wykresu.",
@@ -6081,7 +6159,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",
@@ -6105,7 +6182,8 @@
     "records_one": "{{count}} rekord",
     "records_few": "{{count}} rekordy",
     "records_many": "{{count}} rekordów",
-    "error": "Błąd"
+    "error": "Błąd",
+    "energy": "{{value}} {{unit}}"
   },
   "mindfulness": {
     "timer": {
@@ -6452,11 +6530,8 @@
     "proteinLabel": "Białko",
     "carbsLabel": "Węglowodany",
     "fatLabel": "Tłuszcz",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g B · {{carbs}} g W · {{fat}} g T",
     "dailyNutritionAccessibility": "Dzienne {{nutrient}}: {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}}: łącznie {{calories}} kcal, {{protein}} g białka, {{carbs}} g węglowodanów, {{fat}} g tłuszczu",
     "mealTypeMacros": "{{protein}} g B · {{carbs}} g W · {{fat}} g T",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Wczytywanie brakujących szczegółów wartości odżywczych. Sumy mogą być niekompletne.",
     "nutritionLoadFailed": "Nie udało się wczytać niektórych szczegółów wartości odżywczych. Sumy mogą być niekompletne.",
     "assignmentRequired": "Dodaj co najmniej jedno kompletne przypisanie posiłku.",
@@ -6478,7 +6553,10 @@
       "thursday": "Czw",
       "friday": "Pt",
       "saturday": "Sob"
-    }
+    },
+    "nutritionLineWithUnit": "{{calories}} {{unit}} · {{protein}} g B · {{carbs}} g W · {{fat}} g T",
+    "mealTypeNutritionAccessibilityWithUnit": "{{mealType}} razem {{calories}} {{unit}}, {{protein}} g białka, {{carbs}} g węglowodanów, {{fat}} g tłuszczu",
+    "caloriesValueWithUnit": "{{value}} {{unit}}"
   },
   "foodEntryMultiAdd": {
     "title": "Przegląd",
@@ -6633,7 +6711,16 @@
     "restingHeartRate": "Spoczynkowe tętno",
     "percentUnit": "%",
     "bpmUnit": "bpm",
-    "quality": "Jakość snu"
+    "quality": "Jakość snu",
+    "overnightHrv": "HRV w nocy",
+    "skinTemperature": "Temperatura skóry",
+    "skinTemperatureDeviation": "Temp. skóry względem zwykłej",
+    "msUnit": "ms",
+    "celsiusUnit": "°C",
+    "fahrenheitUnit": "°F",
+    "showTrendHint": "Pokazuje tę wartość z ostatnich 30 nocy",
+    "trendLoadFailed": "Nie udało się wczytać trendu",
+    "trendNotEnoughData": "Jeszcze za mało nocy, aby pokazać trend"
   },
   "foodProvenance": {
     "aiEstimate": "Szacunek AI",
@@ -6867,7 +6954,6 @@
       "olderSessions": "Starsze sesje",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} kcal",
       "minutes_one": "{{formattedCount}} min",
       "minutes_few": "{{formattedCount}} min",
       "minutes_many": "{{formattedCount}} min",
@@ -6933,7 +7019,8 @@
       "degreesC": "{{value}}°C",
       "degreesF": "{{value}}°F",
       "splits": "Podziały",
-      "effort": "Wysiłek"
+      "effort": "Wysiłek",
+      "caloriesWithUnit": "{{value}} {{unit}}"
     },
     "consistency": {
       "title": "Systematyczność treningów",
@@ -7009,13 +7096,13 @@
       "about": "≈ {{value}}",
       "vo2Unit": "VO₂ max (ml/kg/min)",
       "vo2Basis_one": "Z {{count}} biegu w ostatnich 6 tygodniach",
-      "vo2Basis_few": "",
-      "vo2Basis_many": "",
+      "vo2Basis_few": "Z {{count}} biegów w ostatnich 6 tygodniach",
+      "vo2Basis_many": "Z {{count}} biegów w ostatnich 6 tygodniach",
       "watts": "≈ {{value}} W",
       "powerUnit": "Moc biegowa ({{perKg}} W/kg)",
       "powerBasis_one": "Średnia z {{count}} biegu w ostatnich 4 tygodniach",
-      "powerBasis_few": "",
-      "powerBasis_many": ""
+      "powerBasis_few": "Średnia z {{count}} biegów w ostatnich 4 tygodniach",
+      "powerBasis_many": "Średnia z {{count}} biegów w ostatnich 4 tygodniach"
     },
     "fitness": {
       "level": {
@@ -7360,9 +7447,7 @@
     "targetEatingHours": "Docelowe godziny jedzenia",
     "fastingHoursRange": "Wpisz od 0,5 do 168 godzin.",
     "eatingHoursRange": "Wpisz od 0 do 24 godzin.",
-    "calorieThreshold": "Próg kaloryczny (kcal)",
     "calorieThresholdHint": "Przekąski lub napoje poniżej tej wartości (czarna kawa, woda, elektrolity) nie przerwą postu.",
-    "calorieThresholdRange": "Wpisz liczbę całkowitą od 0 do 500.",
     "preEndAlert": "Ostrzeżenie przed celem (minuty)",
     "preEndAlertHint": "Ile minut przed celem postu wysłać przypomnienie. Wpisz 0, aby wyłączyć.",
     "preEndAlertRange": "Wpisz liczbę całkowitą od 0 do 180.",
@@ -7370,7 +7455,9 @@
     "eatingWindowAlertHint": "Powiadom, gdy osiągnięty zostanie cel postu i gdy otworzy się okno żywieniowe.",
     "save": "Zapisz ustawienia postu",
     "saved": "Ustawienia postu zapisane",
-    "saveFailed": "Nie udało się zapisać ustawień postu"
+    "saveFailed": "Nie udało się zapisać ustawień postu",
+    "calorieThresholdWithUnit": "Próg kalorii ({{unit}})",
+    "calorieThresholdRangeWithUnit": "Wpisz liczbę całkowitą od 0 do {{max}}."
   },
   "fastingReport": {
     "range": {
@@ -7845,12 +7932,12 @@
     "invalidValue": "Wpisz poprawną liczbę dla każdego celu.",
     "fields": {
       "water": "Woda ({{unit}})",
-      "exerciseCalories": "Kalorie z treningu (kcal)",
       "exerciseMinutes": "Czas treningu (min)",
       "steps": "Dzienne kroki",
-      "baselineCalories": "Kalorie podstawy (kcal)"
+      "exerciseCaloriesWithUnit": "Kalorie z ćwiczeń ({{unit}})",
+      "baselineCaloriesWithUnit": "Kalorie bazowe ({{unit}})",
+      "calories": "Kalorie ({{unit}})"
     },
-    "adaptiveNoteToday": "Tryb adaptacyjny jest włączony, więc cel kaloryczny zmienia się codziennie. Dziś to {{calories}} kcal. Podstawowa poniżej określa, jak daleko powyżej lub poniżej szacowanego zapotrzebowania chcesz być; to nie jest stały dzienny cel.",
     "adaptiveNote": "Tryb adaptacyjny jest włączony, więc cel kaloryczny zmienia się codziennie. Podstawowa poniżej określa, jak daleko powyżej lub poniżej szacowanego zapotrzebowania chcesz być; to nie jest stały dzienny cel.",
     "customNutrients": {
       "notSet": "Brak celu"
@@ -7868,11 +7955,11 @@
       "mustBe100": "Procenty posiłków muszą sumować się do 100%.",
       "total": "Suma: {{total}}% (do zapisu musi być 100%)",
       "totalOk": "Suma: {{total}}%",
-      "mealCalories": "{{meal}} ({{calories}} kcal)",
       "distributeRemaining": "Rozdziel resztę równomiernie",
       "lock": "Zablokuj {{meal}}",
       "unlock": "Odblokuj {{meal}}",
-      "mealPercent": "{{meal}} (%)"
+      "mealPercent": "{{meal}} (%)",
+      "mealCaloriesWithUnit": "{{meal}} ({{calories}} {{unit}})"
     },
     "directions": {
       "minimum": "Min",
@@ -7937,7 +8024,6 @@
       "description": "Szablon to zapisany zestaw celów. Zastosuj wypełnia formularz powyżej (dotknij Zapisz, aby stał się Twoimi celami); Edytuj zmienia sam szablon.",
       "namePlaceholder": "Nazwa szablonu",
       "empty": "Brak szablonów celów.",
-      "summary": "{{calories}} kcal, {{protein}} g B, {{carbs}} g W, {{fat}} g T",
       "apply": "Zastosuj",
       "deleteTitle": "Usunąć szablon?",
       "deleteMessage": "Usunąć \"{{name}}\"? Dni planu tygodniowego, które go używają, zostaną bez szablonu.",
@@ -7950,7 +8036,8 @@
       "nameLabel": "Nazwa szablonu",
       "nameRequired": "Nadaj szablonowi nazwę.",
       "editDescription": "Szablon to zapisany zestaw celów. Zastosuj go do swoich celów albo przypisz do dni tygodnia w planie tygodniowym.",
-      "notFound": "Nie udało się znaleźć tego szablonu."
+      "notFound": "Nie udało się znaleźć tego szablonu.",
+      "summaryWithUnit": "{{calories}} {{unit}}, {{protein}}g B, {{carbs}}g W, {{fat}}g T"
     },
     "weekly": {
       "sectionDescription": "Używaj innego szablonu celów w każdym dniu tygodnia, np. więcej kalorii w dni treningowe.",
@@ -7990,7 +8077,8 @@
         "saturday": "Sobota",
         "sunday": "Niedziela"
       }
-    }
+    },
+    "adaptiveNoteTodayWithUnit": "Tryb adaptacyjny jest włączony, więc Twój cel kaloryczny zmienia się codziennie. Dziś wynosi {{calories}} {{unit}}. Poniższa wartość bazowa określa, jak bardzo chcesz być powyżej lub poniżej szacowanego zapotrzebowania; to nie jest stały dzienny cel."
   },
   "reports": {
     "title": "Raporty",
@@ -8032,7 +8120,29 @@
     "heartRateSummary": "Podsumowanie tętna",
     "heartRateInsights": "Wnioski o tętnie spoczynkowym",
     "insightAthletic": "Twoje średnie tętno spoczynkowe mieści się w zakresie sportowym (<60 bpm), co świadczy o dużej wydolności układu krążenia.",
-    "insightNormal": "Typowe tętno spoczynkowe zdrowej osoby dorosłej mieści się w zakresie 60–100 bpm. Niższe wartości zwykle świadczą o lepszej wydolności układu krążenia."
+    "insightNormal": "Typowe tętno spoczynkowe zdrowej osoby dorosłej mieści się w zakresie 60–100 bpm. Niższe wartości zwykle świadczą o lepszej wydolności układu krążenia.",
+    "restingHrTrend": "Trend spoczynkowego tętna",
+    "restingHrTrendImproving": "↓ {{bpm}} bpm (poprawa)",
+    "restingHrTrendElevated": "↑ {{bpm}} bpm (podwyższone)",
+    "restingHrTrendStable": "Stabilny",
+    "restingHrTrendHint": "Druga połowa odczytów względem pierwszej",
+    "heartRateWorkoutFallback": "Trening",
+    "heartRateDaytimeAvg": "Średnia dzienna",
+    "heartRateSleepingAvg": "Średnia podczas snu",
+    "heartRateSleepDip": "{{percent}}% względem dnia",
+    "heartRateLowest": "Najniższe",
+    "heartRateHighest": "Najwyższe",
+    "heartRateDayTimeline": "Tętno w ciągu dnia",
+    "heartRatePreviousDay": "Poprzedni dzień",
+    "heartRateNextDay": "Następny dzień",
+    "heartRateDayEmpty": "Brak odczytów tętna dla tego dnia",
+    "heartRateLegendSleep": "Sen",
+    "heartRateLegendWorkout": "Trening",
+    "heartRateDayFigures": "Dane dnia",
+    "heartRateRangeTooltip": "Średnio {{avg}} bpm ({{min}}–{{max}}) · {{date}}",
+    "heartRateRangeHint": "Dotknij i przytrzymaj dzień, aby otworzyć go poniżej",
+    "heartRateRangeTimeline": "Średnie tętno według dnia",
+    "heartRateRangeEmpty": "Brak odczytów tętna w tym okresie"
   },
   "nutritionReport": {
     "title": "Odżywianie",
@@ -8041,7 +8151,6 @@
     "dailyAverages": "Średnie dzienne",
     "loadFailed": "Nie udało się wczytać danych odżywiania",
     "empty": "W tym okresie nie zapisano żadnych produktów",
-    "kcal": "{{value}} kcal",
     "grams": "{{value}} g",
     "changeHint": "{{change}} wobec poprzednich {{days}} dni",
     "onTarget": "W granicach 10% celu",
@@ -8083,7 +8192,8 @@
     "insightWeekday": "{{weekday}} to Twój dzień z największą liczbą kalorii, średnio {{kcal}}.",
     "insightStreak_one": "Twoja najdłuższa seria zapisów trwała {{count}} dzień.",
     "insightStreak_few": "Twoja najdłuższa seria zapisów trwała {{count}} dni.",
-    "insightStreak_many": "Twoja najdłuższa seria zapisów trwała {{count}} dni."
+    "insightStreak_many": "Twoja najdłuższa seria zapisów trwała {{count}} dni.",
+    "kcalWithUnit": "{{value}} {{unit}}"
   },
   "moodReport": {
     "title": "Nastrój",
@@ -8222,7 +8332,10 @@
       "alcoholSummary": "Podsumowanie alkoholu",
       "substancesWeekly": "Tydzień po tygodniu",
       "restingHrChart": "Wykres tętna spoczynkowego",
-      "heartRateZones": "Strefy intensywności"
+      "heartRateZones": "Strefy intensywności",
+      "heartRateRangeTimeline": "Średnie tętno według dnia",
+      "heartRateDayTimeline": "Tętno w ciągu dnia",
+      "measurementTimeline": "Oś czasu pomiarów"
     },
     "hydrationSections": "Raport nawodnienia",
     "measurementsSections": "Raport pomiarów",
@@ -8684,8 +8797,8 @@
       "weeklyProgress": "{{done}} z {{target}} {{unit}} w tym tygodniu",
       "weeklyReached": "Tygodniowy cel osiągnięty",
       "weeklyNeeded_one": "{{amount}} {{unit}} dzisiaj, aby osiągnąć (został {{count}} dzień)",
-      "weeklyNeeded_few": "",
-      "weeklyNeeded_many": "",
+      "weeklyNeeded_few": "{{amount}} {{unit}} dzisiaj, aby osiągnąć (zostały {{count}} dni)",
+      "weeklyNeeded_many": "{{amount}} {{unit}} dzisiaj, aby osiągnąć (zostało {{count}} dni)",
       "raceNameLabel": "Nazwa zawodów",
       "raceDefaultName": "Dzień zawodów",
       "raceDistanceLabel": "Dystans zawodów ({{unit}})",
@@ -8694,11 +8807,11 @@
       "clearRace": "Usuń zawody",
       "raceToday": "Dziś dzień zawodów",
       "raceIn_one": "został {{count}} dzień",
-      "raceIn_few": "",
-      "raceIn_many": "",
+      "raceIn_few": "zostały {{count}} dni",
+      "raceIn_many": "zostało {{count}} dni",
       "racePast_one": "{{count}} dzień temu",
-      "racePast_few": "",
-      "racePast_many": "",
+      "racePast_few": "{{count}} dni temu",
+      "racePast_many": "{{count}} dni temu",
       "errors": {
         "distance": "Wpisz dystans większy od zera albo zostaw puste.",
         "raceDay": "Wybierz dzień zawodów albo wyczyść nazwę i dystans zawodów.",
@@ -8715,11 +8828,11 @@
       "introForced": "To pomija tyle treningów, ile trzeba, by zakończyć w dniu celu. To dużo do odstawienia, więc budowanie formy będzie słabsze niż planowano. Roztrenowanie i końcowy trening są zachowane.",
       "what": "tydzień {{week}}, bieg {{run}} · {{minutes}} min",
       "before_one": "Obecnie: pozostał {{count}} trening, zakończenie {{date}}.",
-      "before_few": "",
-      "before_many": "",
+      "before_few": "Obecnie: pozostały {{count}} treningi, zakończenie {{date}}.",
+      "before_many": "Obecnie: zostało {{count}} treningów, zakończenie {{date}}.",
       "after_one": "Potem: {{count}} trening, zakończenie {{date}}.",
-      "after_few": "",
-      "after_many": "",
+      "after_few": "Potem: {{count}} treningi, zakończenie {{date}}.",
+      "after_many": "Potem: {{count}} treningów, zakończenie {{date}}.",
       "changes": "Co się zmienia",
       "changesMore": "Co dodaje",
       "change": {
@@ -8730,27 +8843,27 @@
         "repeated": "Powtórz {{what}}"
       },
       "eased_one": "Nie było Cię {{days}} dni, więc bieganie w Twoim następnym {{count}} treningu jest ułatwione o {{percent}}%.",
-      "eased_few": "",
-      "eased_many": "",
+      "eased_few": "Nie było Cię {{days}} dni, więc bieganie w Twoich następnych {{count}} treningach jest ułatwione o {{percent}}%.",
+      "eased_many": "Nie było Cię {{days}} dni, więc bieganie w Twoich następnych {{count}} treningach jest ułatwione o {{percent}}%.",
       "kept": "Roztrenowanie i końcowy trening zostają bez zmian.",
       "spare_one": "{{count}} dzień treningowy przed celem pozostaje pusty: naraz dodaje się tylko tyle.",
-      "spare_few": "",
-      "spare_many": "",
+      "spare_few": "{{count}} dni treningowe przed celem pozostają puste: naraz dodaje się tylko tyle.",
+      "spare_many": "{{count}} dni treningowych przed celem pozostaje puste: naraz dodaje się tylko tyle.",
       "accept": "Dopasuj plan",
       "notNow": "Nie teraz",
       "back": "Wstecz",
       "done": "Plan został ponownie dopasowany",
       "error": "Nie udało się ponownie dopasować planu",
       "tight_one": "Przed Twoją datą celu pozostał tylko {{count}} dzień treningowy, a do zrobienia jest {{left}} treningów.",
-      "tight_few": "",
-      "tight_many": "",
+      "tight_few": "Przed Twoją datą celu pozostały tylko {{count}} dni treningowe, a do zrobienia jest {{left}} treningów.",
+      "tight_many": "Przed Twoją datą celu zostało tylko {{count}} dni treningowych, a do zrobienia jest {{left}} treningów.",
       "reason": {
         "noTimeLeft": "Nie został żaden dzień treningowy przed Twoją datą celu.",
         "taperDoesNotFit": "Nie ma już miejsca na roztrenowanie i końcowy trening.",
         "tooMuchToDrop": "Zmieśczenie wszystkiego wymagałoby pominięcia dużej części budowania formy.",
         "tooFewWeeks_one": "{{count}} tydzień to za krótkie budowanie formy na te zawody.",
-        "tooFewWeeks_few": "",
-        "tooFewWeeks_many": ""
+        "tooFewWeeks_few": "{{count}} tygodnie to za krótkie budowanie formy na te zawody.",
+        "tooFewWeeks_many": "{{count}} tygodni to za krótkie budowanie formy na te zawody."
       },
       "choose": "Nic się nie zmieni, dopóki nie wybierzesz:",
       "later": "Przenieś mój cel na {{date}}",
@@ -8800,7 +8913,6 @@
     "running": "Bieganie na zegarku",
     "next": "Następny: {{step}}",
     "calories": "Kalorie",
-    "kcal": "kcal",
     "ended": "Trening na zegarku zakończył się lub jest poza zasięgiem. Ukończony trening zostaje dodany do Twojego Dziennika.",
     "indoorNote": "W pomieszczeniach dystans to szacunek zegarka. Po zakończeniu możesz go poprawić na wartość z bieżni.",
     "starting": "Uruchamianie na zegarku…",
@@ -8961,8 +9073,8 @@
     "startUnknown": "Czekam na Twoją lokalizację. Albo dotknij mapy, aby wybrać start.",
     "useMyLocation": "Moja lokalizacja",
     "turnCount_one": "{{count}} zakręt",
-    "turnCount_few": "",
-    "turnCount_many": "",
+    "turnCount_few": "{{count}} zakręty",
+    "turnCount_many": "{{count}} zakrętów",
     "style": {
       "title": "Styl trasy",
       "surface": "Nawierzchnia",
@@ -8999,8 +9111,8 @@
     "turns": "Zakręty",
     "showFewerTurns": "Pokaż mniej",
     "showAllTurns_one": "Pokaż wszystkie zakręty ({{count}})",
-    "showAllTurns_few": "",
-    "showAllTurns_many": "",
+    "showAllTurns_few": "Pokaż wszystkie zakręty ({{count}})",
+    "showAllTurns_many": "Pokaż wszystkie zakręty ({{count}})",
     "activity": {
       "run": "Bieg",
       "walk": "Spacer",
@@ -9033,7 +9145,8 @@
       "arrive": "Meta"
     },
     "goBack": "Wróć",
-    "followRoadsTooMany": "Prowadzenie wzdłuż dróg mieści do {{max}} punktów. Cofnij punkty albo wyłącz „Wzdłuż dróg”, aby zapisać."
+    "followRoadsTooMany": "Prowadzenie wzdłuż dróg mieści do {{max}} punktów. Cofnij punkty albo wyłącz „Wzdłuż dróg”, aby zapisać.",
+    "osmAttribution": "© OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9333,11 +9446,11 @@
     "fewerPairs": "Mniej par po {{weight}}",
     "morePairs": "Więcej par po {{weight}}",
     "pairsCount_one": "{{count}} para",
-    "pairsCount_few": "",
-    "pairsCount_many": "",
+    "pairsCount_few": "{{count}} pary",
+    "pairsCount_many": "{{count}} par",
     "pairsShort_one": "{{count}} par",
-    "pairsShort_few": "",
-    "pairsShort_many": "",
+    "pairsShort_few": "{{count}} par",
+    "pairsShort_many": "{{count}} par",
     "barWeightLabel": "Waga sztangi",
     "collarsHint": "Dodaj wagę zaczepów do każdego obciążenia.",
     "saveFailed": "Nie udało się zapisać talerzy i sztang",
@@ -9372,8 +9485,8 @@
     "providerError": "Źródło niedostępne",
     "noMatch": "Brak dopasowania",
     "basis": "Na {{size}} {{unit}}",
-    "macros": "{{calories}} kcal · Białko {{protein}} g · Węglowodany {{carbs}} g · Tłuszcz {{fat}} g",
-    "unknown": "—"
+    "unknown": "—",
+    "macrosWithUnit": "{{calories}} {{unit}} · Białko {{protein}} g · Węgle {{carbs}} g · Tłuszcze {{fat}} g"
   },
   "addMenuSettings": {
     "reorder": "Zmień kolejność: {{name}}",
@@ -9410,7 +9523,6 @@
     "none": "Nie znaleziono treningów z urządzeń z tego dnia.",
     "workoutFallback": "Trening",
     "minutes": "{{value}} min",
-    "calories": "{{value}} kal",
     "sameSession": "Ta sama sesja",
     "sameTime": "Pokrywa się czasowo",
     "countHeading": "Zaliczaj do dziennej sumy",
@@ -9420,11 +9532,12 @@
     "lower": "Niższa z dwóch ({{value}})",
     "average": "Średnia ({{value}})",
     "custom": "Niestandardowa suma",
-    "customLabel": "Suma dla tej sesji (kal)",
     "link": "Powiąż treningi",
     "unlink": "Odwiąż",
     "linkError": "Nie udało się powiązać treningów.",
-    "unlinkError": "Nie udało się odwiązać treningów."
+    "unlinkError": "Nie udało się odwiązać treningów.",
+    "caloriesWithUnit": "{{value}} {{unit}}",
+    "customLabelWithUnit": "Suma dla sesji ({{unit}})"
   },
   "guidedCheckIn": {
     "stepOfTotal": "Wpis dnia: krok {{step}} z {{total}}",
@@ -9494,8 +9607,8 @@
       "dueTitle": "Czas na powtórkę",
       "overdueTitle": "Twoje tempa mogą być nieaktualne",
       "body_one": "Twój ostatni test wydolnościowy był {{formattedCount}} tydzień temu. Powtórka aktualizuje Twoje tempa treningowe i pokazuje, jak zmieniła się Twoja wydolność.",
-      "body_few": "",
-      "body_many": "",
+      "body_few": "Twój ostatni test wydolnościowy był {{formattedCount}} tygodnie temu. Powtórka aktualizuje Twoje tempa treningowe i pokazuje, jak zmieniła się Twoja wydolność.",
+      "body_many": "Twój ostatni test wydolnościowy był {{formattedCount}} tygodni temu. Powtórka aktualizuje Twoje tempa treningowe i pokazuje, jak zmieniła się Twoja wydolność.",
       "action": "Powtórz test",
       "later": "Później",
       "sameTreadmill": "Ostatni test był na bieżni, więc powtórka też zaczyna się na bieżni.",
@@ -9688,5 +9801,385 @@
   },
   "workoutEffort": {
     "value": "{{rating}}/10"
+  },
+  "labs": {
+    "add": "Dodaj wynik badania",
+    "changeMarker": "Zmień",
+    "chartEmpty": "Brak wyników",
+    "chartOtherUnits_one": "{{count}} wynik w innej jednostce nie jest wyświetlany na wykresie.",
+    "chartOtherUnits_few": "{{count}} wyniki w innych jednostkach nie są wyświetlane na wykresie.",
+    "chartOtherUnits_many": "{{count}} wyników w innych jednostkach nie jest wyświetlanych na wykresie.",
+    "createCustom": "Dodaj „{{name}}” jako nowy wskaźnik",
+    "date": "Data badania",
+    "dateFuture": "Data badania nie może być w przyszłości.",
+    "deleteFailed": "Nie udało się usunąć wyniku",
+    "deleteMessage": "Usunąć ten wynik badania?",
+    "deleteTitle": "Usuń wynik",
+    "empty": "Nie masz jeszcze wyników badań. Dodaj wynik, np. HbA1c, LDL lub witaminę D, i śledź go w czasie.",
+    "latest": "Najnowszy",
+    "loadFailed": "Nie udało się wczytać wyników badań.",
+    "noMatches": "Brak pasujących wskaźników",
+    "noResults": "Brak wyników",
+    "notesPlaceholder": "Dodaj notatkę (opcjonalnie)",
+    "rangeHigh": "Górna",
+    "rangeInvalid": "Podaj liczby; wartość dolna nie może przekraczać górnej.",
+    "rangeLow": "Dolna",
+    "rangeOptional": "Zakres referencyjny (opcjonalnie)",
+    "referenceRange": "Zakres referencyjny: {{range}}",
+    "saveFailed": "Nie udało się zapisać wyniku badania",
+    "searchPlaceholder": "Szukaj wskaźników (HbA1c, LDL, ...)",
+    "status": {
+      "high": "Powyżej normy",
+      "inRange": "W normie",
+      "low": "Poniżej normy"
+    },
+    "unit": "Jednostka",
+    "value": "Wynik",
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "Glukoza na czczo",
+      "total_cholesterol": "Cholesterol całkowity",
+      "hdl": "Cholesterol HDL",
+      "ldl": "Cholesterol LDL",
+      "triglycerides": "Triglicerydy",
+      "vitamin_d": "Witamina D (25-OH)",
+      "tsh": "TSH",
+      "ferritin": "Ferrytyna",
+      "vitamin_b12": "Witamina B12",
+      "creatinine": "Kreatynina",
+      "egfr": "eGFR",
+      "alt": "ALT",
+      "ast": "AST",
+      "non_hdl": "Cholesterol nie-HDL",
+      "apob": "Apolipoproteina B",
+      "vldl": "Cholesterol VLDL",
+      "fasting_insulin": "Insulina na czczo",
+      "wbc": "Leukocyty",
+      "rbc": "Erytrocyty",
+      "hemoglobin": "Hemoglobina",
+      "hematocrit": "Hematokryt",
+      "mcv": "MCV",
+      "platelets": "Płytki krwi",
+      "sodium": "Sód",
+      "potassium": "Potas",
+      "chloride": "Chlorki",
+      "bicarbonate": "Wodorowęglany (CO2)",
+      "calcium": "Wapń",
+      "magnesium": "Magnez",
+      "phosphorus": "Fosfor",
+      "bun": "Azot mocznika (BUN)",
+      "uric_acid": "Kwas moczowy",
+      "albumin": "Albumina",
+      "total_protein": "Białko całkowite",
+      "alp": "Fosfataza zasadowa",
+      "total_bilirubin": "Bilirubina całkowita",
+      "ggt": "GGT",
+      "free_t4": "Wolna T4 (FT4)",
+      "free_t3": "Wolna T3 (FT3)",
+      "iron": "Żelazo",
+      "tibc": "Całkowita zdolność wiązania żelaza (TIBC)",
+      "transferrin_saturation": "Nasycenie transferyny",
+      "folate": "Foliany",
+      "crp": "hs-CRP",
+      "esr": "OB (ESR)",
+      "homocysteine": "Homocysteina",
+      "cortisol": "Kortyzol (poranny)",
+      "psa": "PSA",
+      "testosterone": "Testosteron (całkowity)",
+      "estradiol": "Estradiol",
+      "lipoprotein_a": "Lipoproteina(a)",
+      "ketones": "Ketony (beta-hydroksymaślan)",
+      "c_peptide": "Peptyd C",
+      "fructosamine": "Fruktozamina",
+      "neutrophils": "Neutrofile",
+      "lymphocytes": "Limfocyty",
+      "monocytes": "Monocyty",
+      "eosinophils": "Eozynofile",
+      "mch": "MCH",
+      "mchc": "MCHC",
+      "rdw": "RDW",
+      "mpv": "MPV",
+      "globulin": "Globuliny",
+      "direct_bilirubin": "Bilirubina bezpośrednia",
+      "anion_gap": "Przerwa anionowa",
+      "bun_creatinine_ratio": "Stosunek azotu mocznika do kreatyniny (BUN/kreatynina)",
+      "cystatin_c": "Cystatyna C",
+      "urine_albumin_creatinine": "Stosunek albuminy do kreatyniny w moczu",
+      "amylase": "Amylaza",
+      "lipase": "Lipaza",
+      "ldh": "LDH",
+      "ck": "Kinaza kreatynowa",
+      "ammonia": "Amoniak",
+      "zinc": "Cynk",
+      "copper": "Miedź",
+      "selenium": "Selen",
+      "vitamin_b6": "Witamina B6",
+      "vitamin_a": "Witamina A",
+      "vitamin_e": "Witamina E",
+      "pth": "PTH",
+      "igf_1": "IGF-1",
+      "dhea_s": "DHEA-S",
+      "free_testosterone": "Testosteron wolny",
+      "shbg": "SHBG",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "Progesteron",
+      "prolactin": "Prolaktyna",
+      "tpo_antibodies": "Przeciwciała anty-TPO"
+    },
+    "rangeFromReport": "Użyj zakresu wydrukowanego na wyniku. Zostanie zapisany z tym wynikiem.",
+    "import": {
+      "blocked": {
+        "duplicate": "Już uwzględniono z tego badania."
+      },
+      "chooseAnother": "Wybierz inne badanie",
+      "cta": "Importuj z wyniku badania",
+      "includeRow": "Uwzględnij {{name}}",
+      "newMarker": "Nowy wskaźnik",
+      "reading": "Odczytywanie wyniku...",
+      "saveCount_one": "Zapisz {{count}} wynik",
+      "saveCount_few": "Zapisz {{count}} wyniki",
+      "saveCount_many": "Zapisz {{count}} wyników",
+      "saved_one": "Zapisano {{count}} wynik",
+      "saved_few": "Zapisano {{count}} wyniki",
+      "saved_many": "Zapisano {{count}} wyników",
+      "scanFailed": "Nie udało się odczytać tego badania.",
+      "valueFor": "Wynik dla {{name}}",
+      "deleteTitle": "Usuń zaimportowane wyniki",
+      "deleteMessage": "Usunąć wszystkie wyniki zaimportowane z badania oraz każdy własny wskaźnik, który pozostał pusty? Wyniki wpisane samodzielnie zostają.",
+      "deleted_one": "Usunięto {{count}} zaimportowany wynik",
+      "deleted_few": "Usunięto {{count}} zaimportowane wyniki",
+      "deleted_many": "Usunięto {{count}} zaimportowanych wyników",
+      "deleteFailed": "Nie udało się usunąć zaimportowanych wyników",
+      "saveFailed": "Nie udało się zapisać badania. Nic nie zapisano.",
+      "warning": {
+        "unit": "Twoje wcześniejsze wyniki używają jednostki {{earlierUnit}}, a to badanie używa {{reportUnit}}. Jednostki nie są przeliczane."
+      },
+      "cameraDenied": "Aby zrobić zdjęcie, potrzebny jest dostęp do aparatu.",
+      "choosePdf": "Wybierz plik PDF",
+      "choosePhoto": "Wybierz zdjęcie lub zrzut ekranu",
+      "intro": "Wybierz PDF wyniku badania albo jego zdjęcie lub zrzut ekranu. Twój dostawca AI go odczyta, a Ty przejrzysz wyniki, zanim cokolwiek zostanie zapisane. Samo badanie nie jest przechowywane.",
+      "pickFailed": "Nie udało się otworzyć tego pliku.",
+      "takePhoto": "Zrób zdjęcie",
+      "tooLarge": "Ten plik PDF jest za duży, aby go odczytać (limit 14 MB).",
+      "editHint": "Sprawdź wartości względem wyniku badania. Dotknij wartości, aby ją poprawić. Każdy wynik zapisywany jest z jednostką i zakresem referencyjnym wydrukowanym na wyniku.",
+      "lockedAfterFailedSave": "Zapis nie został ukończony, dlatego ten przegląd jest zablokowany: ponowne zapisanie wysyła dokładnie ten sam raport i jest przechowywany tylko raz. Aby zmienić wartości, wybierz raport ponownie.",
+      "saveUnconfirmed": "Nie udało się potwierdzić zapisania raportu. Zapisz ponownie: zostanie przechowywany tylko raz."
+    },
+    "moreActions": "Więcej działań",
+    "deleteMarker": "Usuń wskaźnik i wszystkie wyniki",
+    "deleteMarkerTitle": "Usuń wskaźnik",
+    "deleteMarkerMessage": "Usunąć {{name}} i wszystkie jego wyniki? Tej operacji nie można cofnąć.",
+    "deleteMarkerFailed": "Nie udało się usunąć wskaźnika",
+    "markerDataFailed": "Nie udało się wczytać zapisanych wyników, więc jednostka i zakres nie zostaną wypełnione.",
+    "card": {
+      "a11y": "Wyniki badań",
+      "empty": "Brak wyników. Dotknij, aby dodać.",
+      "outOfRange_one": "{{count}} poza zakresem referencyjnym",
+      "outOfRange_few": "{{count}} poza zakresem referencyjnym",
+      "outOfRange_many": "{{count}} poza zakresem referencyjnym",
+      "title": "Wyniki badań"
+    },
+    "rangeForSex": "Wstępnie wypełnione dla dorosłych ({{sex}}) na podstawie Twojego profilu. Laboratoria różnią się zakresami, więc edytuj, aby zgadzało się z Twoim wynikiem.",
+    "rangeNoSex": "Ten wskaźnik różni się w zależności od płci. Ustaw płeć w profilu, aby otrzymać dopasowany zakres, albo wpisz zakres z Twojego wyniku.",
+    "sex": {
+      "female": "kobieta",
+      "male": "mężczyzna"
+    }
+  },
+  "actionTags": {
+    "waiting": {
+      "title": "Przyłóż telefon do tagu NFC",
+      "hint": "Trzymaj tył telefonu nieruchomo przy tagu, aż się zakończy."
+    },
+    "scan": {
+      "logged": "Zapisano {{summary}}",
+      "tapToUndo": "Dotknij, aby cofnąć",
+      "undoFailed": "Nie udało się tego cofnąć",
+      "tooSoon": "Chwilę temu już zapisano",
+      "title": "Tag NFC",
+      "noServer": "Nie udało się połączyć z serwerem",
+      "noServerSubtitle": "Sprawdź połączenie i dotknij tag ponownie.",
+      "running": "Zapisywanie…",
+      "confirmTitle": "Zapisać {{label}}?",
+      "confirmAction": "Zapisz",
+      "unknownTitle": "Ten tag nie jest skonfigurowany na Twoim koncie",
+      "unknownSubtitle": "Nic nie zapisano. Skonfiguruj tag, aby wybrać, co robi dotknięcie.",
+      "setUp": "Skonfiguruj ten tag",
+      "missingTitle": "Ten tag wskazuje coś, co zostało usunięte",
+      "missingSubtitle": "Nic nie zapisano. Wybierz, co tag ma robić.",
+      "fix": "Napraw ten tag",
+      "serverTooOld": "Twój serwer nie obsługuje jeszcze tagów NFC",
+      "failed": "Nie udało się tego zapisać",
+      "serverTooOldSubtitle": "Zaktualizuj serwer SparkyFitness i spróbuj ponownie.",
+      "failedSubtitle": "Nic nie zapisano. Sprawdź połączenie i spróbuj ponownie."
+    },
+    "form": {
+      "errors": {
+        "labelRequired": "Nadaj tagowi nazwę",
+        "containerRequired": "Wybierz pojemnik na wodę",
+        "drinks": "Liczba napojów na dotknięcie musi być liczbą całkowitą od 1 do {{max}}",
+        "amount": "Podaj ilość większą od zera",
+        "itemRequired": "Wybierz produkt lub posiłek",
+        "invalid": "Sprawdź ilość i nazwę, a potem spróbuj ponownie. Na tag nic nie zapisano."
+      },
+      "holdToWrite": "Przyłóż telefon do tagu NFC",
+      "written": "Tag gotowy",
+      "overwriteTitle": "Ten tag już zawiera dane",
+      "overwriteSparky": "Jest już skonfigurowany jako inny tag SparkyFitness. Zastąpienie sprawi, że tamten tag przestanie działać.",
+      "overwriteOther": "Zawiera coś innego, np. link lub kartę. Zastąpić tym tagiem?",
+      "replace": "Zastąp",
+      "writeFailed": "Nie udało się zapisać na tagu",
+      "writeFailedHint": "Przytrzymaj telefon nieruchomo przy tagu. Zablokowany tag lub tag na metalu nie może być zapisany.",
+      "saved": "Tag zapisany",
+      "saveFailed": "Nie udało się zapisać tagu",
+      "deleteTitle": "Usunąć ten tag?",
+      "deleteMessage": "Naklejka zachowa swój link, ale dotknięcie jej już niczego nie zapisze.",
+      "deleteFailed": "Nie udało się usunąć tagu",
+      "editTitle": "Edytuj tag NFC",
+      "createTitle": "Skonfiguruj tag NFC",
+      "loading": "Wczytywanie tagu…",
+      "action": "Co ma robić?",
+      "container": "Pojemnik",
+      "containerPlaceholder": "Wybierz pojemnik",
+      "drinks": "Napoje na dotknięcie",
+      "name": "Nazwa",
+      "namePlaceholder": "np. butelka na biurku",
+      "askFirst": "Pytaj przed zapisaniem",
+      "askFirstHint": "Pokazuje przy każdym dotknięciu pytanie Zapisz/Anuluj zamiast zapisywać od razu.",
+      "writeHint": "Po zapisaniu przyłóż telefon do tagu, aby go zapisać. Na metalu, np. stalowej butelce, użyj tagu do montażu na metalu.",
+      "writeAgain": "Zapisz ponownie na tagu",
+      "delete": "Usuń ten tag",
+      "serverTooOld": "Twój serwer nie obsługuje jeszcze tagów produktów i posiłków. Zaktualizuj serwer i spróbuj ponownie.",
+      "amountIn": "Ilość na dotknięcie ({{unit}})",
+      "servings": "Porcje na dotknięcie",
+      "mealType": "Zapisz w",
+      "mealTypeHint": "Opcja „Według pory dnia” używa zwykłej pory każdego typu posiłku, tak jak szybkie zapisywanie.",
+      "foodOrMeal": "Produkt lub posiłek",
+      "foodOrMealPlaceholder": "Wybierz produkt lub posiłek"
+    },
+    "unsupportedTitle": "Ten telefon nie obsługuje tagów NFC",
+    "unsupportedSubtitle": "Tagi NFC wymagają telefonu z modułem NFC.",
+    "disabledTitle": "NFC jest wyłączone",
+    "disabledSubtitle": "Włącz NFC w ustawieniach telefonu, a potem wróć tutaj.",
+    "list": {
+      "holdToScan": "Przyłóż telefon do tagu NFC",
+      "notOurs": "To nie jest tag SparkyFitness",
+      "scanFailed": "Nie udało się odczytać tagu",
+      "add": "Skonfiguruj tag",
+      "asksFirst": "Pyta przed zapisaniem",
+      "loading": "Wczytywanie tagów…",
+      "serverTooOld": "Twój serwer nie obsługuje jeszcze tagów NFC",
+      "loadFailed": "Nie udało się wczytać tagów NFC",
+      "serverTooOldSubtitle": "Zaktualizuj serwer SparkyFitness, aby ich używać.",
+      "loadFailedSubtitle": "Sprawdź połączenie i spróbuj ponownie.",
+      "emptyTitle": "Brak tagów NFC",
+      "emptySubtitle": "Przyklej tag NFC na butelkę lub kubek, skonfiguruj go tutaj i dotykaj, aby zapisać napój.",
+      "scan": "Skanuj tag"
+    },
+    "title": "Tagi NFC",
+    "action": {
+      "water": "{{drinks}} × {{name}}",
+      "waterMissing": "Pojemnik na wodę już nie istnieje",
+      "servings_one": "{{formattedCount}} porcja",
+      "servings_few": "{{formattedCount}} porcje",
+      "servings_many": "{{formattedCount}} porcji",
+      "amount": "{{quantity}} {{unit}}",
+      "food": "{{amount}} · {{meal}}",
+      "unsupported": "Zaktualizuj aplikację, aby użyć tego tagu"
+    },
+    "type": {
+      "water": "Woda lub napój",
+      "foodOrMeal": "Produkt lub posiłek"
+    },
+    "container": {
+      "add": "Dodaj tag NFC",
+      "count_one": "{{formattedCount}} tag zapisuje ten pojemnik",
+      "count_few": "{{formattedCount}} tagi zapisują ten pojemnik",
+      "count_many": "{{formattedCount}} tagów zapisuje ten pojemnik",
+      "hint": "Dotknij naklejki na tej butelce, aby zapisać napój"
+    },
+    "food": {
+      "count_one": "{{formattedCount}} tag zapisuje ten produkt",
+      "count_few": "{{formattedCount}} tagi zapisują ten produkt",
+      "count_many": "{{formattedCount}} tagów zapisuje ten produkt",
+      "hint": "Dotknij naklejki, aby zapisać ten produkt"
+    },
+    "meal": {
+      "auto": "Według pory dnia",
+      "count_one": "{{formattedCount}} tag zapisuje ten posiłek",
+      "count_few": "{{formattedCount}} tagi zapisują ten posiłek",
+      "count_many": "{{formattedCount}} tagów zapisuje ten posiłek",
+      "hint": "Dotknij naklejki, aby zapisać ten posiłek"
+    }
+  },
+  "serverStatus": {
+    "notConfiguredTitle": "Nie skonfigurowano serwera",
+    "notConfiguredSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach.",
+    "goToSettings": "Przejdź do Ustawień",
+    "unreachableTitle": "Nie można połączyć się z serwerem",
+    "unreachableSubtitle": "Sprawdź połączenie lub spróbuj ponownie.",
+    "tryAgain": "Spróbuj ponownie"
+  },
+  "waterLog": {
+    "title": "Napoje",
+    "history": "Historia",
+    "open": "Historia napojów",
+    "drink": "Napój",
+    "linkedDrink": "Powiązane z wpisem produktu",
+    "noWaterCredit": "Brak wody",
+    "deleteTitle": "Usuń napój",
+    "deleteMessage": "Usunąć ten napój?",
+    "deleteLinkedMessage": "Usunąć ten napój? Powiązany wpis w dzienniku produktów też zostanie usunięty.",
+    "deleteDrink": "Usuń {{name}} o {{time}}",
+    "deleteFailed": "Nie udało się usunąć tego napoju",
+    "loading": "Wczytywanie napojów...",
+    "loadFailed": "Nie udało się wczytać napojów",
+    "loadFailedSubtitle": "Sprawdź połączenie i spróbuj ponownie.",
+    "emptyTitle": "Brak zapisanych napojów",
+    "emptySubtitle": "Napoje zapisane przyciskami wody, presetem napoju, zegarkiem lub synchronizowaną aplikacją pojawiają się tutaj."
+  },
+  "measurementTimeline": {
+    "glucose": "Glukoza we krwi (CGM)",
+    "title": "Oś czasu pomiarów",
+    "category": "Pomiar",
+    "previous": "Poprzedni dzień",
+    "next": "Następny dzień",
+    "source": "Źródło",
+    "unit": "Jednostka",
+    "error": "Nie udało się wczytać odczytów pomiarów.",
+    "loading": "Wczytywanie odczytów…",
+    "empty": "Brak odczytów z sygnaturą czasową dla tego dnia. Wybierz własną kategorię, aby wyświetlić odczyty z importu/API, albo zsynchronizuj glukozę we krwi z Apple Health.",
+    "meals": "Zapisane produkty · znaczniki posiłków",
+    "foodError": "Nie udało się wczytać zapisanych produktów.",
+    "food": "Produkty",
+    "noTime": "Czas nie został zapisany",
+    "note": "To są zarejestrowane zdarzenia, a nie udowodnione przyczyny. Czasy zakończenia ćwiczeń używają zarejestrowanego czasu trwania. Wpisy bez czasu i sumy dzienne nie są umieszczane na krzywej. Do odczytów na żywo i alarmów użyj aplikacji czujnika.",
+    "layerMeal": "Produkty",
+    "layerExercise": "Trening",
+    "layerSleep": "Sen",
+    "layerMedication": "Leki",
+    "layerStress": "Stres",
+    "layerCaffeine": "Kofeina",
+    "layerAlcohol": "Alkohol",
+    "layerHydration": "Nawodnienie",
+    "context": "Zarejestrowany kontekst · wyświetlane warstwy",
+    "contextLoading": "Wczytywanie zarejestrowanego kontekstu…",
+    "contextError": "Nie udało się wczytać zarejestrowanego kontekstu.",
+    "carbs": "Węglowodany",
+    "unavailable": "Część kontekstu jest niedostępna: {{layers}}",
+    "dailyTotal": "Suma dzienna",
+    "dailyAverage": "Średnia dzienna",
+    "noBodyMeasurements": "Brak pomiarów ciała w tym okresie",
+    "options": "Opcje wykresu",
+    "resetZoom": "Resetuj powiększenie",
+    "explore": "Powiększanie i przesuwanie",
+    "inspect": "Sprawdzanie odczytów",
+    "inspectHint": "Przytrzymaj odczyt, aby zobaczyć jego wartość.",
+    "zoomHint": "Uszczypnij, aby powiększyć · przeciągnij w poziomie, aby przesunąć",
+    "layerOptions": "Warstwy kontekstu",
+    "events": "Szczegóły zdarzeń",
+    "eventsInView": "Zdarzenia w widoku",
+    "noEventsInView": "Brak zdarzeń z czasem w tym oknie."
   }
 }

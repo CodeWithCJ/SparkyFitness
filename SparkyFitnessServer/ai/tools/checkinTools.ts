@@ -1,5 +1,6 @@
 import { tool } from 'ai';
 import {
+  addDays,
   dayToUtcRange,
   instantForDay,
   todayInZone,
@@ -25,6 +26,7 @@ import moodRepository, {
 import fastingRepository from '../../models/fastingRepository.js';
 import fastingAutoCalculationService from '../../services/fastingAutoCalculationService.js';
 import sleepRepository from '../../models/sleepRepository.js';
+import * as oralCareService from '../../services/oralCareService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeActionArgs } from './dates.js';
 import {
@@ -107,6 +109,7 @@ const VALID_ACTIONS = [
   'get_fasting_status',
   'get_biometrics_history',
   'get_custom_metrics_history',
+  'get_oral_care_summary',
 ];
 
 // Optional inputs and nullable DB columns are treated alike: absent.
@@ -271,7 +274,8 @@ Actions:
 - list_checkin_diary(entry_date?)
 - get_fasting_status() — returns the currently active fasting session if any
 - get_biometrics_history(start_date?, end_date?) — returns standard measurement history
-- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)`,
+- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)
+- get_oral_care_summary(start_date?, end_date?) — brushing per day against the daily goal, other oral care (flossing, mouthwash, ...) and the streak; defaults to the last 7 days. A brush logged in Sparky that a synced toothbrush also recorded counts once`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -974,6 +978,36 @@ Actions:
                     value_date: measurement.entry_date,
                   })
                 ),
+              });
+            }
+
+            case 'get_oral_care_summary': {
+              const endDate = args.end_date || todayInZone(tz);
+              const startDate = args.start_date || addDays(endDate, -6);
+              if (startDate > endDate) {
+                return ERRORS.VALIDATION(
+                  'start_date must not be after end_date.'
+                );
+              }
+              const clampedStart =
+                addDays(startDate, oralCareService.MAX_HISTORY_DAYS - 1) <
+                endDate
+                  ? addDays(endDate, -(oralCareService.MAX_HISTORY_DAYS - 1))
+                  : startDate;
+              const history = await oralCareService.getHistory(
+                userId,
+                userId,
+                clampedStart,
+                endDate
+              );
+              return formatJsonResult({
+                start_date: clampedStart,
+                end_date: endDate,
+                daily_brushing_goal: history.settings.daily_target,
+                target_seconds_per_brush: history.settings.target_seconds,
+                current_streak_days: history.streak,
+                best_streak_days: history.best_streak,
+                days: history.days,
               });
             }
 

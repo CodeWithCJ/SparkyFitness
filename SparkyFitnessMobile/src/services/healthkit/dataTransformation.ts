@@ -4,6 +4,7 @@ import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
   TransformedMindfulnessSession,
+  TransformedToothbrushingSession,
   TransformedNutritionEntry,
   SparkyMealType,
   AggregatedSleepSession,
@@ -641,6 +642,33 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       ...extractTimezoneMetadata(rec),
     };
     output.push(session);
+  },
+
+  // ToothbrushingEvent: the brush's start and end give its duration. A brush
+  // Sparky wrote back (writeback) is skipped so it never comes back in.
+  Toothbrushing: (rec, _record, _metricConfig, output) => {
+    if (isOwnRecord(rec)) return;
+
+    const uuid = rec.uuid as string | undefined;
+    if (!uuid || !rec.startTime || !rec.endTime) return;
+
+    const start = new Date(rec.startTime as string).getTime();
+    const end = new Date(rec.endTime as string).getTime();
+    if (isNaN(start) || isNaN(end) || end < start) return;
+    const durationSeconds = Math.round((end - start) / 1000);
+
+    const brush: TransformedToothbrushingSession = {
+      type: 'Toothbrushing',
+      source: HEALTHKIT_SOURCE,
+      source_id: uuid,
+      timestamp: rec.startTime as string,
+      startTime: rec.startTime as string,
+      endTime: rec.endTime as string,
+      duration_seconds: durationSeconds,
+      value: durationSeconds / 60,
+      ...extractTimezoneMetadata(rec),
+    };
+    output.push(brush);
   },
 
   BloodPressure: createBloodPressureTransformer(

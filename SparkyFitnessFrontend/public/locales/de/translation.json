@@ -13,7 +13,8 @@
     "foodLog": "Ernährungsprotokoll",
     "wellness": "Wellness",
     "symptoms": "Symptome",
-    "sparkyFitnessV": "SparkyFitness v{{version}}"
+    "sparkyFitnessV": "SparkyFitness v{{version}}",
+    "labs": "Laborergebnisse"
   },
   "settings": {
     "profileInformation": {
@@ -103,7 +104,11 @@
       "wednesday": "Mittwoch",
       "thursday": "Donnerstag",
       "friday": "Freitag",
-      "saturday": "Samstag"
+      "saturday": "Samstag",
+      "temperatureUnit": "Temperatureinheit",
+      "celsius": "Celsius (°C)",
+      "fahrenheit": "Fahrenheit (°F)",
+      "glucoseUnit": "Glukose-Einheit"
     },
     "waterTracking": {
       "title": "Wassererfassung",
@@ -350,7 +355,10 @@
         "allowPrivateNetworkAiDescription": "Erlaubt die Verbindung zu KI-Endpunkten, die auf privaten IP-Adressen gehostet werden (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost).",
         "supportsAudioInput": "Diese Konfiguration in der Liste „Spracheingabe“ anzeigen",
         "supportsAudioInputDescription": "Aktiviere dies nur, wenn das ausgewählte Modell Audiodateien akzeptiert. Ist diese Konfiguration für die Spracheingabe ausgewählt, werden Audioaufnahmen zur Transkription an dieses Modell gesendet.",
-        "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt."
+        "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt.",
+        "loadModels": "Modelle laden",
+        "loadingModels": "Lade Modelle",
+        "openCodeGoModelsLoadFailed": "Die OpenCode Go-Modelle konnten nicht geladen werden. Überprüfen Sie den API-Schlüssel und versuchen Sie es erneut."
       },
       "userSettings": {
         "title": "KI-Dienst",
@@ -457,7 +465,10 @@
         "supportsAudioInputDescription": "Aktiviere dies nur, wenn das ausgewählte Modell Audiodateien akzeptiert. Ist diese Konfiguration für die Spracheingabe ausgewählt, werden Audioaufnahmen zur Transkription an dieses Modell gesendet.",
         "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt.",
         "activeVoiceProvider": "Konfiguration für Spracheingabe",
-        "systemVoiceFree": "Systemerkennung (kostenlos)"
+        "systemVoiceFree": "Systemerkennung (kostenlos)",
+        "loadModels": "Modelle laden",
+        "loadingModels": "Modelle werden geladen…",
+        "openCodeGoModelsLoadFailed": "Die OpenCode Go-Modelle konnten nicht geladen werden. Überprüfen Sie den API-Schlüssel und versuchen Sie es erneut."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -471,7 +482,8 @@
         "custom": "Benutzerdefiniert",
         "xai": "xAI (Grok)",
         "meta": "Meta",
-        "perplexity": "Perplexity AI"
+        "perplexity": "Perplexity AI",
+        "opencodeGo": "OpenCode Go"
       },
       "test": {
         "successTitle": "Erfolg",
@@ -1199,7 +1211,11 @@
       "europeMcpeuCorosComNot": "Europa (mcpeu.coros.com) <span>(noch nicht getestet)</span>",
       "mainlandChinaMcpcnCorosCom": "Festlandchina (mcpcn.coros.com) <span>(noch nicht getestet)</span>",
       "ensureLocalUrl": "Prüfe beim lokalen Testen außerdem, ob deine lokale URL stimmt.",
-      "stravaCallbackNote": "Hinweis: Die Strava-Callback-URL ist auf dem Server konfiguriert als: <strong>{{value}}</strong>"
+      "stravaCallbackNote": "Hinweis: Die Strava-Callback-URL ist auf dem Server konfiguriert als: <strong>{{value}}</strong>",
+      "garminServiceUnreachable": "Garmin-Dienst nicht erreichbar",
+      "garminServiceUnreachableDescription": "SparkyFitness kann keine Verbindung zum Garmin-Dienst herstellen, daher können die Garmin-Daten nicht synchronisiert werden. Überprüfen Sie, ob der Garmin-Mikroservice läuft.",
+      "hevyDaily": "Täglich um 21:00 Uhr",
+      "hevyDailyHelp": "Die tägliche Hevy-Synchronisierung findet um 21:00 Uhr oder später in Ihrer SparkyFitness-Zeitzone statt. Nur eine erfolgreiche Synchronisierung um 21:00 Uhr oder später zählt für diesen Abend. Für die automatische Synchronisierung ist ein aktiver Anbieter erforderlich."
     },
     "externalProviderList": {
       "dragToReorderProvider": "Ziehen, um den Anbieter neu anzuordnen",
@@ -1289,7 +1305,9 @@
       "urlLabel": "URL:",
       "appIdLabel": "App-ID:",
       "appKeyLabel": "App-Schlüssel:",
-      "syncLabel": "Synchronisierung:"
+      "syncLabel": "Synchronisierung:",
+      "neverSynced": "Letzte Synchronisierung: noch nie",
+      "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Eine Synchronisierung ist nicht möglich."
     },
     "providerSpecificFields": {
       "appURL": "App-URL",
@@ -1470,8 +1488,6 @@
       "categoryGeneral": "Allgemein",
       "categoryStrength": "Kraft",
       "categoryYoga": "Yoga",
-      "caloriesPerHourLabel": "Kalorien / Stunde",
-      "caloriesPerHourHint": "Lass das Feld leer, um die vom System berechneten Kalorien pro Stunde zu nutzen ({{newExerciseCalories}} kcal/Stunde).",
       "descriptionLabel": "Beschreibung",
       "sourceLabel": "Quelle",
       "forceLabel": "Belastungsart",
@@ -1508,7 +1524,9 @@
       "addCustomTag": "Hinzufügen \"{{tag}}\"",
       "replaceTitle": "Übung ersetzten",
       "replaceSuccess": "Übung ersetzt",
-      "suggestedTab": "Vorgeschlagen"
+      "suggestedTab": "Vorgeschlagen",
+      "caloriesPerHourWithUnit": "Kalorien/Stunde ({{unit}})",
+      "caloriesPerHourHintWithUnit": "Lassen Sie das Feld leer, um die vom System berechneten Kalorien pro Stunde zu verwenden ({{newExerciseCalories}} {{unit}}/hour)."
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Durchsuche deine Trainingsvorlagen...",
@@ -1601,7 +1619,6 @@
       "exerciseLabel": "Übung",
       "unknownExercise": "Unbekannte Übung",
       "addSetButton": "Satz hinzufügen",
-      "caloriesBurnedOptionalLabel": "Verbrannte Kalorien (Optional)",
       "caloriesBurnedPlaceholder": "Verbrannte Kalorien eingeben, um die Berechnung zu überschreiben",
       "caloriesBurnedHint": "Kalorien werden automatisch nach dem Speichern berechnet, wenn das Feld leer bleibt.",
       "distanceLabel": "Distanz",
@@ -1615,10 +1632,11 @@
       "updateError": "Übungseintrag konnte nicht aktualisiert werden.",
       "syncedProviderBackup": "Synchronisiertes Anbieter-Backup (geschützt)",
       "telemetryHeader": "Telemetrie- und Aktivitätsmetriken",
-      "caloriesAppliedLabel": "In der Tagessumme gezählte Kalorien (optional)",
       "caloriesAppliedPlaceholder": "Leer: Die oben verbrannten Kalorien werden gezählt",
       "caloriesAppliedHint": "Trage 0 ein, wenn ein Uhren-Training diese Einheit bereits zählt. Die geschätzten verbrannten Kalorien bleiben erhalten.",
-      "caloriesAppliedLinkedHint": "Die gezählten Kalorien kommen aus der Trainingsverknüpfung. Verwalte die Verknüpfung im manuellen Training."
+      "caloriesAppliedLinkedHint": "Die gezählten Kalorien kommen aus der Trainingsverknüpfung. Verwalte die Verknüpfung im manuellen Training.",
+      "caloriesBurnedOptionalWithUnit": "Kalorienverbrauch ({{unit}}, optional)",
+      "caloriesAppliedWithUnit": "Kalorien, die in der täglichen Gesamtsumme gezählt werden ({{unit}}, optional)"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "Feldname",
@@ -2465,7 +2483,9 @@
         "enforceMfaForAllUsers": "MFA für alle Benutzer erzwingen",
         "enablePasskeyLogin": "Passkey-Anmeldung aktivieren",
         "emergencyFailSafePasskeyDescription": "Falls die Passkey-Anmeldung deaktiviert wurde und du dich nicht mehr anmelden kannst, erzwinge die Reaktivierung mit:",
-        "emergencyFailSafeIfYou": "<strong>Notfall-Absicherung:</strong> Wenn du einmal aus deinem Konto ausgesperrt bist, kannst du die Anmeldung per E-Mail/Passwort erzwingen, indem du auf deinem Server die folgende Umgebungsvariable setzt und ihn neu startest:"
+        "emergencyFailSafeIfYou": "<strong>Notfall-Absicherung:</strong> Wenn du einmal aus deinem Konto ausgesperrt bist, kannst du die Anmeldung per E-Mail/Passwort erzwingen, indem du auf deinem Server die folgende Umgebungsvariable setzt und ihn neu startest:",
+        "enableMagicLinkLogin": "„Magic Link“-Anmeldung aktivieren",
+        "emergencyFailSafeMagicLinkDescription": "Falls die Anmeldung über „Magic Link“ deaktiviert wurde und Sie sich nicht mehr anmelden können, aktivieren Sie sie mit folgendem Befehl wieder:"
       },
       "oidcProviderManagement": {
         "description": "Konfiguriere deine OpenID-Connect-Anbieter (OIDC).",
@@ -3189,8 +3209,6 @@
       "timeCalorieBreakdown": "Zeit & Kalorienaufteilung",
       "movingTimeSec": "Bewegungszeit (Sek.)",
       "elapsedTimeSec": "Verstrichene Zeit (Sek.)",
-      "activeCaloriesKcal": "Aktivkalorien (kcal)",
-      "restingCaloriesKcal": "Ruhekalorien (kcal)",
       "trainingLoadPerformance": "Trainingsbelastung & Leistung",
       "trainingLoad": "Trainingsbelastung",
       "aerobicEffect05": "Aerober Effekt (0–5)",
@@ -3205,7 +3223,9 @@
       "humidity": "Luftfeuchtigkeit (%)",
       "gearName": "Name der Ausrüstung",
       "eGNikePegasus40": "z. B. Nike Pegasus 40",
-      "exercise": "Übung"
+      "exercise": "Übung",
+      "activeCaloriesWithUnit": "Aktive Kalorien ({{unit}})",
+      "restingCaloriesWithUnit": "Kalorienverbrauch im Ruhezustand ({{unit}})"
     },
     "editMealFoodEntryDialog": {
       "modifyTheFoodsAndQuantities": "Passe die Lebensmittel und Mengen für diesen erfassten Mahlzeiteneintrag an.",
@@ -3911,10 +3931,10 @@
     "pProteing": "P: {{protein}}g",
     "cCarbsg": "KH: {{carbs}}g",
     "fFatg": "F: {{fat}}g",
-    "totalKcalPGC": "<strong>Gesamt:</strong> {{totalCalories}} kcal | P: {{totalProtein}}g | KH: {{totalCarbs}}g | F: {{totalFat}}g",
     "pTotalProteing": "P: {{totalProtein}}g",
     "cTotalCarbsg": "KH: {{totalCarbs}}g",
-    "fTotalFatg": "F: {{totalFat}}g"
+    "fTotalFatg": "F: {{totalFat}}g",
+    "totalEnergyPGC": "<strong>Gesamt:</strong> {{totalCalories}} | P: {{totalProtein}}g | C: {{totalCarbs}}g | F: {{totalFat}}g"
   },
   "reports": {
     "errorToastTitle": "Fehler",
@@ -4305,7 +4325,46 @@
     "weightTrendWithRate": "Trend {{weight}} · {{rate}} pro Woche",
     "weightTrendWithForecast": "Trend {{weight}} · Ziel voraussichtlich am {{date}}",
     "compareTab": "Vergleich",
-    "heartRateTab": "Herzfrequenz-Analyse"
+    "heartRateTab": "Herzfrequenz-Analyse",
+    "nutritionPeriodSummary": "Nährwertübersicht",
+    "glucose": {
+      "title": "Blutzucker",
+      "description": "In Apple Health gespeicherte Messwerte, einschließlich Dexcom-CGM-Daten. Apple Health-Daten können mit einer Verzögerung eintreffen.",
+      "unit": "Einheit",
+      "source": "Quelle",
+      "error": "Die Blutzuckerwerte konnten nicht geladen werden.",
+      "loading": "Glukosewerte werden geladen…",
+      "empty": "In diesem Zeitraum liegen keine Blutzuckerwerte vor. Aktivieren Sie die Dexcom-Freigabe für Apple Health, erlauben Sie SparkyFitness den Zugriff auf Ihre Blutzuckerwerte und führen Sie eine Synchronisierung über die iOS-App durch.",
+      "chartLabel": "Glukosewerte im Zeitverlauf",
+      "foods": "Erfasste Lebensmittel · Mahlzeitenmarkierungen",
+      "foodError": "Die protokollierten Lebensmittel konnten nicht geladen werden.",
+      "mealNote": "Die Mahlzeitenmarkierungen zeigen die erfassten Zeiten an, nicht eine gemessene Reaktion auf die Nahrungsaufnahme. Lebensmittel ohne erfasste Zeit werden nicht in die Kurve eingetragen.",
+      "layerMeal": "Essen",
+      "layerExercise": "Übung",
+      "layerSleep": "Schlaf",
+      "layerMedication": "Medikamente",
+      "layerStress": "Stress",
+      "layerCaffeine": "Koffein",
+      "layerAlcohol": "Alkohol",
+      "layerHydration": "Flüssigkeitszufuhr",
+      "context": "Aufgezeichneter Kontext · Anzeigeebenen",
+      "contextLoading": "Aufgezeichneter Kontext wird geladen…",
+      "contextError": "Der gespeicherte Kontext konnte nicht geladen werden.",
+      "noTime": "Zeit nicht erfasst",
+      "carbs": "Kohlenhydrate",
+      "day": "Tag",
+      "unavailable": "Einige Kontextinformationen sind nicht verfügbar:",
+      "events": "Erfasste Ereignisse und Tagesgesamtwerte",
+      "contextNote": "Hierbei handelt es sich um aufgezeichnete Ereignisse, nicht um nachgewiesene Ursachen. Die Endzeiten der Trainingseinheiten basieren auf der protokollierten Dauer. Einträge ohne Zeitangabe und Tagesgesamtwerte werden nicht in die Kurve eingetragen.",
+      "dailyTotal": "Tagesgesamtwert",
+      "dailyAverage": "Tagesdurchschnitt",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "earlier": "früher",
+      "later": "danach",
+      "resetZoom": "Zoom zurücksetzen",
+      "windowEvents": "Angezeigte Ereignisse"
+    }
   },
   "reportsTables": {
     "foodDiaryTable": "Tabelle Mahlzeitenübersicht",
@@ -4880,7 +4939,9 @@
       "oxford": "Oxford"
     },
     "useExternalBmr": "Verwende den gemessenen Grundumsatz (BMR) aus Check-ins und synchronisierten Geräten",
-    "useExternalBmrHint": "Standardmäßig deaktiviert – die von dir gewählte Formel wird so lange verwendet, bis du diese Funktion einschaltest. Ist sie aktiviert, ersetzt ein bei einem Check-in erfasster oder von einer smarten Waage bzw. einem Gesundheitsdaten-Anbieter synchronisierter BMR-Wert für den jeweiligen Tag die Formel, sofern der Wert für dich physiologisch plausibel ist. Da manche Geräte den BMR als laufende Tagessumme statt als Rate angeben, muss diese Funktion bewusst aktiviert werden."
+    "useExternalBmrHint": "Standardmäßig deaktiviert – die von dir gewählte Formel wird so lange verwendet, bis du diese Funktion einschaltest. Ist sie aktiviert, ersetzt ein bei einem Check-in erfasster oder von einer smarten Waage bzw. einem Gesundheitsdaten-Anbieter synchronisierter BMR-Wert für den jeweiligen Tag die Formel, sofern der Wert für dich physiologisch plausibel ist. Da manche Geräte den BMR als laufende Tagessumme statt als Rate angeben, muss diese Funktion bewusst aktiviert werden.",
+    "adjustMacrosWithExercise": "Prozentuale Makroziele anhand des Kalorienverbrauchs beim Training anpassen",
+    "adjustMacrosWithExerciseHint": "Erhöhen Sie die Zielwerte für Eiweiß, Kohlenhydrate und Fett anhand Ihrer gespeicherten Prozentsätze, wenn Sie durch sportliche Aktivitäten Kalorien zu Ihrem Tagesbudget hinzufügen. Die Einstellungen für den Kalorienausgleich durch Sport werden berücksichtigt. In Gramm eingegebene Zielwerte bleiben unverändert. Die Änderungen gelten ab heute; für frühere Tage bleiben die bisherigen Einstellungen bestehen."
   },
   "sync": {
     "syncAll": "Synchronisiere alle aktiven Anbieter",
@@ -5413,13 +5474,13 @@
       "servingsPerLog": "Portionen pro Eintrag",
       "servingUnit": "Portion",
       "weekdays": "Tage auswählen",
-      "supplementDoseScalingCalories": "Jeder Eintrag zählt als {{dose}} Portionen: {{dose}} x {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Jeder Eintrag zählt als {{dose}} Portionen, also das {{dose}}-Fache der pro Portion eingegebenen Nährwerte.",
       "cycleOff": "Freie Tage",
       "cycleOn": "Aktive Tage",
       "doseAmount": "Dosismenge (überschreiben)",
       "startDateRequired": "Startdatum (erforderlich)",
-      "time": "Tageszeit"
+      "time": "Tageszeit",
+      "supplementDoseScalingEnergy": "Jeder Eintrag umfasst {{dose}} Portionen: {{dose}} x {{perDose}} {{unit}} = {{total}} {{unit}}."
     },
     "checkin": {
       "subtitle": "Verfolge, wie die Medikation dich beeinflusst — wird in deinen täglichen Messungen gespeichert, taucht also auch in deinen Check-ins & Berichten auf.",
@@ -6887,7 +6948,6 @@
       "targetHoursDesc": "Zieldauer in Stunden, bis das Fasten abgeschlossen ist.",
       "targetEatingHours": "Ziel-Essensstunden",
       "targetEatingHoursDesc": "Dauer deines Essensfensters in Stunden.",
-      "calorieThreshold": "Kalorienschwelle (kcal)",
       "calorieThresholdHint": "Snacks oder Getränke unter diesem Wert (z. B. schwarzer Kaffee, Wasser, Elektrolyte) unterbrechen dein Fasten nicht und starten es nicht neu.",
       "preEndAlert": "Vorwarnung vor dem Ziel (Minuten)",
       "preEndAlertHint": "Wie viele Minuten vor Erreichen deines Fastenziels du eine Erinnerung erhalten möchtest.",
@@ -6898,7 +6958,8 @@
       "saved": "Fasteneinstellungen erfolgreich aktualisiert.",
       "error": "Fasteneinstellungen konnten nicht gespeichert werden.",
       "errorLoading": "Einstellungen konnten nicht geladen werden.",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "calorieThresholdWithUnit": "Kalorienschwelle ({{unit}})"
     },
     "endFastDialog": {
       "fastCompleted": "Fasten abgeschlossen! 🎉",
@@ -6993,7 +7054,14 @@
     "intervalsAthleteId": "Athleten-ID",
     "intervalsAthleteIdPlaceholder": "Athleten-ID eingeben (i12345)",
     "intervalsApiKeyPlaceholder": "API-Schlüssel eingeben",
-    "intervalsDisconnectConfirm": "Willst du die Verbindung zu Intervals.icu wirklich trennen? Die Integration bleibt deaktiviert, bis du sie wieder aktivierst."
+    "intervalsDisconnectConfirm": "Willst du die Verbindung zu Intervals.icu wirklich trennen? Die Integration bleibt deaktiviert, bis du sie wieder aktivierst.",
+    "garminServiceUnreachableTitle": "Garmin nicht erreichbar",
+    "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Überprüfen Sie, ob der Garmin-Mikroservice läuft.",
+    "garminSyncIncompleteTitle": "Garmin-Synchronisierung unvollständig",
+    "garminSyncPhaseHealth": "Gesundheit",
+    "garminSyncPhaseActivities": "Aktivitäten",
+    "garminSyncPhaseNutrition": "Ernährung",
+    "garminSyncIncomplete": "Einige Garmin-Daten konnten nicht synchronisiert werden ({{phases}}). Versuchen Sie es später erneut."
   },
   "mealCreation": {
     "convertToMeal": "Mahlzeit aus Tagebuch erstellen",
@@ -7587,7 +7655,7 @@
     "editInMealBuilder": "Im Mahlzeiten-Editor bearbeiten",
     "loggedSuccess": "Mahlzeit erfolgreich in dein Tagebuch übernommen.",
     "openInMealBuilder": "Im Mahlzeiten-Editor öffnen",
-    "kcalPGCG": "{{calories_kcal}} kcal · P: {{protein_g}}g · KH: {{carbs_g}}g · F: {{fat_g}}g"
+    "energyPGCG": "{{calories_kcal}} {{unit}} · P: {{protein_g}}g · K: {{carbs_g}}g · F: {{fat_g}}g"
   },
   "waterContainerManager": {
     "title": "Wasserbehälter verwalten",
@@ -8403,7 +8471,8 @@
         "relief": "Linderung",
         "slept": "Schlafdauer",
         "food": "Vortag",
-        "water": "Wasser"
+        "water": "Wasser",
+        "impact": "Auswirkungen am Tag"
       },
       "factorsTitle": "Was davor geschah",
       "factorsHint": "Wie viele deiner letzten {{n}} Episoden jeden dieser Faktoren aufwiesen. Das beschreibt, was passiert ist; es belegt keine Ursache.",
@@ -10066,5 +10135,175 @@
     "legendElevated": "Erhöht außerhalb des Trainings",
     "vsSevenDayAvg": "{{diff}} bpm ggü. 7-Tage-Ø",
     "minIntoWorkout": "{{min}} min nach Trainingsbeginn"
+  },
+  "labs": {
+    "add": "Laborergebnis hinzufügen",
+    "changeMarker": "ändern",
+    "chartEmpty": "Noch keine Ergebnisse",
+    "chartOtherUnits_one": "{{count}} Ergebnis in einer anderen Einheit wird nicht dargestellt.",
+    "chartOtherUnits_other": "{{count}} Ergebnisse in anderen Einheiten werden nicht dargestellt.",
+    "createCustom": "„{{name}}“ als neuen Marker hinzufügen",
+    "date": "Prüfungsdatum",
+    "dateFuture": "Das Prüfungsdatum darf nicht in der Zukunft liegen.",
+    "deleteFailed": "Das Ergebnis konnte nicht gelöscht werden",
+    "deleteMessage": "Dieses Laborergebnis löschen?",
+    "deleteTitle": "Ergebnis löschen",
+    "empty": "Es liegen noch keine Laborergebnisse vor. Fügen Sie ein Ergebnis wie HbA1c, LDL oder Vitamin D hinzu und verfolgen Sie dessen Entwicklung im Zeitverlauf.",
+    "latest": "Aktuelles",
+    "loadFailed": "Ihre Laborergebnisse konnten nicht geladen werden.",
+    "noMatches": "Keine übereinstimmenden Marker",
+    "noResults": "Keine Ergebnisse",
+    "notesPlaceholder": "Notiz hinzufügen (optional)",
+    "rangeHigh": "Hoch",
+    "rangeInvalid": "Geben Sie Zahlen ein, wobei der niedrigere Wert nicht größer sein darf als der höhere Wert.",
+    "rangeLow": "Niedrig",
+    "rangeOptional": "Referenzbereich (optional)",
+    "referenceRange": "Referenzbereich:{{range}}",
+    "saveFailed": "Das Laborergebnis konnte nicht gespeichert werden",
+    "searchPlaceholder": "Suchmarker (HbA1c, LDL, …)",
+    "status": {
+      "high": "Hoch",
+      "inRange": "Im Normbereich",
+      "low": "Niedrig"
+    },
+    "unit": "Einheit",
+    "value": "Ergebnis",
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "Nüchternblutzucker",
+      "total_cholesterol": "Gesamtcholesterin",
+      "hdl": "HDL-Cholesterin",
+      "ldl": "LDL-Cholesterin",
+      "triglycerides": "Triglyceride",
+      "vitamin_d": "Vitamin D (25-OH)",
+      "tsh": "TSH",
+      "ferritin": "Ferritin",
+      "vitamin_b12": "Vitamin B12",
+      "creatinine": "Kreatinin",
+      "egfr": "eGFR",
+      "alt": "GPT (ALT)",
+      "ast": "GOT (AST)",
+      "non_hdl": "Nicht-HDL-Cholesterin",
+      "apob": "Apolipoprotein B",
+      "vldl": "VLDL-Cholesterin",
+      "fasting_insulin": "Nüchterninsulin",
+      "wbc": "Weiße Blutkörperchen",
+      "rbc": "Rote Blutkörperchen",
+      "hemoglobin": "Hämoglobin",
+      "hematocrit": "Hämatokrit",
+      "platelets": "Thrombozyten",
+      "sodium": "Natrium",
+      "potassium": "Kalium",
+      "mcv": "MCV",
+      "chloride": "Chlorid",
+      "bicarbonate": "Bikarbonat (CO₂)",
+      "calcium": "Kalzium",
+      "magnesium": "Magnesium",
+      "phosphorus": "Phosphor",
+      "bun": "BUN",
+      "uric_acid": "Harnsäure",
+      "albumin": "Albumin",
+      "total_protein": "Gesamtprotein",
+      "alp": "Alkalische Phosphatase",
+      "total_bilirubin": "Gesamtbilirubin",
+      "ggt": "GGT",
+      "free_t4": "Freies T4",
+      "free_t3": "Freies T3",
+      "iron": "Eisen",
+      "tibc": "TIBC",
+      "transferrin_saturation": "Transferrin-Sättigung",
+      "folate": "Folsäure",
+      "crp": "hs-CRP",
+      "esr": "ESR",
+      "homocysteine": "Homocystein",
+      "cortisol": "Cortisol (morgens)",
+      "psa": "PSA",
+      "testosterone": "Testosteron (Gesamt)",
+      "estradiol": "Östradiol",
+      "lipoprotein_a": "Lipoprotein(a)",
+      "eosinophils": "Eosinophile",
+      "monocytes": "Monocyten",
+      "neutrophils": "Neutrophile",
+      "lymphocytes": "Lymphocyten",
+      "ck": "Creatin-Kinase",
+      "zinc": "Zink",
+      "copper": "Kupfer",
+      "selenium": "Selen",
+      "vitamin_b6": "Vitamin B6",
+      "vitamin_a": "Vitamin A",
+      "vitamin_e": "Vitamin E",
+      "free_testosterone": "Freies Testosteron",
+      "amylase": "Amylase",
+      "lipase": "Lipase",
+      "globulin": "Globulin",
+      "direct_bilirubin": "Bilirubin (direkt)",
+      "ketones": "Ketone (Beta-Hydroxybutyrat)",
+      "fructosamine": "Fructosamin",
+      "anion_gap": "Anionenlücke",
+      "mchc": "MCHC",
+      "mch": "MCH",
+      "bun_creatinine_ratio": "BUN/Kreatinin-Verhältnis",
+      "cystatin_c": "Cystatin C",
+      "ammonia": "Ammoniak",
+      "progesterone": "Progesteron",
+      "prolactin": "Prolaktin",
+      "tpo_antibodies": "TPO-Antikörper",
+      "urine_albumin_creatinine": "Albumin-Kreatinin-Quotient im Urin",
+      "ldh": "LDH",
+      "pth": "PTH",
+      "igf_1": "IGF-1",
+      "dhea_s": "DHEA-S",
+      "shbg": "SHBG",
+      "fsh": "FSH",
+      "lh": "LH",
+      "mpv": "MPV",
+      "rdw": "RDW",
+      "c_peptide": "C-Peptide"
+    },
+    "rangeFromReport": "Nutze den Referenzbereich aus deinem Befund. Er wird mit diesem Ergebnis gespeichert.",
+    "import": {
+      "blocked": {
+        "duplicate": "Aus diesem Befund bereits importiert."
+      },
+      "chooseAnother": "Anderen Befund auswählen",
+      "cta": "Aus Befund importieren",
+      "includeRow": "{{name}} übernehmen",
+      "newMarker": "Neuer Marker",
+      "reading": "Befund wird gelesen ...",
+      "saveCount_one": "{{count}} Ergebnis speichern",
+      "saveCount_other": "{{count}} Ergebnisse speichern",
+      "saved_one": "{{count}} Ergebnis gespeichert",
+      "saved_other": "{{count}} Ergebnisse gespeichert",
+      "scanFailed": "Dieser Befund konnte nicht gelesen werden.",
+      "valueFor": "Ergebnis für {{name}}",
+      "deleteTitle": "Importierte Ergebnisse löschen",
+      "deleteMessage": "Alle aus einem Befund importierten Ergebnisse sowie alle nun leeren eigenen Marker löschen? Selbst eingetragene Ergebnisse bleiben erhalten.",
+      "deleted_one": "{{count}} importiertes Ergebnis gelöscht",
+      "deleted_other": "{{count}} importierte Ergebnisse gelöscht",
+      "deleteFailed": "Die importierten Ergebnisse konnten nicht gelöscht werden",
+      "saveFailed": "Der Befund konnte nicht gespeichert werden. Es wurde nichts gespeichert.",
+      "warning": {
+        "unit": "Deine bisherigen Ergebnisse nutzen {{earlierUnit}}, dieser Befund jedoch {{reportUnit}}. Einheiten werden nicht umgerechnet."
+      },
+      "chooseFile": "PDF oder Foto auswählen",
+      "introWeb": "Wähle das PDF eines Laborbefunds oder ein Foto bzw. einen Screenshot davon aus. Dein KI-Anbieter liest das Dokument aus und du überprüfst die Ergebnisse, bevor etwas gespeichert wird. Der Befund selbst wird nicht gespeichert.",
+      "editHintWeb": "Gleiche die Werte mit deinem Befund ab. Jedes Ergebnis wird mit der hier angegebenen Einheit und dem Referenzbereich gespeichert: entweder wie auf dem Befund abgedruckt oder mit dem Standardwert des Markers, falls der Befund keinen enthält.",
+      "tooLarge": "Diese Datei ist zu groß zum Einlesen (Limit: 14 MB).",
+      "nothingFound": "In diesem Befund wurden keine Ergebnisse gefunden.",
+      "readFailed": "Diese Datei konnte nicht geöffnet werden.",
+      "photoTooLarge": "Dieses Foto ist zu groß zum Einlesen (Limit: 6 MB). Versuche es mit einem kleineren Foto oder einem Screenshot.",
+      "lockedAfterFailedSave": "Das Speichern wurde nicht abgeschlossen, daher ist diese Überprüfung gesperrt: Erneutes Speichern übermittelt exakt denselben Befund und speichert ihn nur einmal. Um Werte zu ändern, wähle den Befund erneut aus.",
+      "unconfirmedNoKey": "Das Speichern wurde nicht abgeschlossen und dieser Browser kann den Befund nicht kennzeichnen, um ein doppeltes Speichern zu verhindern. Der Befund wird möglicherweise noch gespeichert. Schließe dieses Fenster und prüfe deine Laborwerte in wenigen Minuten, bevor du erneut etwas importierst, damit nichts doppelt gespeichert wird."
+    },
+    "moreActions": "Weitere Aktionen",
+    "deleteMarker": "Marker und alle Ergebnisse löschen",
+    "deleteMarkerTitle": "Marker löschen",
+    "deleteMarkerMessage": "{{name}} und alle zugehörigen Ergebnisse löschen? Dies kann nicht rückgängig gemacht werden.",
+    "deleteMarkerFailed": "Der Marker konnte nicht gelöscht werden",
+    "labName": "Labor",
+    "notes": "Notizen",
+    "valueInvalid": "Gib einen Marker und einen numerischen Wert ein.",
+    "historyCutOff": "Der Verlauf zeigt maximal die neuesten {{count}} Ergebnisse.",
+    "dateInvalid": "Gib das Testdatum ein."
   }
 }

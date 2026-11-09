@@ -1235,27 +1235,32 @@ DECLARE
 BEGIN
   IF TG_OP = 'INSERT' THEN
     -- Recreated preferences must replace the latest recorded settings. An
-    -- initially enabled macro option also needs an off baseline for past days.
-    IF NOT NEW.adjust_macros_with_exercise AND NOT EXISTS (
-      SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = NEW.user_id
-    ) THEN
+    -- initially enabled opt-in also needs an off baseline for past days.
+    IF NOT NEW.adjust_macros_with_exercise
+       AND NEW.calorie_cycling_mode = 'off'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = NEW.user_id
+       ) THEN
       RETURN NULL;
     END IF;
     prior_preferences := NEW;
     prior_preferences.adjust_macros_with_exercise := FALSE;
+    prior_preferences.calorie_cycling_mode := 'off';
+    prior_preferences.calorie_cycling_offsets := '{0,0,0,0,0,0,0}';
   ELSE
     prior_preferences := OLD;
   END IF;
 
   -- Keep the rules before the first change. Even an initially enabled opt-in
-  -- starts today; it must not enable macro credit for earlier diary dates.
+  -- starts today; it must not change targets for earlier diary dates.
   INSERT INTO public.user_calorie_rule_history (
       user_id, effective_date,
       goal_mode, goal_mode_calculation_method, goal_mode_custom_percentage,
       goal_mode_weekly_change_kg, calorie_goal_adjustment_mode, exercise_calorie_percentage,
       tdee_allow_negative_adjustment, calorie_safety_floor_mode,
       calorie_safety_floor_value, adaptive_activity_separate, bmr_algorithm,
-      activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise
+      activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise,
+      calorie_cycling_mode, calorie_cycling_offsets
     )
     SELECT
       prior_preferences.user_id, '-infinity',
@@ -1263,7 +1268,8 @@ BEGIN
       prior_preferences.goal_mode_weekly_change_kg, prior_preferences.calorie_goal_adjustment_mode, prior_preferences.exercise_calorie_percentage,
       prior_preferences.tdee_allow_negative_adjustment, prior_preferences.calorie_safety_floor_mode,
       prior_preferences.calorie_safety_floor_value, prior_preferences.adaptive_activity_separate, prior_preferences.bmr_algorithm,
-      prior_preferences.activity_level, prior_preferences.use_external_bmr, prior_preferences.include_bmr_in_net_calories, prior_preferences.adjust_macros_with_exercise
+      prior_preferences.activity_level, prior_preferences.use_external_bmr, prior_preferences.include_bmr_in_net_calories, prior_preferences.adjust_macros_with_exercise,
+      prior_preferences.calorie_cycling_mode, prior_preferences.calorie_cycling_offsets
     WHERE NOT EXISTS (
       SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = prior_preferences.user_id
     );
@@ -1284,7 +1290,8 @@ BEGIN
     goal_mode_weekly_change_kg, calorie_goal_adjustment_mode, exercise_calorie_percentage,
     tdee_allow_negative_adjustment, calorie_safety_floor_mode,
     calorie_safety_floor_value, adaptive_activity_separate, bmr_algorithm,
-    activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise
+    activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise,
+    calorie_cycling_mode, calorie_cycling_offsets
   )
   VALUES (
     NEW.user_id, (now() AT TIME ZONE zone)::date,
@@ -1292,7 +1299,8 @@ BEGIN
     NEW.goal_mode_weekly_change_kg, NEW.calorie_goal_adjustment_mode, NEW.exercise_calorie_percentage,
     NEW.tdee_allow_negative_adjustment, NEW.calorie_safety_floor_mode,
     NEW.calorie_safety_floor_value, NEW.adaptive_activity_separate, NEW.bmr_algorithm,
-    NEW.activity_level, NEW.use_external_bmr, NEW.include_bmr_in_net_calories, NEW.adjust_macros_with_exercise
+    NEW.activity_level, NEW.use_external_bmr, NEW.include_bmr_in_net_calories, NEW.adjust_macros_with_exercise,
+    NEW.calorie_cycling_mode, NEW.calorie_cycling_offsets
   )
   ON CONFLICT (user_id, effective_date) DO UPDATE SET
     goal_mode = EXCLUDED.goal_mode,
@@ -1310,6 +1318,8 @@ BEGIN
     use_external_bmr = EXCLUDED.use_external_bmr,
     include_bmr_in_net_calories = EXCLUDED.include_bmr_in_net_calories,
     adjust_macros_with_exercise = EXCLUDED.adjust_macros_with_exercise,
+    calorie_cycling_mode = EXCLUDED.calorie_cycling_mode,
+    calorie_cycling_offsets = EXCLUDED.calorie_cycling_offsets,
     updated_at = now();
 
   RETURN NULL;
@@ -4037,6 +4047,33 @@ COMMENT ON TABLE public.openfoodfacts_sync_queue IS 'Durable, revision-safe stat
 
 
 --
+-- Name: oral_care_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oral_care_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    start_time timestamp with time zone,
+    end_time timestamp with time zone,
+    duration_seconds integer,
+    care_type character varying(30) DEFAULT 'brushing'::character varying NOT NULL,
+    custom_label character varying(50),
+    provider character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    external_id character varying(255),
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid,
+    CONSTRAINT chk_oral_care_sessions_care_type CHECK (((care_type)::text = ANY ((ARRAY['brushing'::character varying, 'flossing'::character varying, 'mouthwash'::character varying, 'tongue_cleaning'::character varying, 'other'::character varying])::text[]))),
+    CONSTRAINT chk_oral_care_sessions_custom_label CHECK (((((care_type)::text = 'other'::text) AND (custom_label IS NOT NULL) AND (btrim((custom_label)::text) <> ''::text)) OR (((care_type)::text <> 'other'::text) AND (custom_label IS NULL)))),
+    CONSTRAINT chk_oral_care_sessions_time_order CHECK (((start_time IS NULL) OR (end_time IS NULL) OR (end_time >= start_time))),
+    CONSTRAINT oral_care_sessions_duration_seconds_check CHECK (((duration_seconds IS NULL) OR (duration_seconds > 0)))
+);
+
+
+--
 -- Name: passkey; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4743,7 +4780,9 @@ CREATE TABLE public.user_calorie_rule_history (
     include_bmr_in_net_calories boolean,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    adjust_macros_with_exercise boolean DEFAULT false NOT NULL
+    adjust_macros_with_exercise boolean DEFAULT false NOT NULL,
+    calorie_cycling_mode text DEFAULT 'off'::text NOT NULL,
+    calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL
 );
 
 
@@ -5175,10 +5214,18 @@ CREATE TABLE public.user_preferences (
     use_move_ring_active_calories boolean DEFAULT false NOT NULL,
     default_temperature_unit text DEFAULT 'celsius'::text NOT NULL,
     default_glucose_unit text DEFAULT 'mmol/L'::text NOT NULL,
+    calorie_cycling_mode text DEFAULT 'off'::text NOT NULL,
+    calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
+    oral_care_daily_target smallint DEFAULT 2 NOT NULL,
+    oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
+    CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
+    CONSTRAINT chk_user_preferences_oral_care_target_seconds CHECK (((oral_care_target_seconds >= 30) AND (oral_care_target_seconds <= 600))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
+    CONSTRAINT user_preferences_calorie_cycling_mode_check CHECK ((calorie_cycling_mode = ANY (ARRAY['off'::text, 'training_rest'::text, 'custom'::text]))),
+    CONSTRAINT user_preferences_calorie_cycling_offsets_check CHECK (((cardinality(calorie_cycling_offsets) = 7) AND ('-40'::integer <= ALL (calorie_cycling_offsets)) AND (40 >= ALL (calorie_cycling_offsets)))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
     CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
@@ -6929,6 +6976,14 @@ ALTER TABLE ONLY public.openfoodfacts_sync_queue
 
 
 --
+-- Name: oral_care_sessions oral_care_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8403,6 +8458,20 @@ CREATE INDEX idx_oauth_refresh_token_user_id ON public.oauth_refresh_token USING
 
 
 --
+-- Name: idx_oral_care_sessions_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_oral_care_sessions_user_date ON public.oral_care_sessions USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_oral_care_sessions_user_external; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_oral_care_sessions_user_external ON public.oral_care_sessions USING btree (user_id, provider, external_id) WHERE (external_id IS NOT NULL);
+
+
+--
 -- Name: idx_passkey_reg_tickets_expires_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8931,7 +9000,7 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 -- Name: user_preferences record_calorie_rule_change; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER record_calorie_rule_change AFTER UPDATE ON public.user_preferences FOR EACH ROW WHEN (((((((((((((((((old.goal_mode)::text IS DISTINCT FROM (new.goal_mode)::text) OR ((old.goal_mode_calculation_method)::text IS DISTINCT FROM (new.goal_mode_calculation_method)::text)) OR (old.goal_mode_custom_percentage IS DISTINCT FROM new.goal_mode_custom_percentage)) OR (old.goal_mode_weekly_change_kg IS DISTINCT FROM new.goal_mode_weekly_change_kg)) OR (old.calorie_goal_adjustment_mode IS DISTINCT FROM new.calorie_goal_adjustment_mode)) OR (old.exercise_calorie_percentage IS DISTINCT FROM new.exercise_calorie_percentage)) OR (old.tdee_allow_negative_adjustment IS DISTINCT FROM new.tdee_allow_negative_adjustment)) OR (old.calorie_safety_floor_mode IS DISTINCT FROM new.calorie_safety_floor_mode)) OR (old.calorie_safety_floor_value IS DISTINCT FROM new.calorie_safety_floor_value)) OR (old.adaptive_activity_separate IS DISTINCT FROM new.adaptive_activity_separate)) OR (old.bmr_algorithm IS DISTINCT FROM new.bmr_algorithm)) OR ((old.activity_level)::text IS DISTINCT FROM (new.activity_level)::text)) OR (old.use_external_bmr IS DISTINCT FROM new.use_external_bmr)) OR (old.include_bmr_in_net_calories IS DISTINCT FROM new.include_bmr_in_net_calories)) OR (old.adjust_macros_with_exercise IS DISTINCT FROM new.adjust_macros_with_exercise))) EXECUTE FUNCTION public.record_calorie_rule_change();
+CREATE TRIGGER record_calorie_rule_change AFTER UPDATE ON public.user_preferences FOR EACH ROW WHEN (((((((((((((((((((old.goal_mode)::text IS DISTINCT FROM (new.goal_mode)::text) OR ((old.goal_mode_calculation_method)::text IS DISTINCT FROM (new.goal_mode_calculation_method)::text)) OR (old.goal_mode_custom_percentage IS DISTINCT FROM new.goal_mode_custom_percentage)) OR (old.goal_mode_weekly_change_kg IS DISTINCT FROM new.goal_mode_weekly_change_kg)) OR (old.calorie_goal_adjustment_mode IS DISTINCT FROM new.calorie_goal_adjustment_mode)) OR (old.exercise_calorie_percentage IS DISTINCT FROM new.exercise_calorie_percentage)) OR (old.tdee_allow_negative_adjustment IS DISTINCT FROM new.tdee_allow_negative_adjustment)) OR (old.calorie_safety_floor_mode IS DISTINCT FROM new.calorie_safety_floor_mode)) OR (old.calorie_safety_floor_value IS DISTINCT FROM new.calorie_safety_floor_value)) OR (old.adaptive_activity_separate IS DISTINCT FROM new.adaptive_activity_separate)) OR (old.bmr_algorithm IS DISTINCT FROM new.bmr_algorithm)) OR ((old.activity_level)::text IS DISTINCT FROM (new.activity_level)::text)) OR (old.use_external_bmr IS DISTINCT FROM new.use_external_bmr)) OR (old.include_bmr_in_net_calories IS DISTINCT FROM new.include_bmr_in_net_calories)) OR (old.adjust_macros_with_exercise IS DISTINCT FROM new.adjust_macros_with_exercise)) OR (old.calorie_cycling_mode IS DISTINCT FROM new.calorie_cycling_mode)) OR (old.calorie_cycling_offsets IS DISTINCT FROM new.calorie_cycling_offsets))) EXECUTE FUNCTION public.record_calorie_rule_change();
 
 
 --
@@ -10550,6 +10619,30 @@ ALTER TABLE ONLY public.openfoodfacts_sync_queue
 
 ALTER TABLE ONLY public.openfoodfacts_sync_queue
     ADD CONSTRAINT openfoodfacts_sync_queue_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oral_care_sessions oral_care_sessions_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oral_care_sessions oral_care_sessions_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oral_care_sessions oral_care_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -12218,6 +12311,13 @@ CREATE POLICY modify_policy ON public.onboarding_status USING ((public.authentic
 
 
 --
+-- Name: oral_care_sessions modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.oral_care_sessions USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
 -- Name: profiles modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12532,6 +12632,12 @@ ALTER TABLE public.openfoodfacts_product_read_rate_limit ENABLE ROW LEVEL SECURI
 --
 
 ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oral_care_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oral_care_sessions ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: action_tags owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -13176,6 +13282,13 @@ CREATE POLICY select_policy ON public.onboarding_data FOR SELECT USING (public.h
 --
 
 CREATE POLICY select_policy ON public.onboarding_status FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: oral_care_sessions select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.oral_care_sessions FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -14695,6 +14808,13 @@ GRANT SELECT,USAGE ON SEQUENCE public.openfoodfacts_sync_revision_seq TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.openfoodfacts_sync_queue TO sparky_app;
+
+
+--
+-- Name: TABLE oral_care_sessions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oral_care_sessions TO sparky_app;
 
 
 --

@@ -95,6 +95,8 @@ import AboutScreen from '../screens/AboutScreen';
 import WhatsNewScreen from '../screens/WhatsNewScreen';
 import MeasurementsAddScreen from '../screens/MeasurementsAddScreen';
 import MindfulnessLogScreen from '../screens/MindfulnessLogScreen';
+import OralCareScreen from '../screens/OralCareScreen';
+import OralCareLogScreen from '../screens/OralCareLogScreen';
 import ProgressPhotosScreen from '../screens/ProgressPhotosScreen';
 import ProgressPhotoCompareScreen from '../screens/ProgressPhotoCompareScreen';
 import ProgressPhotoTimelapseScreen from '../screens/ProgressPhotoTimelapseScreen';
@@ -132,6 +134,7 @@ import MoodReportScreen from '../screens/MoodReportScreen';
 import HeartRateReportScreen from '../screens/HeartRateReportScreen';
 import CompareReportScreen from '../screens/CompareReportScreen';
 import HydrationReportScreen from '../screens/HydrationReportScreen';
+import OralCareReportScreen from '../screens/OralCareReportScreen';
 import SubstancesReportScreen from '../screens/SubstancesReportScreen';
 import MeasurementsReportScreen from '../screens/MeasurementsReportScreen';
 import ReportsSettingsScreen from '../screens/ReportsSettingsScreen';
@@ -469,6 +472,14 @@ export const SafeMindfulnessLog = withErrorBoundary(
   'MindfulnessLog',
   { canGoBack: true }
 );
+export const SafeOralCare = withErrorBoundary(OralCareScreen, 'OralCare', {
+  canGoBack: true,
+});
+export const SafeOralCareLog = withErrorBoundary(
+  OralCareLogScreen,
+  'OralCareLog',
+  { canGoBack: true }
+);
 export const SafeProgressPhotos = withErrorBoundary(
   ProgressPhotosScreen,
   'ProgressPhotos',
@@ -671,6 +682,11 @@ export const SafeReportsSettings = withErrorBoundary(
 export const SafeHydrationReport = withErrorBoundary(
   HydrationReportScreen,
   'HydrationReport',
+  { canGoBack: true }
+);
+export const SafeOralCareReport = withErrorBoundary(
+  OralCareReportScreen,
+  'OralCareReport',
   { canGoBack: true }
 );
 export const SafeSubstancesReport = withErrorBoundary(

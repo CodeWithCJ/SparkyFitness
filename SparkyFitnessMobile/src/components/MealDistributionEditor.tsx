@@ -67,15 +67,17 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
         return (
           <View key={key} className="gap-1">
             <Text className="text-sm font-medium text-text-primary">
-              {t('goals.meals.mealCaloriesWithUnit', {
-                defaultValue: '{{meal}} ({{calories}} {{unit}})',
-                meal: label,
-                calories: roundedEnergy(
-                  (percent / 100) * totalCalories,
-                  energyUnit
-                ),
-                unit: energyUnitLabel(energyUnit, t),
-              })}
+              {totalCalories > 0
+                ? t('goals.meals.mealCaloriesWithUnit', {
+                    defaultValue: '{{meal}} ({{calories}} {{unit}})',
+                    meal: label,
+                    calories: roundedEnergy(
+                      (percent / 100) * totalCalories,
+                      energyUnit
+                    ),
+                    unit: energyUnitLabel(energyUnit, t),
+                  })
+                : label}
             </Text>
             <View className="flex-row items-center gap-2">
               <Pressable

@@ -305,7 +305,11 @@ For a run, the app also works out your **cadence** (steps per minute while you w
 
 A record is the time for exactly that distance. For an activity with a GPS track (or the distance series of an indoor run), SparkyFitness finds the fastest stretch of that distance inside it, so your fastest 5 km within a 10 km run counts as a 5 km record. An activity with no track only counts when its distance is within about 2% under to 5% over the standard, and its time is scaled to the exact distance by its average pace. A 5.8 km run with no track is not a 5 km record.
 
-When a run you just saved set one or more of them, the summary screen shows a **New personal record** card with the distance and time, and a link to the full list. A run recorded on the watch shows it too.
+A time faster than the sport allows never counts, because the activity's time or distance must be wrong: for example a test stopped after a few seconds but saved with its full distance, or an import with a bad value. The limit is 12 metres a second for running (so no 5 km under about 7 minutes), 7 for walking and hiking, 30 for cycling and 5 for swimming; a treadmill run counts as running and an exercise bike as cycling. Other sports, such as rowing, ellipticals, stair climbers or skiing, hold no distance records, so they have no limit. If the fastest stretch of a distance inside a GPS track or distance series is over the limit (a jump in the recorded distance), that track or series gives no time for that distance at all, not even from its slower stretches; the activity's own pace can still count when its distance nearly matches the standard. If an activity's own time or distance is wrong, correct it and it can count again. Correcting an indoor run's distance (see [Correcting a treadmill distance](#correcting-a-treadmill-distance)) also rescales its distance series, which can bring a refused stretch under the limit, although the jump itself stays; a GPS track cannot be corrected this way.
+
+When none of your activities holds a record yet, the list shows a single **Best Effort** card with your longest activity over 0.5 km instead, passing over any that is faster than its sport allows.
+
+When a run you just saved set one or more records, or became your Best Effort, the summary screen shows a **New personal record** card with the distance and time, and a link to the full list. A run recorded on the watch shows it too.
 
 ## Correcting a treadmill distance
 

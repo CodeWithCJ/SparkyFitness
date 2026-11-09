@@ -129,6 +129,8 @@ import {
   SafeImportHistory,
   SafeMeasurementsAdd,
   SafeMindfulnessLog,
+  SafeOralCare,
+  SafeOralCareLog,
   SafeProgressPhotos,
   SafeProgressPhotoCompare,
   SafeProgressPhotoTimelapse,
@@ -174,6 +176,7 @@ import {
   SafeHeartRateReport,
   SafeCompareReport,
   SafeHydrationReport,
+  SafeOralCareReport,
   SafeSubstancesReport,
   SafeMeasurementsReport,
   SafeReportsSettings,
@@ -235,6 +238,7 @@ import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateSto
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
+import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
 import {
   useNativeIOSTabsActive,
   useNativeIOSHeadersActive,
@@ -425,6 +429,7 @@ function AppContent() {
     handleAddMood,
     handleStartCheckIn,
     handleAddMindfulness,
+    handleAddOralCare,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
@@ -535,6 +540,8 @@ function AppContent() {
           ActiveWorkout: 'active-workout',
           // The run Live Activity opens the recording screen.
           RecordActivity: 'record-activity',
+          // The brushing timer's Live Activity opens the oral care screen.
+          OralCare: 'oral-care',
           // Route generation; without a routing provider the screen explains that.
           RouteGenerate: 'routes/generate',
           // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
@@ -1406,6 +1413,14 @@ function AppContent() {
               )}
             />
             <Stack.Screen
+              name="OralCareReport"
+              component={SafeOralCareReport}
+              options={createStackScreenOptions(
+                t('oralCareReport.title', { defaultValue: 'Oral care' }),
+                { headerBackButtonDisplayMode: 'minimal' }
+              )}
+            />
+            <Stack.Screen
               name="SubstancesReport"
               component={SafeSubstancesReport}
               options={createStackScreenOptions(
@@ -1589,6 +1604,18 @@ function AppContent() {
               }}
             />
             <Stack.Screen
+              name="OralCare"
+              component={SafeOralCare}
+              options={createStackScreenOptions(
+                t('oralCare.title', { defaultValue: 'Oral care' }),
+                {
+                  headerBackTitle: t('navigation.dashboard', {
+                    defaultValue: 'Dashboard',
+                  }),
+                }
+              )}
+            />
+            <Stack.Screen
               name="SleepDetail"
               component={SafeSleepDetail}
               options={createStackScreenOptions(
@@ -1654,6 +1681,18 @@ function AppContent() {
                 t('mindfulness.modal.addTitle', {
                   defaultValue: 'Log Mindful Session',
                 }),
+                {
+                  presentation: 'modal',
+                  headerBackButtonDisplayMode: 'minimal',
+                  ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+                }
+              )}
+            />
+            <Stack.Screen
+              name="OralCareLog"
+              component={SafeOralCareLog}
+              options={createStackScreenOptions(
+                t('oralCare.log.addTitle', { defaultValue: 'Log oral care' }),
                 {
                   presentation: 'modal',
                   headerBackButtonDisplayMode: 'minimal',
@@ -2361,6 +2400,7 @@ function AppContent() {
             onAddSymptoms={handleAddSymptoms}
             onAddMood={handleAddMood}
             onAddMindfulness={handleAddMindfulness}
+            onAddOralCare={handleAddOralCare}
             onRecordActivity={handleRecordActivity}
             onAskSparky={handleAskSparky}
             onStartCheckIn={handleStartCheckIn}
@@ -2410,6 +2450,7 @@ function AppContent() {
           <ActiveWorkoutKeepAwake />
           <MedicationReminderReconciler />
           <MoodCheckinReminderReconciler />
+          <OralCareReminderReconciler />
           <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>

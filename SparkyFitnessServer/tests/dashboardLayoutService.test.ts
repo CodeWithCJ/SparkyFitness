@@ -39,6 +39,16 @@ describe('dashboardLayoutService', () => {
       ).resolves.toBeNull();
     });
 
+    it('accepts the reports-nutrients page key', async () => {
+      vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
+        null
+      );
+
+      await expect(
+        dashboardLayoutService.getDashboardLayout('user-1', 'reports-nutrients')
+      ).resolves.toBeNull();
+    });
+
     it('rejects an unknown page key', async () => {
       await expect(
         dashboardLayoutService.getDashboardLayout('user-1', 'not-a-real-page')

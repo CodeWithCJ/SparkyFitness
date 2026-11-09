@@ -8,7 +8,6 @@
   },
   "foodForm": {
     "foodName": "نام غذا",
-    "caloriesRequired": "کالری (kcal) *",
     "servingSize": "اندازهٔ هر وعده",
     "servingUnit": "واحد اندازه‌گیری"
   },
@@ -25,21 +24,31 @@
     "fields": {
       "duration": "مدت‌زمان (دقیقه)",
       "distance": "مسافت ({{unit}})",
-      "calories": "کالری",
       "avgHeartRate": "میانگین ضربان قلب (bpm)",
       "notes": "یادداشت‌ها",
       "activity": "فعالیت",
-      "notesPlaceholder": "یادداشت اختیاری..."
+      "notesPlaceholder": "یادداشت اختیاری...",
+      "caloriesWithUnit": "کالری ({{unit}})"
     },
     "actions": {
-      "selectActivity": "انتخاب فعالیت"
+      "selectActivity": "انتخاب فعالیت",
+      "useYesterday": "استفاده از دیروز",
+      "useToday": "استفاده از امروز"
     },
     "labels": {
       "autoCalculated": "محاسبه‌شده به‌صورت خودکار"
     },
     "accessibility": {
       "editActivityName": "ویرایش نام فعالیت",
-      "selectExercise": "انتخاب تمرین"
+      "selectExercise": "انتخاب تمرین",
+      "activityName": "نام فعالیت",
+      "useYesterday": "استفاده از دیروز",
+      "useToday": "استفاده از امروز",
+      "duration": "مدت‌زمان به دقیقه",
+      "distance": "مسافت بر حسب {{unit}}",
+      "calories": "کالری",
+      "avgHeartRate": "میانگین ضربان قلب به ضربه در دقیقه",
+      "notes": "یادداشت‌های فعالیت"
     },
     "errors": {
       "saveFailed": "ذخیرهٔ فعالیت انجام نشد"
@@ -165,6 +174,241 @@
     "protein": "پروتئین",
     "carbs": "کربوهیدرات",
     "fat": "چربی",
-    "calories": "کالری"
+    "calories": "کالری",
+    "proteinAmount": "پروتئین",
+    "carbsAmount": "کربوهیدرات",
+    "fatAmount": "چربی",
+    "left": "باقی‌مانده",
+    "remaining": "{{value}} گرم باقی‌مانده",
+    "over": "{{value}} گرم بیشتر از هدف",
+    "met": "هدف محقق شده",
+    "goalSeparator": " / {{value}}"
+  },
+  "exerciseSearch": {
+    "title": "تمرین‌ها",
+    "tabs": {
+      "search": "جست‌وجو",
+      "online": "آنلاین",
+      "suggested": "پیشنهادی"
+    },
+    "sections": {
+      "recent": "اخیر",
+      "popular": "پرطرفدار"
+    },
+    "search": {
+      "placeholder": "جست‌وجوی تمرین‌ها..."
+    },
+    "errors": {
+      "failedToAddExercise": "افزودن تمرین انجام نشد"
+    },
+    "actions": {
+      "viewDetails": "مشاهدهٔ جزئیات تمرین",
+      "loadMoreFailed": "بارگذاری موارد بیشتر ناموفق بود؛ برای تلاش دوباره ضربه بزنید",
+      "loadMore": "بارگذاری موارد بیشتر",
+      "clearSearch": "پاک کردن جست‌وجو"
+    },
+    "states": {
+      "failedToSearch": "جست‌وجوی تمرین‌ها ناموفق بود",
+      "noMatches": "تمرین مطابقی پیدا نشد",
+      "connectToView": "برای مشاهدهٔ تمرین‌ها به سرور متصل شوید",
+      "failedToLoad": "بارگذاری تمرین‌ها ناموفق بود",
+      "searchToStart": "برای شروع، یک تمرین جست‌وجو کنید",
+      "failedToSearchProvider": "جست‌وجو در {{provider}} ناموفق بود",
+      "connectToSearchOnline": "برای جست‌وجوی آنلاین تمرین‌ها به سرور متصل شوید",
+      "failedToLoadProviders": "بارگذاری ارائه‌دهندگان ناموفق بود",
+      "noProviders": "هیچ ارائه‌دهندهٔ آنلاین تمرینی تنظیم نشده است",
+      "searchProvider": "جست‌وجوی تمرین در {{provider}}"
+    },
+    "filter": {
+      "noun": "تمرین‌ها",
+      "all": "همه",
+      "mine": "تمرین‌های من",
+      "family": "خانواده",
+      "public": "عمومی",
+      "show": "نمایش",
+      "accessibility": "فیلتر {{noun}}؛ محدود به {{filter}}",
+      "emptyTitle": "موردی از {{noun}} در {{filter}} یافت نشد",
+      "emptySubtitle": "برای دیدن سایر {{noun}}، فیلتر را تغییر دهید.",
+      "showAll": "نمایش همه"
+    },
+    "accessibility": {
+      "provider": "ارائه‌دهندهٔ تمرین: {{provider}}",
+      "loadingMore": "در حال بارگذاری تمرین‌های بیشتر"
+    },
+    "replaceTitle": "جایگزینی تمرین",
+    "alternatives": {
+      "heading": "جایگزین‌های {{name}}",
+      "modes": {
+        "similar": "مشابه",
+        "differentEquipment": "وسایل دیگر"
+      },
+      "reasons": {
+        "sameMuscles": "عضلات یکسان",
+        "sharesMuscle": "عضلات مشابه",
+        "sameEquipment": "وسایل یکسان",
+        "differentEquipment": "وسایل متفاوت",
+        "sameMovement": "حرکت یکسان",
+        "recent": "اخیراً انجام‌شده",
+        "inLibrary": "در کتابخانهٔ شما"
+      },
+      "newBadge": "جدید",
+      "searchAll": "جست‌وجو در همهٔ تمرین‌ها",
+      "failed": "بارگذاری تمرین‌های جایگزین ممکن نشد",
+      "noMuscles": "برای {{name}} عضله‌ای ثبت نشده است",
+      "noMusclesHint": "برای دریافت پیشنهاد، عضلات اصلی آن را در کتابخانهٔ تمرین‌ها مشخص کنید.",
+      "empty": "تمرین جایگزینی پیدا نشد",
+      "catalogUnavailable": "پایگاه دادهٔ رایگان تمرین‌ها در دسترس نیست؛ فقط کتابخانهٔ شما نمایش داده می‌شود."
+    }
+  },
+  "exerciseHistory": {
+    "noSetData": "اطلاعات ست‌ها موجود نیست",
+    "loadError": "بارگذاری سابقه ممکن نشد.",
+    "empty": "هنوز جلسهٔ تمرینی ثبت نشده است.",
+    "columns": {
+      "set": "ست",
+      "weightReps": "وزنه و تکرار",
+      "timeDistance": "زمان و مسافت",
+      "time": "زمان",
+      "weightDistance": "وزنه و مسافت",
+      "weightTime": "وزنه و زمان",
+      "reps": "تکرار",
+      "rpe": "درجهٔ سختی (RPE)"
+    }
+  },
+  "exerciseDetail": {
+    "duplicate": "تکثیر تمرین",
+    "viewImages": "نمایش تمام‌صفحهٔ تصاویر",
+    "duplicateName": "{{name}} (کپی)",
+    "sharedPublicly": "تمرین به‌صورت عمومی به اشتراک گذاشته شد",
+    "madePrivate": "تمرین خصوصی شد",
+    "makePublicTitle": "تمرین عمومی شود؟",
+    "makePublicMessage": "این تمرین برای همهٔ کاربران این سرور قابل مشاهده خواهد شد.",
+    "makePublic": "عمومی کردن",
+    "deleted": "تمرین حذف شد",
+    "addFailed": "افزودن تمرین انجام نشد",
+    "summary": "خلاصه",
+    "history": "سابقه",
+    "howTo": "روش انجام",
+    "editExercise": "ویرایش تمرین",
+    "addExercise": "افزودن تمرین",
+    "instructions": "دستورالعمل‌ها",
+    "description": "توضیحات",
+    "showMore": "نمایش بیشتر",
+    "best": "بهترین ({{unit}})",
+    "last": "آخرین ({{unit}})",
+    "caloriesPerHourWithUnit": "{{unit}} در ساعت",
+    "equipment": "وسایل",
+    "primaryMuscles": "عضلات اصلی",
+    "secondaryMuscles": "عضلات فرعی",
+    "details": "جزئیات تمرین",
+    "category": "دسته‌بندی",
+    "level": "سطح",
+    "force": "نوع نیرو",
+    "mechanic": "مکانیک حرکت",
+    "source": "منبع",
+    "starting": "در حال شروع…",
+    "startWorkout": "شروع جلسهٔ تمرین",
+    "logExercise": "ثبت تمرین",
+    "deleting": "در حال حذف...",
+    "deleteExercise": "حذف تمرین",
+    "makePrivate": "خصوصی کردن",
+    "shareWithPublic": "اشتراک‌گذاری عمومی",
+    "deleteSheetTitle": "حذف تمرین"
+  },
+  "exerciseLibrary": {
+    "title": "تمرین‌ها",
+    "search": "جست‌وجوی تمرین‌ها...",
+    "loading": "در حال بارگذاری تمرین‌ها...",
+    "failed": "بارگذاری تمرین‌ها ناموفق بود",
+    "retry": "تلاش دوباره",
+    "check": "اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "noMatch": "تمرین مطابق جست‌وجو پیدا نشد",
+    "noItems": "هیچ تمرینی پیدا نشد",
+    "trySearch": "برای یافتن تمرین‌های ذخیره‌شده، عبارت دیگری جست‌وجو کنید.",
+    "empty": "تمرین‌هایی که ذخیره یا ثبت می‌کنید، اینجا نمایش داده می‌شوند.",
+    "moreFailed": "بارگذاری تمرین‌های بیشتر ناموفق بود.",
+    "view": "مشاهدهٔ تمرین",
+    "noun": "تمرین‌ها"
+  },
+  "activitySummary": {
+    "avgHeartRate": "میانگین ضربان قلب",
+    "maxHeartRate": "بیشترین ضربان قلب",
+    "elevationGain": "افزایش ارتفاع",
+    "avgCadence": "میانگین آهنگ حرکت",
+    "zone": "ناحیهٔ {{zone}}",
+    "heartRateZone": "ناحیهٔ ضربان قلب: {{zone}}",
+    "heartRateZoneLight": "سبک",
+    "heartRateZoneModerate": "متوسط",
+    "heartRateZoneIntense": "شدید",
+    "heartRateZonePeak": "اوج",
+    "wodScoreFormat": "امتیاز {{format}}",
+    "timeCap": "سقف زمانی",
+    "scalingNotes": "یادداشت‌های تعدیل سطح تمرین",
+    "durationMinutesSeconds": "{{minutes}} دقیقه و {{seconds}} ثانیه"
+  },
+  "foodDelete": {
+    "failed": "حذف غذا ناموفق بود",
+    "title": "حذف غذا",
+    "message": "از حذف این غذا مطمئن هستید؟ ثبت‌های قبلی بدون تغییر باقی می‌مانند.",
+    "hidden": {
+      "title": "غذا پنهان شد",
+      "usedByOthers": "چون افراد دیگری از این غذا استفاده می‌کنند، به‌جای حذف، پنهان شد. سابقهٔ آن‌ها تغییری نکرده است."
+    },
+    "confirmWithHistoryTitle": "ثبت‌های قبلی هم حذف شوند؟",
+    "confirmWithHistoryMessage": "این کار ثبت‌های قبلی این غذا را نیز برای همیشه حذف می‌کند و قابل بازگشت نیست.",
+    "options": {
+      "hide": "پنهان کردن از جست‌وجو",
+      "hideDescription": "همهٔ اطلاعات حفظ می‌شوند؛ فقط این غذا دیگر در نتایج جست‌وجو نمایش داده نمی‌شود.",
+      "delete": "حذف",
+      "deleteDescription": "این غذا از کتابخانه، وعده‌ها و برنامه‌های غذایی شما حذف می‌شود؛ ثبت‌های قبلی حفظ می‌شوند.",
+      "deleteWithHistory": "حذف همراه با سابقه",
+      "deleteWithHistoryDescription": "ثبت‌های قبلی مربوط به این غذا را هم برای همیشه حذف می‌کند."
+    }
+  },
+  "exerciseEditing": {
+    "removeTitle": "تمرین حذف شود؟",
+    "removeMessage": "تمرین «{{name}}» و همهٔ ست‌های آن حذف شوند؟"
+  },
+  "guidedCheckIn": {
+    "stepOfTotal": "ثبت وضعیت: مرحلهٔ {{step}} از {{total}}",
+    "skip": "رد کردن",
+    "skipA11y": "رد کردن این مرحله",
+    "saveAndContinue": "ذخیره و ادامه",
+    "finish": "پایان",
+    "done": "ثبت وضعیت تکمیل شد",
+    "skipUnsavedTitle": "از این مرحله بگذریم؟",
+    "skipUnsavedMessage": "تغییرات این مرحله ذخیره نخواهند شد.",
+    "backA11y": "بازگشت به مرحلهٔ قبل",
+    "backUnsavedTitle": "به مرحلهٔ قبل برگردیم؟",
+    "resumeTitle": "ثبت وضعیت را ادامه می‌دهید؟",
+    "resumeMessage": "در مرحلهٔ {{step}} از {{total}} متوقف شده بودید.",
+    "startOver": "شروع دوباره"
+  },
+  "quickActions": {
+    "scanFood": "اسکن غذا",
+    "searchFood": "ثبت غذا",
+    "logWater": "ثبت آب",
+    "logWaterInBackground": "ثبت آب بدون باز کردن برنامه",
+    "fasting": "روزه‌داری",
+    "waterLogged": "آب ثبت شد",
+    "waterFailed": "ثبت آب ممکن نشد"
+  },
+  "waterLog": {
+    "title": "نوشیدنی‌ها",
+    "history": "سابقه",
+    "open": "سابقهٔ نوشیدنی‌ها",
+    "drink": "نوشیدنی",
+    "linkedDrink": "مرتبط با یک ثبت غذا",
+    "noWaterCredit": "بدون محاسبهٔ آب",
+    "deleteTitle": "حذف نوشیدنی",
+    "deleteMessage": "این نوشیدنی حذف شود؟",
+    "deleteLinkedMessage": "این نوشیدنی حذف شود؟ ثبت مربوط به آن در دفتر غذا هم حذف می‌شود.",
+    "deleteDrink": "حذف {{name}} در ساعت {{time}}",
+    "deleteFailed": "حذف این نوشیدنی ممکن نشد",
+    "loading": "در حال بارگذاری نوشیدنی‌ها...",
+    "loadFailed": "بارگذاری نوشیدنی‌ها ممکن نشد",
+    "loadFailedSubtitle": "اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "emptyTitle": "هنوز نوشیدنی‌ای ثبت نشده است",
+    "emptySubtitle": "نوشیدنی‌هایی که با دکمه‌های ثبت آب، الگوی نوشیدنی، ساعت یا برنامهٔ همگام‌شده ثبت می‌کنید، اینجا نمایش داده می‌شوند."
   }
 }

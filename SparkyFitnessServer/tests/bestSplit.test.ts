@@ -1,9 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
+  aboveSpeedCeiling,
   bestSplitSeconds,
   samplesFromDistanceSeries,
   samplesFromGpsPoints,
 } from '../utils/bestSplit.js';
+
+describe('aboveSpeedCeiling', () => {
+  it('allows a speed up to the ceiling and refuses one above it', () => {
+    expect(aboveSpeedCeiling(3000, 250, 12)).toBe(false);
+    expect(aboveSpeedCeiling(5000, 2, 12)).toBe(true);
+    expect(aboveSpeedCeiling(5000, 2, Infinity)).toBe(false);
+  });
+
+  it('counts a speed that cannot be worked out as too fast', () => {
+    expect(aboveSpeedCeiling(1000, 0, 12)).toBe(true);
+    expect(aboveSpeedCeiling(0, 0, 12)).toBe(true);
+  });
+});
 
 describe('bestSplitSeconds', () => {
   it('finds the fastest stretch, not the average', () => {
@@ -42,6 +56,27 @@ describe('bestSplitSeconds', () => {
       { seconds: 1200, meters: 2000 },
     ];
     expect(bestSplitSeconds(samples, 1000)).toBe(300);
+  });
+
+  it('is null when the fastest stretch is faster than the speed ceiling', () => {
+    // The distance jumps 1 km in one second: a recording glitch, not a run.
+    const samples = [
+      { seconds: 0, meters: 0 },
+      { seconds: 300, meters: 1000 },
+      { seconds: 600, meters: 2000 },
+      { seconds: 601, meters: 3000 },
+      { seconds: 900, meters: 4000 },
+    ];
+    expect(bestSplitSeconds(samples, 1000)).toBe(1);
+    expect(bestSplitSeconds(samples, 1000, 12)).toBeNull();
+  });
+
+  it('keeps a stretch exactly at the speed ceiling', () => {
+    const samples = [
+      { seconds: 0, meters: 0 },
+      { seconds: 250, meters: 3000 },
+    ];
+    expect(bestSplitSeconds(samples, 1500, 12)).toBe(125);
   });
 });
 

@@ -33,7 +33,7 @@ import {
   FoodNutritionHeader,
   FoodNutrientBreakdown,
 } from '../components/FoodNutritionSummary';
-import { fetchDailyGoals } from '../services/api/goalsApi';
+import { fetchGoalsRange } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import {
   buildMealPlanFoodAssignment,
@@ -54,7 +54,7 @@ import {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
-import { goalsQueryKey } from '../hooks/queryKeys';
+import { goalsRangeQueryKey } from '../hooks/queryKeys';
 import {
   useFavorites,
   useMealTypes,
@@ -1496,9 +1496,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     }
   };
 
+  // The day's goal as the Diary shows it (adaptive, goal mode and calorie
+  // cycling applied), so "% of goal" matches the Diary's numbers.
   const { data: goals, isLoading: isGoalsLoading } = useQuery({
-    queryKey: goalsQueryKey(selectedDate),
-    queryFn: () => fetchDailyGoals(selectedDate),
+    queryKey: goalsRangeQueryKey(selectedDate, selectedDate, true),
+    queryFn: () => fetchGoalsRange(selectedDate, selectedDate, true),
+    select: (range) => range[selectedDate],
     staleTime: 1000 * 60 * 5,
   });
 
