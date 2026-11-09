@@ -359,22 +359,38 @@ async function updateSparkyChatHistoryEntry(
   updateData: SparkyChatHistoryMutator
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
+    const entry = await chatRepository.getChatHistoryEntryById(
       id,
       authenticatedUserId
     );
-    if (!entryOwnerId) {
+    if (!entry) {
       throw new Error('Chat history entry not found.');
     }
-    if (entryOwnerId !== authenticatedUserId) {
+    if (entry.user_id !== authenticatedUserId) {
       throw new Error(
         'Forbidden: You do not have permission to update this chat history entry.'
       );
     }
+    // Metadata sent here replaces what is stored, so the account the message
+    // was saved in is carried over from the stored entry.
+    const storedAccount = (
+      entry.metadata as { account_user_id?: unknown } | null
+    )?.account_user_id;
+    const sent = updateData.metadata;
     const updatedEntry = await chatRepository.updateChatHistoryEntry(
       id,
       authenticatedUserId,
-      updateData
+      sent === undefined || sent === null
+        ? updateData
+        : {
+            ...updateData,
+            metadata: withAccountMarker(
+              sent,
+              typeof storedAccount === 'string'
+                ? { account_user_id: storedAccount }
+                : undefined
+            ),
+          }
     );
     if (!updatedEntry) {
       throw new Error(
@@ -458,20 +474,10 @@ async function saveSparkyChatHistory(
   try {
     // Ensure the history is saved for the authenticated user
     historyData.user_id = authenticatedUserId;
-    // The account it was saved in comes from the request, never the client.
-    const sent = historyData.metadata;
-    const sentObject =
-      !!sent && typeof sent === 'object' && !Array.isArray(sent);
-    const metadata: Record<string, unknown> = sentObject
-      ? { ...(sent as Record<string, unknown>) }
-      : {};
-    delete metadata.account_user_id;
-    Object.assign(
-      metadata,
+    historyData.metadata = withAccountMarker(
+      historyData.metadata,
       accountHistoryMetadata(accountUserId, authenticatedUserId)
     );
-    historyData.metadata =
-      sentObject || Object.keys(metadata).length > 0 ? metadata : sent;
     await chatRepository.saveChatHistory(historyData);
     return { message: 'Chat history saved successfully.' };
   } catch (error) {
@@ -522,6 +528,21 @@ function accountHistoryMetadata(
   return accountUserId === authenticatedUserId
     ? undefined
     : { account_user_id: accountUserId };
+}
+
+// The account a message was saved in comes from the server, never the client:
+// any account_user_id sent in its metadata is replaced by `marker`.
+function withAccountMarker(
+  sent: unknown,
+  marker: { account_user_id: string } | undefined
+): unknown {
+  const sentObject = !!sent && typeof sent === 'object' && !Array.isArray(sent);
+  const metadata: Record<string, unknown> = sentObject
+    ? { ...(sent as Record<string, unknown>) }
+    : {};
+  delete metadata.account_user_id;
+  Object.assign(metadata, marker);
+  return sentObject || Object.keys(metadata).length > 0 ? metadata : sent;
 }
 
 // The agent loop's stop conditions, shared by the streaming and non-streaming

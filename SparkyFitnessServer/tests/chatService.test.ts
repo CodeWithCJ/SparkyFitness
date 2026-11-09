@@ -338,8 +338,10 @@ describe('chatService', () => {
       expect(result).toEqual(mockEntry);
     });
     it('should update chat history entry', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getChatHistoryEntryOwnerId.mockResolvedValue(mockUserId);
+      vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
+        id: historyId,
+        user_id: mockUserId,
+      });
       const updateData = { message: 'hello' };
       const updatedEntry = { id: historyId, ...updateData };
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
@@ -350,6 +352,43 @@ describe('chatService', () => {
         updateData
       );
       expect(result).toEqual(updatedEntry);
+      expect(chatRepository.updateChatHistoryEntry).toHaveBeenCalledWith(
+        historyId,
+        mockUserId,
+        updateData
+      );
+    });
+    it('keeps the account a message was saved in when its metadata is updated', async () => {
+      const sent = { source: 'web', account_user_id: 'someone-else' };
+      vi.mocked(chatRepository.updateChatHistoryEntry).mockResolvedValue({
+        id: historyId,
+      });
+      vi.mocked(chatRepository.getChatHistoryEntryById)
+        .mockResolvedValueOnce({
+          id: historyId,
+          user_id: mockUserId,
+          metadata: { account_user_id: mockTargetUserId },
+        })
+        .mockResolvedValueOnce({
+          id: historyId,
+          user_id: mockUserId,
+          metadata: null,
+        });
+
+      await chatService.updateSparkyChatHistoryEntry(mockUserId, historyId, {
+        metadata: sent,
+      });
+      await chatService.updateSparkyChatHistoryEntry(mockUserId, historyId, {
+        metadata: sent,
+      });
+
+      const updated = vi
+        .mocked(chatRepository.updateChatHistoryEntry)
+        .mock.calls.map(([, , data]) => data.metadata);
+      expect(updated).toEqual([
+        { source: 'web', account_user_id: mockTargetUserId },
+        { source: 'web' },
+      ]);
     });
     it('should delete chat history entry', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
