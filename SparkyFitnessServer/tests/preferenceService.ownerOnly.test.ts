@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import preferenceRepository from '../models/preferenceRepository.js';
-import { getUserPreferences } from '../services/preferenceService.js';
+import {
+  getUserPreferences,
+  updateFeatureChoices,
+} from '../services/preferenceService.js';
 
 vi.mock('../models/preferenceRepository.js');
 
@@ -36,5 +39,39 @@ describe('getUserPreferences heart rate zone fields', () => {
     expect(result).not.toHaveProperty('hr_zone_method');
     expect(result).not.toHaveProperty('hr_zone_custom_floors');
     expect(result.time_format).toBe('h:mm A');
+  });
+});
+
+describe('getUserPreferences feature choices', () => {
+  it('shows the owner’s choices to someone acting on their behalf', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...stored,
+      feature_choices: { labResults: false },
+    } as never);
+    const result = await getUserPreferences(DELEGATE, OWNER);
+    expect(result.feature_choices).toEqual({ labResults: false });
+  });
+
+  it('defaults to no choices when there is no preferences row', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
+      undefined as never
+    );
+    const result = await getUserPreferences(OWNER, OWNER);
+    expect(result.feature_choices).toEqual({});
+  });
+});
+
+describe('updateFeatureChoices', () => {
+  it('passes the patch to the repository and returns its result', async () => {
+    vi.mocked(preferenceRepository.mergeFeatureChoices).mockResolvedValue({
+      status: 'ok',
+      choices: { labResults: false },
+    });
+    const result = await updateFeatureChoices(OWNER, { labResults: false });
+    expect(preferenceRepository.mergeFeatureChoices).toHaveBeenCalledWith(
+      OWNER,
+      { labResults: false }
+    );
+    expect(result).toEqual({ status: 'ok', choices: { labResults: false } });
   });
 });

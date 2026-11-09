@@ -1,7 +1,10 @@
 import { getClient } from '../db/poolManager.js';
-import type {
-  UserPreferencesInitializer,
-  UserPreferencesMutator,
+import {
+  MAX_FEATURE_CHOICES,
+  type FeatureChoices,
+  type FeatureChoicesPatch,
+  type UserPreferencesInitializer,
+  type UserPreferencesMutator,
 } from '@workspace/shared';
 
 export interface OpenFoodFactsContributionPreferences {
@@ -514,6 +517,52 @@ async function upsertUserPreferences(
     client.release();
   }
 }
+export type FeatureChoicesMergeResult =
+  | { status: 'ok'; choices: FeatureChoices }
+  | { status: 'tooMany' }
+  | { status: 'noRow' };
+
+/**
+ * Merges a feature-switch patch into `feature_choices` in one statement: keys
+ * set to null are removed (back to their default), the others are set, and
+ * keys not in the patch are kept, so two devices changing different features
+ * never overwrite each other. A result above MAX_FEATURE_CHOICES keys is
+ * refused, not just a patch that size, so repeated patches cannot grow the
+ * stored object without limit.
+ */
+async function mergeFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE user_preferences
+          SET feature_choices = jsonb_strip_nulls(feature_choices || $2::jsonb),
+              updated_at = now()
+        WHERE user_id = $1
+          AND (SELECT count(*)
+                 FROM jsonb_object_keys(
+                   jsonb_strip_nulls(feature_choices || $2::jsonb)
+                 )) <= $3
+        RETURNING feature_choices`,
+      [userId, JSON.stringify(patch), MAX_FEATURE_CHOICES]
+    );
+    const row = result.rows[0] as
+      { feature_choices: FeatureChoices } | undefined;
+    if (row) {
+      return { status: 'ok', choices: row.feature_choices };
+    }
+    const existing = await client.query(
+      'SELECT 1 FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    return existing.rowCount ? { status: 'tooMany' } : { status: 'noRow' };
+  } finally {
+    client.release();
+  }
+}
+
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
@@ -521,6 +570,7 @@ export { bootstrapUserTimezoneIfUnset };
 export { upsertUserPreferences };
 export { getOpenFoodFactsContributionPreferences };
 export { setOpenFoodFactsContributionPreferences };
+export { mergeFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
@@ -529,4 +579,5 @@ export default {
   upsertUserPreferences,
   getOpenFoodFactsContributionPreferences,
   setOpenFoodFactsContributionPreferences,
+  mergeFeatureChoices,
 };

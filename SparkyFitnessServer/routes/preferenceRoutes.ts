@@ -1,6 +1,12 @@
 import express, { type RequestHandler } from 'express';
-import { voiceInputPreferencesSchema } from '@workspace/shared';
+import {
+  featureChoicesPatchSchema,
+  featureStorage,
+  isFeatureKey,
+  voiceInputPreferencesSchema,
+} from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { createRequireSelfActor } from '../middleware/requireSelfMiddleware.js';
 import preferenceService from '../services/preferenceService.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
@@ -64,6 +70,94 @@ const validateVoicePreferences: RequestHandler = (req, res, next) => {
   }
   next();
 };
+
+// Like actionTagRoutes and plateInventoryRoutes: someone acting for the owner
+// gets a message about this, not the account-linking default.
+const requireOwnFeatures = createRequireSelfActor({
+  action: 'a feature switch change',
+  message:
+    'Forbidden: features can only be turned on or off on your own account.',
+});
+
+/**
+ * @swagger
+ * /user-preferences/features:
+ *   patch:
+ *     summary: Turn optional features on or off
+ *     description: >-
+ *       Merges the given choices into feature_choices. true or false sets a
+ *       feature, null resets it to its default, and features not sent keep
+ *       their value. Owner only. Cycle tracking has its own setting
+ *       (PUT /v2/cycle/settings) and is refused here.
+ *     tags: [Goals & Personalization]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             minProperties: 1
+ *             maxProperties: 64
+ *             additionalProperties:
+ *               type: boolean
+ *               nullable: true
+ *     responses:
+ *       200:
+ *         description: The stored choices after the change.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature_choices:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: boolean
+ *       400:
+ *         description: Invalid body, a feature with its own setting, or more than 64 stored choices.
+ *       403:
+ *         description: Acting on someone else's behalf.
+ */
+router.patch(
+  '/features',
+  authenticate,
+  requireOwnFeatures,
+  async (req, res, next) => {
+    const parsed = featureChoicesPatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid feature choices.' });
+    }
+    const ownSetting = Object.keys(parsed.data).filter(
+      (key) => isFeatureKey(key) && featureStorage(key) !== 'choices'
+    );
+    if (ownSetting.length > 0) {
+      return res.status(400).json({
+        error: 'These features have their own setting.',
+        keys: ownSetting,
+      });
+    }
+    try {
+      const result = await preferenceService.updateFeatureChoices(
+        req.userId,
+        parsed.data
+      );
+      if (result.status === 'tooMany') {
+        return res.status(400).json({ error: 'Too many feature choices.' });
+      }
+      if (result.status === 'noRow') {
+        // Every account gets a row when its profile is created; only a DELETE
+        // of /user-preferences removes it. Not a 404, so apps can read any 404
+        // here as "this server predates the route".
+        throw new Error('User preferences row missing.');
+      }
+      res.status(200).json({ feature_choices: result.choices });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // Endpoint to bootstrap timezone from the device only if unset
 router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {

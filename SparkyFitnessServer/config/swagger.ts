@@ -1550,6 +1550,13 @@ const options = {
               description:
                 'When true, food search defaults to the aggregated "All Providers" mode rather than a single provider. Held separately from default_food_data_provider_id, which is a uuid and cannot store the aggregated sentinel, so the single-provider choice survives turning this off. Ignored while fewer than two food providers are active.',
             },
+            feature_choices: {
+              type: 'object',
+              additionalProperties: { type: 'boolean' },
+              readOnly: true,
+              description:
+                'Optional features the person turned on or off explicitly; a feature not listed is at its default. Written only by PATCH /user-preferences/features, never by PUT or POST.',
+            },
           },
         },
         OnboardingStatus: {

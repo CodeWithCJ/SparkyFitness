@@ -246,7 +246,7 @@ app.use(
       (_err, allowed) => {
         callback(null, {
           origin: allowed,
-          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
           allowedHeaders: CORS_ALLOWED_HEADERS,
           exposedHeaders: ['mcp-session-id', 'www-authenticate'],
           credentials: true,

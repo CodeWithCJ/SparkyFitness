@@ -440,3 +440,82 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     );
   });
 });
+
+describe('preferenceRepository mergeFeatureChoices', () => {
+  let mockClient: {
+    query: ReturnType<
+      typeof vi.fn<
+        (
+          sql: string,
+          params: unknown[]
+        ) => Promise<{ rows: Record<string, unknown>[]; rowCount: number }>
+      >
+    >;
+    release: ReturnType<typeof vi.fn>;
+  };
+  beforeEach(() => {
+    mockClient = { query: vi.fn(), release: vi.fn() };
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
+  });
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('merges in one statement, capped at 64 stored keys', async () => {
+    mockClient.query.mockResolvedValue({
+      rows: [{ feature_choices: { labResults: false } }],
+      rowCount: 1,
+    });
+    const patch = { labResults: false, medications: null };
+    const result = await preferenceRepository.mergeFeatureChoices(
+      'user-1',
+      patch
+    );
+    expect(result).toEqual({ status: 'ok', choices: { labResults: false } });
+    expect(mockClient.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'SET feature_choices = jsonb_strip_nulls(feature_choices || $2::jsonb)'
+    );
+    expect(sql).toMatch(
+      /jsonb_object_keys\(\s*jsonb_strip_nulls\(feature_choices \|\| \$2::jsonb\)\s*\)\)\s*<= \$3/
+    );
+    expect(params).toEqual(['user-1', JSON.stringify(patch), 64]);
+    expect(getClient).toHaveBeenCalledWith('user-1');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports tooMany when the row exists but the cap refused the merge', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }], rowCount: 1 });
+    const result = await preferenceRepository.mergeFeatureChoices('user-1', {
+      labResults: false,
+    });
+    expect(result).toEqual({ status: 'tooMany' });
+    expect(mockClient.query.mock.calls[1]).toEqual([
+      'SELECT 1 FROM user_preferences WHERE user_id = $1',
+      ['user-1'],
+    ]);
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports noRow when the user has no preferences row', async () => {
+    mockClient.query.mockResolvedValue({ rows: [], rowCount: 0 });
+    const result = await preferenceRepository.mergeFeatureChoices('user-1', {
+      labResults: false,
+    });
+    expect(result).toEqual({ status: 'noRow' });
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the client when the query fails', async () => {
+    mockClient.query.mockRejectedValue(new Error('connection lost'));
+    await expect(
+      preferenceRepository.mergeFeatureChoices('user-1', { labResults: false })
+    ).rejects.toThrow('connection lost');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+});

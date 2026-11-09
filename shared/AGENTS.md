@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-09_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -22,6 +22,7 @@ _Last updated: 2026-11-08_
 
 - Barcode search: `schemas/api/FoodLookup.api.zod.ts` and `BarcodeLookup.api.zod.ts` define normalized foods and source comparison results. `utils/barcodeNutrition.ts` supplies one comparison basis for web and mobile.
 
+- `src/features/optionalFeatures.ts` - optional features (#3487), the one registry of features a person can turn on or off: `OPTIONAL_FEATURES` (group, default, storage: `choices` = `user_preferences.feature_choices`, `cycleSettings` = `cycle_settings.enabled`), `isFeatureEnabled` / `isFeatureExplicitlyOff` over `FeatureSources`, `filterByFeature` for lists, `FEATURE_CUSTOM_CATEGORIES` (custom measurement categories a feature owns), and the strict `featureChoicesSchema` / `featureChoicesPatchSchema` (pattern-checked keys, so a newer app's keys are kept; at most `MAX_FEATURE_CHOICES`). Ids only; labels live in each app. Tested in `SparkyFitnessServer/tests/optionalFeatures.test.ts`.
 - `src/schemas/database/` - one Zod file per table (`Foods.zod.ts`, `Exercises.zod.ts`, ~115 files). Agent shortcut: to learn a table shape, read the matching file here instead of the SQL dump. Remote MCP OAuth storage is described by `Oauth*.zod.ts`; `GlobalSettings.zod.ts` includes the feature switch and administrator-managed redirect URI allowlist.
 - `src/schemas/api/` - API request/response contracts (`*api.zod.ts`). `VoiceTranscription.api.zod.ts` defines multipart limits/MIME types, transcription responses, voice preference patches, and compatible public service options shared by web/mobile/server.
 - `src/constants/` - shared constants and enums (exercises, nutrients, meal types, fasting protocols, medication schedules, cycle phases, etc.).

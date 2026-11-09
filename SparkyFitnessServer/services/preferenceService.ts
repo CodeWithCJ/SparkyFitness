@@ -1,4 +1,6 @@
-import preferenceRepository from '../models/preferenceRepository.js';
+import preferenceRepository, {
+  type FeatureChoicesMergeResult,
+} from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import {
   isValidTimeZone,
@@ -16,6 +18,7 @@ import {
   DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
   CALORIE_CYCLING_DEFAULT_OFFSETS,
+  type FeatureChoicesPatch,
   type UserPreferencesMutator,
   userPreferencesMutatorSchema,
 } from '@workspace/shared';
@@ -295,6 +298,7 @@ function getDefaultPreferences() {
     goal_mode_weekly_change_kg: 0,
     calorie_cycling_mode: 'off',
     calorie_cycling_offsets: [...CALORIE_CYCLING_DEFAULT_OFFSETS],
+    feature_choices: {},
   };
 }
 async function updateUserPreferences(
@@ -354,6 +358,9 @@ async function deleteUserPreferences(
     throw error;
   }
 }
+// feature_choices is deliberately not here: someone acting for the owner sees
+// the account as the owner set it up, features turned off included (#3487).
+// Writes stay owner-only through PATCH /features.
 const OWNER_ONLY_PREFERENCE_FIELDS = [
   'max_heart_rate',
   'resting_heart_rate',
@@ -454,15 +461,29 @@ async function upsertUserPreferences(
     throw error;
   }
 }
+/** Applies a feature-switch patch for the owner; see `mergeFeatureChoices`. */
+async function updateFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  try {
+    return await preferenceRepository.mergeFeatureChoices(userId, patch);
+  } catch (error) {
+    log('error', `Error updating feature choices for user ${userId}:`, error);
+    throw error;
+  }
+}
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
 export { bootstrapUserTimezone };
 export { upsertUserPreferences };
+export { updateFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
   bootstrapUserTimezone,
   upsertUserPreferences,
+  updateFeatureChoices,
 };
