@@ -199,6 +199,46 @@ describe('chatRepository.getChatHistoryByUserId', () => {
   });
 });
 
+describe('chatRepository chat history metadata', () => {
+  let mockClient: { query: Mock; release: Mock };
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [{ id: 'h1' }] }),
+      release: vi.fn(),
+    };
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient as unknown as PoolClient);
+  });
+
+  // A string would otherwise be parsed into an object carrying its own
+  // account_user_id, past the check in chatService.
+  it('stores string metadata as a JSON string, not an object', async () => {
+    const sent = '{"account_user_id":"someone-else"}';
+
+    await chatRepository.saveChatHistory({
+      user_id: 'user-1',
+      content: 'hi',
+      messageType: 'user',
+      metadata: sent,
+    });
+    await chatRepository.updateChatHistoryEntry('h1', 'user-1', {
+      metadata: sent,
+    });
+
+    expect(mockClient.query.mock.calls[0][1][3]).toBe(JSON.stringify(sent));
+    expect(mockClient.query.mock.calls[1][1][2]).toBe(JSON.stringify(sent));
+  });
+
+  it('leaves the stored metadata alone when an update sends none', async () => {
+    await chatRepository.updateChatHistoryEntry('h1', 'user-1', {
+      content: 'edited',
+    });
+
+    expect(mockClient.query.mock.calls[0][1][2]).toBeNull();
+  });
+});
+
 describe('chatRepository.getActiveVisionAiServiceSetting', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;

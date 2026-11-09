@@ -469,7 +469,7 @@ async function updateChatHistoryEntry(
       [
         updateData.content,
         updateData.message_type,
-        updateData.metadata,
+        metadataParam(updateData.metadata),
         updateData.session_id,
         updateData.message,
         updateData.response,
@@ -509,6 +509,13 @@ async function clearAllChatHistory(
     client.release();
   }
 }
+// Bound JSON-encoded, so PostgreSQL stores a string as a JSON string instead of
+// parsing it into an object that could carry its own account_user_id.
+function metadataParam(metadata: unknown): string | null {
+  return metadata === undefined || metadata === null
+    ? null
+    : JSON.stringify(metadata);
+}
 async function saveChatHistory(
   historyData: Partial<SparkyChatHistory> & {
     messageType?: 'user' | 'assistant';
@@ -523,7 +530,7 @@ async function saveChatHistory(
         historyData.user_id,
         historyData.content,
         historyData.messageType,
-        historyData.metadata,
+        metadataParam(historyData.metadata),
         historyData.parts ? JSON.stringify(historyData.parts) : null,
       ]
     );
