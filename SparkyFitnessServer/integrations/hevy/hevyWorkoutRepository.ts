@@ -11,6 +11,10 @@ import {
   reapplyCalorieLinkWithClient,
 } from '../../services/exerciseCalorieLinkService.js';
 import type { HevyExercise, HevyWorkout } from './hevyTypes.js';
+import {
+  matchHevyWorkoutEntries,
+  type StoredHevyExerciseIdentity,
+} from './hevyWorkoutIdentity.js';
 
 export interface HevyWorkoutEntry {
   data: {
@@ -48,14 +52,9 @@ export interface HevyWorkoutImport {
   entries: HevyWorkoutEntry[];
 }
 
-interface ExistingEntry {
-  id: string;
-  exercise_id: string | null;
-  template_id: string | null;
-  exercise_title: string | null;
+interface ExistingEntry extends StoredHevyExerciseIdentity {
   duration_minutes: number;
   manual_fields: string[];
-  source_id: string | null;
   calorie_link_id: string | null;
   calorie_link_resolution: CalorieLinkResolution | null;
   calories_applied: number | null;
@@ -161,21 +160,18 @@ export async function syncHevyWorkout(
       `SELECT e.id, e.exercise_id, e.source_id, e.calorie_link_id,
               e.calorie_link_resolution, e.calories_applied::float8 AS calories_applied,
               e.duration_minutes::float8 AS duration_minutes, e.manual_fields,
-              COALESCE((
-                SELECT d.detail_data #>> '{exercise,title}'
-                FROM exercise_entry_activity_details d
-                WHERE d.exercise_entry_id = e.id AND d.provider_name = 'Hevy'
-                  AND d.detail_type = 'full_activity_data'
-                ORDER BY d.created_at DESC, d.id LIMIT 1
-              ), e.exercise_name) AS exercise_title,
-              COALESCE((
-                SELECT d.detail_data #>> '{exercise,exercise_template_id}'
-                FROM exercise_entry_activity_details d
-                WHERE d.exercise_entry_id = e.id AND d.provider_name = 'Hevy'
-                  AND d.detail_type = 'full_activity_data'
-                ORDER BY d.created_at DESC, d.id LIMIT 1
-              ), CASE WHEN x.source = 'Hevy' THEN x.source_id END) AS template_id
+              d.detail_data -> 'exercise' AS provider_exercise,
+              COALESCE(d.detail_data #>> '{exercise,title}', e.exercise_name) AS exercise_title,
+              COALESCE(NULLIF(d.detail_data #>> '{exercise,exercise_template_id}', ''),
+                d.detail_data #>> '{identity,exercise_template_id}',
+                CASE WHEN x.source = 'Hevy' THEN x.source_id END) AS template_id
        FROM exercise_entries e LEFT JOIN exercises x ON x.id = e.exercise_id
+       LEFT JOIN LATERAL (
+         SELECT detail_data FROM exercise_entry_activity_details
+         WHERE exercise_entry_id = e.id AND provider_name = 'Hevy'
+           AND detail_type = 'full_activity_data'
+         ORDER BY created_at DESC, id LIMIT 1
+       ) d ON TRUE
        WHERE e.user_id = $1 AND e.id = ANY($2::uuid[])
        ORDER BY e.sort_order ASC NULLS LAST, e.created_at, e.id
        FOR UPDATE OF e`,
@@ -191,38 +187,14 @@ export async function syncHevyWorkout(
     }
 
     const retained: string[] = [];
-    const unmatched = [...linked.rows];
-    const sameExercise = (
-      item: HevyWorkoutEntry,
-      row: ExistingEntry
-    ): boolean => {
-      const templateId = item.detail.exercise.exercise_template_id;
-      if (templateId && row.template_id) return templateId === row.template_id;
-      if (item.data.exercise_id === row.exercise_id) return true;
-      // Deleting a library item keeps the diary snapshot with exercise_id NULL.
-      // A template-less provider entry still has its own stored title, and
-      // repeated occurrences are reserved/matched in their previous order.
-      return (
-        !templateId &&
-        !row.template_id &&
-        row.exercise_id === null &&
-        item.detail.exercise.title === row.exercise_title
-      );
-    };
-    // Reserve exact occurrence matches first. An earlier fallback must not
-    // consume a surviving occurrence that a later incoming entry identifies.
-    const matches = entries.map((item) => {
-      const index = unmatched.findIndex(
-        (row) =>
-          row.source_id === item.data.source_id && sameExercise(item, row)
-      );
-      return index >= 0 ? unmatched.splice(index, 1)[0] : undefined;
-    });
-    for (const [index, item] of entries.entries()) {
-      if (matches[index]) continue;
-      const candidate = unmatched.findIndex((row) => sameExercise(item, row));
-      if (candidate >= 0) matches[index] = unmatched.splice(candidate, 1)[0];
-    }
+    const matches = matchHevyWorkoutEntries(
+      entries.map((item) => ({
+        exercise_id: item.data.exercise_id,
+        source_id: item.data.source_id,
+        exercise: item.detail.exercise,
+      })),
+      linked.rows
+    );
     const isUntimed = (item: HevyWorkoutEntry) =>
       !item.detail.exercise.sets?.some(
         (set) => (set.duration_seconds ?? 0) > 0
@@ -234,12 +206,20 @@ export async function syncHevyWorkout(
     let durationOwner = matches.findIndex(
       (row, index) =>
         row?.manual_fields?.includes('duration_minutes') &&
+        row.duration_minutes > 0 &&
         isUntimed(entries[index]!)
     );
     if (durationOwner < 0) {
       durationOwner = matches.findIndex(
         (row, index) =>
           (row?.duration_minutes ?? 0) > 0 && isUntimed(entries[index]!)
+      );
+    }
+    if (durationOwner < 0) {
+      durationOwner = matches.findIndex(
+        (row, index) =>
+          row?.manual_fields?.includes('duration_minutes') &&
+          isUntimed(entries[index]!)
       );
     }
     if (durationOwner < 0) {
@@ -268,13 +248,16 @@ export async function syncHevyWorkout(
       }
       // Re-syncs must still repair the muscle snapshots populated by Hevy's
       // template import, including when the library exercise itself is unchanged.
-      const snapshot = await client.query<Record<string, unknown>>(
-        `SELECT name AS exercise_name, calories_per_hour, category, force, level,
+      const preserveSnapshot = match?.exercise_id === null;
+      const snapshot = preserveSnapshot
+        ? { rows: [] }
+        : await client.query<Record<string, unknown>>(
+            `SELECT name AS exercise_name, calories_per_hour, category, force, level,
                 mechanic, equipment, primary_muscles, secondary_muscles,
                 instructions, images, modality
          FROM exercises WHERE id = $1`,
-        [item.data.exercise_id]
-      );
+            [item.data.exercise_id]
+          );
       const { entry } =
         await exerciseEntryRepository._createExerciseEntryWithClient(
           client,
@@ -282,6 +265,7 @@ export async function syncHevyWorkout(
           {
             ...snapshot.rows[0],
             ...item.data,
+            exercise_id: preserveSnapshot ? null : item.data.exercise_id,
             source_id: sourceId,
             // A correction stays with its exercise; reordering must not also
             // allocate the full workout duration to the new first exercise.
@@ -320,7 +304,17 @@ export async function syncHevyWorkout(
         exercise_entry_id: id,
         provider_name: 'Hevy',
         detail_type: 'full_activity_data',
-        detail_data: item.detail,
+        detail_data: {
+          ...item.detail,
+          // Keep proven identity separately from the unchanged provider payload
+          // when an older replay omits its template ID.
+          identity: {
+            exercise_template_id:
+              item.detail.exercise.exercise_template_id ||
+              match?.template_id ||
+              null,
+          },
+        },
         created_by_user_id: actingUserId,
         updated_by_user_id: actingUserId,
       });

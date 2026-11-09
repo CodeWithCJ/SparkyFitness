@@ -19,6 +19,7 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import { processHealthData } from '../services/measurementService.js';
+import { updateExerciseEntry } from '../services/exerciseService.js';
 import * as calorieLinkService from '../services/exerciseCalorieLinkService.js';
 import {
   setCalorieLink,
@@ -362,6 +363,238 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     } finally {
       for (const client of occupied) client.release();
     }
+  });
+
+  it('keeps the surviving repeated exercise when Hevy removes its distinguishable first occurrence', async () => {
+    const repeated = workout();
+    const first = repeated.exercises![0]!;
+    const second = {
+      ...first,
+      index: 1,
+      sets: first.sets!.map((set) => ({ ...set, reps: 12 })),
+    };
+    repeated.exercises = [first, second];
+    await sync([repeated]);
+    const original = await entries();
+    const survivor = original[1]!;
+    await db.query(
+      `UPDATE exercise_entries SET notes = 'Keep survivor', calories_burned = 225,
+      manual_fields = ARRAY['notes', 'calories_burned'] WHERE id = $1`,
+      [survivor.id]
+    );
+    await sync([{ ...repeated, exercises: [{ ...second, index: 0 }] }]);
+    expect(await entries()).toEqual([
+      expect.objectContaining({
+        id: survivor.id,
+        notes: 'Keep survivor',
+        calories_burned: 225,
+      }),
+    ]);
+  });
+
+  it('rolls back an indistinguishable repeated-exercise removal instead of transferring corrections', async () => {
+    const repeated = workout();
+    const first = repeated.exercises![0]!;
+    repeated.exercises = [first, { ...first, index: 1 }];
+    await sync([repeated]);
+    const original = await entries();
+    await db.query(
+      'UPDATE exercise_entries SET notes = $2, manual_fields = $3::text[] WHERE id = $1',
+      [original[1]!.id, 'Do not transfer', ['notes']]
+    );
+    const before = await entries();
+    await expect(sync([{ ...repeated, exercises: [first] }])).rejects.toThrow(
+      'Failed to import'
+    );
+    expect(await entries()).toEqual(before);
+  });
+
+  it.each([false, true])(
+    'retains deleted-library template identities during an older replay (same title: %s)',
+    async (sameTitle) => {
+      const imported = workout();
+      if (sameTitle)
+        imported.exercises = imported.exercises!.map((exercise) => ({
+          ...exercise,
+          title: 'Synthetic shared title',
+        }));
+      await sync([imported]);
+      const original = await entries();
+      for (const [index, row] of original.entries()) {
+        await db.query(
+          'UPDATE exercise_entries SET notes = $2, manual_fields = $3::text[] WHERE id = $1',
+          [row.id, `Preserved ${index}`, ['notes']]
+        );
+      }
+      await db.query('DELETE FROM exercises WHERE user_id = $1', [userId]);
+      const older = {
+        ...imported,
+        exercises: [...imported.exercises!]
+          .reverse()
+          .map((exercise, index) => ({
+            ...exercise,
+            index,
+            exercise_template_id: null,
+          })),
+      };
+      await sync([older]);
+      await sync([older]);
+      await sync([imported]);
+      const saved = await entries();
+      expect(new Set(saved.map((row) => row.id))).toEqual(
+        new Set(original.map((row) => row.id))
+      );
+      for (const [index, row] of original.entries())
+        expect(saved.find((entry) => entry.id === row.id)?.notes).toBe(
+          `Preserved ${index}`
+        );
+    }
+  );
+
+  it('does not merge same-title templates when an older replay cannot distinguish them', async () => {
+    const imported = workout();
+    const first = {
+      ...imported.exercises![0]!,
+      title: 'Synthetic shared title',
+    };
+    imported.exercises = [
+      first,
+      { ...first, index: 1, exercise_template_id: 'synthetic-other-template' },
+    ];
+    await sync([imported]);
+    const before = await entries();
+    await db.query('DELETE FROM exercises WHERE user_id = $1', [userId]);
+    const older = {
+      ...imported,
+      exercises: imported.exercises.map((exercise) => ({
+        ...exercise,
+        exercise_template_id: null,
+      })),
+    };
+    await expect(sync([older])).rejects.toThrow('Failed to import');
+    expect(await entries()).toEqual(before);
+  });
+
+  it.each([null, 55])(
+    'retains untimed allocation when a timed exercise moves first (watch: %s)',
+    async (watchMinutes) => {
+      const imported = workout();
+      imported.exercises![1]!.sets = imported.exercises![1]!.sets!.map(
+        (set) => ({ ...set, duration_seconds: 180 })
+      );
+      await sync([imported]);
+      const original = await entries();
+      const bench = original.find(
+        (row) => row.exercise_name === 'Synthetic bench press'
+      )!;
+      if (watchMinutes !== null)
+        await db.query(
+          'UPDATE exercise_entries SET duration_minutes = $2, watch_duration_minutes = $2 WHERE id = $1',
+          [bench.id, watchMinutes]
+        );
+      await sync([
+        {
+          ...imported,
+          exercises: [...imported.exercises!]
+            .reverse()
+            .map((exercise, index) => ({ ...exercise, index })),
+        },
+      ]);
+      const duration = await db.query<{ total: number }>(
+        'SELECT sum(duration_minutes)::float8 AS total FROM exercise_entries WHERE user_id = $1',
+        [userId]
+      );
+      expect(duration.rows[0]!.total).toBe((watchMinutes ?? 60) + 3);
+    }
+  );
+
+  it('keeps the original duration owner when a second exercise was corrected back to zero', async () => {
+    await sync([workout()]);
+    const rows = await entries();
+    const second = rows.find((row) => row.exercise_name === 'Synthetic row')!;
+    await updateExerciseEntry(userId, userId, second.id, {
+      duration_minutes: 10,
+    });
+    await updateExerciseEntry(userId, userId, second.id, {
+      duration_minutes: 0,
+    });
+    await sync([workout()]);
+    const duration = await db.query<{ total: number }>(
+      'SELECT sum(duration_minutes)::float8 AS total FROM exercise_entries WHERE user_id = $1',
+      [userId]
+    );
+    expect(duration.rows[0]!.total).toBe(60);
+  });
+
+  it('retains deleted-library snapshot metadata rather than applying replacement defaults', async () => {
+    const imported = workout();
+    imported.exercises = imported.exercises!.map((exercise) => ({
+      ...exercise,
+      exercise_template_id: null,
+    }));
+    await sync([imported]);
+    const original = await entries();
+    const bench = original.find(
+      (row) => row.exercise_name === 'Synthetic bench press'
+    )!;
+    await db.query(
+      `UPDATE exercise_entries SET equipment = '["Barbell"]', primary_muscles = '["Chest"]',
+      instructions = '["Preserved instruction"]', category = 'Strength' WHERE id = $1`,
+      [bench.id]
+    );
+    const readSnapshot = async () =>
+      (
+        await db.query(
+          'SELECT exercise_name, equipment, primary_muscles, instructions, category, modality FROM exercise_entries WHERE id = $1',
+          [bench.id]
+        )
+      ).rows[0];
+    const before = await readSnapshot();
+    await db.query(
+      "DELETE FROM exercises WHERE user_id = $1 AND name = 'Synthetic bench press'",
+      [userId]
+    );
+    await sync([imported]);
+    expect(await readSnapshot()).toEqual(before);
+  });
+
+  it('keeps locally edited sets while other Hevy exercise sets still update', async () => {
+    await sync([workout()]);
+    const original = await entries();
+    const bench = original.find(
+      (row) => row.exercise_name === 'Synthetic bench press'
+    )!;
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [{ set_number: 1, set_type: 'Working Set', reps: 9, weight: 55 }],
+    });
+    const changed = workout();
+    changed.exercises![1]!.sets![0]!.weight_kg = 25;
+    await sync([changed]);
+    const saved = await sets();
+    expect(
+      saved.find((row) => row.source_id === bench.source_id)
+    ).toMatchObject({ weight: 55, reps: 9 });
+    expect(
+      saved.find((row) => row.source_id !== bench.source_id)
+    ).toMatchObject({ weight: 25 });
+  });
+
+  it('does not freeze sets when an entry save re-sends unchanged sets', async () => {
+    await sync([workout()]);
+    const bench = (await entries()).find(
+      (row) => row.exercise_name === 'Synthetic bench press'
+    )!;
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [
+        { set_number: 1, set_type: 'Working Set', reps: 8, weight: 40, rpe: 7 },
+      ],
+    });
+    const changed = workout();
+    changed.exercises![0]!.sets![0]!.weight_kg = 45;
+    await sync([changed]);
+    expect(
+      (await sets()).find((row) => row.source_id === bench.source_id)
+    ).toMatchObject({ weight: 45 });
   });
 
   it('allocates untimed workout duration once after a corrected exercise is reordered', async () => {

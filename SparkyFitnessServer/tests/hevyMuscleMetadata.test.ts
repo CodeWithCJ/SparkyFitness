@@ -4,14 +4,18 @@ import type { HevyWorkoutImport } from '../integrations/hevy/hevyWorkoutReposito
 const captureWorkout = vi.hoisted(() =>
   vi.fn<(data: HevyWorkoutImport) => void>()
 );
+const preparationClient = vi.hoisted(() => ({
+  query: vi.fn(),
+  release: vi.fn(),
+}));
 vi.mock('../integrations/hevy/hevyWorkoutRepository.js', () => ({
   syncHevyWorkout: vi.fn(
     async (
       _userId: string,
       _actorId: string,
-      prepare: () => Promise<HevyWorkoutImport>
+      prepare: (client: typeof preparationClient) => Promise<HevyWorkoutImport>
     ) => {
-      captureWorkout(await prepare());
+      captureWorkout(await prepare(preparationClient));
     }
   ),
 }));
@@ -138,7 +142,7 @@ describe('Hevy muscle metadata import', () => {
     expect(hevyExerciseRepository.findLegacyByName).toHaveBeenCalledWith(
       'u-1',
       'Renamed row',
-      undefined
+      preparationClient
     );
     expect(
       exerciseRepository.findExerciseByNameAndUserId
@@ -150,7 +154,7 @@ describe('Hevy muscle metadata import', () => {
       'row-1',
       ['middle back'],
       ['lats', 'lower back', 'biceps'],
-      undefined
+      preparationClient
     );
     expect(captureWorkout.mock.calls[0]![0].entries[0]!.data).toMatchObject({
       exercise_id: 'legacy-own',
@@ -165,7 +169,7 @@ describe('Hevy muscle metadata import', () => {
         primary_muscles: ['middle back'],
         secondary_muscles: ['lats', 'lower back', 'biceps'],
       }),
-      undefined
+      preparationClient
     );
     const creationOrder = vi.mocked(exerciseRepository.createExercise).mock
       .invocationCallOrder[0]!;
@@ -208,7 +212,7 @@ describe('Hevy muscle metadata import', () => {
       'row-1',
       ['middle back'],
       ['lats', 'lower back', 'biceps'],
-      undefined
+      preparationClient
     );
     expect(captureWorkout.mock.calls[0]![0].entries[0]!.data).toMatchObject({
       exercise_id: 'existing',
@@ -220,7 +224,7 @@ describe('Hevy muscle metadata import', () => {
     expect(hevyExerciseRepository.findLegacyByName).toHaveBeenCalledWith(
       'u-1',
       'Renamed row',
-      undefined
+      preparationClient
     );
     expect(
       exerciseRepository.findExerciseByNameAndUserId
@@ -231,7 +235,7 @@ describe('Hevy muscle metadata import', () => {
         source_id: 'row-1',
         primary_muscles: ['middle back'],
       }),
-      undefined
+      preparationClient
     );
   });
 
@@ -243,7 +247,7 @@ describe('Hevy muscle metadata import', () => {
       ]);
       expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
         expect.objectContaining({ primary_muscles: [], secondary_muscles: [] }),
-        undefined
+        preparationClient
       );
       expect(normalizeMuscleList([primary])).toEqual([]);
     }
@@ -290,7 +294,7 @@ describe('Hevy muscle metadata import', () => {
       'u-1',
       'Renamed row',
       true,
-      undefined
+      preparationClient
     );
     expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
     expect(captureWorkout.mock.calls[0]![0].entries[0]!.data).toMatchObject({
@@ -310,7 +314,7 @@ describe('Hevy muscle metadata import', () => {
       'u-1',
       'Renamed row',
       false,
-      undefined
+      preparationClient
     );
     expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
     expect(hevyExerciseRepository.fillMissingMuscles).not.toHaveBeenCalled();

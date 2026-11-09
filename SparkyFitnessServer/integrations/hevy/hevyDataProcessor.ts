@@ -110,7 +110,7 @@ async function processHevyWorkouts(
     }
     try {
       await syncHevyWorkout(userId, createdByUserId, (client) =>
-        prepareSingleWorkout(userId, workout, timezone, templatesById, client)
+        prepareSingleWorkout(userId, client, workout, timezone, templatesById)
       );
     } catch (error) {
       failures++;
@@ -130,10 +130,10 @@ async function processHevyWorkouts(
  */
 async function prepareSingleWorkout(
   userId: string,
+  client: PoolClient,
   workout: HevyWorkout,
   timezone = 'UTC',
-  templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map(),
-  client?: PoolClient
+  templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map()
 ): Promise<HevyWorkoutImport> {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
@@ -191,6 +191,7 @@ async function prepareSingleWorkout(
   const supersetGroupByHevyId = new Map<string, number>();
   const exerciseOccurrences = new Map<string, number>();
   const exercises = workout.exercises ?? [];
+  let untimedDurationAllocated = false;
   for (
     let exerciseIndex = 0;
     exerciseIndex < exercises.length;
@@ -273,7 +274,7 @@ async function prepareSingleWorkout(
     // Hevy has no per-exercise duration; it only reports whole-workout
     // start/end. When an exercise's sets carry real per-set durations (timed
     // exercises), use their sum. Otherwise attribute the whole-workout
-    // duration to the first exercise only (and 0 to the rest) so daily
+    // duration to the first untimed exercise only (and 0 to the rest) so daily
     // exercise-minute totals aren't multiplied by the number of exercises.
     const setDurationSeconds = sets.reduce(
       (sum, set) => sum + (set.duration_seconds || 0),
@@ -282,9 +283,10 @@ async function prepareSingleWorkout(
     const durationMinutes =
       setDurationSeconds > 0
         ? Math.round(setDurationSeconds / 60)
-        : exerciseIndex === 0
+        : !untimedDurationAllocated
           ? workoutDurationMinutes
           : 0;
+    if (setDurationSeconds <= 0) untimedDurationAllocated = true;
     // Sum any per-set distances Hevy reports. The Hevy API reports metres
     // (`distance_meters`) regardless of the user's display units, while
     // exercise_entries.distance is kilometres like every other integration

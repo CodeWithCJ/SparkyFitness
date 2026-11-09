@@ -787,6 +787,16 @@ async function _updateExerciseEntryWithClient(
   const currentEntry = existingEntryResult.rows[0];
   let markManualFields = options.markManualFields ?? [];
   if (options.resolveUpdate) {
+    if (updateData.sets !== undefined) {
+      // The edit comparison uses the same locked snapshot as scalar fields.
+      // Reading sets before this lock could freeze an unchanged client save,
+      // or miss a correction committed by another writer.
+      const currentSets = await client.query<Record<string, unknown>>(
+        'SELECT * FROM exercise_entry_sets WHERE exercise_entry_id = $1 ORDER BY set_number, id',
+        [id]
+      );
+      currentEntry.sets = currentSets.rows;
+    }
     ({ updateData, markManualFields } = options.resolveUpdate(currentEntry));
   }
   const currentManualFields = storedManualFields(currentEntry.manual_fields);

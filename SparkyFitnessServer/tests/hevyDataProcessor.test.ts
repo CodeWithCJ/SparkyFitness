@@ -4,14 +4,18 @@ import type { HevyWorkoutImport } from '../integrations/hevy/hevyWorkoutReposito
 const captureWorkout = vi.hoisted(() =>
   vi.fn<(data: HevyWorkoutImport) => void>()
 );
+const preparationClient = vi.hoisted(() => ({
+  query: vi.fn(),
+  release: vi.fn(),
+}));
 vi.mock('../integrations/hevy/hevyWorkoutRepository.js', () => ({
   syncHevyWorkout: vi.fn(
     async (
       _userId: string,
       _actorId: string,
-      prepare: () => Promise<HevyWorkoutImport>
+      prepare: (client: typeof preparationClient) => Promise<HevyWorkoutImport>
     ) => {
-      captureWorkout(await prepare());
+      captureWorkout(await prepare(preparationClient));
     }
   ),
 }));
@@ -330,7 +334,7 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
     expect(workoutPresetRepository.getWorkoutPresetByName).toHaveBeenCalledWith(
       UID,
       'Vid plan A',
-      undefined
+      preparationClient
     );
     expect(workoutPresetRepository.createWorkoutPreset).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -338,7 +342,7 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
         name: 'Vid plan A',
         is_public: false,
       }),
-      undefined
+      preparationClient
     );
   });
 
@@ -380,7 +384,7 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
       'weight',
       5,
       null,
-      undefined
+      preparationClient
     );
   });
 });

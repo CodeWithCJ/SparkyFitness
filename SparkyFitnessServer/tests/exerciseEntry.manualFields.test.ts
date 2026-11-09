@@ -50,6 +50,46 @@ describe('editedSyncFields', () => {
   it('ignores fields the request does not send', () => {
     expect(editedSyncFields({}, current)).toEqual([]);
   });
+
+  it('detects corrected or cleared sets', () => {
+    const sets = [
+      { set_number: 1, set_type: 'Working Set', weight: 40, reps: 8 },
+    ];
+    expect(
+      editedSyncFields({ sets: [{ ...sets[0], weight: 45 }] }, { sets })
+    ).toEqual(['sets']);
+    expect(editedSyncFields({ sets: [] }, { sets })).toEqual(['sets']);
+  });
+
+  it('ignores set IDs, numeric encoding and equivalent completion timestamps', () => {
+    expect(
+      editedSyncFields(
+        {
+          sets: [
+            {
+              set_number: 1,
+              weight: 40,
+              reps: 8,
+              completed_at: '2026-11-01T17:00:00Z',
+            },
+          ],
+        },
+        {
+          sets: [
+            {
+              id: 'stored-id',
+              set_number: 1,
+              weight: '40',
+              reps: '8',
+              completed_at: new Date('2026-11-01T17:00:00Z'),
+              notes: null,
+              is_pr: false,
+            },
+          ],
+        }
+      )
+    ).toEqual([]);
+  });
 });
 
 describe('manual_fields helpers', () => {
