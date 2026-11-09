@@ -1,4 +1,7 @@
 import React from 'react';
+jest.mock('../../src/hooks/useRecipeImport', () => ({
+  useRecipeImportAccess: () => 'owner-server',
+}));
 import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodSearchScreen from '../../src/screens/FoodSearchScreen';
@@ -134,6 +137,7 @@ function buildMeal(): Meal {
 describe('FoodSearchScreen multi-select', () => {
   const navigation = {
     setOptions: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
     goBack: jest.fn(),
     navigate: jest.fn(),
   } as any;

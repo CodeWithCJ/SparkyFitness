@@ -115,6 +115,8 @@ function RecipeImportWorkspace({
         <Button
           key={provider.id}
           variant={providerId === provider.id ? 'primary' : 'secondary'}
+          accessibilityRole="button"
+          accessibilityState={{ selected: providerId === provider.id }}
           disabled={busy}
           onPress={() => {
             generation.current += 1;

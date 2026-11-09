@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +13,8 @@ import { fetchRecipeFood } from '../../services/api/recipeImportApi';
 import { fetchFoodVariants } from '../../services/api/foodsApi';
 import { formatLocalizedNumber } from '../../localization';
 import Button from '../ui/Button';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
+import { formatEnergyNumber, energyUnitLabel } from '../../utils/energyUnit';
 import { recipeImportIssueLabel } from '../../utils/recipeImportIssueLabel';
 
 const number = (value: number | null | undefined) =>
@@ -24,6 +27,7 @@ interface Props {
   suggestion?: RecipeImportSuggestionResponse['ingredients'][number];
   scope: string;
   disabled: boolean;
+  onReadinessChange?: (ingredientId: string, selection: string | null) => void;
   onChoose: () => void;
   onCandidate: (candidate: RecipeImportCandidate) => void;
 }
@@ -33,10 +37,16 @@ export default function RecipeImportIngredientRow({
   suggestion,
   scope,
   disabled,
+  onReadinessChange,
   onChoose,
   onCandidate,
 }: Props) {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
+  const energy = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ? formatEnergyNumber(value, energyUnit)
+      : '?';
   const food = useQuery({
     queryKey: [
       'foods',
@@ -63,6 +73,13 @@ export default function RecipeImportIngredientRow({
     food.data?.variant,
     ingredient.missingNutrients
   );
+  const readySelection =
+    mapping && food.data?.variant && !missingCore && !food.error
+      ? `${mapping.foodId}:${mapping.variantId}`
+      : null;
+  useEffect(() => {
+    onReadinessChange?.(ingredient.ingredientId, readySelection);
+  }, [ingredient.ingredientId, readySelection, onReadinessChange]);
   return (
     <View
       className="bg-surface rounded-xl p-4 gap-2"
@@ -140,12 +157,13 @@ export default function RecipeImportIngredientRow({
           </Text>
           {food.data?.variant && (
             <Text className="text-text-secondary">
-              {t('recipeImport.variantNutrition', {
+              {t('recipeImport.variantNutritionEnergy', {
                 defaultValue:
-                  '{{size}} {{unit}}: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g',
+                  '{{size}} {{unit}}: {{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g',
                 size: number(food.data.variant.serving_size),
                 unit: food.data.variant.serving_unit,
-                calories: number(food.data.variant.calories),
+                calories: energy(food.data.variant.calories),
+                energyUnit: energyUnitLabel(energyUnit, t),
                 protein: number(food.data.variant.protein),
                 carbs: number(food.data.variant.carbs),
                 fat: number(food.data.variant.fat),
@@ -210,11 +228,13 @@ export default function RecipeImportIngredientRow({
                 </Text>
               )}
               <Text className="text-text-secondary">
-                {t('recipeImport.candidateNutrition', {
+                {t('recipeImport.candidateNutritionEnergy', {
                   defaultValue:
-                    '{{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g per serving',
+                    '{{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g per serving',
+                  energyUnit: energyUnitLabel(energyUnit, t),
+                  calories: energy(candidate.nutrition.calories),
                   ...Object.fromEntries(
-                    ['calories', 'protein', 'carbs', 'fat'].map((key) => [
+                    ['protein', 'carbs', 'fat'].map((key) => [
                       key,
                       candidate.nutrition[key] == null
                         ? '?'

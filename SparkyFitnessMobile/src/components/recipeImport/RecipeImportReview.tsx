@@ -25,6 +25,7 @@ import {
 import { formatLocalizedNumber } from '../../localization';
 import FormInput from '../FormInput';
 import Button from '../ui/Button';
+import { recipeImportIssueLabel } from '../../utils/recipeImportIssueLabel';
 import RecipeImportIngredientRow from './RecipeImportIngredientRow';
 import RecipeImportSourcePanel from './RecipeImportSourcePanel';
 
@@ -49,6 +50,17 @@ export default function RecipeImportReview({
   const [mode, setMode] = useState<'grams' | 'servings'>('grams');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [readySelections, setReadySelections] = useState<
+    Record<string, string | null>
+  >({});
+  const onReadinessChange = useCallback(
+    (id: string, selection: string | null) => {
+      setReadySelections((current) =>
+        current[id] === selection ? current : { ...current, [id]: selection }
+      );
+    },
+    []
+  );
   const generation = useRef(0);
   useEffect(
     () => () => {
@@ -251,12 +263,16 @@ export default function RecipeImportReview({
       <View className="flex-row gap-2">
         <Button
           variant={mode === 'grams' ? 'primary' : 'secondary'}
+          accessibilityRole="button"
+          accessibilityState={{ selected: mode === 'grams' }}
           onPress={() => setMode('grams')}
         >
           {t('recipeImport.grams', { defaultValue: 'Cooked grams' })}
         </Button>
         <Button
           variant={mode === 'servings' ? 'primary' : 'secondary'}
+          accessibilityRole="button"
+          accessibilityState={{ selected: mode === 'servings' }}
           onPress={() => setMode('servings')}
         >
           {t('recipeImport.servingsOnly', { defaultValue: 'Servings only' })}
@@ -298,7 +314,7 @@ export default function RecipeImportReview({
         )
         .map((warning) => (
           <Text key={warning} className="text-text-secondary">
-            {warning}
+            {recipeImportIssueLabel(warning, t)}
           </Text>
         ))}
       <Text className="text-text-secondary">
@@ -344,6 +360,7 @@ export default function RecipeImportReview({
             (value) => value.ingredientId === row.ingredientId
           )}
           scope={scope}
+          onReadinessChange={onReadinessChange}
           disabled={draft.saving || busy}
           onChoose={() => {
             generation.current += 1;
@@ -376,6 +393,14 @@ export default function RecipeImportReview({
           !yieldValid ||
           !name.trim() ||
           unresolved > 0 ||
+          preview.ingredients.some((row) => {
+            const mapping = draft.mappings[row.ingredientId];
+            return (
+              !mapping ||
+              readySelections[row.ingredientId] !==
+                `${mapping.foodId}:${mapping.variantId}`
+            );
+          }) ||
           !preview.ingredients.length ||
           preview.ingredients.some((row) =>
             row.issues.includes('linked_recipe')

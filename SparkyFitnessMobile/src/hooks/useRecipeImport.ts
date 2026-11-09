@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   mergeRecipeImportSuggestions,
@@ -22,6 +27,44 @@ import { useServerConfigs } from './useServerConfigs';
 import { useProfile } from './useProfile';
 import { invalidateFoodCache } from './invalidateFoodCache';
 import { invalidateMealCaches } from './useMeals';
+import { profileQueryKey, serverConfigsQueryKey } from './queryKeys';
+
+/** Native auth clears identity queries on account/server replacement. */
+export function observeRecipeImportOwner(
+  client: QueryClient,
+  onChange?: () => void
+) {
+  let accountRetained = true;
+  const identity = () => {
+    const profile = client.getQueryData<{ id: string }>(profileQueryKey);
+    const config = client.getQueryData<{
+      activeConfig: { id: string; url: string } | null;
+    }>(serverConfigsQueryKey)?.activeConfig;
+    return {
+      profileId: profile?.id,
+      config: config ? `${config.id}:${config.url}` : undefined,
+    };
+  };
+  let owner = identity();
+  const unsubscribe = client.getQueryCache().subscribe((event) => {
+    if (
+      event.query.queryKey[0] !== profileQueryKey[0] &&
+      event.query.queryKey[0] !== serverConfigsQueryKey[0]
+    )
+      return;
+    const next = identity();
+    if (
+      event.type === 'removed' ||
+      (owner.profileId !== undefined && next.profileId !== owner.profileId) ||
+      (owner.config !== undefined && next.config !== owner.config)
+    ) {
+      accountRetained = false;
+      onChange?.();
+    }
+    owner = next;
+  });
+  return { isCurrent: () => accountRetained, unsubscribe };
+}
 
 export function useRecipeImportAccess() {
   const { activeConfig } = useServerConfigs();
@@ -96,6 +139,8 @@ export function useRecipeImport(
   }
   const [state, setState] = useState(initial);
   const stateRef = useRef(state);
+  const retainedScope = useRef(scope);
+  retainedScope.current = scope;
   const identity = useRef(key);
   identity.current = key;
   if (state.key !== key) {
@@ -230,30 +275,42 @@ export function useRecipeImport(
       mappings,
     });
     update({ saving: true, error: null });
+    // Auth changes clear these existing identity queries. Keep watching until the
+    // request settles, even if the import workspace has already unmounted.
+    const owner = observeRecipeImportOwner(client);
+    const retained = () => owner.isCurrent() && retainedScope.current === scope;
+    const refresh = (mealId?: string) => {
+      if (!retained()) return;
+      invalidateMealCaches(client, mealId);
+      invalidateFoodCache(client);
+      for (const root of [
+        'mealPlans',
+        'foodsLibrary',
+        'foodSearch',
+        'foodVariants',
+      ])
+        void client.invalidateQueries({ queryKey: [root] });
+    };
     try {
       const response = await saveRecipe(payload);
-      if (valid()) {
+      refresh(response.mealId);
+      if (valid() && retained()) {
         update({ saved: response });
-        invalidateMealCaches(client, response.mealId);
-        invalidateFoodCache(client);
-        for (const root of [
-          'mealPlans',
-          'foodsLibrary',
-          'foodSearch',
-          'foodVariants',
-        ])
-          void client.invalidateQueries({ queryKey: [root] });
         client.setQueryData(sourceKey(scope, response.mealId), response.source);
       }
       return response;
     } catch (error) {
-      update({
-        error: error instanceof Error ? error : new Error('SAVE_FAILED'),
-        uncertain: !(error instanceof ApiError) || error.statusCode >= 500,
-      });
+      const uncertain = !(error instanceof ApiError) || error.statusCode >= 500;
+      if (uncertain) refresh();
+      if (retained())
+        update({
+          error: error instanceof Error ? error : new Error('SAVE_FAILED'),
+          uncertain,
+        });
       throw error;
     } finally {
-      update({ saving: false });
+      owner.unsubscribe();
+      if (retained()) update({ saving: false });
     }
   }
   return { ...stateRef.current, confirm, suggest, save };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ApiError } from '../../src/services/api/errors';
 import { act, renderHook } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type {
@@ -193,3 +194,132 @@ it('requires all confirmations and sends cooked whole grams independently of ing
   expect(save).toHaveBeenCalledTimes(1);
   expect(result.current.saved?.mealId).toBe('meal');
 });
+
+it.each([
+  'unmount-success',
+  'network',
+  'server',
+  'validation',
+  'scope-switch',
+  'cache-clear',
+  'late-identity-clear',
+  'unmount-then-clear',
+  'same-owner-refetch',
+  'profile-replacement',
+] as const)(
+  'refreshes only retained owner meal caches after save outcome %s',
+  async (outcome) => {
+    const one = { ...preview, ingredients: [preview.ingredients[0]] };
+    const response = {
+      mealId: 'saved-meal',
+      source: {
+        ...one,
+        mealId: 'saved-meal',
+        mappings: [mapping],
+        mealFingerprint: 'base',
+        syncEligible: true,
+        lastSyncedAt: null,
+      },
+      nutrition: { calories: 2400 },
+      servingSize: 450,
+      servingUnit: 'g',
+      totalServings: 4,
+    };
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const seedIdentity = () => {
+      client.setQueryData(['userProfile'], { id: 'owner' });
+      client.setQueryData(['serverConfigs'], {
+        activeConfig: { id: 'server', url: 'https://example.test' },
+      });
+    };
+    if (outcome !== 'late-identity-clear') seedIdentity();
+    const listenersBefore = client.getQueryCache().hasListeners();
+    const mealsKey = ['meals', 'library'];
+    client.setQueryData(mealsKey, ['cached']);
+    let finish: (value: typeof response) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    save.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        })
+    );
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result, unmount, rerender } = renderHook(
+      ({ scope }) => useRecipeImport(one, scope),
+      { wrapper, initialProps: { scope: 'server:https://example.test:owner' } }
+    );
+    act(() => result.current.confirm(mapping));
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = result.current
+        .save({ name: 'Batch', servings: 4 })
+        .catch((error) => error);
+    });
+    if (outcome === 'unmount-success' || outcome === 'unmount-then-clear')
+      unmount();
+    if (outcome === 'same-owner-refetch') {
+      client.setQueryData(['userProfile'], { id: 'owner', name: 'New name' });
+      seedIdentity();
+    }
+    if (outcome === 'profile-replacement')
+      client.setQueryData(['userProfile'], { id: 'other-owner' });
+    if (outcome === 'scope-switch') rerender({ scope: 'other-owner' });
+    if (outcome === 'late-identity-clear') seedIdentity();
+    if (
+      outcome === 'cache-clear' ||
+      outcome === 'late-identity-clear' ||
+      outcome === 'unmount-then-clear'
+    ) {
+      client.clear();
+      client.setQueryData(mealsKey, ['new owner']);
+      seedIdentity();
+    }
+    await act(async () => {
+      if (outcome === 'network') fail(new Error('lost response'));
+      else if (outcome === 'server' || outcome === 'validation')
+        fail(new ApiError('failed', outcome === 'server' ? 500 : 400));
+      else finish(response);
+      await pending;
+    });
+    expect(client.getQueryCache().hasListeners()).toBe(listenersBefore);
+    const shouldRefresh = [
+      'unmount-success',
+      'network',
+      'server',
+      'same-owner-refetch',
+    ].includes(outcome);
+    expect(client.getQueryState(mealsKey)?.isInvalidated).toBe(shouldRefresh);
+    if (outcome !== 'validation' && outcome !== 'same-owner-refetch')
+      expect(
+        client.getQueryData([
+          'meals',
+          'recipeImportSource',
+          'server:https://example.test:owner',
+          'saved-meal',
+        ])
+      ).toBeUndefined();
+    if (outcome === 'validation') {
+      expect(result.current.uncertain).toBe(false);
+      act(() => result.current.confirm({ ...mapping, quantity: 800 }));
+      expect(result.current.mappings[mapping.ingredientId].quantity).toBe(800);
+    }
+    if (outcome === 'network' || outcome === 'server') {
+      expect(result.current.uncertain).toBe(true);
+      await act(async () => {
+        await expect(
+          result.current.save({ name: 'Batch', servings: 4 })
+        ).rejects.toThrow(/Check your meals library/);
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+    }
+  }
+);

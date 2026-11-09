@@ -2,6 +2,7 @@ import '../hooks/queryTestUtils';
 import React from 'react';
 import { Pressable, Text } from 'react-native';
 import RecipeImportSourcePanel from '../../src/components/recipeImport/RecipeImportSourcePanel';
+import { useEnergyUnit } from '../../src/hooks/useEnergyUnit';
 import { invalidateMealCaches } from '../../src/hooks/useMeals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -191,6 +192,7 @@ function setup(value = preview) {
 }
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(useEnergyUnit).mockReturnValue('kcal');
   jest.mocked(fetchRecipeSource).mockResolvedValue(source);
   jest.mocked(fetchRecipeFood).mockResolvedValue({
     id: foodId,
@@ -273,6 +275,9 @@ it('preserves a successful saved meal and shows sync conflicts without a duplica
     .mockRejectedValue(
       new Error('Source changed. Preview again before syncing.')
     );
+  await waitFor(() =>
+    expect(screen.getByText('Save reusable meal')).toBeEnabled()
+  );
   fireEvent.press(screen.getByText('Save reusable meal'));
   await waitFor(() => expect(screen.getByText('Open saved meal')).toBeTruthy());
   fireEvent.press(screen.getByText('Sync nutrition to Mealie'));
@@ -456,7 +461,9 @@ it('requires explicit recipe servings when the source yield is missing instead o
   fireEvent.press(screen.getByText('Save reusable meal'));
   expect(saveRecipe).not.toHaveBeenCalled();
   fireEvent.changeText(screen.getByLabelText('Recipe servings'), '4');
-  expect(screen.getByText('Save reusable meal')).toBeEnabled();
+  await waitFor(() =>
+    expect(screen.getByText('Save reusable meal')).toBeEnabled()
+  );
   fireEvent.press(screen.getByText('Save reusable meal'));
   await waitFor(() =>
     expect(saveRecipe).toHaveBeenCalledWith(
@@ -501,4 +508,128 @@ it('does not show a previous meal sync outcome when the detail route changes mea
   await waitFor(() => expect(screen.getByText('Other batch')).toBeTruthy());
   await act(async () => finish({ status: 'synced', source }));
   expect(screen.queryByText('Nutrition synced to Mealie.')).toBeNull();
+});
+
+it.each(
+  ['calories', 'protein', 'carbs', 'fat'].flatMap((nutrient) =>
+    [undefined, null, -1, Number.NaN, Number.POSITIVE_INFINITY].map(
+      (value) => ({ nutrient, value })
+    )
+  )
+)(
+  'blocks the rendered Save for invalid $nutrient ($value), retaining editable mapping',
+  async ({ nutrient, value }) => {
+    jest
+      .mocked(fetchFoodVariants)
+      .mockResolvedValue([
+        { ...variant, [nutrient]: value } as unknown as Awaited<
+          ReturnType<typeof fetchFoodVariants>
+        >[number],
+      ]);
+    const screen = setup({
+      ...preview,
+      ingredients: [
+        { ...preview.ingredients[0], mapping, mappingOrigin: 'saved' },
+      ],
+    });
+    expect(
+      await screen.findByText(
+        'Core nutrition is incomplete. Choose a complete food variant.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Save reusable meal')).toBeDisabled();
+    expect(screen.getByLabelText('Choose food for Rice')).toBeEnabled();
+    fireEvent.press(screen.getByText('Save reusable meal'));
+    expect(saveRecipe).not.toHaveBeenCalled();
+  }
+);
+it('allows measured zero and unknown optional nutrients after raw nutrition loads', async () => {
+  jest.mocked(fetchFoodVariants).mockResolvedValue([
+    {
+      ...variant,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      sodium: undefined,
+    },
+  ]);
+  const screen = setup({
+    ...preview,
+    ingredients: [
+      { ...preview.ingredients[0], mapping, mappingOrigin: 'saved' },
+    ],
+  });
+  expect(screen.getByText('Save reusable meal')).toBeDisabled();
+  expect(await screen.findByText(/P 0 g/)).toBeTruthy();
+  expect(screen.getByText('Save reusable meal')).toBeEnabled();
+});
+it('shows mapped and candidate energy in kJ while keeping raw kcal unchanged', async () => {
+  jest.mocked(useEnergyUnit).mockReturnValue('kJ');
+  const candidate = {
+    candidateId: 'candidate',
+    name: 'Candidate rice',
+    brand: null,
+    source: 'local' as const,
+    foodId,
+    variantId,
+    servingSize: 100,
+    servingUnit: 'g',
+    nutrition: { calories: 100, protein: 8, carbs: 80, fat: 2 },
+    nutritionComplete: true,
+    unitCompatible: true,
+    missingNutrients: [],
+    providerType: null,
+    providerId: null,
+    providerExternalId: null,
+  };
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportIngredientRow
+        ingredient={preview.ingredients[0]}
+        mapping={mapping}
+        scope="owner-server"
+        disabled={false}
+        onChoose={jest.fn()}
+        onCandidate={jest.fn()}
+      />
+      <RecipeImportIngredientRow
+        ingredient={preview.ingredients[0]}
+        suggestion={{
+          ingredientId: 'rice',
+          candidates: [candidate],
+          suggestedCandidateId: null,
+        }}
+        scope="owner-server"
+        disabled={false}
+        onChoose={jest.fn()}
+        onCandidate={jest.fn()}
+      />
+    </QueryClientProvider>
+  );
+  expect(await screen.findByText(/1,674 kJ/)).toBeTruthy();
+  expect(screen.getByText(/418 kJ/)).toBeTruthy();
+  expect(variant.calories).toBe(400);
+});
+it('localizes source warnings and exposes the chosen portion mode', () => {
+  const screen = setup({ ...preview, syncWarnings: ['missing_quantity'] });
+  expect(screen.queryByText('missing_quantity')).toBeNull();
+  expect(
+    screen.getByText(
+      'Source quantity is missing. Enter the whole-recipe amount.'
+    )
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Cooked grams', selected: true })
+  ).toBeTruthy();
+  fireEvent.press(screen.getByText('Servings only'));
+  expect(
+    screen.getByRole('button', { name: 'Servings only', selected: true })
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Cooked grams', selected: false })
+  ).toBeTruthy();
 });

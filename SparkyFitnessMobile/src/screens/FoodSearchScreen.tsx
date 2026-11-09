@@ -1,10 +1,12 @@
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { useRecipeImportAccess } from '../hooks/useRecipeImport';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -101,7 +103,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const date = route.params?.date;
+  const detailGeneration = useRef(0);
+  const closeSearch = useCallback(() => {
+    detailGeneration.current += 1;
+    navigation.goBack();
+  }, [navigation]);
   const recipeImportTarget = route.params?.recipeImportTarget;
+  const ownerScope = useRecipeImportAccess();
   const pickerMode =
     route.params?.pickerMode ??
     (recipeImportTarget ? 'meal-builder' : 'log-entry');
@@ -192,7 +200,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
+  const [loadingFood, setLoadingFood] = useState<{
+    id: string;
+    scope: string;
+  } | null>(null);
 
   // "+" New Food / New Meal menu, anchored under the button.
   const addButtonRef = useRef<View>(null);
@@ -633,7 +644,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           identifier: 'food-search-close',
           tintColor: headerActionColor,
           accessibilityLabel: t('common.close', { defaultValue: 'Close' }),
-          onPress: () => navigation.goBack(),
+          onPress: closeSearch,
         }),
       ],
       unstable_headerRightItems: () => [
@@ -661,6 +672,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [
     accentColor,
     headerActionColor,
+    closeSearch,
     isOwnershipFiltered,
     localizedFilterLabels,
     nativeMenuItems,
@@ -670,8 +682,38 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     t,
   ]);
 
+  const detailScope = JSON.stringify([
+    searchText,
+    selectedProvider,
+    ownerScope,
+    profile?.id,
+    recipeImportTarget,
+    pickerMode,
+    date,
+    mealTypeId,
+    mealPlanTarget,
+    ownershipFilter,
+  ]);
+  const loadingFoodId =
+    loadingFood?.scope === detailScope ? loadingFood.id : null;
+  useEffect(() => {
+    const stop = navigation.addListener('blur', () => {
+      detailGeneration.current += 1;
+      setLoadingFood(null);
+    });
+    return () => {
+      stop();
+      detailGeneration.current += 1;
+    };
+  }, [navigation]);
+  useEffect(() => {
+    detailGeneration.current += 1;
+  }, [detailScope]);
+
   const handleExternalFoodTap = useCallback(
     async (item: ExternalFoodItem, explicitProviderId?: string) => {
+      const request = ++detailGeneration.current;
+      const current = () => request === detailGeneration.current;
       // Prefer the exact provider id carried by the result row (needed when
       // multiple providers share a type). Fall back to resolving by source: the
       // sentinel in All Providers mode, otherwise the selected provider.
@@ -686,7 +728,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           recipeImportTarget) &&
         providerId
       ) {
-        setLoadingFoodId(item.id);
+        setLoadingFood({ id: item.id, scope: detailScope });
         try {
           const detailed = await fetchExternalFoodDetails(
             item.source,
@@ -700,6 +742,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
               serving_description: item.serving_description,
             }
           );
+          if (!current()) return;
           // The details endpoint does not always echo the photo the search
           // result carried, so re-attach it rather than losing the image the
           // user just saw. Mirrors the web food search.
@@ -713,6 +756,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             })
           );
         } catch (error) {
+          if (!current()) return;
           const message =
             getApiErrorMessage(error) ??
             t('foodSearch.errors.loadNutritionDetails', {
@@ -728,12 +772,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           if (!recipeImportTarget)
             showFoodInfo(externalFoodItemToFoodInfo(item));
         }
-        setLoadingFoodId(null);
+        if (current()) setLoadingFood(null);
         return;
       }
       showFoodInfo(externalFoodItemToFoodInfo(item));
     },
-    [selectedProvider, providers, showFoodInfo, recipeImportTarget, t]
+    [
+      selectedProvider,
+      providers,
+      showFoodInfo,
+      recipeImportTarget,
+      detailScope,
+      t,
+    ]
   );
 
   // --- Derived state ---
@@ -1187,7 +1238,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       {!usesNativeHeader && (
         <Button
           variant="ghost"
-          onPress={() => navigation.goBack()}
+          onPress={closeSearch}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="p-0"
           accessibilityLabel={t('common.close', { defaultValue: 'Close' })}

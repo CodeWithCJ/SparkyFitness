@@ -22,7 +22,7 @@ import Toast from 'react-native-toast-message';
 import { StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import MarkdownNotesField from '../components/MarkdownNotesField';
@@ -63,6 +63,10 @@ import {
   useToggleFavorite,
 } from '../hooks';
 import type { FoodItem } from '../types/foods';
+import {
+  useRecipeImportAccess,
+  observeRecipeImportOwner,
+} from '../hooks/useRecipeImport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
@@ -228,6 +232,31 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
   const recipeImportTarget = route.params?.recipeImportTarget;
+  const recipeOwnerScope = useRecipeImportAccess();
+  const recipeClient = useQueryClient();
+  const recipeOperation = useRef(0);
+  const recipeIdentity = `${recipeOwnerScope}:${route.key}:${item.source}:${item.id}:${JSON.stringify(recipeImportTarget)}`;
+  const recipeIdentityRef = useRef(recipeIdentity);
+  recipeIdentityRef.current = recipeIdentity;
+  const isRecipeImportSelection = !!recipeImportTarget;
+  useEffect(() => {
+    if (isRecipeImportSelection) recipeOperation.current += 1;
+  }, [recipeIdentity, isRecipeImportSelection]);
+  useEffect(() => {
+    const owner = observeRecipeImportOwner(recipeClient, () => {
+      recipeOperation.current += 1;
+    });
+    return owner.unsubscribe;
+  }, [recipeClient, recipeOwnerScope]);
+  useEffect(() => {
+    const stop = navigation.addListener('blur', () => {
+      recipeOperation.current += 1;
+    });
+    return () => {
+      stop();
+      recipeOperation.current += 1;
+    };
+  }, [navigation]);
   const isMealPlanMode = pickerMode === 'meal-plan';
   const isContainerLinkMode = pickerMode === 'container-link';
   const isActionTagMode = pickerMode === 'action-tag';
@@ -665,7 +694,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const [quantityText, setQuantityText] = useState(
     initialQuantity === undefined ? '' : String(initialQuantity)
   );
-  // Rebase only when the selected variant/unit changes; typing an explicit amount remains authoritative.
+  // The draft amount belongs to its current unit, including edits and incomplete input.
   const recipeUnitRef = useRef(activeVariant.servingUnit);
   useEffect(() => {
     if (
@@ -673,14 +702,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       recipeUnitRef.current === activeVariant.servingUnit
     )
       return;
+    const previousUnit = recipeUnitRef.current;
     recipeUnitRef.current = activeVariant.servingUnit;
     const amount = recipeImportInitialQuantity(
-      recipeImportTarget.quantity,
-      recipeImportTarget.unit,
+      parseDecimalInput(quantityText),
+      previousUnit,
       activeVariant.servingUnit
     );
     setQuantityText(amount === undefined ? '' : String(amount));
-  }, [recipeImportTarget, activeVariant.servingUnit]);
+  }, [recipeImportTarget, activeVariant.servingUnit, quantityText]);
   const quantity = parseDecimalInput(quantityText) || 0;
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
@@ -845,13 +875,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (localVariant) {
+        if (
+          recipeImportTarget &&
+          recipeUnitRef.current === localVariant.servingUnit
+        )
+          return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              recipeImportTarget.quantity,
-              recipeImportTarget.unit,
+              parseDecimalInput(quantityText),
+              recipeUnitRef.current,
               localVariant.servingUnit
             )
           : localVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = localVariant.servingUnit;
         setQuantityText(amount === undefined ? '' : String(amount));
         return;
       }
@@ -860,17 +897,29 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (externalVariant) {
+        if (
+          recipeImportTarget &&
+          recipeUnitRef.current === externalVariant.servingUnit
+        )
+          return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              recipeImportTarget.quantity,
-              recipeImportTarget.unit,
+              parseDecimalInput(quantityText),
+              recipeUnitRef.current,
               externalVariant.servingUnit
             )
           : externalVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = externalVariant.servingUnit;
         setQuantityText(amount === undefined ? '' : String(amount));
       }
     },
-    [externalVariantOptions, localVariantOptions, recipeImportTarget]
+    [
+      externalVariantOptions,
+      localVariantOptions,
+      recipeImportTarget,
+      quantityText,
+    ]
   );
 
   const updateQuantityText = (text: string) => {
@@ -1265,6 +1314,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const handleSelectionAdd = async () => {
+    const operation = recipeOperation.current;
+    const identity = recipeIdentity;
+    const recipeSelectionCurrent = () =>
+      !recipeImportTarget ||
+      (navigation.isFocused() &&
+        recipeOperation.current === operation &&
+        recipeIdentityRef.current === identity);
+    if (!recipeSelectionCurrent()) return;
     if (quantity <= 0) {
       Toast.show({
         type: 'error',
@@ -1303,6 +1360,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             return;
           }
 
+          if (!recipeSelectionCurrent()) return;
           finishFoodSelection(
             buildDraftFromCurrentValues(
               activeItem.id,
@@ -1312,6 +1370,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             )
           );
         } catch {
+          if (!recipeSelectionCurrent()) return;
           Toast.show({
             type: 'error',
             text1: t('foodEntryAdd.errors.failedToAddFood', {
@@ -1328,6 +1387,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         let savedFood;
         try {
           savedFood = await saveFoodAsync(buildSaveFoodPayload());
+          if (!recipeSelectionCurrent()) return;
         } catch {
           return;
         }
@@ -1340,6 +1400,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 pendingVariantToPersist
               )
             );
+            if (!recipeSelectionCurrent()) return;
             const createdVariantValues = mergeVariantDisplayValues(
               createdVariant,
               unitVariantToDisplayValues(pendingVariantToPersist)
@@ -1352,9 +1413,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
             await persistExternalVariants(
               savedFood,
-              activeItem.externalVariants
+              activeItem.externalVariants,
+              recipeImportTarget ? recipeSelectionCurrent : undefined
             );
 
+            if (!recipeSelectionCurrent()) return;
             finishFoodSelection(
               buildMealIngredientDraft({
                 foodId: savedFood.id,
@@ -1375,7 +1438,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             );
           }
 
-          await persistExternalVariants(savedFood, activeItem.externalVariants);
+          await persistExternalVariants(
+            savedFood,
+            activeItem.externalVariants,
+            recipeImportTarget ? recipeSelectionCurrent : undefined
+          );
+          if (!recipeSelectionCurrent()) return;
 
           finishFoodSelection(
             buildMealIngredientDraft({
@@ -1389,6 +1457,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             })
           );
         } catch {
+          if (!recipeSelectionCurrent()) return;
           Toast.show({
             type: 'error',
             text1: t('foodEntryAdd.errors.failedToAddFood', {

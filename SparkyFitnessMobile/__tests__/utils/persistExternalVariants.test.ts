@@ -301,3 +301,38 @@ describe('persistExternalVariants', () => {
     );
   });
 });
+
+it.each([false, true])(
+  'starts alternate variant writes only while the recipe operation remains current (%s)',
+  async (retained) => {
+    jest.clearAllMocks();
+    let finish: (
+      value: Awaited<ReturnType<typeof fetchFoodVariants>>
+    ) => void = () => {};
+    mockedFetchFoodVariants.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    let current = true;
+    const pending = persistExternalVariants(
+      { id: 'food-1' },
+      [
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 100,
+          protein: 1,
+          carbs: 2,
+          fat: 3,
+        },
+      ],
+      () => current
+    );
+    current = retained;
+    finish([]);
+    await pending;
+    expect(mockedCreateFoodVariant).toHaveBeenCalledTimes(retained ? 1 : 0);
+  }
+);
