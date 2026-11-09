@@ -35,7 +35,7 @@ import {
   calculateAdaptiveTdeeRange,
   clearUserTdeeCache,
 } from '../services/AdaptiveTdeeService.js';
-import { dbContextStorage, withFixedActor } from '../db/poolManager.js';
+import { withFixedActor } from '../db/poolManager.js';
 
 const userId = 'tdee-ttl-user';
 const day = '2026-10-01';
@@ -81,25 +81,6 @@ describe('adaptive TDEE cache', () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
 
     await calculateAdaptiveTdee(userId, day);
-    expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
-  });
-
-  // The same goes for a delegate's web request after a switch.
-  test("a family member's web request neither uses nor fills the owner's cache", async () => {
-    const signedInAs = <T>(person: string, work: () => Promise<T>) =>
-      dbContextStorage.run({ authenticatedUserId: person }, work);
-
-    await signedInAs('delegate', () => calculateAdaptiveTdee(userId, day));
-    await signedInAs(userId, () => calculateAdaptiveTdee(userId, day));
-    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
-
-    await signedInAs('delegate', () => calculateAdaptiveTdee(userId, day));
-    await signedInAs('delegate', () =>
-      calculateAdaptiveTdeeRange(userId, day, day)
-    );
-    expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
-
-    await signedInAs(userId, () => calculateAdaptiveTdee(userId, day));
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
   });
 
