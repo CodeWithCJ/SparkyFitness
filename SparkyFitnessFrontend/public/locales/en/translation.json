@@ -3252,6 +3252,15 @@
       "chartHintTraining": "Tap a bar to see that day. Tap the icon under a day to switch it between training and rest.",
       "chartHintCustom": "Tap a bar to see that day, or drag it up or down. Fine-tune the selected day below.",
       "previewTargetForDay": "Daily Calorie Target ({{day}}):"
+    },
+    "webTabs": {
+      "title": "Tabs",
+      "description": "Choose which main tabs show on the website",
+      "cycleOn": "On",
+      "cycleOff": "Off",
+      "cycleHint": "{{name}} has its own on/off switch in the Wellness settings tab.",
+      "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
+      "saveError": "Could not save your tab choice. Please try again."
     }
   },
   "admin": {

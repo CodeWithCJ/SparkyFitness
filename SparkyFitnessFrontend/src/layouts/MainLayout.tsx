@@ -6,13 +6,9 @@ import { debug, info, error } from '@/utils/logging';
 import {
   Home,
   Activity, // Used for Check-In
-  CalendarHeart,
   BarChart3,
-  Utensils, // Used for Foods
   Settings as SettingsIcon,
   LogOut,
-  Dumbbell, // Used for Exercises
-  Target, // Used for Goals
   Pill, // Used for Medications
   Shield,
   Plus,
@@ -24,7 +20,6 @@ import {
   Salad, // Used for Food Log
   BookOpen, // Used for the docs link
   Languages, // Used for the translation link
-  FlaskConical, // Lab results
   HeartPulse, // Used for the delegate-only Symptoms page
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -47,6 +42,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
 import { useCycleSettings } from '@/hooks/useCycle';
+import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
+import { visibleModuleTabs } from '@/constants/webTabs';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
@@ -96,6 +93,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   // Fetch cycle settings to determine tab visibility
   const { data: cycleSettings } = useCycleSettings();
+  // Main tabs the owner turned off in Settings > Tabs (none while acting for
+  // someone else, whose bar follows their permissions).
+  const { hidden: hiddenWebTabs } = useHiddenWebTabs();
+  const moduleTabs = useMemo(
+    () => visibleModuleTabs(t, hiddenWebTabs, cycleSettings),
+    [t, hiddenWebTabs, cycleSettings]
+  );
 
   const handleSignOut = async () => {
     info(loggingLevel, 'MainLayout: Attempting to sign out.');
@@ -119,42 +123,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const addCompItems: AddCompItem[] = useMemo(() => {
     const items: AddCompItem[] = [];
     if (!isActingOnBehalf) {
-      // Keep this order consistent with the desktop tab order in availableTabs:
-      // Check-In, Cycle, Medications, Lab results, Foods, Exercises, Goals.
-      items.push({
-        value: 'checkin',
-        label: t('nav.checkin', 'Check-In'),
-        icon: Activity,
-      });
-      if (cycleSettings?.enabled) {
-        items.push({
-          value: 'cycle',
-          label: cycleSettings.discreet_mode
-            ? t('nav.wellness', 'Wellness')
-            : cycleSettings.mode === 'pregnant'
-              ? t('nav.pregnancy', 'Pregnancy')
-              : t('nav.cycle', 'Cycle'),
-          icon: cycleSettings.discreet_mode ? Activity : CalendarHeart,
-        });
-      }
+      // Same order as the desktop tabs (MODULE_TABS in constants/webTabs.ts);
+      // tabs the owner hid are left out, and Reports lives in the bottom bar.
       items.push(
-        {
-          value: 'medications',
-          label: t('nav.medications', 'Medications'),
-          icon: Pill,
-        },
-        {
-          value: 'labs',
-          label: t('nav.labs', 'Lab results'),
-          icon: FlaskConical,
-        },
-        { value: 'foods', label: t('nav.foods', 'Foods'), icon: Utensils },
-        {
-          value: 'exercises',
-          label: t('exercise.title', 'Exercises'),
-          icon: Dumbbell,
-        },
-        { value: 'goals', label: t('nav.goals', 'Goals'), icon: Target },
+        ...moduleTabs
+          .filter((tab) => tab.inPlusMenu)
+          .map((tab) => ({ value: tab.id, label: tab.label, icon: tab.icon })),
         {
           value: 'foodlog',
           label: t('nav.foodLog', 'Food Log'),
@@ -180,7 +154,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       }
     }
     return items;
-  }, [isActingOnBehalf, hasWritePermission, cycleSettings, t]);
+  }, [isActingOnBehalf, hasWritePermission, moduleTabs, t]);
 
   // Map meal type names to icons
   const getMealTypeIcon = useCallback((name: string): LucideIcon => {
@@ -243,38 +217,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     if (!isActingOnBehalf) {
       tabs.push(
         { value: '/', label: t('nav.diary'), icon: Home },
-        { value: '/checkin', label: t('nav.checkin'), icon: Activity }
-      );
-      if (cycleSettings?.enabled) {
-        tabs.push({
-          value: '/cycle',
-          label: cycleSettings.discreet_mode
-            ? t('nav.wellness', 'Wellness')
-            : cycleSettings.mode === 'pregnant'
-              ? t('nav.pregnancy', 'Pregnancy')
-              : t('nav.cycle', 'Cycle'),
-          icon: cycleSettings.discreet_mode ? Activity : CalendarHeart,
-        });
-      }
-      tabs.push(
-        {
-          value: '/medications',
-          label: t('nav.medications', 'Medications'),
-          icon: Pill,
-        },
-        {
-          value: '/labs',
-          label: t('nav.labs', 'Lab results'),
-          icon: FlaskConical,
-        },
-        { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
-        { value: '/foods', label: t('nav.foods'), icon: Utensils },
-        {
-          value: '/exercises',
-          label: t('exercise.title', 'Exercises'),
-          icon: Dumbbell,
-        },
-        { value: '/goals', label: t('nav.goals'), icon: Target },
+        ...moduleTabs.map((tab) => ({
+          value: tab.path,
+          label: tab.label,
+          icon: tab.icon,
+        })),
         { value: '/settings', label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
@@ -326,7 +273,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     loggingLevel,
     user?.role,
     t,
-    cycleSettings,
+    moduleTabs,
   ]);
 
   const availableMobileTabs = useMemo(() => {
@@ -340,9 +287,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     // Cycle/Pregnancy and Medications live in the "+" Add menu on mobile
     // (see addCompItems), not the bottom bar, to keep the bar uncluttered.
     if (!isActingOnBehalf) {
+      mobileTabs.push({ value: '/', label: t('nav.diary'), icon: Home });
+      if (!hiddenWebTabs.has('reports')) {
+        mobileTabs.push({
+          value: '/reports',
+          label: t('nav.reports'),
+          icon: BarChart3,
+        });
+      }
       mobileTabs.push(
-        { value: '/', label: t('nav.diary'), icon: Home },
-        { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         {
           value: 'Add',
           label: t('common.add', 'Add'),
@@ -398,6 +351,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     loggingLevel,
     user?.role,
     isAddCompOpen,
+    hiddenWebTabs,
     t,
   ]);
 

@@ -52,6 +52,7 @@ import {
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
 import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
@@ -66,6 +67,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   } = usePreferences();
 
   const { data: goalTypePreferences } = useNutrientGoalPreferences();
+  const { hidden: hiddenWebTabs } = useHiddenWebTabs();
 
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
@@ -638,26 +640,29 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                         'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
                       )}
                 </span>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
-                  onClick={() =>
-                    isLeanMassBmr
-                      ? navigate('/checkin')
-                      : navigate('/settings?section=profile-information')
-                  }
-                >
-                  {isLeanMassBmr
-                    ? t(
-                        'exercise.dailyProgress.enterMeasurements',
-                        'Enter Measurements'
-                      )
-                    : t(
-                        'exercise.dailyProgress.updateProfile',
-                        'Update Profile'
-                      )}
-                </Button>
+                {/* Check-In is where measurements go; no link once it is hidden. */}
+                {!(isLeanMassBmr && hiddenWebTabs.has('checkin')) && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
+                    onClick={() =>
+                      isLeanMassBmr
+                        ? navigate('/checkin')
+                        : navigate('/settings?section=profile-information')
+                    }
+                  >
+                    {isLeanMassBmr
+                      ? t(
+                          'exercise.dailyProgress.enterMeasurements',
+                          'Enter Measurements'
+                        )
+                      : t(
+                          'exercise.dailyProgress.updateProfile',
+                          'Update Profile'
+                        )}
+                  </Button>
+                )}
               </AlertDescription>
             </Alert>
           )}

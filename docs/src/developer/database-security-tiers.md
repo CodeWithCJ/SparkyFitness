@@ -85,7 +85,7 @@ These tables contain user profiles, layouts, display settings, and custom databa
 | `user_nutrient_display_preferences` | Rearranged nutrient column preferences | **Owner-Only** | Switched Delegate |
 | `user_medication_display_preferences` | Private preference on GLP-1/Medication display | **Owner-Only** | Delegate with `can_manage_medications` or `can_view_reports` |
 | `user_calorie_rule_history` | The `user_preferences` calorie settings in force from `effective_date` on (`-infinity` for the rules before the first recorded change), including `adjust_macros_with_exercise` and the calorie cycling settings, so a past day keeps its calorie and macro targets (#1795). Written only by the `record_calorie_rule_change` trigger on `user_preferences`; same policies as `user_preferences`. | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions | **Owner-Only** | Switched Delegate |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`, whose `hidden` list holds tab ids from the shared `WEB_HIDEABLE_TAB_IDS`; the web does not apply it while acting for someone, whose tabs follow their permissions) | **Owner-Only** | Switched Delegate |
 | `onboarding_data` | Initial user onboarding metrics | **Owner-Only** | Switched Delegate |
 | `onboarding_status` | User onboarding status | **Owner-Only** | Switched Delegate |
 | `meal_types` | Custom breakfast, lunch, dinner, snack layouts | **Owner-Only** | Switched Delegate with `can_manage_diary` or `can_view_reports` |

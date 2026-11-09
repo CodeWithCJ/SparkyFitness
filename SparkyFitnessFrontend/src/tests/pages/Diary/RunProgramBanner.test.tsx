@@ -30,6 +30,10 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({ timezone: 'UTC' }),
 }));
+let mockHiddenTabs = new Set<string>();
+jest.mock('@/hooks/Settings/useHiddenWebTabs', () => ({
+  useHiddenWebTabs: () => ({ hidden: mockHiddenTabs, isLoading: false }),
+}));
 
 const today = todayInZone('UTC');
 const complete = jest.fn();
@@ -61,6 +65,7 @@ describe('Diary RunProgramBanner', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActingOnBehalf = false;
+    mockHiddenTabs = new Set();
     (useCompleteRunProgramWorkoutMutation as jest.Mock).mockReturnValue({
       mutate: complete,
       isPending: false,
@@ -78,6 +83,20 @@ describe('Diary RunProgramBanner', () => {
       'href',
       '/exercises/training-programs'
     );
+  });
+
+  it('drops the program link when the Exercises tab is hidden', () => {
+    mockHiddenTabs = new Set(['exercises']);
+    setup(makeRunProgram({ next_index: 1 }));
+    expect(
+      screen.getByText(/Training program: Beginner 5K/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Open program' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Mark as done' })
+    ).toBeInTheDocument();
   });
 
   it('marks the workout done for today', () => {

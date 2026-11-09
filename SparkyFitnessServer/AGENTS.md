@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-09_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -307,6 +307,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `auth.ts`, `middleware/authMiddleware.ts`, `routes/authRoutes.ts`, and `routes/auth/`
 - Remote MCP OAuth, discovery, consent, token, or redirect allowlist issue:
   inspect `utils/mcpOAuth.ts`, `middleware/mcpOAuthAuthInterceptor.ts`, `middleware/authMiddleware.ts` (`authenticateMcp`), `models/oauthClientRepository.ts`, the OAuth gate in `SparkyFitnessServer.ts`, and `db/migrations/20261020000000_add_mcp_oauth_provider.sql`
+- Customize layout or hidden web tabs issue:
+  inspect `services/dashboardLayoutService.ts` (`ALLOWED_PAGE_KEYS`) behind `routes/dashboardLayoutRoutes.ts` (`/api/dashboard-layouts/:pageKey`; GET follows the active profile, PUT and DELETE are owner-only). Widget pages (`diary`, `reports-*`) need `layout` as an object keyed by breakpoint; `web-tabs` holds the main web tabs a person hid, so its `hidden` must list ids from the shared `WEB_HIDEABLE_TAB_IDS` once each and its `layout` is always stored as `{}`
 - Migration, RLS, or permission issue:
   inspect `db/migrations/`, `db/rls_policies.sql`, `db/poolManager.ts`, `utils/applyRlsPolicies.ts`, and the permission middleware/helpers
 - Public v2 contract issue:
