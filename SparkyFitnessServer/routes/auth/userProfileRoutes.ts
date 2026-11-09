@@ -556,7 +556,7 @@ router.post(
   authenticate,
   demoGuard,
   async (req, res, next) => {
-    const { enabled, currentPassword } = req.body;
+    const { enabled, currentPassword } = req.body ?? {};
     if (typeof enabled !== 'boolean') {
       return res.status(400).json({ error: 'enabled must be a boolean.' });
     }

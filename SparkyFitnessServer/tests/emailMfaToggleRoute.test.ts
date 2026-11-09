@@ -99,4 +99,14 @@ describe('POST /api/identity/mfa/email-toggle', () => {
     expect(res.statusCode).toBe(400);
     expect(updateMfa).not.toHaveBeenCalled();
   });
+
+  it('returns 400 when the request has no JSON body', async () => {
+    const res = await request(app)
+      .post('/api/identity/mfa/email-toggle')
+      .set('Content-Type', 'text/plain')
+      .send('enabled=false');
+
+    expect(res.statusCode).toBe(400);
+    expect(updateMfa).not.toHaveBeenCalled();
+  });
 });

@@ -102,4 +102,14 @@ describe('Nutritionix provider access', () => {
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('reports a provider that no longer exists as not configured', async () => {
+    checkAccess.mockResolvedValue(true);
+    getProvider.mockResolvedValue(null as never);
+
+    await expect(searchNutritionixFoods('bob', 'banana', 'p1')).rejects.toThrow(
+      'Nutritionix provider not configured or keys missing.'
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
