@@ -14,6 +14,7 @@ import moodRepository from '../models/moodRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
+import * as oralCareRepository from '../models/oralCareRepository.js';
 import { resolveActivityMapping } from './workoutActivityMapping.js';
 import {
   computeTimeInZones,
@@ -2563,6 +2564,73 @@ const skinTemperatureHandler: HealthTypeHandler = {
   handleBatch: skinTemperatureHandleBatch,
 };
 
+// Toothbrushing from a health store (#1862; Apple Health's ToothbrushingEvent,
+// which smart brushes such as Oral-B write). The sample's start and end give
+// the duration. Re-sending a sample updates its row through
+// (user, provider, external_id). A brush the person also logged in Sparky is
+// kept and counted once when read (shared oralCareSessionsCoveredBySync).
+const toothbrushingHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const startTime =
+      typeof entry.startTime === 'string' && entry.startTime
+        ? entry.startTime
+        : null;
+    const endTime =
+      typeof entry.endTime === 'string' && entry.endTime ? entry.endTime : null;
+    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
+    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs < startMs) {
+      return {
+        status: 'error',
+        error: 'Invalid Toothbrushing entry: endTime is before startTime.',
+      };
+    }
+    const sentDuration = Number(entry.duration_seconds ?? entry.duration);
+    const durationSeconds =
+      Number.isFinite(sentDuration) && sentDuration > 0
+        ? Math.round(sentDuration)
+        : Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+          ? Math.round((endMs - startMs) / 1000)
+          : null;
+    const externalId = entry.source_id
+      ? String(entry.source_id)
+      : entry.id
+        ? String(entry.id)
+        : null;
+    try {
+      const result = await oralCareRepository.upsertOralCareSession(
+        ctx.userId,
+        {
+          entry_date: ctx.parsedDate,
+          start_time: startTime,
+          end_time: endTime,
+          // A brushing longer than an hour is not one brushing.
+          duration_seconds:
+            durationSeconds !== null && durationSeconds <= 3600
+              ? durationSeconds
+              : null,
+          care_type: 'brushing',
+          custom_label: null,
+          provider:
+            typeof entry.source === 'string' && entry.source
+              ? entry.source
+              : 'apple_health',
+          external_id: externalId,
+          notes: null,
+        },
+        ctx.actingUserId
+      );
+      return { status: 'success', data: result };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        status: 'error',
+        error: `Failed to process Toothbrushing entry: ${message}`,
+      };
+    }
+  },
+};
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 // Handlers keyed by canonical type name.
@@ -2589,6 +2657,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   sleep_entry: sleepEntryHandler,
   Mood: moodHandler,
   MindfulnessSession: mindfulnessHandler,
+  Toothbrushing: toothbrushingHandler,
   resting_heart_rate: restingHeartRateHandler,
   vo2_max: vo2MaxHandler,
   skin_temperature: skinTemperatureHandler,
@@ -2621,6 +2690,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   mindfulness_session: 'MindfulnessSession',
   mindfulness: 'MindfulnessSession',
   mindful: 'MindfulnessSession',
+  ToothbrushingEvent: 'Toothbrushing',
+  HKCategoryTypeIdentifierToothbrushingEvent: 'Toothbrushing',
+  toothbrushing: 'Toothbrushing',
   RestingHeartRate: 'resting_heart_rate',
   Vo2Max: 'vo2_max',
 };

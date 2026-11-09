@@ -43,6 +43,7 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
     'healthDataDisplay.sleepHours': '{{count}}h',
     'healthDataDisplay.sleepMinutes': '{{count}}m',
     'healthDataDisplay.workouts': '{{count}} workouts',
+    'healthDataDisplay.brushes': '{{count}} brushes',
     'healthDataDisplay.records': '{{count}} records',
   };
   let result = templates[key] ?? key;
@@ -643,6 +644,16 @@ const RAW_FORMATTERS: Record<
           '{{count}} min'
         );
   },
+
+  Toothbrushing: (records) =>
+    records.length === 0
+      ? NO_DATA_DISPLAY
+      : unit(
+          'healthDataDisplay.brushes',
+          records.length,
+          '{{count}} brush',
+          '{{count}} brushes'
+        ),
 
   ExerciseSession: (records) => {
     const totalExerciseMinutes = (

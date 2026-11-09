@@ -298,6 +298,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'get_fasting_status',
         'get_biometrics_history',
         'get_custom_metrics_history',
+        'get_oral_care_summary',
       ],
     },
     {

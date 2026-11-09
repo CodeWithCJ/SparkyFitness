@@ -34,6 +34,7 @@ import StressChart from '@/pages/Reports/StressChart';
 import { debug, info } from '@/utils/logging';
 
 import MoodChart from '@/pages/Reports/MoodChart';
+import OralCareReport from '@/pages/Reports/OralCareReport';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMoodEntries } from '@/hooks/CheckIn/useMood';
 import {
@@ -314,6 +315,12 @@ const Reports = () => {
         return (
           <ChartErrorBoundary>
             <FastingReport fastingData={fastingData} />
+          </ChartErrorBoundary>
+        );
+      case 'oral-care':
+        return (
+          <ChartErrorBoundary>
+            <OralCareReport startDate={startDate} endDate={endDate} />
           </ChartErrorBoundary>
         );
       case 'exercise-charts':

@@ -1,4 +1,4 @@
-import type { ImageSourcePropType } from 'react-native';
+import { Platform, type ImageSourcePropType } from 'react-native';
 
 // Writeback metrics (Sparky → OS health store). Kept separate from the read
 // HealthMetrics list: those drive background-delivery subscriptions and inbound
@@ -11,7 +11,7 @@ import type { ImageSourcePropType } from 'react-native';
 // will extend writeback to the other readable metrics (which is why this is a
 // category-grouped list rather than a flat pair).
 
-export type WritebackMetricId = 'nutrition' | 'hydration';
+export type WritebackMetricId = 'nutrition' | 'hydration' | 'toothbrushing';
 
 /** Inclusive local-calendar-day range (YYYY-MM-DD) for a targeted writeback removal.
  *  `null` removal means "all time" (full purge). */
@@ -25,6 +25,8 @@ export interface WritebackRemovalResult {
   ok: boolean;
 }
 
+type WritebackRecordType = 'Nutrition' | 'Hydration' | 'Toothbrushing';
+
 export interface WritebackMetric {
   id: WritebackMetricId;
   defaultLabel: string;
@@ -33,13 +35,15 @@ export interface WritebackMetric {
   /** loadHealthPreference/saveHealthPreference key (under the @HealthConnect prefix on
    *  Android, @HealthKit on iOS — the platform-resolved preferences module owns it). */
   preferenceKey: string;
-  recordType: 'Nutrition' | 'Hydration';
-  permission: { accessType: 'write'; recordType: 'Nutrition' | 'Hydration' };
+  recordType: WritebackRecordType;
+  permission: { accessType: 'write'; recordType: WritebackRecordType };
+  /** Platforms the store has a record type for; absent means both. */
+  platforms?: ('android' | 'ios')[];
   icon: ImageSourcePropType;
   category: string;
 }
 
-export const WRITEBACK_METRICS: WritebackMetric[] = [
+const ALL_WRITEBACK_METRICS: WritebackMetric[] = [
   {
     id: 'nutrition',
     labelKey: 'healthMetrics.nutrition',
@@ -60,7 +64,28 @@ export const WRITEBACK_METRICS: WritebackMetric[] = [
     icon: require('../assets/icons/health-metrics/hydration.png'),
     category: 'Nutrition',
   },
+  {
+    // Brushes logged in Sparky (by hand or with the timer) as Apple Health
+    // ToothbrushingEvent samples (#1862). Health Connect has no such record.
+    id: 'toothbrushing',
+    labelKey: 'healthMetrics.toothbrushing',
+    defaultLabel: 'Toothbrushing',
+    preferenceKey: 'writebackToothbrushingEnabled',
+    recordType: 'Toothbrushing',
+    permission: { accessType: 'write', recordType: 'Toothbrushing' },
+    icon: require('../assets/icons/health-metrics/stress.png'),
+    category: 'Hygiene',
+    platforms: ['ios'],
+  },
 ];
 
+/** The writeback metrics this platform's health store can hold. */
+export const WRITEBACK_METRICS: WritebackMetric[] =
+  ALL_WRITEBACK_METRICS.filter(
+    (metric) =>
+      !metric.platforms ||
+      metric.platforms.includes(Platform.OS as 'android' | 'ios')
+  );
+
 /** Order categories render in (mirrors the read section's grouping). */
-export const WRITEBACK_CATEGORY_ORDER: string[] = ['Nutrition'];
+export const WRITEBACK_CATEGORY_ORDER: string[] = ['Nutrition', 'Hygiene'];

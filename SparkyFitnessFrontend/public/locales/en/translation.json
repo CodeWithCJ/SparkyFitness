@@ -3644,6 +3644,7 @@
     "saving": "Saving...",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
+    "retry": "Retry",
     "active": "Active",
     "pickADate": "Pick a date",
     "pickTime": "Pick a time",
@@ -4379,7 +4380,8 @@
       "mindfulness": "Mindfulness",
       "photos": "Photos",
       "sleep": "Sleep",
-      "symptoms": "Symptoms"
+      "symptoms": "Symptoms",
+      "oralCare": "Oral care"
     },
     "noRecentActivity": "No recent activity found.",
     "healthDataImportCSV": {
@@ -5427,7 +5429,8 @@
       "later": "Later",
       "resetZoom": "Reset zoom",
       "windowEvents": "Events in view"
-    }
+    },
+    "oralCareTab": "Oral care"
   },
   "sleepHealth": {
     "hrvStatus": "HRV Status",
@@ -10378,5 +10381,114 @@
     "valueInvalid": "Enter a marker and a numeric result.",
     "historyCutOff": "History shows at most the newest {{count}} results.",
     "dateInvalid": "Enter the date of the test."
+  },
+  "oralCare": {
+    "title": "Oral care",
+    "loading": "Loading oral care...",
+    "loadError": "Failed to load oral care for this day.",
+    "types": {
+      "brushing": "Brushing",
+      "flossing": "Flossing",
+      "mouthwash": "Mouthwash",
+      "tongue_cleaning": "Tongue cleaning",
+      "other": "Other"
+    },
+    "goal": {
+      "description": "Goal: brush {{count}} times a day for {{time}} each",
+      "description_one": "Goal: brush once a day for {{time}}",
+      "description_other": "Goal: brush {{count}} times a day for {{time}} each",
+      "edit": "Goal",
+      "title": "Brushing goal",
+      "dailyTarget": "Brushes per day",
+      "targetTime": "Time per brush",
+      "hint": "Dentists usually recommend brushing twice a day for 2 minutes.",
+      "saved": "Brushing goal saved."
+    },
+    "stats": {
+      "brushed": "Brushed",
+      "ofTarget": "{{count}} of {{target}}",
+      "goalMet": "Goal met",
+      "time": "Time brushing",
+      "atTarget": "{{count}} reached {{time}}",
+      "streak": "Streak",
+      "days": "{{count}} days",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "best": "Best: {{count}} days",
+      "best_one": "Best: {{count}} day",
+      "best_other": "Best: {{count}} days",
+      "other": "Other care"
+    },
+    "history": {
+      "title": "Sessions",
+      "subtitle": "Logged here or synced from Apple Health",
+      "empty": "Nothing logged for this day"
+    },
+    "source": {
+      "timer": "Timer",
+      "health": "Apple Health"
+    },
+    "coveredBySync": "Also recorded by Apple Health · counted once",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "dialog": {
+      "editTitle": "Edit session",
+      "createTitle": "Log oral care",
+      "type": "Type",
+      "customLabel": "Name",
+      "customLabelPlaceholder": "e.g. Water flosser",
+      "time": "Time",
+      "duration": "Duration (optional)",
+      "minutes": "Minutes",
+      "minutesShort": "min",
+      "seconds": "Seconds",
+      "secondsShort": "sec",
+      "notes": "Notes"
+    },
+    "deleteDialog": {
+      "title": "Delete this session?",
+      "description": "A session synced from Apple Health comes back on the next sync unless you delete it in the Health app too."
+    },
+    "errors": {
+      "save": "Could not save the session.",
+      "delete": "Could not delete the session.",
+      "goal": "Could not save the goal."
+    },
+    "report": {
+      "loading": "Loading oral care...",
+      "loadError": "Failed to load oral care report.",
+      "goalDays": "Goal met",
+      "goalDaysValue": "{{met}} of {{total}} days",
+      "streak": "Current streak",
+      "brushesPerDay": "Brushes per day",
+      "goalValue": "Goal: {{target}}",
+      "minutesPerDay": "Minutes brushing per day",
+      "otherCare": "Other care: {{count}}",
+      "clamped": "Showing the last 366 days of the range.",
+      "brushesChart": "Brushes per day",
+      "goalLine": "Goal",
+      "brushes": "Brushes",
+      "minutesChart": "Minutes brushing per day",
+      "minutes": "Minutes",
+      "minutesNote": "Only brushes logged with a duration add time."
+    },
+    "timer": {
+      "title": "Brushing timer",
+      "subtitle": "{{time}}, a quarter of your mouth at a time",
+      "startButton": "Start timer",
+      "upperLeft": "Upper left",
+      "upperRight": "Upper right",
+      "lowerRight": "Lower right",
+      "lowerLeft": "Lower left",
+      "done": "Done! Save the brush",
+      "ready": "Ready",
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "mute": "Turn sound off",
+      "unmute": "Turn sound on"
+    }
   }
 }

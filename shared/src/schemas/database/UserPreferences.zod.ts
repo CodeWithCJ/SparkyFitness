@@ -123,6 +123,9 @@ export const userPreferencesSchema = z.object({
   hr_zone_method: z.enum(HR_ZONE_METHODS),
   hr_zone_custom_floors: z.array(z.number().int()).length(5).nullable(),
   hr_zone_display_count: z.union([z.literal(4), z.literal(5)]),
+  // Oral care goal (#1862): brushes per day and target seconds per brush.
+  oral_care_daily_target: z.number().int().min(1).max(6),
+  oral_care_target_seconds: z.number().int().min(30).max(600),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -224,6 +227,8 @@ export const userPreferencesInitializerSchema = z.object({
     .nullable()
     .optional(),
   hr_zone_display_count: z.union([z.literal(4), z.literal(5)]).optional(),
+  oral_care_daily_target: z.number().int().min(1).max(6).optional(),
+  oral_care_target_seconds: z.number().int().min(30).max(600).optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -325,6 +330,8 @@ export const userPreferencesMutatorSchema = z.object({
     .nullable()
     .optional(),
   hr_zone_display_count: z.union([z.literal(4), z.literal(5)]).optional(),
+  oral_care_daily_target: z.number().int().min(1).max(6).optional(),
+  oral_care_target_seconds: z.number().int().min(30).max(600).optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

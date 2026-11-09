@@ -1671,3 +1671,61 @@ describe('MindfulnessSession records', () => {
     }
   });
 });
+
+describe('Toothbrushing records', () => {
+  const metric = {
+    recordType: 'Toothbrushing',
+    unit: 'min',
+    type: 'toothbrushing',
+  };
+  const base = {
+    uuid: 'hk-brush-1',
+    startTime: '2024-01-15T08:00:00Z',
+    endTime: '2024-01-15T08:02:10Z',
+    metadata: { HKTimeZone: 'America/New_York' },
+  };
+
+  test('maps a brush to Toothbrushing keyed by its uuid, with the duration from its times', () => {
+    const [brush] = transformHealthRecords([base], metric) as unknown as {
+      type: string;
+      source_id: string;
+      duration_seconds: number;
+      startTime: string;
+      endTime: string;
+    }[];
+    expect(brush).toMatchObject({
+      type: 'Toothbrushing',
+      source: 'HealthKit',
+      source_id: 'hk-brush-1',
+      startTime: '2024-01-15T08:00:00Z',
+      endTime: '2024-01-15T08:02:10Z',
+      duration_seconds: 130,
+    });
+  });
+
+  test('skips a sample with no uuid or whose end is before its start', () => {
+    expect(
+      transformHealthRecords([{ ...base, uuid: undefined }], metric)
+    ).toEqual([]);
+    expect(
+      transformHealthRecords(
+        [{ ...base, endTime: '2024-01-15T07:59:00Z' }],
+        metric
+      )
+    ).toEqual([]);
+  });
+
+  test('skips brushes this app wrote to Apple Health', () => {
+    setOwnBundleId('com.sparky.app');
+    try {
+      expect(
+        transformHealthRecords(
+          [{ ...base, sourceBundleId: 'com.sparky.app' }],
+          metric
+        )
+      ).toEqual([]);
+    } finally {
+      setOwnBundleId(null);
+    }
+  });
+});

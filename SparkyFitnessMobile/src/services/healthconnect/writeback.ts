@@ -378,8 +378,14 @@ const trackingKeysToClear = (
 export const removeWrittenData = async (
   range: WritebackDateRange | null
 ): Promise<WritebackRemovalResult> => {
+  // Toothbrushing is iOS-only (Health Connect has no record for it), so it is
+  // never in this platform's WRITEBACK_METRICS; the guard narrows the type.
   const recordTypes = Array.from(
-    new Set(WRITEBACK_METRICS.map((m) => m.recordType))
+    new Set(
+      WRITEBACK_METRICS.map((m) => m.recordType).filter(
+        (t): t is 'Nutrition' | 'Hydration' => t !== 'Toothbrushing'
+      )
+    )
   );
   const filter = range
     ? {
