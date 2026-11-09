@@ -7,6 +7,7 @@ import {
   type ChatToolCategorySlug,
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { withFixedActor } from '../../db/poolManager.js';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
@@ -61,11 +62,16 @@ type ToolMap = Record<string, Tool>;
 // lands on whatever ends up last (see applyChatProviderTuning), and
 // tests/chatbotToolsIndex.test.ts pins the full/core surfaces against it.
 /**
- * Per-turn context a builder may use. Only the vision category needs it today
- * (it hands the structured photo estimate to the turn so it can be persisted
- * and logged verbatim); every other builder ignores the argument.
+ * Per-turn context for one chat turn. Chat passes one on every turn; MCP and
+ * tests build without it, and then the tools act for the person they were
+ * built for. Each builder reads only the fields it needs.
  */
 export interface ToolBuildContext {
+  /**
+   * The signed-in person. Every chat tool acts as them in the database, even
+   * in a family member's account.
+   */
+  actorUserId: string;
   /** Trusted text from the current user turn, used to authorize lasting memory. */
   latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
@@ -236,6 +242,21 @@ function stripNullValues(value: unknown): unknown {
   return value;
 }
 
+// Chat can work in a family member's account, so every tool runs with the
+// signed-in person fixed as the actor. Each tool is replaced rather than edited
+// so a tool object shared between builds never keeps another person's actor.
+function fixChatToolActor(tools: ToolMap, actorUserId: string): void {
+  for (const [name, t] of Object.entries(tools)) {
+    const { execute } = t;
+    if (!execute) continue;
+    tools[name] = {
+      ...t,
+      execute: (...args: Parameters<typeof execute>) =>
+        withFixedActor(actorUserId, () => execute(...args)),
+    };
+  }
+}
+
 // Applies chat-provider tuning that only matters when the tools are sent to an
 // LLM provider through the AI SDK. The MCP surface skips this — MCP publishes
 // the schemas over JSON-RPC where strict-mode flags and Anthropic cache
@@ -352,6 +373,7 @@ export function buildChatbotTools(
   }
   if (providerTuning) {
     applyChatProviderTuning(tools);
+    fixChatToolActor(tools, ctx?.actorUserId ?? userId);
   }
 
   if (!cacheable) return tools;
@@ -414,6 +436,7 @@ export function buildChatToolSurface(
   // active, so the marker is always sent regardless of per-request narrowing.
   Object.assign(tools, buildMetaTools());
   applyChatProviderTuning(tools);
+  fixChatToolActor(tools, ctx?.actorUserId ?? userId);
 
   const surface: ChatToolSurface = { tools, toolNamesByCategory };
   if (!cacheable) return surface;

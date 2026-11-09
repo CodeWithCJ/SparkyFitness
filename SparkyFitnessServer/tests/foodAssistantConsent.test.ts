@@ -18,6 +18,7 @@ it.each([
   'enforces named removal consent through the model-facing tool: %s',
   async (message) => {
     const tool = buildFoodAssistantTools('owner', {
+      actorUserId: 'owner',
       latestUserText: message,
     }).sparky_food_assistant_state;
     const result = await tool.execute!(

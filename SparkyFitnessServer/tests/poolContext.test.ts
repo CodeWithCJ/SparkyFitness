@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dbContextStorage, getClient } from '../db/poolManager.js';
+import {
+  dbContextStorage,
+  getClient,
+  withFixedActor,
+} from '../db/poolManager.js';
 
 const { client, connect } = vi.hoisted(() => {
   const client = { query: vi.fn(), release: vi.fn() };
@@ -57,6 +61,26 @@ describe('getClient', () => {
       expect(client.release).not.toHaveBeenCalled();
     }
   );
+
+  it('ignores an explicit actor inside withFixedActor', async () => {
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      withFixedActor('delegate', () => getClient('owner', 'owner'))
+    );
+
+    expect(client.query).toHaveBeenCalledExactlyOnceWith(
+      'SELECT public.set_app_context($1, $2)',
+      ['owner', 'delegate']
+    );
+  });
+
+  it('fixes the actor in withFixedActor outside a request too', async () => {
+    await withFixedActor('delegate', () => getClient('owner', 'owner'));
+
+    expect(client.query).toHaveBeenCalledExactlyOnceWith(
+      'SELECT public.set_app_context($1, $2)',
+      ['owner', 'delegate']
+    );
+  });
 
   it('does not borrow a client without a user ID', async () => {
     await expect(getClient(null)).rejects.toThrow('userId is required');

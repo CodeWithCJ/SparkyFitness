@@ -607,6 +607,7 @@ async function prepareChatContext(
   // them one food at a time. Per-turn: two users' turns share this process.
   const foodPhotoEstimateSink = createFoodPhotoEstimateSink();
   const toolBuildContext: ToolBuildContext = {
+    actorUserId: authenticatedUserId,
     foodPhotoEstimateSink,
     latestImageDataUrl,
     serviceConfigId,

@@ -5,12 +5,17 @@ import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { withFixedActor } from '../db/poolManager.js';
 
 // Loading the real foodEntryService trips on a deep '@workspace/shared'
 // subpath import; the registry surface test never executes handlers.
 vi.mock('../services/foodEntryService', () => ({ default: {} }));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
+}));
+vi.mock('../db/poolManager.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../db/poolManager.js')>()),
+  withFixedActor: vi.fn((_actorUserId: string, work: () => unknown) => work()),
 }));
 
 // The chat-visible tool surface: every MCP tool except the three dev tools
@@ -118,6 +123,67 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_search_exercises',
   'sparky_search_foods',
 ].sort();
+
+describe('chat tool actor', () => {
+  const options = { toolCallId: 'call', messages: [], context: undefined };
+  const askArgs = { question: 'Which one?', options: ['A', 'B'] };
+
+  it('fixes the signed-in person around a tool on the manual category path', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const tools = buildChatbotTools(
+      'target-1',
+      'UTC',
+      'full',
+      true,
+      ['food'],
+      true,
+      { actorUserId: 'actor-1' }
+    );
+
+    await tools[ASK_USER_TOOL_NAME].execute?.(askArgs, options);
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'actor-1',
+      expect.any(Function)
+    );
+  });
+
+  it('fixes the signed-in person around a tool on the auto category path', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const { tools } = buildChatToolSurface('target-2', 'UTC', {
+      actorUserId: 'actor-2',
+    });
+
+    await tools[ENABLE_TOOLS_TOOL_NAME].execute?.(
+      { categories: ['food'] },
+      options
+    );
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'actor-2',
+      expect.any(Function)
+    );
+  });
+
+  it('acts as the person the tools were built for without a turn context', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const tools = buildChatbotTools(
+      'owner-3',
+      'UTC',
+      'full',
+      true,
+      ['food'],
+      true
+    );
+
+    await tools[ASK_USER_TOOL_NAME].execute?.(askArgs, options);
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'owner-3',
+      expect.any(Function)
+    );
+  });
+});
 
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {
@@ -416,7 +482,7 @@ it('preserves lazy provider schemas while normalizing application Zod schemas', 
     true,
     ['food'],
     false,
-    { foodResearchTool: research }
+    { actorUserId: 'lazy-schema-review', foodResearchTool: research }
   );
   expect(tools.web_search.inputSchema).toBe(research.inputSchema);
   expect(tools.sparky_manage_food.inputSchema).toBeInstanceOf(z.ZodType);

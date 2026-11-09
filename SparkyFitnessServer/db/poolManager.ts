@@ -18,6 +18,7 @@ const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
   authenticatedUserId: string;
+  actorIsFixed?: boolean;
 }>();
 // Parse numeric types
 types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
@@ -135,7 +136,10 @@ async function getClient(
   await refuseWorkDuringRestore();
   const store = dbContextStorage.getStore();
   const actualAuthUserId =
-    authenticatedUserId || store?.authenticatedUserId || userId;
+    (store?.actorIsFixed && store.authenticatedUserId) ||
+    authenticatedUserId ||
+    store?.authenticatedUserId ||
+    userId;
   const client = await retryOnConnectionError(async () => {
     const client = await _getRawAppPool().connect();
     try {
@@ -150,6 +154,21 @@ async function getClient(
     }
   }, requestConnectRetry);
   return unlessWorkAborted(client);
+}
+/**
+ * Runs work whose connections all act as `actorUserId`, whatever actor the code
+ * passes to getClient. Chat tools run this way so that one naming the target as
+ * its own actor can't skip the Family Access checks in RLS.
+ */
+function withFixedActor<T>(actorUserId: string, work: () => T): T {
+  return dbContextStorage.run(
+    {
+      ...dbContextStorage.getStore(),
+      authenticatedUserId: actorUserId,
+      actorIsFixed: true,
+    },
+    work
+  );
 }
 async function getSystemClient() {
   throwIfWorkAborted();
@@ -240,6 +259,7 @@ appPoolInstance = createAppPoolInstance();
 export { endPool };
 export { resetPool };
 export { getClient };
+export { withFixedActor };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };
