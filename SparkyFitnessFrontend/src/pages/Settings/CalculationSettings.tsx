@@ -91,6 +91,7 @@ import {
   isAdaptiveEarnBackSuppressed,
   isAdaptiveActivitySeparated,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   ENERGY_DENSITY_KCAL_PER_KG,
   getClinicalCalorieMinimum,
   getRecommendedCalorieSafetyFloor,
@@ -1152,9 +1153,9 @@ const CalculationSettings = () => {
         >
           {calorieGoalAdjustmentMode === 'adaptive' ? (
             <Trans
-              i18nKey="settings.goalMode.adaptiveGoalTheGoldStandard"
+              i18nKey="settings.goalMode.adaptiveGoalFromEvidence"
               defaults={
-                "<span>Adaptive Goal:</span> The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
+                '<span>Adaptive Goal:</span> Estimates expenditure from logged food and measured weights. New complete evidence is introduced gradually, and older evidence fades toward the BMR-based formula baseline. Missing food logs and scale-weight fluctuations add uncertainty.'
               }
               components={{ span: <span className="font-medium" /> }}
             />
@@ -1283,8 +1284,18 @@ const CalculationSettings = () => {
               {calorieGoalAdjustmentMode === 'adaptive' && (
                 <p className="text-sm text-muted-foreground italic mt-[-4px]">
                   {t(
-                    'settings.goalMode.inAdaptiveModeThisIs',
-                    '💡 In Adaptive mode this sets the formula baseline and the ±500 kcal plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.'
+                    'settings.goalMode.adaptivePlausibilityBandHint',
+                    '💡 In Adaptive mode this sets the formula baseline and the ±{{band}} {{unit}} plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.',
+                    {
+                      band: Math.round(
+                        convertEnergy(
+                          ADAPTIVE_TDEE_CLAMP_KCAL,
+                          'kcal',
+                          energyUnit
+                        )
+                      ),
+                      unit: getEnergyUnitString(energyUnit),
+                    }
                   )}
                 </p>
               )}

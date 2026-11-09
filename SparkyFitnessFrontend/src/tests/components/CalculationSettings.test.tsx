@@ -11,9 +11,18 @@ import DailyProgress from '@/pages/Diary/DailyProgress';
 import { MemoryRouter } from 'react-router-dom';
 import { CALORIE_RULE_DEFAULTS } from '@workspace/shared';
 import type { CalorieInputs } from '@workspace/shared';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import en from '../../../public/locales/en/translation.json';
 
 const mockSave = jest.fn().mockResolvedValue(undefined);
 const mockConvert = (value: number) => value;
+let mockEnergyUnit: 'kcal' | 'kJ' = 'kcal';
+const mockConvertEnergy = (
+  value: number,
+  from: 'kcal' | 'kJ',
+  to: 'kcal' | 'kJ'
+) => (from === to ? value : from === 'kcal' ? value * 4.184 : value / 4.184);
 let mockMode = 'dynamic';
 let mockMethod = 'adaptive';
 let mockSeparate = false;
@@ -36,7 +45,7 @@ let mockCalorieInputs: CalorieInputs | undefined = defaultCalorieInputs;
 
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
-    energyUnit: 'kcal',
+    energyUnit: mockEnergyUnit,
     setEnergyUnit: jest.fn(),
     bmrAlgorithm: 'Mifflin-St Jeor',
     bodyFatAlgorithm: 'U.S. Navy',
@@ -54,9 +63,9 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     timezone: 'UTC',
     loggingLevel: 'SILENT',
     saveAllPreferences: mockSave,
-    convertEnergy: mockConvert,
+    convertEnergy: mockConvertEnergy,
     convertWeight: mockConvert,
-    getEnergyUnitString: () => 'kcal',
+    getEnergyUnitString: () => mockEnergyUnit,
   }),
 }));
 jest.mock('@/hooks/useInvalidateKeys', () => ({
@@ -128,6 +137,7 @@ jest.mock('@/hooks/CheckIn/useCheckIn', () => ({
 
 beforeEach(() => {
   mockSave.mockClear();
+  mockEnergyUnit = 'kcal';
   mockMode = 'dynamic';
   mockMethod = 'adaptive';
   mockSeparate = false;
@@ -140,6 +150,98 @@ beforeEach(() => {
 });
 
 describe('daily calorie goal adjustment cards', () => {
+  it('replaces obsolete translated calibration claims with an uncertainty-aware explanation', async () => {
+    mockMode = 'adaptive';
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'de',
+      fallbackLng: 'en',
+      resources: {
+        en: { translation: en },
+        de: {
+          translation: {
+            settings: {
+              goalMode: {
+                adaptiveGoalTheGoldStandard:
+                  '<span>Adaptive Goal:</span> Gold Standard: uses the last 35 days and learns your unique metabolism.',
+              },
+            },
+          },
+        },
+      },
+      interpolation: { escapeValue: false },
+    });
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CalculationSettings />
+      </I18nextProvider>
+    );
+
+    const explanation = screen.getByTestId('adjustment-mode-description');
+    expect(explanation).not.toHaveTextContent(
+      /35\s*days|gold\s*standard|unique\s*metabolism/i
+    );
+    expect(explanation).toHaveTextContent(/gradual/i);
+    expect(explanation).toHaveTextContent(/uncertainty/i);
+  });
+
+  it.each([
+    { unit: 'kcal' as const, band: 500 },
+    { unit: 'kJ' as const, band: 2092 },
+  ])(
+    'shows the adaptive plausibility band as $band $unit',
+    async ({ unit, band }) => {
+      mockMode = 'adaptive';
+      mockEnergyUnit = unit;
+      const i18n = createInstance();
+      await i18n.init({
+        lng: 'en',
+        resources: { en: { translation: en } },
+        interpolation: { escapeValue: false },
+      });
+      render(
+        <I18nextProvider i18n={i18n}>
+          <CalculationSettings />
+        </I18nextProvider>
+      );
+      expect(
+        screen.getByText(/plausibility band for each complete estimate/)
+      ).toHaveTextContent(`±${band} ${unit}`);
+    }
+  );
+
+  it('uses the unit-aware English fallback when an older translation has a literal kcal hint', async () => {
+    mockMode = 'adaptive';
+    mockEnergyUnit = 'kJ';
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'de',
+      fallbackLng: 'en',
+      resources: {
+        en: { translation: en },
+        de: {
+          translation: {
+            settings: {
+              goalMode: {
+                inAdaptiveModeThisIs: 'Stale literal hint: ±500 kcal.',
+              },
+            },
+          },
+        },
+      },
+      interpolation: { escapeValue: false },
+    });
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CalculationSettings />
+      </I18nextProvider>
+    );
+    expect(
+      screen.getByText(/plausibility band for each complete estimate/)
+    ).toHaveTextContent('±2092 kJ');
+    expect(screen.queryByText(/Stale literal hint/)).toBeNull();
+  });
+
   it('explains the chosen mode in full and keeps its own controls', () => {
     render(<CalculationSettings />);
     expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveAttribute(

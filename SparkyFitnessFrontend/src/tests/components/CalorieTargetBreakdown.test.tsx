@@ -227,9 +227,15 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           insufficientHistory: true,
         }}
         adaptiveTdeeData={{
-          ...boundedData(),
+          tdee: 2160,
+          confidence: 'LOW',
+          daysOfData: 28,
+          weightTrendMethod: 'bounded_daily',
           isFallback: true,
           estimateStatus: 'fallback',
+          stabilizationDays: 0,
+          stabilizationWindowDays: 40,
+          dailyChangeLimitKcal: 25,
           fallbackReason: 'Insufficient weight coverage',
           observedWeightDays: 1,
           weightObservationSpanDays: 0,
@@ -275,10 +281,14 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           insufficientHistory: true,
         }}
         adaptiveTdeeData={{
-          ...boundedData(),
+          tdee: 2160,
+          confidence: 'LOW',
+          weightTrendMethod: 'bounded_daily',
           isFallback: true,
           estimateStatus: 'fallback',
-          candidateDate: undefined,
+          stabilizationDays: 0,
+          stabilizationWindowDays: 40,
+          dailyChangeLimitKcal: 25,
           daysOfData: 14,
           observedWeightDays: 2,
           weightObservationSpanDays: 7,

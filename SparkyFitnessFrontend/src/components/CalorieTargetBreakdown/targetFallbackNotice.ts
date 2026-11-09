@@ -34,18 +34,6 @@ export const getTargetFallbackNotice = (
   }
 
   if (adaptiveTdeeData.isFallback) {
-    if (
-      adaptiveTdeeData.weightTrendMethod === 'bounded_daily' &&
-      adaptiveTdeeData.estimateStatus === 'fallback' &&
-      adaptiveTdeeData.candidateDate
-    ) {
-      return t('diary.calculateExplanation.fallbackExpired', {
-        defaultValue:
-          'The history estimate has returned to the formula baseline ({{value}} {{unit}}). New complete weight and calorie evidence is needed.',
-        value: fallbackVal,
-        unit: unitStr,
-      });
-    }
     const reason = adaptiveTdeeData.fallbackReason?.toLowerCase() || '';
     if (
       adaptiveTdeeData.weightTrendMethod === 'bounded_daily' &&

@@ -2,6 +2,7 @@ import { createInstance } from 'i18next';
 import en from '../../../public/locales/en/translation.json';
 import { getTargetFallbackNotice } from '@/components/CalorieTargetBreakdown/targetFallbackNotice';
 import type { AdaptiveTdeeData } from '@/components/CalorieTargetBreakdown/types';
+import { adaptiveTdeeResponseSchema } from '@workspace/shared';
 
 const i18n = createInstance();
 
@@ -40,16 +41,29 @@ it('explains actual weight and calorie requirements in the English fallback noti
   expect(calorieNotice).toMatch(/14 days with ≥200 kcal/);
 });
 
-it('describes expired complete evidence as a return to the formula baseline', () => {
-  expect(
-    notice({
-      isFallback: true,
-      weightTrendMethod: 'bounded_daily',
-      estimateStatus: 'fallback',
-      candidateDate: '2026-09-01',
-      daysOfData: 28,
-    })
-  ).toMatch(/returned to the formula baseline.*2160 kcal/);
+it('explains a canonical weight fallback after learned evidence has expired', () => {
+  // The server clears candidate metadata once no learned input remains. Its
+  // canonical fallback explains current evidence requirements, not an expired
+  // candidate whose date is no longer part of the response.
+  const fallback = adaptiveTdeeResponseSchema.parse({
+    tdee: 2160,
+    confidence: 'LOW',
+    isFallback: true,
+    weightTrendMethod: 'bounded_daily',
+    estimateStatus: 'fallback',
+    observedWeightDays: 0,
+    weightObservationSpanDays: 0,
+    daysOfData: 0,
+    stabilizationDays: 0,
+    stabilizationWindowDays: 40,
+    dailyChangeLimitKcal: 25,
+    fallbackReason:
+      'Insufficient weight history (need at least 2 observed weights spanning 7 days; older learned evidence gradually expires)',
+    lastCalculated: '2026-11-09T00:00:00.000Z',
+  });
+  expect(notice(fallback)).toMatch(
+    /formula baseline \(2160 kcal\).*weight evidence is insufficient.*2 measured days spanning 7\+ days/
+  );
 });
 
 it('explains a missing complete observed period when current weight and calorie counts already meet the minimums', () => {
