@@ -4,7 +4,7 @@ import { log } from '../../config/logging.js';
 import foodPhotoEstimationService from '../../services/foodPhotoEstimationService.js';
 import labelScanService from '../../services/labelScanService.js';
 import { z } from 'zod';
-import { formatZodError } from './errors.js';
+import { ERRORS, formatZodError, isPermissionDenied } from './errors.js';
 import chatRepository from '../../models/chatRepository.js';
 import foodPhotoLogService, {
   PhotoLogError,
@@ -427,6 +427,7 @@ Only call this when the user explicitly asks to log the plate in a message AFTER
           if (error instanceof PhotoLogError) {
             return `❌ Could not log the photo estimate: ${error.message}`;
           }
+          if (isPermissionDenied(error)) return ERRORS.NOT_ALLOWED();
           log('error', '[Vision Tool] logFoodPhoto error:', error);
           return `❌ Could not log the photo estimate: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }

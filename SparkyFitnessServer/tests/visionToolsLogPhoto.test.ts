@@ -29,6 +29,7 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const { buildVisionTools } = await import('../ai/tools/visionTools.js');
 const { withFixedActor } = await import('../db/poolManager.js');
+const { ERRORS } = await import('../ai/tools/errors.js');
 const { createFoodPhotoEstimateSink, FOOD_PHOTO_ESTIMATE_PART_TYPE } =
   await import('../ai/tools/foodPhotoEstimateSink.js');
 
@@ -248,6 +249,19 @@ describe('sparky_log_food_photo', () => {
       {} as never
     );
     expect(String(out)).toMatch(/Could not log the photo estimate/);
+  });
+
+  // RLS refusing the write in a family member's account.
+  it("says the access doesn't allow it when the grant refuses the write", async () => {
+    createPhotoLoggedMealMock.mockRejectedValue(
+      Object.assign(new Error('row-level security'), { code: '42501' })
+    );
+    const tools = toolsWithSink(estimate());
+    const out = await tools.sparky_log_food_photo.execute!(
+      { ...ARGS, save_mode: 'ingredients_and_meal' },
+      {} as never
+    );
+    expect(String(out)).toBe(ERRORS.NOT_ALLOWED());
   });
 
   it('tells the user the meal was saved for reuse', async () => {
