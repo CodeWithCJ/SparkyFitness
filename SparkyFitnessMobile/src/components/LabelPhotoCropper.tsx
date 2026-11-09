@@ -1,18 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Image,
   PanResponder,
+  PixelRatio,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import {
   adjustLabelCrop,
   type LabelCrop,
   type LabelCropHandle,
 } from '../utils/labelCrop';
+
+const CONTROL_SIZE = 44;
+// Corner targets extend half their size past the image. Keep the move target clear.
+const MOVE_CONTROL_GAP = CONTROL_SIZE / 2 + 8;
+const MOVE_CONTROL_SPACE = MOVE_CONTROL_GAP + CONTROL_SIZE;
 
 interface Props {
   photo: { uri: string; width: number; height: number };
@@ -28,6 +35,7 @@ interface CropControlProps {
   imageHeight: number;
   onCropChange: Props['onCropChange'];
   style: StyleProp<ViewStyle>;
+  children?: ReactNode;
 }
 
 function CropControl({
@@ -38,6 +46,7 @@ function CropControl({
   imageHeight,
   onCropChange,
   style,
+  children,
 }: CropControlProps) {
   const { t } = useTranslation();
   const currentCrop = useRef(crop);
@@ -78,6 +87,8 @@ function CropControl({
       accessibilityRole="adjustable"
       accessibilityLabel={label}
       accessibilityActions={[
+        { name: 'increment' },
+        { name: 'decrement' },
         {
           name: 'left',
           label: t('foodScan.label.cropLeft', { defaultValue: 'Move left' }),
@@ -97,7 +108,11 @@ function CropControl({
       ]}
       onAccessibilityAction={({ nativeEvent: { actionName } }) => {
         const dx =
-          actionName === 'left' ? -0.05 : actionName === 'right' ? 0.05 : 0;
+          actionName === 'left' || actionName === 'decrement'
+            ? -0.05
+            : actionName === 'right' || actionName === 'increment'
+              ? 0.05
+              : 0;
         const dy =
           actionName === 'up' ? -0.05 : actionName === 'down' ? 0.05 : 0;
         onCropChange(adjustLabelCrop(crop, handle, dx, dy));
@@ -106,6 +121,7 @@ function CropControl({
       {handle !== 'move' ? (
         <View pointerEvents="none" style={styles.knob} />
       ) : null}
+      {children}
     </View>
   );
 }
@@ -117,10 +133,10 @@ export default function LabelPhotoCropper({
 }: Props) {
   const { t } = useTranslation();
   const [layout, setLayout] = useState({ width: 0, height: 0 });
-  // Reserve room for the 44-point handles around the full-image selection.
+  // Keep the image size stable when a small crop needs the separate move target.
   const scale = Math.min(
     Math.max(0, layout.width - 48) / photo.width,
-    Math.max(0, layout.height - 48) / photo.height
+    Math.max(0, layout.height - 48 - MOVE_CONTROL_SPACE) / photo.height
   );
   const width = photo.width * scale;
   const height = photo.height * scale;
@@ -130,6 +146,13 @@ export default function LabelPhotoCropper({
   const selectionHeight = crop.height * height;
   const right = left + selectionWidth;
   const bottom = top + selectionHeight;
+  // Rounded edges can erase a subpixel gap between the corner hit targets.
+  const moveThreshold = CONTROL_SIZE + 1 / PixelRatio.get();
+  const separateMove =
+    selectionWidth <= moveThreshold && selectionHeight <= moveThreshold;
+  const moveLabel = t('foodScan.label.cropMove', {
+    defaultValue: 'Move label crop',
+  });
   const handles: {
     handle: LabelCropHandle;
     label: string;
@@ -177,72 +200,102 @@ export default function LabelPhotoCropper({
       onLayout={({ nativeEvent }) => setLayout(nativeEvent.layout)}
     >
       {scale > 0 ? (
-        <View testID="label-crop-image-frame" style={{ width, height }}>
-          <Image
-            source={{ uri: photo.uri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="contain"
-            accessibilityLabel={t('foodScan.label.cropPhoto', {
-              defaultValue: 'Nutrition label photo',
-            })}
-          />
-          <View
-            pointerEvents="none"
-            style={[styles.shade, { left: 0, top: 0, width, height: top }]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.shade,
-              { left: 0, top, width: left, height: selectionHeight },
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.shade,
-              {
-                left: right,
-                top,
-                width: width - right,
-                height: selectionHeight,
-              },
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.shade,
-              { left: 0, top: bottom, width, height: height - bottom },
-            ]}
-          />
-          <CropControl
-            handle="move"
-            label={t('foodScan.label.cropMove', {
-              defaultValue: 'Move label crop',
-            })}
-            crop={crop}
-            imageWidth={width}
-            imageHeight={height}
-            onCropChange={onCropChange}
-            style={[
-              styles.selection,
-              { left, top, width: selectionWidth, height: selectionHeight },
-            ]}
-          />
-          {handles.map(({ handle, label, x, y }) => (
-            <CropControl
-              key={handle}
-              handle={handle}
-              label={label}
-              crop={crop}
-              imageWidth={width}
-              imageHeight={height}
-              onCropChange={onCropChange}
-              style={[styles.handle, { left: x - 22, top: y - 22 }]}
+        <>
+          <View testID="label-crop-image-frame" style={{ width, height }}>
+            <Image
+              source={{ uri: photo.uri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+              accessibilityLabel={t('foodScan.label.cropPhoto', {
+                defaultValue: 'Nutrition label photo',
+              })}
             />
-          ))}
-        </View>
+            <View
+              pointerEvents="none"
+              style={[styles.shade, { left: 0, top: 0, width, height: top }]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.shade,
+                { left: 0, top, width: left, height: selectionHeight },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.shade,
+                {
+                  left: right,
+                  top,
+                  width: width - right,
+                  height: selectionHeight,
+                },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.shade,
+                { left: 0, top: bottom, width, height: height - bottom },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.selection,
+                { left, top, width: selectionWidth, height: selectionHeight },
+              ]}
+            />
+            {!separateMove ? (
+              <CropControl
+                handle="move"
+                label={moveLabel}
+                crop={crop}
+                imageWidth={width}
+                imageHeight={height}
+                onCropChange={onCropChange}
+                style={{
+                  position: 'absolute',
+                  left,
+                  top,
+                  width: selectionWidth,
+                  height: selectionHeight,
+                }}
+              />
+            ) : null}
+            {handles.map(({ handle, label, x, y }) => (
+              <CropControl
+                key={handle}
+                handle={handle}
+                label={label}
+                crop={crop}
+                imageWidth={width}
+                imageHeight={height}
+                onCropChange={onCropChange}
+                style={[
+                  styles.handle,
+                  { left: x - CONTROL_SIZE / 2, top: y - CONTROL_SIZE / 2 },
+                ]}
+              />
+            ))}
+          </View>
+          <View testID="label-crop-move-area" style={styles.moveArea}>
+            {separateMove ? (
+              <CropControl
+                handle="move"
+                label={moveLabel}
+                crop={crop}
+                imageWidth={width}
+                imageHeight={height}
+                onCropChange={onCropChange}
+                style={styles.moveHandle}
+              >
+                <Icon name="move" size={24} color="#fff" />
+              </CropControl>
+            ) : null}
+          </View>
+        </>
       ) : null}
     </View>
   );
@@ -257,10 +310,20 @@ const styles = StyleSheet.create({
   },
   shade: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.6)' },
   selection: { position: 'absolute', borderColor: '#fff', borderWidth: 2 },
+  moveArea: { height: CONTROL_SIZE, marginTop: MOVE_CONTROL_GAP },
+  moveHandle: {
+    width: CONTROL_SIZE,
+    height: CONTROL_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: '#fff',
+    borderWidth: 1,
+    borderRadius: CONTROL_SIZE / 2,
+  },
   handle: {
     position: 'absolute',
-    width: 44,
-    height: 44,
+    width: CONTROL_SIZE,
+    height: CONTROL_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
