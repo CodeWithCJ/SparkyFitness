@@ -94,7 +94,7 @@ describe('Demo Mode Infrastructure', () => {
       const req = {
         user: { email: 'demo@sparkyfitness.com' },
         method: 'POST',
-        originalUrl: '/api/identity/update-password',
+        originalUrl: '/api/identity/update-email',
       } as unknown as Request;
       const res = {
         status: vi.fn().mockReturnThis(),

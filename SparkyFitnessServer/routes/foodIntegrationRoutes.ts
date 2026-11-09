@@ -555,6 +555,7 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
   }
   try {
     const data = await searchNutritionixFoods(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -598,6 +599,7 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixNutrients(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -639,6 +641,7 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixBrandedNutrients(
+      req.authenticatedUserId,
       String(nix_item_id),
       String(providerId)
     );
