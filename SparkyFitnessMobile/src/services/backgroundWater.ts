@@ -139,6 +139,18 @@ export function clearBackgroundWater(): Promise<void> {
 }
 
 /**
+ * Tells the native medication reminder handler which account's reminders it may
+ * log. Queued with the syncs and clears, so a sign-out's reset and a later
+ * sign-in's id are applied in the order they were asked and never overwrite
+ * each other.
+ */
+export function syncMedicationActiveUser(userId: string): Promise<void> {
+  return enqueue(async () => {
+    setNativeMedicationActiveUser(userId);
+  });
+}
+
+/**
  * Android: puts the "Log water" launcher shortcut back, labelled in the app
  * language. Registering the quick actions replaces every dynamic shortcut,
  * this one included, so it runs after them. Queued with the syncs and clears

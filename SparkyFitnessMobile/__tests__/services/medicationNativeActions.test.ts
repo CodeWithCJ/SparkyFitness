@@ -229,6 +229,26 @@ describe('iOS native medication reminder handler', () => {
     expect(stored).toEqual([{ baseKey: 'k', entryDate: DATE, doses: [dose] }]);
   });
 
+  it('keeps a snooze natively when its record cannot be stored', async () => {
+    mockRead.mockReturnValue(
+      JSON.stringify([
+        {
+          id: 'r5',
+          kind: 'snooze',
+          baseKey: 'k',
+          entryDate: DATE,
+          doses: [dose],
+          minutes: 30,
+        },
+      ])
+    );
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(
+      new Error('disk full')
+    );
+    await applyNativeMedicationActionResults();
+    expect(mockAck).not.toHaveBeenCalled();
+  });
+
   it('does nothing when the native handler left nothing', async () => {
     expect(await applyNativeMedicationActionResults()).toBe(false);
   });

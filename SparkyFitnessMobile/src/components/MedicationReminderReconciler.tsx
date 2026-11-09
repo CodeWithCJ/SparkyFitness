@@ -9,7 +9,7 @@ import {
   maybePromptForExactAlarmPermission,
   registerLocalizedNotificationPresentation,
 } from '../services/notifications';
-import { setNativeMedicationActiveUser } from '../services/medicationNativeBridge';
+import { syncMedicationActiveUser } from '../services/backgroundWater';
 import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeSync';
 import { addLog } from '../services/LogService';
 import i18n from '../localization/i18n';
@@ -62,8 +62,8 @@ const MedicationReminderReconciler: React.FC = () => {
   // available here.
   const activeUserId = medications?.find((m) => m.user_id)?.user_id ?? null;
   useEffect(() => {
-    if (activeUserId) setNativeMedicationActiveUser(activeUserId);
-  }, [activeUserId]);
+    if (activeUserId) void syncMedicationActiveUser(activeUserId);
+  }, [activeUserId, medications]);
 
   useEffect(() => {
     void registerLocalizedNotificationPresentation().catch((error) => {

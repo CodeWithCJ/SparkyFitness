@@ -146,6 +146,9 @@ enum MedicationActionStore {
     }
 
     private static func carriesRetry(_ result: [String: Any]) -> Bool {
+        // A snooze result must also survive until JavaScript records it, or
+        // reconciliation could schedule repeat reminders for a snoozed dose.
+        if result["kind"] as? String == "snooze" { return true }
         guard result["kind"] as? String == "action" else { return false }
         return !((result["failedDoses"] as? [[String: Any]]) ?? []).isEmpty
     }
@@ -483,7 +486,10 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             // A failed list must not read as "nothing logged yet": the error goes
             // to the catch below, which leaves every dose to the retry queue.
             let listed = try await MedicationApi.send(login, method: "GET", path: path)
-            let existing = try JSONSerialization.jsonObject(with: listed) as? [[String: Any]] ?? []
+            // Anything but a JSON array (a proxy's 200 page or object) is a failed list.
+            guard let existing = try JSONSerialization.jsonObject(with: listed) as? [[String: Any]] else {
+                throw MedicationApi.Failure()
+            }
             for dose in data.doses where !isDoseLogged(existing, dose) {
                 var body: [String: Any] = [
                     "medication_id": dose.medicationId,

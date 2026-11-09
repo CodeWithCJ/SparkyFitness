@@ -274,7 +274,7 @@ async function readSnoozedReminders(): Promise<
 
 async function writeSnoozedReminders(
   records: SnoozedMedicationReminderRecord[]
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (records.length === 0) {
       await AsyncStorage.removeItem(SNOOZED_MEDICATION_REMINDERS_KEY);
@@ -284,8 +284,9 @@ async function writeSnoozedReminders(
         JSON.stringify(records)
       );
     }
+    return true;
   } catch {
-    // ignore storage errors
+    return false;
   }
 }
 
@@ -293,12 +294,12 @@ async function recordSnoozedReminder(
   baseKey: string,
   entryDate: string,
   doses: { medicationId: string; scheduleId: string | null }[]
-): Promise<void> {
-  await withPendingActionsLock(async () => {
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
     const existing = await readSnoozedReminders();
     const filtered = existing.filter((item) => item.baseKey !== baseKey);
     filtered.push({ baseKey, entryDate, doses });
-    await writeSnoozedReminders(filtered);
+    return writeSnoozedReminders(filtered);
   });
 }
 
@@ -838,11 +839,20 @@ async function applyNativeResultsOnce(): Promise<boolean> {
   let queuedRetry = false;
   for (const result of results) {
     if (result.kind === 'snooze') {
-      await recordSnoozedReminder(
+      const recorded = await recordSnoozedReminder(
         result.baseKey,
         result.entryDate,
         result.doses
       );
+      if (!recorded) {
+        // Keep it natively: without the record, reconciliation could schedule
+        // repeat reminders for a dose that is snoozed.
+        addLog(
+          '[MedicationNotificationAction] Could not store a native snooze; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
       addLog(
         `[MedicationNotificationAction] Snoozed ${result.doses.length} medication(s) for ${result.minutes}m (native)`,
         'DEBUG'
