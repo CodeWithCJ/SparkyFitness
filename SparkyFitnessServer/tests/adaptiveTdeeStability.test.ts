@@ -277,6 +277,54 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     }
   });
 
+  it.each([
+    [2500.4996, 4000],
+    [2500.4996, 400],
+    [2500.5004, 4000],
+    [2500.5004, 400],
+  ])(
+    'keeps rounded plausibility metadata coherent at baseline %s and intake %s',
+    (formula, intake) => {
+      mocks.calculateBmr.mockReturnValue(formula);
+      const data = {
+        ...fixture(
+          dailyWeights(() => 70),
+          intake
+        ),
+        preferences: {
+          activity_level: 'moderate',
+          calorie_goal_adjustment_mode: 'dynamic',
+          goal_mode_calculation_method: 'adaptive',
+          adaptive_activity_separate: true,
+        },
+        activityCaloriesByDate: new Map(dates.map((date) => [date, 600])),
+      };
+      const result = computeAdaptiveTdeeFromData(data, day);
+      if (
+        result.clampMin === undefined ||
+        result.clampMax === undefined ||
+        result.activityAdjustedTdee === undefined
+      ) {
+        throw new Error('Missing learned plausibility metadata');
+      }
+      expect(result.isFallback).toBe(false);
+      for (const value of [result.tdee, result.activityAdjustedTdee]) {
+        expect(value).toBeGreaterThanOrEqual(result.clampMin);
+        expect(value).toBeLessThanOrEqual(result.clampMax);
+      }
+      // All forty inputs are the same capped candidate; there is no history
+      // adjustment. Baseline precision must agree in fallback, cap and filter.
+      expect(result.stabilityAdjustmentKcal).toBe(0);
+      expect(result.activityStabilityAdjustmentKcal).toBe(0);
+      const fallback = computeAdaptiveTdeeFromData(
+        { ...data, checkInMeasurements: [], nutritionData: [] },
+        day
+      );
+      expect(fallback.isFallback).toBe(true);
+      expect(fallback.tdee).toBe((result.clampMin + result.clampMax) / 2);
+    }
+  );
+
   it.each([false, true])(
     'preserves the displayed bound at fractional ties (activity=%s)',
     (separateActivity) => {

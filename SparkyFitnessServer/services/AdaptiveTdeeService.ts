@@ -9,6 +9,7 @@ import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import bmrService from './bmrService.js';
 import { getAdaptiveActivityCalories } from './adaptiveActivityService.js';
 import {
+  normalizeAdaptiveTdeeBaseline,
   stabilizeAdaptiveTdee,
   type AdaptiveEstimateDay,
 } from '../utils/adaptiveTdeeStability.js';
@@ -156,7 +157,9 @@ function computeAdaptiveTdeeFromData(
       ? parseFloat(String(measuredBmr))
       : formulaBmr;
 
-  const fallbackTdee = baseBmr * multiplier;
+  // Fallback, limits and the fixed-input filter must use the same precision;
+  // otherwise half-kcal ties can display an estimate outside its own limits.
+  const fallbackTdee = normalizeAdaptiveTdeeBaseline(baseBmr * multiplier);
 
   const windowEnd = subDays(calculationDate, 1);
   const startDateStr = format(startDate, 'yyyy-MM-dd');

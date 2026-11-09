@@ -15,6 +15,14 @@ const ESTIMATE_WINDOW_DAYS = 28;
 const CONFIDENCE_FRESH_DAYS = 10;
 const INPUT_UNITS_PER_KCAL = 1000;
 
+const inputUnitsForKcal = (value: number): number =>
+  Math.round(value * INPUT_UNITS_PER_KCAL);
+
+/** Share baseline precision across fallback, plausibility limits and filtering. */
+export function normalizeAdaptiveTdeeBaseline(value: number): number {
+  return inputUnitsForKcal(value) / INPUT_UNITS_PER_KCAL;
+}
+
 export interface AdaptiveEstimateDay {
   dateStr: string;
   actualWeight: number | null;
@@ -185,7 +193,7 @@ export function stabilizeAdaptiveTdee(
   separateActivity: boolean,
   calculationDateStr: string
 ): AdaptiveStabilityResult {
-  const baselineUnits = Math.round(baselineTdee * INPUT_UNITS_PER_KCAL);
+  const baselineUnits = inputUnitsForKcal(baselineTdee);
   const clampUnits = ADAPTIVE_TDEE_CLAMP_KCAL * INPUT_UNITS_PER_KCAL;
   const maxBaselineUnits =
     Math.floor(Number.MAX_SAFE_INTEGER / ADAPTIVE_TDEE_STABILITY_DAYS) -
