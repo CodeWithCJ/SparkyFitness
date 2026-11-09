@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import userRepository from '../models/userRepository.js';
+import rateLimitWindowRepository from '../models/rateLimitWindowRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
@@ -167,11 +168,16 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
     throw error;
   }
 }
+// Password checks per account across every route that uses
+// verifyCurrentPassword, so switching routes does not reset the budget.
+const PASSWORD_CHECK_MAX_ATTEMPTS = 5;
+const PASSWORD_CHECK_WINDOW_MS = 15 * 60 * 1000;
+
 /**
  * Re-verify the account password before an identity or sign-in setting
  * changes. SSO-only accounts have no local password and pass on their
  * authenticated session alone. Throws a 401 error when the password is wrong
- * or missing.
+ * or missing, and a 429 error after too many checks for the account.
  */
 async function verifyCurrentPassword(
   authenticatedUserId: string,
@@ -180,6 +186,16 @@ async function verifyCurrentPassword(
   const passwordHash =
     await userRepository.getCredentialPasswordHash(authenticatedUserId);
   if (!passwordHash) return;
+  const attempt = await rateLimitWindowRepository.hit(
+    `password-check|${authenticatedUserId}`,
+    PASSWORD_CHECK_WINDOW_MS
+  );
+  if (attempt.count > PASSWORD_CHECK_MAX_ATTEMPTS) {
+    throw Object.assign(
+      new Error('Too many password attempts. Please try again later.'),
+      { statusCode: 429 }
+    );
+  }
   const verified =
     typeof currentPassword === 'string' &&
     currentPassword.length > 0 &&
