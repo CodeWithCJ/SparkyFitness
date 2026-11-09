@@ -2758,6 +2758,7 @@
       "enterPassword": "Enter password",
       "generateNewCodes": "Generate New Recovery Codes",
       "passwordRequired": "Please enter your account password to modify security settings.",
+      "passwordSsoHint": "Leave blank if you sign in with SSO.",
       "recoveryCodesInfo": "Recovery codes can be used to access your account if you lose access to your primary MFA methods.",
       "recoveryCodesTitle": "Recovery Codes",
       "saveCodesWarning": "IMPORTANT: Save these codes in a safe place. They will not be shown again.",

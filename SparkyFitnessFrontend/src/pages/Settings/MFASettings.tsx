@@ -58,7 +58,9 @@ const MFASettings = () => {
   }, [session]);
 
   const handlePasswordAction = async () => {
-    if (!confirmPassword) {
+    // SSO-only accounts have no password; the server skips the check for them,
+    // so turning email MFA off may go ahead with the field left blank.
+    if (!confirmPassword && pendingAction !== 'disableEmail') {
       toast({
         title: t('common.error', 'Error'),
         description: t(
@@ -121,7 +123,7 @@ const MFASettings = () => {
         case 'disableEmail': {
           await toggleEmailMfa({
             enabled: false,
-            currentPassword: confirmPassword,
+            currentPassword: confirmPassword || undefined,
           });
           toast({
             title: t('common.success', 'Success'),
@@ -275,6 +277,11 @@ const MFASettings = () => {
                 'settings.mfa.passwordRequired',
                 'Please enter your account password to modify security settings.'
               )}
+              {pendingAction === 'disableEmail' &&
+                ` ${t(
+                  'settings.mfa.passwordSsoHint',
+                  'Leave blank if you sign in with SSO.'
+                )}`}
             </p>
             <form
               onSubmit={(e) => {
