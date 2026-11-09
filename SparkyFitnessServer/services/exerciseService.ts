@@ -13,7 +13,9 @@ import { log } from '../config/logging.js';
 import wgerService from '../integrations/wger/wgerService.js';
 import nutritionixService from '../integrations/nutritionix/nutritionixService.js';
 import { downloadImage } from '../utils/imageDownloader.js';
-import calorieCalculationService from './CalorieCalculationService.js';
+import calorieCalculationService, {
+  type PreparedCalorieEstimator,
+} from './CalorieCalculationService.js';
 import fs from 'fs';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
@@ -513,18 +515,17 @@ async function updateExerciseEntry(
       updateData.duration_minutes !== null &&
       updateData.duration_minutes !== undefined &&
       updateData.calories_burned === undefined;
-    let caloriesPerHour: number | null = null;
+    let estimateCaloriesFromSets: PreparedCalorieEstimator | undefined;
     if (estimateCalories) {
       const exercise = await exerciseDb.getExerciseById(
         estimateExerciseId,
         authenticatedUserId
       );
       if (exercise) {
-        caloriesPerHour =
-          await calorieCalculationService.estimateCaloriesBurnedPerHour(
+        estimateCaloriesFromSets =
+          await calorieCalculationService.prepareCalorieEstimator(
             exercise,
-            authenticatedUserId,
-            resolveEditedSets(updateData.sets, existingEntry.sets)
+            authenticatedUserId
           );
       } else {
         log(
@@ -554,12 +555,15 @@ async function updateExerciseEntry(
         (resolvedRequest.exercise_id !== undefined ||
           existingEntry.exercise_id === estimateExerciseId)
       ) {
+        const caloriesPerHour = estimateCaloriesFromSets?.(
+          resolvedRequest.sets
+        );
         // A watch-measured figure (active_calories) beats the formula, same
         // rule as the grouped-session edit path.
         caloriesBurned = resolveEditedCaloriesBurned(
           undefined,
           existingEntry,
-          caloriesPerHour === null
+          caloriesPerHour === undefined
             ? Number(existingEntry.calories_burned ?? 0)
             : (caloriesPerHour / 60) * Number(resolvedRequest.duration_minutes)
         );
@@ -1460,7 +1464,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       images: localImagePaths.filter((p): p is string => p !== null), // Local upload paths — createExercise handles JSON.stringify
       calories_per_hour:
-        // @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
         await calorieCalculationService.estimateCaloriesBurnedPerHour(
           exerciseDetails,
           authenticatedUserId

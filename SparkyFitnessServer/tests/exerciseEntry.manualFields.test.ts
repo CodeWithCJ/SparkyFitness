@@ -4,6 +4,7 @@ import * as poolManager from '../db/poolManager.js';
 import {
   editedSyncFields,
   mergeManualFields,
+  resolveEditedSets,
   storedManualFields,
 } from '../utils/manualFields.js';
 
@@ -149,6 +150,58 @@ describe('editedSyncFields', () => {
         }
       )
     ).toEqual(['sets']);
+  });
+});
+
+describe('sparse set identity', () => {
+  const stored = [
+    { id: 1, set_number: 1, weight: 40, notes: 'First set' },
+    { id: 2, set_number: 2, weight: 80, notes: 'Second set' },
+  ];
+
+  it.each([false, true])(
+    'does not copy an explicitly moved set into an ID-less row (ID-less first: %s)',
+    (idlessFirst) => {
+      const identified = { id: 2, set_number: 1, reps: 8 };
+      const idless = { set_number: 2, reps: 9 };
+      const saved = resolveEditedSets(
+        idlessFirst ? [idless, identified] : [identified, idless],
+        stored
+      )!;
+      expect(saved.find((set) => set.set_number === 1)).toMatchObject({
+        weight: 80,
+        notes: 'Second set',
+        reps: 8,
+      });
+      const newSet = saved.find((set) => set.set_number === 2)!;
+      expect(newSet.weight).toBeUndefined();
+      expect(newSet.notes).toBeUndefined();
+    }
+  );
+
+  it('uses an available set-number fallback without changing explicit nulls', () => {
+    expect(
+      resolveEditedSets(
+        [
+          { set_number: 1, notes: null },
+          { id: 2, set_number: 3 },
+        ],
+        stored
+      )
+    ).toMatchObject([
+      { set_number: 1, weight: 40, notes: null },
+      { set_number: 3, weight: 80, notes: 'Second set' },
+    ]);
+  });
+
+  it('does not reuse a set-number fallback for a second submitted row', () => {
+    const saved = resolveEditedSets(
+      [{ set_number: 1 }, { set_number: 1, reps: 9 }],
+      stored
+    )!;
+    expect(saved[0]).toMatchObject({ weight: 40, notes: 'First set' });
+    expect(saved[1]!.weight).toBeUndefined();
+    expect(saved[1]!.notes).toBeUndefined();
   });
 });
 

@@ -43,6 +43,7 @@ vi.mock('../utils/imageDownloader', () => ({
 vi.mock('../services/CalorieCalculationService', () => ({
   default: {
     estimateCaloriesBurnedPerHour: vi.fn(),
+    prepareCalorieEstimator: vi.fn(),
   },
 }));
 vi.mock('../utils/uuidUtils', () => ({
@@ -240,10 +241,9 @@ describe('calorie estimate on individual update', () => {
     exerciseEntryDb.updateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
     // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
     exerciseDb.getExerciseById.mockResolvedValue({ id: exerciseId });
-    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
-    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
-      600
-    );
+    vi.mocked(
+      calorieCalculationService.prepareCalorieEstimator
+    ).mockResolvedValue(() => 600);
   });
 
   it('re-estimates from the stored exercise when sets are sent without exercise_id', async () => {
@@ -272,7 +272,7 @@ describe('calorie estimate on individual update', () => {
       duration_minutes: 12,
     });
     expect(
-      calorieCalculationService.estimateCaloriesBurnedPerHour
+      calorieCalculationService.prepareCalorieEstimator
     ).not.toHaveBeenCalled();
     expect(savedCalories()).toBe(123);
   });

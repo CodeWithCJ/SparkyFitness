@@ -1031,6 +1031,102 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     });
   });
 
+  it('does not duplicate a moved set into a new ID-less set on save', async () => {
+    const imported = workout();
+    imported.exercises![0]!.sets!.push({
+      ...imported.exercises![0]!.sets![0]!,
+      index: 1,
+      weight_kg: 80,
+    });
+    await sync([imported]);
+    const bench = (await entries()).find(
+      (entry) => entry.exercise_name === 'Synthetic bench press'
+    )!;
+    const moved = await db.query<{ id: number }>(
+      'SELECT id FROM exercise_entry_sets WHERE exercise_entry_id = $1 AND set_number = 2',
+      [bench.id]
+    );
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [
+        { set_number: 2, reps: 9 },
+        { id: moved.rows[0]!.id, set_number: 1, reps: 8 },
+      ],
+    });
+    await sync([imported]);
+    expect(
+      (await sets()).filter((set) => set.source_id === bench.source_id)
+    ).toMatchObject([
+      { set_number: 1, weight: 80, reps: 8 },
+      { set_number: 2, weight: null, reps: 9, set_type: null },
+    ]);
+  });
+
+  it('estimates calories from the sets preserved after a concurrent edit', async () => {
+    const imported = workout();
+    imported.exercises![0]!.sets!.push({
+      ...imported.exercises![0]!.sets![0]!,
+      index: 1,
+    });
+    await sync([imported]);
+    const bench = (await entries()).find(
+      (entry) => entry.exercise_name === 'Synthetic bench press'
+    )!;
+    await db.query(
+      `UPDATE exercises SET category = 'strength', level = 'intermediate'
+       WHERE id = (SELECT exercise_id FROM exercise_entries WHERE id = $1)`,
+      [bench.id]
+    );
+    const readEntry = exerciseEntryRepository.getExerciseEntryById;
+    let releaseRead!: () => void;
+    let signalRead!: () => void;
+    const readFinished = new Promise<void>((resolve) => {
+      signalRead = resolve;
+    });
+    const continueEdit = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    vi.spyOn(
+      exerciseEntryRepository,
+      'getExerciseEntryById'
+    ).mockImplementationOnce(async (...args: Parameters<typeof readEntry>) => {
+      const snapshot = await readEntry(...args);
+      signalRead();
+      await continueEdit;
+      return snapshot;
+    });
+    const save = updateExerciseEntry(userId, userId, bench.id, {
+      duration_minutes: 30,
+      sets: [
+        { set_number: 1, reps: 8 },
+        { set_number: 2, reps: 8 },
+      ],
+    });
+    try {
+      await readFinished;
+      // A separate committed write lands after the service's first read.
+      await db.query(
+        'UPDATE exercise_entry_sets SET weight = 10 WHERE exercise_entry_id = $1 AND set_number = 1',
+        [bench.id]
+      );
+    } finally {
+      releaseRead();
+    }
+    await save;
+    expect(
+      (await sets()).filter((set) => set.source_id === bench.source_id)
+    ).toMatchObject([
+      { set_number: 1, weight: 10, reps: 8 },
+      { set_number: 2, weight: 40, reps: 8 },
+    ]);
+    const saved = await db.query<{ calories_burned: number }>(
+      'SELECT calories_burned::float8 AS calories_burned FROM exercise_entries WHERE id = $1',
+      [bench.id]
+    );
+    // (10 + 40)/2 divided by 40/(1.0278 - .0278*8) is .503: MET3.5.
+    // At the default 70 kg that is 257 kcal/hour, or 128.5 kcal in 30 minutes.
+    expect(saved.rows[0]!.calories_burned).toBe(128.5);
+  });
+
   it.each([
     { distance: undefined, expected: 2.5 },
     { distance: 7.5, expected: 7.5 },

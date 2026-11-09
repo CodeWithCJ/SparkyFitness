@@ -51,21 +51,34 @@ export function resolveEditedSets(
         ? (value as Record<string, unknown>)
         : {}
   );
-  return next.map((value: unknown) => {
-    const supplied =
-      typeof value === 'object' && value !== null
-        ? (value as Record<string, unknown>)
-        : {};
-    const byId =
+  const suppliedSets = next.map((value: unknown): Record<string, unknown> =>
+    typeof value === 'object' && value !== null
+      ? (value as Record<string, unknown>)
+      : {}
+  );
+  const claimed = new Set<Record<string, unknown>>();
+  // Reserve every identified row before a reordered, ID-less row can take it
+  // through its old number. Each stored set supplies omitted fields once.
+  const identified = suppliedSets.map((supplied) => {
+    const previous =
       supplied.id === null || supplied.id === undefined
         ? undefined
-        : stored.find((row) => String(row.id) === String(supplied.id));
+        : stored.find(
+            (row) => !claimed.has(row) && String(row.id) === String(supplied.id)
+          );
+    if (previous) claimed.add(previous);
+    return previous;
+  });
+  return suppliedSets.map((supplied, index) => {
     // Older clients may retain IDs from before a delete-and-reinsert save.
     const previous =
-      byId ??
+      identified[index] ??
       stored.find(
-        (row) => Number(row.set_number) === Number(supplied.set_number)
+        (row) =>
+          !claimed.has(row) &&
+          Number(row.set_number) === Number(supplied.set_number)
       );
+    if (previous) claimed.add(previous);
     const resolved: Record<string, unknown> = {};
     for (const field of Object.keys(exerciseEntrySetRequestSchema.shape)) {
       const fieldValue =

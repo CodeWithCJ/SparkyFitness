@@ -1,7 +1,10 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
-import { estimateCaloriesBurnedPerHour } from '../services/CalorieCalculationService.js';
+import {
+  estimateCaloriesBurnedPerHour,
+  prepareCalorieEstimator,
+} from '../services/CalorieCalculationService.js';
 
 vi.mock('../models/measurementRepository', () => ({
   default: {
@@ -29,6 +32,7 @@ const calsForMet = (met: number) => Math.round(met * 73.5);
 
 describe('estimateCaloriesBurnedPerHour', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(measurementRepository.getLatestMeasurement).mockResolvedValue(
       null
     );
@@ -108,5 +112,34 @@ describe('estimateCaloriesBurnedPerHour', () => {
       sets
     );
     expect(result).toBe(calsForMet(5.0));
+  });
+
+  it('uses the sets supplied after preparation without another profile read', async () => {
+    const estimate = await prepareCalorieEstimator(strengthExercise, USER_ID);
+    expect(
+      estimate([
+        { reps: 8, weight: 40 },
+        { reps: 8, weight: 40 },
+      ])
+    ).toBe(404);
+    expect(
+      estimate([
+        { reps: 8, weight: 10 },
+        { reps: 8, weight: 40 },
+      ])
+    ).toBe(257);
+    expect(measurementRepository.getLatestMeasurement).toHaveBeenCalledTimes(1);
+    expect(userRepository.getUserProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('prepares the same weight and gender adjustments for the locked calculation', async () => {
+    vi.mocked(measurementRepository.getLatestMeasurement).mockResolvedValue({
+      weight: 80,
+    });
+    vi.mocked(userRepository.getUserProfile).mockResolvedValue({
+      gender: 'female',
+    });
+    const estimate = await prepareCalorieEstimator(strengthExercise, USER_ID);
+    expect(estimate([{ reps: 8, weight: 40 }])).toBe(416);
   });
 });
