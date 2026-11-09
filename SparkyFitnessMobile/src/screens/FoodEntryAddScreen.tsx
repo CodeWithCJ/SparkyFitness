@@ -1386,7 +1386,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       case 'external': {
         let savedFood;
         try {
-          savedFood = await saveFoodAsync(buildSaveFoodPayload());
+          savedFood = await saveFoodAsync(
+            buildSaveFoodPayload(),
+            undefined,
+            recipeImportTarget ? recipeSelectionCurrent : undefined
+          );
           if (!recipeSelectionCurrent()) return;
         } catch {
           return;

@@ -1225,13 +1225,22 @@ it('leaves a validation-rejected save editable and allows a corrected retry', as
   expect(api.saveRecipe).toHaveBeenCalledTimes(2);
 });
 
-it.each(['closed', 'new-filter', 'profile', 'account'] as const)(
-  'refreshes the retained owner library after a deferred save (%s) without writing private source caches',
-  async (change) => {
+it.each(
+  (['success', 'network', 'server'] as const).flatMap((outcome) =>
+    (['closed', 'new-filter', 'profile', 'account'] as const).map((change) => ({
+      outcome,
+      change,
+    }))
+  )
+)(
+  'refreshes the retained owner library after a deferred $outcome save ($change) without writing private source caches',
+  async ({ change, outcome }) => {
     let finish!: (value: RecipeImportSaveResponse) => void;
+    let fail!: (error: Error) => void;
     api.saveRecipe.mockReturnValueOnce(
-      new Promise((resolve) => {
+      new Promise((resolve, reject) => {
         finish = resolve;
+        fail = reject;
       })
     );
     const client = new QueryClient({
@@ -1294,7 +1303,15 @@ it.each(['closed', 'new-filter', 'profile', 'account'] as const)(
     families.forEach((key) => client.setQueryData(key, ['retained']));
     const readsBefore = libraryReads;
     committed = true;
-    await act(async () => finish(saved));
+    await act(async () => {
+      if (outcome === 'success') finish(saved);
+      else
+        fail(
+          outcome === 'network'
+            ? new Error('lost response')
+            : new HttpApiError('server error', 500)
+        );
+    });
     if (change === 'closed' || change === 'new-filter')
       await waitFor(() => expect(libraryReads).toBeGreaterThan(readsBefore));
     else expect(libraryReads).toBe(readsBefore);

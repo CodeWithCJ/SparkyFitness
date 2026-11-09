@@ -699,7 +699,9 @@ const FoodUnitSelector = ({
     quantity === undefined
       ? ''
       : isConverting
-        ? `${quantity} ${displayUnit}`.trim()
+        ? formatQuantityServingLabel(Number(quantity.toFixed(3)), {
+            serving_unit: displayUnit,
+          })
         : selectedVariant
           ? formatQuantityServingLabel(quantity, selectedVariant)
           : `${quantity} ${displayUnit}`.trim();

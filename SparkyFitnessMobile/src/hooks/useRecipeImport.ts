@@ -83,12 +83,15 @@ const sourceKey = (scope: string | null, mealId: string) => [
 export function useRecipeSource(mealId: string, scope: string | null) {
   const client = useQueryClient();
   const current = useRef(scope);
+  const release = useRef<(() => void) | null>(null);
+  const reset = useRef<() => void>(() => {});
   useEffect(() => {
     current.current = scope;
     return () => {
       current.current = null;
+      release.current?.();
     };
-  }, [scope]);
+  }, [scope, mealId]);
   const source = useQuery({
     queryKey: sourceKey(scope, mealId),
     queryFn: () => fetchRecipeSource(mealId),
@@ -96,17 +99,44 @@ export function useRecipeSource(mealId: string, scope: string | null) {
     retry: false,
   });
   const sync = useMutation({
+    onMutate: () => {
+      release.current?.();
+      let retained = true;
+      const owner = observeRecipeImportOwner(client, () => {
+        retained = false;
+        reset.current();
+      });
+      const cleanup = () => {
+        retained = false;
+        owner.unsubscribe();
+      };
+      release.current = cleanup;
+      return {
+        isCurrent: () =>
+          retained && owner.isCurrent() && !!scope && current.current === scope,
+        cleanup,
+        unsubscribe: owner.unsubscribe,
+      };
+    },
     mutationFn: async () => {
       if (!scope || current.current !== scope)
         throw new Error('OWNER_REQUIRED');
       return syncRecipeNutrition(mealId);
     },
     retry: false,
-    onSuccess: (response) => {
-      if (scope && current.current === scope)
+    onSuccess: (response, _variables, context) => {
+      if (context?.isCurrent())
         client.setQueryData(sourceKey(scope, mealId), response.source);
     },
+    onSettled: (_data, _error, _variables, context) => {
+      context?.unsubscribe();
+      if (release.current === context?.cleanup) release.current = null;
+    },
   });
+  const resetSync = sync.reset;
+  useEffect(() => {
+    reset.current = resetSync;
+  }, [resetSync]);
   return { source, sync };
 }
 

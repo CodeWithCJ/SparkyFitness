@@ -85,6 +85,12 @@ export function useRecipeImport(preview: RecipeImportPreview) {
     activeUserId,
     saveScopeId,
   ];
+  const refreshLibrary = () => {
+    invalidateMeals();
+    invalidateFoods();
+    client.invalidateQueries({ queryKey: ['mealPlans'] });
+    client.invalidateQueries({ queryKey: ['v2', 'foods'] });
+  };
 
   function confirm(mapping: RecipeImportMapping) {
     if (!alive.current || !allowed.current) return;
@@ -193,10 +199,7 @@ export function useRecipeImport(preview: RecipeImportPreview) {
         !client.getQueryCache().getAll().includes(context.scopeQuery)
       )
         return;
-      invalidateMeals();
-      invalidateFoods();
-      client.invalidateQueries({ queryKey: ['mealPlans'] });
-      client.invalidateQueries({ queryKey: ['v2', 'foods'] });
+      refreshLibrary();
       if (
         !alive.current ||
         !allowed.current ||
@@ -207,6 +210,16 @@ export function useRecipeImport(preview: RecipeImportPreview) {
         ['meals', 'recipe-import-source', context.ownerId, result.mealId],
         result.source
       );
+    },
+    onError: (error, _request, context) => {
+      // A rejected response can follow a committed meal. Refresh the retained
+      // library even after Review closes, before removing its owner marker.
+      if (
+        isUncertainRecipeSave(error) &&
+        context &&
+        client.getQueryCache().getAll().includes(context.scopeQuery)
+      )
+        refreshLibrary();
     },
     onSettled: (_result, _error, _request, context) => {
       client.removeQueries({

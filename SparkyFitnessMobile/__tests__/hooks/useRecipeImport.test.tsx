@@ -1,16 +1,20 @@
 import React from 'react';
 import { ApiError } from '../../src/services/api/errors';
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type {
   RecipeImportPreview,
   RecipeImportMapping,
 } from '@workspace/shared';
-import { useRecipeImport } from '../../src/hooks/useRecipeImport';
+import {
+  useRecipeImport,
+  useRecipeSource,
+} from '../../src/hooks/useRecipeImport';
 import {
   saveRecipe,
   suggestRecipe,
   fetchRecipeSource,
+  syncRecipeNutrition,
 } from '../../src/services/api/recipeImportApi';
 
 jest.mock('../../src/services/api/recipeImportApi', () => ({
@@ -70,6 +74,127 @@ beforeEach(() => {
   save.mockReset();
   jest.mocked(fetchRecipeSource).mockReset();
 });
+
+it.each(['clear', 'profile', 'server', 'same-owner', 'unmount'] as const)(
+  'guards source sync against synchronous %s events and supports a fresh retry',
+  async (change) => {
+    for (const failure of [false, true]) {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+      });
+      const scope = 'server:https://example.test:owner';
+      const key = ['meals', 'recipeImportSource', scope, 'meal'];
+      const source = {
+        ...preview,
+        mealId: 'meal',
+        mappings: [],
+        mealFingerprint: 'base',
+        syncEligible: true,
+        lastSyncedAt: null,
+      };
+      const response = {
+        status: 'synced' as const,
+        source: { ...source, lastSyncedAt: '2026-11-09T10:00:00Z' },
+      };
+      const seedOwner = () => {
+        client.setQueryData(['userProfile'], { id: 'owner' });
+        client.setQueryData(['serverConfigs'], {
+          activeConfig: { id: 'server', url: 'https://example.test' },
+        });
+      };
+      seedOwner();
+      client.setQueryData(key, source);
+      jest
+        .mocked(fetchRecipeSource)
+        .mockImplementation(() => new Promise(() => {}));
+      let finish!: (value: typeof response) => void;
+      let fail!: (error: Error) => void;
+      jest.mocked(syncRecipeNutrition).mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve;
+            fail = reject;
+          })
+      );
+      const hook = renderHook(() => useRecipeSource('meal', scope), {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      });
+      act(() => hook.result.current.sync.mutate());
+      await waitFor(() => expect(finish).toBeDefined());
+      const mutation = client.getMutationCache().getAll()[0]!;
+      act(() => {
+        if (change === 'clear') client.clear();
+        if (change === 'profile')
+          client.setQueryData(['userProfile'], { id: 'other' });
+        if (change === 'server')
+          client.setQueryData(['serverConfigs'], {
+            activeConfig: { id: 'server', url: 'https://replacement.test' },
+          });
+        if (change === 'same-owner') {
+          seedOwner();
+          client.setQueryData(['userProfile'], {
+            id: 'owner',
+            name: 'New name',
+          });
+        }
+      });
+      if (change === 'same-owner')
+        await act(async () => {
+          await client.fetchQuery({
+            queryKey: ['userProfile'],
+            queryFn: async () => ({ id: 'owner', name: 'Refetched name' }),
+            staleTime: 0,
+          });
+        });
+      if (change === 'unmount') hook.unmount();
+      await act(async () => {
+        if (failure) fail(new Error('sync rejected'));
+        else finish(response);
+      });
+      await waitFor(() =>
+        expect(mutation.state.status).toBe(failure ? 'error' : 'success')
+      );
+      if (change === 'same-owner')
+        await waitFor(() =>
+          expect(hook.result.current.sync.status).toBe(
+            failure ? 'error' : 'success'
+          )
+        );
+      else {
+        expect(client.getQueryData<typeof source>(key)?.lastSyncedAt).not.toBe(
+          response.source.lastSyncedAt
+        );
+        if (change !== 'unmount') {
+          expect(hook.result.current.sync.isSuccess).toBe(false);
+          expect(hook.result.current.sync.error).toBeNull();
+        }
+      }
+      if (change !== 'unmount') {
+        act(() => {
+          seedOwner();
+          client.setQueryData(key, source);
+        });
+        jest.mocked(syncRecipeNutrition).mockResolvedValue(response);
+        for (let retry = 0; retry < 2; retry += 1) {
+          await act(async () => {
+            await hook.result.current.sync.mutateAsync();
+          });
+          await waitFor(() =>
+            expect(hook.result.current.sync.isSuccess).toBe(true)
+          );
+          expect(client.getQueryData<typeof source>(key)?.lastSyncedAt).toBe(
+            response.source.lastSyncedAt
+          );
+        }
+        hook.unmount();
+      }
+      expect(client.getQueryCache().hasListeners()).toBe(false);
+      client.clear();
+    }
+  }
+);
 it('processes every unresolved ingredient in batches of at most twenty without overwriting a late manual confirmation', async () => {
   let resolveFirst: (
     value: Awaited<ReturnType<typeof suggestRecipe>>

@@ -13,6 +13,8 @@ import {
   useFoodVariants,
 } from '../../src/hooks/useFoodVariants';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
+import { QueryClientProvider } from '@tanstack/react-query';
+import * as foodsApi from '../../src/services/api/foodsApi';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
@@ -657,6 +659,79 @@ describe('FoodEntryAddScreen', () => {
       expect(screen.getByDisplayValue('0.8')).toBeTruthy();
     }
   );
+  it.each([
+    'current',
+    'ordinary',
+    'blur',
+    'unmount',
+    'cache-clear',
+    'profile',
+  ] as const)(
+    'keeps real shared save-hook notifications current after %s',
+    async (departure) => {
+      mockUseSaveFood.mockImplementation(
+        jest.requireActual<typeof import('../../src/hooks/useSaveFood')>(
+          '../../src/hooks/useSaveFood'
+        ).useSaveFood
+      );
+      let fail!: (error: Error) => void;
+      const save = jest.spyOn(foodsApi, 'saveFood').mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            fail = reject;
+          })
+      );
+      const view = render(
+        <QueryClientProvider client={mockRecipeClient}>
+          <SafeAreaProvider initialMetrics={{ insets, frame }}>
+            <FoodEntryAddScreen
+              navigation={navigation}
+              route={{
+                key: 'FoodEntryAdd-key',
+                name: 'FoodEntryAdd',
+                params: {
+                  item: baseExternalItem,
+                  pickerMode: 'meal-builder',
+                  ...(departure === 'ordinary'
+                    ? {}
+                    : {
+                        recipeImportTarget: {
+                          draftKey: 'draft',
+                          ingredientId: 'bar',
+                          quantity: 2,
+                          unit: 'bar',
+                        },
+                      }),
+                },
+              }}
+            />
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      );
+      fireEvent.press(view.getByText('Add Food'));
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+      act(() => {
+        if (departure === 'blur') {
+          mockNavigation.isFocused.mockReturnValue(false);
+          for (const [event, listener] of mockNavigation.addListener.mock.calls)
+            if (event === 'blur') listener();
+        }
+        if (departure === 'cache-clear') mockRecipeClient.clear();
+        if (departure === 'profile')
+          mockRecipeClient.setQueryData(['userProfile'], { id: 'other-owner' });
+      });
+      if (departure === 'unmount') view.unmount();
+      await act(async () => fail(new Error('save rejected')));
+      if (departure === 'current' || departure === 'ordinary')
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ text1: 'Failed to save food' })
+        );
+      else expect(Toast.show).not.toHaveBeenCalled();
+      save.mockRestore();
+      if (departure !== 'unmount') view.unmount();
+    }
+  );
+
   it.each([
     'blur',
     'refocus',

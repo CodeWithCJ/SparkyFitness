@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useMutation,
   useQueries,
@@ -23,6 +23,7 @@ import {
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { toast } from '@/hooks/use-toast';
 import type { Food, FoodVariant } from '@/types/food';
 import { foodVariantsOptions } from './useFoodVariants';
 
@@ -172,20 +173,52 @@ export function useRecipeImportSource(
   const key = ['meals', 'recipe-import-source', ownerId, mealId];
   const identity = `${ownerId}:${mealId}`;
   const current = useRef<string | null>(identity);
+  const [initial, setInitial] = useState(initialSource);
+  const release = useRef<(() => void) | null>(null);
+  const reset = useRef<() => void>(() => {});
   useEffect(() => {
     current.current = identity;
     return () => {
       current.current = null;
+      release.current?.();
     };
   }, [identity]);
   const source = useQuery({
     queryKey: key,
     queryFn: () => getRecipeSource(mealId),
-    initialData: initialSource,
+    initialData: initial,
     enabled: !isActingOnBehalf && activeUserId === ownerId,
     retry: false,
   });
   const sync = useMutation({
+    // The panel displays current errors; only its still-current operation may
+    // also notify. The global handler otherwise toasts after cache.clear().
+    meta: { silentError: true },
+    onMutate: () => {
+      release.current?.();
+      const query = client.getQueryCache().find({ queryKey: key, exact: true });
+      let retained = true;
+      const unsubscribe = client.getQueryCache().subscribe((event) => {
+        if (event.type !== 'removed' || event.query !== query) return;
+        retained = false;
+        setInitial(undefined);
+        reset.current();
+      });
+      const cleanup = () => {
+        retained = false;
+        unsubscribe();
+      };
+      release.current = cleanup;
+      return {
+        isCurrent: () =>
+          retained &&
+          current.current === identity &&
+          !!query &&
+          client.getQueryCache().find({ queryKey: key, exact: true }) === query,
+        cleanup,
+        unsubscribe,
+      };
+    },
     mutationFn: () => {
       if (isActingOnBehalf || activeUserId !== ownerId)
         throw new Error(
@@ -197,14 +230,25 @@ export function useRecipeImportSource(
       return syncRecipeNutrition(mealId);
     },
     retry: false,
-    onSuccess: (result) => {
-      if (
-        current.current === identity &&
-        !isActingOnBehalf &&
-        activeUserId === ownerId
-      )
-        client.setQueryData(key, result.source);
+    onSuccess: (result, _variables, context) => {
+      if (context?.isCurrent()) client.setQueryData(key, result.source);
+    },
+    onError: (error, _variables, context) => {
+      if (context?.isCurrent())
+        toast({
+          title: t('common.error', 'Error'),
+          description: error.message,
+          variant: 'destructive',
+        });
+    },
+    onSettled: (_data, _error, _variables, context) => {
+      context?.unsubscribe();
+      if (release.current === context?.cleanup) release.current = null;
     },
   });
+  const resetSync = sync.reset;
+  useEffect(() => {
+    reset.current = resetSync;
+  }, [resetSync]);
   return { source, sync };
 }
