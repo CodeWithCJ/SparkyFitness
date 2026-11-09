@@ -34,3 +34,7 @@
 "widget.control.remove_water.description" = "Tira uma bebida do total de água de hoje sem abrir o SparkyFitness.";
 "widget.control.calories_left.name" = "Calorias restantes";
 "widget.control.calories_left.description" = "Mostra as calorias que ainda restam hoje. Toque para abrir o diário alimentar.";
+"widget.kj_left" = "kJ restantes";
+"widget.kj" = "kJ";
+"widget.a11y.kj_left" = "%@ kJ restantes";
+"widget.a11y.kj" = "%@ kJ";

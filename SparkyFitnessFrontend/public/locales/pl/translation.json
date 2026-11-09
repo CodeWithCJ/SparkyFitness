@@ -4299,7 +4299,7 @@
     "errorTitle": "Błąd",
     "loadMealError": "Nie udało się załadować posiłku do edycji.",
     "successTitle": "Sukces",
-    "foodAddedToMeal": "Dodano {{name}} do posiłku.",
+    "foodAddedToMeal": "Dodano {{foodName}} do posiłku.",
     "removedTitle": "Usunięto",
     "foodRemovedFromMeal": "Składnik usunięty z posiłku.",
     "mealNameEmptyError": "Nazwa posiłku nie może być pusta.",
@@ -8740,7 +8740,7 @@
       "couldNotConnectToThe": "Nie udało się połączyć z serwerem."
     },
     "useBackups": {
-      "restoredLoggingOut": "Przywrócono. Wylogowywanie…"
+      "restoredLoggingOut": "Przywrócono. Wylogowywanie..."
     },
     "useExerciseImport": {
       "bodyweightExerciseForChestShoulders": "Ćwiczenie z masą ciała na klatkę piersiową, barki i triceps."
