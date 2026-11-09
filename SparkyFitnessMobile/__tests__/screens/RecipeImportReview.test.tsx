@@ -21,6 +21,22 @@ import {
 import { fetchFoodVariants } from '../../src/services/api/foodsApi';
 import { setPendingRecipeImportSelection } from '../../src/services/recipeImportSelection';
 import type { RootStackScreenProps } from '../../src/types/navigation';
+import type { ServerConfig } from '../../src/services/storage';
+import {
+  profileQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
+
+const ownerConfig: ServerConfig = {
+  id: 'test-server',
+  url: 'https://example.test',
+  apiKey: 'synthetic-test-key',
+};
+const ownerScope = `${ownerConfig.id}:${ownerConfig.url}:owner`;
+function seedRecipeOwner(client: QueryClient): void {
+  client.setQueryData(profileQueryKey, { id: 'owner' });
+  client.setQueryData(serverConfigsQueryKey, { activeConfig: ownerConfig });
+}
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -171,6 +187,51 @@ it('describes optional unknown nutrients without a false core warning on a reuse
   ).toBeNull();
   expect(screen.queryByText('incomplete_nutrition')).toBeNull();
 });
+
+it('retries failed details for the unchanged food and keeps saving disabled until recovery', async () => {
+  let recover!: (food: Awaited<ReturnType<typeof fetchRecipeFood>>) => void;
+  jest
+    .mocked(fetchRecipeFood)
+    .mockRejectedValueOnce(new Error('temporarily unavailable'))
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          recover = resolve;
+        })
+    );
+  const screen = setup({
+    ...preview,
+    ingredients: [
+      { ...preview.ingredients[0], mapping, mappingOrigin: 'saved' },
+    ],
+  });
+  expect(
+    await screen.findByText(/Food details could not be loaded\./)
+  ).toBeTruthy();
+  fireEvent.press(screen.getByText('Save reusable meal'));
+  expect(saveRecipe).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Retry'));
+  await waitFor(() => expect(fetchRecipeFood).toHaveBeenCalledTimes(2));
+  expect(fetchRecipeFood).toHaveBeenNthCalledWith(1, foodId);
+  expect(fetchRecipeFood).toHaveBeenNthCalledWith(2, foodId);
+  fireEvent.press(screen.getByText('Save reusable meal'));
+  expect(saveRecipe).not.toHaveBeenCalled();
+  await act(async () =>
+    recover({
+      id: foodId,
+      name: 'Recovered rice',
+      brand: null,
+      is_custom: false,
+      default_variant: variant,
+    })
+  );
+  expect(await screen.findByText('Recovered rice')).toBeTruthy();
+  fireEvent.press(screen.getByText('Save reusable meal'));
+  await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
+  expect(saveRecipe).toHaveBeenCalledWith(
+    expect.objectContaining({ mappings: [mapping] })
+  );
+});
 const navigation = {
   navigate: jest.fn(),
   replace: jest.fn(),
@@ -179,11 +240,12 @@ function setup(value = preview) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  seedRecipeOwner(client);
   return render(
     <QueryClientProvider client={client}>
       <RecipeImportReview
         preview={value}
-        scope="owner-server"
+        scope={ownerScope}
         navigation={navigation}
         onBack={jest.fn()}
       />
@@ -337,9 +399,10 @@ it.each([
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
+    seedRecipeOwner(client);
     const screen = render(
       <QueryClientProvider client={client}>
-        <RecipeImportSourcePanel mealId="meal" scope="owner-server" />
+        <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
       </QueryClientProvider>
     );
     expect(await screen.findByText(label)).toBeTruthy();
@@ -350,6 +413,7 @@ it.each([
     fireEvent.press(button);
     if (eligible) {
       await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
+      expect(syncRecipeNutrition).toHaveBeenCalledWith('meal', ownerConfig);
       expect(
         await screen.findByText('Nutrition synced to Mealie.')
       ).toBeTruthy();
@@ -361,9 +425,10 @@ it('updates the rendered source sync eligibility after a normal meal edit invali
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  seedRecipeOwner(client);
   const screen = render(
     <QueryClientProvider client={client}>
-      <RecipeImportSourcePanel mealId="meal" scope="owner-server" />
+      <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
       <Pressable onPress={() => invalidateMealCaches(client, 'meal')}>
         <Text>Save ordinary edit</Text>
       </Pressable>
@@ -391,6 +456,7 @@ it('does not restore a departed owner source cache when a pending sync finishes 
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  seedRecipeOwner(client);
   let finish: (
     value: Awaited<ReturnType<typeof syncRecipeNutrition>>
   ) => void = () => {};
@@ -402,7 +468,7 @@ it('does not restore a departed owner source cache when a pending sync finishes 
   );
   const screen = render(
     <QueryClientProvider client={client}>
-      <RecipeImportSourcePanel mealId="meal" scope="old-owner-server" />
+      <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
     </QueryClientProvider>
   );
   await waitFor(() =>
@@ -419,12 +485,7 @@ it('does not restore a departed owner source cache when a pending sync finishes 
     })
   );
   expect(
-    client.getQueryData([
-      'meals',
-      'recipeImportSource',
-      'old-owner-server',
-      'meal',
-    ])
+    client.getQueryData(['meals', 'recipeImportSource', ownerScope, 'meal'])
   ).toBeUndefined();
 });
 
@@ -479,6 +540,7 @@ it('does not show a previous meal sync outcome when the detail route changes mea
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  seedRecipeOwner(client);
   let finish: (
     value: Awaited<ReturnType<typeof syncRecipeNutrition>>
   ) => void = () => {};
@@ -490,7 +552,7 @@ it('does not show a previous meal sync outcome when the detail route changes mea
   );
   const view = (mealId: string) => (
     <QueryClientProvider client={client}>
-      <RecipeImportSourcePanel mealId={mealId} scope="owner-server" />
+      <RecipeImportSourcePanel mealId={mealId} scope={ownerScope} />
     </QueryClientProvider>
   );
   const screen = render(view('meal'));

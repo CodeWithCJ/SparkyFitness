@@ -108,10 +108,12 @@ async function markSynced(
 ): Promise<void> {
   const client: PoolClient = await getClient(userId, userId);
   try {
-    await client.query(
+    const result = await client.query(
       'UPDATE recipe_imports SET source=$3::jsonb,updated_at=now() WHERE user_id=$1 AND meal_id=$2',
       [userId, source.mealId, JSON.stringify(source)]
     );
+    if (result.rowCount !== 1)
+      throw new Error('The recipe import sync record could not be updated.');
   } finally {
     client.release();
   }

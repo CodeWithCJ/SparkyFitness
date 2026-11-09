@@ -699,6 +699,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     mealPlanTarget,
     ownershipFilter,
   ]);
+  if (loadingFood && loadingFood.scope !== detailScope) {
+    setLoadingFood(null);
+  }
   const loadingFoodId =
     loadingFood?.scope === detailScope ? loadingFood.id : null;
   useEffect(() => {

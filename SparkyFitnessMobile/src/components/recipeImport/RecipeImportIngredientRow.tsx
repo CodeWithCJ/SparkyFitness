@@ -171,12 +171,20 @@ export default function RecipeImportIngredientRow({
             </Text>
           )}
           {food.error && (
-            <Text accessibilityRole="alert" className="text-danger">
-              {t('recipeImport.foodUnavailable', {
-                defaultValue:
-                  'Food details could not be loaded. Choose the food again.',
-              })}
-            </Text>
+            <>
+              <Text accessibilityRole="alert" className="text-danger">
+                {t('recipeImport.foodUnavailable', {
+                  defaultValue: 'Food details could not be loaded. Try again.',
+                })}
+              </Text>
+              <Button
+                variant="secondary"
+                disabled={disabled || food.isFetching}
+                onPress={() => void food.refetch()}
+              >
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </>
           )}
         </>
       )}

@@ -70,6 +70,7 @@ interface MealBuilderProps {
   duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
   onIngredientsDirtyChange?: (dirty: boolean) => void;
+  onIngredientsLoadedChange?: (loaded: boolean) => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   initialMealName?: string;
   initialDescription?: string;
@@ -148,6 +149,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   duplicateFromMealId,
   onCancel,
   onIngredientsDirtyChange,
+  onIngredientsLoadedChange,
   initialFoods,
   initialMealName,
   initialDescription,
@@ -255,18 +257,27 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const [savedIngredientSignature, setSavedIngredientSignature] = useState<
     string | null
   >(null);
+  const [mealLoadFailed, setMealLoadFailed] = useState(false);
+  const [mealLoadRetry, setMealLoadRetry] = useState(0);
+  const ingredientsLoaded =
+    source !== 'meal-management' ||
+    !mealId ||
+    savedIngredientSignature !== null;
   const currentIngredientSignature = ingredientSignature(mealFoods);
   useEffect(() => {
     onIngredientsDirtyChange?.(
       !!mealId &&
-        (savedIngredientSignature === null ||
-          currentIngredientSignature !== savedIngredientSignature)
+        savedIngredientSignature !== null &&
+        currentIngredientSignature !== savedIngredientSignature
     );
+    onIngredientsLoadedChange?.(ingredientsLoaded);
   }, [
     mealId,
     savedIngredientSignature,
     currentIngredientSignature,
     onIngredientsDirtyChange,
+    onIngredientsLoadedChange,
+    ingredientsLoaded,
   ]);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
@@ -336,6 +347,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       const sourceMealId = mealId ?? duplicateFromMealId;
       const isDuplicate = !mealId && !!duplicateFromMealId;
       if (source === 'meal-management' && sourceMealId) {
+        if (mealId) {
+          setSavedIngredientSignature(null);
+          setMealLoadFailed(false);
+        }
         try {
           const meal = await queryClient.fetchQuery(
             mealViewOptions(sourceMealId)
@@ -367,9 +382,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               setSavedIngredientSignature(
                 ingredientSignature(meal.foods || [])
               );
-          }
+          } else if (mealId) setMealLoadFailed(true);
         } catch (err) {
           error(loggingLevel, 'Failed to fetch meal for editing:', err);
+          if (mealId) setMealLoadFailed(true);
         }
       } else if (source === 'food-diary' && foodEntryId) {
         // Use foodEntryId for food-diary editing
@@ -537,6 +553,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     initialServingSize,
     initialServingUnit,
     queryClient,
+    mealLoadRetry,
   ]);
 
   const handleAddFoodToMeal = (food: Food) => {
@@ -1377,6 +1394,38 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       )}
     </div>
   );
+
+  if (!ingredientsLoaded) {
+    return (
+      <div className="space-y-3 pt-4">
+        {mealLoadFailed ? (
+          <p role="alert" className="text-destructive">
+            {t('mealBuilder.loadMealError', 'Failed to load meal for editing.')}
+          </p>
+        ) : (
+          <p role="status">
+            {t('mealBuilder.loadingIngredients', 'Loading meal ingredients…')}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            {t('common.cancel', 'Cancel')}
+          </Button>
+          {mealLoadFailed && (
+            <Button
+              onClick={() => {
+                loadedIdRef.current = null;
+                setMealLoadFailed(false);
+                setMealLoadRetry((attempt) => attempt + 1);
+              }}
+            >
+              {t('mealBuilder.retryLoad', 'Retry loading meal')}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pt-4">

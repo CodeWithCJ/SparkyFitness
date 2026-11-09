@@ -234,6 +234,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const recipeImportTarget = route.params?.recipeImportTarget;
   const recipeOwnerScope = useRecipeImportAccess();
   const recipeClient = useQueryClient();
+  const recipeTargetOwner = useRef(recipeOwnerScope);
+  const recipeOwnerRetained = useRef(true);
   const recipeOperation = useRef(0);
   const recipeIdentity = `${recipeOwnerScope}:${route.key}:${item.source}:${item.id}:${JSON.stringify(recipeImportTarget)}`;
   const recipeIdentityRef = useRef(recipeIdentity);
@@ -244,6 +246,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   }, [recipeIdentity, isRecipeImportSelection]);
   useEffect(() => {
     const owner = observeRecipeImportOwner(recipeClient, () => {
+      recipeOwnerRetained.current = false;
       recipeOperation.current += 1;
     });
     return owner.unsubscribe;
@@ -665,12 +668,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   ]);
 
   const initialQuantity = useMemo(() => {
-    if (recipeImportTarget)
+    if (recipeImportTarget) {
+      if (!activeVariant.servingUnit)
+        return recipeImportTarget.quantity != null &&
+          Number.isFinite(recipeImportTarget.quantity) &&
+          recipeImportTarget.quantity > 0
+          ? recipeImportTarget.quantity
+          : undefined;
       return recipeImportInitialQuantity(
         recipeImportTarget.quantity,
         recipeImportTarget.unit,
         activeVariant.servingUnit
       );
+    }
     if (
       activeItem.source === 'local' &&
       'quantity' in activeItem.originalItem &&
@@ -694,16 +704,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const [quantityText, setQuantityText] = useState(
     initialQuantity === undefined ? '' : String(initialQuantity)
   );
+  const quantityEditedRef = useRef(false);
   // The draft amount belongs to its current unit, including edits and incomplete input.
-  const recipeUnitRef = useRef(activeVariant.servingUnit);
+  const recipeUnitRef = useRef(
+    activeVariant.servingUnit || recipeImportTarget?.unit
+  );
   useEffect(() => {
     if (
       !recipeImportTarget ||
+      !activeVariant.servingUnit ||
       recipeUnitRef.current === activeVariant.servingUnit
     )
       return;
     const previousUnit = recipeUnitRef.current;
     recipeUnitRef.current = activeVariant.servingUnit;
+    if (!previousUnit && quantityEditedRef.current) return;
     const amount = recipeImportInitialQuantity(
       parseDecimalInput(quantityText),
       previousUnit,
@@ -835,6 +850,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       );
       setSelectedVariantId(resolvedLocalPickerVariantId);
       if (convertedQuantity !== undefined) {
+        if (recipeImportTarget && resolvedVariant)
+          recipeUnitRef.current = resolvedVariant.servingUnit;
         setQuantityText(formatServingSizeDisplay(convertedQuantity));
       }
       return;
@@ -845,6 +862,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         localVariantOptions[0] ?? externalVariantOptions[0] ?? null;
       if (firstVariant) {
         setSelectedVariantId(firstVariant.id);
+        if (recipeImportTarget && quantityEditedRef.current) return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
               recipeImportTarget.quantity,
@@ -852,6 +870,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               firstVariant.servingUnit
             )
           : firstVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = firstVariant.servingUnit;
         setQuantityText(amount === undefined ? '' : String(amount));
       }
     }
@@ -924,6 +944,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
+      quantityEditedRef.current = true;
       setQuantityText(text);
     }
   };
@@ -1318,7 +1339,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     const identity = recipeIdentity;
     const recipeSelectionCurrent = () =>
       !recipeImportTarget ||
-      (navigation.isFocused() &&
+      (!!recipeTargetOwner.current &&
+        recipeOwnerRetained.current &&
+        recipeOwnerScope === recipeTargetOwner.current &&
+        navigation.isFocused() &&
         recipeOperation.current === operation &&
         recipeIdentityRef.current === identity);
     if (!recipeSelectionCurrent()) return;

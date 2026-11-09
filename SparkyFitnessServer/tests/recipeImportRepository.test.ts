@@ -11,7 +11,26 @@ vi.mock('../models/mealRepository.js', () => ({
   default: { createMeal: m.createMeal, getMealById: m.getMealById },
 }));
 import repository from '../models/recipeImportRepository.js';
-import { recipeImportSourceSchema } from '@workspace/shared';
+import {
+  recipeImportSourceSchema,
+  type RecipeImportStoredSource,
+} from '@workspace/shared';
+
+const syncedSource: RecipeImportStoredSource = {
+  providerId: '00000000-0000-4000-a000-000000000001',
+  recipeSlug: 'rice',
+  recipeId: 'recipe',
+  name: 'Rice',
+  sourceFingerprint: 'a'.repeat(64),
+  recipeServings: 4,
+  ingredients: [],
+  syncWarnings: [],
+  mealId: '00000000-0000-4000-a000-000000000002',
+  mappings: [],
+  mealFingerprint: 'b'.repeat(64),
+  syncEligible: true,
+  lastSyncedAt: '2026-11-09T16:00:00.000Z',
+};
 beforeEach(() => {
   vi.clearAllMocks();
   m.getClient.mockResolvedValue({ query: m.query, release: m.release });
@@ -20,6 +39,28 @@ beforeEach(() => {
   m.getMealById.mockResolvedValue({ id: 'meal', foods: [] });
 });
 describe('recipe import persistence', () => {
+  it.each([0, null])(
+    'rejects a sync receipt when the provenance update affects %s rows',
+    async (rowCount) => {
+      m.query.mockResolvedValue({ rows: [], rowCount });
+      await expect(
+        repository.markSynced('owner', syncedSource)
+      ).rejects.toThrow();
+      expect(m.getClient).toHaveBeenCalledWith('owner', 'owner');
+      expect(m.release).toHaveBeenCalledOnce();
+    }
+  );
+  it('records a sync only after updating the existing owner provenance', async () => {
+    m.query.mockResolvedValue({ rows: [], rowCount: 1 });
+    await expect(
+      repository.markSynced('owner', syncedSource)
+    ).resolves.toBeUndefined();
+    expect(m.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE user_id=$1 AND meal_id=$2'),
+      ['owner', syncedSource.mealId, JSON.stringify(syncedSource)]
+    );
+    expect(m.release).toHaveBeenCalledOnce();
+  });
   it.each([false, true])(
     'reads compatible provenance with private baseline present: %s',
     async (withBaseline) => {

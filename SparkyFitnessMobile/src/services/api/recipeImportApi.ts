@@ -12,14 +12,20 @@ import type {
 import { apiFetch } from './apiClient';
 import { ApiError, getApiErrorMessage } from './errors';
 import type { FoodItem } from '../../types/foods';
+import type { ServerConfig } from '../storage';
 
 const root = '/api/v2/recipe-imports';
-async function request<T>(endpoint: string, body?: unknown): Promise<T> {
+async function request<T>(
+  endpoint: string,
+  body?: unknown,
+  serverConfig?: ServerConfig
+): Promise<T> {
   try {
     return await apiFetch<T>({
       endpoint: root + endpoint,
       serviceName: 'Recipe Imports API',
       operation: 'access recipe import',
+      ...(serverConfig ? { serverConfig } : {}),
       ...(body === undefined ? {} : { method: 'POST', body }),
     });
   } catch (error) {
@@ -43,10 +49,14 @@ export const suggestRecipe = (payload: RecipeImportSuggestionRequest) =>
   request<RecipeImportSuggestionResponse>('/mealie/suggest', payload);
 export const saveRecipe = (payload: RecipeImportSaveRequest) =>
   request<RecipeImportSaveResponse>('/mealie/save', payload);
-export const syncRecipeNutrition = (mealId: string) =>
+export const syncRecipeNutrition = (
+  mealId: string,
+  serverConfig?: ServerConfig
+) =>
   request<RecipeImportSyncResponse>(
     `/${encodeURIComponent(mealId)}/sync-nutrition`,
-    {}
+    {},
+    serverConfig
   );
 export async function fetchRecipeSource(
   mealId: string

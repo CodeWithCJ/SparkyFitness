@@ -1,4 +1,5 @@
 import React from 'react';
+import { ActivityIndicator } from 'react-native';
 import { QueryClient } from '@tanstack/react-query';
 const mockIdentityClient = new QueryClient();
 jest.mock('@tanstack/react-query', () => ({
@@ -942,6 +943,121 @@ describe('FoodSearchScreen', () => {
     await act(async () => finishOld(externalItem));
     expect(navigation.navigate).toHaveBeenCalledTimes(1);
   });
+  it.each(
+    ['before-return', 'after-return'].flatMap((completion) =>
+      ['original', 'other'].flatMap((nextRow) =>
+        ['success', 'error'].map((outcome) => ({
+          completion,
+          nextRow,
+          outcome,
+        }))
+      )
+    )
+  )(
+    'clears stale detail loading on A→B→A and enables the $nextRow row ($completion, $outcome)',
+    async ({ completion, nextRow, outcome }) => {
+      const otherItem = { ...externalItem, id: 'ext-2', name: 'Other cheese' };
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem, otherItem] })
+      );
+      let finishOld!: (
+        food: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void;
+      let failOld!: (error: Error) => void;
+      mockFetchExternalFoodDetails
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve, reject) => {
+              finishOld = resolve;
+              failOld = reject;
+            })
+        )
+        .mockResolvedValueOnce(
+          nextRow === 'original' ? externalItem : otherItem
+        );
+      const completeOld = () =>
+        act(async () => {
+          if (outcome === 'success') finishOld(externalItem);
+          else failOld(new Error('obsolete detail failure'));
+        });
+      const screen = renderSearching(route, 'chicken');
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(1);
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search foods...'),
+        'new search'
+      );
+      if (completion === 'before-return') await completeOld();
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search foods...'),
+        'chicken'
+      );
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+      expect(navigation.navigate).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
+      fireEvent.press(
+        screen.getByText(
+          nextRow === 'original' ? 'Cheddar Cheese' : 'Other cheese'
+        )
+      );
+      await waitFor(() =>
+        expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(2)
+      );
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalledTimes(1));
+      if (completion === 'after-return') await completeOld();
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).not.toHaveBeenCalled();
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+    }
+  );
+  it('passes a local food without a default serving to the recipe picker without inventing a unit', () => {
+    const food = buildFood({ name: 'Rice without a default serving' });
+    const projection = {
+      ...food,
+      default_variant: {
+        id: null,
+        serving_size: null,
+        serving_unit: null,
+        calories: null,
+        protein: null,
+        carbs: null,
+        fat: null,
+      },
+    } as unknown as FoodItem;
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [projection],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    const target = {
+      draftKey: 'recipe-draft',
+      ingredientId: 'rice',
+      quantity: 0.6,
+      unit: 'kg',
+    };
+    const screen = renderSearching({
+      ...route,
+      params: { pickerMode: 'meal-builder', recipeImportTarget: target },
+    });
+    fireEvent.press(screen.getByText('Rice without a default serving'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        item: expect.objectContaining({
+          id: food.id,
+          source: 'local',
+          servingUnit: null,
+          variantId: null,
+        }),
+        recipeImportTarget: target,
+      })
+    );
+  });
+
   it('opens a current recipe detail with the chosen serving and retained provider photo and target', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(

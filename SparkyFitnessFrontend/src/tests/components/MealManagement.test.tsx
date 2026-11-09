@@ -1,5 +1,11 @@
 import type { ComponentProps } from 'react';
-import { screen, waitFor, fireEvent, within } from '@testing-library/react';
+import {
+  act,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { getMealById, updateMeal } from '@/api/Foods/meals';
 import {
@@ -7,6 +13,8 @@ import {
   syncRecipeNutrition,
 } from '@/api/Foods/recipeImportService';
 import MealManagement from '@/pages/Foods/MealManagement';
+import type { Meal } from '@/types/meal';
+import type { RecipeImportSource } from '@workspace/shared';
 import { renderWithClient } from '../test-utils';
 
 // mock i18 directly for calls outside of hooks
@@ -219,6 +227,116 @@ describe('MealManagement', () => {
     expect(
       screen.queryByRole('button', { name: 'Add to favorites' })
     ).toBeNull();
+  });
+
+  it('keeps source sync blocked without claiming edits until a failed meal detail load is retried', async () => {
+    mockRealBuilder = true;
+    const meal: Meal = {
+      id: 'meal1',
+      name: 'Apple meal',
+      is_public: false,
+      serving_size: 1,
+      serving_unit: 'serving',
+      total_servings: 1,
+      foods: [
+        {
+          food_id: 'apple',
+          food_name: 'Apple',
+          variant_id: 'original',
+          quantity: 1,
+          unit: 'piece',
+          serving_size: 1,
+          serving_unit: 'piece',
+          calories: 95,
+          protein: 0.5,
+          carbs: 25,
+          fat: 0.3,
+        },
+      ],
+    };
+    const source: RecipeImportSource = {
+      mealId: 'meal1',
+      providerId: 'provider',
+      recipeSlug: 'apple-meal',
+      recipeId: 'recipe',
+      name: 'Original source',
+      recipeServings: 1,
+      sourceFingerprint: 'a'.repeat(64),
+      mealFingerprint: 'saved-meal',
+      ingredients: [],
+      mappings: [],
+      syncWarnings: [],
+      syncEligible: true,
+      lastSyncedAt: null,
+    };
+    let failLoad: (reason: Error) => void = () => {};
+    const initialRead = new Promise<Meal>((_resolve, reject) => {
+      failLoad = reject;
+    });
+    let finishRetry: (value: Meal) => void = () => {};
+    const retryRead = new Promise<Meal>((resolve) => {
+      finishRetry = resolve;
+    });
+    mockGetMeals.mockResolvedValue([meal]);
+    jest
+      .mocked(getMealById)
+      .mockImplementationOnce(() => initialRead)
+      .mockImplementationOnce(() => retryRead);
+    jest.mocked(getRecipeSource).mockResolvedValue(source);
+    jest.mocked(syncRecipeNutrition).mockResolvedValue({
+      status: 'synced',
+      source,
+    });
+    renderWithClient(<MealManagement />);
+    const menu = await screen.findAllByRole('button', { name: 'Open menu' });
+    fireEvent.pointerDown(menu[0]!, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: 'mouse',
+    });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit Meal' }));
+    const syncButton = await screen.findByRole('button', {
+      name: 'Sync nutrition to Mealie',
+    });
+    expect(syncButton).toBeDisabled();
+    expect(
+      screen.queryByText(
+        'Save or discard ingredient changes before syncing nutrition to Mealie.'
+      )
+    ).not.toBeInTheDocument();
+    await act(async () => failLoad(new Error('Meal detail request failed')));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Failed to load meal for editing.'
+    );
+    expect(syncButton).toBeDisabled();
+    expect(
+      screen.queryByText(
+        'Save or discard ingredient changes before syncing nutrition to Mealie.'
+      )
+    ).not.toBeInTheDocument();
+    fireEvent.click(syncButton);
+    expect(syncRecipeNutrition).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading meal' }));
+    await waitFor(() => expect(getMealById).toHaveBeenCalledTimes(2));
+    expect(getMealById).toHaveBeenNthCalledWith(2, 'meal1');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Loading meal ingredients…')).toBeInTheDocument();
+    expect(syncButton).toBeDisabled();
+    fireEvent.click(syncButton);
+    expect(syncRecipeNutrition).not.toHaveBeenCalled();
+    await act(async () => finishRetry(meal));
+    expect(await screen.findByText('Apple')).toBeInTheDocument();
+    await waitFor(() => expect(syncButton).toBeEnabled());
+    expect(
+      screen.queryByText(
+        'Save or discard ingredient changes before syncing nutrition to Mealie.'
+      )
+    ).not.toBeInTheDocument();
+    fireEvent.click(syncButton);
+    expect(
+      await screen.findByText('Nutrition synced to Mealie.')
+    ).toBeInTheDocument();
+    expect(syncRecipeNutrition).toHaveBeenCalledWith('meal1');
   });
 });
 

@@ -4,6 +4,8 @@ import {
   useQuery,
   useQueryClient,
   type QueryClient,
+  type UseMutateFunction,
+  type UseMutateAsyncFunction,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,6 +17,7 @@ import {
   type RecipeImportSaveRequest,
   type RecipeImportSaveResponse,
   type RecipeImportSuggestionResponse,
+  type RecipeImportSyncResponse,
 } from '@workspace/shared';
 import {
   saveRecipe,
@@ -23,6 +26,7 @@ import {
   syncRecipeNutrition,
 } from '../services/api/recipeImportApi';
 import { ApiError } from '../services/api/errors';
+import type { ServerConfig } from '../services/storage';
 import { useServerConfigs } from './useServerConfigs';
 import { useProfile } from './useProfile';
 import { invalidateFoodCache } from './invalidateFoodCache';
@@ -98,46 +102,98 @@ export function useRecipeSource(mealId: string, scope: string | null) {
     enabled: !!scope,
     retry: false,
   });
+  function beginSync() {
+    release.current?.();
+    const activeConfig = client.getQueryData<{
+      activeConfig: ServerConfig | null;
+    }>(serverConfigsQueryKey)?.activeConfig;
+    const config = activeConfig
+      ? {
+          ...activeConfig,
+          proxyHeaders: activeConfig.proxyHeaders?.map((header) => ({
+            ...header,
+          })),
+        }
+      : null;
+    const profile = client.getQueryData<{ id: string }>(profileQueryKey);
+    const ownerScope =
+      config && profile ? `${config.id}:${config.url}:${profile.id}` : null;
+    let retained = true;
+    const owner = observeRecipeImportOwner(client, () => {
+      retained = false;
+      reset.current();
+    });
+    const cleanup = () => {
+      retained = false;
+      owner.unsubscribe();
+    };
+    release.current = cleanup;
+    const isCurrent = () =>
+      retained &&
+      owner.isCurrent() &&
+      !!scope &&
+      scope === ownerScope &&
+      current.current === scope;
+    return {
+      isCurrent,
+      cleanup,
+      unsubscribe: owner.unsubscribe,
+      send: () => {
+        if (!config || !isCurrent()) throw new Error('OWNER_REQUIRED');
+        return syncRecipeNutrition(mealId, config);
+      },
+    };
+  }
+  type SyncOperation = ReturnType<typeof beginSync>;
   const sync = useMutation({
-    onMutate: () => {
-      release.current?.();
-      let retained = true;
-      const owner = observeRecipeImportOwner(client, () => {
-        retained = false;
-        reset.current();
-      });
-      const cleanup = () => {
-        retained = false;
-        owner.unsubscribe();
-      };
-      release.current = cleanup;
-      return {
-        isCurrent: () =>
-          retained && owner.isCurrent() && !!scope && current.current === scope,
-        cleanup,
-        unsubscribe: owner.unsubscribe,
-      };
-    },
-    mutationFn: async () => {
-      if (!scope || current.current !== scope)
-        throw new Error('OWNER_REQUIRED');
-      return syncRecipeNutrition(mealId);
-    },
+    onMutate: (operation: SyncOperation) => operation,
+    mutationFn: (operation: SyncOperation) => operation.send(),
     retry: false,
-    onSuccess: (response, _variables, context) => {
-      if (context?.isCurrent())
+    onSuccess: (response, operation) => {
+      if (operation.isCurrent())
         client.setQueryData(sourceKey(scope, mealId), response.source);
     },
-    onSettled: (_data, _error, _variables, context) => {
-      context?.unsubscribe();
-      if (release.current === context?.cleanup) release.current = null;
+    onSettled: (_data, _error, operation) => {
+      operation.unsubscribe();
+      if (release.current === operation.cleanup) release.current = null;
     },
   });
   const resetSync = sync.reset;
   useEffect(() => {
     reset.current = resetSync;
   }, [resetSync]);
-  return { source, sync };
+  // Capture the owner before TanStack awaits any cache or mutation onMutate.
+  const mutateAsync: UseMutateAsyncFunction<
+    RecipeImportSyncResponse,
+    Error,
+    void,
+    SyncOperation
+  > = (_variables, options) =>
+    sync.mutateAsync(
+      beginSync(),
+      options
+        ? {
+            onSuccess: (data, _operation, result, context) =>
+              options.onSuccess?.(data, undefined, result, context),
+            onError: (error, _operation, result, context) =>
+              options.onError?.(error, undefined, result, context),
+            onSettled: (data, error, _operation, result, context) =>
+              options.onSettled?.(data, error, undefined, result, context),
+          }
+        : undefined
+    );
+  const mutate: UseMutateFunction<
+    RecipeImportSyncResponse,
+    Error,
+    void,
+    SyncOperation
+  > = (variables, options) => {
+    void mutateAsync(variables, options).catch(() => {});
+  };
+  return {
+    source,
+    sync: { ...sync, variables: undefined, mutate, mutateAsync },
+  };
 }
 
 export function useRecipeImport(
@@ -171,8 +227,9 @@ export function useRecipeImport(
   const stateRef = useRef(state);
   const retainedScope = useRef(scope);
   retainedScope.current = scope;
-  const identity = useRef(key);
-  identity.current = key;
+  const identity = useRef({ key });
+  if (identity.current.key !== key) identity.current = { key };
+  const review = identity.current;
   if (state.key !== key) {
     const fresh = initial();
     stateRef.current = fresh;
@@ -185,7 +242,7 @@ export function useRecipeImport(
       alive.current = false;
     };
   }, []);
-  const valid = () => alive.current && !!scope && identity.current === key;
+  const valid = () => alive.current && !!scope && identity.current === review;
   function update(patch: Partial<typeof state>) {
     if (!valid()) return;
     const next = { ...stateRef.current, ...patch };
@@ -340,7 +397,10 @@ export function useRecipeImport(
       throw error;
     } finally {
       owner.unsubscribe();
-      if (retained()) update({ saving: false });
+      update({
+        saving: false,
+        ...(!retained() ? { saved: null, uncertain: true } : {}),
+      });
     }
   }
   return { ...stateRef.current, confirm, suggest, save };

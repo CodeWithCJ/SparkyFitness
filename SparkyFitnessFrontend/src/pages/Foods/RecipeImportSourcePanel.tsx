@@ -8,6 +8,7 @@ export default function RecipeImportSourcePanel(props: {
   mealId: string;
   initialSource?: RecipeImportSource;
   ingredientsDirty?: boolean;
+  ingredientsLoaded?: boolean;
 }) {
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   // Unmount both private cache observers and pending mutation messages on profile switches.
@@ -25,11 +26,13 @@ function OwnerSourcePanel({
   mealId,
   initialSource,
   ingredientsDirty,
+  ingredientsLoaded = true,
   ownerId,
 }: {
   mealId: string;
   initialSource?: RecipeImportSource;
   ingredientsDirty?: boolean;
+  ingredientsLoaded?: boolean;
   ownerId: string;
 }) {
   const { t } = useTranslation();
@@ -66,7 +69,7 @@ function OwnerSourcePanel({
           )}
         </p>
       )}
-      {ingredientsDirty && (
+      {ingredientsLoaded && ingredientsDirty && (
         <p role="status">
           {t(
             'recipeImport.unsavedIngredients',
@@ -77,10 +80,13 @@ function OwnerSourcePanel({
       <Button
         variant="outline"
         disabled={
-          ingredientsDirty || !source.data.syncEligible || sync.isPending
+          !ingredientsLoaded ||
+          ingredientsDirty ||
+          !source.data.syncEligible ||
+          sync.isPending
         }
         onClick={() => {
-          if (!ingredientsDirty) sync.mutate();
+          if (ingredientsLoaded && !ingredientsDirty) sync.mutate();
         }}
       >
         {sync.isPending

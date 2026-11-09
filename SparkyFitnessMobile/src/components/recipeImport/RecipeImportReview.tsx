@@ -130,8 +130,7 @@ export default function RecipeImportReview({
       if (selected.source === 'local' && !variant)
         throw new Error(
           t('recipeImport.foodUnavailable', {
-            defaultValue:
-              'Food details could not be loaded. Choose the food again.',
+            defaultValue: 'Food details could not be loaded. Try again.',
           })
         );
       navigation.navigate('FoodEntryAdd', {
@@ -158,8 +157,7 @@ export default function RecipeImportReview({
           failure instanceof Error
             ? failure.message
             : t('recipeImport.foodUnavailable', {
-                defaultValue:
-                  'Food details could not be loaded. Choose the food again.',
+                defaultValue: 'Food details could not be loaded. Try again.',
               })
         );
     } finally {

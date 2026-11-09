@@ -1,11 +1,17 @@
 import React from 'react';
 import { ApiError } from '../../src/services/api/errors';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import type {
   RecipeImportPreview,
   RecipeImportMapping,
+  RecipeImportSyncResponse,
 } from '@workspace/shared';
+import * as storage from '../../src/services/storage';
 import {
   useRecipeImport,
   useRecipeSource,
@@ -73,6 +79,199 @@ beforeEach(() => {
   suggest.mockReset();
   save.mockReset();
   jest.mocked(fetchRecipeSource).mockReset();
+  jest.mocked(syncRecipeNutrition).mockReset();
+});
+afterEach(() => jest.restoreAllMocks());
+
+describe('source sync transport ownership', () => {
+  const initialFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = initialFetch;
+  });
+  const scope = 'server:https://example.test:owner';
+  const source = {
+    ...preview,
+    mealId: 'meal',
+    mappings: [],
+    mealFingerprint: 'base',
+    syncEligible: true,
+    lastSyncedAt: null,
+  };
+  const response: RecipeImportSyncResponse = {
+    status: 'synced',
+    source: { ...source, lastSyncedAt: '2026-11-09T10:00:00Z' },
+  };
+  const config: storage.ServerConfig = {
+    id: 'server',
+    url: 'https://example.test',
+    apiKey: 'synthetic-owner-key',
+    proxyHeaders: [{ name: 'X-Proxy-Owner', value: 'original' }],
+  };
+  const replacement: storage.ServerConfig = {
+    ...config,
+    url: 'https://replacement.test',
+    apiKey: 'synthetic-replacement-key',
+    proxyHeaders: [{ name: 'X-Proxy-Owner', value: 'replacement' }],
+  };
+  function setup(waitForCacheOnMutate: boolean, activeConfig = config) {
+    let dispatch!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      dispatch = resolve;
+    });
+    const client = new QueryClient({
+      mutationCache: new MutationCache({
+        ...(waitForCacheOnMutate ? { onMutate: () => gate } : {}),
+      }),
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    const seedOwner = () => {
+      client.setQueryData(['userProfile'], { id: 'owner' });
+      client.setQueryData(['serverConfigs'], { activeConfig });
+    };
+    seedOwner();
+    client.setQueryData(['meals', 'recipeImportSource', scope, 'meal'], source);
+    jest.mocked(fetchRecipeSource).mockResolvedValue(null);
+    const resolveActive = jest
+      .spyOn(storage, 'getActiveServerConfig')
+      .mockResolvedValue(replacement);
+    const fetch = jest
+      .fn<ReturnType<typeof global.fetch>, Parameters<typeof global.fetch>>()
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => response,
+      } as Response);
+    global.fetch = fetch;
+    jest
+      .mocked(syncRecipeNutrition)
+      .mockImplementation(
+        jest.requireActual<
+          typeof import('../../src/services/api/recipeImportApi')
+        >('../../src/services/api/recipeImportApi').syncRecipeNutrition
+      );
+    const hook = renderHook(() => useRecipeSource('meal', scope), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+    return { client, hook, dispatch, fetch, resolveActive, seedOwner };
+  }
+
+  it.each([
+    [false, 'profile'],
+    [false, 'server'],
+    [false, 'clear-and-repopulate'],
+    [true, 'profile'],
+    [true, 'server'],
+    [true, 'clear-and-repopulate'],
+  ] as const)(
+    'rejects a %s cache-onMutate delay / %s owner change before sending',
+    async (delay, change) => {
+      const { client, hook, dispatch, fetch, resolveActive, seedOwner } =
+        setup(delay);
+      let pending!: Promise<unknown>;
+      act(() => {
+        pending = hook.result.current.sync
+          .mutateAsync()
+          .catch((error) => error);
+        if (change === 'profile')
+          client.setQueryData(['userProfile'], { id: 'replacement-owner' });
+        if (change === 'server')
+          client.setQueryData(['serverConfigs'], { activeConfig: replacement });
+        if (change === 'clear-and-repopulate') {
+          client.clear();
+          seedOwner();
+        }
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      await act(async () => {
+        dispatch();
+        expect(await pending).toEqual(new Error('OWNER_REQUIRED'));
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      expect(resolveActive).not.toHaveBeenCalled();
+      expect(hook.result.current.sync.isSuccess).toBe(false);
+      expect(hook.result.current.sync.error).toBeNull();
+      hook.unmount();
+      expect(client.getQueryCache().hasListeners()).toBe(false);
+      client.clear();
+    }
+  );
+
+  it.each(['apiKey', 'session'] as const)(
+    'binds the initiating %s connection through errors and a fresh retry',
+    async (authType) => {
+      const activeConfig = {
+        ...config,
+        authType,
+        sessionToken: 'synthetic-owner-session',
+      };
+      const { client, hook, dispatch, fetch, resolveActive } = setup(
+        true,
+        activeConfig
+      );
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: async () => JSON.stringify({ error: 'Ingredients changed.' }),
+      } as Response);
+      const onError = jest.fn();
+      const onSuccess = jest.fn();
+      let pending!: Promise<unknown>;
+      act(() => {
+        pending = hook.result.current.sync
+          .mutateAsync(undefined, { onError })
+          .catch((error) => error);
+        client.setQueryData(['userProfile'], { id: 'owner', name: 'Updated' });
+      });
+      await act(async () => {
+        dispatch();
+        expect(await pending).toEqual(
+          expect.objectContaining({ message: 'Ingredients changed.' })
+        );
+      });
+      await waitFor(() =>
+        expect(hook.result.current.sync.error?.message).toBe(
+          'Ingredients changed.'
+        )
+      );
+      expect(onError).toHaveBeenCalledWith(
+        expect.any(ApiError),
+        undefined,
+        expect.anything(),
+        expect.anything()
+      );
+      await act(async () => {
+        await hook.result.current.sync.mutateAsync(undefined, { onSuccess });
+      });
+      await waitFor(() =>
+        expect(hook.result.current.sync.isSuccess).toBe(true)
+      );
+      expect(onSuccess).toHaveBeenCalledWith(
+        response,
+        undefined,
+        expect.anything(),
+        expect.anything()
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+      for (const call of fetch.mock.calls)
+        expect(call).toEqual([
+          'https://example.test/api/v2/recipe-imports/meal/sync-nutrition',
+          expect.objectContaining({
+            method: 'POST',
+            body: '{}',
+            headers: expect.objectContaining({
+              Authorization: `Bearer ${authType === 'session' ? activeConfig.sessionToken : activeConfig.apiKey}`,
+              'X-Proxy-Owner': 'original',
+            }),
+          }),
+        ]);
+      expect(resolveActive).not.toHaveBeenCalled();
+      hook.unmount();
+      expect(client.getQueryCache().hasListeners()).toBe(false);
+      client.clear();
+    }
+  );
 });
 
 it.each(['clear', 'profile', 'server', 'same-owner', 'unmount'] as const)(
@@ -320,6 +519,77 @@ it('requires all confirmations and sends cooked whole grams independently of ing
   expect(result.current.saved?.mealId).toBe('meal');
 });
 
+it.each([false, true])(
+  'does not apply an older save settlement to a reopened review (failure: %s)',
+  async (failure) => {
+    const one = { ...preview, ingredients: [preview.ingredients[0]] };
+    const response = {
+      mealId: 'old-meal',
+      source: {
+        ...one,
+        mealId: 'old-meal',
+        mappings: [mapping],
+        mealFingerprint: 'base',
+        syncEligible: true,
+        lastSyncedAt: null,
+      },
+      nutrition: { calories: 2400 },
+      servingSize: 450,
+      servingUnit: 'g',
+      totalServings: 4,
+    };
+    let finishOld!: (value: typeof response) => void;
+    let failOld!: (error: Error) => void;
+    let finishNew!: (value: typeof response) => void;
+    save.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          finishOld = resolve;
+          failOld = reject;
+        })
+    );
+    save.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishNew = resolve;
+        })
+    );
+    const { result, rerender } = renderHook(
+      ({ source }) => useRecipeImport(source, 'owner-server'),
+      { wrapper: Wrapper, initialProps: { source: one } }
+    );
+    act(() => result.current.confirm(mapping));
+    let oldSave!: Promise<unknown>;
+    act(() => {
+      oldSave = result.current
+        .save({ name: 'Old batch', servings: 4 })
+        .catch((error) => error);
+    });
+    rerender({ source: { ...one, sourceFingerprint: 'b'.repeat(64) } });
+    rerender({ source: one });
+    act(() => result.current.confirm(mapping));
+    let newSave!: Promise<unknown>;
+    act(() => {
+      newSave = result.current.save({ name: 'New batch', servings: 4 });
+    });
+    await act(async () => {
+      if (failure) failOld(new Error('old response lost'));
+      else finishOld(response);
+      await oldSave;
+    });
+    expect(result.current.saving).toBe(true);
+    expect(result.current.saved).toBeNull();
+    expect(result.current.error).toBeNull();
+    expect(result.current.uncertain).toBe(false);
+    await act(async () => {
+      finishNew({ ...response, mealId: 'new-meal' });
+      await newSave;
+    });
+    expect(result.current.saving).toBe(false);
+    expect(result.current.saved?.mealId).toBe('new-meal');
+  }
+);
+
 it.each([
   'unmount-success',
   'network',
@@ -433,11 +703,28 @@ it.each([
         ])
       ).toBeUndefined();
     if (outcome === 'validation') {
+      expect(result.current.saving).toBe(false);
       expect(result.current.uncertain).toBe(false);
       act(() => result.current.confirm({ ...mapping, quantity: 800 }));
       expect(result.current.mappings[mapping.ingredientId].quantity).toBe(800);
     }
     if (outcome === 'network' || outcome === 'server') {
+      expect(result.current.saving).toBe(false);
+      expect(result.current.uncertain).toBe(true);
+      await act(async () => {
+        await expect(
+          result.current.save({ name: 'Batch', servings: 4 })
+        ).rejects.toThrow(/Check your meals library/);
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+    }
+    if (
+      outcome === 'cache-clear' ||
+      outcome === 'late-identity-clear' ||
+      outcome === 'profile-replacement'
+    ) {
+      expect(result.current.saving).toBe(false);
+      expect(result.current.saved).toBeNull();
       expect(result.current.uncertain).toBe(true);
       await act(async () => {
         await expect(

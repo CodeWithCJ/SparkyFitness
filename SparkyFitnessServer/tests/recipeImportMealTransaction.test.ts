@@ -11,6 +11,52 @@ describe('imported meal caller-owned transaction', () => {
     vi.clearAllMocks();
     db.query.mockReset().mockResolvedValue({ rows: [{ id: 'meal' }] });
   });
+  it('reloads the uncommitted meal and its ingredients on the supplied transaction client', async () => {
+    const client = await getClient('owner');
+    vi.mocked(getClient).mockClear();
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 'meal', name: 'Rice' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ingredient',
+            meal_id: 'meal',
+            food_id: 'rice',
+            quantity: 400,
+            unit: 'g',
+          },
+        ],
+      });
+
+    await expect(
+      mealRepository.getMealById('meal', 'owner', client)
+    ).resolves.toEqual({
+      id: 'meal',
+      name: 'Rice',
+      foods: [
+        {
+          id: 'ingredient',
+          meal_id: 'meal',
+          food_id: 'rice',
+          quantity: 400,
+          unit: 'g',
+        },
+      ],
+    });
+    expect(getClient).not.toHaveBeenCalled();
+    expect(db.query).toHaveBeenCalledTimes(2);
+    expect(db.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM meals WHERE id = $1'),
+      ['meal']
+    );
+    expect(db.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM meal_foods mf'),
+      [['meal']]
+    );
+    expect(db.release).not.toHaveBeenCalled();
+  });
   it.each([false, true])(
     'leaves transaction and release to the caller (insertion fails: %s)',
     async (fail) => {

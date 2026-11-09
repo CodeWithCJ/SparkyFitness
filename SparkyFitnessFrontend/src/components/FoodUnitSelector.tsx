@@ -968,6 +968,15 @@ const FoodUnitSelector = ({
                       )}
                       value={pendingUnit}
                       onChange={(e) => {
+                        if (
+                          preserveInitialAmountUnit &&
+                          recipeAmount.current?.unit === displayUnit
+                        ) {
+                          recipeAmount.current = {
+                            ...recipeAmount.current,
+                            unit: e.target.value.trim() || '?',
+                          };
+                        }
                         setPendingUnit(e.target.value);
                         setConversionError('');
                       }}
