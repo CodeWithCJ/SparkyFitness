@@ -10,7 +10,7 @@ import bmrService from './bmrService.js';
 import { getAdaptiveActivityCalories } from './adaptiveActivityService.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { actorUserIdFor } from '../db/poolManager.js';
+import { signedInUserIdOr } from '../db/poolManager.js';
 import {
   todayInZone,
   dayToPickerDate,
@@ -25,11 +25,11 @@ import {
 const TDEE_CACHE_TTL_SECONDS = 300;
 const tdeeCache = new NodeCache({ stdTTL: TDEE_CACHE_TTL_SECONDS });
 
-// In a family member's account chat runs as the signed-in person, whose grant
-// may hide some of the data this reads (see withFixedActor), so its result is
-// worked out fresh and not cached.
+// After a Profile Switcher switch, on the web or in chat, the data is read as
+// the signed-in person, whose grant may hide some of it, so the result is
+// worked out fresh and kept out of the account's cache.
 function cachesTdeeFor(userId: string): boolean {
-  return actorUserIdFor(userId) === userId;
+  return signedInUserIdOr(userId) === userId;
 }
 interface UserProfile {
   date_of_birth?: string | null;
