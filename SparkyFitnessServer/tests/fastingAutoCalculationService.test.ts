@@ -657,11 +657,7 @@ describe('fastingAutoCalculationService', () => {
         });
 
         const fast = await getCurrentAutoFast('user-123', 'UTC');
-        expect(fast).not.toBeNull();
-        expect(fast?.status).toBe('ACTIVE');
-        expect(fast?.start_time).toBe('2026-10-04T20:00:00.000Z');
-        expect(fast?.duration_minutes).toBe(60); // 20:00 to 21:00
-        expect(fast?.is_eating_window).toBeUndefined();
+        expect(fast).toBeNull();
       } finally {
         vi.useRealTimers();
       }

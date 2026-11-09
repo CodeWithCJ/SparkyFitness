@@ -308,28 +308,7 @@ export async function getCurrentAutoFast(
           eating_window_remaining_minutes: remainingMinutes,
         };
       }
-      if (now.getTime() >= eatingWindowEnd.getTime()) {
-        const nextFastStart = eatingWindowEnd;
-        const elapsedMinutes = Math.max(
-          0,
-          Math.floor((now.getTime() - nextFastStart.getTime()) / 60000)
-        );
-        const targetEndTime = new Date(
-          nextFastStart.getTime() + targetFastHours * 60 * 60 * 1000
-        );
-        return {
-          id: `auto-${nextFastStart.toISOString()}`,
-          user_id: userId,
-          start_time: nextFastStart.toISOString(),
-          end_time: null,
-          target_end_time: targetEndTime.toISOString(),
-          duration_minutes: elapsedMinutes,
-          fasting_type: prefs.default_protocol || '16-8',
-          status: 'ACTIVE',
-          is_auto_calculated: true,
-          start_meal_name: lastMealToday.description,
-        };
-      }
+      // The fast from fastStartTime was already completed; do not resurrect it as active.
       return null;
     }
 
@@ -406,28 +385,7 @@ export async function getCurrentAutoFast(
         eating_window_remaining_minutes: remainingMinutes,
       };
     }
-    if (now.getTime() >= eatingWindowEnd.getTime()) {
-      const nextFastStart = eatingWindowEnd;
-      const elapsedMinutes = Math.max(
-        0,
-        Math.floor((now.getTime() - nextFastStart.getTime()) / 60000)
-      );
-      const targetEndTime = new Date(
-        nextFastStart.getTime() + targetFastHours * 60 * 60 * 1000
-      );
-      return {
-        id: `auto-${nextFastStart.toISOString()}`,
-        user_id: userId,
-        start_time: nextFastStart.toISOString(),
-        end_time: null,
-        target_end_time: targetEndTime.toISOString(),
-        duration_minutes: elapsedMinutes,
-        fasting_type: prefs.default_protocol || '16-8',
-        status: 'ACTIVE',
-        is_auto_calculated: true,
-        start_meal_name: lastEvent.description,
-      };
-    }
+    // The fast from fastStartTime was already completed; do not resurrect it as active.
     return null;
   }
 

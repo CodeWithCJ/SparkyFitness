@@ -315,10 +315,19 @@ router.post('/end', async (req, res) => {
           60
         );
         if (existing) {
-          resultFast = await fastingRepository.getFastingById(
-            existing.id,
-            userId
-          );
+          if (existing.status === 'ACTIVE') {
+            resultFast = await fastingRepository.endFast(
+              existing.id,
+              userId,
+              end_time,
+              durationMinutes
+            );
+          } else {
+            resultFast = await fastingRepository.getFastingById(
+              existing.id,
+              userId
+            );
+          }
         }
       }
       return res.json(resultFast);
