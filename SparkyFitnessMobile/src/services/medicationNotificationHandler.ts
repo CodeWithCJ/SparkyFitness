@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -24,6 +25,12 @@ import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 import { addDays } from '../utils/dateUtils';
 import { isDoseLogged } from '../utils/medications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  addNativeMedicationResultListener,
+  drainNativeMedicationActionResults,
+  isNativeMedicationActionClaimed,
+  setNativeMedicationSnoozeMinutes,
+} from './medicationNativeBridge';
 import i18n, {
   getDeviceLanguage,
   initializeI18n,
@@ -578,6 +585,19 @@ export async function processMedicationNotificationResponse(
 
   if (!status && !isSnooze) return true;
 
+  // On iOS the native handler takes these buttons so they work with the app
+  // closed. A press it claimed is done or running there; doing it here too
+  // would log the dose twice (entries have no unique constraint on a dose).
+  if (
+    isNativeMedicationActionClaimed(
+      response.notification?.request?.identifier ?? '',
+      actionId
+    )
+  ) {
+    await applyNativeMedicationActionResults();
+    return true;
+  }
+
   const content = response.notification?.request?.content;
   const data = extractNotificationData(content);
   const medicationId = data?.medicationId;
@@ -777,9 +797,79 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
   }
 );
 
+/**
+ * Applies what the iOS native handler did while JavaScript was not looking:
+ * records snoozes, retries writes that failed, and refreshes the caches.
+ */
+export async function applyNativeMedicationActionResults(): Promise<boolean> {
+  const results = drainNativeMedicationActionResults();
+  if (results.length === 0) return false;
+
+  let refresh = false;
+  for (const result of results) {
+    if (result.kind === 'snooze') {
+      await recordSnoozedReminder(
+        result.baseKey,
+        result.entryDate,
+        result.doses
+      );
+      addLog(
+        `[MedicationNotificationAction] Snoozed ${result.doses.length} medication(s) for ${result.minutes}m (native)`,
+        'DEBUG'
+      );
+    } else if (result.kind === 'snoozeFailed') {
+      addLog(
+        '[MedicationNotificationAction] Native snooze could not be scheduled',
+        'WARNING'
+      );
+    } else if (result.failedDoses.length > 0) {
+      await enqueuePendingAction({
+        key: result.key,
+        notificationId: result.notificationId,
+        status: result.status,
+        doses: result.failedDoses,
+        entryDate: result.entryDate,
+        userId: result.userId,
+        takenAt: result.takenAt,
+      });
+      addLog(
+        `[MedicationNotificationAction] Native handler could not log ${result.failedDoses.length} medication(s); queued to retry`,
+        'WARNING'
+      );
+      refresh = refresh || result.loggedCount > 0;
+    } else {
+      await removePendingAction({
+        key: result.key,
+        entryDate: result.entryDate,
+        doses: result.doses,
+        userId: result.userId,
+      });
+      await removeSnoozedReminder(result.key);
+      addLog(
+        `[MedicationNotificationAction] Logged ${result.loggedCount} medication(s) as ${result.status} (native)`,
+        'DEBUG'
+      );
+      refresh = true;
+    }
+  }
+  if (refresh) invalidateMedicationEntryCaches(queryClient);
+  return true;
+}
+
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;
+
+  setNativeMedicationSnoozeMinutes(
+    useAppPreferencesStore.getState()?.medicationReminderSnoozeMinutes ?? 30
+  );
+  void applyNativeMedicationActionResults();
+  addNativeMedicationResultListener(() => {
+    void applyNativeMedicationActionResults();
+  });
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') void applyNativeMedicationActionResults();
+  });
 
   if (typeof Notifications.registerTaskAsync === 'function') {
     void Notifications.registerTaskAsync(

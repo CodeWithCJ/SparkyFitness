@@ -14,6 +14,23 @@ export interface BackgroundWaterNativeModule {
    * while a login is stored. Absent in a build made before it existed.
    */
   refreshShortcut?(shortLabel: string, longLabel: string): boolean;
+  /**
+   * iOS only: the Snooze button's wait, which the native medication reminder
+   * handler cannot read from the JavaScript store. Absent in an older build.
+   */
+  setMedicationSnoozeMinutes?(minutes: number): void;
+  /**
+   * iOS only: true when the native handler already took this reminder button
+   * press (it logs or snoozes with the app closed), so JavaScript must not.
+   */
+  isMedicationActionClaimed?(notificationId: string, actionId: string): boolean;
+  /** iOS only: what the native handler did since the last call, as JSON. */
+  drainMedicationActionResults?(): string;
+  /** iOS only: fires when the native handler leaves a result to drain. */
+  addListener?(
+    eventName: 'onMedicationActionResult',
+    listener: () => void
+  ): { remove(): void };
 }
 
 // iOS is an Expo module; Android a plain React Native module registered by

@@ -9,6 +9,7 @@ import {
   maybePromptForExactAlarmPermission,
   registerLocalizedNotificationPresentation,
 } from '../services/notifications';
+import { setNativeMedicationSnoozeMinutes } from '../services/medicationNativeBridge';
 import { addLog } from '../services/LogService';
 import i18n from '../localization/i18n';
 
@@ -50,6 +51,10 @@ const MedicationReminderReconciler: React.FC = () => {
     toDate: today,
     enabled: remindersActive,
   });
+
+  useEffect(() => {
+    setNativeMedicationSnoozeMinutes(medicationReminderSnoozeMinutes);
+  }, [medicationReminderSnoozeMinutes]);
 
   useEffect(() => {
     void registerLocalizedNotificationPresentation().catch((error) => {
