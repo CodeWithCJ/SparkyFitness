@@ -4047,6 +4047,33 @@ COMMENT ON TABLE public.openfoodfacts_sync_queue IS 'Durable, revision-safe stat
 
 
 --
+-- Name: oral_care_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oral_care_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    start_time timestamp with time zone,
+    end_time timestamp with time zone,
+    duration_seconds integer,
+    care_type character varying(30) DEFAULT 'brushing'::character varying NOT NULL,
+    custom_label character varying(50),
+    provider character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    external_id character varying(255),
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid,
+    CONSTRAINT chk_oral_care_sessions_care_type CHECK (((care_type)::text = ANY ((ARRAY['brushing'::character varying, 'flossing'::character varying, 'mouthwash'::character varying, 'tongue_cleaning'::character varying, 'other'::character varying])::text[]))),
+    CONSTRAINT chk_oral_care_sessions_custom_label CHECK (((((care_type)::text = 'other'::text) AND (custom_label IS NOT NULL) AND (btrim((custom_label)::text) <> ''::text)) OR (((care_type)::text <> 'other'::text) AND (custom_label IS NULL)))),
+    CONSTRAINT chk_oral_care_sessions_time_order CHECK (((start_time IS NULL) OR (end_time IS NULL) OR (end_time >= start_time))),
+    CONSTRAINT oral_care_sessions_duration_seconds_check CHECK (((duration_seconds IS NULL) OR (duration_seconds > 0)))
+);
+
+
+--
 -- Name: passkey; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5189,8 +5216,12 @@ CREATE TABLE public.user_preferences (
     default_glucose_unit text DEFAULT 'mmol/L'::text NOT NULL,
     calorie_cycling_mode text DEFAULT 'off'::text NOT NULL,
     calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
+    oral_care_daily_target smallint DEFAULT 2 NOT NULL,
+    oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
+    CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
+    CONSTRAINT chk_user_preferences_oral_care_target_seconds CHECK (((oral_care_target_seconds >= 30) AND (oral_care_target_seconds <= 600))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_cycling_mode_check CHECK ((calorie_cycling_mode = ANY (ARRAY['off'::text, 'training_rest'::text, 'custom'::text]))),
@@ -6945,6 +6976,14 @@ ALTER TABLE ONLY public.openfoodfacts_sync_queue
 
 
 --
+-- Name: oral_care_sessions oral_care_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8416,6 +8455,20 @@ CREATE INDEX idx_oauth_refresh_token_session_id ON public.oauth_refresh_token US
 --
 
 CREATE INDEX idx_oauth_refresh_token_user_id ON public.oauth_refresh_token USING btree (user_id);
+
+
+--
+-- Name: idx_oral_care_sessions_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_oral_care_sessions_user_date ON public.oral_care_sessions USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_oral_care_sessions_user_external; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_oral_care_sessions_user_external ON public.oral_care_sessions USING btree (user_id, provider, external_id) WHERE (external_id IS NOT NULL);
 
 
 --
@@ -10569,6 +10622,30 @@ ALTER TABLE ONLY public.openfoodfacts_sync_queue
 
 
 --
+-- Name: oral_care_sessions oral_care_sessions_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oral_care_sessions oral_care_sessions_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oral_care_sessions oral_care_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oral_care_sessions
+    ADD CONSTRAINT oral_care_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: passkey_registration_tickets passkey_registration_tickets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12234,6 +12311,13 @@ CREATE POLICY modify_policy ON public.onboarding_status USING ((public.authentic
 
 
 --
+-- Name: oral_care_sessions modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.oral_care_sessions USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
 -- Name: profiles modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12548,6 +12632,12 @@ ALTER TABLE public.openfoodfacts_product_read_rate_limit ENABLE ROW LEVEL SECURI
 --
 
 ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oral_care_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oral_care_sessions ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: action_tags owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -13192,6 +13282,13 @@ CREATE POLICY select_policy ON public.onboarding_data FOR SELECT USING (public.h
 --
 
 CREATE POLICY select_policy ON public.onboarding_status FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: oral_care_sessions select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.oral_care_sessions FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -14711,6 +14808,13 @@ GRANT SELECT,USAGE ON SEQUENCE public.openfoodfacts_sync_revision_seq TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.openfoodfacts_sync_queue TO sparky_app;
+
+
+--
+-- Name: TABLE oral_care_sessions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oral_care_sessions TO sparky_app;
 
 
 --
