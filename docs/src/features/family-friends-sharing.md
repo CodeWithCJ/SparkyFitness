@@ -41,6 +41,10 @@ To copy in the other direction, open **Family Diaries**, choose a member and a m
 
 ---
 
+## Adaptive Calorie Details
+
+Weight trends in the adaptive calorie breakdown require check-in or report access. Diary-only access can receive a fallback estimate when measurements are unavailable. Removing measurement access takes effect on the next calculation.
+
 ## Privilege Matrix by Permission Level
 
 SparkyFitness uses 7 granular permissions to determine exactly what a connected user can read or write in your profile:

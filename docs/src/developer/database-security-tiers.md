@@ -16,6 +16,10 @@ PostgreSQL session variables are initialized at the start of every pool client t
 
 ---
 
+## Derived Measurement Caches
+
+Derived measurement responses must respect the authenticated actor before using a cache. `AdaptiveTdeeService` reuses only self-calculations; delegated single-day and range calculations bypass cache reads and writes and read under RLS on every call, including after grant revocation. `/api/adaptive-tdee` also uses the check-in read guard.
+
 ## The Three Security Tiers
 
 All tables in the SparkyFitness database are classified into one of three security tiers to isolate data access according to the least-privilege principle:
