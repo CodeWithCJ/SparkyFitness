@@ -3644,6 +3644,7 @@
     "saving": "Saving...",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
+    "retry": "Retry",
     "active": "Active",
     "pickADate": "Pick a date",
     "pickTime": "Pick a time",
@@ -10384,6 +10385,7 @@
   "oralCare": {
     "title": "Oral care",
     "loading": "Loading oral care...",
+    "loadError": "Failed to load oral care for this day.",
     "types": {
       "brushing": "Brushing",
       "flossing": "Flossing",
@@ -10456,6 +10458,7 @@
     },
     "report": {
       "loading": "Loading oral care...",
+      "loadError": "Failed to load oral care report.",
       "goalDays": "Goal met",
       "goalDaysValue": "{{met}} of {{total}} days",
       "streak": "Current streak",
