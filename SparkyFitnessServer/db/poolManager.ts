@@ -259,7 +259,16 @@ appPoolInstance = createAppPoolInstance();
 export { endPool };
 export { resetPool };
 export { getClient };
-export { withFixedActor };
+/**
+ * The person doing the work: inside withFixedActor that is the fixed actor,
+ * otherwise `userId` itself. Chat tools use it for the actor argument of
+ * services that record who made an entry.
+ */
+function actorUserIdFor(userId: string): string {
+  const store = dbContextStorage.getStore();
+  return store?.actorIsFixed ? store.authenticatedUserId : userId;
+}
+export { withFixedActor, actorUserIdFor };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };

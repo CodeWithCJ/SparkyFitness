@@ -32,8 +32,10 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import {
   calculateAdaptiveTdee,
+  calculateAdaptiveTdeeRange,
   clearUserTdeeCache,
 } from '../services/AdaptiveTdeeService.js';
+import { withFixedActor } from '../db/poolManager.js';
 
 const userId = 'tdee-ttl-user';
 const day = '2026-10-01';
@@ -63,6 +65,23 @@ describe('adaptive TDEE cache', () => {
     vi.advanceTimersByTime(2_000);
     await calculateAdaptiveTdee(userId, day);
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+  });
+
+  // A delegate's chat in this account sees only what their grant allows.
+  test("a family member's chat neither uses nor fills the owner's cache", async () => {
+    const asDelegate = <T>(work: () => Promise<T>) =>
+      withFixedActor('delegate', work);
+
+    await asDelegate(() => calculateAdaptiveTdee(userId, day));
+    await calculateAdaptiveTdee(userId, day);
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+
+    await asDelegate(() => calculateAdaptiveTdee(userId, day));
+    await asDelegate(() => calculateAdaptiveTdeeRange(userId, day, day));
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
+
+    await calculateAdaptiveTdee(userId, day);
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(4);
   });
 
   test('a local write still clears the cached result at once', async () => {

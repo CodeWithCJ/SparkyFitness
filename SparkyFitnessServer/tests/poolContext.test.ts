@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  actorUserIdFor,
   dbContextStorage,
   getClient,
   withFixedActor,
@@ -79,6 +80,19 @@ describe('getClient', () => {
     expect(client.query).toHaveBeenCalledExactlyOnceWith(
       'SELECT public.set_app_context($1, $2)',
       ['owner', 'delegate']
+    );
+  });
+
+  it('names the fixed actor as the one acting inside withFixedActor', () => {
+    expect(withFixedActor('delegate', () => actorUserIdFor('owner'))).toBe(
+      'delegate'
+    );
+  });
+
+  it('names the account itself as the one acting otherwise', async () => {
+    expect(actorUserIdFor('owner')).toBe('owner');
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      expect(actorUserIdFor('owner')).toBe('owner')
     );
   });
 

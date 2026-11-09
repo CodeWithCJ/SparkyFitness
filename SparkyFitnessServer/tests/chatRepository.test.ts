@@ -191,8 +191,8 @@ describe('chatRepository.getChatHistoryByUserId', () => {
     const result = await chatRepository.getChatHistoryByUserId('user-1');
 
     expect(mockClient.query).toHaveBeenCalledWith(
-      'SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC',
-      ['user-1']
+      "SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 AND COALESCE(metadata->>'account_user_id', user_id::text) = $2 ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC",
+      ['user-1', 'user-1']
     );
     expect(result).toEqual(mockRows);
   });

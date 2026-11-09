@@ -388,15 +388,25 @@ async function clearOldChatHistory(userId: string) {
     client.release();
   }
 }
-async function getChatHistoryByUserId(userId: string) {
+// Chat history belongs to the signed-in person. A message sent after a Profile
+// Switcher switch records the family member's account in
+// metadata.account_user_id, so each account's conversation is restored and
+// cleared on its own: tools follow the account, and a turn from one account
+// must not reach the model as context in another.
+const IN_ACCOUNT = "COALESCE(metadata->>'account_user_id', user_id::text) = $2";
+
+async function getChatHistoryByUserId(
+  userId: string,
+  accountUserId: string = userId
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Fetch the 50 most recent messages (ORDER BY created_at DESC LIMIT 50)
     // and sort them chronologically (ORDER BY created_at ASC) in the outer query
     // so that the AI context and UI display them in the correct chronological order.
     const result = await client.query(
-      'SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC',
-      [userId]
+      `SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT} ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC`,
+      [userId, accountUserId]
     );
     return result.rows;
   } finally {
@@ -473,10 +483,16 @@ async function deleteChatHistoryEntry(id: string, userId: string) {
     client.release();
   }
 }
-async function clearAllChatHistory(userId: string) {
+async function clearAllChatHistory(
+  userId: string,
+  accountUserId: string = userId
+) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query('DELETE FROM sparky_chat_history', []);
+    await client.query(
+      `DELETE FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT}`,
+      [userId, accountUserId]
+    );
     return true;
   } finally {
     client.release();

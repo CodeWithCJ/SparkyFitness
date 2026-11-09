@@ -10,6 +10,7 @@ import bmrService from './bmrService.js';
 import { getAdaptiveActivityCalories } from './adaptiveActivityService.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { actorUserIdFor } from '../db/poolManager.js';
 import {
   todayInZone,
   dayToPickerDate,
@@ -23,6 +24,13 @@ import {
 // bounds how long a stale result is served after a sync.
 const TDEE_CACHE_TTL_SECONDS = 300;
 const tdeeCache = new NodeCache({ stdTTL: TDEE_CACHE_TTL_SECONDS });
+
+// In a family member's account chat runs as the signed-in person, whose grant
+// may hide some of the data this reads (see withFixedActor), so its result is
+// worked out fresh and not cached.
+function cachesTdeeFor(userId: string): boolean {
+  return actorUserIdFor(userId) === userId;
+}
 interface UserProfile {
   date_of_birth?: string | null;
   gender?: string | null;
@@ -484,7 +492,10 @@ async function calculateAdaptiveTdee(
   }
   const calculationDate = dayToPickerDate(calculationDateStr);
   const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
-  const cachedResult = tdeeCache.get(cacheKey) as AdaptiveTdeeResult;
+  const useCache = cachesTdeeFor(userId);
+  const cachedResult = useCache
+    ? (tdeeCache.get(cacheKey) as AdaptiveTdeeResult)
+    : undefined;
   if (cachedResult) {
     return cachedResult;
   }
@@ -545,7 +556,7 @@ async function calculateAdaptiveTdee(
     );
     // Activity edits/imports do not invalidate the legacy food/weight cache.
     // Keep separated estimates fresh without coupling every importer to this service.
-    if (result.activityAdjustedTdee === undefined)
+    if (useCache && result.activityAdjustedTdee === undefined)
       tdeeCache.set(cacheKey, result);
     return result;
   } catch (error) {
@@ -568,6 +579,7 @@ async function calculateAdaptiveTdeeRange(
   const endCalculationDate = dayToPickerDate(endDateStr);
 
   const results: Record<string, AdaptiveTdeeResult> = {};
+  const useCache = cachesTdeeFor(userId);
   const days = eachDayOfInterval({
     start: startCalculationDate,
     end: endCalculationDate,
@@ -577,7 +589,9 @@ async function calculateAdaptiveTdeeRange(
   for (const day of days) {
     const dateStr = format(day, 'yyyy-MM-dd');
     const cacheKey = `adaptive_tdee_${userId}_${dateStr}`;
-    const cachedResult = tdeeCache.get(cacheKey) as AdaptiveTdeeResult;
+    const cachedResult = useCache
+      ? (tdeeCache.get(cacheKey) as AdaptiveTdeeResult)
+      : undefined;
     if (cachedResult) {
       results[dateStr] = cachedResult;
     } else {
@@ -660,7 +674,7 @@ async function calculateAdaptiveTdeeRange(
       );
 
       const cacheKey = `adaptive_tdee_${userId}_${dateStr}`;
-      if (result.activityAdjustedTdee === undefined)
+      if (useCache && result.activityAdjustedTdee === undefined)
         tdeeCache.set(cacheKey, result);
       results[dateStr] = result;
     }

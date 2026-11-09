@@ -373,7 +373,9 @@ router.post('/stream', authenticate, async (req, res, next) => {
  */
 router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearOldChatHistory(req.userId);
+    const result = await chatService.clearOldChatHistory(
+      req.authenticatedUserId
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -684,7 +686,7 @@ router.delete(
  * @swagger
  * /chat/sparky-chat-history:
  *   get:
- *     summary: Retrieve Sparky chat history for the authenticated user
+ *     summary: Retrieve the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -698,9 +700,9 @@ router.delete(
  */
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
+    // The signed-in person's conversation in the account they are working in.
     const history = await chatService.getSparkyChatHistory(
-      req.userId,
-
+      req.authenticatedUserId,
       req.userId
     );
     res.status(200).json(history);
@@ -751,7 +753,10 @@ router.get(
         .json({ error: 'Chat History Entry ID is required.' });
     }
     try {
-      const entry = await chatService.getSparkyChatHistoryEntry(req.userId, id);
+      const entry = await chatService.getSparkyChatHistoryEntry(
+        req.authenticatedUserId,
+        id
+      );
       res.status(200).json(entry);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -811,7 +816,7 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   }
   try {
     const updatedEntry = await chatService.updateSparkyChatHistoryEntry(
-      req.userId,
+      req.authenticatedUserId,
       id,
       updateData
     );
@@ -871,7 +876,7 @@ router.delete(
     }
     try {
       const result = await chatService.deleteSparkyChatHistoryEntry(
-        req.userId,
+        req.authenticatedUserId,
         id
       );
       res.status(200).json(result);
@@ -896,7 +901,7 @@ router.delete(
  * @swagger
  * /chat/clear-all-history:
  *   post:
- *     summary: Clear all Sparky chat history for the authenticated user
+ *     summary: Clear the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -910,7 +915,10 @@ router.delete(
  */
 router.post('/clear-all-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearAllSparkyChatHistory(req.userId);
+    const result = await chatService.clearAllSparkyChatHistory(
+      req.authenticatedUserId,
+      req.userId
+    );
     res.status(200).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -960,12 +968,16 @@ router.post('/save-history', authenticate, async (req, res, next) => {
       .json({ error: 'Content and message type are required.' });
   }
   try {
-    const result = await chatService.saveSparkyChatHistory(req.userId, {
-      user_id: req.userId,
-      content,
-      messageType,
-      metadata,
-    });
+    const result = await chatService.saveSparkyChatHistory(
+      req.authenticatedUserId,
+      {
+        user_id: req.authenticatedUserId,
+        content,
+        messageType,
+        metadata,
+      },
+      req.userId
+    );
     res.status(201).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

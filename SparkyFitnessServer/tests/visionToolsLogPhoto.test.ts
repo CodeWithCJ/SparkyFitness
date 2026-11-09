@@ -28,6 +28,7 @@ vi.mock('../services/labelScanService.js', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const { buildVisionTools } = await import('../ai/tools/visionTools.js');
+const { withFixedActor } = await import('../db/poolManager.js');
 const { createFoodPhotoEstimateSink, FOOD_PHOTO_ESTIMATE_PART_TYPE } =
   await import('../ai/tools/foodPhotoEstimateSink.js');
 
@@ -204,6 +205,18 @@ describe('sparky_log_food_photo', () => {
       {} as never
     );
     expect(createPhotoLoggedMealMock).toHaveBeenCalled();
+    expect(getChatHistoryByUserIdMock).toHaveBeenCalledWith(USER, USER);
+  });
+
+  it("reads the signed-in person's conversation in a family member's account", async () => {
+    const tools = buildVisionTools(USER);
+    await withFixedActor('delegate-1', () =>
+      tools.sparky_log_food_photo.execute!(
+        { ...ARGS, save_mode: 'ingredients_and_meal' },
+        {} as never
+      )
+    );
+    expect(getChatHistoryByUserIdMock).toHaveBeenCalledWith('delegate-1', USER);
   });
 
   it('asks for a photo when there is no analysis to log', async () => {

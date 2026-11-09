@@ -21,6 +21,7 @@ import {
   type FoodPhotoEstimateCapture,
 } from './foodPhotoEstimateSink.js';
 import { AnalyzeFoodImageSchema, ScanLabelSchema } from './schemas/vision.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 const DATA_URL_PATTERN = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i;
 
@@ -147,14 +148,18 @@ const LogFoodPhotoSchema = z.object({
  * re-analysing is not an option.
  */
 async function loadLatestFoodPhotoEstimate(
-  userId: string,
+  historyUserId: string,
+  accountUserId: string,
   sink?: FoodPhotoEstimateSink
 ): Promise<FoodPhotoEstimateCapture | null> {
   const fromThisTurn = sink?.get();
   if (fromThisTurn) return fromThisTurn;
 
   try {
-    const history = await chatRepository.getChatHistoryByUserId(userId);
+    const history = await chatRepository.getChatHistoryByUserId(
+      historyUserId,
+      accountUserId
+    );
     for (let i = history.length - 1; i >= 0; i -= 1) {
       const parts = history[i]?.parts;
       if (!Array.isArray(parts)) continue;
@@ -365,7 +370,10 @@ Only call this when the user explicitly asks to log the plate in a message AFTER
         }
         const args = parsed.data;
         try {
+          // Chat history belongs to the signed-in person, so read their
+          // conversation in this account, also in a family member's.
           const captured = await loadLatestFoodPhotoEstimate(
+            actorUserIdFor(userId),
             userId,
             estimateSink
           );
@@ -385,7 +393,7 @@ Only call this when the user explicitly asks to log the plate in a message AFTER
 
           const result = await foodPhotoLogService.createPhotoLoggedMeal(
             userId,
-            userId,
+            actorUserIdFor(userId),
             {
               mode: args.save_mode === 'one_food' ? 'combined' : 'grouped',
               entry_date: args.entry_date,

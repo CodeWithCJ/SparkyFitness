@@ -54,6 +54,7 @@ import {
 } from './schemas/exercise.js';
 import { optionalDateSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 // Unrecognized root-level keys that are safe to drop in the small-model
 // salvage: non-data-bearing flags/dates published on the shared flat input
@@ -1091,7 +1092,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               // the server's manual same-exercise/same-date upsert.
               await exerciseService.createExerciseEntry(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 {
                   exercise_id: exerciseId,
                   entry_date: args.entry_date,
@@ -1113,7 +1114,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
 
             case 'list_exercise_diary': {
               const grouped = (await exerciseService.getExerciseEntriesByDate(
-                userId,
+                actorUserIdFor(userId),
                 userId,
                 args.entry_date
               )) as DiaryEntryItem[];
@@ -1372,7 +1373,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
 
               const session = await exerciseService.logWorkoutPresetGrouped(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 presetId,
                 args.entry_date,
                 options
@@ -1397,7 +1398,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               try {
                 await exerciseService.updateExerciseEntry(
                   userId,
-                  userId,
+                  actorUserIdFor(userId),
                   args.entry_id,
                   {
                     entry_date: args.entry_date,
@@ -1631,7 +1632,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               });
               const result = await getExerciseAlternatives(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 String(exercise.id),
                 {
                   mode: args.alternative_mode ?? 'similar',
@@ -1649,7 +1650,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               try {
                 const saved = await setWorkoutFeedbackForEntry(
                   userId,
-                  userId,
+                  actorUserIdFor(userId),
                   args.entry_id,
                   args.scope,
                   {
@@ -1748,7 +1749,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               }
               const result = await getWorkoutCoachingSignals(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 targets.map((target) => target.id),
                 null
               );
