@@ -15,6 +15,11 @@ import { getActiveServerConfig, proxyHeadersToRecord } from './storage';
 
 /** What the native "Log water" shortcut needs to log a drink with the app closed. */
 export interface BackgroundWaterConfig {
+  /**
+   * The saved server this login belongs to. The native medication reminder
+   * handler logs a button press only for a reminder stamped with the same id.
+   */
+  serverId: string;
   baseUrl: string;
   headers: Record<string, string>;
   /** Absent when the user has no water container yet; water actions then ask for one. */
@@ -57,6 +62,7 @@ export function buildBackgroundWaterConfig(
   // The app refuses plain HTTP outside development; the shortcut must too.
   if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) return null;
   return {
+    serverId: server.id,
     baseUrl,
     headers: {
       ...proxyHeadersToRecord(server.proxyHeaders),

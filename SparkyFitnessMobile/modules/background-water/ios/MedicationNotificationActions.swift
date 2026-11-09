@@ -218,6 +218,8 @@ enum MedicationActionStore {
 // MARK: - Login
 
 private struct MedicationLogin: Decodable {
+    /// The saved server the login belongs to; absent in a login stored by an older build.
+    let serverId: String?
     let baseUrl: String
     let headers: [String: String]
 
@@ -303,6 +305,7 @@ private struct MedicationReminderData {
     let entryDate: String
     let baseKey: String?
     let userId: String?
+    let serverId: String?
 
     /// The tapped reminder's `data`, or nil when it is not a reminder this file can act on.
     init?(userInfo: [AnyHashable: Any]) {
@@ -318,6 +321,7 @@ private struct MedicationReminderData {
         self.entryDate = entryDate
         self.baseKey = (flat["baseKey"] as? String) ?? (flat["key"] as? String)
         self.userId = flat["userId"] as? String
+        self.serverId = flat["serverId"] as? String
     }
 
     static func parseDoses(_ info: [String: Any]) -> [MedicationDose] {
@@ -418,6 +422,13 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
         if !isSnooze {
             guard let active = MedicationActionStore.activeUserId,
                   let owner = data.userId, owner == active else { return false }
+            // And to the server the stored login is for: after switching to
+            // another saved server, a reminder from the old one must not be
+            // logged with the new login. A reminder or login without a server
+            // id (made by an older build) is left to JavaScript.
+            guard let login, let loginServer = login.serverId,
+                  let reminderServer = data.serverId, reminderServer == loginServer
+            else { return false }
         }
 
         let notificationId = response.notification.request.identifier
