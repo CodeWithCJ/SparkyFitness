@@ -726,6 +726,8 @@ export const exportBodyMeasurements = async ({
   defaultWeightUnit,
   defaultMeasurementUnit,
   formatDateInUserTimezone,
+  convertWeight,
+  convertMeasurement,
 }: {
   loggingLevel: LoggingLevel;
   startDate: string | null;
@@ -734,6 +736,12 @@ export const exportBodyMeasurements = async ({
   defaultWeightUnit: WeightUnit;
   defaultMeasurementUnit: MeasurementUnit;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
+  convertMeasurement: (
+    value: number,
+    from: MeasurementUnit,
+    to: MeasurementUnit
+  ) => number;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export body measurements.');
   try {
@@ -788,6 +796,12 @@ export const exportBodyMeasurements = async ({
       ),
     ];
 
+    // Stored in kg and cm; the headers name the user's units.
+    const formatLength = (value?: number | null) =>
+      value
+        ? convertMeasurement(value, 'cm', defaultMeasurementUnit).toFixed(1)
+        : '';
+
     const csvRows = measurements
       .filter(
         (measurement) =>
@@ -801,12 +815,18 @@ export const exportBodyMeasurements = async ({
       )
       .map((measurement) => [
         formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
-        measurement.weight ? measurement.weight.toFixed(1) : '',
-        measurement.neck ? measurement.neck.toFixed(1) : '',
-        measurement.waist ? measurement.waist.toFixed(1) : '',
-        measurement.hips ? measurement.hips.toFixed(1) : '',
+        measurement.weight
+          ? convertWeight(
+              measurement.weight,
+              'kg',
+              defaultWeightUnit
+            ).toFixed(1)
+          : '',
+        formatLength(measurement.neck),
+        formatLength(measurement.waist),
+        formatLength(measurement.hips),
         measurement.steps || '',
-        measurement.height ? measurement.height.toFixed(1) : '',
+        formatLength(measurement.height),
         measurement.body_fat_percentage
           ? measurement.body_fat_percentage.toFixed(1)
           : '',
