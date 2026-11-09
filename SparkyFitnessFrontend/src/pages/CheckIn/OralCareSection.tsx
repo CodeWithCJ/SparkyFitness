@@ -170,17 +170,19 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
   const [timerOpen, setTimerOpen] = useState(false);
 
   // A timer brush belongs to the day it started, whatever day is selected.
-  const saveTimerBrush = (startedAt: Date, durationSeconds: number) =>
-    createSession.mutateAsync({
+  const saveTimerBrush = (startedAt: Date, durationSeconds: number) => {
+    const cappedDuration = Math.min(durationSeconds, 3600);
+    return createSession.mutateAsync({
       entry_date: instantToDay(startedAt, timezone),
       start_time: startedAt.toISOString(),
       end_time: new Date(
-        startedAt.getTime() + durationSeconds * 1000
+        startedAt.getTime() + cappedDuration * 1000
       ).toISOString(),
-      duration_seconds: Math.min(durationSeconds, 3600),
+      duration_seconds: cappedDuration,
       care_type: 'brushing',
       provider: 'timer',
     });
+  };
 
   const typeLabel = (type: OralCareType) =>
     t(`oralCare.types.${type}`, {

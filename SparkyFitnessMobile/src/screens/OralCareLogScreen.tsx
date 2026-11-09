@@ -146,12 +146,15 @@ export default function OralCareLogScreen({ navigation, route }: Props) {
   };
 
   const handleTimerSave = async (startedAt: Date, duration: number) => {
+    const durationSeconds = Math.min(duration, MAX_DURATION_SECONDS);
     try {
       await createSession({
         entry_date: date,
         start_time: startedAt.toISOString(),
-        end_time: new Date(startedAt.getTime() + duration * 1000).toISOString(),
-        duration_seconds: Math.min(duration, MAX_DURATION_SECONDS),
+        end_time: new Date(
+          startedAt.getTime() + durationSeconds * 1000
+        ).toISOString(),
+        duration_seconds: durationSeconds,
         care_type: 'brushing',
         provider: 'timer',
       });

@@ -122,12 +122,15 @@ const OralCareScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleTimerSave = async (startedAt: Date, duration: number) => {
+    const durationSeconds = Math.min(duration, 3600);
     try {
       await createSession({
         entry_date: date,
         start_time: startedAt.toISOString(),
-        end_time: new Date(startedAt.getTime() + duration * 1000).toISOString(),
-        duration_seconds: Math.min(duration, 3600),
+        end_time: new Date(
+          startedAt.getTime() + durationSeconds * 1000
+        ).toISOString(),
+        duration_seconds: durationSeconds,
         care_type: 'brushing',
         provider: 'timer',
       });
