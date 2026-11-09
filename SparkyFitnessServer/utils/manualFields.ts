@@ -1,4 +1,8 @@
-import { setsDistanceKm } from '@workspace/shared';
+import {
+  exerciseEntrySetRequestSchema,
+  setsDistanceKm,
+  type ExerciseEntrySetRequest,
+} from '@workspace/shared';
 
 /**
  * Fields of a synced exercise entry that a user can correct in the diary and
@@ -32,6 +36,60 @@ const SET_NUMBERS = [
   'rir',
   'distance',
 ] as const;
+
+/** Resolve sparse set edits against this entry's stored rows, never other entries. */
+export function resolveEditedSets(
+  next: unknown,
+  current: unknown
+): ExerciseEntrySetRequest[] | undefined {
+  if (next === undefined) return undefined;
+  if (!Array.isArray(next))
+    return exerciseEntrySetRequestSchema.array().parse(next);
+  const stored = (Array.isArray(current) ? (current as unknown[]) : []).map(
+    (value): Record<string, unknown> =>
+      typeof value === 'object' && value !== null
+        ? (value as Record<string, unknown>)
+        : {}
+  );
+  return next.map((value: unknown) => {
+    const supplied =
+      typeof value === 'object' && value !== null
+        ? (value as Record<string, unknown>)
+        : {};
+    const byId =
+      supplied.id === null || supplied.id === undefined
+        ? undefined
+        : stored.find((row) => String(row.id) === String(supplied.id));
+    // Older clients may retain IDs from before a delete-and-reinsert save.
+    const previous =
+      byId ??
+      stored.find(
+        (row) => Number(row.set_number) === Number(supplied.set_number)
+      );
+    const resolved: Record<string, unknown> = {};
+    for (const field of Object.keys(exerciseEntrySetRequestSchema.shape)) {
+      const fieldValue =
+        supplied[field] === undefined ? previous?.[field] : supplied[field];
+      if (fieldValue !== undefined) resolved[field] = fieldValue;
+    }
+    for (const field of SET_NUMBERS) {
+      if (resolved[field] !== null && resolved[field] !== undefined)
+        resolved[field] = Number(resolved[field]);
+    }
+    if (resolved.is_pr !== undefined)
+      resolved.is_pr = resolved.is_pr === true || resolved.is_pr === 'true';
+    const completed = resolved.completed_at;
+    if (completed instanceof Date) {
+      resolved.completed_at = completed.toISOString();
+    } else if (
+      typeof completed === 'string' &&
+      Number.isFinite(Date.parse(completed))
+    ) {
+      resolved.completed_at = new Date(completed).toISOString();
+    }
+    return exerciseEntrySetRequestSchema.parse(resolved);
+  });
+}
 
 // IDs and database bookkeeping do not describe a set edit. Numeric strings,
 // absent nullable fields and pg timestamps must compare like the wire values.
@@ -95,18 +153,22 @@ export function editedSyncFields(
   updateData: Record<string, unknown>,
   currentEntry: Record<string, unknown>
 ): SyncProtectedField[] {
+  const resolvedUpdate: Record<string, unknown> = {
+    ...updateData,
+    sets: resolveEditedSets(updateData.sets, currentEntry.sets),
+  };
   const fields = SYNC_PROTECTED_FIELDS.filter(
     (field) =>
-      updateData[field] !== undefined &&
-      !sameValue(field, updateData[field], currentEntry[field])
+      resolvedUpdate[field] !== undefined &&
+      !sameValue(field, resolvedUpdate[field], currentEntry[field])
   );
   if (
     fields.includes('sets') &&
-    updateData.distance === undefined &&
-    Array.isArray(updateData.sets)
+    resolvedUpdate.distance === undefined &&
+    Array.isArray(resolvedUpdate.sets)
   ) {
     const distance = setsDistanceKm(
-      (updateData.sets as unknown[]).map((set) => ({
+      (resolvedUpdate.sets as unknown[]).map((set) => ({
         distance:
           typeof set === 'object' &&
           set !== null &&

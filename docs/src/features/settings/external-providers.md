@@ -55,7 +55,7 @@ Repeated Hevy syncs update the existing session and exercise entries instead of 
 
 Exercises are matched by their Hevy template rather than their position, so moving a different exercise earlier in the workout does not transfer its corrections. Distinguishable repeated exercises keep their identity through their previous Hevy details. Otherwise occurrences are matched in order. If changed or removed occurrences, or an older replay without template IDs, cannot be identified safely, that workout's import fails and its stored data stays intact.
 
-Deleting a library exercise while keeping its diary history also preserves Hevy entries, their historical exercise metadata and their corrections on the next sync, including older replay data without template IDs. These diary snapshots stay independent of replacement library entries. A corrected workout duration stays allocated to its exercise when the order changes, including when a timed exercise moves first.
+Deleting a library exercise while keeping its diary history also preserves Hevy entries, their historical exercise metadata and their corrections on the next sync, including older replay data without template IDs. These diary snapshots stay independent of replacement library entries. Empty legacy sessions left after adopting their entries are removed only when they hold no other diary data or custom annotations. A corrected workout duration stays allocated to its exercise when the order changes, including when a timed exercise moves first.
 
 Linked Health Connect and HealthKit recordings survive incomplete same-day reads, keeping your chosen calorie total intact. If a linked recording was removed at its source, unlink or explicitly delete it in SparkyFitness to remove that saved recording.
 

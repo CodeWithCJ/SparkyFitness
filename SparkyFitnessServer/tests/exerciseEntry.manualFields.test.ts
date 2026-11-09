@@ -126,6 +126,30 @@ describe('editedSyncFields', () => {
       )
     ).toEqual(['sets']);
   });
+
+  it('does not mark omitted stored set fields as corrections', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, weight: 40, reps: 8 }] },
+        {
+          sets: [
+            { set_number: 1, set_type: 'Working Set', weight: '40', reps: 8 },
+          ],
+        }
+      )
+    ).toEqual([]);
+  });
+
+  it('matches an explicitly identified set before its new number', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ id: 9, set_number: 2 }] },
+        {
+          sets: [{ id: 9, set_number: 1, set_type: 'Working Set', weight: 40 }],
+        }
+      )
+    ).toEqual(['sets']);
+  });
 });
 
 describe('manual_fields helpers', () => {

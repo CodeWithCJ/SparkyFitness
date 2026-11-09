@@ -99,8 +99,11 @@ export async function syncHevyWorkout(
     await acquireExerciseEntrySyncLockWithClient(client, userId, 'Hevy');
     if (!sourceId) throw new Error('Hevy workout has no provider identity.');
     let sessionId = await findSession(client, userId, sourceId);
-    const previous = await client.query<{ id: string }>(
-      `SELECT id FROM exercise_entries
+    const previous = await client.query<{
+      id: string;
+      exercise_preset_entry_id: string | null;
+    }>(
+      `SELECT id, exercise_preset_entry_id FROM exercise_entries
        WHERE user_id = $1 AND source = 'Hevy'
          AND (exercise_preset_entry_id = $2
            OR left(source_id, length($3) + 1) = $3 || '_')`,
@@ -336,6 +339,39 @@ export async function syncHevyWorkout(
         userId,
         link.calorie_link_id,
         customTotal
+      );
+    }
+    const supersededSessions = [
+      ...new Set(
+        previous.rows.flatMap((row) =>
+          row.exercise_preset_entry_id &&
+          row.exercise_preset_entry_id !== sessionId
+            ? [row.exercise_preset_entry_id]
+            : []
+        )
+      ),
+    ];
+    if (supersededSessions.length > 0) {
+      // The participant locks also hold these parent rows. Only remove known
+      // legacy shells; notes, feedback and other children remain diary data.
+      await client.query(
+        `DELETE FROM exercise_preset_entries p
+         WHERE p.user_id = $1 AND p.id = ANY($2::uuid[])
+           AND p.source = 'Hevy' AND p.source_id IS NULL
+           AND p.workout_format = 'standard'
+           AND (NULLIF(p.notes, '') IS NULL
+             OR p.notes = 'Hevy Workout Session: ' || p.name)
+           AND NULLIF(p.location, '') IS NULL
+           AND (NULLIF(p.description, '') IS NULL
+             OR p.description = $3
+             OR p.description = 'Logged session of ' || p.name)
+           AND NOT EXISTS (SELECT 1 FROM exercise_entries e
+             WHERE e.exercise_preset_entry_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM exercise_entry_activity_details d
+             WHERE d.exercise_preset_entry_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM workout_feedback f
+             WHERE f.exercise_preset_entry_id = p.id)`,
+        [userId, supersededSessions, session.description]
       );
     }
     await client.query('COMMIT');

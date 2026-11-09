@@ -307,6 +307,130 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     ).toEqual(new Set([session.id]));
   });
 
+  const splitLegacySession = async () => {
+    await sync([workout()]);
+    const original = await entries();
+    const legacy =
+      await exercisePresetEntryRepository.createExercisePresetEntry(
+        userId,
+        {
+          name: workout().title,
+          entry_date: '2026-11-01',
+          source: 'Hevy',
+        },
+        userId
+      );
+    await db.query(
+      'UPDATE exercise_entries SET exercise_preset_entry_id = $2, source_id = $3 WHERE id = $1',
+      [original[0]!.id, legacy.id, 'hevy-session_0']
+    );
+    return { original, legacyId: String(legacy.id) };
+  };
+
+  it('removes an empty superseded legacy session while keeping entries and linked calories', async () => {
+    const { original, legacyId } = await splitLegacySession();
+    const health = await addHealthSession();
+    await setCalorieLink(userId, userId, original[0]!.id, {
+      synced_entry_id: health.id,
+      resolution: 'custom',
+      custom_calories: 350,
+    });
+
+    await sync([workout()]);
+    await sync([workout()]);
+
+    const sessions = await db.query<{ id: string }>(
+      'SELECT id FROM exercise_preset_entries WHERE user_id = $1',
+      [userId]
+    );
+    expect(sessions.rows).toEqual([
+      { id: original[0]!.exercise_preset_entry_id },
+    ]);
+    expect(sessions.rows.some((session) => session.id === legacyId)).toBe(
+      false
+    );
+    for (const entry of original)
+      expect(
+        (await entries()).find((row) => row.id === entry.id)
+      ).toMatchObject({
+        exercise_preset_entry_id: original[0]!.exercise_preset_entry_id,
+      });
+    expect(await countedCalories()).toBe(350);
+  });
+
+  it.each([
+    'other entry',
+    'notes',
+    'location',
+    'description',
+    'activity detail',
+    'feedback',
+  ])(
+    'retains a superseded legacy session that still contains %s',
+    async (remainingData) => {
+      const { original, legacyId } = await splitLegacySession();
+      if (remainingData === 'other entry') {
+        const exercise = await exerciseRepository.createExercise({
+          user_id: userId,
+          name: 'Other recorded exercise',
+          source: 'manual',
+          is_custom: true,
+          shared_with_public: false,
+        });
+        await exerciseEntryRepository.createExerciseEntry(
+          userId,
+          { exercise_id: exercise.id, entry_date: '2026-11-01' },
+          userId,
+          'Manual',
+          legacyId
+        );
+      } else if (remainingData === 'feedback') {
+        await db.query(
+          `INSERT INTO workout_feedback (user_id, exercise_preset_entry_id,
+             difficulty, pain, created_by_user_id, updated_by_user_id)
+           VALUES ($1, $2, 'just_right', false, $1, $1)`,
+          [userId, legacyId]
+        );
+      } else if (remainingData === 'activity detail') {
+        await activityDetailsRepository.createActivityDetail(userId, {
+          exercise_preset_entry_id: legacyId,
+          provider_name: 'Hevy',
+          detail_type: 'full_activity_data',
+          detail_data: { note: 'Keep the original session detail' },
+          created_by_user_id: userId,
+          updated_by_user_id: userId,
+        });
+      } else {
+        const column = remainingData;
+        await db.query(
+          `UPDATE exercise_preset_entries SET ${column} = $2 WHERE id = $1`,
+          [legacyId, 'Keep this session annotation']
+        );
+      }
+      await sync([workout()]);
+      const sessions = await db.query<{ id: string }>(
+        'SELECT id FROM exercise_preset_entries WHERE user_id = $1',
+        [userId]
+      );
+      expect(new Set(sessions.rows.map((session) => session.id))).toEqual(
+        new Set([original[0]!.exercise_preset_entry_id, legacyId])
+      );
+      if (remainingData === 'activity detail') {
+        const details =
+          await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
+            userId,
+            null,
+            legacyId
+          );
+        expect(details).toEqual([
+          expect.objectContaining({
+            detail_data: { note: 'Keep the original session detail' },
+          }),
+        ]);
+      }
+    }
+  );
+
   it('rolls back a failed workout write without changing earlier diary data', async () => {
     await sync([workout()]);
     const original = await entries();
@@ -806,6 +930,105 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     expect(
       (await sets()).find((row) => row.source_id === bench.source_id)
     ).toMatchObject({ weight: 45 });
+  });
+
+  it.each([undefined, 'stale-client-id'])(
+    'keeps omitted set fields on an unchanged save without freezing provider updates (id: %s)',
+    async (id) => {
+      await sync([workout()]);
+      const bench = (await entries()).find(
+        (entry) => entry.exercise_name === 'Synthetic bench press'
+      )!;
+      await updateExerciseEntry(userId, userId, bench.id, {
+        sets: [{ id, set_number: 1, weight: 40, reps: 8, rpe: 7 }],
+      });
+      const saved = await sets();
+      expect(
+        saved.find((set) => set.source_id === bench.source_id)
+      ).toMatchObject({
+        set_type: 'Working Set',
+        weight: 40,
+        reps: 8,
+      });
+      const changed = workout();
+      changed.exercises![0]!.sets![0]!.weight_kg = 45;
+      await sync([changed]);
+      expect(
+        (await sets()).find((set) => set.source_id === bench.source_id)
+      ).toMatchObject({ set_type: 'Working Set', weight: 45, reps: 8 });
+    }
+  );
+
+  it('preserves omitted stored fields when a sparse set edit changes reps', async () => {
+    await sync([workout()]);
+    const bench = (await entries()).find(
+      (entry) => entry.exercise_name === 'Synthetic bench press'
+    )!;
+    await db.query(
+      `UPDATE exercise_entry_sets SET rest_time = 90, notes = $2, distance = 2.5,
+         completed_at = $3, is_pr = true WHERE exercise_entry_id = $1`,
+      [bench.id, 'Preserved set note', '2026-11-01T17:00:00Z']
+    );
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [{ set_number: 1, reps: 9 }],
+    });
+    await sync([workout()]);
+    const saved = await db.query(
+      `SELECT set_type, reps, weight::float8 AS weight, rpe::float8 AS rpe,
+         rest_time::float8 AS rest_time, notes, distance::float8 AS distance,
+         completed_at, is_pr FROM exercise_entry_sets WHERE exercise_entry_id = $1`,
+      [bench.id]
+    );
+    expect(saved.rows).toEqual([
+      {
+        set_type: 'Working Set',
+        reps: 9,
+        weight: 40,
+        rpe: 7,
+        rest_time: 90,
+        notes: 'Preserved set note',
+        distance: 2.5,
+        completed_at: new Date('2026-11-01T17:00:00Z'),
+        is_pr: true,
+      },
+    ]);
+  });
+
+  it('retains explicit null set fields instead of treating them as omitted', async () => {
+    await sync([workout()]);
+    const bench = (await entries()).find(
+      (entry) => entry.exercise_name === 'Synthetic bench press'
+    )!;
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [{ set_number: 1, set_type: null, weight: null, reps: 8 }],
+    });
+    await sync([workout()]);
+    expect(
+      (await sets()).find((set) => set.source_id === bench.source_id)
+    ).toMatchObject({ set_type: null, weight: null, reps: 8 });
+  });
+
+  it('keeps the fields of an identified set when its number changes', async () => {
+    await sync([workout()]);
+    const bench = (await entries()).find(
+      (entry) => entry.exercise_name === 'Synthetic bench press'
+    )!;
+    const originalSet = await db.query<{ id: number }>(
+      'SELECT id FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+      [bench.id]
+    );
+    await updateExerciseEntry(userId, userId, bench.id, {
+      sets: [{ id: originalSet.rows[0]!.id, set_number: 2 }],
+    });
+    await sync([workout()]);
+    expect(
+      (await sets()).find((set) => set.source_id === bench.source_id)
+    ).toMatchObject({
+      set_number: 2,
+      set_type: 'Working Set',
+      weight: 40,
+      reps: 8,
+    });
   });
 
   it.each([
