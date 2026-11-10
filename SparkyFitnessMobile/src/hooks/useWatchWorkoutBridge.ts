@@ -25,6 +25,7 @@ import { saveActiveWorkoutSession } from './useActiveWorkoutAutosave';
 import {
   attachExerciseEntryWatchTelemetry,
   deleteWorkout,
+  getWorkout,
   setExerciseEntryEffort,
   updateWorkout,
 } from '../services/api/exerciseApi';
@@ -927,24 +928,79 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      // The save was asynchronous: the phone may have ended this workout
+      // and started another while it was in flight. A stop that no longer
+      // owns the live session is dropped here; the phone's own Finish flow
+      // has already stamped the ended session, and continuing could act
+      // on ids the store no longer backs.
+      if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+        addLog(
+          `Watch workout-stop ignored: session ${payload.sessionId} stopped being the live one during the save`,
+          'DEBUG'
+        );
+        return;
+      }
       // #1995 phase 1: same lifecycle stamp as the phone's Finish flow,
       // so a session ended from the wrist derives partial/completed from
-      // its sets instead of lingering in progress. On failure keep the
-      // session live: the wearer can finish on the phone, whose Finish
-      // flow retries both the save and the stamp.
-      try {
-        await updateWorkout(payload.sessionId, {
-          finished_at: new Date().toISOString(),
-        });
-        const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
-        if (entryDate != null) {
-          invalidateExerciseCache(queryClient, entryDate);
+      // its sets instead of lingering in progress. The stamp presents the
+      // revision the save just adopted from the server (or the one the
+      // session was seeded with, when the flush was clean), so it can
+      // never finish a newer session that another device resumed or
+      // edited in between: the server refuses with 409, the revision is
+      // refreshed once, and a stamp that still fails keeps the session
+      // live so the wearer can finish on the phone, whose Finish flow
+      // retries both the save and the stamp.
+      const stampFromWrist = async (): Promise<boolean> => {
+        let revision = useActiveWorkoutStore.getState().session?.revision;
+        for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
+          try {
+            await updateWorkout(payload.sessionId, {
+              finished_at: new Date().toISOString(),
+              ...(revision != null ? { revision } : {}),
+            });
+            return true;
+          } catch (error) {
+            if (
+              stampAttempt === 0 &&
+              error instanceof ApiError &&
+              error.statusCode === 409
+            ) {
+              // Another device changed the session after this phone's save:
+              // adopt the server's current revision and retry once instead
+              // of presenting the stale revision again.
+              try {
+                revision = (await getWorkout(payload.sessionId)).revision;
+              } catch {
+                return false;
+              }
+              continue;
+            }
+            return false;
+          }
         }
-      } catch {
+        return false;
+      };
+      const stamped = await stampFromWrist();
+      if (!stamped) {
         addLog(
           `Watch finish kept the phone workout open: stamping finished_at for session ${payload.sessionId} failed`,
           'WARNING'
         );
+        return;
+      }
+      const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
+      if (entryDate != null) {
+        invalidateExerciseCache(queryClient, entryDate);
+      }
+      // The stamp was one more async gap in which the phone could have
+      // ended this workout and started a new one: recheck before clearing,
+      // so a stale stop never clears the newer live session.
+      if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+        addLog(
+          `Watch workout-stop stamped session ${payload.sessionId} but left the newer live session untouched`,
+          'DEBUG'
+        );
+        await settleEfforts();
         return;
       }
       const celebration = buildWorkoutCelebration(
