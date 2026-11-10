@@ -1,0 +1,40 @@
+name: SparkyFitness-Production Build-Submission
+
+jobs:
+  build_android:
+    type: build # This job type creates a production build for Android
+    params:
+      platform: android
+  build_wearos:
+    type: build # The watch app is a separate bundle with its own Play track
+    params:
+      platform: android
+      profile: wearos
+  build_ios:
+    type: build # This job type creates a production build for iOS
+    params:
+      platform: ios
+
+  # Each build is submitted once it finishes, with the eas.json submit profile
+  # of the same name: phone to alpha, watch to wear:WearOS Track. iOS uses the
+  # testflight job because the submit job's groups take internal groups only;
+  # an external group is also sent for Beta App Review.
+  submit_android:
+    type: submit
+    needs: [build_android]
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      profile: production
+  submit_wearos:
+    type: submit
+    needs: [build_wearos]
+    params:
+      build_id: ${{ needs.build_wearos.outputs.build_id }}
+      profile: wearos
+  submit_ios:
+    type: testflight
+    needs: [build_ios]
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
+      external_groups: ['SparkyFitnessExternalTesting']
