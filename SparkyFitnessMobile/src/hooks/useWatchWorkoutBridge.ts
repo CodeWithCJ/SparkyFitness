@@ -970,6 +970,9 @@ export function useWatchWorkoutBridge(
               // of presenting the stale revision again.
               try {
                 revision = (await getWorkout(payload.sessionId)).revision;
+                // A session without a revision cannot be guarded:
+                // refuse instead of stamping unguarded.
+                if (revision == null) return false;
               } catch {
                 return false;
               }
@@ -980,6 +983,10 @@ export function useWatchWorkoutBridge(
         }
         return false;
       };
+      // Capture the entry date before the async stamp: the store must not
+      // be re-read afterwards, when the session may have been swapped
+      // mid-stamp.
+      const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
       const stamped = await stampFromWrist();
       if (!stamped) {
         addLog(
@@ -988,7 +995,6 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
-      const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
       if (entryDate != null) {
         invalidateExerciseCache(queryClient, entryDate);
       }

@@ -129,6 +129,9 @@ export function useActiveWorkoutFinish({
                 // instead of presenting the stale revision again.
                 try {
                   revision = (await getWorkout(sessionId)).revision;
+                  // A session without a revision cannot be guarded:
+                  // refuse instead of stamping unguarded.
+                  if (revision == null) return false;
                 } catch {
                   return false;
                 }
@@ -139,6 +142,10 @@ export function useActiveWorkoutFinish({
           }
           return false;
         };
+        // Capture the entry date before the async stamp: the store must
+        // not be re-read afterwards, when the session may have been
+        // swapped mid-stamp.
+        const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
         const stamped = await stampFinished();
         if (!stamped) {
           Alert.alert(
@@ -165,7 +172,6 @@ export function useActiveWorkoutFinish({
         // The stamp bumps the revision after the flush above already
         // invalidated the diary, so refresh it again: otherwise the
         // next read could resurrect the pre-finish state.
-        const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
         if (entryDate != null) {
           invalidateExerciseCache(queryClient, normalizeDate(entryDate));
         }
