@@ -221,6 +221,8 @@ function computeAdaptiveTdeeFromData(
     stabilizationDays: stable.learnedDays,
     stabilizationWindowDays: ADAPTIVE_TDEE_STABILITY_DAYS,
     dailyChangeLimitKcal: ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL,
+    historyReliable: stable.historyReliable,
+    activityHistoryReliable: stable.activityHistoryReliable,
   };
 
   if (stable.isFallback || !candidate) {

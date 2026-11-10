@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
@@ -8,7 +8,8 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
     tdee: 2470,
     rawTdee: 2480,
     avgIntake: 2600,
-    daysOfData: 28,
+    daysOfData: 21,
+    confidence: 'MEDIUM' as const,
     startWeightTrend: 70,
     endWeightTrend: 70.42,
     weightChangeKg: 0.42,
@@ -24,14 +25,224 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
     candidateDate: '2026-11-06',
     daysSinceLastWeight: 1,
     daysSinceEstimate: 1,
-    estimateStatus: 'learning' as const,
-    stabilizationDays: 12,
-    stabilizationWindowDays: 40,
-    dailyChangeLimitKcal: 25,
+    estimateStatus: 'adaptive' as const,
+    stabilizationDays: 28,
+    stabilizationWindowDays: 28,
+    dailyChangeLimitKcal: 36,
+    historyReliable: true,
+    activityHistoryReliable: true,
     stabilityAdjustmentKcal: -10,
     clampMin: 1660,
     clampMax: 2660,
     wasClamped: false,
+  });
+
+  const openAdaptiveStep = () => {
+    const step = screen.getByTestId('breakdown-step-adaptive');
+    const summary = step.querySelector('summary');
+    if (!summary) throw new Error('Missing adaptive step disclosure');
+    fireEvent.click(summary);
+    return within(step);
+  };
+
+  it('shows one plain status and the observed rate while keeping calculation details closed until requested', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        defaultOpen
+        adaptiveTdeeData={{
+          ...boundedData(),
+          stabilizationDays: 28,
+          stabilizationWindowDays: 28,
+          dailyChangeLimitKcal: 36,
+          estimateStatus: 'adaptive',
+          historyReliable: false,
+          confidence: 'HIGH',
+          observedWeightDays: 8,
+        }}
+      />
+    );
+    const step = openAdaptiveStep();
+    expect(step.getByRole('status')).toHaveTextContent(/still adjusting/i);
+    expect(step.getByText(/Observed weight trend:/)).toHaveTextContent(
+      '+0.14 kg/week'
+    );
+    expect(step.getByText(/Observed weight trend:/)).toBeVisible();
+    expect(step.getByText(/Raw expenditure candidate:/)).not.toBeVisible();
+    expect(step.getByText(/Latest complete evidence:/)).not.toBeVisible();
+    fireEvent.click(step.getByText('Calculation details'));
+    expect(step.getByText(/Latest calculation confidence: HIGH/)).toBeVisible();
+    expect(step.getByText(/Raw expenditure candidate:/)).toBeVisible();
+    expect(step.getByText(/Raw expenditure candidate:/)).toHaveTextContent(
+      '2480 kcal (2600 − 120)'
+    );
+    expect(step.getByText(/History adjustment:/)).toHaveTextContent(
+      '2480 − 10 = 2470 kcal'
+    );
+    expect(step.getByText(/Weighted daily intake:/)).toHaveTextContent(
+      '2600 kcal'
+    );
+    expect(step.getByText(/last fitted weight day is excluded/i)).toBeVisible();
+    expect(
+      step.getByText(/qualifying food dates.*regression weights/i)
+    ).toHaveTextContent('21');
+    fireEvent.click(step.getByText('Calculation details'));
+    expect(step.getByText(/Raw expenditure candidate:/)).not.toBeVisible();
+  });
+
+  it.each([
+    {
+      separate: false,
+      full: false,
+      activity: true,
+      status: /still adjusting/i,
+    },
+    {
+      separate: true,
+      full: false,
+      activity: true,
+      status: /adaptive estimate/i,
+    },
+    {
+      separate: false,
+      full: true,
+      activity: false,
+      status: /adaptive estimate/i,
+    },
+    { separate: true, full: true, activity: false, status: /still adjusting/i },
+  ])(
+    'uses the selected history reliability flag without changing the numerical budget (separate=$separate, full=$full, activity=$activity)',
+    ({ separate, full, activity, status }) => {
+      render(
+        <CalorieTargetBreakdown
+          {...defaultProps}
+          defaultOpen
+          adaptiveActivitySeparate={separate}
+          adaptiveTdeeData={{
+            ...boundedData(),
+            historyReliable: full,
+            activityHistoryReliable: activity,
+            activityAdjustedTdee: 2300,
+            rawActivityAdjustedTdee: 2300,
+            activityStabilityAdjustmentKcal: 0,
+          }}
+        />
+      );
+      const step = openAdaptiveStep();
+      expect(step.getByRole('status')).toHaveTextContent(status);
+      expect(screen.getByTestId('breakdown-step-goal')).toHaveTextContent(
+        '2194 kcal'
+      );
+    }
+  );
+
+  it('treats an absent bounded-history flag as still adjusting without replacing the estimate', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        defaultOpen
+        adaptiveTdeeData={{
+          ...boundedData(),
+          historyReliable: undefined,
+          activityHistoryReliable: undefined,
+        }}
+      />
+    );
+    const step = openAdaptiveStep();
+    expect(step.getByRole('status')).toHaveTextContent(/still adjusting/i);
+    expect(screen.getByTestId('breakdown-step-adaptive')).toHaveTextContent(
+      '2194 kcal'
+    );
+  });
+
+  it('keeps the actionable fallback checklist visible while technical derivation stays closed', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        defaultOpen
+        previewResult={{
+          ...defaultProps.previewResult,
+          insufficientHistory: true,
+        }}
+        adaptiveTdeeData={{
+          tdee: 2160,
+          isFallback: true,
+          weightTrendMethod: 'bounded_daily',
+          estimateStatus: 'fallback',
+          historyReliable: false,
+          activityHistoryReliable: false,
+          daysOfData: 3,
+          observedWeightDays: 1,
+          weightObservationSpanDays: 0,
+          fallbackReason: 'Insufficient weight history',
+        }}
+      />
+    );
+    const step = openAdaptiveStep();
+    expect(step.getByRole('status')).toHaveTextContent(/formula fallback/i);
+    expect(step.getByText(/Weight Logs/)).toBeVisible();
+    expect(step.getByText(/Weight Logs/)).toHaveTextContent('14+ days');
+    expect(step.getByText(/Calorie Logs/)).toBeVisible();
+    expect(step.getByText(/Math: BMR/)).not.toBeVisible();
+  });
+
+  it('explains both omitted high-intake days and unmarked fasting bias without changing unknown days into zero', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        defaultOpen
+        adaptiveTdeeData={boundedData()}
+      />
+    );
+    const step = openAdaptiveStep();
+    fireEvent.click(step.getByText('Calculation details'));
+    expect(step.getByText(/omitted.*renormalized/i)).toBeVisible();
+    expect(step.getByText(/unlogged higher intake/i)).toHaveTextContent(
+      /too low/i
+    );
+    expect(step.getByText(/unmarked fasting/i)).toHaveTextContent(/too high/i);
+    expect(step.getByText(/compatibility assumption/i)).toHaveTextContent(
+      '6000 kcal/kg'
+    );
+    expect(step.queryByText(/adds about 20 days of lag/i)).toBeNull();
+  });
+
+  it('keeps the observed rate in pounds and exposes reconciled kJ arithmetic only on request', () => {
+    mockUsePreferences.mockReturnValue({
+      energyUnit: 'kJ',
+      convertEnergy: (value: number) => value * 4.184,
+      weightUnit: 'lbs',
+    });
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        defaultOpen
+        adaptiveTdeeData={boundedData()}
+      />
+    );
+    const step = openAdaptiveStep();
+    expect(step.getByText(/Observed weight trend:/)).toHaveTextContent(
+      '+0.31 lbs/week'
+    );
+    expect(step.getByText(/Raw expenditure candidate:/)).not.toBeVisible();
+    fireEvent.click(step.getByText('Calculation details'));
+    expect(step.getByText(/Raw expenditure candidate:/)).toBeVisible();
+    expect(step.getByText(/Raw expenditure candidate:/)).toHaveTextContent(
+      '10376 kJ (10878 − 502)'
+    );
+    expect(step.getByText(/History adjustment:/)).toHaveTextContent(
+      '10376 − 42 = 10334 kJ'
+    );
+    expect(step.getByText(/151 kJ\/day/)).toBeVisible();
+  });
+
+  it('preserves the marker-absent legacy explanation without imposing new history quality flags', () => {
+    render(<CalorieTargetBreakdown {...defaultProps} defaultOpen />);
+    const step = openAdaptiveStep();
+    expect(step.getByText(/Status: Active/)).toBeVisible();
+    expect(step.getByText(/Average daily calorie intake:/)).toBeVisible();
+    expect(step.queryByText('Calculation details')).toBeNull();
+    expect(step.queryByText(/Still adjusting/)).toBeNull();
   });
 
   it('uses fitted weights over actual observation dates without treating missing days as observations', () => {
@@ -131,7 +342,7 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           rawActivityAdjustedTdee: 2300,
           activityAdjustedTdee: 2270,
           averageActivityCalories: 500,
-          activityDaysOfData: 28,
+          activityDaysOfData: 21,
           activityStabilityAdjustmentKcal: -30,
         }}
       />
@@ -167,7 +378,7 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           rawActivityAdjustedTdee: 2300,
           activityAdjustedTdee: 2270,
           averageActivityCalories: 500,
-          activityDaysOfData: 28,
+          activityDaysOfData: 21,
           activityStabilityAdjustmentKcal: -30,
         }}
       />
@@ -179,40 +390,60 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
   });
 
   it.each([
-    { status: 'learning' as const, want: /Status: Learning.*12\/40/ },
-    { status: 'adaptive' as const, want: /Status: Adaptive/ },
+    {
+      status: 'learning' as const,
+      want: /Status: Still adjusting/,
+      reliable: false,
+      age: 9,
+    },
+    {
+      status: 'adaptive' as const,
+      want: /Status: Adaptive estimate/,
+      reliable: true,
+      age: 0,
+    },
     {
       status: 'held' as const,
-      want: /Status: Holding the latest complete estimate/,
+      want: /Status: Adaptive estimate/,
+      reliable: true,
+      age: 9,
     },
     {
       status: 'fading' as const,
-      want: /Status: Gradually returning to the formula baseline/,
+      want: /Status: Returning toward the formula baseline/,
+      reliable: false,
+      age: 18,
     },
   ])(
     'explains the $status estimate state and its evidence age',
-    ({ status, want }) => {
+    ({ status, want, reliable, age }) => {
       render(
         <CalorieTargetBreakdown
           {...defaultProps}
           adaptiveTdeeData={{
             ...boundedData(),
             estimateStatus: status,
-            daysSinceEstimate: 9,
+            daysSinceEstimate: age,
+            daysSinceLastWeight: age,
+            historyReliable: reliable,
+            activityHistoryReliable: reliable,
+            stabilizationDays: status === 'learning' ? 12 : 28,
+            tdee: status === 'learning' ? 2297 : 2470,
+            stabilityAdjustmentKcal: status === 'learning' ? -183 : -10,
           }}
         />
       );
       expect(screen.getByText(want)).toBeInTheDocument();
       expect(screen.getByText(/Latest complete evidence:/)).toHaveTextContent(
-        '2026-11-06 (9 days ago)'
+        `2026-11-06 (${age} days ago)`
       );
       expect(
         screen.getByText(/displayed average can continue moving/i)
       ).toBeInTheDocument();
-      expect(screen.getByText(/25 kcal\/day/)).toHaveTextContent(
+      expect(screen.getByText(/36 kcal\/day/)).toHaveTextContent(
         'With an unchanged formula baseline and unchanged past records'
       );
-      expect(screen.getByText(/25 kcal\/day/)).toHaveTextContent(
+      expect(screen.getByText(/36 kcal\/day/)).toHaveTextContent(
         'Birthdays, changes in measured BMR, or profile/settings changes can change the baseline'
       );
     }
@@ -234,8 +465,8 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           isFallback: true,
           estimateStatus: 'fallback',
           stabilizationDays: 0,
-          stabilizationWindowDays: 40,
-          dailyChangeLimitKcal: 25,
+          stabilizationWindowDays: 28,
+          dailyChangeLimitKcal: 36,
           fallbackReason: 'Insufficient weight coverage',
           observedWeightDays: 1,
           weightObservationSpanDays: 0,
@@ -244,11 +475,11 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
     );
     expect(screen.getByText(/Status: Formula fallback/)).toBeInTheDocument();
     expect(screen.getByText(/Weight Logs/)).toHaveTextContent(
-      '2+ measured days spanning 7+ days'
+      '2+ measured days spanning 14+ days'
     );
-    expect(
-      screen.getByText(/Calorie Logs for TDEE calculation/)
-    ).toHaveTextContent('14+ days');
+    expect(screen.getByText(/Calorie Logs in the/)).toHaveTextContent(
+      '14+ qualifying dates'
+    );
     expect(screen.getByText(/Observed weights:/)).toHaveTextContent(
       '1 measured days spanning 0 days'
     );
@@ -287,11 +518,11 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
           isFallback: true,
           estimateStatus: 'fallback',
           stabilizationDays: 0,
-          stabilizationWindowDays: 40,
-          dailyChangeLimitKcal: 25,
+          stabilizationWindowDays: 28,
+          dailyChangeLimitKcal: 36,
           daysOfData: 14,
           observedWeightDays: 2,
-          weightObservationSpanDays: 7,
+          weightObservationSpanDays: 14,
           fallbackReason:
             'Insufficient overlapping history: the latest observed period needs 14 qualifying calorie days',
         }}

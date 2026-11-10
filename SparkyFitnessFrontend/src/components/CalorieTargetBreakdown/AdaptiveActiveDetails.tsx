@@ -5,12 +5,12 @@ import {
   ENERGY_DENSITY_KCAL_PER_KG,
   ADAPTIVE_TDEE_CLAMP_KCAL,
   ADAPTIVE_TDEE_STABILITY_DAYS,
+  ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
 } from '@workspace/shared';
 import type { AdaptiveTdeeData } from './types';
 import { useAdaptiveDisplay } from './useAdaptiveDisplay';
 import { useTrendUnits } from './useTrendUnits';
 import { AdaptiveWeightDetails } from './AdaptiveWeightDetails';
-import { AdaptiveEstimateStatus } from './AdaptiveEstimateStatus';
 
 interface AdaptiveActiveDetailsProps {
   adaptiveTdeeData: AdaptiveTdeeData | null | undefined;
@@ -37,7 +37,6 @@ export const AdaptiveActiveDetails = ({
 
   return (
     <div className="space-y-1 mt-1">
-      <AdaptiveEstimateStatus adaptiveTdeeData={adaptiveTdeeData} />
       <p>
         {!bounded &&
           t(
@@ -57,8 +56,12 @@ export const AdaptiveActiveDetails = ({
               }
             >
               {t(
-                'settings.calorieBreakdown.confidence',
-                'Confidence: {{level}}',
+                bounded
+                  ? 'settings.calorieBreakdown.latestAdaptiveConfidence'
+                  : 'settings.calorieBreakdown.confidence',
+                bounded
+                  ? 'Latest calculation confidence: {{level}}'
+                  : 'Confidence: {{level}}',
                 { level: adaptiveTdeeData.confidence }
               )}
             </span>
@@ -84,8 +87,12 @@ export const AdaptiveActiveDetails = ({
       <ul className="list-disc pl-4 space-y-0.5 text-sm">
         <li>
           {t(
-            'diary.calculateExplanation.averageDailyCalorieIntake',
-            'Average daily calorie intake: {{displayAdaptiveIntake}} {{energyUnitString}}',
+            bounded
+              ? 'diary.calculateExplanation.weightedDailyCalorieIntake'
+              : 'diary.calculateExplanation.averageDailyCalorieIntake',
+            bounded
+              ? 'Weighted daily intake: {{displayAdaptiveIntake}} {{energyUnitString}}'
+              : 'Average daily calorie intake: {{displayAdaptiveIntake}} {{energyUnitString}}',
             {
               displayAdaptiveIntake,
               energyUnitString: getEnergyUnitString(energyUnit),
@@ -100,12 +107,17 @@ export const AdaptiveActiveDetails = ({
               <span className="text-muted-foreground">
                 {' '}
                 {t(
-                  'diary.calculateExplanation.intakeWindow',
-                  '(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)',
+                  bounded
+                    ? 'diary.calculateExplanation.regressionWeightedIntakeWindow'
+                    : 'diary.calculateExplanation.intakeWindow',
+                  bounded
+                    ? '({{logged}} qualifying food dates use the regression weights between fitted measurements; the last fitted weight day is excluded. Selection window: {{start}}–{{end}}, up to {{window}} closed days.)'
+                    : '(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)',
                   {
                     logged: adaptiveTdeeData?.daysOfData ?? 0,
                     start: adaptiveTdeeData.windowStartDate,
                     end: adaptiveTdeeData.windowEndDate,
+                    window: ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
                   }
                 )}
               </span>

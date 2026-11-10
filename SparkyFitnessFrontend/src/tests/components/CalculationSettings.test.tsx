@@ -24,6 +24,7 @@ const mockConvertEnergy = (
   to: 'kcal' | 'kJ'
 ) => (from === to ? value : from === 'kcal' ? value * 4.184 : value / 4.184);
 let mockMode = 'dynamic';
+let mockAdaptiveFallback = false;
 let mockMethod = 'adaptive';
 let mockSeparate = false;
 let mockExerciseMacros = false;
@@ -88,7 +89,7 @@ jest.mock('@/hooks/Diary/useDailyProgress', () => ({
       rawTdee: 2800,
       averageActivityCalories: 500,
       activityDaysOfData: 28,
-      isFallback: false,
+      isFallback: mockAdaptiveFallback,
       daysOfData: 28,
     },
   }),
@@ -139,6 +140,7 @@ beforeEach(() => {
   mockSave.mockClear();
   mockEnergyUnit = 'kcal';
   mockMode = 'dynamic';
+  mockAdaptiveFallback = false;
   mockMethod = 'adaptive';
   mockSeparate = false;
   mockCalorieInputs = defaultCalorieInputs;
@@ -150,6 +152,108 @@ beforeEach(() => {
 });
 
 describe('daily calorie goal adjustment cards', () => {
+  it('keeps the adaptive calculation footnote cautious when an older translation promises accuracy', async () => {
+    mockMode = 'adaptive';
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'de',
+      fallbackLng: 'en',
+      resources: {
+        en: { translation: en },
+        de: {
+          translation: {
+            settings: {
+              calculationExplanation: {
+                adaptiveFootnote:
+                  '* Uses your actual metabolism with high accuracy.',
+              },
+            },
+          },
+        },
+      },
+      interpolation: { escapeValue: false },
+    });
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CalculationSettings />
+      </I18nextProvider>
+    );
+
+    expect(
+      screen.getByText('How your calories will be calculated')
+    ).toBeVisible();
+    expect(screen.queryByText(/actual metabolism|high accuracy/i)).toBeNull();
+    const footnote = screen.getByText(/^\*.*estimat/i);
+    expect(footnote).toBeVisible();
+    expect(footnote).toHaveTextContent(/gradual/i);
+    expect(footnote).toHaveTextContent(/uncertainty/i);
+  });
+
+  it('avoids an accuracy guarantee in the visible fallback requirements', () => {
+    mockMode = 'adaptive';
+    mockAdaptiveFallback = true;
+    render(<CalculationSettings />);
+    expect(
+      screen.getByText(/Awaiting Adaptive TDEE Calibration/)
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/calculate your metabolism accurately/i)
+    ).toBeNull();
+    expect(
+      screen.getByText(/incomplete days.*weight fluctuations.*uncertainty/i)
+    ).toBeVisible();
+  });
+
+  it('makes whole-chain synthetic timing and both logging-bias directions visible in Adaptive settings', async () => {
+    mockMode = 'adaptive';
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'de',
+      fallbackLng: 'en',
+      resources: {
+        en: { translation: en },
+        de: {
+          translation: {
+            settings: {
+              goalMode: {
+                adaptiveGoalFromEvidence:
+                  '<span>Adaptive Goal:</span> An old translated20-day response claim.',
+              },
+            },
+            diary: {
+              calculateExplanation: {
+                adaptiveHistoryCaveat: 'Averaging adds20days of lag.',
+              },
+            },
+          },
+        },
+      },
+      interpolation: { escapeValue: false },
+    });
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CalculationSettings />
+      </I18nextProvider>
+    );
+    expect(
+      screen.getByTestId('adjustment-mode-description')
+    ).not.toHaveTextContent(/old translated|20-day/i);
+    const limitations = within(
+      screen.getByTestId('adaptive-calculation-limitations')
+    );
+    const timing = limitations.getByText(/synthetic.*6 weeks.*8 weeks/i);
+    expect(timing).toBeVisible();
+    expect(timing).toHaveTextContent(/consistent daily/i);
+    expect(timing).toHaveTextContent(/gaps|sparse/i);
+    expect(timing).toHaveTextContent(/limits|capp/i);
+    expect(limitations.getByText(/unlogged higher intake/i)).toHaveTextContent(
+      /too low/i
+    );
+    expect(limitations.getByText(/unmarked fasting/i)).toHaveTextContent(
+      /too high/i
+    );
+  });
+
   it('replaces obsolete translated calibration claims with an uncertainty-aware explanation', async () => {
     mockMode = 'adaptive';
     const i18n = createInstance();

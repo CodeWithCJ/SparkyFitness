@@ -4,6 +4,7 @@ import {
   ADAPTIVE_TDEE_MIN_CALORIE_DAYS,
   ADAPTIVE_TDEE_WEIGHT_MIN_OBSERVATIONS,
   ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS,
+  ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
 } from '@workspace/shared';
 import type { AdaptiveTdeeData } from './types';
 
@@ -39,23 +40,32 @@ export const getTargetFallbackNotice = (
       adaptiveTdeeData.weightTrendMethod === 'bounded_daily' &&
       reason.includes('overlapping history')
     ) {
-      return t('diary.calculateExplanation.fallbackOverlap', {
+      return t('diary.calculateExplanation.fallbackAlignedOverlap', {
         defaultValue:
-          'The formula baseline ({{value}} {{unit}}) is used because the latest weight-observation period had fewer than {{required}} qualifying calorie days. A new completed weight day with enough overlapping food history is needed, even if the current checklist counts are met.',
+          'The formula baseline ({{value}} {{unit}}) is used because the latest weight-observation period had fewer than {{required}} qualifying food dates. The first weight day is included and the last is excluded. A new completed weight day with enough matching food history is needed, even if the {{window}}-day checklist totals are met.',
         value: fallbackVal,
         unit: unitStr,
         required: ADAPTIVE_TDEE_MIN_CALORIE_DAYS,
+        window: ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
       });
     }
     if (reason.includes('weight')) {
-      return t('diary.calculateExplanation.fallbackWeight', {
-        defaultValue:
-          'Goal target will use the BMR-based formula baseline ({{value}} {{unit}}) because weight evidence is insufficient (requires at least {{readings}} measured days spanning {{span}}+ days).',
-        value: fallbackVal,
-        unit: unitStr,
-        readings: ADAPTIVE_TDEE_WEIGHT_MIN_OBSERVATIONS,
-        span: ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS,
-      });
+      const bounded = adaptiveTdeeData.weightTrendMethod === 'bounded_daily';
+      return t(
+        bounded
+          ? 'diary.calculateExplanation.fallbackWeightIntervals'
+          : 'diary.calculateExplanation.fallbackWeight',
+        {
+          defaultValue: bounded
+            ? 'Goal target will use the BMR-based formula baseline ({{value}} {{unit}}) because weight evidence is insufficient (requires at least {{readings}} measured days spanning {{span}}+ days within {{window}} closed days, with qualifying food logs between the weights).'
+            : 'Goal target will use the BMR-based formula baseline ({{value}} {{unit}}) because weight evidence is insufficient (requires at least {{readings}} measured days spanning {{span}}+ days).',
+          value: fallbackVal,
+          unit: unitStr,
+          readings: ADAPTIVE_TDEE_WEIGHT_MIN_OBSERVATIONS,
+          span: bounded ? ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS : 7,
+          window: ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
+        }
+      );
     }
     if (reason.includes('calorie')) {
       return t('diary.calculateExplanation.fallbackCalories', {

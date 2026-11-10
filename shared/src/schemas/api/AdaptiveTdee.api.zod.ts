@@ -47,6 +47,10 @@ export const adaptiveTdeeResponseSchema = z.object({
   /** Final expenditure minus the latest candidate after its plausibility cap. */
   stabilityAdjustmentKcal: z.number().optional(),
   activityStabilityAdjustmentKcal: z.number().optional(),
+  /** Every full-day filter input has fresh, non-LOW, unfaded, uncapped evidence. */
+  historyReliable: z.boolean().optional(),
+  /** The same independent eligibility check for activity-separated inputs. */
+  activityHistoryReliable: z.boolean().optional(),
 });
 
 export type AdaptiveTdeeResult = z.infer<typeof adaptiveTdeeResponseSchema>;

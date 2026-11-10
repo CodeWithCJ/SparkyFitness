@@ -78,7 +78,7 @@ describe('AdaptiveTdeeService', () => {
     expect(result).toBeDefined();
     expect(result.tdee).toBeGreaterThan(0);
     expect(result.isFallback).toBe(false);
-    expect(result.daysOfData).toBeGreaterThanOrEqual(28);
+    expect(result.daysOfData).toBe(21);
   });
 
   test('should return fallback if insufficient weight data', async () => {
@@ -481,7 +481,7 @@ describe('AdaptiveTdeeService', () => {
       expect(result.daysOfData).toBe(7);
     });
 
-    test('reports qualifying calorie days when observations span less than seven days', () => {
+    test('reports qualifying calorie days when observations span less than fourteen days', () => {
       const result = run(
         [
           { entry_date: day(7), weight: 80 },
@@ -490,7 +490,7 @@ describe('AdaptiveTdeeService', () => {
         [...calories(1, 14), { date: day(15), calories: 150 }]
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
+      expect(result.fallbackReason).toMatch(/spanning 14 days/i);
       // The sub-200 kcal day is not counted.
       expect(result.daysOfData).toBe(14);
     });
@@ -522,7 +522,7 @@ describe('AdaptiveTdeeService', () => {
         calories(1, 28)
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
+      expect(result.fallbackReason).toMatch(/spanning 14 days/i);
     });
 
     test('weights older than the 28-day window do not satisfy the weight rule', () => {
@@ -534,7 +534,7 @@ describe('AdaptiveTdeeService', () => {
         calories(1, 28)
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
+      expect(result.fallbackReason).toMatch(/spanning 14 days/i);
     });
 
     test('divides the weight change by the 27 gaps in a 28-day window', () => {

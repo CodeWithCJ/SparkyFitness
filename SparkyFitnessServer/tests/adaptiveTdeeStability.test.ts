@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { addDays, adaptiveTdeeResponseSchema } from '@workspace/shared';
+import {
+  addDays,
+  adaptiveTdeeResponseSchema,
+  ADAPTIVE_TDEE_STABILITY_DAYS,
+  ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL,
+} from '@workspace/shared';
 import {
   calculateAdaptiveTdee,
   calculateAdaptiveTdeeRange,
@@ -89,7 +94,9 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     expect(before.isFallback).toBe(false);
     expect(after.isFallback).toBe(false);
     expect(after.tdee).toBeGreaterThan(2750);
-    expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(25);
+    expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(
+      ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL
+    );
   });
 
   it('fits actual dates instead of opposite one-day weekly representatives', () => {
@@ -124,7 +131,7 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
       const result = computeAdaptiveTdeeFromData(fixture(weights, 2600), day);
       expect(result.tdee).toBe(Math.round(2600 - (sign * 6000) / 28));
       expect(result.dailyWeightChangeKg).toBeCloseTo(sign / 28, 4);
-      expect(result.stabilizationDays).toBe(40);
+      expect(result.stabilizationDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS);
       expect(result.stabilityAdjustmentKcal).toBe(0);
     }
   );
@@ -139,7 +146,8 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     const result = computeAdaptiveTdeeFromData(fixture(weights), day);
     expect(result.isFallback).toBe(false);
     expect(result.confidence).toBe('MEDIUM');
-    expect(result.stabilizationDays).toBe(40);
+    expect(result.stabilizationDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS);
+    expect(result.historyReliable).toBe(true);
     expect(result.tdee).toBe(3000);
   });
 
@@ -164,8 +172,8 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
   });
 
   it('releases the first mature goal gradually with reconcilable arithmetic', () => {
-    const data = fixture(dailyWeights(() => 70).slice(-14));
-    data.nutritionData = data.nutritionData.slice(-14);
+    const data = fixture(dailyWeights(() => 70).slice(-15));
+    data.nutritionData = data.nutritionData.slice(-15, -1);
     const before = computeAdaptiveTdeeFromData(data, addDays(day, -1));
     const after = computeAdaptiveTdeeFromData(data, day);
     expect(before.isFallback).toBe(true);
@@ -174,7 +182,7 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     expect(after.daysOfData).toBe(14);
     expect(after.stabilizationDays).toBe(1);
     expect(after.estimateStatus).toBe('learning');
-    expect(after.tdee).toBe(2513);
+    expect(after.tdee).toBe(2518);
     expect(after.rawTdee).toBe(3000);
     expect(after.stabilityAdjustmentKcal).toBe(after.tdee - 3000);
     expect(adaptiveTdeeResponseSchema.safeParse(after).success).toBe(true);
@@ -190,7 +198,9 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     data.nutritionData.push({ date: day, calories: 3000 });
     expect(computeAdaptiveTdeeFromData(data, day).tdee).toBe(before.tdee);
     const after = computeAdaptiveTdeeFromData(data, addDays(day, 1));
-    expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(25);
+    expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(
+      ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL
+    );
     expect(after.lastWeightDate).toBe(day);
   });
 
@@ -277,6 +287,37 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
     }
   });
 
+  it('does not blame incomplete food logging when every measured interval day was logged', async () => {
+    const userId = 'revision-complete-irregular-review';
+    mockData(
+      fixture(
+        dates
+          .filter((_, index) => [0, 9, 19].includes(index % 28))
+          .map((entry_date) => ({ entry_date, weight: 70 }))
+      )
+    );
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    try {
+      clearUserTdeeCache(userId);
+      const estimate = await calculateAdaptiveTdee(userId, day);
+      expect(estimate.historyReliable).toBe(true);
+      expect(estimate.confidence).toBe('MEDIUM');
+      expect(estimate.daysOfData).toBe(19);
+      expect(estimate.weightObservationSpanDays).toBe(19);
+      const review = await calorieTargetReviewService.getCalorieTargetReview(
+        userId,
+        0
+      );
+      expect(review.status).toBe('on_track');
+      expect(review.daysLogged).toBe(19);
+      expect(review.windowDays).toBe(19);
+    } finally {
+      clearUserTdeeCache(userId);
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     [2500.4996, 4000],
     [2500.4996, 400],
@@ -312,7 +353,7 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
         expect(value).toBeGreaterThanOrEqual(result.clampMin);
         expect(value).toBeLessThanOrEqual(result.clampMax);
       }
-      // All forty inputs are the same capped candidate; there is no history
+      // All daily inputs are the same capped candidate; there is no history
       // adjustment. Baseline precision must agree in fallback, cap and filter.
       expect(result.stabilityAdjustmentKcal).toBe(0);
       expect(result.activityStabilityAdjustmentKcal).toBe(0);
@@ -326,7 +367,7 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
   );
 
   it.each([false, true])(
-    'preserves the displayed bound at fractional ties (activity=%s)',
+    'preserves the displayed bound for fractional step inputs (activity=%s)',
     (separateActivity) => {
       mocks.calculateBmr.mockReturnValue(2565.25);
       const traceDays = Array.from({ length: 130 }, (_, i) =>
@@ -348,9 +389,9 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
           (date < '2026-11-01' ? 1700.235294117647 : 4000.2745098039227) +
           (separateActivity ? 600 : 0),
       }));
-      // The means are near2314.5 and2339.5. Binary summation can leave one
-      // a fraction below its tie and falsely display a26-kcal move. Fixed-unit
-      // input precision may legitimately choose either side of the original tie.
+      // Independent closed-form OLS interval weights t*(28-t)/3654 produce
+      // integer-input means2365.67425 and2401.388535714286 for this trace.
+      // This retains the original fractional input vector under the new window.
       const before = computeAdaptiveTdeeFromData(data, '2026-11-21');
       const after = computeAdaptiveTdeeFromData(data, '2026-11-22');
       const priorValue = separateActivity
@@ -361,10 +402,12 @@ describe('bounded adaptive expenditure integration (#3485)', () => {
         : after.tdee;
       if (priorValue === undefined || nextValue === undefined)
         throw new Error('Missing filtered expenditure');
-      expect(Math.abs(priorValue - 2314.5)).toBeLessThanOrEqual(0.501);
-      expect(Math.abs(nextValue - 2339.5)).toBeLessThanOrEqual(0.501);
-      expect(nextValue - priorValue).toBe(25);
-      expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(25);
+      expect(priorValue).toBe(2366);
+      expect(nextValue).toBe(2401);
+      expect(nextValue - priorValue).toBe(35);
+      expect(Math.abs(after.tdee - before.tdee)).toBeLessThanOrEqual(
+        ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL
+      );
     }
   );
 });

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { addDays, ADAPTIVE_TDEE_STABILITY_DAYS } from '@workspace/shared';
 import type { AdaptiveTdeeResult } from '@workspace/shared';
+import { stabilizeAdaptiveTdee } from '../utils/adaptiveTdeeStability.js';
 
 vi.mock('../models/userRepository.js', () => ({
   default: { getUserProfile: vi.fn() },
@@ -125,5 +127,73 @@ describe('getCalorieTargetReview', () => {
     const review =
       await calorieTargetReviewService.getCalorieTargetReview('user-1');
     expect(review.status).toBe('learning');
+  });
+
+  it('does not judge maintenance during recovery from historically capped inputs', async () => {
+    const origin = '2026-01-01';
+    const recovery = stabilizeAdaptiveTdee(
+      Array.from({ length: 160 }, (_, day) => ({
+        dateStr: addDays(origin, day),
+        actualWeight: day < 120 ? 70 : 73,
+        calories: 2600,
+        activityCalories: 0,
+      })),
+      2400,
+      false,
+      addDays(origin, 148)
+    );
+    expect(recovery.candidate?.rawTdee).toBeCloseTo(2600, 8);
+    expect(recovery.confidence).toBe('HIGH');
+    goalsMock.getUserGoals.mockResolvedValue({ calories: 2600 });
+    tdeeMock.calculateAdaptiveTdee.mockResolvedValue(
+      tdee({
+        tdee: recovery.tdee,
+        avgIntake: 2600,
+        dailyWeightChangeKg: 0,
+        weightTrendMethod: 'bounded_daily',
+        stabilizationDays: recovery.learnedDays,
+        stabilizationWindowDays: ADAPTIVE_TDEE_STABILITY_DAYS,
+        historyReliable: recovery.historyReliable,
+        activityHistoryReliable: recovery.activityHistoryReliable,
+      })
+    );
+    const review = await calorieTargetReviewService.getCalorieTargetReview(
+      'user-1',
+      0
+    );
+    expect(review.status).toBe('learning');
+    expect(review.observedKgPerWeek).toBe(0);
+  });
+
+  it.each([false, undefined])(
+    'fails closed for a bounded estimate whose whole-history reliability is %s',
+    async (historyReliable) => {
+      tdeeMock.calculateAdaptiveTdee.mockResolvedValue(
+        tdee({
+          weightTrendMethod: 'bounded_daily',
+          stabilizationDays: 28,
+          stabilizationWindowDays: 28,
+          historyReliable,
+        })
+      );
+      const review =
+        await calorieTargetReviewService.getCalorieTargetReview('user-1');
+      expect(review.status).toBe('learning');
+    }
+  );
+
+  it('does not reject full maintenance solely because activity-separated history was capped', async () => {
+    tdeeMock.calculateAdaptiveTdee.mockResolvedValue(
+      tdee({
+        weightTrendMethod: 'bounded_daily',
+        stabilizationDays: 28,
+        stabilizationWindowDays: 28,
+        historyReliable: true,
+        activityHistoryReliable: false,
+      })
+    );
+    const review =
+      await calorieTargetReviewService.getCalorieTargetReview('user-1');
+    expect(review.status).not.toBe('learning');
   });
 });

@@ -29,15 +29,21 @@ export const AdaptiveActivityNotes = ({
       {!insufficientHistory &&
         adaptiveTdeeData?.rawActivityAdjustedTdee != null && (
           <p>
-            {t('diary.calculateExplanation.activityBaselineMath', {
-              defaultValue:
-                'Raw full-day TDEE − average activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} days of activity history).',
-              total: displayAdaptiveRawTdee,
-              activity: displayAdaptiveRawTdee - displayActivityRawTdee,
-              baseline: displayActivityRawTdee,
-              unit: getEnergyUnitString(energyUnit),
-              days: adaptiveTdeeData.activityDaysOfData ?? 0,
-            })}
+            {t(
+              bounded
+                ? 'diary.calculateExplanation.weightedActivityBaselineMath'
+                : 'diary.calculateExplanation.activityBaselineMath',
+              {
+                defaultValue: bounded
+                  ? 'Raw full-day TDEE − weighted activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} contributing food/activity dates, using the same interval weights).'
+                  : 'Raw full-day TDEE − average activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} days of activity history).',
+                total: displayAdaptiveRawTdee,
+                activity: displayAdaptiveRawTdee - displayActivityRawTdee,
+                baseline: displayActivityRawTdee,
+                unit: getEnergyUnitString(energyUnit),
+                days: adaptiveTdeeData.activityDaysOfData ?? 0,
+              }
+            )}
           </p>
         )}
       {!insufficientHistory &&

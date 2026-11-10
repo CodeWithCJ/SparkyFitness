@@ -62,6 +62,7 @@ import {
 import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { AdaptiveEstimateEducation } from '@/components/CalorieTargetBreakdown/AdaptiveEstimateEducation';
 import { WeeklyWeightGoalInput } from '@/components/WeeklyWeightGoalInput';
 import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
 import { formatWeeklyGoalRateWithUnit } from '@/utils/weeklyWeightGoal';
@@ -1153,9 +1154,9 @@ const CalculationSettings = () => {
         >
           {calorieGoalAdjustmentMode === 'adaptive' ? (
             <Trans
-              i18nKey="settings.goalMode.adaptiveGoalFromEvidence"
+              i18nKey="settings.goalMode.adaptiveGoalMatchedEvidence"
               defaults={
-                '<span>Adaptive Goal:</span> Estimates expenditure from logged food and measured weights. New complete evidence is introduced gradually, and older evidence fades toward the BMR-based formula baseline. Missing food logs and scale-weight fluctuations add uncertainty.'
+                '<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.'
               }
               components={{ span: <span className="font-medium" /> }}
             />
@@ -1193,6 +1194,11 @@ const CalculationSettings = () => {
             />
           ) : null}
         </p>
+        {calorieGoalAdjustmentMode === 'adaptive' && (
+          <div className="mt-3" data-testid="adaptive-calculation-limitations">
+            <AdaptiveEstimateEducation />
+          </div>
+        )}
         <div className="mt-3 mb-4 space-y-3">
           {calorieGoalAdjustmentMode === 'percentage' &&
             !adaptiveEarnBackSuppressed && (
@@ -1476,8 +1482,8 @@ const CalculationSettings = () => {
                         )
                       : calorieGoalAdjustmentMode === 'adaptive'
                         ? t(
-                            'settings.calculationExplanation.adaptiveFootnote',
-                            '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                            'settings.calculationExplanation.adaptiveEstimateFootnote',
+                            '* Gradually adjusts your Daily Goal using estimates from food and weight records. Weight fluctuations and incomplete logs add uncertainty.'
                           )
                         : t(
                             'settings.calculationExplanation.fixedFootnote',
@@ -2359,23 +2365,22 @@ const CalculationSettings = () => {
                     )}
                   </p>
                   <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
-                    {t('settings.goalMode.calibrationDescription', {
-                      defaultValue:
-                        "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
-                      required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
-                    })}
+                    {t(
+                      'settings.goalMode.adaptiveFallbackDescription',
+                      'Fallback is being used while usable weight and food history is collected. Incomplete days and scale-weight fluctuations still add uncertainty; sufficient logs allow an estimate rather than a direct measurement of metabolism.'
+                    )}
                   </p>
                   <ul className="list-disc pl-4 text-sm text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
                     <li>
                       {t(
-                        'settings.goalMode.calibrationWeightTip',
-                        'Log weight at least 3-4 times per week.'
+                        'settings.goalMode.adaptiveWeightIntervalTip',
+                        'Log actual weights at consistent times, keeping food records across the observed period.'
                       )}
                     </li>
                     <li>
                       {t(
-                        'settings.goalMode.calibrationFoodTip',
-                        'Log food intake daily (>200 kcal/day).'
+                        'settings.goalMode.adaptiveFoodIntervalTip',
+                        'Log food as completely as possible; a qualifying date can still be partial.'
                       )}
                     </li>
                   </ul>

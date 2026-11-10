@@ -48,7 +48,7 @@ export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
 /** Actual observations, never interpolated days, needed to fit a weight rate. */
 export const ADAPTIVE_TDEE_WEIGHT_MIN_OBSERVATIONS = 2;
-export const ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS = 7;
+export const ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS = 14;
 
 /**
  * Half-width of the Adaptive TDEE plausibility band, in kcal.
@@ -60,12 +60,15 @@ export const ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS = 7;
 export const ADAPTIVE_TDEE_CLAMP_KCAL = 500;
 
 /** Engineering stability policy; these intervals are not clinical cutoffs. */
-export const ADAPTIVE_TDEE_STABILITY_DAYS = 40;
+export const ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS = 28;
+export const ADAPTIVE_TDEE_CONFIDENCE_FRESH_DAYS = 10;
+export const ADAPTIVE_TDEE_STABILITY_DAYS = 28;
 export const ADAPTIVE_TDEE_WEIGHT_HOLD_DAYS = 14;
 export const ADAPTIVE_TDEE_WEIGHT_FADE_DAYS = 7;
-/** Fixed formula-baseline bound when one new day replaces an unchanged old day. */
-export const ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL =
-  (2 * ADAPTIVE_TDEE_CLAMP_KCAL) / ADAPTIVE_TDEE_STABILITY_DAYS;
+/** Conservative whole-kcal display bound with a fixed baseline and past logs. */
+export const ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL = Math.ceil(
+  (2 * ADAPTIVE_TDEE_CLAMP_KCAL) / ADAPTIVE_TDEE_STABILITY_DAYS
+);
 
 /**
  * Qualifying calorie-log days before a measured adaptive TDEE may drive a goal.

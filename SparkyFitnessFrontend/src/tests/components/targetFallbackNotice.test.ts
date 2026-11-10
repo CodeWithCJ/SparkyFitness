@@ -30,7 +30,7 @@ it('explains actual weight and calorie requirements in the English fallback noti
     estimateStatus: 'fallback',
     daysOfData: 14,
   });
-  expect(weightNotice).toMatch(/2 measured days spanning 7\+ days/);
+  expect(weightNotice).toMatch(/2 measured days spanning 14\+ days/);
   expect(weightNotice).not.toMatch(/\{\{/);
 
   const calorieNotice = notice({
@@ -51,18 +51,20 @@ it('explains a canonical weight fallback after learned evidence has expired', ()
     isFallback: true,
     weightTrendMethod: 'bounded_daily',
     estimateStatus: 'fallback',
+    historyReliable: false,
+    activityHistoryReliable: false,
     observedWeightDays: 0,
     weightObservationSpanDays: 0,
     daysOfData: 0,
     stabilizationDays: 0,
-    stabilizationWindowDays: 40,
-    dailyChangeLimitKcal: 25,
+    stabilizationWindowDays: 28,
+    dailyChangeLimitKcal: 36,
     fallbackReason:
-      'Insufficient weight history (need at least 2 observed weights spanning 7 days; older learned evidence gradually expires)',
+      'Insufficient weight history (need at least 2 observed weights spanning 14 days; older learned evidence gradually expires)',
     lastCalculated: '2026-11-09T00:00:00.000Z',
   });
   expect(notice(fallback)).toMatch(
-    /formula baseline \(2160 kcal\).*weight evidence is insufficient.*2 measured days spanning 7\+ days/
+    /formula baseline \(2160 kcal\).*weight evidence is insufficient.*2 measured days spanning 14\+ days/
   );
 });
 
@@ -73,7 +75,7 @@ it('explains a missing complete observed period when current weight and calorie 
       weightTrendMethod: 'bounded_daily',
       estimateStatus: 'fallback',
       observedWeightDays: 2,
-      weightObservationSpanDays: 7,
+      weightObservationSpanDays: 14,
       daysOfData: 14,
       fallbackReason:
         'Insufficient overlapping history: the latest observed period needs 14 qualifying calorie days',

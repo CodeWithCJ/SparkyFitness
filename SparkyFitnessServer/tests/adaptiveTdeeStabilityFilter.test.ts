@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { addDays } from '@workspace/shared';
+import {
+  addDays,
+  ADAPTIVE_TDEE_STABILITY_DAYS,
+  ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL,
+} from '@workspace/shared';
 import {
   stabilizeAdaptiveTdee,
   type AdaptiveEstimateDay,
@@ -7,6 +11,8 @@ import {
 
 const origin = '2026-11-01';
 const baseline = 2500;
+const rawDailyBound = 1000 / ADAPTIVE_TDEE_STABILITY_DAYS;
+const displayedDailyBound = ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL;
 
 type TraceOptions = {
   weight?: (day: number) => number | null;
@@ -48,20 +54,20 @@ function expectDailyBound(
   for (let day = start + 1; day <= end; day++) {
     const result = onDay(days, day, formula, separateActivity);
     expect(Math.abs(result.tdee - previous.tdee)).toBeLessThanOrEqual(
-      25 + 1e-8
+      rawDailyBound + 1e-8
     );
     expect(
       Math.abs(result.activityAdjustedTdee - previous.activityAdjustedTdee)
-    ).toBeLessThanOrEqual(25 + 1e-8);
+    ).toBeLessThanOrEqual(rawDailyBound + 1e-8);
     expect(
       Math.abs(Math.round(result.tdee) - Math.round(previous.tdee))
-    ).toBeLessThanOrEqual(25);
+    ).toBeLessThanOrEqual(displayedDailyBound);
     expect(
       Math.abs(
         Math.round(result.activityAdjustedTdee) -
           Math.round(previous.activityAdjustedTdee)
       )
-    ).toBeLessThanOrEqual(25);
+    ).toBeLessThanOrEqual(displayedDailyBound);
     previous = result;
   }
 }
@@ -71,7 +77,7 @@ describe('finite adaptive expenditure stability', () => {
     const result = onDay(trace());
     expect(result.isFallback).toBe(false);
     expect(result.status).toBe('adaptive');
-    expect(result.learnedDays).toBe(40);
+    expect(result.learnedDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS);
     expect(result.tdee).toBeCloseTo(2600, 9);
     expect(result.activityAdjustedTdee).toBeCloseTo(2600, 9);
     expect(result.confidence).toBe('HIGH');
@@ -80,27 +86,30 @@ describe('finite adaptive expenditure stability', () => {
     expect(result.currentObservedWeightDays).toBe(28);
   });
 
-  it('releases the first fourteen-day candidate through one fortieth of the band', () => {
+  it('releases the first fourteen supported food days through one history input', () => {
     const days = trace({
       weight: (day) => (day >= 0 ? 70 : null),
       calories: (day) => (day >= 0 ? 4000 : 0),
     });
-    expect(onDay(days, 13).isFallback).toBe(true);
-    const first = onDay(days, 14);
+    expect(onDay(days, 14).isFallback).toBe(true);
+    const first = onDay(days, 15);
     expect(first.isFallback).toBe(false);
     expect(first.status).toBe('learning');
     expect(first.candidate?.daysOfData).toBe(14);
     expect(first.learnedDays).toBe(1);
-    expect(first.tdee).toBeCloseTo(2512.5, 9);
-    expect(onDay(days, 53).learnedDays).toBe(40);
-    expect(onDay(days, 53).tdee).toBeCloseTo(3000, 9);
+    expect(first.tdee).toBeCloseTo(
+      2500 + 500 / ADAPTIVE_TDEE_STABILITY_DAYS,
+      9
+    );
+    expect(onDay(days, 42).learnedDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS);
+    expect(onDay(days, 42).tdee).toBeCloseTo(3000, 9);
     expectDailyBound(days, 0, 90);
   });
 
   it('counts learned evidence even when its value equals the formula baseline', () => {
     const result = onDay(trace({ calories: () => 2500 }));
     expect(result.isFallback).toBe(false);
-    expect(result.learnedDays).toBe(40);
+    expect(result.learnedDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS);
     expect(result.tdee).toBe(2500);
   });
 
@@ -140,13 +149,13 @@ describe('finite adaptive expenditure stability', () => {
     expect(result.tdee).toBeCloseTo(2600 - 6000 / 28, 3);
   });
 
-  it('restores two observations spanning seven days with appropriately low confidence', () => {
+  it('can learn from two fortnight-spanning observations with appropriately low confidence', () => {
     const days = trace({
-      weight: (day) => (day === -8 || day === -1 ? 70 : null),
+      weight: (day) => (day === -15 || day === -1 ? 70 : null),
     });
     const result = onDay(days);
     expect(result.candidate?.observedWeightDays).toBe(2);
-    expect(result.candidate?.weightObservationSpanDays).toBe(7);
+    expect(result.candidate?.weightObservationSpanDays).toBe(14);
     expect(result.isFallback).toBe(false);
     expect(result.confidence).toBe('LOW');
     expect(result.learnedDays).toBe(1);
@@ -175,7 +184,9 @@ describe('finite adaptive expenditure stability', () => {
     expect(first.isFallback).toBe(false);
     expect(next.isFallback).toBe(false);
     expect(next.candidate).toEqual(first.candidate);
-    expect(Math.abs(next.tdee - first.tdee)).toBeLessThanOrEqual(25);
+    expect(Math.abs(next.tdee - first.tdee)).toBeLessThanOrEqual(
+      displayedDailyBound
+    );
   });
 
   it('does not extrapolate weight-selected observations one day apart', () => {
@@ -215,7 +226,7 @@ describe('finite adaptive expenditure stability', () => {
 
   it('fades to the baseline after every learned contribution expires', () => {
     const days = trace({ weight: (day) => (day <= 0 ? 70 : null) });
-    const result = onDay(days, 61);
+    const result = onDay(days, 49);
     expect(result.isFallback).toBe(true);
     expect(result.status).toBe('fallback');
     expect(result.learnedDays).toBe(0);
@@ -227,16 +238,22 @@ describe('finite adaptive expenditure stability', () => {
   it('holds fourteen days and applies the first fade step on day fifteen', () => {
     const days = trace({ weight: (day) => (day <= 0 ? 70 : null) });
     expect(onDay(days, 15).tdee).toBeCloseTo(2600, 9);
-    expect(onDay(days, 16).tdee).toBeCloseTo(2600 - 100 / 7 / 40, 3);
-    expect(onDay(days, 22).tdee).toBeCloseTo(2590, 9);
-    expect(onDay(days, 22).learnedDays).toBe(39);
+    expect(onDay(days, 16).tdee).toBeCloseTo(
+      2600 - 100 / 7 / ADAPTIVE_TDEE_STABILITY_DAYS,
+      3
+    );
+    expect(onDay(days, 22).tdee).toBeCloseTo(
+      2600 - 400 / ADAPTIVE_TDEE_STABILITY_DAYS,
+      9
+    );
+    expect(onDay(days, 22).learnedDays).toBe(ADAPTIVE_TDEE_STABILITY_DAYS - 1);
   });
 
-  it('allows the full twenty-five calorie bound when opposite band edges replace each other', () => {
+  it('reaches the continuous bound when opposite band edges replace each other', () => {
     const days = trace({ calories: (day) => (day < 0 ? 2000 : 4000) });
     const before = onDay(days, 20);
     const after = onDay(days, 21);
-    expect(after.tdee - before.tdee).toBeCloseTo(25, 9);
+    expect(after.tdee - before.tdee).toBeCloseTo(rawDailyBound, 9);
     expectDailyBound(days, -10, 90);
   });
 
@@ -246,11 +263,14 @@ describe('finite adaptive expenditure stability', () => {
       calories: () => 4000,
     });
     expect(onDay(days, 61).isFallback).toBe(true);
-    expect(onDay(days, 67).isFallback).toBe(true);
-    const resumed = onDay(days, 68);
+    expect(onDay(days, 74).isFallback).toBe(true);
+    const resumed = onDay(days, 75);
     expect(resumed.isFallback).toBe(false);
     expect(resumed.learnedDays).toBe(1);
-    expect(resumed.tdee).toBeCloseTo(2512.5, 9);
+    expect(resumed.tdee).toBeCloseTo(
+      2500 + 500 / ADAPTIVE_TDEE_STABILITY_DAYS,
+      9
+    );
     expectDailyBound(days, 0, 120);
   });
 
@@ -308,7 +328,10 @@ describe('finite adaptive expenditure stability', () => {
       const maximumArtifact = Math.max(
         ...values.map((value) => Math.abs(value - 2600))
       );
-      expect(maximumArtifact).toBeCloseTo(150, 3);
+      expect(maximumArtifact).toBeCloseTo(
+        6000 / ADAPTIVE_TDEE_STABILITY_DAYS,
+        3
+      );
       expect(values[70]).toBeCloseTo(2600, 8);
       expectDailyBound(days, 0, 90);
     }
@@ -390,7 +413,7 @@ describe('finite adaptive expenditure stability', () => {
     expect(result.activityAdjustedTdee).toBe(result.tdee);
   });
 
-  it('documents the small average-intake approximation during a constructed intake change', () => {
+  it('preserves constant expenditure through a complete-data intake change', () => {
     const days = trace({
       weight: (day) => 70 - (Math.max(0, day) * 400) / 6000,
       calories: (day) => (day < 0 ? 2600 : 2200),
@@ -399,9 +422,7 @@ describe('finite adaptive expenditure stability', () => {
       { length: 70 },
       (_, day) => onDay(days, day).tdee
     );
-    expect(Math.min(...values)).toBeGreaterThan(2588);
-    expect(Math.max(...values)).toBeLessThan(2607);
-    expect(values[69]).toBeCloseTo(2600, 8);
+    for (const value of values) expect(value).toBeCloseTo(2600, 8);
     expectDailyBound(days, 0, 100);
   });
 
@@ -441,7 +462,7 @@ describe('finite adaptive expenditure stability', () => {
 });
 
 describe('fixed-unit expenditure arithmetic', () => {
-  it('preserves both displayed bounds at the reported fractional half-kcal ties', () => {
+  it('preserves both displayed bounds for the reported fractional step vector', () => {
     const days = trace({
       calories: (day) => (day < 0 ? 1700.235294117647 : 4000.2745098039227),
     });
@@ -452,9 +473,14 @@ describe('fixed-unit expenditure arithmetic', () => {
       separated:
         Math.round(after.activityAdjustedTdee) -
         Math.round(before.activityAdjustedTdee),
-    }).toEqual({ full: 25, separated: 25 });
-    expect(Math.abs(before.tdee - 2314.5)).toBeLessThanOrEqual(0.0005);
-    expect(Math.abs(after.tdee - 2339.5)).toBeLessThanOrEqual(0.0005);
+    }).toEqual({ full: 35, separated: 35 });
+    // Independent closed-form daily OLS kernel: t*(28-t)/3654, t=1..27.
+    // Cap each candidate to2065.25..3065.25 and sum its integer input units.
+    expect(Math.abs(before.tdee - 2365.67425)).toBeLessThanOrEqual(0.0005);
+    expect(Math.abs(after.tdee - 2401.388535714286)).toBeLessThanOrEqual(
+      0.0005
+    );
+    expect(after.tdee - before.tdee).toBeCloseTo(rawDailyBound, 9);
   });
 
   it.each([2565.25, 2565.25049, 2565.24951, 2500.4996, 2500.5004])(
