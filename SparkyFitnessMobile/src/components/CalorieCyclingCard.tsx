@@ -52,13 +52,15 @@ interface CalorieCyclingCardProps {
   previewReady: boolean;
 }
 
-/** Whether the app locale writes the percent sign first (e.g. Turkish "%15"). */
-const percentSignFirst = () => {
-  const parts = new Intl.NumberFormat(getAppLocale(), {
-    style: 'percent',
-  }).formatToParts(0.15);
-  const sign = parts.findIndex((part) => part.type === 'percentSign');
-  const number = parts.findIndex((part) => part.type === 'integer');
+/**
+ * Whether the app locale writes the percent sign first (e.g. Turkish "%15").
+ * Reads the formatted string rather than `formatToParts`, which Hermes does
+ * not implement for `Intl.NumberFormat` on iOS.
+ */
+export const percentSignFirst = (locale: string = getAppLocale()) => {
+  const text = new Intl.NumberFormat(locale, { style: 'percent' }).format(0.15);
+  const sign = text.search(/[%٪﹪％]/);
+  const number = text.search(/\p{Nd}/u);
   return sign !== -1 && number !== -1 && sign < number;
 };
 
