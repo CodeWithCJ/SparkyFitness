@@ -49,6 +49,18 @@ vi.mock('../utils/mockDataOptions.js', () => ({
     saveMockData: false,
   }),
 }));
+vi.mock('../integrations/intervals/intervalsNutritionPush.js', () => ({
+  default: {
+    getPushStatus: vi.fn().mockResolvedValue({
+      pushNutrition: true,
+      pushedDays: 3,
+      pushedSince: '2026-10-20',
+    }),
+    setPushEnabled: vi.fn(async (_u: string, enabled: boolean) => enabled),
+    removePushedData: vi.fn(),
+  },
+}));
+import intervalsNutritionPush from '../integrations/intervals/intervalsNutritionPush.js';
 
 vi.mock('../services/providerSyncClaim.js', async (importActual) => ({
   ...(await importActual<typeof import('../services/providerSyncClaim.js')>()),
@@ -217,7 +229,12 @@ describe('intervalsRoutes', () => {
         .query({ providerId: PROVIDER });
 
       expect(res.status).toBe(200);
-      expect(res.body.connected).toBe(true);
+      expect(res.body).toMatchObject({
+        connected: true,
+        pushNutrition: true,
+        pushedDays: 3,
+        pushedSince: '2026-10-20',
+      });
       expect(intervalsService.getStatus).toHaveBeenCalledWith(USER, PROVIDER);
     });
 
@@ -248,6 +265,76 @@ describe('intervalsRoutes', () => {
       const res = await request(app).post('/integrations/intervals/disconnect');
 
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('PUT /nutrition-push', () => {
+    it('saves the setting', async () => {
+      const res = await request(app)
+        .put('/integrations/intervals/nutrition-push')
+        .send({ enabled: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ pushNutrition: true });
+      expect(intervalsNutritionPush.setPushEnabled).toHaveBeenCalledWith(
+        USER,
+        true
+      );
+    });
+
+    it('rejects a body without a boolean', async () => {
+      const res = await request(app)
+        .put('/integrations/intervals/nutrition-push')
+        .send({ enabled: 'yes' });
+
+      expect(res.status).toBe(400);
+      expect(intervalsNutritionPush.setPushEnabled).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /nutrition-push/remove', () => {
+    it('turns pushing off, removes under the claim and reports what remains', async () => {
+      vi.mocked(intervalsNutritionPush.removePushedData).mockResolvedValue({
+        cleared: 2,
+        kept: 1,
+        failed: 1,
+      });
+      vi.mocked(intervalsNutritionPush.getPushStatus).mockResolvedValueOnce({
+        pushNutrition: false,
+        pushedDays: 1,
+        pushedSince: '2026-10-21',
+      });
+
+      const res = await request(app)
+        .post('/integrations/intervals/nutrition-push/remove')
+        .send({ providerId: PROVIDER });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        cleared: 2,
+        kept: 1,
+        failed: 1,
+        remaining: 1,
+      });
+      expect(intervalsNutritionPush.setPushEnabled).toHaveBeenCalledWith(
+        USER,
+        false
+      );
+      expect(startProviderSync).toHaveBeenCalledWith(
+        { userId: USER, providerId: PROVIDER },
+        expect.any(Function)
+      );
+    });
+
+    it('answers 409 while a sync holds the account', async () => {
+      vi.mocked(startProviderSync).mockResolvedValueOnce(null);
+
+      const res = await request(app).post(
+        '/integrations/intervals/nutrition-push/remove'
+      );
+
+      expect(res.status).toBe(409);
+      expect(intervalsNutritionPush.removePushedData).not.toHaveBeenCalled();
     });
   });
 });

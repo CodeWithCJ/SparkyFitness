@@ -6,8 +6,9 @@ import intervalsService, {
 import { log } from '../config/logging.js';
 import { publicErrorMessage } from '../utils/errors.js';
 import authMiddleware from '../middleware/authMiddleware.js';
-import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import requireSelfActor from '../middleware/requireSelfMiddleware.js';
+import intervalsNutritionPush from '../integrations/intervals/intervalsNutritionPush.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import {
   SYNC_ALREADY_RUNNING_RESPONSE,
@@ -64,6 +65,8 @@ const syncBodySchema = z
   );
 
 const providerBodySchema = z.object({ providerId: providerIdSchema });
+
+const nutritionPushBodySchema = z.object({ enabled: z.boolean() });
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -169,14 +172,11 @@ router.get(
     const parsed = providerBodySchema.safeParse(req.query);
     if (!parsed.success) return badRequest(res, parsed.error);
     try {
-      res
-        .status(200)
-        .json(
-          await intervalsService.getStatus(
-            req.userId as string,
-            parsed.data.providerId
-          )
-        );
+      const userId = req.userId as string;
+      res.status(200).json({
+        ...(await intervalsService.getStatus(userId, parsed.data.providerId)),
+        ...(await intervalsNutritionPush.getPushStatus(userId)),
+      });
     } catch (error) {
       log(
         'error',
@@ -225,6 +225,113 @@ router.post(
       log('error', `Error disconnecting Intervals.icu: ${errorMessage(error)}`);
       res.status(500).json({
         message: 'Error disconnecting Intervals.icu',
+        error: publicErrorMessage(error),
+      });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /integrations/intervals/nutrition-push:
+ *   put:
+ *     summary: Turn the nightly push of daily nutrition totals to Intervals.icu on or off
+ *     description: Owner only. When on, a nightly job writes kcalConsumed, protein, carbohydrates and fatTotal for the last three days.
+ *     tags: [External Integrations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enabled]
+ *             properties:
+ *               enabled: { type: boolean }
+ *     responses:
+ *       200: { description: The saved setting }
+ *       400: { description: Invalid request }
+ */
+router.put(
+  '/nutrition-push',
+  authMiddleware.authenticate,
+  requireSelfActor,
+  async (req, res) => {
+    const parsed = nutritionPushBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    try {
+      const pushNutrition = await intervalsNutritionPush.setPushEnabled(
+        req.userId as string,
+        parsed.data.enabled
+      );
+      res.status(200).json({ pushNutrition });
+    } catch (error) {
+      log(
+        'error',
+        `Error saving Intervals.icu push setting: ${errorMessage(error)}`
+      );
+      res.status(500).json({
+        message: 'Error saving Intervals.icu push setting',
+        error: publicErrorMessage(error),
+      });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /integrations/intervals/nutrition-push/remove:
+ *   post:
+ *     summary: Turn pushing off and remove the nutrition values SparkyFitness wrote to Intervals.icu
+ *     description: Owner only. Clears only fields that still hold the last pushed value; fields another app changed are left alone. Days that fail stay logged so the request can be retried.
+ *     tags: [External Integrations]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               providerId: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: 'Counts of days cleared, kept (changed by another app) and failed, plus days still logged' }
+ *       401: { description: Intervals.icu rejected the athlete ID or API key }
+ *       409: { description: A sync is already running for this account }
+ */
+router.post(
+  '/nutrition-push/remove',
+  authMiddleware.authenticate,
+  requireSelfActor,
+  async (req, res) => {
+    const parsed = providerBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const userId = req.userId as string;
+    const { providerId } = parsed.data;
+    try {
+      await intervalsNutritionPush.setPushEnabled(userId, false);
+      const started = await startProviderSync(
+        syncClaimTarget(userId, 'intervals', providerId),
+        () => intervalsNutritionPush.removePushedData(userId, providerId)
+      );
+      if (!started) {
+        return res.status(409).json(SYNC_ALREADY_RUNNING_RESPONSE);
+      }
+      const result = await started.running;
+      const { pushedDays } = await intervalsNutritionPush.getPushStatus(userId);
+      res.status(200).json({ ...result, remaining: pushedDays });
+    } catch (error) {
+      log(
+        'error',
+        `Error removing Intervals.icu pushed data: ${errorMessage(error)}`
+      );
+      const status = intervalsErrorStatus(error);
+      if (status === 401 || status === 403) {
+        return res.status(401).json({
+          message:
+            'Intervals.icu rejected the athlete ID or API key. Check both under Settings > Developer Settings on intervals.icu.',
+          error: errorMessage(error),
+        });
+      }
+      res.status(500).json({
+        message: 'Error removing Intervals.icu pushed data',
         error: publicErrorMessage(error),
       });
     }

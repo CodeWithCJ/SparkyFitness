@@ -11,6 +11,9 @@ import {
   LiftosaurSyncResult,
   syncIntervalsData,
   IntervalsSyncResult,
+  setIntervalsNutritionPush,
+  removeIntervalsPushedData,
+  IntervalsRemoveResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
@@ -352,6 +355,59 @@ export const useSyncIntervalsMutation = () => {
       errorMessage: t(
         'integrations.intervalsSyncError',
         'Intervals.icu sync failed. Please check your athlete ID and API key in settings.'
+      ),
+    },
+  });
+};
+
+export const useSetIntervalsNutritionPushMutation = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (enabled: boolean) => setIntervalsNutritionPush(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsPushToggleError',
+        'Could not save the Intervals.icu nutrition push setting.'
+      ),
+    },
+  });
+};
+
+export const useRemoveIntervalsPushedDataMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => removeIntervalsPushedData(providerId),
+    onSuccess: (data: IntervalsRemoveResult) => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+      toast({
+        variant: data.failed > 0 ? 'destructive' : 'default',
+        title: t(
+          'integrations.intervalsRemoveTitle',
+          'Pushed nutrition data removed'
+        ),
+        description: t(
+          'integrations.intervalsRemoveDetails',
+          'Cleared {{cleared}} days, left {{kept}} days another app had changed, {{failed}} failed.',
+          { cleared: data.cleared, kept: data.kept, failed: data.failed }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsRemoveError',
+        'Could not remove the pushed nutrition data. Please try again.'
       ),
     },
   });
