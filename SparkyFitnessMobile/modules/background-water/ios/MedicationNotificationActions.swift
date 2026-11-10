@@ -480,6 +480,7 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             "key": data.baseKey ?? NSNull(),
             "entryDate": data.entryDate,
             "userId": data.userId ?? NSNull(),
+            "serverId": data.serverId ?? NSNull(),
             "doses": data.doses.map { $0.json },
         ]
         if status == "taken" { base["takenAt"] = isoString(Date()) }

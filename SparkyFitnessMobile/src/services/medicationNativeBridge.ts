@@ -16,6 +16,7 @@ export type NativeMedicationActionResult = { id: string } & (
       key: string | null;
       entryDate: string;
       userId: string | null;
+      serverId?: string | null;
       takenAt?: string;
       doses: { medicationId: string; scheduleId: string | null }[];
       /** Doses whose write failed; they go onto the retry queue. */

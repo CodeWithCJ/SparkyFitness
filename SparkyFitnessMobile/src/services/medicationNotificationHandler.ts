@@ -24,6 +24,7 @@ import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEn
 import { addLog, _flushBuffer } from '../services/LogService';
 import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 import { addDays } from '../utils/dateUtils';
+import { getActiveServerConfig } from './storage';
 import { isDoseLogged } from '../utils/medications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -58,6 +59,8 @@ export interface PendingMedicationNotificationAction {
   doses: { medicationId: string; scheduleId: string | null }[];
   entryDate: string;
   userId?: string | null;
+  /** The saved server the reminder was scheduled for; absent on older reminders. */
+  serverId?: string | null;
   takenAt?: string;
 }
 
@@ -174,6 +177,27 @@ function doesNotificationMatchAction(
         (d.scheduleId ?? null) === (nd.scheduleId ?? null)
     )
   );
+}
+
+/** The id of the saved server the app is signed in to now, or null. */
+async function currentServerId(): Promise<string | null> {
+  try {
+    return (await getActiveServerConfig())?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A reminder stamped with a server is acted on only while that server is the
+ * active one; otherwise it is kept queued until it is. A copy of a server (a
+ * restored backup) has the same user and medication ids but another server id.
+ */
+function belongsToOtherServer(
+  serverId: string | null | undefined,
+  activeServerId: string | null
+): boolean {
+  return Boolean(serverId) && serverId !== activeServerId;
 }
 
 function actionDedupeId(action: {
@@ -476,6 +500,7 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
 
   const resolvedIds = new Set<string>();
   let anySucceeded = false;
+  const activeServerId = await currentServerId();
 
   for (const record of pending) {
     const dedupeKey = actionDedupeId(record);
@@ -487,6 +512,10 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
 
     const replayPromise = (async (): Promise<boolean> => {
       try {
+        if (belongsToOtherServer(record.serverId, activeServerId)) {
+          // Made for another saved server; retain it until that server is active.
+          return false;
+        }
         if (
           record.userId &&
           activeUserIds.size > 0 &&
@@ -622,6 +651,7 @@ export async function processMedicationNotificationResponse(
   const notificationId = response.notification.request.identifier;
   const baseKey = data?.baseKey ?? data?.key ?? null;
   const userId = data?.userId ?? null;
+  const serverId = data?.serverId ?? null;
   const dedupeKey = isSnooze
     ? `snooze_${actionDedupeId({ key: baseKey, entryDate, doses, userId })}`
     : actionDedupeId({ key: baseKey, entryDate, doses, userId });
@@ -647,7 +677,8 @@ export async function processMedicationNotificationResponse(
           entryDate,
           notificationId,
           baseKey,
-          userId
+          userId,
+          serverId
         )
   ).finally(() => {
     inFlightActions.delete(dedupeKey);
@@ -873,6 +904,7 @@ async function applyNativeResultsOnce(): Promise<boolean> {
         doses: result.failedDoses,
         entryDate: result.entryDate,
         userId: result.userId,
+        serverId: result.serverId,
         takenAt: result.takenAt,
       });
       if (!stored) {
@@ -1045,7 +1077,8 @@ async function handleNotificationAction(
   entryDate: string,
   notificationId: string,
   key: string | null,
-  userId: string | null = null
+  userId: string | null = null,
+  serverId: string | null = null
 ): Promise<boolean> {
   const takenAt = status === 'taken' ? new Date().toISOString() : undefined;
   try {
@@ -1053,6 +1086,26 @@ async function handleNotificationAction(
     // the interacted reminder right away. Sibling delivered and scheduled repeat
     // reminders are cleared only after the entry is confirmed or written.
     await dismissDeliveredNotification(notificationId);
+
+    // A reminder made for another saved server is not written to this one:
+    // keep it queued until that server is active again.
+    if (belongsToOtherServer(serverId, await currentServerId())) {
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        serverId,
+        takenAt,
+      });
+      addLog(
+        '[MedicationNotificationAction] Reminder press belongs to another server; queued for when it is active',
+        'WARNING'
+      );
+      return true;
+    }
 
     // A reminder can outlive an account switch. Write only doses of medications
     // the signed-in account owns, whether or not the reminder carries identity
@@ -1086,6 +1139,7 @@ async function handleNotificationAction(
         doses,
         entryDate,
         userId,
+        serverId,
         takenAt,
       });
       addLog(
@@ -1149,6 +1203,7 @@ async function handleNotificationAction(
       doses,
       entryDate,
       userId,
+      serverId,
       takenAt,
     });
     addLog(
