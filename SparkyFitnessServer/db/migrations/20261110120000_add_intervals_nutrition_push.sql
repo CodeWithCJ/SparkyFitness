@@ -1,5 +1,5 @@
 -- Migration: Opt-in push of daily nutrition totals to Intervals.icu.
--- File: SparkyFitnessServer/db/migrations/20261024130000_add_intervals_nutrition_push.sql
+-- File: SparkyFitnessServer/db/migrations/20261110120000_add_intervals_nutrition_push.sql
 --
 -- user_preferences.intervals_push_nutrition is the opt-in (off by default).
 -- intervals_nutrition_pushes holds the four values last accepted by Intervals

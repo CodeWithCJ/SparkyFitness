@@ -46,6 +46,13 @@ export async function scheduleBackgroundJobs(): Promise<void> {
   await scheduleOpenFoodFactsAutoSyncOnStartup();
   scheduleSessionCleanup();
   startProviderSyncSchedulers();
-  cron.schedule('45 23 * * *', runNightlyNutritionPush, { noOverlap: true });
+  scheduleJob(
+    'intervals-nutrition-push',
+    '45 23 * * *',
+    runNightlyNutritionPush,
+    {
+      noOverlap: true,
+    }
+  );
   scheduleDemoMidnightReset();
 }

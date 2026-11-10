@@ -60,8 +60,12 @@ describe('scheduleBackgroundJobs', () => {
     );
     expect(mocks.schedule).toHaveBeenCalledWith(
       '45 23 * * *',
-      mocks.intervalsPush,
-      { noOverlap: true }
+      expect.any(Function),
+      expect.objectContaining({
+        name: 'intervals-nutrition-push',
+        noOverlap: true,
+        distributed: true,
+      })
     );
   });
 
