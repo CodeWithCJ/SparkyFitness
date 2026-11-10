@@ -61,7 +61,7 @@ The watch app is a separate upload to its own track, and the phone's `production
    ```
 3. Upload the AAB to the Wear OS track. Upload it whenever you ship the phone app, so the two stay in step.
 
-The `production-build-submission.yml` workflow builds the phone, watch and iOS apps together and submits each one as its build finishes, so one run (expo.dev → Workflows → Run workflow, or `eas workflow:run production-build-submission.yml`) ships all three. The iOS build is added to the `SparkyFitnessExternalTesting` TestFlight group (`groups` in the `eas.json` submit profile); an external group still needs Apple's Beta App Review. Expo's "Build from GitHub" button runs a single build profile, not this workflow. To build and submit only the watch, add `--auto-submit`:
+The `production-build-submission.yml` workflow builds the phone, watch and iOS apps together and submits each one as its build finishes, so one run (expo.dev → Workflows → Run workflow, or `eas workflow:run production-build-submission.yml`) ships all three. The iOS build goes through the workflow's `testflight` job, which adds it to the external `SparkyFitnessExternalTesting` group and submits it for Apple's Beta App Review (the `eas.json` submit profile's `groups` only takes internal groups). Expo's "Build from GitHub" button runs a single build profile, not this workflow. To build and submit only the watch, add `--auto-submit`:
 
 ```bash
 eas build --platform android --profile wearos --auto-submit

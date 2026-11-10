@@ -16,7 +16,9 @@ jobs:
       platform: ios
 
   # Each build is submitted once it finishes, with the eas.json submit profile
-  # of the same name: phone to alpha, watch to wear:alpha, iOS to TestFlight.
+  # of the same name: phone to alpha, watch to wear:WearOS Track. iOS uses the
+  # testflight job because the submit job's groups take internal groups only;
+  # an external group is also sent for Beta App Review.
   submit_android:
     type: submit
     needs: [build_android]
@@ -30,8 +32,9 @@ jobs:
       build_id: ${{ needs.build_wearos.outputs.build_id }}
       profile: wearos
   submit_ios:
-    type: submit
+    type: testflight
     needs: [build_ios]
     params:
       build_id: ${{ needs.build_ios.outputs.build_id }}
       profile: production
+      external_groups: ['SparkyFitnessExternalTesting']

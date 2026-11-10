@@ -45,8 +45,7 @@
         "track": "alpha"
       },
       "ios": {
-        "ascAppId": "6757314392",
-        "groups": ["SparkyFitnessExternalTesting"]
+        "ascAppId": "6757314392"
       }
     },
     "wearos": {
