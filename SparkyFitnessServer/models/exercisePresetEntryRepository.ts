@@ -165,6 +165,21 @@ async function updateExercisePresetEntryWithClient(
     updateData.finished_at !== undefined ? ', finished_at = $10' : '';
   const lifecycleParams =
     updateData.finished_at !== undefined ? [updateData.finished_at] : [];
+  // #1995 phase 1: when the caller pins the revision it read, this guard
+  // makes the bump atomic. A concurrent writer that slipped in between
+  // the read above and this UPDATE makes the WHERE miss and we return
+  // null, which the service refuses with 409 instead of a silent
+  // last-writer-wins overwrite.
+  const expectedRevision =
+    updateData.expected_revision !== undefined
+      ? Number(updateData.expected_revision)
+      : undefined;
+  const revisionGuardSql =
+    expectedRevision !== undefined
+      ? ` AND revision = $${10 + lifecycleParams.length}`
+      : '';
+  const revisionGuardParams =
+    expectedRevision !== undefined ? [expectedRevision] : [];
   const result = await client.query(
     `UPDATE exercise_preset_entries SET
        workout_preset_id = $1,
@@ -181,7 +196,7 @@ async function updateExercisePresetEntryWithClient(
        END,
        revision = revision + 1,
        updated_at = now()${lifecycleColumnSql}
-     WHERE id = $8 AND user_id = $9
+     WHERE id = $8 AND user_id = $9${revisionGuardSql}
      RETURNING id`,
     [
       mergedEntry.workout_preset_id,
@@ -194,6 +209,7 @@ async function updateExercisePresetEntryWithClient(
       id,
       userId,
       ...lifecycleParams,
+      ...revisionGuardParams,
     ]
   );
   if (result.rowCount === 0) {

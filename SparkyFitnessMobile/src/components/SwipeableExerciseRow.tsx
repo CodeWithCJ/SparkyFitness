@@ -18,6 +18,7 @@ import {
   getWorkoutSummary,
   getFirstImage,
   buildSessionSubtitle,
+  getWorkoutSessionStatusLabel,
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -27,20 +28,14 @@ import {
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 /**
- * Derived lifecycle status of a session (#1995 phase 1), as a badge color and
- * English fallback label. Only the actionable statuses badge the diary row;
- * completed is the default state of a logged session.
+ * Derived lifecycle status of a session (#1995 phase 1), as a badge color.
+ * Only the actionable statuses badge the diary row; completed is the
+ * default state of a logged session.
  */
 const SESSION_STATUS_COLORS: Record<string, string> = {
   planned: '#64748B',
   in_progress: '#2563EB',
   partial: '#D97706',
-};
-
-const SESSION_STATUS_FALLBACK_LABELS: Record<string, string> = {
-  planned: 'Planned',
-  in_progress: 'In Progress',
-  partial: 'Partial',
 };
 
 interface SwipeableExerciseRowProps {
@@ -191,11 +186,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                             color: SESSION_STATUS_COLORS[session.status],
                           }}
                         >
-                          {t(`workout.sessionStatus.${session.status}`, {
-                            defaultValue:
-                              SESSION_STATUS_FALLBACK_LABELS[session.status] ??
-                              session.status,
-                          })}
+                          {getWorkoutSessionStatusLabel(t, session.status)}
                         </Text>
                       </View>
                     )}

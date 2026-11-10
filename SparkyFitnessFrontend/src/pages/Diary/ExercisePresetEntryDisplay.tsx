@@ -130,7 +130,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
       // Reopen the session server-side first (finished_at: null) so other
       // devices see it as in progress again, carrying the revision we last
       // saw; a mismatch means it changed elsewhere and is refused with 409.
-      await updatePresetSession({
+      const reopened = await updatePresetSession({
         presetEntryId: presetEntry.id,
         payload: {
           finished_at: null,
@@ -139,7 +139,11 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
             : {}),
         },
       });
-      const draft = createWorkoutPlaybackDraftFromSession(presetEntry);
+      // The reopen PUT bumped the server revision, so seed the draft
+      // from the response: it carries the fresh revision, and the
+      // finish PUT presents it instead of the stale pre-update one
+      // (which would be refused with 409).
+      const draft = createWorkoutPlaybackDraftFromSession(reopened);
       if (!draft) {
         toast({
           description: t(

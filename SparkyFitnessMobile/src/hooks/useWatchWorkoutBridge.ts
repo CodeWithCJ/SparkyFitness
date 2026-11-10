@@ -26,6 +26,7 @@ import {
   attachExerciseEntryWatchTelemetry,
   deleteWorkout,
   setExerciseEntryEffort,
+  updateWorkout,
 } from '../services/api/exerciseApi';
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
@@ -922,6 +923,26 @@ export function useWatchWorkoutBridge(
         // Finish flow retries the save.
         addLog(
           `Watch finish kept the phone workout open: saving session ${payload.sessionId} failed`,
+          'WARNING'
+        );
+        return;
+      }
+      // #1995 phase 1: same lifecycle stamp as the phone's Finish flow,
+      // so a session ended from the wrist derives partial/completed from
+      // its sets instead of lingering in progress. On failure keep the
+      // session live: the wearer can finish on the phone, whose Finish
+      // flow retries both the save and the stamp.
+      try {
+        await updateWorkout(payload.sessionId, {
+          finished_at: new Date().toISOString(),
+        });
+        const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
+        if (entryDate != null) {
+          invalidateExerciseCache(queryClient, entryDate);
+        }
+      } catch {
+        addLog(
+          `Watch finish kept the phone workout open: stamping finished_at for session ${payload.sessionId} failed`,
           'WARNING'
         );
         return;

@@ -43,6 +43,7 @@ import {
   parseSetWeight,
   summarizeWorkoutEffort,
   summarizeWorkoutHeartRate,
+  getWorkoutSessionStatusLabel,
 } from '../utils/workoutSession';
 import { formatLocalizedNumber } from '../localization';
 import {
@@ -53,7 +54,7 @@ import {
   promptForActiveWorkoutConflict,
   armWatchForActiveSession,
 } from '../hooks/useStartLiveWorkout';
-import { updateWorkout } from '../services/api/exerciseApi';
+import { getWorkout, updateWorkout } from '../services/api/exerciseApi';
 import { ApiError } from '../services/api/errors';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 
@@ -123,13 +124,6 @@ const SESSION_STATUS_COLORS: Record<string, string> = {
   in_progress: '#2563EB',
   partial: '#D97706',
   completed: '#059669',
-};
-
-const SESSION_STATUS_FALLBACK_LABELS: Record<string, string> = {
-  planned: 'Planned',
-  in_progress: 'In Progress',
-  partial: 'Partial',
-  completed: 'Completed',
 };
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
@@ -469,6 +463,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.replace('ActiveWorkout');
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
+        // Retrying with the same revision would fail again: pull the
+        // server's current session into this screen so the next Resume
+        // presents the fresh revision.
+        try {
+          const fresh = await getWorkout(session.id);
+          setSession(fresh);
+          const freshEntryDate = fresh.entry_date ?? session.entry_date;
+          if (freshEntryDate != null) {
+            invalidateExerciseCache(queryClient, normalizeDate(freshEntryDate));
+          }
+        } catch {
+          // Best-effort refresh; the toast below still tells the user.
+        }
         Toast.show({
           type: 'error',
           text1: t('workout.resumeConflictTitle', {
@@ -1076,11 +1083,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   className="text-xs font-medium"
                   style={{ color: SESSION_STATUS_COLORS[session.status] }}
                 >
-                  {t(`workout.sessionStatus.${session.status}`, {
-                    defaultValue:
-                      SESSION_STATUS_FALLBACK_LABELS[session.status] ??
-                      session.status,
-                  })}
+                  {getWorkoutSessionStatusLabel(t, session.status)}
                 </Text>
               </View>
             )}

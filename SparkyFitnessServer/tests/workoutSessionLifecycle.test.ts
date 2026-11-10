@@ -295,6 +295,42 @@ describe('updateGroupedWorkoutSession lifecycle writes', () => {
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
   });
 
+  it('refuses with 409 when a concurrent write bumps the revision mid-update', async () => {
+    // The read saw revision 3, but another device committed in between:
+    // the repository's guarded UPDATE misses and returns null, which the
+    // service must refuse with 409 instead of a silent win.
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    getGroupedExerciseSessionByIdWithClient.mockResolvedValue(existingSession);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+      null
+    );
+    await expect(
+      exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        { finished_at: null, revision: 3 }
+      )
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        'This workout session was modified by another device or tab. Reload it before saving.',
+    });
+    expect(
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient
+    ).toHaveBeenCalledWith(
+      client,
+      'preset-entry-1',
+      'user-1',
+      expect.objectContaining({
+        finished_at: null,
+        expected_revision: 3,
+      })
+    );
+    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
   it('reopens a partial session when the revision matches', async () => {
     getGroupedExerciseSessionByIdWithClient
       // @ts-expect-error the vi.mock factory is not part of the typed module API
@@ -316,7 +352,7 @@ describe('updateGroupedWorkoutSession lifecycle writes', () => {
       client,
       'preset-entry-1',
       'user-1',
-      expect.objectContaining({ finished_at: null })
+      expect.objectContaining({ finished_at: null, expected_revision: 3 })
     );
     expect(client.query).toHaveBeenCalledWith('COMMIT');
   });

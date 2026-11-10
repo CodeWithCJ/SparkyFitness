@@ -2966,3 +2966,29 @@ export function plateTargetKg(
   const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
   return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
 }
+
+/**
+ * Localized label for a derived workout session status (#1995 phase 1).
+ * The keys are static per branch so the i18n audit can verify them.
+ */
+export const getWorkoutSessionStatusLabel = (
+  t: (key: string, options?: Record<string, unknown>) => string,
+  status: string
+): string => {
+  switch (status) {
+    case 'planned':
+      return t('workout.sessionStatus.planned', { defaultValue: 'Planned' });
+    case 'in_progress':
+      return t('workout.sessionStatus.in_progress', {
+        defaultValue: 'In Progress',
+      });
+    case 'partial':
+      return t('workout.sessionStatus.partial', { defaultValue: 'Partial' });
+    case 'completed':
+      return t('workout.sessionStatus.completed', {
+        defaultValue: 'Completed',
+      });
+    default:
+      return status;
+  }
+};

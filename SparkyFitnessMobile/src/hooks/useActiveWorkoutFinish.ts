@@ -2,11 +2,14 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutDurationSheetRef } from '../components/WorkoutDurationSheet';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { updateWorkout } from '../services/api/exerciseApi';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
+import { normalizeDate } from '../utils/dateUtils';
 import { formatDuration, summarizeWorkoutSpan } from '../utils/workoutSession';
 import { buildWorkoutCelebration } from '../utils/workoutCelebration';
 import type { RootStackParamList } from '../types/navigation';
@@ -34,6 +37,7 @@ export function useActiveWorkoutFinish({
   handleConfirmEnd: () => void;
 } {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const handleFinish = useCallback(async () => {
     function confirmDiscardChanges(): void {
@@ -104,6 +108,14 @@ export function useActiveWorkoutFinish({
           await updateWorkout(sessionId, {
             finished_at: new Date().toISOString(),
           });
+          // The stamp bumps the revision after the flush above already
+          // invalidated the diary, so refresh it again: otherwise the
+          // next read could resurrect the pre-finish state.
+          const entryDate =
+            useActiveWorkoutStore.getState().session?.entry_date;
+          if (entryDate != null) {
+            invalidateExerciseCache(queryClient, normalizeDate(entryDate));
+          }
         } catch {
           Alert.alert(
             t('workout.finishStampFailedTitle', {
@@ -138,7 +150,7 @@ export function useActiveWorkoutFinish({
       }
     }
     await attempt();
-  }, [flush, navigation, safeGoBack, t]);
+  }, [flush, navigation, queryClient, safeGoBack, t]);
 
   const maybeAdjustDurationThenFinish = useCallback(() => {
     const { completedSetIds: completed, startedAt } =
