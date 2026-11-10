@@ -45,12 +45,13 @@
         "track": "alpha"
       },
       "ios": {
-        "ascAppId": "6757314392"
+        "ascAppId": "6757314392",
+        "groups": ["SparkyFitnessExternalTesting"]
       }
     },
     "wearos": {
       "android": {
-        "track": "wear:alpha"
+        "track": "wear:WearOS Track"
       }
     }
   }
