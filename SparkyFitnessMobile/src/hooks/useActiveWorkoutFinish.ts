@@ -111,11 +111,23 @@ export function useActiveWorkoutFinish({
       if (sessionId != null) {
         const stampFinished = async (): Promise<boolean> => {
           let revision = useActiveWorkoutStore.getState().session?.revision;
+          // A session restored from storage can lack the revision, and a
+          // clean flush never fetches it: fetch the server's current one
+          // first so this stamp is guarded too. Refuse rather than stamp
+          // unguarded.
+          if (revision == null) {
+            try {
+              revision = (await getWorkout(sessionId)).revision;
+            } catch {
+              return false;
+            }
+            if (revision == null) return false;
+          }
           for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
             try {
               await updateWorkout(sessionId, {
                 finished_at: new Date().toISOString(),
-                ...(revision != null ? { revision } : {}),
+                revision,
               });
               return true;
             } catch (error) {

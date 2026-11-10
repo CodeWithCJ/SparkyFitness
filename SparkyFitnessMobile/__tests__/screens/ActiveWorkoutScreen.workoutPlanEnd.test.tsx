@@ -37,6 +37,7 @@ import type { RootStackScreenProps } from '../../src/types/navigation';
 // the PUT and back. Only the network and cache side-effects are mocked.
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
+  getWorkout: jest.fn(),
   updateWorkout: jest.fn(),
   deleteWorkout: jest.fn(),
 }));
@@ -195,6 +196,7 @@ function makeSession(): PresetSessionResponse {
     description: null,
     notes: null,
     source: 'Workout Plan',
+    revision: 1,
     total_duration_minutes: 60,
     activity_details: [],
     exercises: [
