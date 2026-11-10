@@ -26,6 +26,23 @@ import {
 } from '../hooks/useExerciseMutations';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
+/**
+ * Derived lifecycle status of a session (#1995 phase 1), as a badge color and
+ * English fallback label. Only the actionable statuses badge the diary row;
+ * completed is the default state of a logged session.
+ */
+const SESSION_STATUS_COLORS: Record<string, string> = {
+  planned: '#64748B',
+  in_progress: '#2563EB',
+  partial: '#D97706',
+};
+
+const SESSION_STATUS_FALLBACK_LABELS: Record<string, string> = {
+  planned: 'Planned',
+  in_progress: 'In Progress',
+  partial: 'Partial',
+};
+
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
   entryDate: string;
@@ -158,6 +175,30 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                   {name}
                 </Text>
                 <View className="flex-row items-center gap-2">
+                  {session.type === 'preset' &&
+                    session.status != null &&
+                    session.status !== 'completed' &&
+                    SESSION_STATUS_COLORS[session.status] != null && (
+                      <View
+                        className="rounded-full px-1.5 py-0.5"
+                        style={{
+                          backgroundColor: `${SESSION_STATUS_COLORS[session.status]}20`,
+                        }}
+                      >
+                        <Text
+                          className="text-xs font-medium"
+                          style={{
+                            color: SESSION_STATUS_COLORS[session.status],
+                          }}
+                        >
+                          {t(`workout.sessionStatus.${session.status}`, {
+                            defaultValue:
+                              SESSION_STATUS_FALLBACK_LABELS[session.status] ??
+                              session.status,
+                          })}
+                        </Text>
+                      </View>
+                    )}
                   <View
                     className="rounded-full px-1.5 py-0.5"
                     style={{

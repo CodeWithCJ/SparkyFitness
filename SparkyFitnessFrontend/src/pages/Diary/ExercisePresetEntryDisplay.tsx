@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
   Gauge,
   Layers,
   MapPin,
+  Play,
 } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -35,7 +37,39 @@ import {
   setsDurationMinutes,
 } from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import {
+  isPresetSessionConflictError,
+  useUpdatePresetSessionMutation,
+} from '@/hooks/Exercises/useExerciseEntries';
+import { toast } from '@/hooks/use-toast';
+import {
+  createWorkoutPlaybackDraftFromSession,
+  saveWorkoutPlaybackDraftToStorage,
+} from '@/utils/workoutPlayback';
 import WorkoutFeedbackPanel from './WorkoutFeedbackPanel';
+
+/**
+ * Derived lifecycle status of a session (#1995 phase 1), as a badge tone and
+ * English fallback label. The server derives the status from set completion
+ * plus finished_at; see deriveWorkoutSessionStatus in @workspace/shared.
+ */
+const SESSION_STATUS_BADGE_CLASSES: Record<string, string> = {
+  planned:
+    'bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+  in_progress:
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+  partial:
+    'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+  completed:
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+};
+
+const SESSION_STATUS_FALLBACK_LABELS: Record<string, string> = {
+  planned: 'Planned',
+  in_progress: 'In Progress',
+  partial: 'Partial',
+  completed: 'Completed',
+};
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -78,6 +112,70 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   // get it (#1560); report-only viewers can't save and don't see it here.
   const { hasWritePermission } = useActiveUser();
   const canGiveFeedback = hasWritePermission('diary');
+  const navigate = useNavigate();
+  const { mutateAsync: updatePresetSession } = useUpdatePresetSessionMutation();
+  const [isResuming, setIsResuming] = useState(false);
+
+  // #1995 phase 1: derived server-side, guaranteed on preset-session
+  // responses. Partial and unfinished live sessions can be resumed.
+  const sessionStatus = presetEntry.status;
+  const isResumable =
+    (sessionStatus === 'partial' || sessionStatus === 'in_progress') &&
+    canGiveFeedback;
+
+  const handleResumeWorkout = useCallback(async () => {
+    if (isResuming) return;
+    setIsResuming(true);
+    try {
+      // Reopen the session server-side first (finished_at: null) so other
+      // devices see it as in progress again, carrying the revision we last
+      // saw; a mismatch means it changed elsewhere and is refused with 409.
+      await updatePresetSession({
+        presetEntryId: presetEntry.id,
+        payload: {
+          finished_at: null,
+          ...(presetEntry.revision != null
+            ? { revision: Number(presetEntry.revision) }
+            : {}),
+        },
+      });
+      const draft = createWorkoutPlaybackDraftFromSession(presetEntry);
+      if (!draft) {
+        toast({
+          description: t(
+            'exerciseCard.resumeEmptySession',
+            'Nothing to resume in this session.'
+          ),
+        });
+        return;
+      }
+      saveWorkoutPlaybackDraftToStorage(draft);
+      navigate(`/workout-playback?date=${draft.entry_date}`, {
+        state: {
+          draft,
+          returnTo: `${window.location.pathname}${window.location.search}`,
+        },
+      });
+    } catch (error) {
+      if (isPresetSessionConflictError(error)) {
+        toast({
+          description: t(
+            'exerciseCard.sessionUpdatedElsewhere',
+            'This workout was updated on another device or tab. Reload the diary and try again.'
+          ),
+        });
+      } else {
+        toast({
+          description: t(
+            'exerciseCard.resumeWorkoutFailed',
+            'Failed to resume this workout. Please try again.'
+          ),
+        });
+      }
+    } finally {
+      setIsResuming(false);
+    }
+  }, [isResuming, navigate, presetEntry, t, updatePresetSession]);
 
   // Linking works on the whole session, so any of its exercises will do.
   const linkableEntry = presetEntry.exercises?.[0];
@@ -181,6 +279,17 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                       {formatTimeOfDayString(earliestTime, timeFormat)}
                     </span>
                   )}
+                  {sessionStatus && (
+                    <span
+                      className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${SESSION_STATUS_BADGE_CLASSES[sessionStatus] ?? ''}`}
+                    >
+                      {t(
+                        `exerciseCard.sessionStatus.${sessionStatus}`,
+                        SESSION_STATUS_FALLBACK_LABELS[sessionStatus] ??
+                          sessionStatus
+                      )}
+                    </span>
+                  )}
                   {exerciseCount > 0 && (
                     <span className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
                       {exerciseCount}{' '}
@@ -262,7 +371,29 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               </div>
             </button>
 
-            {/* Right: link to a synced workout, then delete */}
+            {/* Right: resume a partial session, link to a synced workout, then delete */}
+            {isResumable && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isResuming}
+                      onClick={handleResumeWorkout}
+                      className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {t('exerciseCard.resumeWorkoutButton', 'Resume Workout')}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {onLink && linkableEntryId && (
               <TooltipProvider>
                 <Tooltip>

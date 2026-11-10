@@ -1,5 +1,6 @@
 import {
   compareByEntryTime,
+  deriveWorkoutSessionStatus,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
 } from '@workspace/shared';
@@ -1709,7 +1710,8 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   try {
     // 1. Fetch all exercise preset entries for the given date and user
     const presetEntriesResult = await client.query(
-      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location
+      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location,
+              entry_date, finished_at, revision
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -1751,6 +1753,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         notes: preset.notes,
         location: preset.location ?? null,
         created_at: preset.created_at,
+        entry_date: preset.entry_date,
         source: preset.source,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
@@ -1852,6 +1855,29 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Now add the preset entries (which now contain their associated exercises) to the final list
     for (const preset of groupedEntries.values()) {
       preset.activity_details = activityDetailsByPresetId.get(preset.id) || [];
+      // #1995 phase 1 lifecycle: derive the session status from the same rows
+      // that define it. Never stored, so it can never drift from the data.
+      const finishedAt =
+        preset.finished_at instanceof Date
+          ? preset.finished_at.toISOString()
+          : preset.finished_at
+            ? String(preset.finished_at)
+            : null;
+      preset.finished_at = finishedAt;
+      preset.revision = Number(preset.revision ?? 1);
+      preset.status = deriveWorkoutSessionStatus({
+        source: preset.source,
+        finishedAt,
+        hasPlanAssignment: (preset.exercises || []).some(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (exercise: any) =>
+            (exercise.workout_plan_assignment_id ?? null) !== null
+        ),
+        sets: (preset.exercises || []).flatMap(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (exercise: any) => exercise.sets || []
+        ),
+      });
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array

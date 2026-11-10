@@ -54,6 +54,13 @@ jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
   })),
 }));
 
+// #1995 phase 1: the finish flow stamps the lifecycle end with a
+// finished_at-only PUT after the final flush; keep it off the network here.
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  updateWorkout: jest.fn(async () => null),
+  deleteWorkout: jest.fn(),
+}));
+
 jest.mock('../../src/hooks/useSelectedExercise', () => ({
   useSelectedExercise: jest.fn(),
 }));

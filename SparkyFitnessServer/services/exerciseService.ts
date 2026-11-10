@@ -1981,6 +1981,7 @@ async function createGroupedWorkoutSession(
             notes,
             location: location ?? null,
             source,
+            finished_at: sessionData.finished_at ?? null,
           },
           actingUserId
         );
@@ -2011,6 +2012,7 @@ async function createGroupedWorkoutSession(
             notes: notes ?? null,
             location: location ?? null,
             source,
+            finished_at: sessionData.finished_at ?? null,
           },
           actingUserId
         );
@@ -2125,6 +2127,18 @@ async function updateGroupedWorkoutSession(
     if (!existingSession) {
       throw createServiceError(404, 'Exercise preset entry not found.');
     }
+    // #1995 phase 1 lifecycle: when the client presents the revision it last
+    // saw, a mismatch means another device flushed edits in between. Refuse
+    // with 409 instead of letting this snapshot silently overwrite them.
+    if (
+      updateData.revision !== undefined &&
+      Number(existingSession.revision) !== Number(updateData.revision)
+    ) {
+      throw createServiceError(
+        409,
+        'This workout session was modified by another device or tab. Reload it before saving.'
+      );
+    }
     await exercisePresetEntryRepository.updateExercisePresetEntryWithClient(
       client,
       presetEntryId,
@@ -2135,6 +2149,9 @@ async function updateGroupedWorkoutSession(
         notes: updateData.notes,
         location: updateData.location,
         entry_date: updateData.entry_date,
+        // Lifecycle transition (see migration 20261110120000): a timestamp
+        // ends the session, null reopens a partial one, absent leaves it.
+        finished_at: updateData.finished_at,
       }
     );
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;

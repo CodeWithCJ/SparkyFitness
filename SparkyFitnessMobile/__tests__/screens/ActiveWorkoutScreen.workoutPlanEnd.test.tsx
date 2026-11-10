@@ -345,13 +345,20 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
         const serverSession = JSON.parse(
           JSON.stringify(getStore().session)
         ) as PresetSessionResponse;
-        const sentSet = (
+        const exercises = (
           payload as {
-            exercises: {
+            exercises?: {
               sets: { id?: number; completed_at: string | null }[];
             }[];
           }
-        ).exercises[0].sets[0];
+        ).exercises;
+        // #1995 phase 1: the finish flow stamps the lifecycle end with a
+        // finished_at-only PUT after the final flush; echo the session
+        // unchanged for that call.
+        if (!exercises || exercises.length === 0) {
+          return serverSession;
+        }
+        const sentSet = exercises[0].sets[0];
         sentCompletedAt = sentSet?.completed_at;
         if (sentSet?.completed_at) {
           serverSession.exercises[0].sets[0].completed_at =

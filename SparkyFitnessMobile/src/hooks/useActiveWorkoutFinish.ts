@@ -6,6 +6,7 @@ import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutDurationSheetRef } from '../components/WorkoutDurationSheet';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { updateWorkout } from '../services/api/exerciseApi';
 import { formatDuration, summarizeWorkoutSpan } from '../utils/workoutSession';
 import { buildWorkoutCelebration } from '../utils/workoutCelebration';
 import type { RootStackParamList } from '../types/navigation';
@@ -92,6 +93,39 @@ export function useActiveWorkoutFinish({
           ]
         );
         return;
+      }
+      // #1995 phase 1: the flush delivered every set; stamp the lifecycle
+      // end so the session derives partial/completed from its sets instead
+      // of staying in progress forever. The stamp carries no content, so it
+      // can never overwrite edits made from another device.
+      const sessionId = useActiveWorkoutStore.getState().sessionId;
+      if (sessionId != null) {
+        try {
+          await updateWorkout(sessionId, {
+            finished_at: new Date().toISOString(),
+          });
+        } catch {
+          Alert.alert(
+            t('workout.finishStampFailedTitle', {
+              defaultValue: 'Could not mark the workout as finished',
+            }),
+            t('workout.finishStampFailedMessage', {
+              defaultValue:
+                'Your sets were saved, but marking the workout finished failed. Retry to complete it.',
+            }),
+            [
+              {
+                text: t('workout.retry', { defaultValue: 'Retry' }),
+                onPress: () => void attempt(),
+              },
+              {
+                text: t('common.cancel', { defaultValue: 'Cancel' }),
+                style: 'cancel',
+              },
+            ]
+          );
+          return;
+        }
       }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
