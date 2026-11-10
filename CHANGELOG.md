@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.1](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.12.0...v1.12.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **adaptive-tdee:** isolate delegated caches and guard details ([#3497](https://github.com/CodeWithCJ/SparkyFitness/issues/3497)) ([80418b5](https://github.com/CodeWithCJ/SparkyFitness/commit/80418b52c0791b422911ccad8d986d12e138683e))
+* **mobile:** stop Calorie Settings crashing on iOS ([#3505](https://github.com/CodeWithCJ/SparkyFitness/issues/3505)) ([ef3c824](https://github.com/CodeWithCJ/SparkyFitness/commit/ef3c824e89c9a23873659bbdff345fecc379c39a))
+
 ## [1.12.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.11.0...v1.12.0) (2026-11-09)
 
 
