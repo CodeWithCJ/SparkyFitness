@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import {
   initMedicationNotificationActions,
   MEDICATION_NOTIFICATION_TASK_NAME,
+  PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
 } from '../../src/services/medicationNotificationHandler';
 import {
   addNotificationResponseListener,
@@ -603,7 +605,7 @@ describe('logging a dose from a notification action', () => {
     });
   });
 
-  it('ignores a press for a medication the signed-in account does not own', async () => {
+  it('queues a press for another account instead of writing it or dropping it', async () => {
     (listMedications as jest.Mock).mockResolvedValueOnce([
       { id: 'other', user_id: 'user-B' },
     ]);
@@ -625,6 +627,17 @@ describe('logging a dose from a notification action', () => {
     });
     await new Promise(process.nextTick);
     expect(createEntry).not.toHaveBeenCalled();
+    const queued = JSON.parse(
+      (await AsyncStorage.getItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+      )) ?? '[]'
+    );
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      notificationId: 'notif-old',
+      userId: 'user-A',
+      status: 'taken',
+    });
   });
 
   describe('Android background notification task (dataString payload)', () => {

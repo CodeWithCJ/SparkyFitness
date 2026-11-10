@@ -1071,8 +1071,25 @@ async function handleNotificationAction(
       ? []
       : doses.filter((d) => ownedIds.has(d.medicationId));
     if (ownDoses.length === 0) {
+      // Same rule as the replay (`flushPendingMedicationNotificationActions`):
+      // when the reminder's own account is signed in and no longer has the
+      // medication, it was deleted, so drop the press; otherwise keep it queued
+      // to replay when the owning account is signed in again.
+      if (userId && activeUserIds.has(userId)) {
+        await removeSnoozedReminder(key);
+        return true;
+      }
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        takenAt,
+      });
       addLog(
-        '[MedicationNotificationAction] Ignored a reminder press for another account',
+        '[MedicationNotificationAction] Reminder press belongs to another account; queued for when it is signed in',
         'WARNING'
       );
       return true;
