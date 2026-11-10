@@ -534,6 +534,63 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     expect(await entries()).toEqual(before);
   });
 
+  it('recovers an ambiguous removal by deleting and re-importing the local session', async () => {
+    const repeated = workout();
+    const first = repeated.exercises![0]!;
+    repeated.exercises = [first, { ...first, index: 1 }];
+    await sync([repeated]);
+    const original = await entries();
+    await updateExerciseEntry(userId, userId, original[1]!.id, {
+      notes: 'Local correction to restore after recovery',
+    });
+    const health = await addHealthSession();
+    await setCalorieLink(userId, userId, original[0]!.id, {
+      synced_entry_id: health.id,
+      resolution: 'custom',
+      custom_calories: 350,
+    });
+    const before = await entries();
+    const current = { ...repeated, exercises: [first] };
+    await expect(sync([current])).rejects.toThrow('Failed to import');
+    expect(await entries()).toEqual(before);
+    expect(await countedCalories()).toBe(350);
+
+    await exercisePresetEntryRepository.deleteExercisePresetEntry(
+      original[0]!.exercise_preset_entry_id,
+      userId
+    );
+    expect((await entries()).map((entry) => entry.id)).toEqual([health.id]);
+    expect(await countedCalories()).toBe(400);
+
+    await sync([current]);
+    const recovered = (await entries()).filter(
+      (entry) => entry.id !== health.id
+    );
+    expect(recovered).toHaveLength(1);
+    expect(original.map((entry) => entry.id)).not.toContain(recovered[0]!.id);
+    expect(recovered[0]!.notes).not.toBe(
+      'Local correction to restore after recovery'
+    );
+    const healthLink = await db.query<{ calorie_link_id: string | null }>(
+      'SELECT calorie_link_id FROM exercise_entries WHERE id = $1',
+      [health.id]
+    );
+    expect(healthLink.rows).toEqual([{ calorie_link_id: null }]);
+
+    await updateExerciseEntry(userId, userId, recovered[0]!.id, {
+      notes: 'Local correction to restore after recovery',
+    });
+    await setCalorieLink(userId, userId, recovered[0]!.id, {
+      synced_entry_id: health.id,
+      resolution: 'custom',
+      custom_calories: 350,
+    });
+    expect(await countedCalories()).toBe(350);
+    expect(
+      (await entries()).find((entry) => entry.id === recovered[0]!.id)!.notes
+    ).toBe('Local correction to restore after recovery');
+  });
+
   it('retains repeated occurrences when provider edits overlap another occurrence signature', async () => {
     const repeated = workout();
     const first = repeated.exercises![0]!;

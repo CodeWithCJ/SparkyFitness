@@ -59,6 +59,17 @@ Deleting a library exercise while keeping its diary history also preserves Hevy 
 
 Linked Health Connect and HealthKit recordings survive incomplete same-day reads, keeping your chosen calorie total intact. If a linked recording was removed at its source, unlink or explicitly delete it in SparkyFitness to remove that saved recording.
 
+#### Recover from an ambiguous Hevy match
+
+Removing one of two identical exercise blocks in Hevy can make it impossible to identify which local occurrence remains. SparkyFitness keeps the stored workout and reports a failed sync so corrections are not transferred to the wrong exercise. Retrying the same data will keep failing. To replace the affected local workout with Hevy's current version:
+
+1. Record any SparkyFitness-only corrections you want to keep, including notes and edited sets.
+2. Delete the affected imported Hevy workout from the SparkyFitness diary.
+3. Run Hevy sync again for a date range that includes that workout, or use a full-history sync.
+4. Reapply your local corrections and use **Link a synced workout** to restore the Health Connect or Apple Health calorie link.
+
+Deleting the local workout removes its corrections and calorie link. It does not delete the workout in Hevy or the separate health recording; that recording counts its own calories until you link the imported workout again. Other stored workouts are unaffected.
+
 ## Canadian Nutrient File (Health Canada)
 
 The Canadian Nutrient File (CNF) is Health Canada's official food composition database containing ~5,700 items with complete macronutrient, micronutrient, and household portion profiles. It is completely free, public, and requires no API keys or accounts.
