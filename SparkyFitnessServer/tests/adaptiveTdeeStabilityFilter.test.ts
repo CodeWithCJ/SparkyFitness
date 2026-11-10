@@ -168,6 +168,56 @@ describe('finite adaptive expenditure stability', () => {
     expect(onDay(days).confidence).toBe('MEDIUM');
   });
 
+  it('bounds synthetic accuracy error from a sparse bad endpoint as well as daily movement', () => {
+    // True expenditure is 2600 and true weight is constant. Missing one weekly
+    // reading leaves three anchors when the erroneous +1kg endpoint closes.
+    const days = trace({
+      weight: (day) =>
+        day % 7 === 0 && day !== -21 ? 70 + (day === 0 ? 1 : 0) : null,
+    });
+    const first = onDay(days, 1, 2400);
+    expect(first.candidate?.observedWeightDays).toBe(3);
+    // Three equally spaced anchors, with +1kg only at the final anchor, fit a
+    // slope of 1/14kg/day. This is observation error, not real tissue energy.
+    expect(first.candidate?.rawTdee).toBeCloseTo(2600 - 6000 / 14, 8);
+    const errors = Array.from({ length: 101 }, (_, day) =>
+      Math.abs(onDay(days, day, 2400).tdee - 2600)
+    );
+    // The measured N28 peak is about 129 kcal/day. An accuracy improvement can
+    // lower it; stability alone must not hide a larger error in this fixture.
+    expect(Math.max(...errors)).toBeLessThanOrEqual(129);
+    expect(onDay(days, 56, 2400).tdee).toBeCloseTo(2600, 9);
+    expectDailyBound(days, -10, 90, false, 2400);
+  });
+
+  it('checks a synthetic refeed beside an unknown food day against known expenditure', () => {
+    const weight = (day: number) =>
+      70 +
+      ((day > 0 ? 1000 : 0) + (day > 1 ? 1000 : 0)) / 6000 +
+      (day >= 1 && day <= 7 ? 1 : 0);
+    const intake = (day: number) => (day === 0 || day === 1 ? 3600 : 2600);
+    // True expenditure stays 2600. Two higher-intake days change synthetic
+    // tissue weight; a separate +1kg water shift lasts seven mornings.
+    const complete = trace({ weight, calories: intake });
+    const missing = trace({
+      weight,
+      calories: (day) => (day === 1 ? 0 : intake(day)),
+    });
+    const maximumError = (days: readonly AdaptiveEstimateDay[]) =>
+      Math.max(
+        ...Array.from({ length: 101 }, (_, day) =>
+          Math.abs(onDay(days, day, 2400).tdee - 2600)
+        )
+      );
+    // Case-specific engineering envelopes, not universal accuracy guarantees.
+    // Current peaks are about 79 complete and 102 with the adjacent day unlogged.
+    expect(maximumError(complete)).toBeLessThanOrEqual(79);
+    expect(maximumError(missing)).toBeLessThanOrEqual(103);
+    expect(onDay(complete, 63, 2400).tdee).toBeCloseTo(2600, 9);
+    expect(onDay(missing, 63, 2400).tdee).toBeCloseTo(2600, 9);
+    expectDailyBound(missing, -10, 90, false, 2400);
+  });
+
   it('lowers only high confidence for trackers younger than six weeks', () => {
     const days = trace({ weight: (day) => (day >= -28 ? 70 : null) });
     expect(onDay(days).confidence).toBe('MEDIUM');
