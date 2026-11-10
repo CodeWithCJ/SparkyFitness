@@ -28,6 +28,7 @@ import type { Exercise } from '../types/exercise';
 import {
   captureResumedDurations,
   describeActiveSetAssumed,
+  effectiveSetDurationSec,
   formatDurationSeconds,
   getDefaultRestSec,
   getSupersetRuns,
@@ -1437,11 +1438,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                 firstSet != null
                   ? plannedSetValues[String(firstSet.id)]
                   : undefined;
+              // Legacy `duration`-modality rows keep their seconds in reps.
+              const plannedDurationSec = effectiveSetDurationSec(
+                {
+                  duration: firstSet?.duration ?? planned?.duration,
+                  reps: firstSet?.reps ?? planned?.reps,
+                },
+                resolveSnapshotModality(ex.exercise_snapshot)
+              );
               return {
                 exerciseName: ex.exercise_snapshot?.name || 'Exercise',
                 durationSec:
-                  firstSet?.duration ??
-                  planned?.duration ??
+                  plannedDurationSec ??
                   (workoutFormat === 'tabata' ? 20 : null),
                 restSec:
                   firstSet?.rest_time ??
@@ -1455,13 +1463,20 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               const planned = plannedSetValues[s.setId];
               // Created sessions carry null durations/reps on a live start
               // (planned values are stripped), so fall back to the plan.
+              const sessionSet = loc?.exercise.sets[loc.setIndex];
+              const reps = sessionSet?.reps ?? planned?.reps ?? null;
+              // Legacy `duration`-modality rows keep their seconds in reps.
               const durationSec =
-                loc?.exercise.sets[loc.setIndex]?.duration ??
-                planned?.duration ??
-                null;
+                loc != null
+                  ? effectiveSetDurationSec(
+                      {
+                        duration: sessionSet?.duration ?? planned?.duration,
+                        reps,
+                      },
+                      resolveSnapshotModality(loc.exercise.exercise_snapshot)
+                    )
+                  : (planned?.duration ?? null);
               const restSec = s.restSec;
-              const reps =
-                loc?.exercise.sets[loc.setIndex]?.reps ?? planned?.reps ?? null;
               return {
                 exerciseName: s.exerciseName,
                 durationSec,

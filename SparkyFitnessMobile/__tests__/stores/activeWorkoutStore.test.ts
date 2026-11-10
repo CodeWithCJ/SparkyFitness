@@ -1080,6 +1080,58 @@ describe('activeWorkoutStore', () => {
         ]);
       });
 
+      it('reads legacy duration-modality seconds stored in reps when building interval phases', () => {
+        const base = makeEmptySession();
+        const session: PresetSessionResponse = {
+          ...base,
+          exercises: base.exercises.map((e) => ({
+            ...e,
+            exercise_snapshot: {
+              ...e.exercise_snapshot,
+              modality: 'duration',
+            } as any,
+          })),
+        };
+        useActiveWorkoutStore.getState().startWorkout(session, {
+          createdByLiveStart: true,
+          workoutFormat: 'interval',
+          plannedSetValues: [
+            [
+              { weight: null, reps: 45, duration: null },
+              { weight: null, reps: 20, duration: null },
+            ],
+            [{ weight: null, reps: 30, duration: null }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([
+          45, 20, 30,
+        ]);
+      });
+
+      it('builds EMOM work phases from the first set planned durations when the session has none', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          workoutFormat: 'emom',
+          timeCapSeconds: 120,
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 40 },
+              { weight: null, reps: null, duration: 99 },
+            ],
+            [{ weight: null, reps: null, duration: 25 }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        // Two one-minute rounds alternate through the exercises' first sets;
+        // without the planned fallback each would fill the full 60 s.
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([40, 25]);
+      });
+
       it('clears the plan and captured history when a workout starts without them', () => {
         useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
           createdByLiveStart: true,
