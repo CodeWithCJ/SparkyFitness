@@ -2,7 +2,7 @@ manifestVersion: 1
 id: sparkyfitness
 category: files
 name: SparkyFitness
-version: "v1.11.0"
+version: "v1.12.0"
 tagline: Self-hosted nutrition, exercise, and body metrics tracker
 description: >-
   🥗 SparkyFitness is a self-hosted alternative to MyFitnessPal for tracking
@@ -40,31 +40,31 @@ description: >-
   Online food databases and AI features are off until you add your own
   credentials in the app's settings; nothing is sent anywhere by default.
 releaseNotes: >-
-  - **Adaptive calorie budgets:** Dynamic Goal and Percentage Earn-Back no longer add activity calories or optional BMR credit to an Adaptive target a second time. Remaining calories may be lower after upgrading because these duplicate credits are removed. Recorded activity remains visible, and Manual targets retain their existing earn-back behavior.
+  - Lab test result management
 
-  - Lab-result markers table
+  - NFC tags for Food & Water logging.
 
-  - Add OAuth 2.1 authorization
+  - Add tag.sparkyfitness.com site for NFC tag links
 
-  - Add a whats-new skill and a drift check for the What's New screen
+  - List the dev app in the tag site's iPhone link file
 
-  - Look up the weather for GPS-recorded activities
+  - Add a setting to read iPhone active calories from the Move ring
 
-  - Add a training review to the AI assistant's exercise stats tool
+  - Build the Wear OS app in the EAS production workflow
 
-  - Ship the Wear OS app through GitHub releases and EAS
+  - Log water by tapping an NFC tag
 
-  - Enter sodium as grams of salt in the food form
+  - Add keyless MapLibre OpenStreetMap map rendering on Android
 
-  - Count device Active Calories once in the CSV burned calories row
+  - Safe defaults above one server replica
 
-  - Classify the lab tables in the RLS permission matrix
+  - Add a readiness endpoint and use it for the Docker health check
 
-  - Create the RLS policy state table in a migration
+  - Attach tracker heart rate to workouts logged in SparkyFitness
 
-  - Refuse an in-app restore while other instances are connected
+  - Optionally adjust percentage macros with exercise calories
 
-  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.11.0
+  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.12.0
 
 developer: CodeWithCJ
 website: https://codewithcj.github.io/SparkyFitness/
