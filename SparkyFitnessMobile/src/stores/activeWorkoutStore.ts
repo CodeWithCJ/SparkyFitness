@@ -1431,24 +1431,37 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           if (workoutFormat === 'tabata' || workoutFormat === 'emom') {
             engineSteps = session.exercises.map((ex) => {
               const firstSet = ex.sets[0];
+              // A live start strips planned values from the created session,
+              // so read them back from the planned snapshot.
+              const planned =
+                firstSet != null
+                  ? plannedSetValues[String(firstSet.id)]
+                  : undefined;
               return {
                 exerciseName: ex.exercise_snapshot?.name || 'Exercise',
                 durationSec:
                   firstSet?.duration ??
+                  planned?.duration ??
                   (workoutFormat === 'tabata' ? 20 : null),
                 restSec:
                   firstSet?.rest_time ??
                   (workoutFormat === 'tabata' ? 10 : null),
-                reps: firstSet?.reps ?? null,
+                reps: firstSet?.reps ?? planned?.reps ?? null,
               };
             });
           } else {
             engineSteps = steps.map((s) => {
               const loc = locateSet(session, s.setId);
+              const planned = plannedSetValues[s.setId];
+              // Created sessions carry null durations/reps on a live start
+              // (planned values are stripped), so fall back to the plan.
               const durationSec =
-                loc?.exercise.sets[loc.setIndex]?.duration ?? null;
+                loc?.exercise.sets[loc.setIndex]?.duration ??
+                planned?.duration ??
+                null;
               const restSec = s.restSec;
-              const reps = loc?.exercise.sets[loc.setIndex]?.reps ?? null;
+              const reps =
+                loc?.exercise.sets[loc.setIndex]?.reps ?? planned?.reps ?? null;
               return {
                 exerciseName: s.exerciseName,
                 durationSec,

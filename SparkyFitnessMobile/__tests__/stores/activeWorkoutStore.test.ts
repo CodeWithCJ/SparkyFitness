@@ -1058,6 +1058,28 @@ describe('activeWorkoutStore', () => {
         });
       });
 
+      it('builds interval phases from the planned work durations when the created session has none', () => {
+        // A live start strips set durations from the created session; the
+        // configured values only survive in plannedSetValues.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          workoutFormat: 'interval',
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 45 },
+              { weight: null, reps: null, duration: 20 },
+            ],
+            [{ weight: null, reps: null, duration: 30 }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([
+          45, 20, 30,
+        ]);
+      });
+
       it('clears the plan and captured history when a workout starts without them', () => {
         useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
           createdByLiveStart: true,
