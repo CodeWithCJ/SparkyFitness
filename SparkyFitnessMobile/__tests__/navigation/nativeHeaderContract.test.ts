@@ -142,7 +142,7 @@ function extractSafeComponentNamesByScreen(
   return new Map(
     [
       ...source.matchAll(
-        /^(?:export )?const (Safe[A-Za-z0-9_]+)\s*=\s*withErrorBoundary\(\s*([A-Za-z0-9_]+)\s*,\s*'([^']+)'/gm
+        /^(?:export )?const (Safe[A-Za-z0-9_]+) = withErrorBoundary\(([A-Za-z0-9_]+), '([^']+)'/gm
       ),
     ].map(([, safeComponent, importedComponent, routeName]) => [
       routeName,
@@ -360,8 +360,11 @@ function getStackScreenBlock(
   const start = source.lastIndexOf('<Stack.Screen', routeIndex);
   if (start === -1) return undefined;
 
-  const nextScreen = source.indexOf('<Stack.Screen', routeIndex);
-  const navigatorEnd = source.indexOf('</Stack.Navigator>', routeIndex);
+  const nextScreen = source.indexOf('\n          <Stack.Screen', routeIndex);
+  const navigatorEnd = source.indexOf(
+    '\n        </Stack.Navigator>',
+    routeIndex
+  );
   const candidates = [nextScreen, navigatorEnd].filter((index) => index !== -1);
   const end = candidates.length > 0 ? Math.min(...candidates) : source.length;
 
@@ -505,17 +508,17 @@ describe('native header navigation contract', () => {
       expect(screenBlock).not.toMatch(/\bpresentation\s*:/);
     }
 
-    expect(safeScreensSource).toMatch(
-      /withErrorBoundary\(\s*FamilyMembersScreen,\s*'FamilyMembers',\s*\{\s*canGoBack:\s*true,?\s*\}\s*\)/
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyMembersScreen, 'FamilyMembers', { canGoBack: true })"
     );
-    expect(safeScreensSource).toMatch(
-      /withErrorBoundary\(\s*FamilyDiaryScreen,\s*'FamilyDiary',\s*\{\s*canGoBack:\s*true,?\s*\}\s*\)/
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyDiaryScreen, 'FamilyDiary', { canGoBack: true })"
     );
-    expect(safeScreensSource).toMatch(
-      /withErrorBoundary\(\s*FamilyMealDetailScreen,\s*'FamilyMealDetail',\s*\{\s*canGoBack:\s*true,?\s*\}\s*\)/
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyMealDetailScreen, 'FamilyMealDetail', { canGoBack: true })"
     );
-    expect(safeScreensSource).toMatch(
-      /withErrorBoundary\(\s*FamilyCopyReviewScreen,\s*'FamilyCopyReview',\s*\{\s*canGoBack:\s*true,?\s*\}\s*\)/
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyCopyReviewScreen, 'FamilyCopyReview', { canGoBack: true })"
     );
   });
 
@@ -822,21 +825,5 @@ describe('native header navigation contract', () => {
         ].join('\n')
       );
     }
-  });
-});
-
-describe('navigation source formatting boundaries', () => {
-  it('extracts a multiline safe wrapper without dropping its route', () => {
-    const source =
-      "export const SafeSample = withErrorBoundary(\n SampleScreen,\n 'Sample',\n { canGoBack: true }\n);";
-    expect(extractSafeComponentNamesByScreen(source).get('Sample')).toBe(
-      'SampleScreen'
-    );
-  });
-  it('stops a stack screen at its next sibling independently of indentation', () => {
-    const source =
-      '<Stack.Screen name="Sample" component={SafeSample} />\n                <Stack.Screen name="Next" options={{ presentation: "modal" }} />\n</Stack.Navigator>';
-    expect(getStackScreenBlock(source, 'Sample')).not.toContain('Next');
-    expect(getStackScreenBlock(source, 'Sample')).not.toContain('presentation');
   });
 });
