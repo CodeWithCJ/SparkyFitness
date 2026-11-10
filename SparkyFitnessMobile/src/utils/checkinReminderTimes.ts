@@ -27,6 +27,8 @@ export const DEFAULT_ORAL_CARE_REMINDER_TIMES = ['08:00', '21:00'];
 export const ORAL_CARE_REMINDER_KIND = 'oral-care';
 /** `data.kind` of the brushing timer's "done" ping. */
 export const BRUSHING_TIMER_KIND = 'brushing-timer';
+/** `data.kind` of the meditation timer's "done" ping. */
+export const MEDITATION_TIMER_KIND = 'meditation-timer';
 
 export function normalizeOralCareReminderTimes(
   times: readonly string[]

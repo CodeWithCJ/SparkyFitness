@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Modal, View, Text, TouchableOpacity } from 'react-native';
+import { AppState, Modal, View, Text, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import FullScreenModalBody from '../FullScreenModalBody';
 import Icon from '../Icon';
 import { useSaveOncePerRun } from '../../hooks/useSaveOncePerRun';
+import {
+  cancelMeditationTimerNotification,
+  scheduleMeditationTimerNotification,
+} from '../../services/notifications';
 
 interface MeditationTimerModalProps {
   visible: boolean;
@@ -17,6 +21,7 @@ interface MeditationTimerModalProps {
 }
 
 const PRESET_MINUTES = [5, 10, 15, 20];
+const TICK_MS = 250;
 
 export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
   visible,
@@ -31,7 +36,19 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
   const [secondsRemaining, setSecondsRemaining] = useState(10 * 60);
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Time comes from the wall clock, not from counting interval ticks: Android
+  // suspends JS timers while the screen is off, so a tick counter stopped when
+  // the phone locked and picked up again on unlock. Milliseconds
+  // counted before the current run of the clock (pauses split runs):
+  const bankedMsRef = useRef(0);
+  const runStartMsRef = useRef<number | null>(null);
+
+  const currentMs = useCallback(
+    () =>
+      bankedMsRef.current +
+      (runStartMsRef.current !== null ? Date.now() - runStartMsRef.current : 0),
+    []
+  );
 
   const triggerHaptic = useCallback((style: Haptics.ImpactFeedbackStyle) => {
     try {
@@ -41,8 +58,23 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
     }
   }, []);
 
+  const stopClock = useCallback(() => {
+    bankedMsRef.current = currentMs();
+    runStartMsRef.current = null;
+  }, [currentMs]);
+
+  // Leaving the screen any way at all drops the pending "done" ping.
+  useEffect(
+    () => () => {
+      void cancelMeditationTimerNotification();
+    },
+    []
+  );
+
   const resetState = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    void cancelMeditationTimerNotification();
+    bankedMsRef.current = 0;
+    runStartMsRef.current = null;
     setIsActive(false);
     setSecondsRemaining(selectedMinutes * 60);
     setStopwatchSeconds(0);
@@ -60,36 +92,66 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
     onClose();
   };
 
+  const switchMode = (next: 'countdown' | 'stopwatch') => {
+    if (next === mode) return;
+    // Each clock keeps its own time; the shared wall clock starts from the
+    // time already on the one being switched to.
+    bankedMsRef.current =
+      next === 'countdown'
+        ? (selectedMinutes * 60 - secondsRemaining) * 1000
+        : stopwatchSeconds * 1000;
+    runStartMsRef.current = null;
+    setMode(next);
+  };
+
   useEffect(() => {
     if (!isActive) return;
+    const targetMs = selectedMinutes * 60 * 1000;
 
-    timerRef.current = setInterval(() => {
+    const tick = () => {
+      const elapsedMs = currentMs();
       if (mode === 'countdown') {
-        setSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current as ReturnType<typeof setInterval>);
-            setIsActive(false);
-            triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
-            return 0;
-          }
-          return prev - 1;
-        });
+        if (elapsedMs >= targetMs) {
+          bankedMsRef.current = targetMs;
+          runStartMsRef.current = null;
+          setSecondsRemaining(0);
+          setIsActive(false);
+          void cancelMeditationTimerNotification();
+          triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+          return;
+        }
+        setSecondsRemaining(
+          Math.max(0, Math.ceil((targetMs - elapsedMs) / 1000))
+        );
       } else {
-        setStopwatchSeconds((prev) => prev + 1);
+        setStopwatchSeconds(Math.floor(elapsedMs / 1000));
       }
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, mode, triggerHaptic]);
+
+    const id = setInterval(tick, TICK_MS);
+    // Catch up at once when the phone wakes, rather than on the next tick.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') tick();
+    });
+    return () => {
+      clearInterval(id);
+      subscription.remove();
+    };
+  }, [isActive, mode, selectedMinutes, currentMs, triggerHaptic]);
 
   const toggleStartPause = () => {
     if (isActive) {
+      stopClock();
       setIsActive(false);
+      void cancelMeditationTimerNotification();
     } else {
+      runStartMsRef.current = Date.now();
       setIsActive(true);
       triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+      if (mode === 'countdown') {
+        const remainingMs = selectedMinutes * 60 * 1000 - bankedMsRef.current;
+        void scheduleMeditationTimerNotification(remainingMs / 1000);
+      }
     }
   };
 
@@ -162,7 +224,7 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
         {!isActive && (
           <View className="flex-row justify-center gap-3 my-2">
             <TouchableOpacity
-              onPress={() => setMode('countdown')}
+              onPress={() => switchMode('countdown')}
               className={`px-4 py-2 rounded-full border ${
                 mode === 'countdown'
                   ? 'bg-purple-500/20 border-purple-500'
@@ -182,7 +244,7 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setMode('stopwatch')}
+              onPress={() => switchMode('stopwatch')}
               className={`px-4 py-2 rounded-full border ${
                 mode === 'stopwatch'
                   ? 'bg-purple-500/20 border-purple-500'

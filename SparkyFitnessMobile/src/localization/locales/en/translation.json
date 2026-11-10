@@ -311,7 +311,8 @@
       "fasting": "Fasting",
       "hydration": "Hydration reminders",
       "moodCheckin": "Mood check-ins",
-      "oralCare": "Brushing reminders"
+      "oralCare": "Brushing reminders",
+      "mindfulness": "Meditation timer"
     },
     "moodCheckin": {
       "title": "How are you feeling?",
@@ -362,6 +363,10 @@
     "brushingTimer": {
       "title": "Brushing done",
       "body": "Open SparkyFitness to save the brush."
+    },
+    "meditationTimer": {
+      "title": "Meditation complete",
+      "body": "Open SparkyFitness to save your session."
     }
   },
   "activeWorkout": {
