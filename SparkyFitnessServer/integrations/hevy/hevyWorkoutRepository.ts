@@ -7,6 +7,7 @@ import exerciseEntryRepository, {
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import {
   clearCalorieLinkOfEntryWithClient,
+  clearCalorieLinksForPresetEntryWithClient,
   lockCalorieLinkParticipantsWithClient,
   reapplyCalorieLinkWithClient,
 } from '../../services/exerciseCalorieLinkService.js';
@@ -60,14 +61,28 @@ interface ExistingEntry extends StoredHevyExerciseIdentity {
   calories_applied: number | null;
 }
 
+interface ExistingSession {
+  id: string;
+  name: string;
+  description: string | null;
+  provider_workout: Pick<HevyWorkout, 'title' | 'description'> | null;
+}
+
 /** Adopt pre-identity sessions without changing the session or exercise IDs. */
 async function findSession(
   client: PoolClient,
   userId: string,
   sourceId: string
-): Promise<string | null> {
-  const result = await client.query<{ id: string }>(
-    `SELECT p.id FROM exercise_preset_entries p
+): Promise<ExistingSession | null> {
+  const result = await client.query<ExistingSession>(
+    `SELECT p.id, p.name, p.description,
+       (SELECT d.detail_data -> 'workout'
+        FROM exercise_entries e JOIN exercise_entry_activity_details d
+          ON d.exercise_entry_id = e.id
+        WHERE e.exercise_preset_entry_id = p.id AND e.user_id = $1
+          AND d.provider_name = 'Hevy' AND d.detail_type = 'full_activity_data'
+        ORDER BY d.created_at DESC, d.id LIMIT 1) AS provider_workout
+     FROM exercise_preset_entries p
      WHERE p.user_id = $1 AND p.source = 'Hevy'
        AND (p.source_id = $2 OR (p.source_id IS NULL AND EXISTS (
          SELECT 1 FROM exercise_entries e
@@ -79,7 +94,7 @@ async function findSession(
      LIMIT 1 FOR UPDATE`,
     [userId, sourceId]
   );
-  return result.rows[0]?.id ?? null;
+  return result.rows[0] ?? null;
 }
 
 /**
@@ -98,7 +113,8 @@ export async function syncHevyWorkout(
     await client.query('BEGIN');
     await acquireExerciseEntrySyncLockWithClient(client, userId, 'Hevy');
     if (!sourceId) throw new Error('Hevy workout has no provider identity.');
-    let sessionId = await findSession(client, userId, sourceId);
+    const existingSession = await findSession(client, userId, sourceId);
+    let sessionId = existingSession?.id ?? null;
     const previous = await client.query<{
       id: string;
       exercise_preset_entry_id: string | null;
@@ -127,6 +143,19 @@ export async function syncHevyWorkout(
       );
     }
     if (sessionId) {
+      const provider = existingSession!.provider_workout;
+      // Compare to the previous provider snapshot, never to the new payload:
+      // local annotations survive while untouched provider metadata can change.
+      const name =
+        provider && existingSession!.name === provider.title
+          ? session.name
+          : existingSession!.name;
+      const previousDescription =
+        provider?.description || `Logged session of ${provider?.title}`;
+      const description =
+        provider && existingSession!.description === previousDescription
+          ? session.description
+          : existingSession!.description;
       await client.query(
         `UPDATE exercise_preset_entries
          SET source_id = $3, workout_preset_id = $4, name = $5,
@@ -137,8 +166,8 @@ export async function syncHevyWorkout(
           userId,
           session.source_id,
           session.workout_preset_id,
-          session.name,
-          session.description,
+          name,
+          description,
           session.entry_date,
         ]
       );
@@ -286,7 +315,8 @@ export async function syncHevyWorkout(
           },
           actingUserId,
           'Hevy',
-          sessionId
+          sessionId,
+          { deferCalorieLinkReapply: true }
         );
       const id: string = entry.id;
       retained.push(id);
@@ -341,6 +371,13 @@ export async function syncHevyWorkout(
         customTotal
       );
     }
+    if (retained.length === 0) {
+      await client.query(
+        `DELETE FROM exercise_preset_entries p WHERE p.id = $1 AND p.user_id = $2
+         AND NOT EXISTS (SELECT 1 FROM exercise_entries e WHERE e.exercise_preset_entry_id = p.id)`,
+        [sessionId, userId]
+      );
+    }
     const supersededSessions = [
       ...new Set(
         previous.rows.flatMap((row) =>
@@ -372,6 +409,47 @@ export async function syncHevyWorkout(
            AND NOT EXISTS (SELECT 1 FROM workout_feedback f
              WHERE f.exercise_preset_entry_id = p.id)`,
         [userId, supersededSessions, session.description]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** Remove missing provider sessions only after a complete live window was imported. */
+export async function reconcileHevyWorkouts(
+  userId: string,
+  actingUserId: string,
+  sourceIds: readonly string[],
+  firstDay: string | null,
+  endDay: string | null
+): Promise<void> {
+  const client: PoolClient = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+    await acquireExerciseEntrySyncLockWithClient(client, userId, 'Hevy');
+    const missing = await client.query<{ id: string }>(
+      `SELECT id FROM exercise_preset_entries
+       WHERE user_id = $1 AND source = 'Hevy' AND source_id IS NOT NULL
+         AND NOT (source_id = ANY($2::text[]))
+         AND ($3::date IS NULL OR entry_date >= $3)
+         AND ($4::date IS NULL OR entry_date <= $4)
+       ORDER BY id FOR UPDATE`,
+      [userId, sourceIds, firstDay, endDay]
+    );
+    for (const session of missing.rows) {
+      await clearCalorieLinksForPresetEntryWithClient(
+        client,
+        userId,
+        session.id
+      );
+      await client.query(
+        'DELETE FROM exercise_preset_entries WHERE id = $1 AND user_id = $2',
+        [session.id, userId]
       );
     }
     await client.query('COMMIT');

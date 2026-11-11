@@ -12,6 +12,7 @@ import {
 } from 'vitest';
 import { endPool, getClient, getRawAppPool } from '../db/poolManager.js';
 import { processHevyWorkouts } from '../integrations/hevy/hevyDataProcessor.js';
+import { reconcileHevyWorkouts } from '../integrations/hevy/hevyWorkoutRepository.js';
 import hevyExerciseRepository from '../integrations/hevy/hevyExerciseRepository.js';
 import type { HevyWorkout } from '../integrations/hevy/hevyTypes.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
@@ -256,6 +257,163 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     );
     expect(details.rows[0].count).toBe(2);
   });
+
+  it('preserves edited session metadata while updating untouched provider metadata', async () => {
+    await sync([workout()]);
+    const sessionId = (await entries())[0]!.exercise_preset_entry_id;
+    const renamed = {
+      ...workout(),
+      title: 'New provider title',
+      description: 'New provider description',
+    };
+    await sync([renamed]);
+    expect(
+      (
+        await db.query(
+          'SELECT name, description FROM exercise_preset_entries WHERE id = $1',
+          [sessionId]
+        )
+      ).rows[0]
+    ).toEqual({ name: renamed.title, description: renamed.description });
+    await exercisePresetEntryRepository.updateExercisePresetEntry(
+      sessionId,
+      userId,
+      { name: 'My session name', description: 'My session description' }
+    );
+    await sync([
+      {
+        ...renamed,
+        title: 'Another provider title',
+        description: 'Another provider description',
+      },
+    ]);
+    expect(
+      (
+        await db.query(
+          'SELECT name, description FROM exercise_preset_entries WHERE id = $1',
+          [sessionId]
+        )
+      ).rows[0]
+    ).toEqual({
+      name: 'My session name',
+      description: 'My session description',
+    });
+  });
+
+  it('reapplies a linked multi-exercise workout only once after reconciliation', async () => {
+    await sync([workout()]);
+    const original = await entries();
+    const health = await addHealthSession();
+    await setCalorieLink(userId, userId, original[0]!.id, {
+      synced_entry_id: health.id,
+      resolution: 'custom',
+      custom_calories: 350,
+    });
+    const reapply = vi.spyOn(
+      calorieLinkService,
+      'reapplyCalorieLinkWithClient'
+    );
+    await sync([workout()]);
+    expect(reapply).toHaveBeenCalledTimes(1);
+    expect(await countedCalories()).toBe(350);
+  });
+
+  it('removes only missing Hevy sessions in a complete fetched range and restores the linked health calories', async () => {
+    await sync([
+      workout('kept'),
+      workout('removed'),
+      workout('outside', '2026-10-30T17:00:00Z'),
+    ]);
+    const original = await entries();
+    const removed = original.find((row) =>
+      row.source_id.startsWith('removed_')
+    )!;
+    const health = await addHealthSession();
+    await setCalorieLink(userId, userId, removed.id, {
+      synced_entry_id: health.id,
+      resolution: 'custom',
+      custom_calories: 350,
+    });
+    await reconcileHevyWorkouts(
+      userId,
+      userId,
+      ['kept'],
+      '2026-11-01',
+      '2026-11-01'
+    );
+    const saved = await entries();
+    expect(saved.some((row) => row.source_id.startsWith('removed_'))).toBe(
+      false
+    );
+    for (const row of original.filter(
+      (entry) => !entry.source_id.startsWith('removed_')
+    )) {
+      expect(saved.some((entry) => entry.id === row.id)).toBe(true);
+    }
+    expect(await countedCalories()).toBe(400);
+    expect(
+      (
+        await db.query(
+          'SELECT calorie_link_id, calories_applied FROM exercise_entries WHERE id = $1',
+          [health.id]
+        )
+      ).rows[0]
+    ).toEqual({ calorie_link_id: null, calories_applied: null });
+    await reconcileHevyWorkouts(userId, userId, [], '2026-11-01', '2026-11-01');
+    expect(
+      (await entries()).filter((row) => row.source_id.startsWith('kept_'))
+    ).toEqual([]);
+    expect(
+      (await entries()).filter((row) => row.source_id.startsWith('outside_'))
+    ).toHaveLength(2);
+  });
+
+  it.each(['Health Connect', 'HealthKit'])(
+    'clears an app-logged workout link when its %s recording disappears',
+    async (source) => {
+      const exercise = await exerciseRepository.createExercise({
+        user_id: userId,
+        name: 'Synthetic app workout',
+        source: 'manual',
+        is_custom: true,
+        shared_with_public: false,
+      });
+      const logged = await exerciseEntryRepository.createExerciseEntry(
+        userId,
+        {
+          exercise_id: exercise.id,
+          entry_date: '2026-11-01',
+          duration_minutes: 60,
+          calories_burned: 200,
+        },
+        userId,
+        'manual'
+      );
+      const health = await ingestHealthSession(source);
+      await setCalorieLink(userId, userId, logged.id, {
+        synced_entry_id: health.id,
+        resolution: 'custom',
+        custom_calories: 350,
+      });
+      await ingestHealthSession(source, 'other-health-session', 50);
+      expect(await countedCalories()).toBe(250);
+      expect(
+        (
+          await db.query(
+            'SELECT calorie_link_id, calories_applied FROM exercise_entries WHERE id = $1',
+            [logged.id]
+          )
+        ).rows[0]
+      ).toEqual({ calorie_link_id: null, calories_applied: null });
+      expect(
+        (
+          await db.query('SELECT id FROM exercise_entries WHERE id = $1', [
+            health.id,
+          ])
+        ).rows
+      ).toEqual([]);
+    }
+  );
 
   it('adopts a legacy Hevy session through its existing exercise source ID', async () => {
     const preset = await workoutPresetRepository.createWorkoutPreset({
@@ -1293,7 +1451,7 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
   });
 
   it.each(['Health Connect', 'HealthKit'])(
-    'preserves a %s link committed while same-day cleanup waits for its lock',
+    'clears a %s link committed while cleanup waits before deleting a missing recording',
     async (source) => {
       await sync([workout()]);
       const hevy = await entries();
@@ -1316,17 +1474,17 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
       });
       await ingestHealthSession(source, 'synthetic-other-session', 50);
       expect(linkedDuringCleanup).toBe(true);
-      expect(await countedCalories()).toBe(400);
+      expect(await countedCalories()).toBe(50);
       const saved = await db.query<{ calorie_link_id: string | null }>(
         'SELECT calorie_link_id FROM exercise_entries WHERE id = $1',
         [health.id]
       );
-      expect(saved.rows[0]?.calorie_link_id).toBeTruthy();
+      expect(saved.rows).toEqual([]);
     }
   );
 
   it.each(['Health Connect', 'HealthKit'])(
-    'retains a linked %s recording when a partial same-day read omits it',
+    'removes a linked %s recording absent from the next complete same-day read',
     async (source) => {
       await sync([workout()]);
       const hevy = await entries();
@@ -1337,15 +1495,22 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
         custom_calories: 350,
       });
       await ingestHealthSession(source, 'synthetic-other-session', 50);
-      expect(await countedCalories()).toBe(400);
-      const retried = await ingestHealthSession(source);
-      expect(retried.id).toBe(health.id);
-      expect(await countedCalories()).toBe(350);
+      expect(await countedCalories()).toBe(50);
       const linked = await db.query<{ calorie_link_id: string | null }>(
         'SELECT calorie_link_id FROM exercise_entries WHERE id = $1',
         [health.id]
       );
-      expect(linked.rows[0]?.calorie_link_id).toBeTruthy();
+      expect(linked.rows).toEqual([]);
+      expect(
+        (
+          await db.query(
+            "SELECT calorie_link_id, calories_applied FROM exercise_entries WHERE user_id = $1 AND source = 'Hevy'",
+            [userId]
+          )
+        ).rows.every(
+          (row) => row.calorie_link_id === null && row.calories_applied === null
+        )
+      ).toBe(true);
     }
   );
 
@@ -1478,6 +1643,14 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
 
     await sync([{ ...workout(), exercises: [] }]);
     expect(await countedCalories()).toBe(400);
+    expect(
+      (
+        await db.query(
+          "SELECT id FROM exercise_preset_entries WHERE user_id = $1 AND source = 'Hevy'",
+          [userId]
+        )
+      ).rows
+    ).toEqual([]);
     const healthLink = await db.query(
       'SELECT calorie_link_id, calories_applied FROM exercise_entries WHERE id = $1',
       [health.id]

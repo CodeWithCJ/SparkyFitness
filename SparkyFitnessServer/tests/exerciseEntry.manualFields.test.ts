@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import * as poolManager from '../db/poolManager.js';
@@ -154,6 +155,12 @@ describe('editedSyncFields', () => {
 });
 
 describe('sparse set identity', () => {
+  it('normalizes legacy fractional durations without rejecting an otherwise valid edit', () => {
+    expect(resolveEditedSets([{ set_number: 1, duration: 42.5 }], [])).toEqual([
+      { set_number: 1, duration: 43 },
+    ]);
+  });
+
   const stored = [
     { id: 1, set_number: 1, weight: 40, notes: 'First set' },
     { id: 2, set_number: 2, weight: 80, notes: 'Second set' },
@@ -287,7 +294,7 @@ describe('manual_fields on exercise entry writes', () => {
 
   it('a re-sent workout keeps the fields the user edited', async () => {
     await exerciseEntryDb._createExerciseEntryWithClient(
-      mockClient,
+      mockClient as unknown as PoolClient,
       'user-1',
       {
         exercise_id: 'ex-1',
@@ -319,7 +326,7 @@ describe('manual_fields on exercise entry writes', () => {
     });
 
     await exerciseEntryDb._createExerciseEntryWithClient(
-      mockClient,
+      mockClient as unknown as PoolClient,
       'user-1',
       {
         exercise_id: 'ex-1',

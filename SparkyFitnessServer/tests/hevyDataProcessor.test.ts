@@ -417,7 +417,9 @@ describe('processHevyWorkouts — required processing failures', () => {
 
     await expect(
       processHevyWorkouts(UID, CID, [sampleWorkout(), second], 'UTC')
-    ).rejects.toThrow('Failed to import 1 Hevy workout(s).');
+    ).rejects.toThrow(
+      'Failed to import 1 Hevy workout(s): "Vid plan A" (2026-07-13).'
+    );
     expect(syncHevyWorkout).toHaveBeenCalledTimes(2);
   });
 });

@@ -100,7 +100,11 @@ export function resolveEditedSets(
     ) {
       resolved.completed_at = new Date(completed).toISOString();
     }
-    return exerciseEntrySetRequestSchema.parse(resolved);
+    // Legacy routes accept fractional seconds. Keep their database rounding
+    // without applying a second, stricter API validator inside the row lock.
+    if (typeof resolved.duration === 'number')
+      resolved.duration = Math.round(resolved.duration);
+    return resolved as ExerciseEntrySetRequest;
   });
 }
 

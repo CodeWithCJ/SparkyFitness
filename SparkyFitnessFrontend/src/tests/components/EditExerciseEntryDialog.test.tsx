@@ -462,6 +462,35 @@ describe('EditExerciseEntryDialog calories after changing sets', () => {
     expect(data.calories_burned).toBe(0);
   });
 
+  it('sends an explicitly cleared rep field as null over JSON', async () => {
+    renderDialog(
+      makeEntry({
+        sets: [
+          {
+            ...cardioSet,
+            weight: 40,
+            reps: 8,
+            duration: null,
+            distance: null,
+            rest_time: 120,
+          },
+        ],
+        exercise_snapshot: {
+          id: 'ex-1',
+          name: 'Bench Press',
+          category: 'Strength',
+          modality: 'weight_reps',
+        },
+      } as unknown as Partial<ExerciseEntry>)
+    );
+    fireEvent.change(screen.getByDisplayValue('8'), { target: { value: '' } });
+    const { data } = await saveEntry();
+    expect(JSON.parse(JSON.stringify(data)).sets[0]).toHaveProperty(
+      'reps',
+      null
+    );
+  });
+
   it('keeps the stored duration when added strength sets carry no timing', async () => {
     renderDialog(
       makeEntry({

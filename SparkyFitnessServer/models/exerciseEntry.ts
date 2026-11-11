@@ -2,6 +2,7 @@ import {
   compareByEntryTime,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
+  type ExerciseEntrySetRequest,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
@@ -764,6 +765,7 @@ async function _updateExerciseEntryWithClient(
     preserveManualFields?: boolean;
     markManualFields?: readonly string[];
     resolveUpdate?: ResolveExerciseEntryUpdate;
+    deferCalorieLinkReapply?: boolean;
   } = {}
 ) {
   // A link created after an unlocked read would be ignored, and locking one
@@ -1062,7 +1064,7 @@ async function _updateExerciseEntryWithClient(
       await client.query(setsQuery);
     }
   }
-  if (currentEntry.calorie_link_id) {
+  if (currentEntry.calorie_link_id && !options.deferCalorieLinkReapply) {
     await reapplyCalorieLinkWithClient(
       client,
       userId,
@@ -1091,19 +1093,22 @@ async function acquireExerciseEntrySyncLockWithClient(
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
 }
 
-async function _createExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
+async function _createExerciseEntryWithClient<T extends object>(
+  client: PoolClient,
+  userId: string,
+  suppliedEntryData: T & {
+    sets?: ExerciseEntrySetRequest[];
+    notes?: string | null;
+  },
+  createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
-  options: { skipDuplicateCheck?: boolean } = {}
+  options: {
+    skipDuplicateCheck?: boolean;
+    deferCalorieLinkReapply?: boolean;
+  } = {}
 ) {
+  const entryData = suppliedEntryData as Record<string, unknown>;
   try {
     // Check for existing entry
     // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
@@ -1183,7 +1188,11 @@ async function _createExerciseEntryWithClient(
         entrySource,
         // A source_id match is the same provider workout sent again: keep
         // what the user corrected since the last sync.
-        { returnNullIfMissing: true, preserveManualFields: syncDuplicateCheck }
+        {
+          returnNullIfMissing: true,
+          preserveManualFields: syncDuplicateCheck,
+          deferCalorieLinkReapply: options.deferCalorieLinkReapply,
+        }
       );
       if (!updatedEntry) {
         // The writer that deleted the row is a delete-then-insert sync, so it
@@ -1213,6 +1222,7 @@ async function _createExerciseEntryWithClient(
             {
               returnNullIfMissing: true,
               preserveManualFields: syncDuplicateCheck,
+              deferCalorieLinkReapply: options.deferCalorieLinkReapply,
             }
           );
         }
@@ -1296,24 +1306,25 @@ async function _createExerciseEntryWithClient(
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
-      if (entryData.sets && entryData.sets.length > 0) {
+      if (Array.isArray(entryData.sets) && entryData.sets.length > 0) {
         assertSetWeightSign(entryData.sets, snapshot.modality);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setsValues = entryData.sets.map((set: any) => [
-          newEntryId,
-          set.set_number,
-          set.set_type,
-          set.reps,
-          set.weight,
-          set.duration,
-          set.rest_time,
-          set.notes,
-          set.rpe,
-          set.rir ?? null,
-          set.completed_at ?? null,
-          set.is_pr ?? false,
-          set.distance ?? null,
-        ]);
+        const setsValues = (entryData.sets as Record<string, unknown>[]).map(
+          (set) => [
+            newEntryId,
+            set.set_number,
+            set.set_type,
+            set.reps,
+            set.weight,
+            set.duration,
+            set.rest_time,
+            set.notes,
+            set.rpe,
+            set.rir ?? null,
+            set.completed_at ?? null,
+            set.is_pr ?? false,
+            set.distance ?? null,
+          ]
+        );
         const setsQuery = format(
           'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
           setsValues
@@ -2190,10 +2201,6 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   // the enriched-session reuse cache makes every sync do once a session has
   // been collected once (#2191, #2300).
   //
-  // Health reads can be incomplete despite day-boundary chunking. Keep a
-  // manually linked health recording until it is explicitly unlinked/deleted:
-  // absence from one read is not proof of deletion and must not erase the
-  // person's calorie resolution. Other unlisted records retain range cleanup.
   keepSourceIds?: string[]
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
@@ -2204,10 +2211,6 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
      WHERE user_id = $1
        AND entry_date BETWEEN $2 AND $3
        AND source = $4
-       AND NOT (
-         lower(trim(source)) IN ('health connect', 'healthkit')
-         AND source_id IS NOT NULL AND calorie_link_id IS NOT NULL
-       )
        AND (
          $5::text IS NULL
          OR NOT EXISTS (
@@ -2232,22 +2235,11 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
       ]
     );
   const entryIdsResult = await readCleanupCandidates();
-  let entryIds = entryIdsResult.rows.map((row) => row.id);
+  const entryIds = entryIdsResult.rows.map((row) => row.id);
   if (entryIds.length > 0) {
     // A resync deletes the synced side in bulk. Clear the link first so the
     // logged workout that stays behind counts its own estimate again.
     await lockCalorieLinkParticipantsWithClient(client, userId, entryIds);
-    if (
-      ['health connect', 'healthkit'].includes(entrySource.trim().toLowerCase())
-    ) {
-      // A link can commit while cleanup waits for its allocation lock. Apply
-      // the same protection again once the selected participants are locked.
-      const lockedIds = new Set(entryIds);
-      entryIds = (await readCleanupCandidates()).rows
-        .map((row) => row.id)
-        .filter((id) => lockedIds.has(id));
-      if (entryIds.length === 0) return 0;
-    }
     await clearCalorieLinksOfEntriesWithClient(client, userId, entryIds);
     // Delete associated activity details
     await client.query(

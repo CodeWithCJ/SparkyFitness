@@ -138,15 +138,15 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
       exerciseEntryRepository._createExerciseEntryWithClient
     ).mock.calls[0][2];
     expect(firstCallArgs.sets).toHaveLength(3);
-    expect(firstCallArgs.sets[0].reps).toBe(10);
-    expect(firstCallArgs.sets[0].weight).toBe(6); // 180000 / 30 * 0.001 = 6 kg
+    expect(firstCallArgs.sets![0].reps).toBe(10);
+    expect(firstCallArgs.sets![0].weight).toBe(6); // 180000 / 30 * 0.001 = 6 kg
 
     const secondCallArgs = vi.mocked(
       exerciseEntryRepository._createExerciseEntryWithClient
     ).mock.calls[1][2];
     expect(secondCallArgs.sets).toHaveLength(4);
-    expect(secondCallArgs.sets[0].reps).toBe(8);
-    expect(secondCallArgs.sets[0].weight).toBe(10); // 320000 / 32 * 0.001 = 10 kg
+    expect(secondCallArgs.sets![0].reps).toBe(8);
+    expect(secondCallArgs.sets![0].weight).toBe(10); // 320000 / 32 * 0.001 = 10 kg
   });
 
   it('falls back to summarizedExerciseSets when individual exercise sets lack exercise names', async () => {

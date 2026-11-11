@@ -99,7 +99,7 @@ async function processHevyWorkouts(
   const templatesById = new Map(
     templates.map((template) => [template.id, template])
   );
-  let failures = 0;
+  const failures: string[] = [];
   for (const workout of workouts) {
     if (workout.id) {
       if (seenWorkoutIds.has(workout.id)) {
@@ -113,15 +113,21 @@ async function processHevyWorkouts(
         prepareSingleWorkout(userId, client, workout, timezone, templatesById)
       );
     } catch (error) {
-      failures++;
+      const start = new Date(workout.start_time);
+      const day = Number.isFinite(start.getTime())
+        ? instantToDay(start, timezone)
+        : 'unknown date';
+      failures.push(`"${workout.title}" (${day})`);
       log(
         'error',
         `Failed to process Hevy workout ${workout.id}: ${errorMessage(error)}`
       );
     }
   }
-  if (failures > 0) {
-    throw new Error(`Failed to import ${failures} Hevy workout(s).`);
+  if (failures.length > 0) {
+    throw new Error(
+      `Failed to import ${failures.length} Hevy workout(s): ${failures.join('; ')}.`
+    );
   }
 }
 

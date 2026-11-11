@@ -6,8 +6,6 @@ The system is built with **least-privilege boundary isolation** using PostgreSQL
 
 AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
 
-Hevy workouts and their calorie links follow the exercise diary permissions. A delegate with **Manage Diary** can link an imported Hevy workout to a matching health recording; **View Reports** remains read-only. The stable provider ID stored on the logged session does not grant access to Hevy credentials or another person's workouts.
-
 ---
 
 ## How to Set Up Sharing
