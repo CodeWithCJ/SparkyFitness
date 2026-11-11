@@ -10,6 +10,7 @@ import '@testing-library/jest-dom';
 import { getMealById, updateMeal } from '@/api/Foods/meals';
 import {
   getRecipeSource,
+  previewRecipeNutritionSync,
   syncRecipeNutrition,
 } from '@/api/Foods/recipeImportService';
 import MealManagement from '@/pages/Foods/MealManagement';
@@ -61,6 +62,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     ],
     energyUnit: 'kcal' as const,
     convertEnergy: (value: number) => value,
+    getEnergyUnitString: () => 'kcal',
   }),
 }));
 
@@ -90,6 +92,7 @@ jest.mock('@/api/Foods/meals', () => ({
 let mockRealBuilder = false;
 jest.mock('@/api/Foods/recipeImportService', () => ({
   getRecipeSource: jest.fn(),
+  previewRecipeNutritionSync: jest.fn(),
   syncRecipeNutrition: jest.fn(),
 }));
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
@@ -283,6 +286,18 @@ describe('MealManagement', () => {
       .mockImplementationOnce(() => initialRead)
       .mockImplementationOnce(() => retryRead);
     jest.mocked(getRecipeSource).mockResolvedValue(source);
+    jest.mocked(previewRecipeNutritionSync).mockResolvedValue({
+      mealId: source.mealId,
+      mealName: meal.name,
+      recipeName: source.name,
+      recipeSlug: source.recipeSlug,
+      recipeServings: 1,
+      sourceChanged: false,
+      existingNutrition: {},
+      batchNutrition: { calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
+      nutrition: { calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
+      confirmationFingerprint: 'c'.repeat(64),
+    });
     jest.mocked(syncRecipeNutrition).mockResolvedValue({
       status: 'synced',
       source,
@@ -315,6 +330,7 @@ describe('MealManagement', () => {
       )
     ).not.toBeInTheDocument();
     fireEvent.click(syncButton);
+    expect(previewRecipeNutritionSync).not.toHaveBeenCalled();
     expect(syncRecipeNutrition).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading meal' }));
     await waitFor(() => expect(getMealById).toHaveBeenCalledTimes(2));
@@ -323,6 +339,7 @@ describe('MealManagement', () => {
     expect(screen.getByText('Loading meal ingredients…')).toBeInTheDocument();
     expect(syncButton).toBeDisabled();
     fireEvent.click(syncButton);
+    expect(previewRecipeNutritionSync).not.toHaveBeenCalled();
     expect(syncRecipeNutrition).not.toHaveBeenCalled();
     await act(async () => finishRetry(meal));
     expect(await screen.findByText('Apple')).toBeInTheDocument();
@@ -333,10 +350,17 @@ describe('MealManagement', () => {
       )
     ).not.toBeInTheDocument();
     fireEvent.click(syncButton);
+    const confirm = await screen.findByRole('button', {
+      name: 'Confirm nutrition sync',
+    });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    expect(previewRecipeNutritionSync).toHaveBeenCalledWith('meal1');
+    expect(syncRecipeNutrition).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
     expect(
       await screen.findByText('Nutrition synced to Mealie.')
     ).toBeInTheDocument();
-    expect(syncRecipeNutrition).toHaveBeenCalledWith('meal1');
+    expect(syncRecipeNutrition).toHaveBeenCalledWith('meal1', 'c'.repeat(64));
   });
 });
 
