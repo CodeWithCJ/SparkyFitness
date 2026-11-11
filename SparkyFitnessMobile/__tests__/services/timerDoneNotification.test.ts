@@ -92,4 +92,27 @@ describe('timer done notification races', () => {
     await pending;
     expect(mockCancel).toHaveBeenCalledWith('late-ping');
   });
+
+  it('stays cancelled when a pause lands while the old ping is being cancelled', async () => {
+    await scheduleMeditationTimerNotification(600);
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+
+    let finishCancel: () => void = () => {};
+    mockCancel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCancel = resolve;
+        })
+    );
+    // Resume: replaces ping-1, and is parked cancelling it.
+    const pending = scheduleMeditationTimerNotification(540);
+    await Promise.resolve();
+    expect(mockCancel).toHaveBeenCalledWith('ping-1');
+    // Pause during that await.
+    await cancelMeditationTimerNotification();
+    finishCancel();
+    await pending;
+
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+  });
 });

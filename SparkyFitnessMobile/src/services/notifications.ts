@@ -553,17 +553,25 @@ function createTimerDoneNotification(config: TimerDoneNotification) {
     }
   };
 
-  const cancel = async (): Promise<void> => {
-    generation += 1;
+  /** Cancels the held ping without touching the generation. */
+  const clearScheduled = async (): Promise<void> => {
     const id = scheduledId;
     scheduledId = null;
     if (id) await cancelId(id);
   };
 
+  const cancel = async (): Promise<void> => {
+    generation += 1;
+    await clearScheduled();
+  };
+
   const schedule = async (seconds: number): Promise<void> => {
-    await cancel();
-    const token = generation;
+    // Claim a generation before the first await, so a cancel or a newer
+    // schedule made while the old ping is being cancelled makes this one stale.
+    const token = ++generation;
     const isStale = () => token !== generation;
+    await clearScheduled();
+    if (isStale()) return;
     if (seconds <= 0) return;
     if (!useAppPreferencesStore.getState().notificationsEnabled) return;
     if (!(await hasNotificationPermission()) || isStale()) return;
