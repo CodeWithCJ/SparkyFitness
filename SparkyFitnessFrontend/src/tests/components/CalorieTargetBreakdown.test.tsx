@@ -155,6 +155,56 @@ describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
     );
   });
 
+  it.each([false, true])(
+    'explains two-reading advice eligibility without changing the budget (separate=%s)',
+    (separate) => {
+      render(
+        <CalorieTargetBreakdown
+          {...defaultProps}
+          defaultOpen
+          adaptiveActivitySeparate={separate}
+          adaptiveTdeeData={{
+            ...boundedData(),
+            observedWeightDays: 2,
+            confidence: 'LOW',
+            historyReliable: false,
+            activityHistoryReliable: false,
+          }}
+        />
+      );
+      const step = openAdaptiveStep();
+      expect(step.getByRole('status')).toHaveTextContent(
+        'Weigh in at least weekly to unlock target advice'
+      );
+      expect(step.getByRole('status')).not.toHaveTextContent(
+        /still adjusting/i
+      );
+      expect(screen.getByTestId('breakdown-step-goal')).toHaveTextContent(
+        '2194 kcal'
+      );
+    }
+  );
+
+  it.each([3, undefined])(
+    'keeps the history explanation when the latest reading count is %s',
+    (observedWeightDays) => {
+      render(
+        <CalorieTargetBreakdown
+          {...defaultProps}
+          defaultOpen
+          adaptiveTdeeData={{
+            ...boundedData(),
+            observedWeightDays,
+            historyReliable: false,
+          }}
+        />
+      );
+      expect(openAdaptiveStep().getByRole('status')).toHaveTextContent(
+        /still adjusting/i
+      );
+    }
+  );
+
   it('keeps the actionable fallback checklist visible while technical derivation stays closed', () => {
     render(
       <CalorieTargetBreakdown

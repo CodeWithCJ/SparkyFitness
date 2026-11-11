@@ -39,15 +39,22 @@ export const AdaptiveEstimateStatus = ({
               'diary.calculateExplanation.adaptiveSummaryFading',
               'Status: Returning toward the formula baseline as evidence ages.'
             )
-          : historyReliable !== true
+          : historyReliable !== true &&
+              data.observedWeightDays !== undefined &&
+              data.observedWeightDays < 3
             ? t(
-                'diary.calculateExplanation.adaptiveSummaryAdjusting',
-                'Status: Still adjusting; earlier evidence remains in the gradual estimate.'
+                'diary.calculateExplanation.adaptiveSummaryWeeklyWeighIn',
+                'Status: Weigh in at least weekly to unlock target advice.'
               )
-            : t(
-                'diary.calculateExplanation.adaptiveSummaryReady',
-                'Status: Adaptive estimate; the recent history meets the data-quality checks.'
-              );
+            : historyReliable !== true
+              ? t(
+                  'diary.calculateExplanation.adaptiveSummaryAdjusting',
+                  'Status: Still adjusting; earlier evidence remains in the gradual estimate.'
+                )
+              : t(
+                  'diary.calculateExplanation.adaptiveSummaryReady',
+                  'Status: Adaptive estimate; the recent history meets the data-quality checks.'
+                );
     return (
       <p role="status" className="font-medium">
         {status}

@@ -3893,6 +3893,7 @@
       "adaptiveSummaryFallback": "Status: Formula fallback while more overlapping weight and food history is needed.",
       "adaptiveSummaryFading": "Status: Returning toward the formula baseline as evidence ages.",
       "adaptiveSummaryAdjusting": "Status: Still adjusting; earlier evidence remains in the gradual estimate.",
+      "adaptiveSummaryWeeklyWeighIn": "Status: Weigh in at least weekly to unlock target advice.",
       "adaptiveSummaryReady": "Status: Adaptive estimate; the recent history meets the data-quality checks.",
       "adaptiveLearnedContributions": "Learned contributions: {{days}} of {{window}} days in the gradual estimate.",
       "adaptiveHistoryQualityMet": "The selected history meets the freshness, confidence and plausibility checks. This does not guarantee that the estimate has caught up with a real change.",
