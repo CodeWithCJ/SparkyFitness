@@ -4717,6 +4717,7 @@
     "selectMeal": "Select Meal",
     "time": "Time",
     "unknownFood": "Unknown food",
+    "copyEntry": "Copy Food",
     "deleteEntry": "Delete Entry",
     "servingOptionsHint": "Opens serving options",
     "mealSelectorHint": "Opens meal selection",
@@ -5640,7 +5641,14 @@
   },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",
+    "foodTitle": "Copy food: {{food}}",
     "sourceDate": "Source date: {{date}}",
+    "copyTo": "Copy to",
+    "quick": {
+      "now": "Now",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
+    },
     "targetDate": "Target date",
     "targetMeal": "Target meal",
     "copy": "Copy",
@@ -5720,7 +5728,9 @@
   },
   "foodEntryCopy": {
     "success": "Meal copied",
-    "failed": "Failed to copy meal"
+    "failed": "Failed to copy meal",
+    "foodSuccess": "Food copied",
+    "foodFailed": "Failed to copy food"
   },
   "foodDelete": {
     "failed": "Failed to delete food",

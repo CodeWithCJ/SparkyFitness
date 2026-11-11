@@ -28,6 +28,8 @@ export interface CreateFoodEntryPayload {
   carbs?: number;
   fat?: number;
   saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
   sodium?: number;
   dietary_fiber?: number;
   sugars?: number;
@@ -41,6 +43,7 @@ export interface CreateFoodEntryPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
   // Meal entry
   meal_id?: string;
