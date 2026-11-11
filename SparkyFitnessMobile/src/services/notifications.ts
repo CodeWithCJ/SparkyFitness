@@ -540,11 +540,12 @@ interface TimerDoneNotification {
  */
 function createTimerDoneNotification(config: TimerDoneNotification) {
   let scheduledId: string | null = null;
+  // Bumped by every schedule and cancel. A schedule that was overtaken while
+  // it awaited permission or the channel (a pause, close or a second start)
+  // must not leave its ping behind.
+  let generation = 0;
 
-  const cancel = async (): Promise<void> => {
-    const id = scheduledId;
-    scheduledId = null;
-    if (!id) return;
+  const cancelId = async (id: string): Promise<void> => {
     try {
       await Notifications.cancelScheduledNotificationAsync(id);
     } catch {
@@ -552,14 +553,24 @@ function createTimerDoneNotification(config: TimerDoneNotification) {
     }
   };
 
+  const cancel = async (): Promise<void> => {
+    generation += 1;
+    const id = scheduledId;
+    scheduledId = null;
+    if (id) await cancelId(id);
+  };
+
   const schedule = async (seconds: number): Promise<void> => {
     await cancel();
+    const token = generation;
+    const isStale = () => token !== generation;
     if (seconds <= 0) return;
     if (!useAppPreferencesStore.getState().notificationsEnabled) return;
-    if (!(await hasNotificationPermission())) return;
+    if (!(await hasNotificationPermission()) || isStale()) return;
     try {
       await config.ensureChannel();
-      scheduledId = await Notifications.scheduleNotificationAsync({
+      if (isStale()) return;
+      const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: notificationCopy(config.titleKey, config.titleFallback),
           body: notificationCopy(config.bodyKey, config.bodyFallback),
@@ -573,6 +584,11 @@ function createTimerDoneNotification(config: TimerDoneNotification) {
           channelId: config.channelId,
         },
       });
+      if (isStale()) {
+        await cancelId(id);
+        return;
+      }
+      scheduledId = id;
     } catch (err) {
       addLog(`${config.logName} failed: ${(err as Error).message}`, 'ERROR');
     }

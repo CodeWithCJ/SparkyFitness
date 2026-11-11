@@ -101,6 +101,40 @@ describe('MeditationTimerModal wall clock', () => {
     expect(screen.getByText('09:00')).toBeTruthy();
   });
 
+  it('starts a fresh countdown when a preset is picked after pausing', () => {
+    show();
+    fireEvent.press(screen.getByText('Begin Meditation'));
+    act(() => {
+      jest.advanceTimersByTime(60 * 1000);
+    });
+    fireEvent.press(screen.getByText('Pause'));
+    fireEvent.press(screen.getByText('15m'));
+    expect(screen.getByText('15:00')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Begin Meditation'));
+    expect(scheduleMeditationTimerNotification).toHaveBeenLastCalledWith(900);
+    act(() => {
+      jest.advanceTimersByTime(250);
+    });
+    expect(screen.getByText('15:00')).toBeTruthy();
+  });
+
+  it('starts a fresh countdown when a preset is picked after finishing', () => {
+    show();
+    fireEvent.press(screen.getByText('Begin Meditation'));
+    sleepPhone(11 * 60 * 1000);
+    act(() => {
+      jest.advanceTimersByTime(250);
+    });
+    fireEvent.press(screen.getByText('5m'));
+    fireEvent.press(screen.getByText('Begin Meditation'));
+    expect(scheduleMeditationTimerNotification).toHaveBeenLastCalledWith(300);
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(screen.getByText('04:59')).toBeTruthy();
+  });
+
   it('keeps the stopwatch running through a locked screen', () => {
     show();
     fireEvent.press(screen.getByText('Open Stopwatch'));

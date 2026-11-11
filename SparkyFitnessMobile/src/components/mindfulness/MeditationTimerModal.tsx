@@ -83,6 +83,10 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
   const handleSelectMinutes = (mins: number) => {
     setSelectedMinutes(mins);
     if (!isActive) {
+      // A new preset starts a fresh countdown, so the time banked on the
+      // clock (a paused or finished run) goes with the old one.
+      bankedMsRef.current = 0;
+      runStartMsRef.current = null;
       setSecondsRemaining(mins * 60);
     }
   };
