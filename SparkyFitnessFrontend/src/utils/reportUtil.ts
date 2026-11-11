@@ -24,6 +24,7 @@ import {
   entryCaloriesCounted,
 } from '@workspace/shared';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { formatHeight, formatWeight } from './unitConversions';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 /**
@@ -767,6 +768,11 @@ export const exportBodyMeasurements = async ({
       `Reports: Fetched ${measurements.length} body measurement entries for export.`
     );
 
+    // As in the Reports table: ft_in applies to height only, so the other
+    // lengths stay in cm.
+    const circumferenceUnit =
+      defaultMeasurementUnit === 'ft_in' ? 'cm' : defaultMeasurementUnit;
+
     const csvHeaders = [
       i18n.t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
       i18n.t(
@@ -775,15 +781,15 @@ export const exportBodyMeasurements = async ({
       ),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.neck',
-        `Neck(${defaultMeasurementUnit})`
+        `Neck(${circumferenceUnit})`
       ),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.waist',
-        `Waist(${defaultMeasurementUnit})`
+        `Waist(${circumferenceUnit})`
       ),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.hips',
-        `Hips(${defaultMeasurementUnit})`
+        `Hips(${circumferenceUnit})`
       ),
       i18n.t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
       i18n.t(
@@ -799,8 +805,20 @@ export const exportBodyMeasurements = async ({
     // Stored in kg and cm; the headers name the user's units.
     const formatLength = (value?: number | null) =>
       value
-        ? convertMeasurement(value, 'cm', defaultMeasurementUnit).toFixed(1)
+        ? convertMeasurement(value, 'cm', circumferenceUnit).toFixed(1)
         : '';
+    // Stones and pounds, and feet and inches, are written as the table shows them.
+    const formatBodyWeight = (value?: number | null) => {
+      if (!value) return '';
+      if (defaultWeightUnit === 'st_lbs') return formatWeight(value, 'st_lbs');
+      return convertWeight(value, 'kg', defaultWeightUnit).toFixed(1);
+    };
+    const formatBodyHeight = (value?: number | null) => {
+      if (!value) return '';
+      if (defaultMeasurementUnit === 'ft_in')
+        return formatHeight(value, 'ft_in');
+      return formatLength(value);
+    };
 
     const csvRows = measurements
       .filter(
@@ -815,23 +833,21 @@ export const exportBodyMeasurements = async ({
       )
       .map((measurement) => [
         formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
-        measurement.weight
-          ? convertWeight(measurement.weight, 'kg', defaultWeightUnit).toFixed(
-              1
-            )
-          : '',
+        formatBodyWeight(measurement.weight),
         formatLength(measurement.neck),
         formatLength(measurement.waist),
         formatLength(measurement.hips),
         measurement.steps || '',
-        formatLength(measurement.height),
+        formatBodyHeight(measurement.height),
         measurement.body_fat_percentage
           ? measurement.body_fat_percentage.toFixed(1)
           : '',
       ]);
 
     const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      )
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

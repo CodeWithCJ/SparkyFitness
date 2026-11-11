@@ -239,4 +239,35 @@ describe('exportBodyMeasurements', () => {
 
     expect(csv).toContain('"160.0","20.0"');
   });
+
+  it('writes stones and pounds, and feet and inches, as the table shows them', async () => {
+    let csv = '';
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    jest.spyOn(global, 'Blob').mockImplementation((parts) => {
+      csv = String(parts?.[0]);
+      return {} as Blob;
+    });
+    global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
+    global.URL.revokeObjectURL = jest.fn();
+
+    await exportBodyMeasurements({
+      loggingLevel: 'ERROR',
+      startDate: '2026-11-01',
+      endDate: '2026-11-09',
+      measurementData: [
+        { entry_date: '2026-11-09', weight: 80, neck: 40, height: 178 },
+      ] as unknown as CheckInMeasurementsResponse[],
+      defaultWeightUnit: 'st_lbs',
+      defaultMeasurementUnit: 'ft_in',
+      formatDateInUserTimezone: (date) => String(date),
+      convertWeight: (value) => value,
+      convertMeasurement: (value, _from, to) => (to === 'cm' ? value : NaN),
+    });
+
+    expect(csv).toContain('Neck(cm)');
+    expect(csv).toContain('"12st 8.4lbs","40.0"');
+    expect(csv).toContain(`"5'10.1"""`);
+  });
 });
