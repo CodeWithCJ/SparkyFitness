@@ -141,33 +141,32 @@ export function isPlausibleStride(meters: number): boolean {
   );
 }
 
-export interface KnownDistanceCalibration {
-  /** Metres per step over the real distance. */
-  strideMeters: number;
-  /** How far the treadmill display read from it, when the display figure was given. */
-  treadmillPercent: number | null;
+export interface TreadmillCheck {
+  /** The distance the steps cover at the person's stride. */
+  actualMeters: number;
+  /** How far the treadmill display read from that, as a percent. */
+  percent: number;
 }
 
 /**
- * A stride, and optionally the treadmill's error, from a deliberate run or
- * walk over a distance the person knows: the steps taken, the real distance
- * and, optionally, what the treadmill showed. Null when the sample is too
- * short or implausible (see `strideFromSample`).
+ * How far a treadmill display reads, from a walk or run on it: the steps
+ * taken (from Health or a watch), the stride already known for that activity
+ * and what the display showed. The steps times the stride stand in for the
+ * real distance, so the stride should be measured first on a known distance.
+ * Null when there are too few steps or the answer is not a plausible belt
+ * error (see `percentFromKnownDistance`).
  */
-export function calibrateFromKnownDistance(
+export function treadmillCheckFromSteps(
   steps: number,
-  actualMeters: number,
-  displayedMeters: number | null
-): KnownDistanceCalibration | null {
-  const strideMeters = strideFromSample(steps, actualMeters);
-  if (strideMeters == null) return null;
-  return {
-    strideMeters,
-    treadmillPercent:
-      displayedMeters == null
-        ? null
-        : percentFromKnownDistance(displayedMeters, actualMeters),
-  };
+  strideMeters: number,
+  displayedMeters: number
+): TreadmillCheck | null {
+  if (!Number.isFinite(steps) || steps < MIN_CALIBRATION_STEPS) return null;
+  if (!isPlausibleStride(strideMeters)) return null;
+  const actualMeters = estimateDistanceMeters(steps, strideMeters);
+  if (actualMeters < MIN_CALIBRATION_METERS) return null;
+  const percent = percentFromKnownDistance(displayedMeters, actualMeters);
+  return percent == null ? null : { actualMeters, percent };
 }
 
 /** Running form worked out from a step count over a stretch of moving time. */

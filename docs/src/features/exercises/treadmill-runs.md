@@ -24,9 +24,9 @@ Open **Settings > Workout > Treadmill & stride**. Everything here is kept on you
 
 Walking and running each show the stride the app uses to turn steps into distance, in metres or feet to match your distance unit, and where it came from:
 
-- **Default stride. Not learned yet.** A typical adult's stride is used.
+- **A typical stride until it learns yours.** A typical adult's stride is used.
 - **Learned from N real distances.** Each distance you corrected, or each saved outdoor walk or run, taught it. Newer distances move it gradually, so one odd treadmill does not undo a good stride. A watch run teaches it too, from the steps Apple Health holds over the run, whether you typed the distance on the watch or on the run summary. A run counts once: a figure you enter again for the same run replaces the first instead of adding to it.
-- **Set by you.** You typed it or calibrated it. It counts for a few learned distances, so the next real distance nudges it instead of replacing it.
+- **Set by you.** You typed it or measured it. It counts for a few learned distances, so the next real distance nudges it instead of replacing it.
 
 ## Cadence and stride on a watch run
 
@@ -36,25 +36,22 @@ A watch run is saved as soon as it reaches the phone, which can be before the wa
 
 A watch estimates a treadmill run's distance from your motion, and the estimate can be off by a steady amount. Each time you enter what the treadmill showed after a watch run, the app works out how far off the watch was, and the watch applies that to its next treadmill run. Walks and runs are learned separately.
 
-Under **Watch treadmill distance** you can see the factor the watch is using (for example 1.096, or +9.6%) and how many corrections it comes from. **Reset and learn from scratch** forgets it, and the watch goes back to its own estimate. Runs already saved are not changed.
+Under **Watch** you can see how much the watch's distance is raised or lowered (for example "raised by 9.6%") and how many runs it was learned from. **Reset** forgets it, and the watch goes back to its own estimate. Runs already saved are not changed.
 
-To set a stride by hand, type it under the stride and tap **Save**. A step shorter than 0.3 m or longer than 2.5 m is refused. **Reset and learn from scratch** forgets one activity's stride and goes back to the default.
+To set a stride by hand, tap **Type it in** under the stride, enter it and tap **Save**. A step shorter than 0.3 m or longer than 2.5 m is refused. **Reset** forgets one activity's stride and goes back to the default.
 
-### Correct treadmill distance
+### Treadmill display
 
-If your treadmill display reads long or short, turn this on, choose **Long** or **Short**, and enter how far off it is, up to 25 percent. The screen shows an example: a display of 5.00 km saved as 4.81 km.
+If your treadmill shows more or less distance than you really covered, turn on **My treadmill is off**, choose **More than I ran** or **Less than I ran**, and enter by how much, up to 25 percent. The screen shows an example: when the treadmill shows 5.00 km, 4.81 km is saved.
 
 The correction divides the display figure by one plus the percent, so a display that reads 4 percent long and shows 5.20 km is saved as 5.00 km. The stored distance, and the pace worked out from it, are the corrected ones. Where it matters the screens show both: "Treadmill showed 5.20 km. Saved as 5.00 km with your +4% treadmill correction." Turn the switch off to save figures exactly as typed.
 
-### Calibrate on purpose
+### Measure
 
-Walk or run a distance you know is real, then enter:
+This is optional, and works best in this order. Pick **Walk** or **Run** first; each has its own stride.
 
-- **Steps taken**, from Health, Google Fit or your watch.
-- **Real distance**, for example a measured track or a GPS run of the same effort.
-- **Treadmill showed**, optional.
-
-**Calibrate** sets your stride for that activity from the steps and the real distance (at least 150 steps and 100 m). If you gave the treadmill figure, it also tells you how far off the display is and offers **Use this correction**. Nothing is switched on until you tap it.
+1. **My stride.** Walk or run a distance you know is real, such as laps of a track, then enter the **Steps taken** (from Health, Google Fit or your watch) and the **Real distance**. **Set my stride** sets your stride from them (at least 150 steps and 100 m).
+2. **My treadmill.** Walk or run on the treadmill, then enter the **Steps taken** and what the **Treadmill showed**. Your steps times your stride give the real distance, so you do not have to work it out. **Check my treadmill** says how far off the display is and offers **Use this correction**. Nothing is switched on until you tap it, and your stride is not changed.
 
 ## While you record
 

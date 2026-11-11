@@ -59,12 +59,10 @@ beforeEach(async () => {
 describe('strides', () => {
   it('shows the default for a stride that has not been learned', async () => {
     renderScreen();
-    await screen.findAllByText(
-      'Default stride. Not learned yet: it learns when you enter the distance a treadmill showed after a run, or set it below.'
-    );
+    await screen.findAllByText('A typical stride until it learns yours.');
     expect(screen.getByText('0.75 m')).toBeTruthy();
     expect(screen.getByText('1.05 m')).toBeTruthy();
-    expect(screen.queryByText('Reset and learn from scratch')).toBeNull();
+    expect(screen.queryByText('Reset')).toBeNull();
   });
 
   it('shows how many real distances taught a stride', async () => {
@@ -88,6 +86,7 @@ describe('strides', () => {
     renderScreen();
     await screen.findByText('2.46 ft');
 
+    fireEvent.press(screen.getAllByText('Type it in')[0]);
     fireEvent.changeText(screen.getByLabelText('Walking stride in ft'), '2.5');
     fireEvent.press(screen.getAllByText('Save')[0]);
 
@@ -99,6 +98,7 @@ describe('strides', () => {
     renderScreen();
     await screen.findByText('0.75 m');
 
+    fireEvent.press(screen.getAllByText('Type it in')[0]);
     fireEvent.changeText(screen.getByLabelText('Walking stride in m'), '0,7');
     fireEvent.press(screen.getAllByText('Save')[0]);
 
@@ -112,6 +112,7 @@ describe('strides', () => {
     renderScreen();
     await screen.findByText('0.75 m');
 
+    fireEvent.press(screen.getAllByText('Type it in')[0]);
     fireEvent.changeText(screen.getByLabelText('Walking stride in m'), '9');
     fireEvent.press(screen.getAllByText('Save')[0]);
 
@@ -125,7 +126,7 @@ describe('strides', () => {
     renderScreen();
     await screen.findByText('0.70 m');
 
-    fireEvent.press(screen.getAllByText('Reset and learn from scratch')[0]);
+    fireEvent.press(screen.getByLabelText('Reset walking stride'));
 
     await waitFor(async () =>
       expect((await getStride('walk')).calibrated).toBe(false)
@@ -138,10 +139,10 @@ describe('strides', () => {
 describe('treadmill correction', () => {
   it('is off until switched on, and hides its controls while off', () => {
     renderScreen();
-    expect(screen.queryByText('My treadmill display reads')).toBeNull();
+    expect(screen.queryByText('It shows')).toBeNull();
 
     fireEvent(
-      screen.getByLabelText('Correct treadmill distance'),
+      screen.getByLabelText('My treadmill is off'),
       'valueChange',
       true
     );
@@ -149,7 +150,7 @@ describe('treadmill correction', () => {
     expect(useAppPreferencesStore.getState().treadmillCorrectionEnabled).toBe(
       true
     );
-    expect(screen.getByText('My treadmill display reads')).toBeTruthy();
+    expect(screen.getByText('It shows')).toBeTruthy();
   });
 
   it('stores a display that reads long as a positive percent and previews it', () => {
@@ -157,7 +158,7 @@ describe('treadmill correction', () => {
     renderScreen();
 
     fireEvent.changeText(
-      screen.getByLabelText('Percent the treadmill reads off'),
+      screen.getByLabelText('Percent the treadmill is off'),
       '4'
     );
 
@@ -165,7 +166,7 @@ describe('treadmill correction', () => {
       4
     );
     expect(
-      screen.getByText('A display of 5.00 km is saved as 4.81 km (+4%).')
+      screen.getByText('When the treadmill shows 5.00 km, 4.81 km is saved.')
     ).toBeTruthy();
   });
 
@@ -174,16 +175,16 @@ describe('treadmill correction', () => {
     renderScreen();
 
     fireEvent.changeText(
-      screen.getByLabelText('Percent the treadmill reads off'),
+      screen.getByLabelText('Percent the treadmill is off'),
       '2.5'
     );
-    fireEvent.press(screen.getByText('Short'));
+    fireEvent.press(screen.getByText('Less than I ran'));
 
     expect(useAppPreferencesStore.getState().treadmillCorrectionPercent).toBe(
       -2.5
     );
     expect(
-      screen.getByText('A display of 5.00 km is saved as 5.13 km (-2.5%).')
+      screen.getByText('When the treadmill shows 5.00 km, 5.13 km is saved.')
     ).toBeTruthy();
   });
 
@@ -192,7 +193,7 @@ describe('treadmill correction', () => {
     renderScreen();
 
     fireEvent.changeText(
-      screen.getByLabelText('Percent the treadmill reads off'),
+      screen.getByLabelText('Percent the treadmill is off'),
       '80'
     );
 
@@ -207,7 +208,7 @@ describe('treadmill correction', () => {
     renderScreen();
 
     fireEvent.changeText(
-      screen.getByLabelText('Percent the treadmill reads off'),
+      screen.getByLabelText('Percent the treadmill is off'),
       ''
     );
 
@@ -217,42 +218,39 @@ describe('treadmill correction', () => {
   });
 });
 
-describe('calibrating on purpose', () => {
-  const fill = (steps: string, distance: string, shown = '') => {
-    fireEvent.changeText(screen.getByLabelText('Steps taken'), steps);
-    fireEvent.changeText(screen.getByLabelText('Real distance'), distance);
-    if (shown) {
-      fireEvent.changeText(
-        screen.getByLabelText('Treadmill showed (optional)'),
-        shown
-      );
-    }
-  };
-
+describe('measuring', () => {
   it('sets the stride from the steps and the real distance', async () => {
     renderScreen();
     await screen.findByText('1.05 m');
 
     fireEvent.press(screen.getByText('Walk'));
-    fill('4000', '3');
-    fireEvent.press(screen.getByText('Calibrate'));
+    fireEvent.changeText(screen.getByLabelText('Steps taken'), '4000');
+    fireEvent.changeText(screen.getByLabelText('Real distance'), '3');
+    fireEvent.press(screen.getByText('Set my stride'));
 
     await screen.findByText('Your walking stride is now 0.75 m.');
     expect((await getStride('walk')).calibrated).toBe(true);
     expect(screen.queryByText('Use this correction')).toBeNull();
   });
 
-  it('works out how far off the treadmill is and offers it', async () => {
+  it('checks the treadmill from steps and the stride, and offers the correction', async () => {
+    await setStride('run', 1);
     renderScreen();
-    await screen.findByText('1.05 m');
+    await screen.findByText('1.00 m');
 
-    fill('5000', '5', '5.2');
-    fireEvent.press(screen.getByText('Calibrate'));
-
-    await screen.findByText('Your running stride is now 1.00 m.');
+    fireEvent.press(screen.getByText('My treadmill'));
     expect(
-      screen.getByText('The treadmill display is off by +4%.')
+      screen.getByText(/Your steps times your running stride \(1\.00 m\)/)
     ).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Steps taken'), '5000');
+    fireEvent.changeText(screen.getByLabelText('Treadmill showed'), '5.2');
+    fireEvent.press(screen.getByText('Check my treadmill'));
+
+    await screen.findByText(
+      'Your steps make that 5.00 km, so the treadmill shows 4% more than you did.'
+    );
+    // The stride is not changed by a treadmill check.
+    expect((await getStride('run')).meters).toBe(1);
     // Offered, not applied behind their back.
     expect(useAppPreferencesStore.getState().treadmillCorrectionEnabled).toBe(
       false
@@ -268,12 +266,27 @@ describe('calibrating on purpose', () => {
     );
   });
 
+  it('says when the treadmill is right', async () => {
+    await setStride('run', 1);
+    renderScreen();
+    await screen.findByText('1.00 m');
+
+    fireEvent.press(screen.getByText('My treadmill'));
+    fireEvent.changeText(screen.getByLabelText('Steps taken'), '5000');
+    fireEvent.changeText(screen.getByLabelText('Treadmill showed'), '5');
+    fireEvent.press(screen.getByText('Check my treadmill'));
+
+    await screen.findByText(/The treadmill is right/);
+    expect(screen.queryByText('Use this correction')).toBeNull();
+  });
+
   it('says so when the numbers do not add up, and changes nothing', async () => {
     renderScreen();
     await screen.findByText('1.05 m');
 
-    fill('50', '3');
-    fireEvent.press(screen.getByText('Calibrate'));
+    fireEvent.changeText(screen.getByLabelText('Steps taken'), '50');
+    fireEvent.changeText(screen.getByLabelText('Real distance'), '3');
+    fireEvent.press(screen.getByText('Set my stride'));
 
     await screen.findByText(/too short or does not add up/);
     expect((await getStride('run')).calibrated).toBe(false);
@@ -283,7 +296,7 @@ describe('calibrating on purpose', () => {
     renderScreen();
     await screen.findByText('1.05 m');
 
-    fireEvent.press(screen.getByText('Calibrate'));
+    fireEvent.press(screen.getByText('Set my stride'));
 
     expect((await getStride('run')).calibrated).toBe(false);
     expect(screen.queryByText(/too short/)).toBeNull();
@@ -295,10 +308,8 @@ describe('the watch treadmill distance', () => {
 
   it('says nothing has been learned yet', async () => {
     renderScreen();
-    expect(
-      await screen.findAllByText(/Not learned yet. It learns when you enter/)
-    ).toHaveLength(2);
-    expect(screen.queryByText('Reset and learn from scratch')).toBeNull();
+    expect(await screen.findAllByText('Not learned yet.')).toHaveLength(2);
+    expect(screen.queryByText('Reset')).toBeNull();
   });
 
   it('shows what the watch has learned for runs and walks', async () => {
@@ -313,12 +324,12 @@ describe('the watch treadmill distance', () => {
 
     expect(
       await screen.findByText(
-        /multiplied by 1\.096 \(\+9\.6%\)\. Learned from 6 corrections\./
+        'The watch’s distance is raised by 9.6%. Learned from 6 runs.'
       )
     ).toBeTruthy();
     expect(
       screen.getByText(
-        /multiplied by 0\.950 \(-5%\)\. Learned from 1 correction\./
+        'The watch’s distance is lowered by 5%. Learned from 1 run.'
       )
     ).toBeTruthy();
   });
@@ -332,12 +343,10 @@ describe('the watch treadmill distance', () => {
       })
     );
     renderScreen();
-    await screen.findByText(/multiplied by 1\.096/);
+    await screen.findByText(/raised by 9\.6%/);
 
     fireEvent.press(
-      within(screen.getByTestId('watch-scale-run')).getByText(
-        'Reset and learn from scratch'
-      )
+      within(screen.getByTestId('watch-scale-run')).getByText('Reset')
     );
 
     await waitFor(() =>
@@ -350,6 +359,6 @@ describe('the watch treadmill distance', () => {
     expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}')).toEqual({
       walk: { scale: 0.95, samples: 1 },
     });
-    expect(screen.getByText(/multiplied by 0\.950/)).toBeTruthy();
+    expect(screen.getByText(/lowered by 5%/)).toBeTruthy();
   });
 });

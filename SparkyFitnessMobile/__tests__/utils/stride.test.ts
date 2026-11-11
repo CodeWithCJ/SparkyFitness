@@ -5,11 +5,11 @@ import {
   DEFAULT_STRIDE_METERS,
   estimateDistanceMeters,
   isStepActivity,
-  calibrateFromKnownDistance,
   isPlausibleStride,
   strideFromDisplay,
   strideFromSample,
   strideToDisplay,
+  treadmillCheckFromSteps,
 } from '../../src/utils/stride';
 
 describe('isStepActivity', () => {
@@ -124,24 +124,24 @@ describe('isPlausibleStride', () => {
   });
 });
 
-describe('calibrateFromKnownDistance', () => {
-  it('gives the stride and how far the treadmill read', () => {
-    // 5 km in 5,000 steps; the treadmill showed 5.2 km.
-    const result = calibrateFromKnownDistance(5000, 5000, 5200);
-    expect(result?.strideMeters).toBeCloseTo(1);
-    expect(result?.treadmillPercent).toBe(4);
-  });
-
-  it('works without a treadmill figure', () => {
-    expect(calibrateFromKnownDistance(5000, 5000, null)).toEqual({
-      strideMeters: 1,
-      treadmillPercent: null,
+describe('treadmillCheckFromSteps', () => {
+  it('works out the real distance from steps and how far the display read', () => {
+    // 5,000 steps at 1 m is 5 km; the treadmill showed 5.2 km.
+    expect(treadmillCheckFromSteps(5000, 1, 5200)).toEqual({
+      actualMeters: 5000,
+      percent: 4,
     });
   });
 
-  it('refuses a sample too short or implausible to learn from', () => {
-    expect(calibrateFromKnownDistance(100, 5000, null)).toBeNull();
-    expect(calibrateFromKnownDistance(5000, 50, null)).toBeNull();
+  it('finds a display that reads short', () => {
+    expect(treadmillCheckFromSteps(4000, 0.75, 2925)?.percent).toBe(-2.5);
+  });
+
+  it('refuses too few steps, a bad stride or a typo', () => {
+    expect(treadmillCheckFromSteps(100, 1, 100)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 9, 45000)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 1, 50000)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 1, 0)).toBeNull();
   });
 });
 
