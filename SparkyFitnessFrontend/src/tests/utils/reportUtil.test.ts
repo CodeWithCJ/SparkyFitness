@@ -7,7 +7,15 @@ import type { CheckInMeasurementsResponse } from '@workspace/shared';
 jest.mock('@/i18n', () => ({
   __esModule: true,
   default: {
-    t: (_key: string, defaultValue?: string) => defaultValue || _key,
+    t: (
+      _key: string,
+      defaultValue?: string,
+      options?: Record<string, string>
+    ) =>
+      (defaultValue || _key).replace(
+        /{{(\w+)}}/g,
+        (match, name) => options?.[name] ?? match
+      ),
     use: jest.fn().mockReturnThis(),
     init: jest.fn(),
   },
@@ -237,6 +245,7 @@ describe('exportBodyMeasurements', () => {
       convertMeasurement: (value) => value / 2,
     });
 
+    expect(csv).toContain('"Weight (lbs)","Neck (inches)"');
     expect(csv).toContain('"160.0","20.0"');
   });
 
@@ -266,7 +275,7 @@ describe('exportBodyMeasurements', () => {
       convertMeasurement: (value, _from, to) => (to === 'cm' ? value : NaN),
     });
 
-    expect(csv).toContain('Neck(cm)');
+    expect(csv).toContain('Neck (cm)');
     expect(csv).toContain('"12st 8.4lbs","40.0"');
     expect(csv).toContain(`"5'10.1"""`);
   });

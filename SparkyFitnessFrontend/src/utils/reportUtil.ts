@@ -777,24 +777,25 @@ export const exportBodyMeasurements = async ({
       i18n.t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.weight',
-        `Weight(${defaultWeightUnit})`
+        'Weight ({{unit}})',
+        { unit: defaultWeightUnit }
       ),
-      i18n.t(
-        'reports.bodyMeasurementsExportHeaders.neck',
-        `Neck(${circumferenceUnit})`
-      ),
+      i18n.t('reports.bodyMeasurementsExportHeaders.neck', 'Neck ({{unit}})', {
+        unit: circumferenceUnit,
+      }),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.waist',
-        `Waist(${circumferenceUnit})`
+        'Waist ({{unit}})',
+        { unit: circumferenceUnit }
       ),
-      i18n.t(
-        'reports.bodyMeasurementsExportHeaders.hips',
-        `Hips(${circumferenceUnit})`
-      ),
+      i18n.t('reports.bodyMeasurementsExportHeaders.hips', 'Hips ({{unit}})', {
+        unit: circumferenceUnit,
+      }),
       i18n.t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.height',
-        `Height(${defaultMeasurementUnit})`
+        'Height ({{unit}})',
+        { unit: defaultMeasurementUnit }
       ),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.bodyFatPercentage',
