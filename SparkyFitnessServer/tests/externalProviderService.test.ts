@@ -1484,3 +1484,181 @@ describe('createExternalDataProvider / updateExternalDataProvider - Open Food Fa
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+describe('MCP tool servers', () => {
+  const ADMIN = 'admin-1';
+  const SERVER_URL = 'http://192.168.1.20:8000/mcp';
+
+  beforeEach(() => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+  });
+
+  it('refuses one on the user path, even for an admin', async () => {
+    await expect(
+      externalProviderService.createExternalDataProvider(ADMIN, {
+        provider_name: 'Tools',
+        provider_type: 'mcp_server',
+        base_url: SERVER_URL,
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['turning a row into one', 'mealie', { provider_type: 'mcp_server' }],
+    ['changing one', 'mcp_server', { base_url: SERVER_URL }],
+  ])('refuses %s on the user path', async (_name, storedType, updateData) => {
+    vi.mocked(
+      externalProviderRepository.checkExternalDataProviderOwnership
+    ).mockResolvedValue(true);
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+      // @ts-expect-error partial row
+    ).mockResolvedValue({ id: PROVIDER_ID, provider_type: storedType });
+
+    await expect(
+      externalProviderService.updateExternalDataProvider(
+        ADMIN,
+        PROVIDER_ID,
+        updateData
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refuses deleting one on the user path, even for the row owner', async () => {
+    vi.mocked(
+      externalProviderRepository.checkExternalDataProviderOwnership
+    ).mockResolvedValue(true);
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+      // @ts-expect-error partial row
+    ).mockResolvedValue({ id: PROVIDER_ID, provider_type: 'mcp_server' });
+
+    await expect(
+      externalProviderService.deleteExternalDataProvider(ADMIN, PROVIDER_ID)
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(
+      externalProviderRepository.deleteExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refuses the detail read, even for the row owner', async () => {
+    vi.mocked(
+      externalProviderRepository.checkExternalDataProviderAccess
+    ).mockResolvedValue(true);
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+      // @ts-expect-error partial row
+    ).mockResolvedValue({
+      id: PROVIDER_ID,
+      user_id: ADMIN,
+      provider_type: 'mcp_server',
+      app_key: 'token',
+    });
+
+    await expect(
+      externalProviderService.getExternalDataProviderDetails(ADMIN, PROVIDER_ID)
+    ).rejects.toThrow(/^Forbidden/);
+  });
+
+  it('keeps the type off the list unless an admin form asks for it', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalProviderTypes
+    ).mockResolvedValue([{ id: 'mealie' }, { id: 'mcp_server' }]);
+
+    await expect(
+      externalProviderService.getExternalProviderTypes()
+    ).resolves.toEqual([{ id: 'mealie' }]);
+    await expect(
+      externalProviderService.getExternalProviderTypes({
+        includeAdminOnly: true,
+      })
+    ).resolves.toEqual([{ id: 'mealie' }, { id: 'mcp_server' }]);
+  });
+
+  describe('resolveGlobalProviderOptions', () => {
+    const resolve = externalProviderService.resolveGlobalProviderOptions;
+    const input = {
+      authenticatedUserId: ADMIN,
+      providerType: 'mcp_server',
+      baseUrl: SERVER_URL,
+      providerOptions: undefined,
+    };
+    const options = { allowed_tools: ['solve_shake'], send_user_id: true };
+
+    it('starts a new server with every tool blocked', async () => {
+      await expect(resolve(input)).resolves.toEqual({
+        allowed_tools: [],
+        send_user_id: false,
+      });
+    });
+
+    it('keeps what the admin chose', async () => {
+      await expect(
+        resolve({ ...input, providerOptions: options })
+      ).resolves.toEqual(options);
+    });
+
+    it('leaves stored options alone on an update that does not touch them', async () => {
+      await expect(
+        resolve({
+          ...input,
+          providerType: undefined,
+          existingProviderType: 'mcp_server',
+          baseUrl: undefined,
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it.each([undefined, null, ''])(
+      'needs a server URL on create (%s)',
+      async (baseUrl) => {
+        await expect(resolve({ ...input, baseUrl })).rejects.toMatchObject({
+          statusCode: 400,
+        });
+      }
+    );
+
+    it('refuses an update that clears the server URL', async () => {
+      await expect(
+        resolve({ ...input, existingProviderType: 'mcp_server', baseUrl: null })
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('checks the URL before saving', async () => {
+      await expect(
+        resolve({ ...input, baseUrl: 'https://user:pass@tools.example.com' })
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it.each([
+      ['to', 'mealie', 'mcp_server'],
+      ['from', 'mcp_server', 'mealie'],
+    ])(
+      'refuses a type change %s a tool server',
+      async (_word, existingProviderType, providerType) => {
+        await expect(
+          resolve({ ...input, providerType, existingProviderType })
+        ).rejects.toMatchObject({ statusCode: 400 });
+      }
+    );
+
+    it('refuses options on any other type', async () => {
+      await expect(
+        resolve({ ...input, providerType: 'mealie', providerOptions: options })
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('asks nothing of any other type', async () => {
+      await expect(
+        resolve({ ...input, providerType: 'usda', baseUrl: undefined })
+      ).resolves.toBeUndefined();
+      expect(resolveIsAdminByUserId).not.toHaveBeenCalled();
+    });
+  });
+});

@@ -8,6 +8,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import externalProviderRoutes from '../routes/externalProviderRoutes.js';
 import externalProviderService from '../services/externalProviderService.js';
+import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
 
 const OWNER_ID = 'owner-1';
 const DELEGATE_ID = 'delegate-2';
@@ -27,9 +28,13 @@ vi.mock('../services/externalProviderService.js', () => ({
     createExternalDataProvider: vi.fn(),
     updateExternalDataProvider: vi.fn(),
     deleteExternalDataProvider: vi.fn(),
+    getExternalProviderTypes: vi.fn(),
   },
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdminByUserId: vi.fn(),
+}));
 
 const app = express();
 app.use(express.json());
@@ -52,6 +57,26 @@ beforeEach(() => {
   vi.mocked(
     externalProviderService.deleteExternalDataProvider
   ).mockResolvedValue(true);
+});
+
+describe('external provider types', () => {
+  it.each([true, false])(
+    'decides on the logged-in actor, not the active profile (admin: %s)',
+    async (isAdmin) => {
+      vi.mocked(resolveIsAdminByUserId).mockResolvedValue(isAdmin);
+      vi.mocked(
+        externalProviderService.getExternalProviderTypes
+      ).mockResolvedValue([]);
+
+      const response = await request(app).get('/external-providers/types');
+
+      expect(response.statusCode).toBe(200);
+      expect(resolveIsAdminByUserId).toHaveBeenCalledWith(DELEGATE_ID);
+      expect(
+        externalProviderService.getExternalProviderTypes
+      ).toHaveBeenCalledWith({ includeAdminOnly: isAdmin });
+    }
+  );
 });
 
 describe('external provider list actor context', () => {

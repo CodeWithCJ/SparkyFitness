@@ -1,4 +1,8 @@
 import type { PoolClient } from 'pg';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  type McpServerOptions,
+} from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
@@ -95,11 +99,14 @@ async function getExternalDataProviders(
               ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
-       WHERE edp.user_id = $1 
-          OR (edp.is_public = TRUE AND edp.is_active = TRUE)
-          OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+       WHERE (
+         edp.user_id = $1
+         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+       )
+       AND edp.provider_type <> $2
        ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`,
-      [targetUserId]
+      [targetUserId, MCP_SERVER_PROVIDER_TYPE]
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
     const providers = await Promise.all(
@@ -168,8 +175,9 @@ async function getExternalDataProvidersByUserId(
         FROM external_data_providers edp
         LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
         WHERE edp.user_id = $1
+        AND edp.provider_type <> $2
         ORDER BY edp.created_at DESC`,
-      [targetUserId]
+      [targetUserId, MCP_SERVER_PROVIDER_TYPE]
     );
     const providers = await Promise.all(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -523,10 +531,8 @@ async function getExternalDataProviderById(providerId: any) {
   }
 }
 async function getExternalDataProviderByUserIdAndProviderName(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerName: any
+  userId: string,
+  providerName: string
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -547,8 +553,9 @@ async function getExternalDataProviderByUserIdAndProviderName(
         edp.user_id = $2
         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
-      )`,
-      [providerName, userId]
+      )
+      AND edp.provider_type <> $3`,
+      [providerName, userId, MCP_SERVER_PROVIDER_TYPE]
     );
     const data = result.rows[0];
     if (!data) {
@@ -923,7 +930,7 @@ async function getGlobalExternalDataProviders() {
   try {
     const result = await client.query(
       `SELECT edp.id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url,
-              edp.is_public,
+              edp.is_public, edp.provider_options,
               edp.sync_frequency, edp.sort_order,
               edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
               edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
@@ -985,7 +992,23 @@ async function getGlobalExternalDataProviders() {
   }
 }
 
-async function createGlobalExternalDataProvider(providerData: any) {
+// What an admin's global provider write carries. On an update a field left out
+// keeps its stored value, and null clears the base URL or a credential.
+interface GlobalProviderWrite {
+  provider_name?: string;
+  provider_type?: string;
+  user_id?: string;
+  is_active?: boolean;
+  base_url?: string | null;
+  app_id?: string | null;
+  app_key?: string | null;
+  sync_frequency?: string;
+  provider_options?: McpServerOptions;
+}
+
+async function createGlobalExternalDataProvider(
+  providerData: GlobalProviderWrite
+) {
   if (!providerData.user_id) {
     throw new Error(
       'user_id is required to create a global external data provider.'
@@ -1016,11 +1039,11 @@ async function createGlobalExternalDataProvider(providerData: any) {
         provider_name, provider_type, user_id, is_active, base_url, is_public,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
-        sync_frequency, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, $9, $10, $11, $12, now(), now())
+        sync_frequency, provider_options, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, now(), now())
       RETURNING id, provider_name, provider_type, user_id, is_active,
                 base_url, is_public, sync_frequency, sort_order,
-                created_at, updated_at`,
+                provider_options, created_at, updated_at`,
       [
         providerData.provider_name,
         providerData.provider_type,
@@ -1034,6 +1057,9 @@ async function createGlobalExternalDataProvider(providerData: any) {
         appKeyIv,
         appKeyTag,
         providerData.sync_frequency || 'manual',
+        providerData.provider_options
+          ? JSON.stringify(providerData.provider_options)
+          : null,
       ]
     );
     return result.rows[0];
@@ -1042,7 +1068,10 @@ async function createGlobalExternalDataProvider(providerData: any) {
   }
 }
 
-async function updateGlobalExternalDataProvider(id: any, updateData: any) {
+async function updateGlobalExternalDataProvider(
+  id: string,
+  updateData: GlobalProviderWrite
+) {
   const client = await getSystemClient();
   try {
     let encryptedAppId = null,
@@ -1083,11 +1112,12 @@ async function updateGlobalExternalDataProvider(id: any, updateData: any) {
         app_key_iv = CASE WHEN $9 THEN NULL ELSE COALESCE($11, app_key_iv) END,
         app_key_tag = CASE WHEN $9 THEN NULL ELSE COALESCE($12, app_key_tag) END,
         sync_frequency = COALESCE($13, sync_frequency),
+        provider_options = COALESCE($16::jsonb, provider_options),
         updated_at = now()
       WHERE id = $14 AND is_public = TRUE
       RETURNING id, provider_name, provider_type, user_id, is_active,
                 base_url, is_public, sync_frequency, sort_order,
-                created_at, updated_at`,
+                provider_options, created_at, updated_at`,
       [
         updateData.provider_name,
         updateData.provider_type,
@@ -1104,6 +1134,9 @@ async function updateGlobalExternalDataProvider(id: any, updateData: any) {
         updateData.sync_frequency,
         id,
         clearBaseUrl,
+        updateData.provider_options
+          ? JSON.stringify(updateData.provider_options)
+          : null,
       ]
     );
     return result.rows[0];

@@ -68,6 +68,10 @@ vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
   invalidateOpenFoodFactsSession: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn().mockResolvedValue(true),
+  resolveIsAdminByUserId: vi.fn().mockResolvedValue(true),
+}));
 
 const app = express();
 app.use(express.json());
@@ -82,6 +86,7 @@ beforeEach(() => {
     { id: 'openfoodfacts' },
     { id: 'fatsecret' },
     { id: 'usda' },
+    { id: 'mcp_server' },
   ]);
   vi.mocked(
     externalProviderRepository.createGlobalExternalDataProvider
@@ -430,5 +435,88 @@ describe('admin global Open Food Facts provider credentials', () => {
         app_key: 'new-client-secret',
       })
     );
+  });
+});
+
+describe('admin global MCP tool servers', () => {
+  const body = {
+    provider_name: 'Household tools',
+    provider_type: 'mcp_server',
+    base_url: 'http://192.168.1.20:8000/mcp',
+  };
+  const options = { allowed_tools: ['solve_shake'], send_user_id: true };
+
+  it('adds a server with every tool blocked', async () => {
+    const response = await request(app)
+      .post('/admin/external-data-providers/global')
+      .send(body);
+
+    expect(response.statusCode).toBe(201);
+    expect(
+      externalProviderRepository.createGlobalExternalDataProvider
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider_options: { allowed_tools: [], send_user_id: false },
+      })
+    );
+  });
+
+  it('saves the tools an admin allows', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(makeStoredProvider({ provider_type: 'mcp_server' }));
+
+    const response = await request(app)
+      .put(`/admin/external-data-providers/global/${PROVIDER_ID}`)
+      .send({ provider_options: options });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      externalProviderRepository.updateGlobalExternalDataProvider
+    ).toHaveBeenCalledWith(
+      PROVIDER_ID,
+      expect.objectContaining({ provider_options: options })
+    );
+  });
+
+  it('refuses a server with no URL', async () => {
+    const response = await request(app)
+      .post('/admin/external-data-providers/global')
+      .send({ ...body, base_url: undefined });
+
+    expect(response.statusCode).toBe(400);
+    expect(
+      externalProviderRepository.createGlobalExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refuses options on another provider', async () => {
+    const response = await request(app)
+      .post('/admin/external-data-providers/global')
+      .send({
+        provider_name: 'Global USDA',
+        provider_type: 'usda',
+        provider_options: options,
+      });
+
+    expect(response.statusCode).toBe(400);
+    expect(
+      externalProviderRepository.createGlobalExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refuses turning a global provider into a tool server', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(makeStoredProvider({ provider_type: 'usda' }));
+
+    const response = await request(app)
+      .put(`/admin/external-data-providers/global/${PROVIDER_ID}`)
+      .send({ provider_type: 'mcp_server' });
+
+    expect(response.statusCode).toBe(400);
+    expect(
+      externalProviderRepository.updateGlobalExternalDataProvider
+    ).not.toHaveBeenCalled();
   });
 });

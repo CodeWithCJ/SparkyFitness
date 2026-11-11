@@ -916,6 +916,16 @@ router.get('/external-data-providers/global', async (req, res, next) => {
  *                 type: string
  *               is_active:
  *                 type: boolean
+ *               provider_options:
+ *                 type: object
+ *                 description: MCP tool servers only.
+ *                 properties:
+ *                   allowed_tools:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   send_user_id:
+ *                     type: boolean
  *     responses:
  *       201:
  *         description: Global external data provider created
@@ -944,6 +954,7 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
+      provider_options,
     } = bodyResult.data;
 
     if (!(await isValidProviderType(provider_type))) {
@@ -951,6 +962,13 @@ router.post('/external-data-providers/global', async (req, res, next) => {
         .status(400)
         .json({ error: `Invalid provider_type: '${provider_type}'.` });
     }
+    const resolvedProviderOptions =
+      await externalProviderService.resolveGlobalProviderOptions({
+        authenticatedUserId: req.authenticatedUserId,
+        providerType: provider_type,
+        baseUrl: base_url,
+        providerOptions: provider_options,
+      });
     const providerData = {
       provider_name,
       provider_type,
@@ -959,6 +977,7 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       base_url: base_url || null,
       is_active: is_active || false,
       user_id: req.authenticatedUserId,
+      provider_options: resolvedProviderOptions,
     };
     const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
       undefined,
@@ -1019,6 +1038,16 @@ router.post('/external-data-providers/global', async (req, res, next) => {
  *                 type: string
  *               is_active:
  *                 type: boolean
+ *               provider_options:
+ *                 type: object
+ *                 description: MCP tool servers only.
+ *                 properties:
+ *                   allowed_tools:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   send_user_id:
+ *                     type: boolean
  *     responses:
  *       200:
  *         description: Global external data provider updated
@@ -1050,6 +1079,7 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
+      provider_options,
     } = bodyResult.data;
 
     // Only validate provider_type when the caller is changing it.
@@ -1070,6 +1100,14 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         .json({ error: 'Global external data provider not found.' });
     }
 
+    const resolvedProviderOptions =
+      await externalProviderService.resolveGlobalProviderOptions({
+        authenticatedUserId: req.authenticatedUserId,
+        providerType: provider_type,
+        existingProviderType: existingProvider.provider_type,
+        baseUrl: base_url,
+        providerOptions: provider_options,
+      });
     const updateData = {
       provider_name,
       provider_type,
@@ -1077,6 +1115,7 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       app_key: app_key !== undefined ? app_key : undefined,
       base_url,
       is_active,
+      provider_options: resolvedProviderOptions,
     };
     const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
       existingProvider,

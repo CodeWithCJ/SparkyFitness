@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import { demoGuard } from '../middleware/demoGuardMiddleware.js';
 import externalProviderService from '../services/externalProviderService.js';
 import { log } from '../config/logging.js';
+import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
 const router = express.Router();
 router.use(express.json());
 /**
@@ -100,7 +101,9 @@ router.get('/', authenticate, async (req, res, next) => {
 });
 router.get('/types', authenticate, async (req, res, next) => {
   try {
-    const types = await externalProviderService.getExternalProviderTypes();
+    const types = await externalProviderService.getExternalProviderTypes({
+      includeAdminOnly: await resolveIsAdminByUserId(req.authenticatedUserId),
+    });
     res.status(200).json(types);
   } catch (error) {
     next(error);
