@@ -6,3 +6,7 @@ export const MCP_SERVER_PROVIDER_TYPE = 'mcp_server';
 // Every allowed tool's schema is sent with every chat request, so this bounds
 // what an outside server can add to token use.
 export const MCP_SERVER_MAX_TOOLS = 20;
+
+// The header that tells an outside server who is chatting, when the admin has
+// turned that on for the server. It carries the signed-in person's user ID.
+export const MCP_SERVER_USER_ID_HEADER = 'X-SparkyFitness-User-Id';

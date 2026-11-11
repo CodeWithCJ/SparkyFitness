@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createGlobalExternalDataProvider,
+  getActiveMcpServers,
   getExternalDataProviderByUserIdAndProviderName,
   getExternalDataProviders,
   getExternalDataProvidersByUserId,
@@ -8,6 +9,7 @@ import {
   updateGlobalExternalDataProvider,
 } from '../models/externalProviderRepository.js';
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { decrypt } from '../security/encryption.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -103,5 +105,61 @@ describe('externalProviderRepository MCP tool servers', () => {
       provider_options: OPTIONS,
     });
     expect(query.mock.calls[1][1][15]).toBe(JSON.stringify(OPTIONS));
+  });
+
+  describe('the servers chat may use', () => {
+    const stored = {
+      id: 'provider-1',
+      user_id: 'admin-1',
+      provider_name: 'Household tools',
+      base_url: 'http://192.168.1.20:8000/mcp',
+      provider_options: OPTIONS,
+      updated_at: new Date('2026-11-10T00:00:00Z'),
+    };
+    const key = {
+      encrypted_app_key: 'encrypted',
+      app_key_iv: 'iv',
+      app_key_tag: 'tag',
+    };
+
+    it('reads only active global tool servers, in a fixed order', async () => {
+      await getActiveMcpServers();
+      const [sql, params] = query.mock.calls[0];
+      expect(sql).toContain('edp.provider_type = $1');
+      expect(sql).toContain('edp.is_public = TRUE');
+      expect(sql).toContain('edp.is_active = TRUE');
+      expect(sql).toContain('ORDER BY edp.provider_name ASC, edp.id ASC');
+      expect(params).toEqual(['mcp_server']);
+      expect(getSystemClient).toHaveBeenCalled();
+      expect(getClient).not.toHaveBeenCalled();
+    });
+
+    it('returns each server with its token decrypted', async () => {
+      vi.mocked(decrypt).mockResolvedValue('t0ken');
+      query.mockResolvedValue({ rows: [{ ...stored, ...key }] });
+      await expect(getActiveMcpServers()).resolves.toEqual([
+        { ...stored, app_key: 't0ken' },
+      ]);
+    });
+
+    it('returns a server without a token when it has none or it cannot be read', async () => {
+      vi.mocked(decrypt).mockRejectedValue(new Error('bad key'));
+      query.mockResolvedValue({
+        rows: [
+          { ...stored, ...key },
+          {
+            ...stored,
+            id: 'provider-2',
+            encrypted_app_key: null,
+            app_key_iv: null,
+            app_key_tag: null,
+          },
+        ],
+      });
+      await expect(getActiveMcpServers()).resolves.toEqual([
+        { ...stored, app_key: null },
+        { ...stored, id: 'provider-2', app_key: null },
+      ]);
+    });
   });
 });

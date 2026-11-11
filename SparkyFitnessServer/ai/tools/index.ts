@@ -272,10 +272,7 @@ function fixChatToolActor(
       ...t,
       execute:
         inFamilyAccount && OWN_ACCOUNT_ONLY_TOOLS.has(name)
-          ? async () =>
-              ERRORS.FORBIDDEN(
-                "This only works in the user's own account, not in a family member's."
-              )
+          ? async () => ERRORS.OWN_ACCOUNT_ONLY()
           : async (...args: Parameters<typeof execute>) => {
               try {
                 return await withFixedActor(actorUserId, () =>

@@ -107,6 +107,12 @@ export const ERRORS = {
 
   FORBIDDEN: (reason: string) => toolError('FORBIDDEN', reason),
 
+  OWN_ACCOUNT_ONLY: () =>
+    toolError(
+      'FORBIDDEN',
+      "This only works in the user's own account, not in a family member's."
+    ),
+
   NOT_ALLOWED: () =>
     toolError(
       'FORBIDDEN',

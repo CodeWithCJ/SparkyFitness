@@ -847,6 +847,32 @@ async function getActiveProvidersByTypes(
     client.release();
   }
 }
+
+interface StoredAppKey {
+  id: string;
+  encrypted_app_key: string | null;
+  app_key_iv: string | null;
+  app_key_tag: string | null;
+}
+
+// The row's decrypted key, or null when it has none or it cannot be read.
+async function decryptStoredAppKey(row: StoredAppKey): Promise<string | null> {
+  if (!row.encrypted_app_key || !row.app_key_iv || !row.app_key_tag) {
+    return null;
+  }
+  try {
+    return await decrypt(
+      row.encrypted_app_key,
+      row.app_key_iv,
+      row.app_key_tag,
+      ENCRYPTION_KEY
+    );
+  } catch (e) {
+    log('error', 'Error decrypting app_key for provider:', row.id, e);
+    return null;
+  }
+}
+
 /** A routing provider as the routing layer needs it: the URL and the decrypted key. */
 export interface RoutingProviderRow {
   id: string;
@@ -887,26 +913,62 @@ async function getActiveProviderWithKeyByType(
     );
     const row = result.rows[0];
     if (!row) return null;
-    let appKey: string | null = null;
-    if (row.encrypted_app_key && row.app_key_iv && row.app_key_tag) {
-      try {
-        appKey = await decrypt(
-          row.encrypted_app_key,
-          row.app_key_iv,
-          row.app_key_tag,
-          ENCRYPTION_KEY
-        );
-      } catch (e) {
-        log('error', 'Error decrypting app_key for provider:', row.id, e);
-      }
-    }
     return {
       id: row.id,
       user_id: row.user_id,
       provider_name: row.provider_name,
       base_url: row.base_url,
-      app_key: appKey,
+      app_key: await decryptStoredAppKey(row),
     };
+  } finally {
+    client.release();
+  }
+}
+
+/** An MCP tool server as chat needs it: the URL, the decrypted token and the admin's options. */
+export interface McpServerRow {
+  id: string;
+  user_id: string;
+  provider_name: string;
+  base_url: string;
+  app_key: string | null;
+  /** Checked by the caller: this is the stored JSON as it is. */
+  provider_options: unknown;
+  updated_at: Date;
+}
+
+// Every tool server chat may use. They are global rows only an admin can add,
+// and they are not listed to the person chatting, so this reads with the
+// system client. Ordered so the tools reach the model in the same order on
+// every turn.
+async function getActiveMcpServers(): Promise<McpServerRow[]> {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT edp.id, edp.user_id, edp.provider_name, edp.base_url,
+              edp.provider_options, edp.updated_at,
+              edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag
+       FROM external_data_providers edp
+       WHERE edp.provider_type = $1
+         AND edp.is_public = TRUE
+         AND edp.is_active = TRUE
+         AND edp.base_url IS NOT NULL AND edp.base_url <> ''
+       ORDER BY edp.provider_name ASC, edp.id ASC`,
+      [MCP_SERVER_PROVIDER_TYPE]
+    );
+    return Promise.all(
+      result.rows.map(
+        async (row: StoredAppKey & Omit<McpServerRow, 'app_key'>) => ({
+          id: row.id,
+          user_id: row.user_id,
+          provider_name: row.provider_name,
+          base_url: row.base_url,
+          app_key: await decryptStoredAppKey(row),
+          provider_options: row.provider_options,
+          updated_at: row.updated_at,
+        })
+      )
+    );
   } finally {
     client.release();
   }
@@ -1162,6 +1224,7 @@ export { getExternalDataProviders };
 export { getExternalDataProvidersByUserId };
 export { getActiveProvidersByTypes };
 export { getActiveProviderWithKeyByType };
+export { getActiveMcpServers };
 export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderById };
@@ -1186,6 +1249,7 @@ export default {
   getExternalDataProvidersByUserId,
   getActiveProvidersByTypes,
   getActiveProviderWithKeyByType,
+  getActiveMcpServers,
   createExternalDataProvider,
   updateExternalDataProvider,
   getExternalDataProviderById,
