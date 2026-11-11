@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   save: vi.fn(),
   suggest: vi.fn(),
   getSource: vi.fn(),
+  previewNutritionSync: vi.fn(),
   syncNutrition: vi.fn(),
 }));
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -35,6 +36,7 @@ describe('recipe import route boundary', () => {
     state.actor = 'delegate';
     for (const [method, url] of [
       ['get', '/00000000-0000-4000-a000-000000000001/source'],
+      ['get', '/00000000-0000-4000-a000-000000000001/sync-preview'],
       ['post', '/mealie/preview'],
       ['post', '/00000000-0000-4000-a000-000000000001/sync-nutrition'],
     ] as const) {
@@ -45,6 +47,19 @@ describe('recipe import route boundary', () => {
       expect(response.status).toBe(403);
     }
     expect(state.preview).not.toHaveBeenCalled();
+  });
+  it('returns a read-only nutrition confirmation preview for the owner', async () => {
+    state.previewNutritionSync.mockResolvedValue({
+      recipeName: 'Rice',
+      nutrition: { calories: 600 },
+      confirmationFingerprint: 'a'.repeat(64),
+    });
+    const response = await request(app).get(
+      '/api/v2/recipe-imports/00000000-0000-4000-a000-000000000001/sync-preview'
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.nutrition.calories).toBe(600);
+    expect(state.syncNutrition).not.toHaveBeenCalled();
   });
   it('rejects empty mappings', async () => {
     const response = await request(app)

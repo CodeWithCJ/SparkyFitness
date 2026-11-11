@@ -3,9 +3,11 @@ import {
   getConversionFactor,
   FOOD_VARIANT_NUTRIENT_FIELDS,
   roundMealServingValue,
+  recipeImportNutrientNumber as nutrientNumber,
   type RecipeImportNutrition,
 } from '@workspace/shared';
-import type { FoodVariantInput, NutrientValue } from '../types/nutrition.js';
+import type { FoodVariantInput } from '../types/nutrition.js';
+export { recipeImportNutrientNumber as nutrientNumber } from '@workspace/shared';
 
 export class RecipeImportError extends Error {
   constructor(
@@ -22,16 +24,6 @@ export const RECIPE_NUTRIENTS = [
   'water_ml',
 ] as const;
 const REQUIRED = ['calories', 'protein', 'carbs', 'fat'] as const;
-export function nutrientNumber(value: NutrientValue): number | null {
-  if (
-    value === null ||
-    value === undefined ||
-    (typeof value === 'string' && value.trim() === '')
-  )
-    return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 export function variantNutrition(
   variant: FoodVariantInput
 ): RecipeImportNutrition {
@@ -143,21 +135,6 @@ export function mealServingFields(
       finishedWeightGrams === undefined ? ('serving' as const) : ('g' as const),
     total_servings: servings,
   };
-}
-export function sourceAmountMatches(
-  sourceQuantity: number | null,
-  sourceUnit: string | null,
-  quantity: number,
-  unit: string
-): boolean {
-  if (sourceQuantity === null || sourceQuantity <= 0 || !sourceUnit)
-    return false;
-  const factor = getConversionFactor(sourceUnit, unit);
-  return (
-    factor !== null &&
-    Math.abs(sourceQuantity - quantity * factor) <=
-      Math.max(1e-8, Math.abs(sourceQuantity) * 1e-8)
-  );
 }
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);

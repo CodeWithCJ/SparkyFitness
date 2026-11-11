@@ -239,6 +239,38 @@ async function mapRice() {
   fireEvent.click(await screen.findByText('Confirm 600 g'));
   await screen.findByText(/Dry rice/);
 }
+async function confirmNutritionSync() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
+  );
+  const confirm = await screen.findByRole('button', {
+    name: 'Confirm nutrition sync',
+  });
+  await waitFor(() => expect(confirm).toBeEnabled());
+  fireEvent.click(confirm);
+}
+it('keeps the original spoon amount readable beside the selected food amount', () => {
+  const client = new QueryClient();
+  render(
+    <QueryClientProvider client={client}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          originalQuantity: 1,
+          quantity: 5,
+          unit: 'ml',
+          originalUnit: 'tsp',
+        }}
+        onConfirm={jest.fn()}
+      />
+    </QueryClientProvider>
+  );
+  expect(
+    screen.getByText('Original whole-recipe amount: 1 tsp')
+  ).toBeInTheDocument();
+  expect(screen.getByText('Selected food and amount')).toBeInTheDocument();
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockActing = false;
@@ -257,6 +289,18 @@ beforeEach(() => {
   api.previewRecipe.mockResolvedValue(preview);
   api.saveRecipe.mockResolvedValue(saved);
   api.getRecipeSource.mockResolvedValue(saved.source);
+  api.previewRecipeNutritionSync.mockImplementation(async (mealId) => ({
+    mealId,
+    mealName: 'Saved rice',
+    recipeName: 'Rice',
+    recipeSlug: 'rice',
+    recipeServings: 4,
+    sourceChanged: false,
+    existingNutrition: {},
+    batchNutrition: { calories: 2400 },
+    nutrition: { calories: 600 },
+    confirmationFingerprint: 'c'.repeat(64),
+  }));
   api.suggestRecipe.mockResolvedValue({
     ingredients: [],
     aiUsed: true,
@@ -637,9 +681,7 @@ it('does not submit twice or report sync success while the source write is pendi
   await selectRecipe();
   await mapRice();
   fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
-  );
+  await confirmNutritionSync();
   expect(
     await screen.findByRole('button', { name: 'Syncing nutrition…' })
   ).toBeDisabled();
@@ -659,7 +701,7 @@ it('does not submit twice or report sync success while the source write is pendi
   expect(api.saveRecipe).toHaveBeenCalledTimes(1);
 });
 it.each([
-  'Remote recipe changed. Review and import again.',
+  'The saved meal or Mealie recipe changed. Refresh the nutrition preview and confirm the current values.',
   'Provider unavailable. Check Mealie before retrying.',
 ])('retains the saved local meal after sync failure: %s', async (message) => {
   api.syncRecipeNutrition.mockRejectedValue(new Error(message));
@@ -667,9 +709,7 @@ it.each([
   await selectRecipe();
   await mapRice();
   fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
-  );
+  await confirmNutritionSync();
   expect(await screen.findByText(message)).toBeInTheDocument();
   expect(
     screen.getByText('Meal saved. You can log portions from your diary.')
@@ -688,9 +728,7 @@ it('reports sync success only after the source confirms it', async () => {
   await selectRecipe();
   await mapRice();
   fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
-  );
+  await confirmNutritionSync();
   expect(
     await screen.findByText('Nutrition synced to Mealie.')
   ).toBeInTheDocument();
@@ -778,9 +816,7 @@ it('does not restore a departed owner source cache after an in-flight sync finis
       <RecipeImportSourcePanel mealId="meal" />
     </QueryClientProvider>
   );
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
-  );
+  await confirmNutritionSync();
   await waitFor(() => expect(api.syncRecipeNutrition).toHaveBeenCalledTimes(1));
   panel.unmount();
   client.clear();
@@ -925,7 +961,7 @@ it('describes known optional gaps without claiming the selected core nutrition i
   ).not.toBeInTheDocument();
   expect(
     screen.queryByText(
-      'The source has incomplete or incompatible amounts, units or servings. Review the warnings below. Manual tracking corrections may prevent source sync.'
+      'Review missing source amounts, units and servings below. Enter the whole-recipe amounts you will use for nutrition calculations.'
     )
   ).not.toBeInTheDocument();
   expect(
@@ -951,7 +987,7 @@ it('keeps the source amount banner for a real missing source quantity', async ()
   await selectRecipe();
   expect(
     screen.getByText(
-      'The source has incomplete or incompatible amounts, units or servings. Review the warnings below. Manual tracking corrections may prevent source sync.'
+      'Review missing source amounts, units and servings below. Enter the whole-recipe amounts you will use for nutrition calculations.'
     )
   ).toBeInTheDocument();
 });

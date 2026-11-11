@@ -11,6 +11,8 @@ import {
   MIN_CALORIE_SAFETY_FLOOR,
   recipeImportSaveRequestSchema,
   recipeImportSuggestionRequestSchema,
+  recipeImportSyncPreviewSchema,
+  recipeImportSyncRequestSchema,
   MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
 } from '@workspace/shared';
 
@@ -59,6 +61,14 @@ const options = {
         },
       },
       schemas: {
+        RecipeImportSyncPreview: z.toJSONSchema(recipeImportSyncPreviewSchema, {
+          target: 'openapi-3.0',
+          io: 'output',
+        }),
+        RecipeImportSyncRequest: z.toJSONSchema(recipeImportSyncRequestSchema, {
+          target: 'openapi-3.0',
+          io: 'input',
+        }),
         RecipeImportSaveRequest: z.toJSONSchema(recipeImportSaveRequestSchema, {
           target: 'openapi-3.0',
           io: 'input',

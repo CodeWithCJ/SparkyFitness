@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-11_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -48,7 +48,7 @@ Features are organized by domain, and the same domain folder name appears in `sr
 
 ## Source Map
 
-- Mealie ingredient meals: `pages/Foods/RecipeImportDialog.tsx` browses configured sources, `RecipeImportReview.tsx` reviews whole-recipe amounts and cooked weight, and `RecipeImportIngredientRow.tsx` reuses food search/import/unit selection. `hooks/Foods/useRecipeImport.ts` guards confirmed mappings and batches matching requests (20 rows); `hooks/Foods/useRecipeImportQueries.ts` owns owner-scoped browsing, food lookups and source sync; `api/Foods/recipeImportService.ts` consumes shared RecipeImport contracts. `RecipeImportSourcePanel.tsx` provides explicit source nutrition sync from saved meals and ordinary meal edit/details; 404 means an ordinary meal, and owner-only panels unmount on profile switches. Recipe unit selection opts into preserving source amounts across compatible units and requires explicit incompatible amounts. Existing quick-food recipe import remains separate.
+- Mealie ingredient meals: `pages/Foods/RecipeImportDialog.tsx` browses configured sources, `RecipeImportReview.tsx` reviews whole-recipe amounts and cooked weight, and `RecipeImportIngredientRow.tsx` reuses food search/import/unit selection. `hooks/Foods/useRecipeImport.ts` guards confirmed mappings and batches matching requests (20 rows); `hooks/Foods/useRecipeImportQueries.ts` owns owner-scoped browsing, food lookups and source sync; `api/Foods/recipeImportService.ts` consumes shared RecipeImport contracts. `RecipeImportSourcePanel.tsx` and `RecipeImportSyncConfirmation.tsx` review current nutrition before explicit writeback from saved meals and ordinary meal edit/details; 404 means an ordinary meal, and owner-only panels unmount on profile switches. Recipe unit selection opts into preserving source amounts across compatible units and requires explicit incompatible amounts. Existing quick-food recipe import remains separate.
 
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 

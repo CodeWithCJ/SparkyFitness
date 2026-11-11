@@ -24,6 +24,7 @@ import {
   suggestRecipe,
   fetchRecipeSource,
   syncRecipeNutrition,
+  previewRecipeNutritionSync,
 } from '../services/api/recipeImportApi';
 import { ApiError } from '../services/api/errors';
 import type { ServerConfig } from '../services/storage';
@@ -86,6 +87,7 @@ const sourceKey = (scope: string | null, mealId: string) => [
 ];
 export function useRecipeSource(mealId: string, scope: string | null) {
   const client = useQueryClient();
+  const [sourceGeneration, setSourceGeneration] = useState(0);
   const current = useRef(scope);
   const release = useRef<(() => void) | null>(null);
   const reset = useRef<() => void>(() => {});
@@ -96,13 +98,17 @@ export function useRecipeSource(mealId: string, scope: string | null) {
       release.current?.();
     };
   }, [scope, mealId]);
+  useEffect(() => {
+    const owner = observeRecipeImportOwner(client, () => reset.current());
+    return owner.unsubscribe;
+  }, [client, scope]);
   const source = useQuery({
     queryKey: sourceKey(scope, mealId),
     queryFn: () => fetchRecipeSource(mealId),
     enabled: !!scope,
     retry: false,
   });
-  function beginSync() {
+  function beginSync(confirmationFingerprint?: string) {
     release.current?.();
     const activeConfig = client.getQueryData<{
       activeConfig: ServerConfig | null;
@@ -140,7 +146,13 @@ export function useRecipeSource(mealId: string, scope: string | null) {
       unsubscribe: owner.unsubscribe,
       send: () => {
         if (!config || !isCurrent()) throw new Error('OWNER_REQUIRED');
-        return syncRecipeNutrition(mealId, config);
+        return confirmationFingerprint
+          ? syncRecipeNutrition(mealId, config, confirmationFingerprint)
+          : syncRecipeNutrition(mealId, config);
+      },
+      preview: () => {
+        if (!config || !isCurrent()) throw new Error('OWNER_REQUIRED');
+        return previewRecipeNutritionSync(mealId, config);
       },
     };
   }
@@ -158,40 +170,61 @@ export function useRecipeSource(mealId: string, scope: string | null) {
       if (release.current === operation.cleanup) release.current = null;
     },
   });
+  const previewSync = useMutation({
+    mutationFn: async () => {
+      const operation = beginSync();
+      try {
+        const result = await operation.preview();
+        if (!operation.isCurrent()) throw new Error('OWNER_REQUIRED');
+        return result;
+      } finally {
+        operation.cleanup();
+        if (release.current === operation.cleanup) release.current = null;
+      }
+    },
+    retry: false,
+  });
   const resetSync = sync.reset;
+  const resetPreview = previewSync.reset;
   useEffect(() => {
-    reset.current = resetSync;
-  }, [resetSync]);
+    reset.current = () => {
+      resetSync();
+      resetPreview();
+      setSourceGeneration((generation) => generation + 1);
+    };
+  }, [resetSync, resetPreview]);
   // Capture the owner before TanStack awaits any cache or mutation onMutate.
   const mutateAsync: UseMutateAsyncFunction<
     RecipeImportSyncResponse,
     Error,
-    void,
+    string | void,
     SyncOperation
-  > = (_variables, options) =>
+  > = (variables, options) =>
     sync.mutateAsync(
-      beginSync(),
+      beginSync(variables || undefined),
       options
         ? {
             onSuccess: (data, _operation, result, context) =>
-              options.onSuccess?.(data, undefined, result, context),
+              options.onSuccess?.(data, variables, result, context),
             onError: (error, _operation, result, context) =>
-              options.onError?.(error, undefined, result, context),
+              options.onError?.(error, variables, result, context),
             onSettled: (data, error, _operation, result, context) =>
-              options.onSettled?.(data, error, undefined, result, context),
+              options.onSettled?.(data, error, variables, result, context),
           }
         : undefined
     );
   const mutate: UseMutateFunction<
     RecipeImportSyncResponse,
     Error,
-    void,
+    string | void,
     SyncOperation
   > = (variables, options) => {
     void mutateAsync(variables, options).catch(() => {});
   };
   return {
     source,
+    previewSync,
+    sourceGeneration,
     sync: { ...sync, variables: undefined, mutate, mutateAsync },
   };
 }

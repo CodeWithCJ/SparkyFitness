@@ -299,9 +299,9 @@ export default function RecipeImportReview({
       )}
       {preview.recipeServings === null && (
         <Text className="text-text-secondary">
-          {t('recipeImport.missingServings', {
+          {t('recipeImport.missingSourceServingsReview', {
             defaultValue:
-              'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.',
+              'Enter servings for the saved meal. To sync nutrition later, set a positive serving count in Mealie and refresh the nutrition preview.',
           })}
         </Text>
       )}
@@ -349,10 +349,11 @@ export default function RecipeImportReview({
           {warning}
         </Text>
       ))}
-      {preview.ingredients.map((row) => (
+      {preview.ingredients.map((row, index) => (
         <RecipeImportIngredientRow
           key={row.ingredientId}
           ingredient={row}
+          position={index + 1}
           mapping={draft.mappings[row.ingredientId]}
           suggestion={draft.suggestions.find(
             (value) => value.ingredientId === row.ingredientId

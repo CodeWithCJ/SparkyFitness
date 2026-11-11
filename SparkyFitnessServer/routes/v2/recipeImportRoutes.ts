@@ -97,18 +97,37 @@ const actor = (req: Request) =>
  *     responses:
  *       200: {description: RecipeImportSource with sync eligibility and last confirmed sync time}
  *       404: {description: No readable import source}
- * /v2/recipe-imports/{mealId}/sync-nutrition:
- *   post:
- *     summary: Explicitly sync unchanged base-recipe nutrition per original Mealie serving
- *     description: Re-reads source and meal; rejects source, local ingredient, quantity or nutrient changes. PATCHes only nutrition, retaining unknown existing nutrients. No duplicates or ingredient writes. A remote edit between validation and PATCH cannot be atomically locked by Mealie.
+ * /v2/recipe-imports/{mealId}/sync-preview:
+ *   get:
+ *     summary: Review current saved-meal nutrition per current Mealie serving without writing
  *     tags: [Foods & Nutrition]
  *     security: [{cookieAuth: []}]
  *     parameters:
  *       - {in: path, name: mealId, required: true, schema: {type: string, format: uuid}}
  *     responses:
+ *       200:
+ *         description: Current and proposed nutrition, source-change warning and confirmation fingerprint
+ *         content:
+ *           application/json:
+ *             schema: {$ref: '#/components/schemas/RecipeImportSyncPreview'}
+ *       403: {description: Owner-only}
+ *       422: {description: Incomplete saved nutrition or invalid current Mealie servings}
+ * /v2/recipe-imports/{mealId}/sync-nutrition:
+ *   post:
+ *     summary: Confirm nutrition writeback per current Mealie serving
+ *     description: Re-reads the source and current saved meal; a reviewed confirmationFingerprint allows source or saved-meal edits without reimporting, but rejects changes since that preview. Older empty-body requests require an unchanged source. PATCHes only nutrition, retaining unknown existing nutrients. A remote edit between validation and PATCH cannot be atomically locked by Mealie.
+ *     tags: [Foods & Nutrition]
+ *     security: [{cookieAuth: []}]
+ *     parameters:
+ *       - {in: path, name: mealId, required: true, schema: {type: string, format: uuid}}
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: {$ref: '#/components/schemas/RecipeImportSyncRequest'}
+ *     responses:
  *       200: {description: Confirmed update and refreshed provenance}
- *       409: {description: Remote or local recipe conflict}
- *       422: {description: Base quantities or mappings are unsuitable for sync}
+ *       409: {description: Preview changed or a legacy client needs source-change confirmation}
+ *       422: {description: Incomplete saved nutrition or invalid current Mealie servings}
  *       502: {description: Mealie did not confirm the update}
  */
 router.get('/mealie/:providerId/recipes', async (req, res, next) => {
@@ -184,9 +203,23 @@ router.get('/:mealId/source', async (req, res, next) => {
 });
 router.post('/:mealId/sync-nutrition', async (req, res, next) => {
   try {
-    recipeImportSyncBodySchema.parse(req.body ?? {});
+    const input = recipeImportSyncBodySchema.parse(req.body ?? {});
     res.json(
       await service.syncNutrition(
+        req.userId,
+        actor(req),
+        recipeImportMealParamsSchema.parse(req.params).mealId,
+        input
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.get('/:mealId/sync-preview', async (req, res, next) => {
+  try {
+    res.json(
+      await service.previewNutritionSync(
         req.userId,
         actor(req),
         recipeImportMealParamsSchema.parse(req.params).mealId

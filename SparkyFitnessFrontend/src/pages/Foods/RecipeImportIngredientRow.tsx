@@ -38,6 +38,7 @@ interface Props {
   suggestion?: RecipeImportSuggestionResponse['ingredients'][number];
   onConfirm: (mapping: RecipeImportMapping) => void;
   disabled?: boolean;
+  position?: number;
 }
 
 export default function RecipeImportIngredientRow({
@@ -46,8 +47,13 @@ export default function RecipeImportIngredientRow({
   suggestion,
   onConfirm,
   disabled,
+  position,
 }: Props) {
   const { t } = useTranslation();
+  const originalQuantity =
+    ingredient.originalQuantity === undefined
+      ? ingredient.quantity
+      : ingredient.originalQuantity;
   const { isActingOnBehalf } = useActiveUser();
   const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -178,13 +184,20 @@ export default function RecipeImportIngredientRow({
   }
 
   return (
-    <article
-      className="space-y-3 rounded-md border p-4"
-      aria-label={ingredient.name}
-    >
+    <article className="space-y-3 border-b py-5" aria-label={ingredient.name}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="font-semibold">{ingredient.name}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t('recipeImport.sourceIngredient', 'Mealie ingredient')}
+          </p>
+          <div className="flex items-center gap-2">
+            {position !== undefined && (
+              <span className="text-muted-foreground" aria-hidden>
+                {position}.
+              </span>
+            )}
+            <h3 className="font-semibold">{ingredient.name}</h3>
+          </div>
           <p className="text-sm">{ingredient.originalText}</p>
           <p className="text-sm text-muted-foreground">
             {t(
@@ -192,9 +205,9 @@ export default function RecipeImportIngredientRow({
               'Original whole-recipe amount: {{quantity}} {{unit}}',
               {
                 quantity:
-                  ingredient.quantity === null
+                  originalQuantity === null
                     ? t('recipeImport.notProvided', 'not provided')
-                    : number(ingredient.quantity),
+                    : number(originalQuantity),
                 unit:
                   ingredient.originalUnit ||
                   ingredient.unit ||
@@ -208,7 +221,9 @@ export default function RecipeImportIngredientRow({
         </div>
         <Badge variant={mapping ? 'secondary' : 'outline'}>
           {mapping
-            ? t('recipeImport.confirmed', 'Confirmed')
+            ? ingredient.mappingOrigin === 'saved'
+              ? t('recipeImport.savedChoice', 'Saved choice')
+              : t('recipeImport.confirmed', 'Confirmed')
             : t('recipeImport.unresolved', 'Needs confirmation')}
         </Badge>
       </div>
@@ -241,6 +256,17 @@ export default function RecipeImportIngredientRow({
             'recipeImport.missingNutrients',
             'Missing nutrients: {{nutrients}}',
             { nutrients: missingNutrients.join(', ') }
+          )}
+        </p>
+      )}
+      <h4 className="text-sm font-medium">
+        {t('recipeImport.selectedFoodAmount', 'Selected food and amount')}
+      </h4>
+      {mapping && ingredient.mappingOrigin === 'saved' && (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            'recipeImport.savedChoiceHelp',
+            'Check this saved choice and its whole-recipe amount before saving.'
           )}
         </p>
       )}
@@ -312,8 +338,9 @@ export default function RecipeImportIngredientRow({
         <div className="space-y-2">
           <p className="text-sm">
             {t(
-              'recipeImport.reviewSuggestions',
-              'Review candidates, then confirm the food, variant and whole-recipe amount.'
+              'recipeImport.matchesFor',
+              'Matches for {{name}} — choose one and review its amount.',
+              { name: ingredient.name }
             )}
           </p>
           {suggestion.candidates.length === 0 && (
@@ -327,7 +354,7 @@ export default function RecipeImportIngredientRow({
           {suggestion.candidates.map((candidate) => (
             <div
               key={candidate.candidateId}
-              className="rounded border p-2 text-sm space-y-1"
+              className="border-b py-3 text-sm space-y-1 last:border-0"
             >
               <p>
                 {candidate.name}

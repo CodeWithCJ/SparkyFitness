@@ -1,8 +1,10 @@
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RecipeImportSource } from '@workspace/shared';
 import { useRecipeImportSource } from '@/hooks/Foods/useRecipeImportQueries';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { Button } from '@/components/ui/button';
+import RecipeImportSyncConfirmation from './RecipeImportSyncConfirmation';
 
 export default function RecipeImportSourcePanel(props: {
   mealId: string;
@@ -36,11 +38,41 @@ function OwnerSourcePanel({
   ownerId: string;
 }) {
   const { t } = useTranslation();
-  const { source, sync } = useRecipeImportSource(
+  const [reviewGeneration, setReviewGeneration] = useState<number | null>(null);
+  const confirming = useRef(false);
+  const { source, sync, previewSync, sourceGeneration } = useRecipeImportSource(
     mealId,
     ownerId,
     initialSource
   );
+  const reviewOpen = reviewGeneration === sourceGeneration;
+  function loadPreview() {
+    if (!ingredientsLoaded || ingredientsDirty || sync.isPending) return;
+    sync.reset();
+    previewSync.reset();
+    setReviewGeneration(sourceGeneration);
+    previewSync.mutate();
+  }
+  function confirm() {
+    if (
+      !previewSync.data ||
+      previewSync.isPending ||
+      previewSync.error ||
+      confirming.current ||
+      !ingredientsLoaded ||
+      ingredientsDirty
+    )
+      return;
+    confirming.current = true;
+    void sync
+      .mutateAsync(previewSync.data.confirmationFingerprint, {
+        onSuccess: () => setReviewGeneration(null),
+      })
+      .catch(() => {})
+      .finally(() => {
+        confirming.current = false;
+      });
+  }
   if (source.isPending)
     return (
       <p role="status">
@@ -57,15 +89,15 @@ function OwnerSourcePanel({
       <p className="font-medium">{source.data.name}</p>
       <p className="text-sm text-muted-foreground">
         {t(
-          'recipeImport.syncExplanation',
-          'Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.'
+          'recipeImport.syncReviewHelp',
+          'Review and confirm the current saved meal nutrition before updating Mealie. Diary changes are separate.'
         )}
       </p>
       {!source.data.syncEligible && (
         <p role="status">
           {t(
-            'recipeImport.syncUnavailable',
-            'This meal is available for tracking. Source amounts, units, servings or mappings do not support safe sync; correct the source and import a new base meal.'
+            'recipeImport.syncNeedsCompleteMeal',
+            'Review the saved meal ingredients and complete their nutrition before syncing.'
           )}
         </p>
       )}
@@ -83,17 +115,27 @@ function OwnerSourcePanel({
           !ingredientsLoaded ||
           ingredientsDirty ||
           !source.data.syncEligible ||
-          sync.isPending
+          sync.isPending ||
+          previewSync.isPending
         }
-        onClick={() => {
-          if (ingredientsLoaded && !ingredientsDirty) sync.mutate();
-        }}
+        onClick={loadPreview}
       >
         {sync.isPending
           ? t('recipeImport.syncing', 'Syncing nutrition…')
           : t('recipeImport.sync', 'Sync nutrition to Mealie')}
       </Button>
-      {sync.error && (
+      {reviewOpen && (
+        <RecipeImportSyncConfirmation
+          preview={previewSync.data}
+          loading={previewSync.isPending}
+          busy={sync.isPending}
+          error={previewSync.error || sync.error}
+          onCancel={() => setReviewGeneration(null)}
+          onRefresh={loadPreview}
+          onConfirm={confirm}
+        />
+      )}
+      {sync.error && !reviewOpen && (
         <p role="alert" className="text-destructive">
           {sync.error.message}
         </p>

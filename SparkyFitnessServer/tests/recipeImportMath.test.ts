@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { recipeImportSyncComparison } from '@workspace/shared';
 import {
   calculateRecipeNutrition,
   mealServingFields,
-  sourceAmountMatches,
   recipeFingerprint,
   selectCandidateIds,
   nutritionPatch,
@@ -16,6 +16,24 @@ const variant = {
   fat: 10,
 };
 describe('ingredient recipe calculations', () => {
+  it('compares Mealie numeric strings and measured zero without turning unknown nutrition into zero', () => {
+    expect(
+      recipeImportSyncComparison({
+        existingNutrition: {
+          calories: '0',
+          proteinContent: ' ',
+          carbohydrateContent: '12.5',
+          fatContent: null,
+        },
+        nutrition: { calories: 600, protein: null, carbs: 90, fat: 15 },
+      })
+    ).toEqual([
+      { nutrient: 'calories', previous: 0, proposed: 600 },
+      { nutrient: 'protein', previous: null, proposed: null },
+      { nutrient: 'carbs', previous: 12.5, proposed: 90 },
+      { nutrient: 'fat', previous: null, proposed: 15 },
+    ]);
+  });
   it('uses the finished weight only for the cooked portion denominator', () => {
     const totals = calculateRecipeNutrition([
       { quantity: 600, unit: 'g', variant },
@@ -43,12 +61,6 @@ describe('ingredient recipe calculations', () => {
         { quantity: 100, unit: 'g', variant: { ...variant, protein: null } },
       ])
     ).toThrow(/nutrition/i);
-  });
-  it('recognizes equivalent source amounts but refuses guesses and missing quantities', () => {
-    expect(sourceAmountMatches(1, 'kg', 1000, 'g')).toBe(true);
-    expect(sourceAmountMatches(1, 'cup', 200, 'g')).toBe(false);
-    expect(sourceAmountMatches(null, 'g', 100, 'g')).toBe(false);
-    expect(sourceAmountMatches(100, 'g', 101, 'g')).toBe(false);
   });
   it('keeps unknown optional nutrients unknown and writes only complete nutrient fields per serving', () => {
     const totals = calculateRecipeNutrition([

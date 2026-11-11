@@ -3,9 +3,9 @@ import type { TFunction } from 'i18next';
 export function recipeImportIssueLabel(issue: string, t: TFunction): string {
   switch (issue) {
     case 'missing_servings':
-      return t('recipeImport.missingServings', {
+      return t('recipeImport.missingSourceServingsReview', {
         defaultValue:
-          'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.',
+          'Enter servings for the saved meal. To sync nutrition later, set a positive serving count in Mealie and refresh the nutrition preview.',
       });
     case 'missing_quantity':
       return t('recipeImport.issues.missing_quantity', {

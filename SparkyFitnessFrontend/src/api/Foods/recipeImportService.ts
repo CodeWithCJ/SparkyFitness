@@ -6,6 +6,7 @@ import {
   recipeImportSourceSchema,
   recipeImportSuggestionResponseSchema,
   recipeImportSyncResponseSchema,
+  recipeImportSyncPreviewSchema,
   type RecipeImportPreviewRequest,
   type RecipeImportSaveRequest,
   type RecipeImportSuggestionRequest,
@@ -52,11 +53,18 @@ export const getRecipeSource = async (mealId: string) => {
     throw error;
   }
 };
-export const syncRecipeNutrition = async (mealId: string) =>
+export const previewRecipeNutritionSync = async (mealId: string) =>
+  recipeImportSyncPreviewSchema.parse(
+    await apiCall(`${root}/${encodeURIComponent(mealId)}/sync-preview`, quiet)
+  );
+export const syncRecipeNutrition = async (
+  mealId: string,
+  confirmationFingerprint?: string
+) =>
   recipeImportSyncResponseSchema.parse(
     await apiCall(`${root}/${encodeURIComponent(mealId)}/sync-nutrition`, {
       ...quiet,
       method: 'POST',
-      body: {},
+      body: confirmationFingerprint ? { confirmationFingerprint } : {},
     })
   );

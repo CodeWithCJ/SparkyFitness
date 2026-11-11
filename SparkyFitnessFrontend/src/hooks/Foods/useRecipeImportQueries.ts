@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useMutation,
   useQueries,
@@ -19,6 +19,7 @@ import {
   getRecipeSource,
   previewRecipe,
   syncRecipeNutrition,
+  previewRecipeNutritionSync,
 } from '@/api/Foods/recipeImportService';
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
@@ -170,10 +171,14 @@ export function useRecipeImportSource(
   const { t } = useTranslation();
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   const client = useQueryClient();
-  const key = ['meals', 'recipe-import-source', ownerId, mealId];
+  const key = useMemo(
+    () => ['meals', 'recipe-import-source', ownerId, mealId],
+    [ownerId, mealId]
+  );
   const identity = `${ownerId}:${mealId}`;
   const current = useRef<string | null>(identity);
   const [initial, setInitial] = useState(initialSource);
+  const [sourceGeneration, setSourceGeneration] = useState(0);
   const release = useRef<(() => void) | null>(null);
   const reset = useRef<() => void>(() => {});
   useEffect(() => {
@@ -190,44 +195,82 @@ export function useRecipeImportSource(
     enabled: !isActingOnBehalf && activeUserId === ownerId,
     retry: false,
   });
-  const sync = useMutation({
-    // The panel displays current errors; only its still-current operation may
-    // also notify. The global handler otherwise toasts after cache.clear().
-    meta: { silentError: true },
-    onMutate: () => {
-      release.current?.();
-      const query = client.getQueryCache().find({ queryKey: key, exact: true });
-      let retained = true;
-      const unsubscribe = client.getQueryCache().subscribe((event) => {
-        if (event.type !== 'removed' || event.query !== query) return;
-        retained = false;
-        setInitial(undefined);
-        reset.current();
-      });
-      const cleanup = () => {
-        retained = false;
-        unsubscribe();
-      };
-      release.current = cleanup;
-      return {
-        isCurrent: () =>
-          retained &&
-          current.current === identity &&
-          !!query &&
-          client.getQueryCache().find({ queryKey: key, exact: true }) === query,
-        cleanup,
-        unsubscribe,
-      };
-    },
-    mutationFn: () => {
-      if (isActingOnBehalf || activeUserId !== ownerId)
-        throw new Error(
-          t(
-            'recipeImport.ownerOnly',
-            'Switch to your own profile to import or sync recipes.'
+  useEffect(
+    () =>
+      client.getQueryCache().subscribe((event) => {
+        if (
+          event.type === 'removed' &&
+          event.query.queryKey.length === key.length &&
+          event.query.queryKey.every(
+            (value: unknown, index: number) => value === key[index]
           )
-        );
-      return syncRecipeNutrition(mealId);
+        ) {
+          setInitial(undefined);
+          setSourceGeneration((generation) => generation + 1);
+          reset.current();
+        }
+      }),
+    [client, key]
+  );
+  const beginOperation = () => {
+    release.current?.();
+    const query = client.getQueryCache().find({ queryKey: key, exact: true });
+    let retained = true;
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
+      if (event.type !== 'removed' || event.query !== query) return;
+      retained = false;
+      setInitial(undefined);
+      reset.current();
+    });
+    const cleanup = () => {
+      retained = false;
+      unsubscribe();
+    };
+    release.current = cleanup;
+    return {
+      isCurrent: () =>
+        retained &&
+        current.current === identity &&
+        !!query &&
+        client.getQueryCache().find({ queryKey: key, exact: true }) === query,
+      cleanup,
+      unsubscribe,
+    };
+  };
+  function requireCurrentOwner() {
+    if (isActingOnBehalf || activeUserId !== ownerId)
+      throw new Error(
+        t(
+          'recipeImport.ownerOnly',
+          'Switch to your own profile to import or sync recipes.'
+        )
+      );
+  }
+  const finishOperation = (
+    context: ReturnType<typeof beginOperation> | undefined
+  ) => {
+    context?.unsubscribe();
+    if (release.current === context?.cleanup) release.current = null;
+  };
+  const previewSync = useMutation({
+    meta: { silentError: true },
+    onMutate: beginOperation,
+    mutationFn: () => {
+      requireCurrentOwner();
+      return previewRecipeNutritionSync(mealId);
+    },
+    onSettled: (_data, _error, _variables, context) => finishOperation(context),
+    retry: false,
+  });
+  const sync = useMutation({
+    // Only a still-current operation may publish its outcome after an identity clear.
+    meta: { silentError: true },
+    onMutate: beginOperation,
+    mutationFn: (confirmationFingerprint: string | void) => {
+      requireCurrentOwner();
+      return confirmationFingerprint
+        ? syncRecipeNutrition(mealId, confirmationFingerprint)
+        : syncRecipeNutrition(mealId);
     },
     retry: false,
     onSuccess: (result, _variables, context) => {
@@ -242,13 +285,16 @@ export function useRecipeImportSource(
         });
     },
     onSettled: (_data, _error, _variables, context) => {
-      context?.unsubscribe();
-      if (release.current === context?.cleanup) release.current = null;
+      finishOperation(context);
     },
   });
   const resetSync = sync.reset;
+  const resetPreview = previewSync.reset;
   useEffect(() => {
-    reset.current = resetSync;
-  }, [resetSync]);
-  return { source, sync };
+    reset.current = () => {
+      resetSync();
+      resetPreview();
+    };
+  }, [resetSync, resetPreview]);
+  return { source, sync, previewSync, sourceGeneration };
 }

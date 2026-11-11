@@ -19,6 +19,7 @@ export const recipeImportIngredientSchema = z.object({
   name: z.string(),
   originalText: z.string(),
   note: z.string(),
+  originalQuantity: positive.nullable().optional(),
   quantity: positive.nullable(),
   unit: z.string().nullable(),
   originalUnit: z.string().nullable(),
@@ -165,4 +166,33 @@ export const recipeImportSyncResponseSchema = z.object({
 });
 export type RecipeImportSyncResponse = z.infer<
   typeof recipeImportSyncResponseSchema
+>;
+export const recipeImportSyncRequestSchema = z
+  .object({
+    confirmationFingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
+export type RecipeImportSyncRequest = z.infer<
+  typeof recipeImportSyncRequestSchema
+>;
+export const recipeImportSyncPreviewSchema = z.object({
+  mealId: z.uuid(),
+  mealName: z.string(),
+  recipeName: z.string(),
+  recipeSlug: z.string(),
+  recipeServings: positive,
+  sourceChanged: z.boolean(),
+  existingNutrition: z.record(
+    z.string(),
+    z.union([z.string(), z.number(), z.null()])
+  ),
+  batchNutrition: recipeImportNutritionSchema,
+  nutrition: recipeImportNutritionSchema,
+  confirmationFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+});
+export type RecipeImportSyncPreview = z.infer<
+  typeof recipeImportSyncPreviewSchema
 >;

@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type {
   RecipeImportPreview,
   RecipeImportSource,
+  RecipeImportSyncPreview,
 } from '@workspace/shared';
 import RecipeImportReview from '../../src/components/recipeImport/RecipeImportReview';
 import RecipeImportIngredientRow from '../../src/components/recipeImport/RecipeImportIngredientRow';
@@ -17,6 +18,7 @@ import {
   syncRecipeNutrition,
   fetchRecipeSource,
   fetchRecipeFood,
+  previewRecipeNutritionSync,
 } from '../../src/services/api/recipeImportApi';
 import { fetchFoodVariants } from '../../src/services/api/foodsApi';
 import { setPendingRecipeImportSelection } from '../../src/services/recipeImportSelection';
@@ -50,6 +52,10 @@ jest.mock('../../src/services/api/recipeImportApi', () => ({
   suggestRecipe: jest.fn(),
   fetchRecipeSource: jest.fn(),
   syncRecipeNutrition: jest.fn(),
+  previewRecipeNutritionSync: jest.fn(async (mealId: string) => ({
+    ...mockSyncPreview,
+    mealId,
+  })),
   fetchRecipeFood: jest.fn(),
 }));
 jest.mock('../../src/services/api/foodsApi', () => ({
@@ -98,6 +104,128 @@ const source: RecipeImportSource = {
   syncEligible: true,
   lastSyncedAt: null,
 };
+const mockSyncPreview: RecipeImportSyncPreview = {
+  mealId: 'meal',
+  mealName: 'Saved rice',
+  recipeName: 'Current Mealie recipe',
+  recipeSlug: 'rice',
+  recipeServings: 4,
+  sourceChanged: true,
+  existingNutrition: { calories: 100 },
+  batchNutrition: { calories: 2400 },
+  nutrition: { calories: 600, protein: 15, carbs: 90, fat: 15 },
+  confirmationFingerprint: 'c'.repeat(64),
+};
+async function confirmNutritionSync(screen: ReturnType<typeof render>) {
+  fireEvent.press(await screen.findByText('Sync nutrition to Mealie'));
+  await waitFor(() =>
+    expect(screen.getByText('Confirm nutrition sync')).toBeEnabled()
+  );
+  fireEvent.press(screen.getByText('Confirm nutrition sync'));
+}
+
+it('keeps the original spoon amount readable beside the selected food amount', () => {
+  const client = new QueryClient();
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          originalQuantity: 1,
+          quantity: 5,
+          unit: 'ml',
+          originalUnit: 'tsp',
+        }}
+        scope={ownerScope}
+        disabled={false}
+        onChoose={jest.fn()}
+        onCandidate={jest.fn()}
+      />
+    </QueryClientProvider>
+  );
+  expect(screen.getByText('Original whole-recipe amount: 1 tsp')).toBeTruthy();
+  expect(screen.getByText('Selected food and amount')).toBeTruthy();
+});
+
+it('previews the changed Mealie recipe and cancels without writing nutrition', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  seedRecipeOwner(client);
+  jest.mocked(fetchRecipeSource).mockResolvedValue(source);
+  jest
+    .mocked(syncRecipeNutrition)
+    .mockResolvedValue({ status: 'synced', source });
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
+    </QueryClientProvider>
+  );
+  fireEvent.press(await screen.findByText('Sync nutrition to Mealie'));
+  expect(await screen.findByText('Review nutrition sync')).toBeTruthy();
+  expect(await screen.findByText('Current Mealie recipe')).toBeTruthy();
+  expect(syncRecipeNutrition).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Cancel'));
+  expect(screen.queryByText('Review nutrition sync')).toBeNull();
+  expect(syncRecipeNutrition).not.toHaveBeenCalled();
+});
+it('confirms the reviewed nutrition once using the original owner connection', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  seedRecipeOwner(client);
+  let finish!: () => void;
+  jest.mocked(syncRecipeNutrition).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = () => resolve({ status: 'synced', source });
+      })
+  );
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
+    </QueryClientProvider>
+  );
+  fireEvent.press(await screen.findByText('Sync nutrition to Mealie'));
+  await waitFor(() =>
+    expect(screen.getByText('Confirm nutrition sync')).toBeEnabled()
+  );
+  fireEvent.press(screen.getByText('Confirm nutrition sync'));
+  fireEvent.press(screen.getByText('Confirm nutrition sync'));
+  await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
+  expect(syncRecipeNutrition).toHaveBeenCalledWith(
+    'meal',
+    ownerConfig,
+    'c'.repeat(64)
+  );
+  await act(async () => finish());
+  expect(await screen.findByText('Nutrition synced to Mealie.')).toBeTruthy();
+});
+it('discards a pending private nutrition preview on owner replacement', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  seedRecipeOwner(client);
+  let finish!: (value: RecipeImportSyncPreview) => void;
+  jest.mocked(previewRecipeNutritionSync).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
+    </QueryClientProvider>
+  );
+  fireEvent.press(await screen.findByText('Sync nutrition to Mealie'));
+  await waitFor(() => expect(finish).toBeDefined());
+  act(() => client.setQueryData(profileQueryKey, { id: 'other-owner' }));
+  await act(async () => finish(mockSyncPreview));
+  expect(screen.queryByText('Current Mealie recipe')).toBeNull();
+  expect(screen.queryByText('Review nutrition sync')).toBeNull();
+  expect(syncRecipeNutrition).not.toHaveBeenCalled();
+});
 const variant = {
   id: variantId,
   food_id: foodId,
@@ -342,7 +470,7 @@ it('preserves a successful saved meal and shows sync conflicts without a duplica
   );
   fireEvent.press(screen.getByText('Save reusable meal'));
   await waitFor(() => expect(screen.getByText('Open saved meal')).toBeTruthy());
-  fireEvent.press(screen.getByText('Sync nutrition to Mealie'));
+  await confirmNutritionSync(screen);
   await waitFor(() =>
     expect(
       screen.getByText('Source changed. Preview again before syncing.')
@@ -350,6 +478,7 @@ it('preserves a successful saved meal and shows sync conflicts without a duplica
   );
   expect(screen.getByText('Open saved meal')).toBeTruthy();
   expect(saveRecipe).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByText('Cancel'));
   fireEvent.press(screen.getByText('Open saved meal'));
   expect(navigation.replace).toHaveBeenCalledWith('MealDetail', {
     mealId: 'meal',
@@ -360,33 +489,26 @@ it.each([
   {
     warning: 'incomplete_nutrition',
     missingNutrients: ['sodium'],
-    label:
-      'Some optional nutrients are unknown. Known nutrition can still be used.',
     eligible: true,
   },
   {
     warning: 'incompatible_unit',
     missingNutrients: [],
-    label:
-      'Review the quantity in the selected food unit. Volume is never treated as mass.',
     eligible: false,
   },
   {
     warning: 'missing_servings',
     missingNutrients: [],
-    label:
-      'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.',
     eligible: false,
   },
   {
     warning: 'incomplete_nutrition',
     missingNutrients: ['protein'],
-    label: 'Core nutrition is incomplete. Choose a complete food variant.',
     eligible: false,
   },
 ])(
-  'explains saved-source $warning without changing sync eligibility',
-  async ({ warning, missingNutrients, label, eligible }) => {
+  'uses authoritative saved-meal eligibility instead of stale import warning $warning',
+  async ({ warning, missingNutrients, eligible }) => {
     jest.mocked(fetchRecipeSource).mockResolvedValue({
       ...source,
       syncWarnings: [warning],
@@ -405,15 +527,29 @@ it.each([
         <RecipeImportSourcePanel mealId="meal" scope={ownerScope} />
       </QueryClientProvider>
     );
-    expect(await screen.findByText(label)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        eligible
+          ? 'Review and confirm the current saved meal nutrition before updating Mealie. Diary changes are separate.'
+          : 'Review the saved meal ingredients and complete their nutrition before syncing.'
+      )
+    ).toBeTruthy();
     expect(screen.queryByText(warning)).toBeNull();
     const button = screen.getByText('Sync nutrition to Mealie');
     if (eligible) expect(button).toBeEnabled();
     else expect(button).toBeDisabled();
     fireEvent.press(button);
     if (eligible) {
+      await waitFor(() =>
+        expect(screen.getByText('Confirm nutrition sync')).toBeEnabled()
+      );
+      fireEvent.press(screen.getByText('Confirm nutrition sync'));
       await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
-      expect(syncRecipeNutrition).toHaveBeenCalledWith('meal', ownerConfig);
+      expect(syncRecipeNutrition).toHaveBeenCalledWith(
+        'meal',
+        ownerConfig,
+        'c'.repeat(64)
+      );
       expect(
         await screen.findByText('Nutrition synced to Mealie.')
       ).toBeTruthy();
@@ -444,7 +580,7 @@ it('updates the rendered source sync eligibility after a normal meal edit invali
   await waitFor(() =>
     expect(
       screen.getByText(
-        'This meal is for tracking only. Reimport the original recipe with complete, unchanged amounts to enable nutrition sync.'
+        'Review the saved meal ingredients and complete their nutrition before syncing.'
       )
     ).toBeTruthy()
   );
@@ -474,7 +610,7 @@ it('does not restore a departed owner source cache when a pending sync finishes 
   await waitFor(() =>
     expect(screen.getByText('Sync nutrition to Mealie')).toBeTruthy()
   );
-  fireEvent.press(screen.getByText('Sync nutrition to Mealie'));
+  await confirmNutritionSync(screen);
   await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
   screen.unmount();
   client.clear();
@@ -516,7 +652,7 @@ it('requires explicit recipe servings when the source yield is missing instead o
   expect(screen.queryByText('missing_servings')).toBeNull();
   expect(
     screen.getByText(
-      'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.'
+      'Enter servings for the saved meal. To sync nutrition later, set a positive serving count in Mealie and refresh the nutrition preview.'
     )
   ).toBeTruthy();
   fireEvent.press(screen.getByText('Save reusable meal'));
@@ -559,7 +695,7 @@ it('does not show a previous meal sync outcome when the detail route changes mea
   await waitFor(() =>
     expect(screen.getByText('Sync nutrition to Mealie')).toBeTruthy()
   );
-  fireEvent.press(screen.getByText('Sync nutrition to Mealie'));
+  await confirmNutritionSync(screen);
   await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
   jest.mocked(fetchRecipeSource).mockResolvedValue({
     ...source,

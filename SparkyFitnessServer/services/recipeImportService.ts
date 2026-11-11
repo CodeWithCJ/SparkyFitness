@@ -13,6 +13,8 @@ import {
   type RecipeImportMapping,
   type RecipeImportBrowseResponse,
   type RecipeImportSyncResponse,
+  type RecipeImportSyncRequest,
+  type RecipeImportSyncPreview,
 } from '@workspace/shared';
 import externalProviderService from './externalProviderService.js';
 import MealieService, {
@@ -40,7 +42,6 @@ import {
   RecipeImportError,
   calculateRecipeNutrition,
   mealServingFields,
-  sourceAmountMatches,
   recipeFingerprint,
   selectCandidateIds,
   nutritionPatch,
@@ -140,8 +141,7 @@ function unitName(
   unit: MealieIngredientRecipe['recipeIngredient'][number]['unit']
 ): string | null {
   if (!unit) return null;
-  // A custom 250 ml cup is not the shared US cup. Leave custom factors for explicit review.
-  if (unit.standardUnit && Number(unit.standardQuantity) !== 1) return null;
+  if (unit.standardUnit && !positiveSource(unit.standardQuantity)) return null;
   const text = (unit.standardUnit || unit.abbreviation || unit.name || '')
     .trim()
     .toLowerCase();
@@ -162,6 +162,27 @@ function normalizedIngredientContext(value: string | null | undefined): string {
     .replace(/\s+/g, ' ')
     .toLowerCase();
 }
+/** Old exact-context choices remain usable, but new choices follow food and unit identity. */
+function legacyFoodKey(
+  row: MealieIngredientRecipe['recipeIngredient'][number]
+): string {
+  const unit =
+    row.unit?.standardUnit && Number(row.unit.standardQuantity) !== 1
+      ? null
+      : unitName(row.unit);
+  return (
+    'context-v2:' +
+    recipeFingerprint({
+      foodId: row.food?.id ?? null,
+      foodName: normalizedIngredientContext(row.food?.name),
+      unit,
+      preparation: normalizedIngredientContext(row.note),
+      originalText: normalizedIngredientContext(
+        row.originalText || row.display
+      ),
+    })
+  );
+}
 function ingredientRows(
   recipe: MealieIngredientRecipe
 ): RecipeImportIngredient[] {
@@ -174,8 +195,12 @@ function ingredientRows(
       );
   }
   return recipe.recipeIngredient.map((row, index) => {
-    const quantity = positiveSource(row.quantity);
+    const originalQuantity = positiveSource(row.quantity);
     const unit = unitName(row.unit);
+    const quantity =
+      originalQuantity !== null && unit && row.unit?.standardUnit
+        ? positiveSource(originalQuantity * Number(row.unit.standardQuantity))
+        : originalQuantity;
     const name =
       row.food?.name || row.note || row.display || 'Unnamed ingredient';
     const issues: RecipeImportIngredient['issues'] = [];
@@ -192,21 +217,19 @@ function ingredientRows(
         referenceCounts.get(row.referenceId) === 1
           ? row.referenceId
           : 'ingredient:' + index,
-      // Quantity is deliberately excluded: a reviewed food/preparation can scale to another batch.
+      // A reviewed food/unit conversion can scale across recipes and display wording.
       sourceFoodKey:
-        'context-v2:' +
+        'food-unit-v3:' +
         recipeFingerprint({
-          foodId: row.food?.id ?? null,
-          foodName: normalizedIngredientContext(row.food?.name),
-          unit: unit ?? null,
-          preparation: normalizedIngredientContext(row.note),
-          originalText: normalizedIngredientContext(
-            row.originalText || row.display
-          ),
+          food: row.food?.id || normalizedIngredientContext(row.food?.name),
+          unit: row.unit?.id || unit,
+          // Ratios are per normalized unit; a source unit can change its basis.
+          basis: unit,
         }),
       name,
       originalText: row.originalText || row.display || row.note || name,
       note: row.note || '',
+      originalQuantity,
       quantity,
       unit,
       originalUnit: row.unit?.name || row.unit?.abbreviation || null,
@@ -248,10 +271,15 @@ async function buildPreview(
   const ingredients = ingredientRows(recipe);
   const uniqueContexts = uniqueContextKeys(ingredients);
   const mappings = await repository.getMappings(userId, input.providerId);
-  for (const ingredient of ingredients) {
-    const saved = mappings.find(
-      (row) => row.source_food_key === ingredient.sourceFoodKey
-    );
+  for (const [index, ingredient] of ingredients.entries()) {
+    const saved =
+      mappings.find(
+        (row) => row.source_food_key === ingredient.sourceFoodKey
+      ) ??
+      mappings.find(
+        (row) =>
+          row.source_food_key === legacyFoodKey(recipe.recipeIngredient[index])
+      );
     if (
       !saved ||
       !uniqueContexts.has(ingredient.sourceFoodKey) ||
@@ -261,11 +289,18 @@ async function buildPreview(
       ingredient.issues.includes('unstructured_food')
     )
       continue;
+    const quantity = positiveSource(
+      ingredient.quantity * Number(saved.quantity_per_source_unit)
+    );
+    if (quantity === null) {
+      ingredient.issues.push('mapping_unavailable');
+      continue;
+    }
     const mapping: RecipeImportMapping = {
       ingredientId: ingredient.ingredientId,
       foodId: saved.food_id,
       variantId: saved.variant_id,
-      quantity: ingredient.quantity * Number(saved.quantity_per_source_unit),
+      quantity,
       unit: saved.unit,
       confirmed: true,
     };
@@ -386,7 +421,6 @@ async function save(
   const foods: MealFoodInput[] = [];
   const remembered: MappingWrite[] = [];
   const uniqueContexts = uniqueContextKeys(current.ingredients);
-  let syncEligible = current.recipeServings === servings;
   for (const ingredient of current.ingredients) {
     if (ingredient.issues.includes('linked_recipe'))
       throw new RecipeImportError(
@@ -438,26 +472,25 @@ async function save(
       unit: variant.serving_unit,
     };
     foods.push(snapshot);
-    const unchanged =
-      sourceAmountMatches(
-        ingredient.quantity,
-        ingredient.unit,
-        mapping.quantity,
-        mapping.unit
-      ) && !ingredient.issues.includes('unstructured_food');
-    syncEligible = syncEligible && unchanged;
     if (
-      unchanged &&
       ingredient.quantity &&
+      ingredient.unit &&
+      !ingredient.issues.includes('unstructured_food') &&
       uniqueContexts.has(ingredient.sourceFoodKey)
-    )
-      remembered.push({
-        source_food_key: ingredient.sourceFoodKey,
-        food_id: mapping.foodId,
-        variant_id: mapping.variantId,
-        quantity_per_source_unit: mapping.quantity / ingredient.quantity,
-        unit: mapping.unit,
-      });
+    ) {
+      // Remember the food even after cooking edits, using the known conversion whenever possible.
+      const ratio =
+        getConversionFactor(mapping.unit, ingredient.unit) ??
+        mapping.quantity / ingredient.quantity;
+      if (Number.isFinite(ratio) && ratio > 0)
+        remembered.push({
+          source_food_key: ingredient.sourceFoodKey,
+          food_id: mapping.foodId,
+          variant_id: mapping.variantId,
+          quantity_per_source_unit: ratio,
+          unit: mapping.unit,
+        });
+    }
   }
   const nutrition = calculateRecipeNutrition(items);
   current.syncWarnings = [
@@ -470,7 +503,7 @@ async function save(
     {
       ...current,
       mappings: input.mappings,
-      syncEligible,
+      syncEligible: true,
       syncBaseline: syncBaseline(recipe),
     },
     remembered
@@ -499,14 +532,51 @@ async function storedSource(
     );
   return source;
 }
-function localMealMatchesSource(
-  meal: unknown,
-  userId: string,
-  fingerprint: string
-): boolean {
+function currentMealNutrition(meal: unknown, userId: string) {
   const record =
     meal && typeof meal === 'object' ? (meal as Record<string, unknown>) : {};
-  return record.user_id === userId && mealFingerprint(meal) === fingerprint;
+  if (record.user_id !== userId)
+    throw new RecipeImportError(
+      403,
+      'OWNER_REQUIRED',
+      'Choose a saved meal owned by your account.'
+    );
+  const foods = Array.isArray(record.foods) ? record.foods : [];
+  const totals = calculateRecipeNutrition(
+    foods.map((value: unknown) => {
+      if (!value || typeof value !== 'object')
+        throw new RecipeImportError(
+          422,
+          'INCOMPLETE_MAPPING',
+          'Review the saved meal ingredients before syncing.'
+        );
+      const row = value as FoodVariantInput & {
+        quantity: unknown;
+        unit: unknown;
+        item_type?: string;
+        child_meal_id?: string | null;
+      };
+      if (row.item_type === 'meal' || row.child_meal_id)
+        throw new RecipeImportError(
+          422,
+          'SYNC_UNAVAILABLE',
+          'Nutrition sync requires individual saved food ingredients. Review any linked meals first.'
+        );
+      if (
+        typeof row.unit !== 'string' ||
+        !row.unit.trim() ||
+        typeof row.serving_unit !== 'string' ||
+        !row.serving_unit.trim()
+      )
+        throw new RecipeImportError(
+          422,
+          'INCOMPATIBLE_UNIT',
+          'Review the saved ingredient units before syncing.'
+        );
+      return { quantity: Number(row.quantity), unit: row.unit, variant: row };
+    })
+  );
+  return { record, totals };
 }
 async function getSource(
   userId: string,
@@ -514,12 +584,15 @@ async function getSource(
   mealId: string
 ): Promise<RecipeImportSource> {
   const source = await storedSource(userId, actorId, mealId);
-  if (!source.syncEligible) return publicSource(source);
   const meal: unknown = await mealRepository.getMealById(mealId, userId);
-  return {
-    ...publicSource(source),
-    syncEligible: localMealMatchesSource(meal, userId, source.mealFingerprint),
-  };
+  try {
+    currentMealNutrition(meal, userId);
+    return { ...publicSource(source), syncEligible: true };
+  } catch (error) {
+    if (!(error instanceof RecipeImportError) || error.status === 403)
+      throw error;
+    return { ...publicSource(source), syncEligible: false };
+  }
 }
 /** Project every wire response explicitly: old clients reject unknown source fields. */
 function publicSource(source: RecipeImportStoredSource): RecipeImportSource {
@@ -566,66 +639,89 @@ function syncBaseline(
     nutritionFingerprint: recipeFingerprint(recipe.nutrition ?? {}),
   };
 }
-async function syncNutrition(
+async function prepareNutritionSync(
   userId: string,
   actorId: string,
   mealId: string
-): Promise<RecipeImportSyncResponse> {
+) {
   const source = await storedSource(userId, actorId, mealId);
   const client = await adapter(userId, source.providerId);
-  const recipe = await readRecipe(client, source.recipeSlug);
-  if (source.syncBaseline) {
-    const current = syncBaseline(recipe);
-    checkFingerprint(
-      current.contentFingerprint,
-      source.syncBaseline.contentFingerprint
-    );
-    checkFingerprint(
-      current.nutritionFingerprint,
-      source.syncBaseline.nutritionFingerprint
-    );
-  } else {
-    // Old provenance cannot prove a stable baseline from its partial normalized preview.
-    checkFingerprint(recipeFingerprint(recipe), source.sourceFingerprint);
-  }
-  const meal: unknown = await mealRepository.getMealById(mealId, userId);
-  const record =
-    meal && typeof meal === 'object' ? (meal as Record<string, unknown>) : {};
-  if (!localMealMatchesSource(meal, userId, source.mealFingerprint))
-    throw new RecipeImportError(
-      409,
-      'LOCAL_CHANGED',
-      'The saved meal ingredients, quantities or nutrition changed. Keep it for tracking and import the unchanged Mealie recipe as a new base meal to sync.'
-    );
-  if (
-    !source.syncEligible ||
-    !source.recipeServings ||
-    source.ingredients.length !== source.mappings.length ||
-    source.ingredients.some((row) => {
-      const m = source.mappings.find(
-        (m) => m.ingredientId === row.ingredientId
-      );
-      return (
-        !m || !sourceAmountMatches(row.quantity, row.unit, m.quantity, m.unit)
-      );
-    })
-  )
+  const [recipe, meal] = await Promise.all([
+    readRecipe(client, source.recipeSlug),
+    mealRepository.getMealById(mealId, userId) as Promise<unknown>,
+  ]);
+  const { record, totals } = currentMealNutrition(meal, userId);
+  const servings = positiveSource(recipe.recipeServings);
+  if (!servings)
     throw new RecipeImportError(
       422,
       'SYNC_UNAVAILABLE',
-      'Nutrition sync requires complete mappings and quantities equivalent to the original recipe. Correct missing amounts in Mealie, then preview and import it again.'
+      'Set a positive serving count on the Mealie recipe, then refresh the nutrition preview.'
     );
-  const foods = Array.isArray(record.foods) ? record.foods : [];
-  const totals = calculateRecipeNutrition(
-    foods.map((value: unknown) => {
-      const row = value as FoodVariantInput & {
-        quantity: number;
-        unit: string;
-      };
-      return { quantity: Number(row.quantity), unit: row.unit, variant: row };
-    })
-  );
-  const patch = nutritionPatch(totals, source.recipeServings);
+  const baseline = syncBaseline(recipe);
+  const sourceChanged = source.syncBaseline
+    ? baseline.contentFingerprint !== source.syncBaseline.contentFingerprint ||
+      baseline.nutritionFingerprint !== source.syncBaseline.nutritionFingerprint
+    : recipeFingerprint(recipe) !== source.sourceFingerprint;
+  const patch = nutritionPatch(totals, servings);
+  const preview: RecipeImportSyncPreview = {
+    mealId,
+    mealName:
+      typeof record.name === 'string'
+        ? record.name
+        : source.name || recipe.name,
+    recipeName: recipe.name,
+    recipeSlug: source.recipeSlug,
+    recipeServings: servings,
+    sourceChanged,
+    existingNutrition: recipe.nutrition ?? {},
+    batchNutrition: totals,
+    nutrition: Object.fromEntries(
+      Object.entries(totals).map(([key, value]) => [
+        key,
+        value === null ? null : Math.round((value / servings) * 1e6) / 1e6,
+      ])
+    ),
+    confirmationFingerprint: recipeFingerprint({
+      baseline,
+      meal: mealFingerprint(meal),
+      mealName: record.name ?? null,
+      servings,
+      patch,
+    }),
+  };
+  return { source, client, recipe, preview, patch, meal };
+}
+async function previewNutritionSync(
+  userId: string,
+  actorId: string,
+  mealId: string
+): Promise<RecipeImportSyncPreview> {
+  return (await prepareNutritionSync(userId, actorId, mealId)).preview;
+}
+async function syncNutrition(
+  userId: string,
+  actorId: string,
+  mealId: string,
+  input: RecipeImportSyncRequest = {}
+): Promise<RecipeImportSyncResponse> {
+  const { source, client, recipe, preview, patch, meal } =
+    await prepareNutritionSync(userId, actorId, mealId);
+  if (input.confirmationFingerprint) {
+    if (input.confirmationFingerprint !== preview.confirmationFingerprint)
+      throw new RecipeImportError(
+        409,
+        'SYNC_PREVIEW_CHANGED',
+        'The saved meal or Mealie recipe changed. Refresh the nutrition preview and confirm the current values.'
+      );
+  } else if (preview.sourceChanged) {
+    // Older clients can still explicitly sync unchanged sources; changed sources need the new preview.
+    throw new RecipeImportError(
+      409,
+      'REMOTE_CHANGED',
+      'The Mealie recipe changed. Review and confirm its current nutrition preview before syncing.'
+    );
+  }
   let updated: MealieIngredientRecipe;
   try {
     updated = await client.patchRecipeNutrition(
@@ -664,6 +760,9 @@ async function syncNutrition(
     ...source,
     sourceFingerprint: recipeFingerprint(updated),
     syncBaseline: syncBaseline(updated),
+    mealFingerprint: mealFingerprint(meal),
+    syncEligible: true,
+    recipeServings: preview.recipeServings,
     lastSyncedAt: new Date().toISOString(),
   };
   try {
@@ -672,7 +771,7 @@ async function syncNutrition(
     throw new RecipeImportError(
       502,
       'SYNC_RECORD_FAILED',
-      'Mealie confirmed the nutrition update, but SparkyFitness could not record it. Check Mealie and import its current unchanged recipe as a new base meal before syncing again.'
+      'Mealie confirmed the nutrition update, but SparkyFitness could not record it. Check Mealie, then review a fresh nutrition preview before trying again.'
     );
   }
   return { status: 'synced', source: publicSource(synced) };
@@ -748,7 +847,9 @@ async function suggest(
   );
   const warnings: string[] = [];
   const ingredients: RecipeImportSuggestionResponse['ingredients'] = [];
-  for (const ingredient of selected) {
+  const retrieveCandidates = async (
+    ingredient: RecipeImportIngredient
+  ): Promise<RecipeImportSuggestionResponse['ingredients'][number]> => {
     const candidates: RecipeImportCandidate[] = [];
     for (const row of local.get(ingredient.ingredientId) || []) {
       const hit = candidate(
@@ -792,11 +893,19 @@ async function suggest(
       );
       if (hit) candidates.push(hit);
     }
-    ingredients.push({
+    return {
       ingredientId: ingredient.ingredientId,
       candidates,
       suggestedCandidateId: null,
-    });
+    };
+  };
+  // Bound external provider pressure while keeping every result beside its source ingredient.
+  for (let offset = 0; offset < selected.length; offset += 4) {
+    ingredients.push(
+      ...(await Promise.all(
+        selected.slice(offset, offset + 4).map(retrieveCandidates)
+      ))
+    );
   }
   let aiUsed = false;
   if (input.useAi && ingredients.some((row) => row.candidates.length)) {
@@ -890,4 +999,12 @@ async function suggest(
   }
   return { ingredients, aiUsed, warnings: [...new Set(warnings)] };
 }
-export default { browse, preview, suggest, save, getSource, syncNutrition };
+export default {
+  browse,
+  preview,
+  suggest,
+  save,
+  getSource,
+  previewNutritionSync,
+  syncNutrition,
+};

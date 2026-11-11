@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-11_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -296,7 +296,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 
 ## Quick Routing
 
-- Mealie ingredient meals: `routes/v2/recipeImportRoutes.ts` (all endpoints owner-only), `services/recipeImportService.ts`, `recipeImportMath.ts` and `recipeImportMealSnapshot.ts`, `models/recipeImportRepository.ts`; shared contract `RecipeImport.api.zod.ts`. Source provenance and reusable mappings are Tier 1. Meal creation reuses `mealRepository.createMeal` inside the provenance transaction. Confirmed quantities are normalized to the variant unit before snapshot persistence. Safe writeback uses a fresh source fingerprint and unchanged local ingredient/nutrient snapshot, sending only Mealie nutrition.
+- Mealie ingredient meals: `routes/v2/recipeImportRoutes.ts` (all endpoints owner-only), `services/recipeImportService.ts`, `recipeImportMath.ts` and `recipeImportMealSnapshot.ts`, `models/recipeImportRepository.ts`; shared contract `RecipeImport.api.zod.ts`. Source provenance and reusable mappings are Tier 1. Meal creation reuses `mealRepository.createMeal` inside the provenance transaction. Mealie standard factors normalize source units; reviewed food/unit mappings can remember cross-category quantities. Provider suggestions run at most four ingredient lookups concurrently. `GET /:mealId/sync-preview` compares current saved nutrition with current Mealie servings; explicit sync rechecks its confirmation fingerprint and PATCHes nutrition only, without permanently locking edited meals or requiring reimport.
 
 - Weekly weight-change calorie goals: `services/preferenceService.ts` validates the signed `goal_mode_weekly_change_kg` preference (negative loses, positive gains; active only for `goal_mode = 'weekly'`), `models/preferenceRepository.ts` persists it, and `services/goalService.ts` plus `services/calorieBalanceService.ts` pass it to the shared calorie adjustment functions. Device Projection applies the daily weekly-rate adjustment once to device TDEE; percentage goals keep their existing behavior.
 

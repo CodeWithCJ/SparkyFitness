@@ -144,8 +144,8 @@ export default function RecipeImportReview({
       ) && (
         <p className="text-sm text-amber-700 dark:text-amber-300">
           {t(
-            'recipeImport.sourceWarnings',
-            'The source has incomplete or incompatible amounts, units or servings. Review the warnings below. Manual tracking corrections may prevent source sync.'
+            'recipeImport.sourceReviewWarnings',
+            'Review missing source amounts, units and servings below. Enter the whole-recipe amounts you will use for nutrition calculations.'
           )}
         </p>
       )}
@@ -207,8 +207,8 @@ export default function RecipeImportReview({
       {!preview.recipeServings && (
         <p role="status">
           {t(
-            'recipeImport.missingServings',
-            'The source has no recipe servings. Enter the yield for tracking; source sync will remain unavailable.'
+            'recipeImport.missingSourceServingsReview',
+            'Enter servings for the saved meal. To sync nutrition later, set a positive serving count in Mealie and refresh the nutrition preview.'
           )}
         </p>
       )}
@@ -247,10 +247,11 @@ export default function RecipeImportReview({
           {warning}
         </p>
       ))}
-      {preview.ingredients.map((ingredient) => (
+      {preview.ingredients.map((ingredient, index) => (
         <RecipeImportIngredientRow
           key={ingredient.ingredientId}
           ingredient={ingredient}
+          position={index + 1}
           mapping={flow.mappings[ingredient.ingredientId]}
           suggestion={flow.suggestions.find(
             (row) => row.ingredientId === ingredient.ingredientId

@@ -27,6 +27,7 @@ interface Props {
   suggestion?: RecipeImportSuggestionResponse['ingredients'][number];
   scope: string;
   disabled: boolean;
+  position?: number;
   onReadinessChange?: (ingredientId: string, selection: string | null) => void;
   onChoose: () => void;
   onCandidate: (candidate: RecipeImportCandidate) => void;
@@ -37,11 +38,16 @@ export default function RecipeImportIngredientRow({
   suggestion,
   scope,
   disabled,
+  position,
   onReadinessChange,
   onChoose,
   onCandidate,
 }: Props) {
   const { t } = useTranslation();
+  const originalQuantity =
+    ingredient.originalQuantity === undefined
+      ? ingredient.quantity
+      : ingredient.originalQuantity;
   const energyUnit = useEnergyUnit();
   const energy = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -82,20 +88,32 @@ export default function RecipeImportIngredientRow({
   }, [ingredient.ingredientId, readySelection, onReadinessChange]);
   return (
     <View
-      className="bg-surface rounded-xl p-4 gap-2"
+      className="border-b border-border-subtle py-4 gap-2"
       accessibilityLabel={ingredient.name}
     >
-      <Text className="text-text-primary font-semibold text-base">
-        {ingredient.name}
+      <Text className="text-text-secondary text-xs">
+        {t('recipeImport.sourceIngredient', {
+          defaultValue: 'Mealie ingredient',
+        })}
       </Text>
+      <View className="flex-row items-center gap-2">
+        {position !== undefined && (
+          <Text className="text-text-secondary" accessible={false}>
+            {position}.
+          </Text>
+        )}
+        <Text className="text-text-primary font-semibold text-base">
+          {ingredient.name}
+        </Text>
+      </View>
       <Text className="text-text-secondary">{ingredient.originalText}</Text>
       <Text className="text-text-secondary">
         {t('recipeImport.sourceAmount', {
           defaultValue: 'Original whole-recipe amount: {{quantity}} {{unit}}',
           quantity:
-            ingredient.quantity === null
+            originalQuantity === null
               ? t('recipeImport.notProvided', { defaultValue: 'not provided' })
-              : number(ingredient.quantity),
+              : number(originalQuantity),
           unit:
             ingredient.originalUnit ||
             ingredient.unit ||
@@ -107,7 +125,9 @@ export default function RecipeImportIngredientRow({
       )}
       <Text className="text-text-primary">
         {mapping
-          ? t('recipeImport.confirmed', { defaultValue: 'Confirmed' })
+          ? ingredient.mappingOrigin === 'saved'
+            ? t('recipeImport.savedChoice', { defaultValue: 'Saved choice' })
+            : t('recipeImport.confirmed', { defaultValue: 'Confirmed' })
           : t('recipeImport.unresolved', {
               defaultValue: 'Needs confirmation',
             })}
@@ -145,6 +165,19 @@ export default function RecipeImportIngredientRow({
       )}
       {mapping && (
         <>
+          <Text className="text-text-primary font-semibold">
+            {t('recipeImport.selectedFoodAmount', {
+              defaultValue: 'Selected food and amount',
+            })}
+          </Text>
+          {ingredient.mappingOrigin === 'saved' && (
+            <Text className="text-text-secondary">
+              {t('recipeImport.savedChoiceHelp', {
+                defaultValue:
+                  'Check this saved choice and its whole-recipe amount before saving.',
+              })}
+            </Text>
+          )}
           <Text className="text-text-primary">
             {food.data
               ? `${food.data.item.name}${food.data.item.brand ? ` · ${food.data.item.brand}` : ''}`
@@ -188,6 +221,13 @@ export default function RecipeImportIngredientRow({
           )}
         </>
       )}
+      {!mapping && (
+        <Text className="text-text-primary font-semibold">
+          {t('recipeImport.selectedFoodAmount', {
+            defaultValue: 'Selected food and amount',
+          })}
+        </Text>
+      )}
       <Button
         variant="secondary"
         disabled={disabled || ingredient.issues.includes('linked_recipe')}
@@ -204,9 +244,10 @@ export default function RecipeImportIngredientRow({
       {!mapping && suggestion && (
         <>
           <Text className="text-text-secondary">
-            {t('recipeImport.reviewSuggestions', {
+            {t('recipeImport.matchesFor', {
               defaultValue:
-                'Review candidates, then confirm the food, variant and whole-recipe amount.',
+                'Matches for {{name}} — choose one and review its amount.',
+              name: ingredient.name,
             })}
           </Text>
           {suggestion.candidates.length === 0 && (
@@ -219,7 +260,7 @@ export default function RecipeImportIngredientRow({
           {suggestion.candidates.map((candidate) => (
             <View
               key={candidate.candidateId}
-              className="gap-2 p-3 bg-raised rounded-lg"
+              className="gap-2 py-3 border-b border-border-subtle"
             >
               <Text className="text-text-primary">
                 {candidate.name}

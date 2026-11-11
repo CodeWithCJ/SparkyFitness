@@ -1,9 +1,42 @@
-import type { RecipeImportSuggestionResponse } from '../schemas/api/RecipeImport.api.zod.ts';
+import type {
+  RecipeImportSuggestionResponse,
+  RecipeImportSyncPreview,
+} from '../schemas/api/RecipeImport.api.zod.ts';
 import { getConversionFactor } from './servingSizeConversions.ts';
 
 type Suggestions = RecipeImportSuggestionResponse['ingredients'];
 
 const CORE_NUTRIENTS = ['calories', 'protein', 'carbs', 'fat'] as const;
+
+/** Empty or invalid provider values remain unknown; a measured zero remains zero. */
+export function recipeImportNutrientNumber(value: unknown): number | null {
+  if (
+    (typeof value !== 'number' && typeof value !== 'string') ||
+    (typeof value === 'string' && !value.trim())
+  )
+    return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+/** Both clients compare the same Mealie fields with the reviewed per-serving totals. */
+export function recipeImportSyncComparison(
+  preview: Pick<RecipeImportSyncPreview, 'existingNutrition' | 'nutrition'>
+) {
+  const fields = {
+    calories: 'calories',
+    protein: 'proteinContent',
+    carbs: 'carbohydrateContent',
+    fat: 'fatContent',
+  } as const;
+  return CORE_NUTRIENTS.map((nutrient) => ({
+    nutrient,
+    previous: recipeImportNutrientNumber(
+      preview.existingNutrition[fields[nutrient]]
+    ),
+    proposed: recipeImportNutrientNumber(preview.nutrition[nutrient]),
+  }));
+}
 
 /** Current selected nutrition takes precedence over gaps from an older preview. */
 export function recipeImportNutritionGaps(

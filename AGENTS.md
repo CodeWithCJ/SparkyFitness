@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-05*
+*Last updated: 2026-11-11*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -71,7 +71,7 @@ Cheap ways to learn things:
 
 ## Recipe Ingredient Imports
 
-Mealie ingredient meals use `shared/src/schemas/api/RecipeImport.api.zod.ts` and owner-only `/api/v2/recipe-imports` routes. Preview/suggest never create foods or meals; save accepts confirmed accessible local food/variant IDs and uses authoritative nutrition. External candidates follow existing provider detail/import first. Cooked weight changes only the normal meal serving denominator. Only explicit nutrition sync writes to Mealie, after source and local snapshot checks; diary edits never write back.
+Mealie ingredient meals use `shared/src/schemas/api/RecipeImport.api.zod.ts` and owner-only `/api/v2/recipe-imports` routes. Preview/suggest never create foods or meals; save accepts confirmed accessible local food/variant IDs and uses authoritative nutrition. External candidates follow existing provider detail/import first. Cooked weight changes only the normal meal serving denominator. Nutrition sync previews current saved-meal totals per current Mealie serving and requires explicit confirmation of that state; diary edits never write back.
 
 ## Cross-Package Rules
 

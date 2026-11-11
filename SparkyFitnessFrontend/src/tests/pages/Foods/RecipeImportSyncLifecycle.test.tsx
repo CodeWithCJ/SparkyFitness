@@ -18,6 +18,13 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({ activeUserId: 'owner', isActingOnBehalf: false }),
 }));
 jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: () => 'kcal',
+  }),
+}));
 jest.mock('@/utils/logging', () => ({ error: jest.fn() }));
 jest.mock('@/utils/userPreferences', () => ({
   getUserLoggingLevel: () => 'ERROR',
@@ -43,9 +50,33 @@ const response = {
   status: 'synced' as const,
   source: { ...source, lastSyncedAt: '2026-11-09T10:00:00Z' },
 };
+async function confirmNutritionSync() {
+  const cancel = screen.queryByRole('button', { name: 'Cancel' });
+  if (cancel) fireEvent.click(cancel);
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
+  );
+  const confirm = await screen.findByRole('button', {
+    name: 'Confirm nutrition sync',
+  });
+  await waitFor(() => expect(confirm).toBeEnabled());
+  fireEvent.click(confirm);
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(api.previewRecipeNutritionSync).mockResolvedValue({
+    mealId: 'meal',
+    mealName: 'Saved rice',
+    recipeName: 'Rice',
+    recipeSlug: 'rice',
+    recipeServings: 4,
+    sourceChanged: false,
+    existingNutrition: {},
+    batchNutrition: { calories: 2400 },
+    nutrition: { calories: 600 },
+    confirmationFingerprint: 'c'.repeat(64),
+  });
   // After an identity clear, source must be fetched authoritatively, never
   // recreated from the panel's retained initialSource or obsolete mutation.
   jest
@@ -76,11 +107,12 @@ it.each(['clear', 'replacement', 'unmount', 'same-owner'] as const)(
           <RecipeImportSourcePanel mealId="meal" initialSource={source} />
         </QueryClientProvider>
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Sync nutrition to Mealie' })
-      );
+      await confirmNutritionSync();
       await waitFor(() => expect(finish).toBeDefined());
-      const mutation = client.getMutationCache().getAll()[0]!;
+      const mutation = client
+        .getMutationCache()
+        .getAll()
+        .find((item) => item.state.status === 'pending')!;
       act(() => {
         if (change === 'clear' || change === 'replacement') client.clear();
         if (change === 'replacement')
@@ -129,11 +161,7 @@ it.each(['clear', 'replacement', 'unmount', 'same-owner'] as const)(
         jest.mocked(api.syncRecipeNutrition).mockResolvedValue(response);
         for (let retry = 0; retry < 2; retry += 1) {
           const calls = jest.mocked(api.syncRecipeNutrition).mock.calls.length;
-          fireEvent.click(
-            await screen.findByRole('button', {
-              name: 'Sync nutrition to Mealie',
-            })
-          );
+          await confirmNutritionSync();
           await waitFor(() =>
             expect(api.syncRecipeNutrition).toHaveBeenCalledTimes(calls + 1)
           );

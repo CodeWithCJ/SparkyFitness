@@ -67,6 +67,12 @@ import service from '../services/recipeImportService.js';
 import { recipeFingerprint } from '../services/recipeImportMath.js';
 import { mealFingerprint } from '../services/recipeImportMealSnapshot.js';
 import { recipeImportSourceSchema } from '@workspace/shared';
+import type { MealieIngredientRecipe } from '../integrations/mealie/mealieService.js';
+import type {
+  MappingWrite,
+  SourceWrite,
+} from '../models/recipeImportRepository.js';
+import type { MealInput } from '../types/nutrition.js';
 const recipe = {
   id: 'recipe',
   slug: 'rice',
@@ -119,6 +125,393 @@ beforeEach(() => {
   m.lookup.mockResolvedValue({ source: 'not_found', food: null });
   m.markSynced.mockResolvedValue(undefined);
 });
+describe('ordinary Mealie units and remembered food choices', () => {
+  it.each([
+    {
+      name: 'teaspoon',
+      abbreviation: 'tsp',
+      amount: 1,
+      standard: 5,
+      expected: 5,
+    },
+    {
+      name: 'tablespoon',
+      abbreviation: 'tbsp',
+      amount: 2,
+      standard: 15,
+      expected: 30,
+    },
+    {
+      name: 'cup',
+      abbreviation: 'cup',
+      amount: 1.5,
+      standard: 250,
+      expected: 375,
+    },
+  ])(
+    'uses the supplied $name conversion without losing the source amount',
+    async ({ name, abbreviation, amount, standard, expected }) => {
+      m.recipe.mockResolvedValue({
+        ...recipe,
+        recipeIngredient: [
+          {
+            ...recipe.recipeIngredient[0],
+            quantity: amount,
+            unit: {
+              id: name,
+              name,
+              abbreviation,
+              standardUnit: 'milliliter',
+              standardQuantity: standard,
+            },
+          },
+        ],
+      });
+      const result = await service.preview('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'rice',
+      });
+      expect(result.ingredients[0]).toMatchObject({
+        quantity: expected,
+        unit: 'ml',
+        originalQuantity: amount,
+        originalUnit: name,
+      });
+      expect(result.ingredients[0].issues).not.toContain('missing_unit');
+    }
+  );
+
+  it.each([0, -1, Infinity, 'invalid'])(
+    'leaves an invalid standard factor %s for explicit review',
+    async (standardQuantity) => {
+      m.recipe.mockResolvedValue({
+        ...recipe,
+        recipeIngredient: [
+          {
+            ...recipe.recipeIngredient[0],
+            quantity: 1,
+            unit: { name: 'cup', standardUnit: 'ml', standardQuantity },
+          },
+        ],
+      });
+      const result = await service.preview('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'rice',
+      });
+      expect(result.ingredients[0].unit).toBeNull();
+      expect(result.ingredients[0].quantity).toBe(1);
+      expect(result.ingredients[0].issues).toContain('missing_unit');
+    }
+  );
+
+  it('remembers a reviewed cup-to-grams choice for another recipe and amount', async () => {
+    const onions: MealieIngredientRecipe = {
+      ...recipe,
+      recipeIngredient: [
+        {
+          referenceId: 'onion',
+          quantity: 1,
+          unit: { id: 'cup-unit', name: 'cup' },
+          food: { id: 'pearl-onion', name: 'Pearl onion' },
+          originalText: '1 cup Pearl onion finely chopped',
+          note: 'finely chopped',
+        },
+      ],
+    };
+    m.recipe.mockResolvedValue(onions);
+    m.save.mockImplementation(
+      async (
+        _user: string,
+        meal: MealInput,
+        source: SourceWrite,
+        remembered: MappingWrite[]
+      ) => {
+        m.mappings.mockResolvedValue(remembered);
+        return {
+          ...source,
+          mealId: 'meal',
+          mealFingerprint: mealFingerprint(meal),
+          lastSyncedAt: null,
+        };
+      }
+    );
+    await service.save('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'onions',
+      sourceFingerprint: recipeFingerprint(onions),
+      mappings: [
+        { ...mapping, ingredientId: 'onion', quantity: 100, unit: 'g' },
+      ],
+    });
+    m.recipe.mockResolvedValue({
+      ...onions,
+      name: 'Another recipe',
+      slug: 'another-recipe',
+      recipeIngredient: [
+        {
+          ...onions.recipeIngredient[0],
+          referenceId: 'another-row',
+          quantity: 2,
+          originalText: '2 cups Pearl onion',
+          note: '',
+        },
+      ],
+    });
+    const result = await service.preview('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'another-recipe',
+    });
+    expect(result.ingredients[0].mapping).toMatchObject({
+      ingredientId: 'another-row',
+      foodId: 'food',
+      variantId: 'variant',
+      quantity: 200,
+      unit: 'g',
+      confirmed: true,
+    });
+    expect(result.ingredients[0].mappingOrigin).toBe('saved');
+  });
+
+  it.each([
+    {
+      before: {},
+      after: { standardUnit: 'ml', standardQuantity: 250 },
+      expected: null,
+    },
+    {
+      before: { standardUnit: 'ml', standardQuantity: 250 },
+      after: { standardUnit: 'l', standardQuantity: 0.25 },
+      expected: null,
+    },
+    {
+      before: { standardUnit: 'ml', standardQuantity: 250 },
+      after: { standardUnit: 'ml', standardQuantity: 500 },
+      expected: 200,
+    },
+  ])(
+    'retains a remembered conversion only in the same normalized unit basis ($before → $after)',
+    async ({ before, after, expected }) => {
+      const onions: MealieIngredientRecipe = {
+        ...recipe,
+        recipeIngredient: [
+          {
+            referenceId: 'onion',
+            quantity: 1,
+            unit: { id: 'cup-unit', name: 'cup', ...before },
+            food: { id: 'pearl-onion', name: 'Pearl onion' },
+          },
+        ],
+      };
+      m.recipe.mockResolvedValue(onions);
+      m.save.mockImplementation(
+        async (
+          _user: string,
+          meal: MealInput,
+          source: SourceWrite,
+          remembered: MappingWrite[]
+        ) => {
+          m.mappings.mockResolvedValue(remembered);
+          return {
+            ...source,
+            mealId: 'meal',
+            mealFingerprint: mealFingerprint(meal),
+            lastSyncedAt: null,
+          };
+        }
+      );
+      await service.save('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'onions',
+        sourceFingerprint: recipeFingerprint(onions),
+        mappings: [
+          { ...mapping, ingredientId: 'onion', quantity: 100, unit: 'g' },
+        ],
+      });
+      m.recipe.mockResolvedValue({
+        ...onions,
+        recipeIngredient: [
+          {
+            ...onions.recipeIngredient[0],
+            unit: { id: 'cup-unit', name: 'cup', ...after },
+          },
+        ],
+      });
+      const result = await service.preview('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'another-recipe',
+      });
+      if (expected === null) {
+        expect(result.ingredients[0].mapping).toBeNull();
+        expect(result.ingredients[0].mappingOrigin).toBeNull();
+      } else
+        expect(result.ingredients[0].mapping).toMatchObject({
+          quantity: expected,
+          unit: 'g',
+          confirmed: true,
+        });
+    }
+  );
+
+  it('keeps food and unit identities distinct while ignoring notes and display wording', async () => {
+    async function key(foodId: string, unitId: string, originalText: string) {
+      m.recipe.mockResolvedValue({
+        ...recipe,
+        recipeIngredient: [
+          {
+            ...recipe.recipeIngredient[0],
+            food: { id: foodId, name: 'Pearl onion' },
+            unit: { id: unitId, name: 'cup' },
+            originalText,
+          },
+        ],
+      });
+      return (
+        await service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' })
+      ).ingredients[0].sourceFoodKey;
+    }
+    const first = await key('onion', 'cup', '1 cup Pearl onion finely chopped');
+    expect(await key('onion', 'cup', '2 cups Pearl onion')).toBe(first);
+    expect(await key('another-food', 'cup', '2 cups Pearl onion')).not.toBe(
+      first
+    );
+    expect(await key('onion', 'another-unit', '2 cups Pearl onion')).not.toBe(
+      first
+    );
+  });
+
+  it('remembers the selected food without learning a changed cooking amount as a gram-to-gram conversion', async () => {
+    m.save.mockImplementation(
+      async (
+        _user: string,
+        meal: MealInput,
+        source: SourceWrite,
+        remembered: MappingWrite[]
+      ) => {
+        m.mappings.mockResolvedValue(remembered);
+        return {
+          ...source,
+          mealId: 'meal',
+          mealFingerprint: mealFingerprint(meal),
+          lastSyncedAt: null,
+        };
+      }
+    );
+    await service.save('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+      sourceFingerprint: recipeFingerprint(recipe),
+      mappings: [{ ...mapping, quantity: 300 }],
+    });
+    const next = await service.preview('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+    });
+    expect(next.ingredients[0].mapping).toMatchObject({
+      foodId: 'food',
+      quantity: 600,
+      unit: 'g',
+    });
+  });
+  it('continues reusing an exact previously stored context-v2 mapping', async () => {
+    m.mappings.mockResolvedValue([
+      {
+        source_food_key:
+          'context-v2:' +
+          recipeFingerprint({
+            foodId: 'rice',
+            foodName: 'rice',
+            unit: 'g',
+            preparation: '',
+            originalText: '',
+          }),
+        food_id: 'food',
+        variant_id: 'variant',
+        quantity_per_source_unit: 1,
+        unit: 'g',
+      },
+    ]);
+    const next = await service.preview('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+    });
+    expect(next.ingredients[0].mapping).toMatchObject({
+      foodId: 'food',
+      quantity: 600,
+      unit: 'g',
+    });
+  });
+  it('leaves an out-of-range scaled saved amount editable instead of breaking the preview contract', async () => {
+    const first = await service.preview('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+    });
+    m.mappings.mockResolvedValue([
+      {
+        source_food_key: first.ingredients[0].sourceFoodKey,
+        food_id: 'food',
+        variant_id: 'variant',
+        quantity_per_source_unit: 1e9,
+        unit: 'g',
+      },
+    ]);
+    const next = await service.preview('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+    });
+    expect(next.ingredients[0].mapping).toBeNull();
+    expect(next.ingredients[0].issues).toContain('mapping_unavailable');
+  });
+});
+
+describe('bounded provider suggestions', () => {
+  it('starts several ingredient searches together while keeping their results ordered and bounded', async () => {
+    const rows = Array.from({ length: 20 }, (_, index) => ({
+      ...recipe.recipeIngredient[0],
+      referenceId: `row-${index}`,
+      food: { id: `food-${index}`, name: `Ingredient ${index}` },
+    }));
+    const sourceRecipe = { ...recipe, recipeIngredient: rows };
+    m.recipe.mockResolvedValue(sourceRecipe);
+    let active = 0,
+      peak = 0,
+      released = false;
+    const pending: Array<() => void> = [];
+    m.lookup.mockImplementation(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      try {
+        if (!released)
+          await new Promise<void>((resolve) => pending.push(resolve));
+        return { source: 'not_found', food: null };
+      } finally {
+        active -= 1;
+      }
+    });
+    const operation = service.suggest('u', 'u', {
+      providerId: 'p',
+      recipeSlug: 'rice',
+      sourceFingerprint: recipeFingerprint(sourceRecipe),
+      confirmedIngredientIds: [],
+      useAi: false,
+    });
+    try {
+      await vi.waitFor(() => expect(pending).toHaveLength(4), {
+        timeout: 1000,
+        interval: 5,
+      });
+    } finally {
+      released = true;
+      pending.reverse().forEach((resolve) => resolve());
+    }
+    const result = await operation;
+    expect(result.ingredients.map((row) => row.ingredientId)).toEqual(
+      rows.map((row) => row.referenceId)
+    );
+    expect(peak).toBe(4);
+    expect(active).toBe(0);
+  });
+});
+
 describe('source row identity and safe mapping reuse', () => {
   it('gives duplicate, missing, reserved, colliding and oversized references deterministic bounded unique IDs', async () => {
     const references = [
@@ -299,7 +692,7 @@ describe('source row identity and safe mapping reuse', () => {
     ).rejects.toMatchObject({ code: 'INCOMPLETE_MAPPING' });
     expect(m.save).not.toHaveBeenCalled();
   });
-  it('requires fresh confirmation for original preparation text and legacy context-v1 keys', async () => {
+  it('reuses food identity across original text changes but ignores legacy context-v1 keys', async () => {
     const cooked = {
       ...recipe,
       recipeIngredient: [
@@ -342,7 +735,7 @@ describe('source row identity and safe mapping reuse', () => {
     expect(
       (await service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' }))
         .ingredients[0].mapping
-    ).toBeNull();
+    ).toMatchObject({ foodId: 'food', quantity: 600 });
     m.recipe.mockResolvedValue(recipe);
     m.mappings.mockResolvedValue([
       {
@@ -506,7 +899,7 @@ describe('owner-only ingredient imports', () => {
     });
     expect(result.servingSize).toBe(450);
   });
-  it('leaves a custom 250ml cup unresolved instead of assuming the standard US cup', async () => {
+  it('uses a custom 250ml cup without assuming the standard US cup', async () => {
     m.recipe.mockResolvedValue({
       ...recipe,
       recipeIngredient: [
@@ -526,8 +919,12 @@ describe('owner-only ingredient imports', () => {
       recipeSlug: 'rice',
     });
     expect(result.ingredients[0].originalUnit).toBe('cup');
-    expect(result.ingredients[0].unit).toBeNull();
-    expect(result.ingredients[0].issues).toContain('missing_unit');
+    expect(result.ingredients[0]).toMatchObject({
+      quantity: 250,
+      unit: 'ml',
+      originalQuantity: 1,
+    });
+    expect(result.ingredients[0].issues).not.toContain('missing_unit');
   });
   it('invalidates a saved food mapping when source food identity changes', async () => {
     const originalPreview = await service.preview('u', 'u', {
@@ -587,11 +984,17 @@ describe('confirmed ingredient mapping context', () => {
     });
     return dry;
   }
-  it('requires fresh food review when a saved dry-rice ingredient becomes cooked', async () => {
+  it('requires fresh food review when a different cooked-rice food replaces the saved food', async () => {
     const dry = await saveDryRiceMapping();
     m.recipe.mockResolvedValue({
       ...dry,
-      recipeIngredient: [{ ...dry.recipeIngredient[0], note: 'cooked' }],
+      recipeIngredient: [
+        {
+          ...dry.recipeIngredient[0],
+          note: 'cooked',
+          food: { id: 'cooked-rice', name: 'Rice, cooked' },
+        },
+      ],
     });
     const current = await service.preview('u', 'u', {
       providerId: 'p',
@@ -610,7 +1013,7 @@ describe('confirmed ingredient mapping context', () => {
       'i',
     ]);
   });
-  it('requires fresh review when food text changes despite the same canonical food ID', async () => {
+  it('retains the chosen food when the same canonical Mealie food is renamed', async () => {
     const dry = await saveDryRiceMapping();
     m.recipe.mockResolvedValue({
       ...dry,
@@ -625,7 +1028,10 @@ describe('confirmed ingredient mapping context', () => {
       providerId: 'p',
       recipeSlug: 'rice',
     });
-    expect(current.ingredients[0].mapping).toBeNull();
+    expect(current.ingredients[0].mapping).toMatchObject({
+      foodId: 'food',
+      quantity: 600,
+    });
   });
   it('rescales a saved mapping after quantity-only changes with normalized unchanged context', async () => {
     const dry = await saveDryRiceMapping();
@@ -704,7 +1110,101 @@ describe('explicit safe nutrition sync', () => {
       lastSyncedAt: null,
     });
   });
-  it('reports current local eligibility without blessing the stored baseline or contacting Mealie', async () => {
+  it('previews current saved nutrition for an edited meal with cross-unit source mappings without writing', async () => {
+    m.source.mockResolvedValue({
+      ...(await m.source()),
+      syncEligible: false,
+      ingredients: [{ ingredientId: 'i', quantity: 1, unit: 'cup' }],
+      mappings: [{ ...mapping, quantity: 100 }],
+    });
+    m.meal.mockResolvedValue({
+      user_id: 'u',
+      name: 'Reviewed onions',
+      foods: [{ ...foods[0], quantity: 500 }],
+    });
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    expect(preview).toMatchObject({
+      mealId: 'meal',
+      mealName: 'Reviewed onions',
+      recipeName: 'Rice',
+      recipeServings: 4,
+      sourceChanged: false,
+      nutrition: { calories: 500, protein: 12.5, carbs: 75, fat: 12.5 },
+      batchNutrition: { calories: 2000 },
+    });
+    expect(m.patch).not.toHaveBeenCalled();
+    expect(m.markSynced).not.toHaveBeenCalled();
+  });
+  it('confirms a changed Mealie recipe with current servings and edited saved nutrition without reimporting', async () => {
+    const changed = {
+      ...recipe,
+      name: 'Current source',
+      recipeServings: 2,
+      nutrition: { calories: '10', sodiumContent: '12' },
+    };
+    m.recipe.mockResolvedValue(changed);
+    m.meal.mockResolvedValue({
+      user_id: 'u',
+      foods: [{ ...foods[0], quantity: 500 }],
+    });
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    expect(preview.sourceChanged).toBe(true);
+    expect(preview.nutrition.calories).toBe(1000);
+    m.patch.mockImplementation(
+      async (
+        _slug: string,
+        patch: Record<string, string>,
+        previous: Record<string, string | number | null>
+      ) => ({ ...changed, nutrition: { ...previous, ...patch } })
+    );
+    const result = await service.syncNutrition('u', 'u', 'meal', {
+      confirmationFingerprint: preview.confirmationFingerprint,
+    });
+    expect(result.status).toBe('synced');
+    expect(m.patch).toHaveBeenCalledWith(
+      'rice',
+      expect.objectContaining({ calories: '1000', proteinContent: '25' }),
+      changed.nutrition
+    );
+    expect(m.save).not.toHaveBeenCalled();
+  });
+  it.each(['meal', 'source'] as const)(
+    'requires a fresh confirmation when the %s changes after preview',
+    async (changed) => {
+      const preview = await service.previewNutritionSync('u', 'u', 'meal');
+      if (changed === 'meal')
+        m.meal.mockResolvedValue({
+          user_id: 'u',
+          foods: [{ ...foods[0], quantity: 700 }],
+        });
+      else
+        m.recipe.mockResolvedValue({
+          ...recipe,
+          nutrition: { calories: '123' },
+        });
+      await expect(
+        service.syncNutrition('u', 'u', 'meal', {
+          confirmationFingerprint: preview.confirmationFingerprint,
+        })
+      ).rejects.toMatchObject({ status: 409, code: 'SYNC_PREVIEW_CHANGED' });
+      expect(m.patch).not.toHaveBeenCalled();
+    }
+  );
+  it('rejects another owner saved meal before previewing nutrition', async () => {
+    m.meal.mockResolvedValue({ user_id: 'other', foods });
+    await expect(
+      service.previewNutritionSync('u', 'u', 'meal')
+    ).rejects.toMatchObject({ status: 403, code: 'OWNER_REQUIRED' });
+    expect(m.patch).not.toHaveBeenCalled();
+  });
+  it('requires positive current Mealie servings without asking for a new import', async () => {
+    m.recipe.mockResolvedValue({ ...recipe, recipeServings: 0 });
+    await expect(
+      service.previewNutritionSync('u', 'u', 'meal')
+    ).rejects.toMatchObject({ status: 422, code: 'SYNC_UNAVAILABLE' });
+    expect(m.patch).not.toHaveBeenCalled();
+  });
+  it('reports valid current saved nutrition without contacting Mealie or permanently locking edited meals', async () => {
     const baseline = await m.source();
     const unchanged = await service.getSource('u', 'u', 'meal');
     expect(unchanged.syncEligible).toBe(true);
@@ -713,17 +1213,30 @@ describe('explicit safe nutrition sync', () => {
       foods: [{ ...foods[0], quantity: 300 }],
     });
     const changed = await service.getSource('u', 'u', 'meal');
-    expect(changed.syncEligible).toBe(false);
+    expect(changed.syncEligible).toBe(true);
     expect(changed.mealFingerprint).toBe(baseline.mealFingerprint);
     expect(baseline.syncEligible).toBe(true);
     expect(m.provider).not.toHaveBeenCalled();
     expect(m.recipe).not.toHaveBeenCalled();
     expect(m.save).not.toHaveBeenCalled();
     expect(m.markSynced).not.toHaveBeenCalled();
-    await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
-      { status: 409, code: 'LOCAL_CHANGED' }
+    m.patch.mockResolvedValue({
+      ...recipe,
+      nutrition: {
+        calories: '300',
+        proteinContent: '7.5',
+        carbohydrateContent: '45',
+        fatContent: '7.5',
+      },
+    });
+    expect((await service.syncNutrition('u', 'u', 'meal')).status).toBe(
+      'synced'
     );
-    expect(m.patch).not.toHaveBeenCalled();
+    expect(m.patch).toHaveBeenCalledWith(
+      'rice',
+      expect.objectContaining({ calories: '300' }),
+      {}
+    );
   });
   it('refuses sync for an unchanged legacy meal snapshot with unknown core nutrition', async () => {
     const incomplete = {
@@ -741,13 +1254,11 @@ describe('explicit safe nutrition sync', () => {
     );
     expect(m.patch).not.toHaveBeenCalled();
   });
-  it('preserves an originally ineligible baseline even for an unchanged or renamed meal', async () => {
+  it('allows a complete current meal even when its old import was ineligible', async () => {
     const baseline = await m.source();
     m.source.mockResolvedValue({ ...baseline, syncEligible: false });
     m.meal.mockResolvedValue({ user_id: 'u', name: 'Renamed batch', foods });
-    expect((await service.getSource('u', 'u', 'meal')).syncEligible).toBe(
-      false
-    );
+    expect((await service.getSource('u', 'u', 'meal')).syncEligible).toBe(true);
     m.source.mockResolvedValue(baseline);
     expect((await service.getSource('u', 'u', 'meal')).syncEligible).toBe(true);
   });
@@ -897,24 +1408,53 @@ describe('explicit safe nutrition sync', () => {
       expect(m.markSynced).not.toHaveBeenCalled();
     }
   );
-  it('rejects unknown original quantities even when a complete manual tracking meal exists', async () => {
+  it('can sync complete reviewed saved nutrition despite unknown original quantities', async () => {
     const source = await m.source();
     m.source.mockResolvedValue({ ...source, syncEligible: false });
-    await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
-      { status: 422, code: 'SYNC_UNAVAILABLE' }
-    );
+    m.patch.mockResolvedValue({
+      ...recipe,
+      nutrition: {
+        calories: '600',
+        proteinContent: '15',
+        carbohydrateContent: '90',
+        fatContent: '15',
+      },
+    });
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
     expect(m.patch).not.toHaveBeenCalled();
+    expect(
+      (
+        await service.syncNutrition('u', 'u', 'meal', {
+          confirmationFingerprint: preview.confirmationFingerprint,
+        })
+      ).status
+    ).toBe('synced');
   });
-  it('rejects local ingredient quantity edits without sending nutrition', async () => {
+  it('previews and explicitly syncs edited saved ingredient quantities', async () => {
     m.meal.mockResolvedValue({
       id: 'meal',
       user_id: 'u',
       foods: [{ ...foods[0], quantity: 700 }],
     });
-    await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
-      { status: 409, code: 'LOCAL_CHANGED' }
-    );
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    expect(preview.nutrition.calories).toBe(700);
     expect(m.patch).not.toHaveBeenCalled();
+    m.patch.mockResolvedValue({
+      ...recipe,
+      nutrition: {
+        calories: '700',
+        proteinContent: '17.5',
+        carbohydrateContent: '105',
+        fatContent: '17.5',
+      },
+    });
+    expect(
+      (
+        await service.syncNutrition('u', 'u', 'meal', {
+          confirmationFingerprint: preview.confirmationFingerprint,
+        })
+      ).status
+    ).toBe('synced');
   });
 });
 
@@ -1057,7 +1597,7 @@ describe('private sync baselines and strict public compatibility', () => {
       status: 502,
       code: 'SYNC_RECORD_FAILED',
       message:
-        'Mealie confirmed the nutrition update, but SparkyFitness could not record it. Check Mealie and import its current unchanged recipe as a new base meal before syncing again.',
+        'Mealie confirmed the nutrition update, but SparkyFitness could not record it. Check Mealie, then review a fresh nutrition preview before trying again.',
     });
     expect((await m.recipe()).nutrition.calories).toBe('600');
     await expect(service.syncNutrition('u', 'u', id)).rejects.toMatchObject({

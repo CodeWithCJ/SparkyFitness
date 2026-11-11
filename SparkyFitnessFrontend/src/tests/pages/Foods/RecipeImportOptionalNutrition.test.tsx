@@ -215,7 +215,7 @@ it.each([null, undefined, -1, Number.NaN, Number.POSITIVE_INFINITY, 0])(
       );
       if (dietary_fiber === 0) expect(posted?.['dietary_fiber']).toBe(0);
       else expect(posted).not.toHaveProperty('dietary_fiber');
-      await screen.findByText('0.6 kg');
+      await screen.findByText(`${(0.6).toLocaleString()} kg`);
       const cached = client.getQueryData<Food>([
         'foods',
         'recipe-import',

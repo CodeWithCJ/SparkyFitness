@@ -8,6 +8,7 @@ import type {
   RecipeImportSaveResponse,
   RecipeImportSource,
   RecipeImportSyncResponse,
+  RecipeImportSyncPreview,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
 import { ApiError, getApiErrorMessage } from './errors';
@@ -51,11 +52,21 @@ export const saveRecipe = (payload: RecipeImportSaveRequest) =>
   request<RecipeImportSaveResponse>('/mealie/save', payload);
 export const syncRecipeNutrition = (
   mealId: string,
-  serverConfig?: ServerConfig
+  serverConfig?: ServerConfig,
+  confirmationFingerprint?: string
 ) =>
   request<RecipeImportSyncResponse>(
     `/${encodeURIComponent(mealId)}/sync-nutrition`,
-    {},
+    confirmationFingerprint ? { confirmationFingerprint } : {},
+    serverConfig
+  );
+export const previewRecipeNutritionSync = (
+  mealId: string,
+  serverConfig?: ServerConfig
+) =>
+  request<RecipeImportSyncPreview>(
+    `/${encodeURIComponent(mealId)}/sync-preview`,
+    undefined,
     serverConfig
   );
 export async function fetchRecipeSource(

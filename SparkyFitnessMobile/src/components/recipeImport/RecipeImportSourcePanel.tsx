@@ -1,10 +1,10 @@
 import { Text, View } from 'react-native';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
-import { recipeImportNutritionGaps } from '@workspace/shared';
-import { recipeImportIssueLabel } from '../../utils/recipeImportIssueLabel';
 import { useRecipeSource } from '../../hooks/useRecipeImport';
 import { useAppLocale } from '../../localization';
+import RecipeImportSyncConfirmation from './RecipeImportSyncConfirmation';
 
 type SourcePanelProps = { mealId: string; scope: string };
 export default function RecipeImportSourcePanel(props: SourcePanelProps) {
@@ -15,7 +15,38 @@ export default function RecipeImportSourcePanel(props: SourcePanelProps) {
 function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
   const { t } = useTranslation();
   const locale = useAppLocale();
-  const { source, sync } = useRecipeSource(mealId, scope);
+  const [reviewGeneration, setReviewGeneration] = useState<number | null>(null);
+  const confirming = useRef(false);
+  const { source, sync, previewSync, sourceGeneration } = useRecipeSource(
+    mealId,
+    scope
+  );
+  const reviewOpen = reviewGeneration === sourceGeneration;
+  function loadPreview() {
+    if (sync.isPending) return;
+    sync.reset();
+    previewSync.reset();
+    setReviewGeneration(sourceGeneration);
+    previewSync.mutate();
+  }
+  function confirm() {
+    if (
+      !previewSync.data ||
+      previewSync.isPending ||
+      previewSync.error ||
+      confirming.current
+    )
+      return;
+    confirming.current = true;
+    void sync
+      .mutateAsync(previewSync.data.confirmationFingerprint, {
+        onSuccess: () => setReviewGeneration(null),
+      })
+      .catch(() => {})
+      .finally(() => {
+        confirming.current = false;
+      });
+  }
   if (source.isLoading) return null;
   if (source.error)
     return (
@@ -24,10 +55,6 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
       </Text>
     );
   if (!source.data) return null;
-  const { missingCore } = recipeImportNutritionGaps(
-    undefined,
-    source.data.ingredients.flatMap((ingredient) => ingredient.missingNutrients)
-  );
   return (
     <View className="gap-3 bg-surface rounded-xl p-4">
       <Text className="text-text-primary font-semibold">
@@ -35,29 +62,19 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
       </Text>
       <Text className="text-text-secondary">{source.data.name}</Text>
       <Text className="text-text-secondary">
-        {t('recipeImport.syncExplanation', {
+        {t('recipeImport.syncReviewHelp', {
           defaultValue:
-            'Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.',
+            'Review and confirm the current saved meal nutrition before updating Mealie. Diary changes are separate.',
         })}
       </Text>
       {!source.data.syncEligible && (
         <Text className="text-text-secondary">
-          {t('recipeImport.syncUnavailable', {
+          {t('recipeImport.syncNeedsCompleteMeal', {
             defaultValue:
-              'This meal is for tracking only. Reimport the original recipe with complete, unchanged amounts to enable nutrition sync.',
+              'Review the saved meal ingredients and complete their nutrition before syncing.',
           })}
         </Text>
       )}
-      {source.data.syncWarnings.map((warning) => (
-        <Text key={warning} className="text-text-secondary">
-          {warning === 'incomplete_nutrition' && missingCore
-            ? t('recipeImport.incompleteCoreNutrition', {
-                defaultValue:
-                  'Core nutrition is incomplete. Choose a complete food variant.',
-              })
-            : recipeImportIssueLabel(warning, t)}
-        </Text>
-      ))}
       {source.data.lastSyncedAt && (
         <Text className="text-text-secondary">
           {t('recipeImport.lastSynced', {
@@ -73,19 +90,32 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
           })}
         </Text>
       )}
-      {sync.error && (
+      {sync.error && !reviewOpen && (
         <Text accessibilityRole="alert" className="text-danger">
           {sync.error.message}
         </Text>
       )}
       <Button
         variant="secondary"
-        disabled={!source.data.syncEligible || sync.isPending}
+        disabled={
+          !source.data.syncEligible || sync.isPending || previewSync.isPending
+        }
         loading={sync.isPending}
-        onPress={() => sync.mutate()}
+        onPress={loadPreview}
       >
         {t('recipeImport.sync', { defaultValue: 'Sync nutrition to Mealie' })}
       </Button>
+      {reviewOpen && (
+        <RecipeImportSyncConfirmation
+          preview={previewSync.data}
+          loading={previewSync.isPending}
+          busy={sync.isPending}
+          error={previewSync.error || sync.error}
+          onCancel={() => setReviewGeneration(null)}
+          onRefresh={loadPreview}
+          onConfirm={confirm}
+        />
+      )}
     </View>
   );
 }
