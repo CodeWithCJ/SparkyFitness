@@ -18,6 +18,46 @@ export const useAdaptiveDisplay = (
   const displayAdaptiveRawTdee = Math.round(
     convertEnergy(adaptiveTdeeData?.rawTdee || 0, 'kcal', energyUnit)
   );
+  const bounded = adaptiveTdeeData?.weightTrendMethod === 'bounded_daily';
+  const displayAdaptiveTdee = Math.round(
+    convertEnergy(adaptiveTdeeData?.tdee ?? 0, 'kcal', energyUnit)
+  );
+  // The API adjustment is final minus the rounded, capped candidate. Rebuild that
+  // intermediate in kcal, then reconcile the shown delta after unit conversion.
+  const displayAdaptiveCappedTdee = Math.round(
+    convertEnergy(
+      (adaptiveTdeeData?.tdee ?? 0) -
+        (bounded ? (adaptiveTdeeData.stabilityAdjustmentKcal ?? 0) : 0),
+      'kcal',
+      energyUnit
+    )
+  );
+  const displayStabilityAdjustment =
+    displayAdaptiveTdee - displayAdaptiveCappedTdee;
+  const displayActivityRawTdee = Math.round(
+    convertEnergy(
+      adaptiveTdeeData?.rawActivityAdjustedTdee ?? 0,
+      'kcal',
+      energyUnit
+    )
+  );
+  const displayActivityTdee = Math.round(
+    convertEnergy(
+      adaptiveTdeeData?.activityAdjustedTdee ?? 0,
+      'kcal',
+      energyUnit
+    )
+  );
+  const displayActivityCappedTdee = Math.round(
+    convertEnergy(
+      (adaptiveTdeeData?.activityAdjustedTdee ?? 0) -
+        (bounded ? (adaptiveTdeeData.activityStabilityAdjustmentKcal ?? 0) : 0),
+      'kcal',
+      energyUnit
+    )
+  );
+  const displayActivityStabilityAdjustment =
+    displayActivityTdee - displayActivityCappedTdee;
   // Against the raw estimate, not the capped one: when the cap binds the total no
   // longer equals intake plus trend, and the trend row still has to state the real
   // trend rather than be bent to match a capped total.
@@ -42,5 +82,12 @@ export const useAdaptiveDisplay = (
     displayAdaptiveRawTdee,
     displayAdaptiveDelta,
     adaptiveDeltaText,
+    displayAdaptiveTdee,
+    displayAdaptiveCappedTdee,
+    displayStabilityAdjustment,
+    displayActivityRawTdee,
+    displayActivityTdee,
+    displayActivityCappedTdee,
+    displayActivityStabilityAdjustment,
   };
 };

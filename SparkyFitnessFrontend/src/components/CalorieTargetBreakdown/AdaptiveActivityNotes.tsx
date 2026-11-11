@@ -14,52 +14,66 @@ export const AdaptiveActivityNotes = ({
   insufficientHistory,
 }: AdaptiveActivityNotesProps) => {
   const { t } = useTranslation();
-  const { energyUnit, convertEnergy } = usePreferences();
-  const { displayAdaptiveRawTdee } = useAdaptiveDisplay(adaptiveTdeeData);
+  const { energyUnit } = usePreferences();
+  const {
+    displayAdaptiveRawTdee,
+    displayActivityRawTdee,
+    displayActivityTdee,
+    displayActivityCappedTdee,
+    displayActivityStabilityAdjustment,
+  } = useAdaptiveDisplay(adaptiveTdeeData);
+  const bounded = adaptiveTdeeData?.weightTrendMethod === 'bounded_daily';
 
   return (
     <div className="mt-2 rounded border border-border/60 bg-muted/40 p-2 space-y-1">
       {!insufficientHistory &&
         adaptiveTdeeData?.rawActivityAdjustedTdee != null && (
           <p>
-            {t('diary.calculateExplanation.activityBaselineMath', {
-              defaultValue:
-                'Raw full-day TDEE − average activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} days of activity history).',
-              total: displayAdaptiveRawTdee,
-              activity:
-                displayAdaptiveRawTdee -
-                Math.round(
-                  convertEnergy(
-                    adaptiveTdeeData.rawActivityAdjustedTdee,
-                    'kcal',
-                    energyUnit
-                  )
-                ),
-              baseline: Math.round(
-                convertEnergy(
-                  adaptiveTdeeData.rawActivityAdjustedTdee,
-                  'kcal',
-                  energyUnit
-                )
-              ),
-              unit: getEnergyUnitString(energyUnit),
-              days: adaptiveTdeeData.activityDaysOfData ?? 0,
-            })}
+            {t(
+              bounded
+                ? 'diary.calculateExplanation.weightedActivityBaselineMath'
+                : 'diary.calculateExplanation.activityBaselineMath',
+              {
+                defaultValue: bounded
+                  ? 'Raw full-day TDEE − weighted activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} contributing food/activity dates, using the same interval weights).'
+                  : 'Raw full-day TDEE − average activity = raw adaptive baseline: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} days of activity history).',
+                total: displayAdaptiveRawTdee,
+                activity: displayAdaptiveRawTdee - displayActivityRawTdee,
+                baseline: displayActivityRawTdee,
+                unit: getEnergyUnitString(energyUnit),
+                days: adaptiveTdeeData.activityDaysOfData ?? 0,
+              }
+            )}
           </p>
         )}
       {!insufficientHistory &&
         adaptiveTdeeData?.activityAdjustedTdee != null && (
           <p>
-            {t('diary.calculateExplanation.activityBaselineCapped', {
+            {t(
+              bounded
+                ? 'diary.calculateExplanation.activityCandidateCapped'
+                : 'diary.calculateExplanation.activityBaselineCapped',
+              {
+                defaultValue: bounded
+                  ? 'After the BMR-based plausibility cap, the activity-excluded candidate is {{baseline}} {{unit}}; its history adjustment follows.'
+                  : 'After the BMR-based plausibility cap, the adaptive baseline is {{baseline}} {{unit}}. Goal Mode and your safety floor apply to this baseline.',
+                baseline: displayActivityCappedTdee,
+                unit: getEnergyUnitString(energyUnit),
+              }
+            )}
+          </p>
+        )}
+      {!insufficientHistory &&
+        bounded &&
+        adaptiveTdeeData.activityAdjustedTdee != null && (
+          <p>
+            {t('diary.calculateExplanation.activityHistoryAdjustment', {
               defaultValue:
-                'After the BMR-based plausibility cap, the adaptive baseline is {{baseline}} {{unit}}. Goal Mode and your safety floor apply to this baseline.',
-              baseline: Math.round(
-                convertEnergy(
-                  adaptiveTdeeData.activityAdjustedTdee,
-                  'kcal',
-                  energyUnit
-                )
-              ),
+                'Activity-baseline history adjustment: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Goal Mode and your safety floor apply to this filtered baseline.',
+              candidate: displayActivityCappedTdee,
+              sign: displayActivityStabilityAdjustment < 0 ? '−' : '+',
+              adjustment: Math.abs(displayActivityStabilityAdjustment),
+              result: displayActivityTdee,
               unit: getEnergyUnitString(energyUnit),
             })}
           </p>

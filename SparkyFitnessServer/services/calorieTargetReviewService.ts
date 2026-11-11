@@ -3,6 +3,8 @@ import {
   isAdaptiveTdeeMature,
   reviewCalorieTarget,
   todayInZone,
+  ADAPTIVE_TDEE_STABILITY_DAYS,
+  ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS,
 } from '@workspace/shared';
 import type { CalorieTargetReview } from '@workspace/shared';
 import userRepository from '../models/userRepository.js';
@@ -33,15 +35,31 @@ async function getCalorieTargetReview(
   const target = Number(goals?.calories);
   const gender =
     profile?.gender?.toLowerCase() === 'female' ? 'female' : 'male';
+  const observedSpan = tdee.weightObservationSpanDays;
+  // Matched food counts describe the observed interval, not the entire
+  // selection window. A shorter fully logged interval is not missing food.
+  const coverageDays =
+    tdee.weightTrendMethod === 'bounded_daily' &&
+    typeof observedSpan === 'number' &&
+    Number.isFinite(observedSpan) &&
+    observedSpan > 0
+      ? observedSpan
+      : (tdee.daysInWindow ?? ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS);
   return reviewCalorieTarget({
     maintenanceKcal: tdee.tdee,
-    // A clamped estimate was pulled to a plausible range, so it is not the
-    // maintenance the weight trend implies and cannot judge a followed target.
+    // Sparse/stale evidence and an unfinished learning window cannot reliably
+    // judge a target. Ordinary filtering and weekly logging are not failures.
     maintenanceReliable:
       isAdaptiveTdeeMature(tdee.tdee, tdee.isFallback, tdee.daysOfData) &&
-      !tdee.wasClamped,
+      !tdee.wasClamped &&
+      tdee.confidence !== 'LOW' &&
+      (tdee.weightTrendMethod !== 'bounded_daily' ||
+        tdee.historyReliable === true) &&
+      (tdee.stabilizationDays === undefined ||
+        tdee.stabilizationDays >=
+          (tdee.stabilizationWindowDays ?? ADAPTIVE_TDEE_STABILITY_DAYS)),
     daysLogged: tdee.daysOfData,
-    windowDays: tdee.daysInWindow ?? 28,
+    windowDays: coverageDays,
     averageIntakeKcal: tdee.avgIntake ?? null,
     dailyWeightChangeKg: tdee.dailyWeightChangeKg ?? null,
     currentTargetKcal: Number.isFinite(target) && target > 0 ? target : null,
