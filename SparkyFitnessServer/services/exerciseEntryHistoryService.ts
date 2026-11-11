@@ -10,6 +10,7 @@ import {
   type ExerciseHistoryResponse,
   type ExerciseModality,
   type ExerciseSessionResponse,
+  type CalorieLinkResolution,
 } from '@workspace/shared';
 
 import { getClient } from '../db/poolManager.js';
@@ -142,6 +143,15 @@ function _buildExerciseEntryWithSnapshot(
     exercise_id: entryData.exercise_id as string,
     duration_minutes: (entryData.duration_minutes as number) ?? 0,
     calories_burned: (entryData.calories_burned as number) ?? 0,
+    calories_applied:
+      entryData.calories_applied === null ||
+      entryData.calories_applied === undefined
+        ? null
+        : Number(entryData.calories_applied),
+    calorie_link_id: (entryData.calorie_link_id as string | null) ?? null,
+    calorie_link_resolution:
+      (entryData.calorie_link_resolution as CalorieLinkResolution | null) ??
+      null,
     entry_date: _dateToString(entryData.entry_date),
     entry_time: (entryData.entry_time as string) ?? null,
     notes: (entryData.notes as string) ?? null,

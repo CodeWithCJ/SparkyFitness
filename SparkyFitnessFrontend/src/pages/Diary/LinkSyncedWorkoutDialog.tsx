@@ -75,6 +75,7 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
       data.link?.resolution ??
         (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
     );
+    setCustomInput(data.link?.custom_calories ?? '');
   }, [data]);
 
   const unit = getEnergyUnitString(energyUnit);
@@ -108,11 +109,7 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
         resolution,
         ...(resolution === 'custom' && customInput !== ''
           ? {
-              custom_calories: convertEnergy(
-                Number(customInput),
-                energyUnit,
-                'kcal'
-              ),
+              custom_calories: customInput,
             }
           : {}),
       },
@@ -261,10 +258,26 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
                     id="link-custom-calories"
                     type="number"
                     min={0}
-                    value={customInput}
+                    value={
+                      customInput === ''
+                        ? ''
+                        : Number(
+                            convertEnergy(
+                              customInput,
+                              'kcal',
+                              energyUnit
+                            ).toFixed(4)
+                          )
+                    }
                     onChange={(e) =>
                       setCustomInput(
-                        e.target.value === '' ? '' : Number(e.target.value)
+                        e.target.value === ''
+                          ? ''
+                          : convertEnergy(
+                              Number(e.target.value),
+                              energyUnit,
+                              'kcal'
+                            )
                       )
                     }
                   />

@@ -23,6 +23,7 @@ import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import { processHealthData } from '../services/measurementService.js';
 import { updateExerciseEntry } from '../services/exerciseService.js';
 import * as calorieLinkService from '../services/exerciseCalorieLinkService.js';
+import { getGroupedExerciseSessionById } from '../services/exerciseEntryHistoryService.js';
 import {
   setCalorieLink,
   clearCalorieLink,
@@ -317,6 +318,44 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     expect(reapply).toHaveBeenCalledTimes(1);
     expect(await countedCalories()).toBe(350);
   });
+
+  it.each([350, 0])(
+    'returns the persisted link and custom total %s after reimport and a fresh session read',
+    async (total) => {
+      await sync([workout()]);
+      const original = await entries();
+      const health = await addHealthSession();
+      await setCalorieLink(userId, userId, original[0]!.id, {
+        synced_entry_id: health.id,
+        resolution: 'custom',
+        custom_calories: total,
+      });
+      await sync([workout()]);
+      const session = await getGroupedExerciseSessionById(
+        userId,
+        original[0]!.exercise_preset_entry_id!
+      );
+      expect(
+        session!.exercises.map((entry) => entry.calorie_link_resolution)
+      ).toEqual(['custom', 'custom']);
+      expect(
+        session!.exercises.reduce(
+          (sum, entry) => sum + (entry.calories_applied ?? 0),
+          0
+        )
+      ).toBe(total);
+      const suggestions = await calorieLinkService.getCalorieLinkSuggestions(
+        userId,
+        userId,
+        original[0]!.id
+      );
+      expect(suggestions.link).toMatchObject({
+        resolution: 'custom',
+        synced_entry_id: health.id,
+        custom_calories: total,
+      });
+    }
+  );
 
   it('removes only missing Hevy sessions in a complete fetched range and restores the linked health calories', async () => {
     await sync([

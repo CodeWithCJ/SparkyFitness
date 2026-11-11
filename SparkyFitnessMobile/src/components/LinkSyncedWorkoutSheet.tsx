@@ -19,7 +19,6 @@ import {
   CALORIE_LINK_RESOLUTIONS,
   type CalorieLinkCandidate,
   type CalorieLinkResolution,
-  energyToKcal,
   type EnergyUnit,
 } from '@workspace/shared';
 import Button from './ui/Button';
@@ -32,6 +31,7 @@ import {
   useSetCalorieLink,
 } from '../hooks/useCalorieLink';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
 export interface LinkSyncedWorkoutSheetRef {
@@ -85,6 +85,7 @@ const LinkSyncedWorkoutSheet = forwardRef<
   const [resolution, setResolution] =
     useState<CalorieLinkResolution>('sparkyfitness');
   const [customText, setCustomText] = useState('');
+  const customInput = useEnergyInputText(customText, setCustomText);
 
   useImperativeHandle(ref, () => ({
     present: () => {
@@ -105,6 +106,11 @@ const LinkSyncedWorkoutSheet = forwardRef<
       data.link?.resolution ??
         (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
     );
+    setCustomText(
+      data.link?.custom_calories === undefined
+        ? ''
+        : String(data.link.custom_calories)
+    );
   }
 
   const selected = data?.candidates.find((c) => c.id === selectedId);
@@ -121,8 +127,7 @@ const LinkSyncedWorkoutSheet = forwardRef<
     }),
     [manual, synced, energyUnit]
   );
-  // Typed in the account's unit; the server takes kcal.
-  const customValue = energyToKcal(parseDecimalInput(customText), energyUnit);
+  const customValue = parseDecimalInput(customText);
   const canLink =
     !!selected &&
     (resolution !== 'custom' || (!isNaN(customValue) && customValue >= 0));
@@ -352,8 +357,8 @@ const LinkSyncedWorkoutSheet = forwardRef<
                   })}
                 </Text>
                 <BottomSheetTextInput
-                  value={customText}
-                  onChangeText={setCustomText}
+                  value={customInput.text}
+                  onChangeText={customInput.onChangeText}
                   keyboardType="decimal-pad"
                   className="border border-border-subtle rounded-lg px-3 py-2.5 text-base text-text-primary"
                   accessibilityLabel={t('calorieLink.customLabelWithUnit', {

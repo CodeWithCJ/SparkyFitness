@@ -47,6 +47,7 @@ interface LinkEntryRow {
   duration_minutes: number;
   elapsed_time_seconds: number | null;
   calories_burned: number;
+  calories_applied: number | null;
   calorie_link_id: string | null;
   calorie_link_resolution: CalorieLinkResolution | null;
   source: string | null;
@@ -63,6 +64,7 @@ const ENTRY_COLUMNS = `
   duration_minutes::float8 AS duration_minutes,
   elapsed_time_seconds::float8 AS elapsed_time_seconds,
   calories_burned::float8 AS calories_burned,
+  calories_applied::float8 AS calories_applied,
   calorie_link_id,
   calorie_link_resolution,
   source,
@@ -221,6 +223,14 @@ async function getCalorieLinkSuggestions(
             resolution: workout.find((row) => row.calorie_link_id)!
               .calorie_link_resolution!,
             synced_entry_id: linkedSynced?.id ?? null,
+            ...(workout.some((row) => row.calorie_link_resolution === 'custom')
+              ? {
+                  custom_calories: workout.reduce(
+                    (sum, row) => sum + (row.calories_applied ?? 0),
+                    0
+                  ),
+                }
+              : {}),
           }
         : null,
       candidates,
