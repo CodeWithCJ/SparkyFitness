@@ -816,11 +816,9 @@ export const exportBodyMeasurements = async ({
       .map((measurement) => [
         formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
         measurement.weight
-          ? convertWeight(
-              measurement.weight,
-              'kg',
-              defaultWeightUnit
-            ).toFixed(1)
+          ? convertWeight(measurement.weight, 'kg', defaultWeightUnit).toFixed(
+              1
+            )
           : '',
         formatLength(measurement.neck),
         formatLength(measurement.waist),

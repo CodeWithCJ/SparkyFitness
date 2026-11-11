@@ -213,7 +213,9 @@ describe('exportFoodDiary', () => {
 describe('exportBodyMeasurements', () => {
   it('writes values in the units named by the headers', async () => {
     let csv = '';
-    jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
     jest.spyOn(global, 'Blob').mockImplementation((parts) => {
       csv = String(parts?.[0]);
       return {} as Blob;
