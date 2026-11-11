@@ -1,6 +1,7 @@
 {
   "platforms": ["ios"],
   "ios": {
-    "modules": ["BackgroundWaterModule"]
+    "modules": ["BackgroundWaterModule"],
+    "appDelegateSubscribers": ["MedicationNotificationSubscriber"]
   }
 }

@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import {
   initMedicationNotificationActions,
   MEDICATION_NOTIFICATION_TASK_NAME,
+  PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
 } from '../../src/services/medicationNotificationHandler';
 import {
   addNotificationResponseListener,
@@ -37,6 +39,10 @@ jest.mock('../../src/services/api/medicationsApi', () => ({
   listMedications: jest.fn(),
 }));
 
+const mockActiveServer = jest.fn();
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfig: () => mockActiveServer(),
+}));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const DATE = '2026-08-12';
@@ -426,6 +432,10 @@ describe('logging a dose from a notification action', () => {
     it('retains queued doses for another account during an account switch and replays them when the owning account is active again', async () => {
       const baseKey = 'med_2026-08-12_med-of-A_sched-A_09:00';
       (createEntry as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+      // The live press checks ownership first: account A owns med-of-A.
+      (listMedications as jest.Mock).mockResolvedValueOnce([
+        { id: 'med-of-A', user_id: 'user-A' },
+      ]);
 
       if (!registeredTaskExecutor) {
         throw new Error('background notification task executor not registered');
@@ -596,6 +606,84 @@ describe('logging a dose from a notification action', () => {
           schedule_id: 's2',
         })
       );
+    });
+  });
+
+  it('queues a press made for another saved server instead of writing it here', async () => {
+    mockActiveServer.mockResolvedValue({ id: 'server-new' });
+    listener({
+      ...takenResponse(),
+      notification: {
+        request: {
+          identifier: 'notif-old-server',
+          content: {
+            data: {
+              medicationId: 'm1',
+              scheduleId: 's1',
+              userId: 'user-A',
+              serverId: 'server-old',
+              entryDate: DATE,
+            },
+          },
+        },
+      },
+    });
+    await new Promise(process.nextTick);
+    expect(createEntry).not.toHaveBeenCalled();
+    const queued = JSON.parse(
+      (await AsyncStorage.getItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+      )) ?? '[]'
+    );
+    expect(queued[0]).toMatchObject({ serverId: 'server-old' });
+
+    // Replay keeps it while the other server is active, and writes it once
+    // its own server is active again.
+    const { flushPendingMedicationNotificationActions } =
+      require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
+    (listMedications as jest.Mock).mockResolvedValue([
+      { id: 'm1', user_id: 'user-A' },
+    ]);
+    expect(await flushPendingMedicationNotificationActions()).toBe(false);
+    expect(createEntry).not.toHaveBeenCalled();
+    mockActiveServer.mockResolvedValue({ id: 'server-old' });
+    expect(await flushPendingMedicationNotificationActions()).toBe(true);
+    expect(createEntry).toHaveBeenCalledTimes(1);
+    mockActiveServer.mockReset();
+  });
+
+  it('queues a press for another account instead of writing it or dropping it', async () => {
+    (listMedications as jest.Mock).mockResolvedValueOnce([
+      { id: 'other', user_id: 'user-B' },
+    ]);
+    listener({
+      ...takenResponse(),
+      notification: {
+        request: {
+          identifier: 'notif-old',
+          content: {
+            data: {
+              medicationId: 'm1',
+              scheduleId: 's1',
+              userId: 'user-A',
+              entryDate: DATE,
+            },
+          },
+        },
+      },
+    });
+    await new Promise(process.nextTick);
+    expect(createEntry).not.toHaveBeenCalled();
+    const queued = JSON.parse(
+      (await AsyncStorage.getItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+      )) ?? '[]'
+    );
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      notificationId: 'notif-old',
+      userId: 'user-A',
+      status: 'taken',
     });
   });
 
