@@ -41,6 +41,19 @@ To copy in the other direction, open **Family Diaries**, choose a member and a m
 
 ---
 
+## Chat in a Switched Profile
+
+When you switch to someone's profile on the web, the AI assistant works in their account with your access:
+
+- What it logs goes into their diary, exactly as if you had added it for them on the web: entries that track who added them, such as food, exercise, water and measurements, record you.
+- It can only do what they allowed you to do. With **View Reports** alone it can answer questions about their data but can't log anything.
+- It logs with foods that already exist. Only the account owner can add new foods to their library.
+- Profile and settings, run programs, fitness tests, the Compare report and the assistant's saved food preferences are personal, so they aren't available while you're switched.
+- The conversation is yours: it is saved in your own chat history, not theirs, and kept apart from your chats in your own profile.
+- It uses your own AI service, as do label scans and other AI features. To change which one, switch back to your own profile.
+
+---
+
 ## Adaptive Calorie Details
 
 Weight trends in the adaptive calorie breakdown require check-in or report access. Diary-only access can receive a fallback estimate when measurements are unavailable. Removing measurement access takes effect on the next calculation.

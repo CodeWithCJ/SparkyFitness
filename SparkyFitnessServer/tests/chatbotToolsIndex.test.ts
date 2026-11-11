@@ -5,12 +5,18 @@ import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { withFixedActor } from '../db/poolManager.js';
+import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 // Loading the real foodEntryService trips on a deep '@workspace/shared'
 // subpath import; the registry surface test never executes handlers.
 vi.mock('../services/foodEntryService', () => ({ default: {} }));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
+}));
+vi.mock('../db/poolManager.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../db/poolManager.js')>()),
+  withFixedActor: vi.fn((_actorUserId: string, work: () => unknown) => work()),
 }));
 
 // The chat-visible tool surface: every MCP tool except the three dev tools
@@ -118,6 +124,151 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_search_exercises',
   'sparky_search_foods',
 ].sort();
+
+describe('chat tool actor', () => {
+  const askArgs = { question: 'Which one?', options: ['A', 'B'] };
+
+  it('fixes the signed-in person around a tool on the manual category path', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const tools = buildChatbotTools(
+      'target-1',
+      'UTC',
+      'full',
+      true,
+      ['food'],
+      true,
+      { actorUserId: 'actor-1' }
+    );
+
+    await tools[ASK_USER_TOOL_NAME].execute?.(askArgs, toolOpts);
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'actor-1',
+      expect.any(Function)
+    );
+  });
+
+  it('fixes the signed-in person around a tool on the auto category path', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const { tools } = buildChatToolSurface('target-2', 'UTC', {
+      actorUserId: 'actor-2',
+    });
+
+    await tools[ENABLE_TOOLS_TOOL_NAME].execute?.(
+      { categories: ['food'] },
+      toolOpts
+    );
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'actor-2',
+      expect.any(Function)
+    );
+  });
+
+  it('acts as the person the tools were built for without a turn context', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const tools = buildChatbotTools(
+      'owner-3',
+      'UTC',
+      'full',
+      true,
+      ['food'],
+      true
+    );
+
+    await tools[ASK_USER_TOOL_NAME].execute?.(askArgs, toolOpts);
+
+    expect(withFixedActor).toHaveBeenCalledExactlyOnceWith(
+      'owner-3',
+      expect.any(Function)
+    );
+  });
+
+  // The wrapper is what keeps a new tool from skipping the Family Access
+  // check, so every tool chat can call must go through it.
+  it("runs every chat tool as the signed-in person in a family member's account", async () => {
+    const own = [
+      'sparky_manage_profile',
+      'sparky_manage_run_program',
+      'sparky_compare_metrics',
+      'sparky_food_assistant_state',
+    ];
+    const run = vi.mocked(withFixedActor);
+    const original = run.getMockImplementation();
+    run.mockReset().mockImplementation(() => 'ran as fixed actor');
+    try {
+      const { tools } = buildChatToolSurface('target-7', 'UTC', {
+        actorUserId: 'actor-7',
+      });
+      const names = Object.keys(tools).filter((name) => tools[name].execute);
+
+      for (const name of names) {
+        const result = await tools[name].execute!({}, toolOpts);
+        expect([name, result]).toEqual([
+          name,
+          own.includes(name)
+            ? "Error [FORBIDDEN]: This only works in the user's own account, not in a family member's."
+            : 'ran as fixed actor',
+        ]);
+      }
+      expect(names.length).toBeGreaterThan(own.length);
+      expect(run).toHaveBeenCalledTimes(names.length - own.length);
+      for (const [actor] of run.mock.calls) expect(actor).toBe('actor-7');
+    } finally {
+      run.mockReset().mockImplementation(original!);
+    }
+  });
+
+  it.each([
+    'sparky_manage_profile',
+    'sparky_manage_run_program',
+    'sparky_compare_metrics',
+    'sparky_food_assistant_state',
+  ])("refuses %s in a family member's account", async (name) => {
+    vi.mocked(withFixedActor).mockClear();
+    const { tools } = buildChatToolSurface('target-4', 'UTC', {
+      actorUserId: 'actor-4',
+    });
+
+    const result = await tools[name].execute?.({}, toolOpts);
+
+    expect(result).toBe(
+      "Error [FORBIDDEN]: This only works in the user's own account, not in a family member's."
+    );
+    expect(withFixedActor).not.toHaveBeenCalled();
+  });
+
+  it('runs those tools in your own account', async () => {
+    vi.mocked(withFixedActor).mockClear();
+    const { tools } = buildChatToolSurface('owner-5', 'UTC', {
+      actorUserId: 'owner-5',
+    });
+
+    await tools.sparky_manage_run_program.execute?.(
+      { action: 'not_an_action' },
+      toolOpts
+    );
+
+    expect(withFixedActor).toHaveBeenCalledOnce();
+  });
+
+  it('turns a row-level security refusal into a plain not-allowed reply', async () => {
+    vi.mocked(withFixedActor).mockImplementationOnce(() => {
+      throw Object.assign(new Error('new row violates row-level security'), {
+        code: '42501',
+      });
+    });
+    const { tools } = buildChatToolSurface('target-6', 'UTC', {
+      actorUserId: 'actor-6',
+    });
+
+    const result = await tools[ASK_USER_TOOL_NAME].execute?.(askArgs, toolOpts);
+
+    expect(result).toBe(
+      "Error [FORBIDDEN]: The user's access to this account doesn't allow that.\n\nSuggestion: Do NOT retry. Tell the user their access doesn't cover it, and stop."
+    );
+  });
+});
 
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {
@@ -416,7 +567,7 @@ it('preserves lazy provider schemas while normalizing application Zod schemas', 
     true,
     ['food'],
     false,
-    { foodResearchTool: research }
+    { actorUserId: 'lazy-schema-review', foodResearchTool: research }
   );
   expect(tools.web_search.inputSchema).toBe(research.inputSchema);
   expect(tools.sparky_manage_food.inputSchema).toBeInstanceOf(z.ZodType);

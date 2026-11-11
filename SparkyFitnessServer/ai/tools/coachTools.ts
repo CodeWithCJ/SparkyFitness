@@ -24,6 +24,7 @@ import {
   GenerateCoachingPlanSchema,
   ReviewCalorieTargetSchema,
 } from './schemas/coach.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 // Trend math and pattern classification ported from MCP's coachService; the
 // SQL lives in models/coachRepository.ts.
@@ -616,7 +617,10 @@ export function buildCoachTools(userId: string, tz: string) {
               userId,
               parsed.data.desired_kg_per_week
             ),
-            preferenceService.getUserPreferences(userId, userId),
+            preferenceService.getUserPreferences(
+              actorUserIdFor(userId),
+              userId
+            ),
           ]);
           return formatCalorieTargetReview(
             review,
