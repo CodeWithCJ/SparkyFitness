@@ -3544,6 +3544,35 @@ describe('workoutSession', () => {
         ]);
       });
 
+      it('keeps configured cardio rest for interval presets but zeroes it elsewhere', () => {
+        const cardio = makePresetExercise({
+          category: 'Cardio',
+          sets: [makePresetSet({ duration: 45, rest_time: 10 })],
+        });
+
+        const interval = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({ workout_format: 'interval', exercises: [cardio] })
+        );
+        const standard = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({ workout_format: 'standard', exercises: [cardio] })
+        );
+        const intervalMissingRest = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({
+            workout_format: 'interval',
+            exercises: [
+              makePresetExercise({
+                category: 'Cardio',
+                sets: [makePresetSet({ duration: 45, rest_time: null })],
+              }),
+            ],
+          })
+        );
+
+        expect(interval[0]!.sets[0]!.rest_time).toBe(10);
+        expect(standard[0]!.sets[0]!.rest_time).toBe(0);
+        expect(intervalMissingRest[0]!.sets[0]!.rest_time).toBe(0);
+      });
+
       it('threads superset_group from the preset into the live-start payload', () => {
         const preset = makeWorkoutPreset({
           exercises: [

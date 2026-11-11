@@ -2179,6 +2179,9 @@ export function makeDefaultStartSet(
 export function buildPresetStartExercisesPayload(
   preset: WorkoutPreset
 ): PresetSessionExerciseRequest[] {
+  // Interval presets schedule rest after each cardio work phase, so a cardio
+  // set's configured rest must survive; elsewhere cardio takes no set rest.
+  const keepCardioRest = preset.workout_format === 'interval';
   return preset.exercises.map((exercise, index) => {
     const modality = resolveSnapshotModality(exercise);
     return {
@@ -2202,10 +2205,12 @@ export function buildPresetStartExercisesPayload(
               distance: isCardioModality(modality)
                 ? (set.distance ?? null)
                 : null,
-              // Cardio takes no between-set rest.
-              rest_time: isCardioModality(modality)
-                ? 0
-                : (set.rest_time ?? null),
+              // Cardio takes no between-set rest, except in interval presets
+              // where an explicit rest is the interval's rest phase.
+              rest_time:
+                isCardioModality(modality) && !keepCardioRest
+                  ? 0
+                  : (set.rest_time ?? (isCardioModality(modality) ? 0 : null)),
               notes: set.notes ?? null,
               rpe: null,
               completed_at: null,
