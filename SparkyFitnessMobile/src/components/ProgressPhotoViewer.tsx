@@ -58,7 +58,10 @@ const ProgressPhotoViewer: React.FC<ProgressPhotoViewerProps> = ({
             cleared on the way out and reopening starts at 1x. */}
         <ZoomableView
           resetKey={visible}
-          style={{ width, height: height * 0.8 }}
+          style={{
+            width: Math.max(0, width - insets.left - insets.right),
+            height: Math.max(0, height - insets.top - insets.bottom),
+          }}
           className="self-center my-auto"
         >
           <SafeImage
@@ -74,7 +77,7 @@ const ProgressPhotoViewer: React.FC<ProgressPhotoViewerProps> = ({
           testID="progress-photo-viewer-close"
           hitSlop={12}
           className="absolute"
-          style={{ top: insets.top + 8, right: 16 }}
+          style={{ top: insets.top + 8, right: 16 + insets.right }}
         >
           <View className="bg-black/60 rounded-full p-2">
             <Icon name="close" size={22} color="#fff" />
@@ -83,8 +86,12 @@ const ProgressPhotoViewer: React.FC<ProgressPhotoViewerProps> = ({
 
         {title || subtitle ? (
           <View
-            className="absolute left-0 right-0 items-center"
-            style={{ bottom: insets.bottom + 24 }}
+            className="absolute items-center"
+            style={{
+              bottom: insets.bottom + 24,
+              left: insets.left,
+              right: insets.right,
+            }}
             pointerEvents="none"
           >
             {title ? (

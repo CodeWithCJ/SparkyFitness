@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
@@ -88,6 +89,25 @@ type DiaryStackParamList = {
 type LibraryStackParamList = { LibraryRoot: undefined };
 type SettingsStackParamList = { SettingsRoot: undefined };
 
+/**
+ * Keeps a tab screen's content clear of the vertical bar iPhone Duo presents on
+ * one side. Left and right only: the native header and tab bar own the top and
+ * bottom. A plain padded View, not a native SafeAreaView: wrapping the screen
+ * in the native one stops UIKit seeing the scroll view's top edge, which drops
+ * the large title and its collapse-on-scroll.
+ */
+const ScreenSideInsets = ({ children }: { children: React.ReactNode }) => {
+  const { left, right } = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, paddingLeft: left, paddingRight: right }}>
+      {children}
+    </View>
+  );
+};
+const sideInsetsLayout = ({ children }: { children: React.ReactNode }) => (
+  <ScreenSideInsets>{children}</ScreenSideInsets>
+);
+
 const DashboardStack = createNativeStackNavigator<DashboardStackParamList>();
 const DiaryStack = createNativeStackNavigator<DiaryStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
@@ -138,7 +158,10 @@ function DashboardStackScreen() {
 
   return (
     <View className="flex-1">
-      <DashboardStack.Navigator screenOptions={screenOptions}>
+      <DashboardStack.Navigator
+        screenOptions={screenOptions}
+        screenLayout={sideInsetsLayout}
+      >
         <DashboardStack.Screen
           name="DashboardRoot"
           component={SafeDashboard as React.ComponentType}
@@ -166,7 +189,10 @@ function DiaryStackScreen() {
 
   return (
     <View className="flex-1">
-      <DiaryStack.Navigator screenOptions={screenOptions}>
+      <DiaryStack.Navigator
+        screenOptions={screenOptions}
+        screenLayout={sideInsetsLayout}
+      >
         <DiaryStack.Screen
           name="DiaryRoot"
           component={SafeDiary as React.ComponentType}
@@ -192,7 +218,10 @@ function LibraryStackScreen() {
 
   return (
     <View className="flex-1">
-      <LibraryStack.Navigator screenOptions={screenOptions}>
+      <LibraryStack.Navigator
+        screenOptions={screenOptions}
+        screenLayout={sideInsetsLayout}
+      >
         <LibraryStack.Screen
           name="LibraryRoot"
           component={SafeLibrary as React.ComponentType}
@@ -220,7 +249,10 @@ function SettingsStackScreen() {
 
   return (
     <View className="flex-1">
-      <SettingsStack.Navigator screenOptions={screenOptions}>
+      <SettingsStack.Navigator
+        screenOptions={screenOptions}
+        screenLayout={sideInsetsLayout}
+      >
         <SettingsStack.Screen
           name="SettingsRoot"
           component={SafeSettings as React.ComponentType}
@@ -254,6 +286,8 @@ export function NativeTabsLayout({
   );
   const inactiveTintColor = resolveColor(tabInactive, '#8E8E93');
   const whatsNewState = useWhatsNewBannerState();
+  const sideInsets = useSafeAreaInsets();
+  const hasSideBar = sideInsets.left + sideInsets.right > 0;
 
   return (
     <NativeTabsOverlayContext.Provider value={whatsNewState}>
@@ -320,6 +354,7 @@ export function NativeTabsLayout({
             tabBarLabel: t('navigation.add', { defaultValue: 'Add' }),
             tabBarIcon: () => ADD_TAB_ICON,
             role: 'search',
+            tabBarItemHidden: hasSideBar,
             preventsDefault: true,
           }}
           listeners={{

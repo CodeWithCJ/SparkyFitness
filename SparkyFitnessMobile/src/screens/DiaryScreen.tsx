@@ -65,6 +65,7 @@ import {
 } from '../hooks/useCheckInPhotos';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
@@ -110,6 +111,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     ? 'pl-PL'
     : 'en-US';
   const insets = useSafeAreaInsets();
+  // A live activity lengthens the status cluster in a side-bar pose and can
+  // push the date buttons onto the Add button; then only the calendar stays.
+  const dateColumnCollapsed = useDateColumnCollapsed(
+    insets.left + insets.right > 0
+  );
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { data: familyUsers = [] } = useFamilyUsers({ enabled: isConnected });
   const hasFamilyDiaries = isConnected && familyUsers.length > 0;
@@ -192,6 +198,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         dateTintColor,
+        compactCalendarButton: insets.left + insets.right > 0,
+        collapseToCalendar: dateColumnCollapsed,
         accessibilityLabel: t('diary.chooseDate', {
           defaultValue: 'Choose diary date',
         }),
@@ -227,6 +235,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     selectedDate,
     t,
     usesNativeTabs,
+    insets.left,
+    insets.right,
+    dateColumnCollapsed,
   ]);
 
   useLayoutEffect(() => {
@@ -590,7 +601,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 8,
+          // Beside a vertical bar the gap under the large title is 12 pt, the
+          // same as Dashboard, Library and Settings.
+          paddingTop: usesNativeTabs && insets.left + insets.right > 0 ? 12 : 8,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}

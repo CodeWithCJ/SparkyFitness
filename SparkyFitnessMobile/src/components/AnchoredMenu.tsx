@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 import Icon, { IconName } from './Icon';
@@ -72,6 +73,7 @@ const AnchoredMenu: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const accentColor = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
   const textMuted = String(useCSSVariable('--color-text-muted'));
@@ -90,12 +92,17 @@ const AnchoredMenu: React.FC<Props> = ({
   const statusBarOffset =
     Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const top = anchor.y + anchor.height + 6 + statusBarOffset;
-  const isLeftHalf = anchor.x + anchor.width / 2 < screenWidth / 2;
+  // Judge the half from the usable width: a vertical bar takes one edge.
+  const usableCenter = (insets.left + screenWidth - insets.right) / 2;
+  const isLeftHalf = anchor.x + anchor.width / 2 < usableCenter;
   const menuStyle = isLeftHalf
-    ? { top, left: Math.max(8, anchor.x), minWidth }
+    ? { top, left: Math.max(8 + insets.left, anchor.x), minWidth }
     : {
         top,
-        right: Math.max(8, screenWidth - (anchor.x + anchor.width)),
+        right: Math.max(
+          8 + insets.right,
+          screenWidth - (anchor.x + anchor.width)
+        ),
         minWidth,
       };
 

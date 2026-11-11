@@ -76,6 +76,7 @@ import {
   labMarkersQueryKey,
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
+import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
@@ -160,6 +161,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   );
   const usesNativeTabs = useNativeIOSTabsActive();
   const insets = useSafeAreaInsets();
+  // A live activity lengthens the status cluster in a side-bar pose and can
+  // push the date buttons onto the Add button; then only the calendar stays.
+  const dateColumnCollapsed = useDateColumnCollapsed(
+    insets.left + insets.right > 0
+  );
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const datePastColor =
     (useCSSVariable('--color-date-past') as string) || '#f97316';
@@ -186,6 +192,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         dateTintColor,
+        compactCalendarButton: insets.left + insets.right > 0,
+        collapseToCalendar: dateColumnCollapsed,
         accessibilityLabel: t('dashboard.chooseDate', {
           defaultValue: 'Choose dashboard date',
         }),
@@ -210,6 +218,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectedDate,
     t,
     usesNativeTabs,
+    insets.left,
+    insets.right,
+    dateColumnCollapsed,
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -538,6 +549,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
+          // Room under the large title when a side bar is present.
+          paddingTop: usesNativeTabs && insets.left + insets.right > 0 ? 12 : 0,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}

@@ -162,7 +162,10 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
               >
                 <SafeImage
                   source={getImageSource(item)}
-                  style={{ width, height: height * 0.8 }}
+                  style={{
+                    width: Math.max(0, width - insets.left - insets.right),
+                    height: Math.max(0, height - insets.top - insets.bottom),
+                  }}
                   contentFit="contain"
                   autoplay
                 />
@@ -177,7 +180,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           testID="lightbox-close"
           hitSlop={12}
           className="absolute"
-          style={{ top: insets.top + 8, right: 16 }}
+          style={{ top: insets.top + 8, right: 16 + insets.right }}
         >
           <View className="bg-black/60 rounded-full p-2">
             <Icon name="close" size={22} color="#fff" />
@@ -185,8 +188,12 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
         </Pressable>
 
         <View
-          className="absolute left-0 right-0 items-center"
-          style={{ top: insets.top + 12 }}
+          className="absolute items-center"
+          style={{
+            top: insets.top + 12,
+            left: insets.left,
+            right: insets.right,
+          }}
           pointerEvents="none"
         >
           {title ? (

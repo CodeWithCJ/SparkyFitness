@@ -235,6 +235,10 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       contentContainerStyle={{
         paddingHorizontal: 16,
         ...(!usesNativeTabs ? { paddingTop: 16 } : null),
+        // Room under the large title beside a vertical bar.
+        ...(usesNativeTabs && insets.left + insets.right > 0
+          ? { paddingTop: 12 }
+          : null),
         paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
       }}
       scrollEventThrottle={16}

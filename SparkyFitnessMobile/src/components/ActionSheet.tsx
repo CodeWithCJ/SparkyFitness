@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
 import {
@@ -85,6 +86,13 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
     // Back press during the close animation is still swallowed by the sheet.
     const [isOpen, setIsOpen] = useState(false);
     const { height: windowHeight } = useWindowDimensions();
+    const sheetInsets = useSafeAreaInsets();
+    // Never taller than the space between the status area and the bottom
+    // edge, which is short in the Duo's wide pose.
+    const maxSheetHeight = Math.min(
+      windowHeight * 0.8,
+      windowHeight - sheetInsets.top - sheetInsets.bottom - 24
+    );
 
     const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
       '--color-surface',
@@ -222,7 +230,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       <BottomSheetModal
         ref={modalRef}
         enableDynamicSizing
-        maxDynamicContentSize={windowHeight * 0.8}
+        maxDynamicContentSize={maxSheetHeight}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
         backgroundStyle={{

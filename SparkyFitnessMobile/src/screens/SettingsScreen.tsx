@@ -203,6 +203,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         ]}
         contentContainerStyle={{
           ...(!usesNativeTabs ? { paddingTop: 0 } : null),
+          // Room under the large title beside a vertical bar.
+          ...(usesNativeTabs && insets.left + insets.right > 0
+            ? { paddingTop: 12 }
+            : null),
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         scrollEventThrottle={16}

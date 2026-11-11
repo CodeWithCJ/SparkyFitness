@@ -403,9 +403,19 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     getTabBarHeightSnapshot,
     getTabBarHeightSnapshot
   );
-  const tabBarBottomOffset =
-    nativeTabBarHeight ?? TAB_BAR_HEIGHT + Math.max(insets.bottom, 4);
-  const stackBottomOffset = insets.bottom;
+  // With a vertical tab bar (iPhone Duo's side poses) the measured "tab bar
+  // height" is the bar's length along the screen edge, not a bottom strip, so
+  // the bar must not sit above it. It floats above the bottom edge instead and
+  // stays clear of the side bar horizontally.
+  const hasSideBar = usesNativeTabs && insets.left + insets.right > 0;
+  const tabBarBottomOffset = hasSideBar
+    ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
+    : (nativeTabBarHeight ?? TAB_BAR_HEIGHT + Math.max(insets.bottom, 4));
+  // With a side bar both kinds of page use the same lift, so the bar does not
+  // change height when navigating between a tab page and a pushed page.
+  const stackBottomOffset = hasSideBar
+    ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
+    : insets.bottom;
   const isClosingToTabs = isClosingToTabsTransition(navInfo, stackTransition);
   const shouldSitAboveTabs =
     usesNativeTabs && (isClosingToTabs || navInfo.isOnTabs);
@@ -1060,8 +1070,14 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   return (
     <Animated.View
       pointerEvents="box-none"
-      className="absolute inset-x-0 z-50"
-      style={positionStyle}
+      className="absolute z-50"
+      style={[
+        positionStyle,
+        {
+          left: hasSideBar ? insets.left : 0,
+          right: hasSideBar ? insets.right : 0,
+        },
+      ]}
     >
       {barBody}
     </Animated.View>

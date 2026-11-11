@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 
 import ActiveWorkoutHeader, {
+  ActiveWorkoutStripButtons,
   buildExerciseProgress,
 } from '../components/ActiveWorkoutHeader';
 import ActiveWorkoutRail, {
@@ -827,7 +828,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // cover the set being edited. The row ticks on the shared clock by itself,
   // so the element only changes when a rest starts or ends.
   const restRunning = restState !== 'ready';
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const barCarriesRest =
     restRunning && windowHeight >= MIN_WINDOW_HEIGHT_FOR_COMPACT_REST_ROW;
   const accessoryRestSlot = useMemo(
@@ -945,6 +946,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   });
 
   const durationSheetRef = useRef<WorkoutDurationSheetRef>(null);
+  const openMenuRef = useRef<(() => void) | null>(null);
   const { handleConfirmEnd, handleDurationSave } = useActiveWorkoutFinish({
     navigation,
     session,
@@ -1042,9 +1044,70 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
     16;
 
+  // A side inset means a vertical bar or the status strip takes one edge (the
+  // iPhone Duo's inner display wide, or its closed outer display). The tall
+  // inner pose has none and keeps the rail as a row.
+  const railBeside = insets.left + insets.right > 0;
+  // The strip column sits in the safe-area inset, under the clock and Wi-Fi
+  // glyphs (about 100 pt tall on the Duo). Never cache: the side swaps by pose.
+  const stripWidth = Math.max(insets.left, insets.right);
+  // Tiles centre on the status glyphs (measured ~48 pt in from the edge), so
+  // the rail is twice that wide; a ringed tile is 52 pt and fits with room.
+  const RAIL_WIDTH = 96;
+  // The rail reaches past the strip into the log by this much; keep a gap.
+  const railOverlap = Math.max(0, RAIL_WIDTH - stripWidth) + 8;
+  const stripOnRight = insets.right >= insets.left;
+  // The closed outer display (~466 pt wide) parks the clock and Wi-Fi cluster
+  // lower than the inner display does (dots end ~150 pt down vs ~98 pt), so the
+  // strip buttons start lower there to keep the same gap under it.
+  const stripButtonsTop = windowWidth < 500 ? 98 : 54;
+  // The tall inner pose has a status row across the top (82 pt inset) that is
+  // empty left of the clock and Wi-Fi cluster. Draw the header in that row.
+  const headerInStatusRow = !railBeside && insets.top > 0 && windowWidth >= 600;
+  const railElement = (
+    <ActiveWorkoutRail
+      exercises={session.exercises}
+      completedSetIds={completedSetIds}
+      focusedEntryId={focusedExerciseId}
+      activeEntryId={activeExerciseId}
+      supersetBorders={supersetBorders}
+      getImageSource={getImageSource}
+      onPressExercise={handleRailPress}
+      onPressAdd={handleAddExercise}
+      vertical={railBeside}
+    />
+  );
+  const railInStrip = (
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        // Measured: the status glyphs end ~98 pt down and App Settings' back
+        // button starts ~123 pt down; this puts the workout's at the same gap.
+        top: stripButtonsTop,
+        bottom: 0,
+        alignItems: 'center',
+        width: RAIL_WIDTH,
+        ...(stripOnRight ? { right: -stripWidth } : { left: -stripWidth }),
+      }}
+    >
+      <ActiveWorkoutStripButtons
+        onBack={safeGoBack}
+        onMenu={() => openMenuRef.current?.()}
+      />
+      <View style={{ flex: 1, minHeight: 0, width: '100%', marginTop: 16 }}>
+        {railElement}
+      </View>
+    </View>
+  );
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: headerInStatusRow ? 0 : insets.top }}
+    >
       <ActiveWorkoutHeader
+        inStatusRow={headerInStatusRow}
         name={session.name}
         location={session.location}
         startedAt={startedAt}
@@ -1059,6 +1122,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
         onOpenSettings={handleOpenWorkoutSettings}
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
+        buttonsInStrip={railBeside}
+        openMenuRef={openMenuRef}
       />
 
       {focusMode ? (
@@ -1106,102 +1171,104 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           {footerButtons}
         </ActiveWorkoutFocusView>
       ) : (
-        <>
-          <ActiveWorkoutRail
-            exercises={session.exercises}
-            completedSetIds={completedSetIds}
-            focusedEntryId={focusedExerciseId}
-            activeEntryId={activeExerciseId}
-            supersetBorders={supersetBorders}
-            getImageSource={getImageSource}
-            onPressExercise={handleRailPress}
-            onPressAdd={handleAddExercise}
-          />
-
-          {/* Pinned rather than in the list, so the scroll to the active exercise
-            never hides it; out of the way while a set value is being typed. */}
-          {nowCardEnabled &&
-            !guidedWorkoutEnabled &&
-            workoutFormat === 'standard' &&
-            focusedSetKey == null && (
-              <ActiveWorkoutNowCard
-                session={session}
-                activeSetId={activeSetId}
-                completedSetIds={completedSetIds}
-                weightUnit={weightUnit}
-                resting={restState === 'resting'}
-                getImageSource={getImageSource}
-                onPressExercise={handleRailPress}
-                onSwap={handleSwapExercise}
-              />
-            )}
-
-          <KeyboardAwareScrollView
-            ref={scrollRef}
+        <View className="flex-1">
+          {!railBeside && railElement}
+          <View
             className="flex-1"
-            contentContainerClassName="px-3 pt-2"
-            contentContainerStyle={scrollContentStyle}
-            onScroll={handleScroll}
-            scrollEventThrottle={32}
-            onLayout={handleScrollLayout}
-            keyboardShouldPersistTaps="handled"
-            // The focused cell stays clear of the keyboard bar riding on top of
-            // the keyboard, and of the rest row it carries while a rest runs.
-            bottomOffset={keyboardBottomOffset}
-            disableScrollOnKeyboardHide
+            style={
+              railBeside
+                ? stripOnRight
+                  ? { marginRight: railOverlap }
+                  : { marginLeft: railOverlap }
+                : undefined
+            }
           >
-            <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
+            {/* Pinned rather than in the list, so the scroll to the active exercise
+            never hides it; out of the way while a set value is being typed. */}
+            {nowCardEnabled &&
+              !guidedWorkoutEnabled &&
+              workoutFormat === 'standard' &&
+              focusedSetKey == null && (
+                <ActiveWorkoutNowCard
+                  session={session}
+                  activeSetId={activeSetId}
+                  completedSetIds={completedSetIds}
+                  weightUnit={weightUnit}
+                  resting={restState === 'resting'}
+                  getImageSource={getImageSource}
+                  onPressExercise={handleRailPress}
+                  onSwap={handleSwapExercise}
+                />
+              )}
 
-            {guidedWorkoutEnabled && workoutFormat === 'standard' && (
-              <ActiveWorkoutGuidedCard
+            <KeyboardAwareScrollView
+              ref={scrollRef}
+              className="flex-1"
+              contentContainerClassName="px-3 pt-2"
+              contentContainerStyle={scrollContentStyle}
+              onScroll={handleScroll}
+              scrollEventThrottle={32}
+              onLayout={handleScrollLayout}
+              keyboardShouldPersistTaps="handled"
+              // The focused cell stays clear of the keyboard bar riding on top of
+              // the keyboard, and of the rest row it carries while a rest runs.
+              bottomOffset={keyboardBottomOffset}
+              disableScrollOnKeyboardHide
+            >
+              <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
+
+              {guidedWorkoutEnabled && workoutFormat === 'standard' && (
+                <ActiveWorkoutGuidedCard
+                  getImageSource={getImageSource}
+                  onCompleteSet={handleCompleteSet}
+                />
+              )}
+
+              <ActiveWorkoutExerciseList
+                session={session}
+                userExpandedIds={userExpandedIds}
+                autoExpandedId={autoExpandedId}
+                supersetBorders={supersetBorders}
+                completedSetIds={completedSetIds}
+                prSetIds={prSetIds}
+                sessionId={sessionId}
+                verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
+                historyScopeSettled={historyScopeSettled}
+                activeSetId={activeSetId}
+                focusedSetKey={focusedSetKey}
+                setRenderKeys={setRenderKeys}
+                focusedField={focusedField}
+                metricColumn={metricColumn}
+                weightUnit={weightUnit}
+                distanceUnit={distanceUnit}
+                expandedSetKey={expandedSetKey}
+                noteEditorEntryId={noteEditorEntryId}
+                cardOffsetsRef={cardOffsetsRef}
                 getImageSource={getImageSource}
+                onPressThumb={handlePressThumb}
+                onToggleExpanded={handleToggleExpanded}
+                onPressRestChip={handlePressRestChip}
+                onPressMetricHeader={handlePressMetricHeader}
+                onPressOverflow={handlePressOverflow}
+                onSeeAlternatives={handleReplaceExercise}
                 onCompleteSet={handleCompleteSet}
+                onUncomplete={handleUncomplete}
+                onCommitField={handleCommitField}
+                onDeleteSet={handleDeleteSet}
+                onPressSetType={handlePressSetType}
+                onToggleSetDetail={handleToggleSetDetail}
+                onAddSet={handleAddSet}
+                onCommitExerciseNote={handleCommitExerciseNote}
+                onActivateSet={handleActivateSet}
+                onActivateRpe={handleActivateRpe}
+                onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
               />
-            )}
 
-            <ActiveWorkoutExerciseList
-              session={session}
-              userExpandedIds={userExpandedIds}
-              autoExpandedId={autoExpandedId}
-              supersetBorders={supersetBorders}
-              completedSetIds={completedSetIds}
-              prSetIds={prSetIds}
-              sessionId={sessionId}
-              verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
-              historyScopeSettled={historyScopeSettled}
-              activeSetId={activeSetId}
-              focusedSetKey={focusedSetKey}
-              setRenderKeys={setRenderKeys}
-              focusedField={focusedField}
-              metricColumn={metricColumn}
-              weightUnit={weightUnit}
-              distanceUnit={distanceUnit}
-              expandedSetKey={expandedSetKey}
-              noteEditorEntryId={noteEditorEntryId}
-              cardOffsetsRef={cardOffsetsRef}
-              getImageSource={getImageSource}
-              onPressThumb={handlePressThumb}
-              onToggleExpanded={handleToggleExpanded}
-              onPressRestChip={handlePressRestChip}
-              onPressMetricHeader={handlePressMetricHeader}
-              onPressOverflow={handlePressOverflow}
-              onSeeAlternatives={handleReplaceExercise}
-              onCompleteSet={handleCompleteSet}
-              onUncomplete={handleUncomplete}
-              onCommitField={handleCommitField}
-              onDeleteSet={handleDeleteSet}
-              onPressSetType={handlePressSetType}
-              onToggleSetDetail={handleToggleSetDetail}
-              onAddSet={handleAddSet}
-              onCommitExerciseNote={handleCommitExerciseNote}
-              onActivateSet={handleActivateSet}
-              onActivateRpe={handleActivateRpe}
-              onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
-            />
-
-            {footerButtons}
-          </KeyboardAwareScrollView>
-        </>
+              {footerButtons}
+            </KeyboardAwareScrollView>
+          </View>
+          {railBeside && railInStrip}
+        </View>
       )}
 
       {restBarVisible && (
