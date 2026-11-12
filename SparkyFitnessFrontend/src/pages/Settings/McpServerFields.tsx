@@ -20,6 +20,7 @@ interface McpServerFieldsProps {
   options: McpServerOptions | null | undefined;
   /** The ID of a saved server, whose stored token is used when none is typed. */
   providerId?: string;
+  savedBaseUrl?: string | null;
   onBaseUrlChange: (value: string) => void;
   onAppKeyChange: (value: string) => void;
   onOptionsChange: (options: McpServerOptions) => void;
@@ -28,7 +29,7 @@ interface McpServerFieldsProps {
 interface ToolRow {
   name: string;
   description: string;
-  problem: string | null;
+  problem: McpServerToolChoice['problem'];
   // Allowed before, but not in the list the server just gave.
   gone: boolean;
 }
@@ -49,12 +50,48 @@ export const McpServerFields = ({
   appKey,
   options,
   providerId,
+  savedBaseUrl,
   onBaseUrlChange,
   onAppKeyChange,
   onOptionsChange,
 }: McpServerFieldsProps) => {
   const { t } = useTranslation();
   const current = options ?? EMPTY_OPTIONS;
+  const urlChanged =
+    !!providerId && (baseUrl ?? '').trim() !== (savedBaseUrl ?? '').trim();
+  const problemText: Record<
+    NonNullable<McpServerToolChoice['problem']>,
+    string
+  > = {
+    not_object: t(
+      'settings.mcpServer.toolProblem.not_object',
+      'Its input schema does not describe an object.'
+    ),
+    too_deep: t(
+      'settings.mcpServer.toolProblem.too_deep',
+      'Its input schema is nested too deeply.'
+    ),
+    malformed: t(
+      'settings.mcpServer.toolProblem.malformed',
+      'Its input schema is malformed.'
+    ),
+    unreadable: t(
+      'settings.mcpServer.toolProblem.unreadable',
+      'Its input schema cannot be read.'
+    ),
+    too_large: t(
+      'settings.mcpServer.toolProblem.too_large',
+      'Its input schema is too large.'
+    ),
+    contains_token: t(
+      'settings.mcpServer.toolProblem.contains_token',
+      'Its input schema contains the token.'
+    ),
+    name_too_long: t(
+      'settings.mcpServer.toolProblem.name_too_long',
+      'Its name is longer than 128 characters.'
+    ),
+  };
   const allowed = new Set(current.allowed_tools);
   // A list, or why it failed, is kept with the URL and token it was asked
   // with and shown only while the fields still hold them, so tools from one
@@ -127,7 +164,13 @@ export const McpServerFields = ({
             id={`${idPrefix}_mcp_base_url`}
             type="text"
             value={baseUrl || ''}
-            onChange={(e) => onBaseUrlChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.trim() !== (baseUrl ?? '').trim()) {
+                onOptionsChange({ ...current, allowed_tools: [] });
+              }
+              onBaseUrlChange(value);
+            }}
             placeholder="https://tools.example.com/mcp"
             autoComplete="off"
           />
@@ -142,7 +185,7 @@ export const McpServerFields = ({
             value={appKey || ''}
             onChange={(e) => onAppKeyChange(e.target.value)}
             placeholder={
-              providerId
+              providerId && !urlChanged
                 ? t(
                     'settings.mcpServer.tokenKeepPlaceholder',
                     'Leave blank to keep the saved token'
@@ -151,6 +194,14 @@ export const McpServerFields = ({
             }
             autoComplete="off"
           />
+          {urlChanged && (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'settings.mcpServer.tokenUrlChanged',
+                'Enter the token again when you change the server URL.'
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -209,11 +260,7 @@ export const McpServerFields = ({
                     )}
                     {row.problem && (
                       <p className="text-sm text-destructive">
-                        {t(
-                          'settings.mcpServer.toolProblem',
-                          'Chat leaves this tool out: its input schema {{problem}}.',
-                          { problem: row.problem }
-                        )}
+                        {problemText[row.problem]}
                       </p>
                     )}
                     {row.gone && (

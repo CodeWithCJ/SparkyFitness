@@ -3291,7 +3291,16 @@
       "loadingTools": "Loading tools...",
       "allowedCount": "Chat may use {{count}} of at most {{max}} tools.",
       "noTools": "The server lists no tools.",
-      "toolProblem": "Chat leaves this tool out: its input schema {{problem}}.",
+      "tokenUrlChanged": "Enter the token again when you change the server URL.",
+      "toolProblem": {
+        "not_object": "Its input schema does not describe an object.",
+        "too_deep": "Its input schema is nested too deeply.",
+        "malformed": "Its input schema is malformed.",
+        "unreadable": "Its input schema cannot be read.",
+        "too_large": "Its input schema is too large.",
+        "contains_token": "Its input schema contains the token.",
+        "name_too_long": "Its name is longer than 128 characters."
+      },
       "toolGone": "The server no longer lists this tool.",
       "sendUserIdLabel": "Tell the server who is chatting",
       "sendUserIdHelp": "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person. Its tools then work only in that person's own account, not in a family member's."

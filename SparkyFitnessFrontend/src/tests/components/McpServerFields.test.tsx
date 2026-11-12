@@ -21,7 +21,7 @@ const listed = {
     {
       name: 'broken',
       description: 'A careless tool.',
-      problem: 'is malformed',
+      problem: 'malformed',
     },
   ],
 };
@@ -46,6 +46,7 @@ const Harness = ({
       appKey={appKey}
       options={options}
       providerId={providerId}
+      savedBaseUrl="https://tools.example/mcp"
       onBaseUrlChange={setBaseUrl}
       onAppKeyChange={jest.fn()}
       onOptionsChange={(next) => {
@@ -106,9 +107,81 @@ describe('McpServerFields', () => {
     expect(
       screen.queryByRole('checkbox', { name: 'broken' })
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'search' })).toBeChecked();
+    expect(
+      screen.queryByRole('checkbox', { name: 'search' })
+    ).not.toBeInTheDocument();
+    expect(latest).toEqual({ allowed_tools: [], send_user_id: false });
     expect(screen.queryByText('Searches notes.')).not.toBeInTheDocument();
   });
+
+  it('requires the token again when a saved URL changes, and keeps the hint tied to the saved URL', () => {
+    renderWithClient(
+      <Harness
+        providerId="server-1"
+        initial={{ allowed_tools: ['search'], send_user_id: true }}
+      />
+    );
+    expect(
+      screen.queryByText(
+        'Enter the token again when you change the server URL.'
+      )
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('MCP server URL'), {
+      target: { value: 'https://other.example/mcp' },
+    });
+    expect(
+      screen.getByText('Enter the token again when you change the server URL.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Bearer token (optional)')
+    ).not.toHaveAttribute('placeholder', 'Leave blank to keep the saved token');
+    expect(latest).toEqual({ allowed_tools: [], send_user_id: true });
+    fireEvent.change(screen.getByLabelText('MCP server URL'), {
+      target: { value: 'https://tools.example/mcp' },
+    });
+    expect(
+      screen.queryByText(
+        'Enter the token again when you change the server URL.'
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'search' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps selected tools for a URL whitespace change', () => {
+    renderWithClient(
+      <Harness initial={{ allowed_tools: ['search'], send_user_id: false }} />
+    );
+    fireEvent.change(screen.getByLabelText('MCP server URL'), {
+      target: { value: ' https://tools.example/mcp ' },
+    });
+    expect(screen.getByRole('checkbox', { name: 'search' })).toBeChecked();
+    expect(latest).toBeUndefined();
+  });
+
+  it.each([
+    ['not_object', 'Its input schema does not describe an object.'],
+    ['too_deep', 'Its input schema is nested too deeply.'],
+    ['malformed', 'Its input schema is malformed.'],
+    ['unreadable', 'Its input schema cannot be read.'],
+    ['too_large', 'Its input schema is too large.'],
+    ['contains_token', 'Its input schema contains the token.'],
+    ['name_too_long', 'Its name is longer than 128 characters.'],
+  ])(
+    'disables tools with problem code %s and translates its reason',
+    async (problem, reason) => {
+      jest.mocked(apiCall).mockResolvedValue({
+        tools: [{ name: 'unusable', description: '', problem }],
+      });
+      renderWithClient(<Harness />);
+      loadTools();
+      expect(
+        await screen.findByRole('checkbox', { name: 'unusable' })
+      ).toBeDisabled();
+      expect(screen.getByText(reason)).toBeInTheDocument();
+    }
+  );
 
   it('ignores a list that arrives after the server URL changed', async () => {
     let answer: (value: typeof listed) => void = () => {};
@@ -143,9 +216,7 @@ describe('McpServerFields', () => {
       await screen.findByRole('checkbox', { name: 'broken' })
     ).toBeDisabled();
     expect(
-      screen.getByText(
-        'Chat leaves this tool out: its input schema is malformed.'
-      )
+      screen.getByText('Its input schema is malformed.')
     ).toBeInTheDocument();
   });
 

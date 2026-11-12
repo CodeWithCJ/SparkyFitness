@@ -302,7 +302,7 @@ router.post('/', authenticate, demoGuard, async (req, res, next) => {
  */
 router.put('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
   }
   try {
@@ -363,7 +363,7 @@ router.put('/:id', authenticate, demoGuard, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
   }
   try {
@@ -426,7 +426,7 @@ router.delete('/:id', authenticate, demoGuard, async (req, res, next) => {
  */
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Missing provider ID' });
   }
   try {

@@ -10,3 +10,15 @@ export const MCP_SERVER_MAX_TOOLS = 20;
 // The header that tells an outside server who is chatting, when the admin has
 // turned that on for the server. It carries the signed-in person's user ID.
 export const MCP_SERVER_USER_ID_HEADER = 'X-SparkyFitness-User-Id';
+
+export const MCP_SERVER_TOOL_NAME_MAX_LENGTH = 128;
+
+export const MCP_SERVER_TOOL_PROBLEMS = [
+  'not_object',
+  'too_deep',
+  'malformed',
+  'unreadable',
+  'too_large',
+  'contains_token',
+  'name_too_long',
+] as const;

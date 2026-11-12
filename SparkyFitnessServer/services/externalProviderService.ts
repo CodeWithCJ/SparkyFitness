@@ -31,6 +31,8 @@ import {
   ROUTING_PROVIDER_TYPE,
   WEATHER_PROVIDER_TYPE,
   type McpServerOptions,
+  type ExternalDataProvidersInitializer,
+  mcpServerOptionsSchema,
 } from '@workspace/shared';
 
 // Provider types whose stored base_url is fetched server-side, making it an
@@ -99,12 +101,8 @@ async function validateFoodProviderBaseUrl(
 // Build a 400-tagged Error for user-input validation failures so the
 // centralized errorHandler surfaces them as client errors instead of the
 // default 500 Internal Server Error.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function badRequest(message: any) {
-  const err = new Error(message);
-  // @ts-expect-error TS(2339): Property 'statusCode' does not exist on type 'Erro... Remove this comment to see the full error message
-  err.statusCode = 400;
-  return err;
+function badRequest(message: string) {
+  return Object.assign(new Error(message), { statusCode: 400 });
 }
 
 // Chat acts on what a tool server returns, so one is only ever an admin's global
@@ -122,6 +120,10 @@ interface GlobalProviderOptionsInput {
   providerType: string | undefined;
   /** The row's current type. Unset when the row is being created. */
   existingProviderType?: string;
+  existingBaseUrl?: string | null;
+  existingAppKey?: string | null;
+  appKey?: string | null;
+  existingProviderOptions?: unknown;
   baseUrl: string | null | undefined;
   providerOptions: McpServerOptions | undefined;
 }
@@ -129,12 +131,16 @@ interface GlobalProviderOptionsInput {
 /**
  * Checks a global provider write and returns the `provider_options` to store.
  * On create, a tool server with none starts with every tool blocked; on update,
- * undefined leaves the stored options alone.
+ * undefined leaves the stored options alone unless the URL changes.
  */
 async function resolveGlobalProviderOptions({
   authenticatedUserId,
   providerType,
   existingProviderType,
+  existingBaseUrl,
+  existingAppKey,
+  appKey,
+  existingProviderOptions,
   baseUrl,
   providerOptions,
 }: GlobalProviderOptionsInput): Promise<McpServerOptions | undefined> {
@@ -162,7 +168,23 @@ async function resolveGlobalProviderOptions({
     }
     await validateFoodProviderBaseUrl(nextType, baseUrl, authenticatedUserId);
   }
+  const urlChanged =
+    !isCreate && baseUrl !== undefined && baseUrl?.trim() !== existingBaseUrl;
+  if (urlChanged && existingAppKey?.trim() && !appKey?.trim()) {
+    throw badRequest('Enter the token again when you change the server URL.');
+  }
   if (providerOptions !== undefined) return providerOptions;
+  if (urlChanged) {
+    const storedOptions = mcpServerOptionsSchema.safeParse(
+      existingProviderOptions
+    );
+    return {
+      allowed_tools: [],
+      send_user_id: storedOptions.success
+        ? storedOptions.data.send_user_id
+        : false,
+    };
+  }
   return isCreate ? { allowed_tools: [], send_user_id: false } : undefined;
 }
 
@@ -418,11 +440,17 @@ async function getExternalDataProvidersForUser(
   }
 }
 
+type ProviderWrite = Omit<
+  ExternalDataProvidersInitializer,
+  'user_id' | 'provider_type'
+> & {
+  user_id?: string;
+  provider_type: string;
+};
+
 async function createExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerData: any
+  authenticatedUserId: string,
+  providerData: ProviderWrite
 ) {
   try {
     refuseMcpServerOnUserPath(providerData.provider_type);
@@ -474,12 +502,9 @@ async function createExternalDataProvider(
   }
 }
 async function updateExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  authenticatedUserId: string,
+  providerId: string,
+  updateData: Partial<ProviderWrite>
 ) {
   try {
     const isOwner =
@@ -547,8 +572,10 @@ async function updateExternalDataProvider(
         existingProvider?.provider_type === 'yazio'
           ? existingProvider
           : undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resolveField = (nextVal: any, currentVal: any) => {
+      const resolveField = (
+        nextVal: string | null | undefined,
+        currentVal: string | null | undefined
+      ) => {
         if (nextVal === null) return null;
         if (nextVal === undefined) return currentVal;
         return nextVal;
@@ -563,8 +590,8 @@ async function updateExternalDataProvider(
         password: existingYazio?.app_key ?? undefined,
       });
       const nextCredentials = resolveYazioCredentials({
-        username: nextAppId,
-        password: nextAppKey,
+        username: nextAppId ?? undefined,
+        password: nextAppKey ?? undefined,
       });
       const mergedCredentials = {
         username: nextCredentials.username || currentCredentials.username,
@@ -625,10 +652,8 @@ async function updateExternalDataProvider(
 }
 
 async function getExternalDataProviderDetails(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  authenticatedUserId: string,
+  providerId: string
 ) {
   try {
     const hasAccess =
@@ -658,10 +683,8 @@ async function getExternalDataProviderDetails(
 }
 
 async function deleteExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  authenticatedUserId: string,
+  providerId: string
 ) {
   try {
     const isOwner =

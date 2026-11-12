@@ -927,6 +927,7 @@ router.get('/external-data-providers/global', async (req, res, next) => {
  *               provider_options:
  *                 type: object
  *                 description: MCP tool servers only.
+ *                 required: [allowed_tools, send_user_id]
  *                 properties:
  *                   allowed_tools:
  *                     type: array
@@ -1017,7 +1018,7 @@ router.post('/external-data-providers/global', async (req, res, next) => {
  * /admin/external-data-providers/mcp-server/tools:
  *   post:
  *     summary: List the tools an MCP tool server offers
- *     description: Asks the server for its tools, so an admin can choose which ones chat may use. Without app_key, the stored token of provider_id is used.
+ *     description: Asks the server for its tools, so an admin can choose which ones chat may use. Without app_key, the stored token of provider_id is used only for its saved URL.
  *     tags: [System & Admin]
  *     security:
  *       - cookieAuth: []
@@ -1038,9 +1039,9 @@ router.post('/external-data-providers/global', async (req, res, next) => {
  *                 format: uuid
  *     responses:
  *       200:
- *         description: The server's tools. Each has a problem, why chat would leave it out for its input schema, or null.
+ *         description: The server's tools. Each has a stable problem code for an unusable schema or an overlong name, or null.
  *       400:
- *         description: Invalid request body, or provider_id is not an MCP tool server.
+ *         description: Invalid request body, provider_id is not a public MCP tool server, or a different URL needs a token.
  *       401:
  *         description: Unauthorized
  *       403:
@@ -1074,6 +1075,11 @@ router.post(
           return res
             .status(400)
             .json({ error: 'That provider is not an MCP tool server.' });
+        }
+        if (stored.app_key?.trim() && base_url !== stored.base_url) {
+          return res.status(400).json({
+            error: 'Enter the token to load tools from a different URL.',
+          });
         }
         token = stored.app_key;
       }
@@ -1133,6 +1139,7 @@ router.post(
  *               provider_options:
  *                 type: object
  *                 description: MCP tool servers only.
+ *                 required: [allowed_tools, send_user_id]
  *                 properties:
  *                   allowed_tools:
  *                     type: array
@@ -1197,6 +1204,10 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         authenticatedUserId: req.authenticatedUserId,
         providerType: provider_type,
         existingProviderType: existingProvider.provider_type,
+        existingBaseUrl: existingProvider.base_url,
+        existingAppKey: existingProvider.app_key,
+        existingProviderOptions: existingProvider.provider_options,
+        appKey: app_key,
         baseUrl: base_url,
         providerOptions: provider_options,
       });

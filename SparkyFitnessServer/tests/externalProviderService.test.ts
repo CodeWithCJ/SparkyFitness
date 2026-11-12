@@ -1591,6 +1591,47 @@ describe('MCP tool servers', () => {
     };
     const options = { allowed_tools: ['solve_shake'], send_user_id: true };
 
+    const saved = {
+      ...input,
+      existingProviderType: 'mcp_server',
+      existingBaseUrl: SERVER_URL,
+      existingAppKey: 'stored',
+      existingProviderOptions: options,
+      baseUrl: 'http://192.168.1.21/mcp',
+    };
+
+    it.each([undefined, null, '', '   '])(
+      'requires a new token for a changed URL (%s)',
+      async (appKey) => {
+        await expect(resolve({ ...saved, appKey })).rejects.toMatchObject({
+          statusCode: 400,
+          message: 'Enter the token again when you change the server URL.',
+        });
+      }
+    );
+
+    it('clears allowed tools while preserving send_user_id for a changed URL', async () => {
+      await expect(resolve({ ...saved, appKey: 'new' })).resolves.toEqual({
+        allowed_tools: [],
+        send_user_id: true,
+      });
+      await expect(
+        resolve({ ...saved, existingAppKey: null })
+      ).resolves.toEqual({ allowed_tools: [], send_user_id: true });
+    });
+
+    it('accepts explicit options for a changed URL', async () => {
+      await expect(
+        resolve({ ...saved, appKey: 'new', providerOptions: options })
+      ).resolves.toEqual(options);
+    });
+
+    it('keeps options and token when only URL whitespace changes', async () => {
+      await expect(
+        resolve({ ...saved, baseUrl: ` ${SERVER_URL} ` })
+      ).resolves.toBeUndefined();
+    });
+
     it('starts a new server with every tool blocked', async () => {
       await expect(resolve(input)).resolves.toEqual({
         allowed_tools: [],

@@ -56,7 +56,7 @@ Whatever the assistant passes to these tools is sent to that server, and what co
 ### Add a server
 
 1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add one, and it is never offered in a person's own settings.
-2. Enter the server's URL, the address of its Streamable HTTP endpoint (for example `https://tools.example.com/mcp`), and a bearer token if the server needs one. When you edit a saved server, leave the token blank to keep the saved one. A server that only speaks the older SSE transport, or that needs an OAuth sign-in, cannot be added.
+2. Enter the server's URL, the address of its Streamable HTTP endpoint (for example `https://tools.example.com/mcp`), and a bearer token if the server needs one. When you edit a saved server, leave the token blank to keep the saved one. Changing its URL needs the token entered again and clears the ticked tools. A server that only speaks the older SSE transport, or that needs an OAuth sign-in, cannot be added.
 3. Select **Load tools**. Every tool the server lists is shown. Tick the ones chat may use, up to 20 per server. A tool chat would leave out is listed with the reason and cannot be ticked. A tool you allowed earlier that the server no longer lists is marked, so you can untick it.
 4. Turn on **Tell the server who is chatting** only for a server that keeps data per person (see below).
 5. Turn on **Activate this provider** and save; chat reads only active servers. Nothing is allowed until you tick it, so a new server gives chat no tools until then.

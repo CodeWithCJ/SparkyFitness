@@ -3,6 +3,7 @@ import {
   createGlobalExternalDataProvider,
   getActiveMcpServers,
   getExternalDataProviderByUserIdAndProviderName,
+  getExternalDataProviderById,
   getExternalDataProviders,
   getExternalDataProvidersByUserId,
   getGlobalExternalDataProviders,
@@ -65,6 +66,16 @@ describe('externalProviderRepository MCP tool servers', () => {
     expect(sql).toMatch(
       /WHERE \(\s+edp\.user_id = \$1\s+OR \(edp\.is_public = TRUE AND edp\.is_active = TRUE\)\s+OR [^\n]+\n\s+\)\s+AND edp\.provider_type <> \$2/
     );
+  });
+
+  it('reads saved options by ID so a URL change preserves send_user_id', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 'provider-1', provider_options: OPTIONS }],
+    });
+    await expect(
+      getExternalDataProviderById('provider-1')
+    ).resolves.toMatchObject({ provider_options: OPTIONS });
+    expect(query.mock.calls[0][0]).toContain('edp.provider_options');
   });
 
   it('shows the options on the admin list', async () => {

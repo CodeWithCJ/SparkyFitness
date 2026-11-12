@@ -13,6 +13,7 @@ import type {
 import { jsonSchema, tool, type JSONSchema7, type Tool } from 'ai';
 import {
   MCP_SERVER_USER_ID_HEADER,
+  MCP_SERVER_TOOL_NAME_MAX_LENGTH,
   mcpServerOptionsSchema,
   type McpServerToolChoice,
 } from '@workspace/shared';
@@ -159,17 +160,34 @@ function keywordsFit(node: Record<string, unknown>): boolean {
 // request, so such a tool is left out instead. A list with no items is given
 // `items: {}` on the way: OpenAI refuses one without, and to JSON Schema the
 // two mean the same.
-function schemaProblem(schema: unknown, server: McpServerRow): string | null {
+type ToolProblem = NonNullable<McpServerToolChoice['problem']>;
+
+const SCHEMA_PROBLEM_TEXT: Record<
+  Exclude<ToolProblem, 'name_too_long'>,
+  string
+> = {
+  not_object: 'does not describe an object',
+  too_deep: 'is nested too deeply',
+  malformed: 'is malformed',
+  unreadable: 'cannot be read',
+  too_large: 'is too large',
+  contains_token: 'contains the token',
+};
+
+function schemaProblem(
+  schema: unknown,
+  server: McpServerRow
+): Exclude<ToolProblem, 'name_too_long'> | null {
   if (!isRecord(schema) || schema.type !== 'object') {
-    return 'does not describe an object';
+    return 'not_object';
   }
   // Walked without recursion, so no schema can run this out of stack.
   const pending: [unknown, number][] = [[schema, 1]];
   for (let next = pending.pop(); next; next = pending.pop()) {
     const [node, depth] = next;
     if (typeof node === 'boolean') continue;
-    if (depth > SCHEMA_MAX_DEPTH) return 'is nested too deeply';
-    if (!isRecord(node) || !keywordsFit(node)) return 'is malformed';
+    if (depth > SCHEMA_MAX_DEPTH) return 'too_deep';
+    if (!isRecord(node) || !keywordsFit(node)) return 'malformed';
     const types = Array.isArray(node.type) ? node.type : [node.type];
     if (types.includes('array') && node.items === undefined) node.items = {};
     // One at a time: spreading a list this wide as arguments would throw.
@@ -199,12 +217,12 @@ function schemaProblem(schema: unknown, server: McpServerRow): string | null {
     // Keywords that hold data, such as a default, are not walked above.
     text = JSON.stringify(schema);
   } catch {
-    return 'cannot be read';
+    return 'unreadable';
   }
-  if (text.length > SCHEMA_MAX_LENGTH) return 'is too large';
+  if (text.length > SCHEMA_MAX_LENGTH) return 'too_large';
   const token = server.app_key?.trim();
   if (token && text.includes(JSON.stringify(token).slice(1, -1))) {
-    return 'contains the token';
+    return 'contains_token';
   }
   // The rest of JSON Schema's rules, such as a number where one belongs, by
   // its draft-07 meta-schema whatever $schema names. Keywords added in later
@@ -212,10 +230,10 @@ function schemaProblem(schema: unknown, server: McpServerRow): string | null {
   // server while it runs, and a long enum takes it a while.
   try {
     if (!schemaRules.validateSchema({ ...schema, $schema: undefined })) {
-      return 'is malformed';
+      return 'malformed';
     }
   } catch {
-    return 'is malformed';
+    return 'malformed';
   }
   return null;
 }
@@ -347,7 +365,7 @@ async function readAllowedTools(
     if (problem) {
       log(
         'warn',
-        `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: its input schema ${problem}`
+        `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: its input schema ${SCHEMA_PROBLEM_TEXT[problem]}`
       );
       return;
     }
@@ -680,7 +698,10 @@ export async function listToolsForAdmin(
                   description?.trim() ?? '',
                   server
                 ).slice(0, DESCRIPTION_MAX_LENGTH),
-                problem: schemaProblem(inputSchema, server),
+                problem:
+                  name.length > MCP_SERVER_TOOL_NAME_MAX_LENGTH
+                    ? 'name_too_long'
+                    : schemaProblem(inputSchema, server),
               });
             }
           );

@@ -57,6 +57,7 @@ const makeProvider = (
   required_fields: [],
   field_labels: {},
   supports_barcode: true,
+  provider_options: null,
 });
 const options = {
   includeProviderMetadata: true,

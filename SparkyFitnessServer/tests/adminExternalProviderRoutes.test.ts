@@ -47,6 +47,7 @@ function makeStoredProvider(
     required_fields: [],
     field_labels: {},
     supports_barcode: true,
+    provider_options: null,
     ...overrides,
   };
 }
@@ -487,6 +488,107 @@ describe('admin global MCP tool servers', () => {
     );
   });
 
+  it.each([undefined, '', '   ', null])(
+    'refuses saving a different URL without a token (%s)',
+    async (app_key) => {
+      vi.mocked(
+        externalProviderRepository.getExternalDataProviderById
+      ).mockResolvedValue(
+        makeStoredProvider({
+          provider_type: 'mcp_server',
+          base_url: body.base_url,
+          app_key: 'stored',
+        })
+      );
+      const response = await request(app)
+        .put(`/admin/external-data-providers/global/${PROVIDER_ID}`)
+        .send({ base_url: 'http://192.168.1.21/mcp', app_key });
+      expect(response.statusCode).toBe(400);
+      expect(response.body.error).toBe(
+        'Enter the token again when you change the server URL.'
+      );
+      expect(
+        externalProviderRepository.updateGlobalExternalDataProvider
+      ).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    {
+      storedToken: 'stored',
+      app_key: 'new',
+      base_url: 'http://192.168.1.21/mcp',
+      changed: true,
+    },
+    {
+      storedToken: null,
+      app_key: undefined,
+      base_url: 'http://192.168.1.21/mcp',
+      changed: true,
+    },
+    {
+      storedToken: 'stored',
+      app_key: undefined,
+      base_url: ` ${body.base_url} `,
+      changed: false,
+    },
+  ])(
+    'saves a permitted URL update and resets only stale choices ($changed)',
+    async ({ storedToken, app_key, base_url, changed }) => {
+      vi.mocked(
+        externalProviderRepository.getExternalDataProviderById
+      ).mockResolvedValue(
+        makeStoredProvider({
+          provider_type: 'mcp_server',
+          base_url: body.base_url,
+          app_key: storedToken,
+          provider_options: options,
+        })
+      );
+      const response = await request(app)
+        .put(`/admin/external-data-providers/global/${PROVIDER_ID}`)
+        .send({ base_url, app_key });
+      expect(response.statusCode).toBe(200);
+      expect(
+        externalProviderRepository.updateGlobalExternalDataProvider
+      ).toHaveBeenCalledWith(
+        PROVIDER_ID,
+        expect.objectContaining({
+          provider_options: changed
+            ? { allowed_tools: [], send_user_id: true }
+            : undefined,
+        })
+      );
+    }
+  );
+
+  it('uses options explicitly supplied with a URL change', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(
+      makeStoredProvider({
+        provider_type: 'mcp_server',
+        base_url: body.base_url,
+        app_key: 'stored',
+        provider_options: options,
+      })
+    );
+    const response = await request(app)
+      .put(`/admin/external-data-providers/global/${PROVIDER_ID}`)
+      .send({
+        base_url: 'http://192.168.1.21/mcp',
+        app_key: 'new',
+        provider_options: options,
+      });
+    expect(response.statusCode).toBe(200);
+    expect(
+      externalProviderRepository.updateGlobalExternalDataProvider
+    ).toHaveBeenCalledWith(
+      PROVIDER_ID,
+      expect.objectContaining({ provider_options: options })
+    );
+  });
+
   it('refuses a server with no URL', async () => {
     const response = await request(app)
       .post('/admin/external-data-providers/global')
@@ -561,19 +663,79 @@ describe('listing an MCP tool server’s tools', () => {
         id: SERVER_ID,
         provider_type: 'mcp_server',
         app_key: 'stored',
+        base_url: 'https://tools.example',
       })
     );
     vi.mocked(listToolsForAdmin).mockResolvedValue(listing);
 
     const response = await request(app)
       .post('/admin/external-data-providers/mcp-server/tools')
-      .send({ base_url: 'https://tools.example', provider_id: SERVER_ID });
+      .send({ base_url: ' https://tools.example ', provider_id: SERVER_ID });
 
     expect(response.statusCode).toBe(200);
     expect(listToolsForAdmin).toHaveBeenCalledWith(
       expect.objectContaining({ app_key: 'stored' })
     );
   });
+
+  it.each([undefined, '', '   '])(
+    'refuses loading a different URL with a stored token (%s)',
+    async (app_key) => {
+      vi.mocked(
+        externalProviderRepository.getExternalDataProviderById
+      ).mockResolvedValue(
+        makeStoredProvider({
+          id: SERVER_ID,
+          provider_type: 'mcp_server',
+          app_key: 'stored',
+          base_url: 'https://saved.example',
+        })
+      );
+      const response = await request(app)
+        .post('/admin/external-data-providers/mcp-server/tools')
+        .send({
+          base_url: 'https://other.example',
+          provider_id: SERVER_ID,
+          app_key,
+        });
+      expect(response.statusCode).toBe(400);
+      expect(response.body.error).toBe(
+        'Enter the token to load tools from a different URL.'
+      );
+      expect(listToolsForAdmin).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['typed', undefined])(
+    'loads a different URL with a fresh token or no stored token (%s)',
+    async (app_key) => {
+      vi.mocked(
+        externalProviderRepository.getExternalDataProviderById
+      ).mockResolvedValue(
+        makeStoredProvider({
+          id: SERVER_ID,
+          provider_type: 'mcp_server',
+          app_key: app_key ? 'stored' : null,
+          base_url: 'https://saved.example',
+        })
+      );
+      vi.mocked(listToolsForAdmin).mockResolvedValue(listing);
+      const response = await request(app)
+        .post('/admin/external-data-providers/mcp-server/tools')
+        .send({
+          base_url: ' https://other.example ',
+          provider_id: SERVER_ID,
+          app_key,
+        });
+      expect(response.statusCode).toBe(200);
+      expect(listToolsForAdmin).toHaveBeenCalledWith(
+        expect.objectContaining({
+          base_url: 'https://other.example',
+          app_key: app_key ?? null,
+        })
+      );
+    }
+  );
 
   it('will not use the stored key of another kind of provider', async () => {
     vi.mocked(

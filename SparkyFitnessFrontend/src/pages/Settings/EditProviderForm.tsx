@@ -252,6 +252,7 @@ export const EditProviderForm = ({
         <McpServerFields
           idPrefix="edit"
           providerId={provider.id}
+          savedBaseUrl={provider.base_url}
           baseUrl={editData.base_url}
           appKey={editData.app_key}
           options={editData.provider_options}

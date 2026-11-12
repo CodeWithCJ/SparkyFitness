@@ -439,13 +439,12 @@ async function updateExternalDataProvider(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExternalDataProviderById(providerId: any) {
+async function getExternalDataProviderById(providerId: string) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
       `SELECT
-        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.is_active, edp.base_url, edp.is_public, edp.sync_frequency,
+        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.is_active, edp.base_url, edp.is_public, edp.sync_frequency, edp.provider_options,
         edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
         edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
         edp.token_expires_at, edp.external_user_id,
@@ -515,6 +514,10 @@ async function getExternalDataProviderById(providerId: any) {
       is_active: data.is_active,
       base_url: data.base_url,
       sync_frequency: data.sync_frequency,
+      provider_options: (data.provider_options ?? null) as Record<
+        string,
+        unknown
+      > | null,
       app_id: decryptedAppId,
       app_key: decryptedAppKey,
       token_expires_at: data.token_expires_at,

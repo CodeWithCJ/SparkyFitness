@@ -22,6 +22,12 @@ import {
 } from 'vitest';
 import { z } from 'zod';
 import {
+  MCP_SERVER_TOOL_PROBLEMS,
+  MCP_SERVER_TOOL_NAME_MAX_LENGTH,
+  mcpServerToolChoiceSchema,
+  mcpServerOptionsSchema,
+} from '@workspace/shared';
+import {
   listToolsForAdmin,
   loadMcpServerTools,
   McpServerListError,
@@ -90,6 +96,7 @@ let elsewhereRequests = 0;
 let answerWith500 = false;
 let goQuiet = false;
 let pagedSchema: string | undefined;
+let pagedToolName: string | undefined;
 let wentQuiet: () => void = () => undefined;
 // '/drip' holds each page of its tool list until a test lets it go.
 const heldPages: (() => void)[] = [];
@@ -234,7 +241,10 @@ function answerPagedList(
       : {
           tools: [
             {
-              name: `page_${page}`,
+              name:
+                page === 1 && pagedToolName !== undefined
+                  ? pagedToolName
+                  : `page_${page}`,
               description: `The tool on page ${page}.`,
               // The SDK's own schema compiler prints an unknown format and
               // throws on a type it does not know.
@@ -434,6 +444,7 @@ beforeEach(() => {
   answerWith500 = false;
   goQuiet = false;
   pagedSchema = undefined;
+  pagedToolName = undefined;
 });
 
 afterEach(() => {
@@ -1036,6 +1047,42 @@ describe('how a server is contacted', () => {
 });
 
 describe('the tool list an admin chooses from', () => {
+  it('accepts only stable problem codes or null in the shared contract', () => {
+    for (const problem of [...MCP_SERVER_TOOL_PROBLEMS, null]) {
+      expect(
+        mcpServerToolChoiceSchema.safeParse({
+          name: 'tool',
+          description: '',
+          problem,
+        }).success
+      ).toBe(true);
+    }
+    for (const problem of ['is malformed', 'unknown_problem']) {
+      expect(
+        mcpServerToolChoiceSchema.safeParse({
+          name: 'tool',
+          description: '',
+          problem,
+        }).success
+      ).toBe(false);
+    }
+  });
+
+  it('uses the shared name limit for allowed tools', () => {
+    expect(
+      mcpServerOptionsSchema.safeParse({
+        allowed_tools: ['n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH)],
+        send_user_id: false,
+      }).success
+    ).toBe(true);
+    expect(
+      mcpServerOptionsSchema.safeParse({
+        allowed_tools: ['n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH + 1)],
+        send_user_id: false,
+      }).success
+    ).toBe(false);
+  });
+
   it('lists every tool, allowed or not, with why chat would leave one out', async () => {
     pagedSchema = '{"type":"object","properties":{"a":{"enum":5}}}';
     const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
@@ -1043,11 +1090,41 @@ describe('the tool list an admin chooses from', () => {
       {
         name: 'page_1',
         description: 'The tool on page 1.',
-        problem: 'is malformed',
+        problem: 'malformed',
       },
       { name: 'page_2', description: 'The tool on page 2.', problem: null },
     ]);
   });
+
+  it.each([128, 129])(
+    'marks a tool name of length %s before checking its schema',
+    async (length) => {
+      pagedToolName = 'n'.repeat(length);
+      pagedSchema = '{"type":"object","properties":{"a":{"enum":5}}}';
+      const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+      expect(tools[0]).toMatchObject({
+        name: pagedToolName,
+        problem: length > 128 ? 'name_too_long' : 'malformed',
+      });
+    }
+  );
+
+  it.each([
+    ['{"type":"object","properties":{"a":{"enum":5}}}', 'malformed'],
+    [
+      `{"type":"object","properties":{"a":${'{"items":'.repeat(40)}{}${'}'.repeat(40)}}}`,
+      'too_deep',
+    ],
+    [`{"type":"object","description":"${'x'.repeat(40_000)}"}`, 'too_large'],
+    [`{"type":"object","description":"Bearer ${TOKEN}"}`, 'contains_token'],
+  ])(
+    'returns a stable code for an unusable schema (%s)',
+    async (schema, problem) => {
+      pagedSchema = schema;
+      const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+      expect(tools[0]?.problem).toBe(problem);
+    }
+  );
 
   it('asks the server again each time, so a change on the server shows at once', async () => {
     const row = toolServer([]);
