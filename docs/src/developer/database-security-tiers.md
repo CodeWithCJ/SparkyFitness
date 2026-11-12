@@ -59,6 +59,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `pregnancy_checklist_state` | Weekly pregnancy checklist completion/custom items | Owner-Only | Owner-Only |
 | `run_programs` | A person's run program (Beginner 5K), their place in it, its Diary schedule, goal date, AI adjustments and how hard finished workouts felt | Owner-Only | Owner-Only |
 | `run_goals` | A person's running goals: a weekly running distance target and a race (name, day, distance) to count down to | Owner-Only | Owner-Only |
+| `intervals_nutrition_pushes` | Daily nutrition totals last pushed to Intervals.icu (one row per user per day) | Owner-Only | Owner-Only |
 | `custom_run_programs` | A person's own saved run or walk plans (name, activity, workouts) that they can start | Owner-Only | Owner-Only |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): the measurements, the surface (outdoor or treadmill) and incline, the result and the derived training paces, linked to the recorded activity | Owner-Only | Owner-Only |
 | `routes` | A person's saved routes (a simplified track of points, optional turn cues, distance and elevation) that they drew, imported from GPX or saved from a recorded activity | Owner-Only | Owner-Only |

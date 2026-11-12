@@ -178,6 +178,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `pregnancies` | Pregnancy records (due date, status) |
 | `run_programs` | A person's run program, their place in it, its Diary schedule, goal date, adjustments to it and which diary entries its workouts were done as |
 | `run_goals` | A person's weekly running distance target and the race they are counting down to |
+| `intervals_nutrition_pushes` | The daily nutrition totals (kcal, protein, carbohydrates, fat) last accepted by Intervals.icu for each day, one row per user per day, so pushing and removal only touch values SparkyFitness wrote |
 | `custom_run_programs` | A person's own run or walk plans: a name, the activity and an ordered list of workouts, each a list of timed steps. Starting one copies it into `run_programs` |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): measurements, whether it was run outdoors or on a treadmill (and the incline), result, the training paces derived from them and the recorded activity it was run as |
 | `routes` | A person's saved routes: name, activity, source (drawn, GPX, activity), distance, elevation gain, a simplified track of points and optional turn cues |

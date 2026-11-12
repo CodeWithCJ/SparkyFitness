@@ -260,6 +260,7 @@ export * from './schemas/database/MindfulnessSessions.zod.ts';
 export * from './schemas/database/OralCareSessions.zod.ts';
 export * from './schemas/database/RunPrograms.zod.ts';
 export * from './schemas/database/RunGoals.zod.ts';
+export * from './schemas/database/IntervalsNutritionPushes.zod.ts';
 export * from './schemas/database/Shoes.zod.ts';
 export * from './schemas/database/PlateInventories.zod.ts';
 export * from './schemas/database/ActionTags.zod.ts';
