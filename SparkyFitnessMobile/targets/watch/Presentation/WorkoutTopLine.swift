@@ -5,8 +5,9 @@ import SwiftUI
 /// setting picks which shows first; a tap switches.
 ///
 /// One always-on rule for both modes (`isLuminanceReduced`). Wrist raised, the
-/// time runs in hundredths and the metrics are live. Dimmed, the time redraws
-/// once a second in whole seconds, while heart rate and calories stop
+/// time shows M:SS (H:MM:SS from an hour) and updates once a second, and the
+/// metrics are live. Dimmed, the time shows minutes only ("24 min") and updates
+/// once a minute, while heart rate and calories stop
 /// refreshing to save battery: the last reading stays, greyed with an outlined
 /// heart, until the wrist is raised again.
 struct WorkoutTopLine: View {
@@ -42,9 +43,10 @@ struct WorkoutTopLine: View {
             if showsMetrics {
                 metricsLine
             } else {
-                // Hundredths redraw every frame; dimmed, once a second.
-                TimelineView(.periodic(from: .now, by: dimmed ? 1 : 1.0 / 30)) { context in
-                    timeLine(now: context.date)
+                if dimmed {
+                    TimelineView(.everyMinute) { context in timeLine(now: context.date) }
+                } else {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in timeLine(now: context.date) }
                 }
             }
         }
@@ -73,10 +75,10 @@ struct WorkoutTopLine: View {
     }
 
     private func timeLine(now: Date) -> some View {
-        Text(Self.elapsed(store.elapsed(at: now), hundredths: !dimmed))
+        Text(Self.elapsed(Int(store.elapsed(at: now)), minutesOnly: dimmed))
             .foregroundStyle(.yellow)
             .modifier(LineStyle())
-            .accessibilityLabel(String(localized: "watch.workout.timeLine", defaultValue: "Time \(WorkoutMetricsPage.elapsed(store.elapsedSeconds))"))
+            .accessibilityLabel(String(localized: "watch.workout.timeLine", defaultValue: "Time \(Self.elapsed(Int(store.elapsed(at: now)), minutesOnly: false))"))
     }
 
     private struct LineStyle: ViewModifier {
@@ -89,11 +91,12 @@ struct WorkoutTopLine: View {
         }
     }
 
-    /// `1:05:09`, `12:34.56` (with hundredths) or `12:34`.
-    static func elapsed(_ seconds: TimeInterval, hundredths: Bool) -> String {
-        let whole = Int(seconds)
-        let base = WorkoutMetricsPage.elapsed(whole)
-        guard hundredths else { return base }
-        return base + String(format: ".%02d", Int((seconds - Double(whole)) * 100))
+    /// `12:34` or `1:05:09`; dimmed, minutes only: `24 min` or `1 h 05 min`.
+    static func elapsed(_ seconds: Int, minutesOnly: Bool) -> String {
+        guard minutesOnly else { return WorkoutMetricsPage.elapsed(seconds) }
+        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
+        return hours > 0
+            ? String(localized: "watch.workout.elapsedHoursMinutes", defaultValue: "\(hours) h \(String(format: "%02d", minutes)) min")
+            : String(localized: "watch.workout.elapsedMinutes", defaultValue: "\(minutes) min")
     }
 }

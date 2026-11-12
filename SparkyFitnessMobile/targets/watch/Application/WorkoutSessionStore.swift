@@ -764,8 +764,8 @@ final class WorkoutSessionStore: ObservableObject {
         return true
     }
 
-    /// Seconds since the workout started, to the fraction, for a display that
-    /// shows hundredths while the wrist is raised.
+    /// Seconds since the workout started, from its start time, for a display
+    /// that redraws on its own schedule.
     func elapsed(at now: Date) -> TimeInterval {
         startedAt.map { max(0, now.timeIntervalSince($0)) } ?? TimeInterval(elapsedSeconds)
     }

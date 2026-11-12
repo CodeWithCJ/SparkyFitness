@@ -326,3 +326,5 @@
 "watch.workout.holdEndHint" = "Ends the hold and logs the set";
 "watch.workout.skipRest" = "Skip";
 "watch.workout.holdTime" = "TIME";
+"watch.workout.elapsedMinutes" = "%lld min";
+"watch.workout.elapsedHoursMinutes" = "%lld h %@ min";
