@@ -29,6 +29,17 @@
     <string name="complication_fasting_desc">Fasting: %1$s / %2$dh</string>
     <string name="complication_steps_desc">Steps: %1$d / %2$d</string>
 
+    <!-- Watch Pages -->
+    <string name="page_goals">Goals</string>
+    <string name="page_water">Water</string>
+    <string name="page_medications">Medications</string>
+    <string name="page_weight">Weight</string>
+    <string name="page_trend">Trend</string>
+    <string name="page_workout">Workout</string>
+    <string name="page_now_playing">Now Playing</string>
+    <string name="page_fasting">Fasting</string>
+    <string name="page_steps">Steps</string>
+
     <!-- Goals Screen -->
     <!-- Hier kommen als Nächstes die Strings aus GoalsSummaryPage.kt rein -->
 
