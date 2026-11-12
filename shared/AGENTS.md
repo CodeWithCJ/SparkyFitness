@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-11_
+_Last updated: 2026-11-12_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -16,7 +16,7 @@ _Last updated: 2026-11-11_
 
 ## Structure
 
-- Mealie ingredient imports: `utils/recipeImport.ts` preserves explicit compatible quantities, bounds unresolved matching batches to twenty rows, and merges suggestions without replacing confirmed mappings in web and mobile. The API contract remains in `schemas/api/RecipeImport.api.zod.ts`.
+- Mealie ingredient imports: `utils/recipeImport.ts` preserves explicit compatible quantities, bounds unresolved matching batches to twenty rows, adapts normalized Mealie food search for recipe browsing, and merges suggestions without replacing confirmed mappings in web and mobile. The API contract remains in `schemas/api/RecipeImport.api.zod.ts`.
 
 - `src/glucose/context.ts` - shared glucose context loading and timezone-aware day projection for web/mobile. Reads use the canonical API contracts; independent source failures retain successful layers. `src/constants/bloodGlucose.ts` defines display units and conversion, and `src/utils/measurementTimeline.ts` preserves timestamped readings and sensor gaps. `src/schemas/api/SleepEntries.api.zod.ts` derives serialized sleep responses from the database schema.
 
@@ -41,7 +41,7 @@ _Last updated: 2026-11-11_
 - `src/compare/` - compare any two tracked things: `stats.ts` (statistics), `metrics.ts` (metric catalog: kind, missing-day rule, weekly form, `rolling` for a value read over the 7 days ending on the day, and `since: false` for a metric since mode cannot answer honestly (weight trend); `offeredInMode(key, mode)` is the check for whether a metric is offered by day, week or since), `analyze.ts` (day and week-by-week analysis), `since.ts` (before vs. since a habit started: suggested start, stretches, regularity, pre-trend; its limits are exported as `SINCE_*` constants), `question.ts` (the question model web and mobile share: timing choices, spans and `compareWindow`, custom-range limits, since-start bounds, `SUGGESTED_QUESTIONS`, and the recents helpers `knownCompareQuestions` / `withRecentQuestion`, and `questionForMode`, which drops a chosen metric the mode doesn't offer), `chartData.ts` (chart data both apps draw: `pairedDots` and `displayDots`, `trendLine`, `overTimeData`, `sinceChartData`), `sinceLine.ts` (`sinceLineOptions`: the lines offered for a since answer, with the label formatter passed in so the wording stays in each app), `sinceVerdict.ts` (`sinceVerdictCase`: which since answer to give, as a text-free case with the facts its wording needs (no start, not enough with the short side and why, changed, no clear change, and whether it covers the last year); `sinceAlreadyChanging` and `sinceCoversLastYear`; the phone's and the website's `compareSinceCopy.ts` word each case). The API contract is `src/schemas/api/Compare.api.zod.ts`.
 - `src/symptoms/` - generic symptom tracking: constants and enums (scales, templates, sections, option kinds), template section resolution (`resolveSections`), built-in symptoms and pick-lists, head/body region ids for the location maps, custom-field validation, and `symptomEntryDays` (`entryDays.ts`: the days of a window an entry covers, its `entry_date` plus, for an episode, every day from its start to its end or to today in the profile timezone; the web and mobile symptom calendars use it with the list endpoint's `overlapping` flag, so an episode shows on each of its days). The API contract is `src/schemas/api/Symptoms.api.zod.ts`.
 
-- Recipe ingredient imports: `src/schemas/api/RecipeImport.api.zod.ts` defines camelCase preview/save/suggestion/source and nutrition-confirmation contracts. `RecipeImports.zod.ts` and `RecipeFoodMappings.zod.ts` mirror owner-only source provenance and confirmed mappings. `utils/recipeImport.ts` shares numeric/unknown nutrition handling and current/proposed sync comparisons. Both clients consume these; external food selections must use existing detail/import and supply accessible local IDs before save.
+- Recipe ingredient imports: `src/schemas/api/RecipeImport.api.zod.ts` defines camelCase preview/save/suggestion/source and nutrition-confirmation contracts. `RecipeImports.zod.ts` and `RecipeFoodMappings.zod.ts` mirror owner-only source provenance and confirmed mappings. `utils/recipeImport.ts` shares numeric/unknown nutrition handling, unconfirmed saved choices, amount-like note detection, and the complete supported write/skip comparison. Sync previews include optional coverage and saved-meal provenance; saved-mapping management contracts remain owner-scoped. Both clients consume these; external food selections must use existing detail/import and supply accessible local IDs before save.
 
 ## Naming Convention
 
