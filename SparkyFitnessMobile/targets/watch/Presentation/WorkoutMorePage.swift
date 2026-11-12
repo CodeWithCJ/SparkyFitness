@@ -28,6 +28,8 @@ struct WorkoutMoreUpNextPage: View {
             card(next)
         }
         .padding(.horizontal, MorePageInsets.horizontal)
+        // Inside the page, which the scroll aligns to the top of the screen.
+        .padding(.top, WatchStyle.top)
     }
 
     private func card(_ next: WorkoutStep?) -> some View {

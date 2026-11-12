@@ -399,7 +399,6 @@ private struct ActiveWorkoutView: View {
                             .id(WorkoutPageID.moreWorkout)
                     }
                     .scrollTargetLayout()
-                    .padding(.top, WatchStyle.top)
                     // Room under the last button and the page dots.
                     .padding(.bottom, WatchStyle.m(30))
                 }
@@ -410,6 +409,17 @@ private struct ActiveWorkoutView: View {
             .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, moreTop: moreTop))
             .scrollIndicators(.hidden)
             .onPreferenceChange(MoreTopKey.self) { moreTop = $0 }
+            // Once the lists below Up Next lead the scroll, their content has
+            // reached the clock: it fades out under a black band there, as a
+            // watchOS list does. (`page` follows the leading item while scrolling.)
+            .overlay(alignment: .top) {
+                let band = WatchStyle.top + WatchStyle.m(40)
+                LinearGradient(colors: [.black, .black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: band)
+                    .opacity(page == .moreExercise || page == .moreWorkout ? 1 : 0)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+            }
             // Pages are laid out against the whole screen, so each snaps to
             // exactly one screen; `workoutPage` puts the content back inside
             // the area the clock and page dots leave free.
