@@ -1,6 +1,6 @@
 # Database Security & RLS Tiers
 
-*Last updated: 2026-11-03*
+*Last updated: 2026-11-14*
 
 SparkyFitness uses PostgreSQL Row-Level Security (RLS) to enforce strict data isolation between accounts, caregivers, family members, and third-party integrations (API keys). This document covers the security design, context switching mechanism, and the three-tier database table classifications.
 
@@ -107,6 +107,20 @@ These tables contain user profiles, layouts, display settings, and custom databa
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient | **Owner-Only** | Delegate with `can_manage_diary` or `can_view_reports` |
 | `weekly_goal_plans` | Scheduled goal plan adjustments | **Owner-Only** | Delegate with `can_manage_diary` or `can_view_reports` |
 | `user_water_containers` | Configured container sizes (e.g. 500ml bottle), hydration factors, and optional links to food/variant/meal category | **Owner-Only** | Delegate with `can_manage_diary` or `can_view_reports` |
+
+#### Challenges (member-read, server-write)
+
+Joining a challenge is the consent to share what these tables hold with its other members, and nothing more: members never read each other's diary. The server scores each member from their own data (read through `getClient(memberId)`, so RLS applies) and writes the results here with the owner pool, after `services/challengeService.ts` has checked membership or the host role in code. Membership is enforced twice on purpose: RLS alone is not enough on an install whose app connects as the table owner, which skips RLS. `is_challenge_member(challenge_id)` (SECURITY DEFINER, so it does not recurse through `challenge_members`) matches `authenticated_user_id()` only, so a family delegate or a switched context never sees a member's challenges, and the challenge routes refuse a delegated context (`requireSelfActor`). A read-only API key can read its owner's challenges; joining and leaving need a session or a full key.
+
+| Table Name | Description | Write (insert/update/delete) | Read (select) |
+| :--- | :--- | :--- | :--- |
+| `challenges` | The challenge, its rules and the hash of its invite code | **Server only** (no app-role write policy) | Members (`is_challenge_member(id)`) |
+| `challenge_members` | Members, their role and display name (never an email) | **Server only** | Members of the same challenge |
+| `challenge_daily_scores` | Each member's computed day values | **Server only** | Members of the same challenge |
+| `challenge_activity_cards` | Per-workout summaries (no route points) | **Server only** | Members of the same challenge |
+| `challenge_results` | Frozen period standings | **Server only** | Members of the same challenge |
+| `challenge_rule_changes` | The rules change log | **Server only** | Members of the same challenge |
+| `challenge_score_queue` | Member-days waiting to be scored; written by the `queue_challenge_scores` trigger (SECURITY DEFINER) and the score job | **Server only** | Deny all |
 
 ---
 
