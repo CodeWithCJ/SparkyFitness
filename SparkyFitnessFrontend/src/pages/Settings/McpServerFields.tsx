@@ -91,6 +91,10 @@ export const McpServerFields = ({
       'settings.mcpServer.toolProblem.name_too_long',
       'Its name is longer than 128 characters.'
     ),
+    name_blank_or_padded: t(
+      'settings.mcpServer.toolProblem.name_blank_or_padded',
+      'Its name is empty or starts or ends with a space.'
+    ),
   };
   const allowed = new Set(current.allowed_tools);
   // A list, or why it failed, is kept with the URL and token it was asked

@@ -1076,7 +1076,7 @@ router.post(
             .status(400)
             .json({ error: 'That provider is not an MCP tool server.' });
         }
-        if (stored.app_key?.trim() && base_url !== stored.base_url) {
+        if (stored.has_app_key && base_url !== stored.base_url) {
           return res.status(400).json({
             error: 'Enter the token to load tools from a different URL.',
           });
@@ -1205,7 +1205,7 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         providerType: provider_type,
         existingProviderType: existingProvider.provider_type,
         existingBaseUrl: existingProvider.base_url,
-        existingAppKey: existingProvider.app_key,
+        existingHasAppKey: existingProvider.has_app_key,
         existingProviderOptions: existingProvider.provider_options,
         appKey: app_key,
         baseUrl: base_url,

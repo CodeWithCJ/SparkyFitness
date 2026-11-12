@@ -168,6 +168,10 @@ describe('McpServerFields', () => {
     ['too_large', 'Its input schema is too large.'],
     ['contains_token', 'Its input schema contains the token.'],
     ['name_too_long', 'Its name is longer than 128 characters.'],
+    [
+      'name_blank_or_padded',
+      'Its name is empty or starts or ends with a space.',
+    ],
   ])(
     'disables tools with problem code %s and translates its reason',
     async (problem, reason) => {

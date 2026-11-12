@@ -78,6 +78,31 @@ describe('externalProviderRepository MCP tool servers', () => {
     expect(query.mock.calls[0][0]).toContain('edp.provider_options');
   });
 
+  it.each([
+    { encrypted_app_key: 'ciphertext', has_app_key: true },
+    { encrypted_app_key: null, has_app_key: false },
+  ])(
+    'reports stored token presence independently of decryption ($has_app_key)',
+    async ({ encrypted_app_key, has_app_key }) => {
+      vi.mocked(decrypt).mockRejectedValue(new Error('bad key'));
+      query.mockResolvedValue({
+        rows: [
+          {
+            id: 'provider-1',
+            encrypted_app_key,
+            app_key_iv: 'iv',
+            app_key_tag: 'tag',
+          },
+        ],
+      });
+
+      await expect(
+        getExternalDataProviderById('provider-1')
+      ).resolves.toMatchObject({ app_key: null, has_app_key });
+      expect(decrypt).toHaveBeenCalledTimes(has_app_key ? 1 : 0);
+    }
+  );
+
   it('shows the options on the admin list', async () => {
     await getGlobalExternalDataProviders();
     expect(query.mock.calls[0][0]).toContain('edp.provider_options');

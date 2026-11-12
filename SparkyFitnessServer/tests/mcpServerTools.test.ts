@@ -1109,6 +1109,16 @@ describe('the tool list an admin chooses from', () => {
     }
   );
 
+  it.each(['', '   ', ' padded', 'padded '])(
+    'marks a blank or padded tool name (%j) before checking its schema',
+    async (name) => {
+      pagedToolName = name;
+      pagedSchema = '{"type":"object","properties":{"a":{"enum":5}}}';
+      const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+      expect(tools[0]).toMatchObject({ name, problem: 'name_blank_or_padded' });
+    }
+  );
+
   it.each([
     ['{"type":"object","properties":{"a":{"enum":5}}}', 'malformed'],
     [

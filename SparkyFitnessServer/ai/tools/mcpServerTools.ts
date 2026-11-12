@@ -154,16 +154,10 @@ function keywordsFit(node: Record<string, unknown>): boolean {
   );
 }
 
-// Why a tool's input schema cannot go to the model provider, or null when it
-// can. Every allowed tool's schema goes with every chat request, and one the
-// provider's adapter cannot walk, or the provider refuses, fails the whole
-// request, so such a tool is left out instead. A list with no items is given
-// `items: {}` on the way: OpenAI refuses one without, and to JSON Schema the
-// two mean the same.
 type ToolProblem = NonNullable<McpServerToolChoice['problem']>;
 
 const SCHEMA_PROBLEM_TEXT: Record<
-  Exclude<ToolProblem, 'name_too_long'>,
+  Exclude<ToolProblem, 'name_too_long' | 'name_blank_or_padded'>,
   string
 > = {
   not_object: 'does not describe an object',
@@ -174,10 +168,24 @@ const SCHEMA_PROBLEM_TEXT: Record<
   contains_token: 'contains the token',
 };
 
+// The allowed list stores names trimmed and non-empty, at most the shared
+// limit, so a listed name outside that could be ticked but never saved.
+function toolNameProblem(name: string): ToolProblem | null {
+  if (name.length > MCP_SERVER_TOOL_NAME_MAX_LENGTH) return 'name_too_long';
+  if (!name.trim() || name.trim() !== name) return 'name_blank_or_padded';
+  return null;
+}
+
+// Why a tool's input schema cannot go to the model provider, or null when it
+// can. Every allowed tool's schema goes with every chat request, and one the
+// provider's adapter cannot walk, or the provider refuses, fails the whole
+// request, so such a tool is left out instead. A list with no items is given
+// `items: {}` on the way: OpenAI refuses one without, and to JSON Schema the
+// two mean the same.
 function schemaProblem(
   schema: unknown,
   server: McpServerRow
-): Exclude<ToolProblem, 'name_too_long'> | null {
+): Exclude<ToolProblem, 'name_too_long' | 'name_blank_or_padded'> | null {
   if (!isRecord(schema) || schema.type !== 'object') {
     return 'not_object';
   }
@@ -699,9 +707,7 @@ export async function listToolsForAdmin(
                   server
                 ).slice(0, DESCRIPTION_MAX_LENGTH),
                 problem:
-                  name.length > MCP_SERVER_TOOL_NAME_MAX_LENGTH
-                    ? 'name_too_long'
-                    : schemaProblem(inputSchema, server),
+                  toolNameProblem(name) ?? schemaProblem(inputSchema, server),
               });
             }
           );

@@ -1595,7 +1595,7 @@ describe('MCP tool servers', () => {
       ...input,
       existingProviderType: 'mcp_server',
       existingBaseUrl: SERVER_URL,
-      existingAppKey: 'stored',
+      existingHasAppKey: true,
       existingProviderOptions: options,
       baseUrl: 'http://192.168.1.21/mcp',
     };
@@ -1616,7 +1616,7 @@ describe('MCP tool servers', () => {
         send_user_id: true,
       });
       await expect(
-        resolve({ ...saved, existingAppKey: null })
+        resolve({ ...saved, existingHasAppKey: false })
       ).resolves.toEqual({ allowed_tools: [], send_user_id: true });
     });
 

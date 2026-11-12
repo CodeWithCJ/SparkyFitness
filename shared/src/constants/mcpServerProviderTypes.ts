@@ -21,4 +21,5 @@ export const MCP_SERVER_TOOL_PROBLEMS = [
   'too_large',
   'contains_token',
   'name_too_long',
+  'name_blank_or_padded',
 ] as const;

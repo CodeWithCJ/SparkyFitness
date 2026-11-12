@@ -121,7 +121,7 @@ interface GlobalProviderOptionsInput {
   /** The row's current type. Unset when the row is being created. */
   existingProviderType?: string;
   existingBaseUrl?: string | null;
-  existingAppKey?: string | null;
+  existingHasAppKey?: boolean;
   appKey?: string | null;
   existingProviderOptions?: unknown;
   baseUrl: string | null | undefined;
@@ -138,7 +138,7 @@ async function resolveGlobalProviderOptions({
   providerType,
   existingProviderType,
   existingBaseUrl,
-  existingAppKey,
+  existingHasAppKey,
   appKey,
   existingProviderOptions,
   baseUrl,
@@ -170,7 +170,7 @@ async function resolveGlobalProviderOptions({
   }
   const urlChanged =
     !isCreate && baseUrl !== undefined && baseUrl?.trim() !== existingBaseUrl;
-  if (urlChanged && existingAppKey?.trim() && !appKey?.trim()) {
+  if (urlChanged && existingHasAppKey && !appKey?.trim()) {
     throw badRequest('Enter the token again when you change the server URL.');
   }
   if (providerOptions !== undefined) return providerOptions;

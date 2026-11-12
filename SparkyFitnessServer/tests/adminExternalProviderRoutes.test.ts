@@ -39,6 +39,7 @@ function makeStoredProvider(
     sync_frequency: 'manual',
     app_id: null,
     app_key: null,
+    has_app_key: overrides.app_key !== null && overrides.app_key !== undefined,
     token_expires_at: null,
     external_user_id: null,
     garth_dump: null,
@@ -488,16 +489,21 @@ describe('admin global MCP tool servers', () => {
     );
   });
 
-  it.each([undefined, '', '   ', null])(
-    'refuses saving a different URL without a token (%s)',
-    async (app_key) => {
+  it.each(
+    ['stored', null].flatMap((storedToken) =>
+      [undefined, '', '   ', null].map((app_key) => ({ storedToken, app_key }))
+    )
+  )(
+    'refuses saving a different URL without a token (stored: $storedToken, typed: $app_key)',
+    async ({ storedToken, app_key }) => {
       vi.mocked(
         externalProviderRepository.getExternalDataProviderById
       ).mockResolvedValue(
         makeStoredProvider({
           provider_type: 'mcp_server',
           base_url: body.base_url,
-          app_key: 'stored',
+          app_key: storedToken,
+          has_app_key: true,
         })
       );
       const response = await request(app)
@@ -678,16 +684,21 @@ describe('listing an MCP tool server’s tools', () => {
     );
   });
 
-  it.each([undefined, '', '   '])(
-    'refuses loading a different URL with a stored token (%s)',
-    async (app_key) => {
+  it.each(
+    ['stored', null].flatMap((storedToken) =>
+      [undefined, '', '   '].map((app_key) => ({ storedToken, app_key }))
+    )
+  )(
+    'refuses loading a different URL with a stored token (stored: $storedToken, typed: $app_key)',
+    async ({ storedToken, app_key }) => {
       vi.mocked(
         externalProviderRepository.getExternalDataProviderById
       ).mockResolvedValue(
         makeStoredProvider({
           id: SERVER_ID,
           provider_type: 'mcp_server',
-          app_key: 'stored',
+          app_key: storedToken,
+          has_app_key: true,
           base_url: 'https://saved.example',
         })
       );

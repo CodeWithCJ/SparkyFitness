@@ -3299,7 +3299,8 @@
         "unreadable": "Its input schema cannot be read.",
         "too_large": "Its input schema is too large.",
         "contains_token": "Its input schema contains the token.",
-        "name_too_long": "Its name is longer than 128 characters."
+        "name_too_long": "Its name is longer than 128 characters.",
+        "name_blank_or_padded": "Its name is empty or starts or ends with a space."
       },
       "toolGone": "The server no longer lists this tool.",
       "sendUserIdLabel": "Tell the server who is chatting",

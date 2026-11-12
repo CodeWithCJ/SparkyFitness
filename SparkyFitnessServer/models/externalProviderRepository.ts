@@ -520,6 +520,8 @@ async function getExternalDataProviderById(providerId: string) {
       > | null,
       app_id: decryptedAppId,
       app_key: decryptedAppKey,
+      has_app_key:
+        data.encrypted_app_key !== null && data.encrypted_app_key !== undefined,
       token_expires_at: data.token_expires_at,
       external_user_id: data.external_user_id,
       garth_dump: decryptedGarthDump,

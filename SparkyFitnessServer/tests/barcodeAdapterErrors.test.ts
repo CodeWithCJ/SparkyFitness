@@ -46,6 +46,7 @@ const makeProvider = (
   base_url: null,
   sync_frequency: 'manual',
   ...credentials,
+  has_app_key: credentials.app_key !== null,
   token_expires_at: null,
   external_user_id: null,
   garth_dump: null,
