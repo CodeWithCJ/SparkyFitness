@@ -191,6 +191,16 @@ export const recipeImportSyncPreviewSchema = z.object({
   ),
   batchNutrition: recipeImportNutritionSchema,
   nutrition: recipeImportNutritionSchema,
+  nutritionCoverage: z
+    .record(
+      z.string(),
+      z.object({
+        known: z.number().int().nonnegative().max(100),
+        total: z.number().int().positive().max(100),
+      })
+    )
+    .optional(),
+  mealSavedAt: z.iso.datetime().nullable().optional(),
   confirmationFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export type RecipeImportSyncPreview = z.infer<

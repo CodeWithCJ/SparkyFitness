@@ -27,12 +27,100 @@ describe('ingredient recipe calculations', () => {
         },
         nutrition: { calories: 600, protein: null, carbs: 90, fat: 15 },
       })
+        .slice(0, 4)
+        .map(({ nutrient, previous, proposed }) => ({
+          nutrient,
+          previous,
+          proposed,
+        }))
     ).toEqual([
       { nutrient: 'calories', previous: 0, proposed: 600 },
       { nutrient: 'protein', previous: null, proposed: null },
       { nutrient: 'carbs', previous: 12.5, proposed: 90 },
       { nutrient: 'fat', previous: null, proposed: 15 },
     ]);
+  });
+  it('sums known optional nutrition instead of dropping a nutrient when one ingredient is blank', () => {
+    const totals = calculateRecipeNutrition([
+      { quantity: 100, unit: 'g', variant: { ...variant, dietary_fiber: ' ' } },
+      {
+        quantity: 100,
+        unit: 'g',
+        variant: { ...variant, dietary_fiber: 12.5, sodium: 0 },
+      },
+    ]);
+    expect(totals.dietary_fiber).toBe(12.5);
+    expect(totals.sodium).toBe(0);
+    expect(totals.calcium).toBeNull();
+    expect(nutritionPatch(totals, 2)).toMatchObject({
+      fiberContent: '6.25',
+      sodiumContent: '0',
+    });
+  });
+  it('writes known unsaturated-fat components without replacing wholly unknown fields with zero', () => {
+    expect(
+      nutritionPatch({ monounsaturated_fat: 12, polyunsaturated_fat: null }, 4)
+    ).toEqual({ unsaturatedFatContent: '3' });
+    expect(
+      nutritionPatch(
+        { monounsaturated_fat: null, polyunsaturated_fat: null },
+        4
+      )
+    ).toEqual({});
+  });
+  it('shows every supported write, partial value and skipped known nutrient in the same comparison', () => {
+    const preview = {
+      existingNutrition: { fiberContent: '8', sodiumContent: '7 mg' },
+      nutrition: {
+        calories: 100,
+        dietary_fiber: 6.25,
+        sodium: null,
+        monounsaturated_fat: 3,
+        polyunsaturated_fat: null,
+        potassium: 25,
+      },
+      nutritionCoverage: {
+        dietary_fiber: { known: 1, total: 2 },
+        monounsaturated_fat: { known: 2, total: 2 },
+        polyunsaturated_fat: { known: 0, total: 2 },
+      },
+    };
+    const rows = recipeImportSyncComparison(preview);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          nutrient: 'dietary_fiber',
+          previous: 8,
+          proposed: 6.25,
+          status: 'partial',
+          known: 1,
+          total: 2,
+          unit: 'g',
+        }),
+        expect.objectContaining({
+          nutrient: 'sodium',
+          proposed: null,
+          status: 'skipped',
+          reason: 'unknown',
+          previousText: '7 mg',
+          unit: 'mg',
+        }),
+        expect.objectContaining({
+          nutrient: 'unsaturated_fat',
+          proposed: 3,
+          status: 'partial',
+          known: 2,
+          total: 4,
+        }),
+        expect.objectContaining({
+          nutrient: 'potassium',
+          proposed: null,
+          status: 'skipped',
+          reason: 'unsupported',
+        }),
+      ])
+    );
+    expect(rows.filter((row) => row.nutrient !== 'potassium')).toHaveLength(11);
   });
   it('uses the finished weight only for the cooked portion denominator', () => {
     const totals = calculateRecipeNutrition([

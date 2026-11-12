@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import {
   recipeImportSyncComparison,
   type RecipeImportSyncPreview,
+  type RecipeImportSyncRow,
 } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Button } from '@/components/ui/button';
@@ -31,21 +32,38 @@ export default function RecipeImportSyncConfirmation({
   onConfirm: () => void;
   onRefresh: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n?.resolvedLanguage ?? i18n?.language;
   const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
-  const labels = {
+  const labels: Record<string, string> = {
     calories: t('recipeImport.syncEnergy', 'Energy'),
     protein: t('recipeImport.syncProtein', 'Protein'),
     carbs: t('recipeImport.syncCarbs', 'Carbohydrates'),
     fat: t('recipeImport.syncFat', 'Fat'),
+    saturated_fat: t('recipeImport.syncSaturatedFat', 'Saturated fat'),
+    trans_fat: t('recipeImport.syncTransFat', 'Trans fat'),
+    unsaturated_fat: t('recipeImport.syncUnsaturatedFat', 'Unsaturated fat'),
+    cholesterol: t('recipeImport.syncCholesterol', 'Cholesterol'),
+    sodium: t('recipeImport.syncSodium', 'Sodium'),
+    dietary_fiber: t('recipeImport.syncFiber', 'Dietary fiber'),
+    sugars: t('recipeImport.syncSugars', 'Sugars'),
+    potassium: t('recipeImport.syncPotassium', 'Potassium'),
+    vitamin_a: t('recipeImport.syncVitaminA', 'Vitamin A'),
+    vitamin_c: t('recipeImport.syncVitaminC', 'Vitamin C'),
+    calcium: t('recipeImport.syncCalcium', 'Calcium'),
+    iron: t('recipeImport.syncIron', 'Iron'),
+    caffeine_mg: t('recipeImport.syncCaffeine', 'Caffeine'),
+    alcohol_g: t('recipeImport.syncAlcohol', 'Alcohol'),
+    water_ml: t('recipeImport.syncWater', 'Water'),
   };
-  function format(nutrient: keyof typeof labels, value: number | null) {
+  const rows = preview ? recipeImportSyncComparison(preview) : [];
+  function format(row: RecipeImportSyncRow, value: number | null) {
     if (value === null) return '?';
     const shown =
-      nutrient === 'calories'
+      row.nutrient === 'calories'
         ? convertEnergy(value, 'kcal', energyUnit)
         : value;
-    return `${shown.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${nutrient === 'calories' ? getEnergyUnitString(energyUnit) : 'g'}`;
+    return `${shown.toLocaleString(locale, { maximumFractionDigits: 2 })} ${row.nutrient === 'calories' ? getEnergyUnitString(energyUnit) : row.unit}`;
   }
   return (
     <Dialog
@@ -54,7 +72,7 @@ export default function RecipeImportSyncConfirmation({
         if (!open && !busy) onCancel();
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {t('recipeImport.syncReviewTitle', 'Review nutrition sync')}
@@ -72,16 +90,32 @@ export default function RecipeImportSyncConfirmation({
           </p>
         )}
         {preview && !loading && (
-          <div className="space-y-3">
+          <div className="min-h-0 overflow-y-auto space-y-3">
             <p className="font-medium">{preview.recipeName}</p>
             <p className="text-sm">
               {t('recipeImport.syncMeal', 'Saved meal: {{name}}', {
                 name: preview.mealName,
               })}
             </p>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'recipeImport.syncSavedValues',
+                'Check these saved values after correcting a food in your library. Edit and save the meal to refresh its ingredients.'
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {preview.mealSavedAt
+                ? t('recipeImport.syncSavedAt', 'Last saved: {{date}}', {
+                    date: new Date(preview.mealSavedAt).toLocaleString(locale),
+                  })
+                : t(
+                    'recipeImport.syncSavedAtUnknown',
+                    'Last saved time unavailable.'
+                  )}
+            </p>
             <p className="text-sm">
               {t('recipeImport.syncServings', 'Mealie servings: {{servings}}', {
-                servings: preview.recipeServings.toLocaleString(),
+                servings: preview.recipeServings.toLocaleString(locale),
               })}
             </p>
             {preview.sourceChanged && (
@@ -116,21 +150,59 @@ export default function RecipeImportSyncConfirmation({
                 </tr>
               </thead>
               <tbody>
-                {recipeImportSyncComparison(preview).map((row) => (
-                  <tr key={row.nutrient} className="border-t">
-                    <th className="text-left py-2 font-normal">
-                      {labels[row.nutrient]}
-                    </th>
-                    <td className="text-right">
-                      {format(row.nutrient, row.previous)}
-                    </td>
-                    <td className="text-right font-medium">
-                      {format(row.nutrient, row.proposed)}
-                    </td>
-                  </tr>
-                ))}
+                {rows
+                  .filter((row) => row.field !== null)
+                  .map((row) => (
+                    <tr key={row.nutrient} className="border-t">
+                      <th className="text-left py-2 font-normal">
+                        {labels[row.nutrient] ?? row.nutrient}
+                        {row.status === 'partial' && (
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            {t(
+                              'recipeImport.syncPartial',
+                              'Partial: {{known}}/{{total}} values known',
+                              { known: row.known, total: row.total }
+                            )}
+                          </p>
+                        )}
+                        {row.status === 'skipped' && (
+                          <p className="text-xs text-muted-foreground">
+                            {t(
+                              'recipeImport.syncSkippedUnknown',
+                              'Skipped: no known ingredient values.'
+                            )}
+                          </p>
+                        )}
+                      </th>
+                      <td className="text-right">
+                        {row.previousText ?? format(row, row.previous)}
+                      </td>
+                      <td className="text-right font-medium">
+                        {format(row, row.proposed)}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'recipeImport.syncCoverageHelp',
+                'Partial sums include only known ingredient values. Skipped values stay unchanged in Mealie.'
+              )}
+            </p>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {rows
+                .filter((row) => row.reason === 'unsupported')
+                .map((row) => (
+                  <li key={row.nutrient}>
+                    {t(
+                      'recipeImport.syncSkippedUnsupported',
+                      '{{nutrient}} — not supported by Mealie.',
+                      { nutrient: labels[row.nutrient] ?? row.nutrient }
+                    )}
+                  </li>
+                ))}
+            </ul>
           </div>
         )}
         {error && (

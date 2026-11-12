@@ -2,6 +2,7 @@ import '../hooks/queryTestUtils';
 import React from 'react';
 import { Pressable, Text } from 'react-native';
 import RecipeImportSourcePanel from '../../src/components/recipeImport/RecipeImportSourcePanel';
+import RecipeImportSyncConfirmation from '../../src/components/recipeImport/RecipeImportSyncConfirmation';
 import { useEnergyUnit } from '../../src/hooks/useEnergyUnit';
 import { invalidateMealCaches } from '../../src/hooks/useMeals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -123,6 +124,43 @@ async function confirmNutritionSync(screen: ReturnType<typeof render>) {
   );
   fireEvent.press(screen.getByText('Confirm nutrition sync'));
 }
+
+it('shows partial optional writes, skipped reasons and the saved-meal date in native confirmation', () => {
+  const screen = render(
+    <RecipeImportSyncConfirmation
+      preview={
+        {
+          ...mockSyncPreview,
+          nutrition: {
+            ...mockSyncPreview.nutrition,
+            dietary_fiber: 6.25,
+            sodium: null,
+            potassium: 25,
+          },
+          nutritionCoverage: { dietary_fiber: { known: 1, total: 2 } },
+          mealSavedAt: '2026-11-11T17:00:00Z',
+        } as RecipeImportSyncPreview
+      }
+      loading={false}
+      busy={false}
+      error={null}
+      onCancel={jest.fn()}
+      onConfirm={jest.fn()}
+      onRefresh={jest.fn()}
+    />
+  );
+  expect(screen.getByText('Dietary fiber')).toBeTruthy();
+  expect(screen.getByText('6.25 g')).toBeTruthy();
+  expect(screen.getByText('Partial: 1/2 values known')).toBeTruthy();
+  expect(
+    screen.getAllByText('Skipped: no known ingredient values.').length
+  ).toBeGreaterThan(0);
+  expect(screen.getByText('Potassium — not supported by Mealie.')).toBeTruthy();
+  expect(screen.getByText(/Last saved:/).props.children).toContain('2026');
+  expect(
+    screen.getByText(/Check these saved values after correcting a food/)
+  ).toBeTruthy();
+});
 
 it('keeps the original spoon amount readable beside the selected food amount', () => {
   const client = new QueryClient();

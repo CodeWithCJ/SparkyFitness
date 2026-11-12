@@ -4,6 +4,7 @@ import {
   FOOD_VARIANT_NUTRIENT_FIELDS,
   roundMealServingValue,
   recipeImportNutrientNumber as nutrientNumber,
+  recipeImportSyncComparison,
   type RecipeImportNutrition,
 } from '@workspace/shared';
 import type { FoodVariantInput } from '../types/nutrition.js';
@@ -36,13 +37,19 @@ export function missingNutrients(variant: FoodVariantInput): string[] {
     (key) => nutrientNumber(variant[key]) === null
   );
 }
+type RecipeNutritionItem = {
+  quantity: number;
+  unit: string;
+  variant: FoodVariantInput;
+};
 export function calculateRecipeNutrition(
-  items: ReadonlyArray<{
-    quantity: number;
-    unit: string;
-    variant: FoodVariantInput;
-  }>
+  items: ReadonlyArray<RecipeNutritionItem>
 ): RecipeImportNutrition {
+  return calculateRecipeNutritionDetails(items).nutrition;
+}
+export function calculateRecipeNutritionDetails(
+  items: ReadonlyArray<RecipeNutritionItem>
+) {
   if (!items.length)
     throw new RecipeImportError(
       422,
@@ -50,8 +57,12 @@ export function calculateRecipeNutrition(
       'Map every recipe ingredient before saving.'
     );
   const totals: RecipeImportNutrition = Object.fromEntries(
-    RECIPE_NUTRIENTS.map((key) => [key, 0])
+    RECIPE_NUTRIENTS.map((key) => [key, null])
   );
+  const coverage: Record<string, { known: number; total: number }> =
+    Object.fromEntries(
+      RECIPE_NUTRIENTS.map((key) => [key, { known: 0, total: items.length }])
+    );
   for (const item of items) {
     if (!Number.isFinite(item.quantity) || item.quantity <= 0)
       throw new RecipeImportError(
@@ -81,10 +92,10 @@ export function calculateRecipeNutrition(
       );
     for (const key of RECIPE_NUTRIENTS) {
       const n = nutrientNumber(item.variant[key]);
-      totals[key] =
-        n === null || totals[key] === null
-          ? null
-          : totals[key]! + (n * item.quantity * factor) / size;
+      if (n !== null) {
+        totals[key] = (totals[key] ?? 0) + (n * item.quantity * factor) / size;
+        coverage[key]!.known += 1;
+      }
     }
   }
   if (Object.values(totals).some((n) => n !== null && !Number.isFinite(n)))
@@ -93,7 +104,7 @@ export function calculateRecipeNutrition(
       'INCOMPLETE_NUTRITION',
       'Calculated recipe nutrition is outside the supported range.'
     );
-  return totals;
+  return { nutrition: totals, coverage };
 }
 export function mealServingFields(
   servings: number,
@@ -181,34 +192,15 @@ export function nutritionPatch(
   servings: number
 ): Record<string, string> {
   mealServingFields(servings);
-  const fields = {
-    calories: 'calories',
-    protein: 'proteinContent',
-    carbs: 'carbohydrateContent',
-    fat: 'fatContent',
-    saturated_fat: 'saturatedFatContent',
-    trans_fat: 'transFatContent',
-    cholesterol: 'cholesterolContent',
-    sodium: 'sodiumContent',
-    dietary_fiber: 'fiberContent',
-    sugars: 'sugarContent',
-  };
   const result: Record<string, string> = {};
-  for (const [key, remote] of Object.entries(fields)) {
-    const n = totals[key];
-    if (n !== null && n !== undefined)
-      result[remote] = String(Math.round((n / servings) * 1e6) / 1e6);
+  for (const row of recipeImportSyncComparison({
+    existingNutrition: {},
+    nutrition: totals,
+    batchNutrition: totals,
+    recipeServings: servings,
+  })) {
+    if (row.field !== null && row.proposed !== null)
+      result[row.field] = String(row.proposed);
   }
-  const poly = totals.polyunsaturated_fat,
-    mono = totals.monounsaturated_fat;
-  if (
-    poly !== null &&
-    poly !== undefined &&
-    mono !== null &&
-    mono !== undefined
-  )
-    result.unsaturatedFatContent = String(
-      Math.round(((poly + mono) / servings) * 1e6) / 1e6
-    );
   return result;
 }

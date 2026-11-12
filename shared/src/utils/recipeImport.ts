@@ -8,6 +8,79 @@ type Suggestions = RecipeImportSuggestionResponse['ingredients'];
 
 const CORE_NUTRIENTS = ['calories', 'protein', 'carbs', 'fat'] as const;
 
+/** Mealie's writable nutrition fields; apps own the translated labels. */
+export const MEALIE_NUTRITION_FIELDS = [
+  {
+    nutrient: 'calories',
+    field: 'calories',
+    sources: ['calories'],
+    unit: 'kcal',
+  },
+  {
+    nutrient: 'protein',
+    field: 'proteinContent',
+    sources: ['protein'],
+    unit: 'g',
+  },
+  {
+    nutrient: 'carbs',
+    field: 'carbohydrateContent',
+    sources: ['carbs'],
+    unit: 'g',
+  },
+  { nutrient: 'fat', field: 'fatContent', sources: ['fat'], unit: 'g' },
+  {
+    nutrient: 'saturated_fat',
+    field: 'saturatedFatContent',
+    sources: ['saturated_fat'],
+    unit: 'g',
+  },
+  {
+    nutrient: 'trans_fat',
+    field: 'transFatContent',
+    sources: ['trans_fat'],
+    unit: 'g',
+  },
+  {
+    nutrient: 'cholesterol',
+    field: 'cholesterolContent',
+    sources: ['cholesterol'],
+    unit: 'mg',
+  },
+  {
+    nutrient: 'sodium',
+    field: 'sodiumContent',
+    sources: ['sodium'],
+    unit: 'mg',
+  },
+  {
+    nutrient: 'dietary_fiber',
+    field: 'fiberContent',
+    sources: ['dietary_fiber'],
+    unit: 'g',
+  },
+  { nutrient: 'sugars', field: 'sugarContent', sources: ['sugars'], unit: 'g' },
+  {
+    nutrient: 'unsaturated_fat',
+    field: 'unsaturatedFatContent',
+    sources: ['polyunsaturated_fat', 'monounsaturated_fat'],
+    unit: 'g',
+  },
+] as const;
+
+export interface RecipeImportSyncRow {
+  nutrient: string;
+  field: string | null;
+  unit: string;
+  previous: number | null;
+  previousText?: string;
+  proposed: number | null;
+  status: 'complete' | 'partial' | 'skipped';
+  reason: 'unknown' | 'unsupported' | null;
+  known: number;
+  total: number;
+}
+
 /** Empty or invalid provider values remain unknown; a measured zero remains zero. */
 export function recipeImportNutrientNumber(value: unknown): number | null {
   if (
@@ -21,21 +94,84 @@ export function recipeImportNutrientNumber(value: unknown): number | null {
 
 /** Both clients compare the same Mealie fields with the reviewed per-serving totals. */
 export function recipeImportSyncComparison(
-  preview: Pick<RecipeImportSyncPreview, 'existingNutrition' | 'nutrition'>
-) {
-  const fields = {
-    calories: 'calories',
-    protein: 'proteinContent',
-    carbs: 'carbohydrateContent',
-    fat: 'fatContent',
-  } as const;
-  return CORE_NUTRIENTS.map((nutrient) => ({
-    nutrient,
-    previous: recipeImportNutrientNumber(
-      preview.existingNutrition[fields[nutrient]]
-    ),
-    proposed: recipeImportNutrientNumber(preview.nutrition[nutrient]),
-  }));
+  preview: Pick<RecipeImportSyncPreview, 'existingNutrition' | 'nutrition'> &
+    Partial<
+      Pick<
+        RecipeImportSyncPreview,
+        'batchNutrition' | 'recipeServings' | 'nutritionCoverage'
+      >
+    >
+): RecipeImportSyncRow[] {
+  const rows: RecipeImportSyncRow[] = MEALIE_NUTRITION_FIELDS.map(
+    ({ nutrient, field, sources, unit }) => {
+      // Prefer the batch so combined values round exactly like the actual PATCH.
+      const useBatch =
+        !!preview.batchNutrition &&
+        !!preview.recipeServings &&
+        sources.some((key) => Object.hasOwn(preview.batchNutrition!, key));
+      const nutrition = useBatch ? preview.batchNutrition! : preview.nutrition;
+      const values = sources.map((key) =>
+        recipeImportNutrientNumber(nutrition[key])
+      );
+      const known = sources.reduce(
+        (sum, key, index) =>
+          sum +
+          (preview.nutritionCoverage?.[key]?.known ??
+            (values[index] !== null ? 1 : 0)),
+        0
+      );
+      const total = sources.reduce(
+        (sum, key) => sum + (preview.nutritionCoverage?.[key]?.total ?? 1),
+        0
+      );
+      const proposed = values.every((value) => value === null)
+        ? null
+        : Math.round(
+            (values.reduce<number>((sum, value) => sum + (value ?? 0), 0) /
+              (useBatch ? preview.recipeServings! : 1)) *
+              1e6
+          ) / 1e6;
+      const raw = preview.existingNutrition[field];
+      const previous = recipeImportNutrientNumber(raw);
+      return {
+        nutrient,
+        field,
+        unit,
+        previous,
+        proposed,
+        known,
+        total,
+        ...(previous === null && typeof raw === 'string' && raw.trim()
+          ? { previousText: raw }
+          : {}),
+        status:
+          proposed === null
+            ? 'skipped'
+            : known < total
+              ? 'partial'
+              : 'complete',
+        reason: proposed === null ? 'unknown' : null,
+      };
+    }
+  );
+  const supported = new Set<string>(
+    MEALIE_NUTRITION_FIELDS.flatMap((row) => [...row.sources])
+  );
+  for (const [nutrient, value] of Object.entries(preview.nutrition)) {
+    if (!supported.has(nutrient) && recipeImportNutrientNumber(value) !== null)
+      rows.push({
+        nutrient,
+        field: null,
+        unit: '',
+        previous: null,
+        proposed: null,
+        status: 'skipped',
+        reason: 'unsupported',
+        known: 0,
+        total: 0,
+      });
+  }
+  return rows;
 }
 
 /** Current selected nutrition takes precedence over gaps from an older preview. */

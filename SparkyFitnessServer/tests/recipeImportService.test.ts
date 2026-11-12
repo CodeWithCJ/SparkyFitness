@@ -1408,6 +1408,62 @@ describe('explicit safe nutrition sync', () => {
       expect(m.markSynced).not.toHaveBeenCalled();
     }
   );
+  it('previews and syncs known partial fiber with saved-meal provenance', async () => {
+    m.meal.mockResolvedValue({
+      user_id: 'u',
+      name: 'Test and almonds',
+      updated_at: new Date('2026-11-11T17:00:00Z'),
+      foods: [
+        { ...foods[0], quantity: 100, dietary_fiber: null },
+        { ...foods[0], quantity: 100, dietary_fiber: 12.5 },
+      ],
+    });
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    expect(preview).toMatchObject({
+      mealSavedAt: '2026-11-11T17:00:00.000Z',
+      batchNutrition: { dietary_fiber: 12.5, sodium: null },
+      nutrition: { dietary_fiber: 3.125 },
+      nutritionCoverage: {
+        dietary_fiber: { known: 1, total: 2 },
+        sodium: { known: 0, total: 2 },
+      },
+    });
+    m.patch.mockImplementation(async (_slug, patch, nutrition) => ({
+      ...recipe,
+      nutrition: { ...nutrition, ...patch },
+    }));
+    await service.syncNutrition('u', 'u', 'meal', {
+      confirmationFingerprint: preview.confirmationFingerprint,
+    });
+    expect(m.patch).toHaveBeenCalledWith(
+      'rice',
+      expect.objectContaining({ fiberContent: '3.125' }),
+      {}
+    );
+  });
+  it('requires a new confirmation if optional coverage changes even when the known total does not', async () => {
+    const first = {
+      user_id: 'u',
+      foods: [
+        { ...foods[0], quantity: 100, dietary_fiber: null },
+        { ...foods[0], quantity: 100, dietary_fiber: 12.5 },
+      ],
+    };
+    m.meal.mockResolvedValue(first);
+    const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    m.meal.mockResolvedValue({
+      ...first,
+      foods: first.foods.map((food, i) =>
+        i ? food : { ...food, dietary_fiber: 0 }
+      ),
+    });
+    await expect(
+      service.syncNutrition('u', 'u', 'meal', {
+        confirmationFingerprint: preview.confirmationFingerprint,
+      })
+    ).rejects.toMatchObject({ code: 'SYNC_PREVIEW_CHANGED' });
+    expect(m.patch).not.toHaveBeenCalled();
+  });
   it('can sync complete reviewed saved nutrition despite unknown original quantities', async () => {
     const source = await m.source();
     m.source.mockResolvedValue({ ...source, syncEligible: false });

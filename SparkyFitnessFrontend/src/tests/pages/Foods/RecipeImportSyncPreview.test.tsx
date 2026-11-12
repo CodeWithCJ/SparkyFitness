@@ -93,6 +93,38 @@ function mount() {
   };
 }
 
+it('shows optional writes, partial coverage, skipped reasons and the saved-meal date before confirmation', async () => {
+  jest.mocked(api.previewRecipeNutritionSync).mockResolvedValueOnce({
+    ...mockPreview,
+    nutrition: {
+      ...mockPreview.nutrition,
+      dietary_fiber: 6.25,
+      sodium: null,
+      potassium: 25,
+    },
+    nutritionCoverage: { dietary_fiber: { known: 1, total: 2 } },
+    mealSavedAt: '2026-11-11T17:00:00Z',
+  } as RecipeImportSyncPreview);
+  mount();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
+  );
+  expect(await screen.findByText('Dietary fiber')).toBeInTheDocument();
+  expect(screen.getByText('6.25 g')).toBeInTheDocument();
+  expect(screen.getByText('Partial: 1/2 values known')).toBeInTheDocument();
+  expect(
+    screen.getAllByText('Skipped: no known ingredient values.').length
+  ).toBeGreaterThan(0);
+  expect(
+    screen.getByText('Potassium — not supported by Mealie.')
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Last saved:/)).toHaveTextContent('2026');
+  expect(
+    screen.getByText(/Check these saved values after correcting a food/)
+  ).toBeInTheDocument();
+  expect(api.syncRecipeNutrition).not.toHaveBeenCalled();
+});
+
 it('reviews the changed source and current nutrition, then cancels without any write', async () => {
   mount();
   fireEvent.click(

@@ -41,6 +41,7 @@ import {
 import {
   RecipeImportError,
   calculateRecipeNutrition,
+  calculateRecipeNutritionDetails,
   mealServingFields,
   recipeFingerprint,
   selectCandidateIds,
@@ -542,7 +543,7 @@ function currentMealNutrition(meal: unknown, userId: string) {
       'Choose a saved meal owned by your account.'
     );
   const foods = Array.isArray(record.foods) ? record.foods : [];
-  const totals = calculateRecipeNutrition(
+  const { nutrition: totals, coverage } = calculateRecipeNutritionDetails(
     foods.map((value: unknown) => {
       if (!value || typeof value !== 'object')
         throw new RecipeImportError(
@@ -576,7 +577,7 @@ function currentMealNutrition(meal: unknown, userId: string) {
       return { quantity: Number(row.quantity), unit: row.unit, variant: row };
     })
   );
-  return { record, totals };
+  return { record, totals, coverage };
 }
 async function getSource(
   userId: string,
@@ -650,7 +651,7 @@ async function prepareNutritionSync(
     readRecipe(client, source.recipeSlug),
     mealRepository.getMealById(mealId, userId) as Promise<unknown>,
   ]);
-  const { record, totals } = currentMealNutrition(meal, userId);
+  const { record, totals, coverage } = currentMealNutrition(meal, userId);
   const servings = positiveSource(recipe.recipeServings);
   if (!servings)
     throw new RecipeImportError(
@@ -664,6 +665,17 @@ async function prepareNutritionSync(
       baseline.nutritionFingerprint !== source.syncBaseline.nutritionFingerprint
     : recipeFingerprint(recipe) !== source.sourceFingerprint;
   const patch = nutritionPatch(totals, servings);
+  const savedAt = record.updated_at ?? record.created_at;
+  const savedDate =
+    savedAt instanceof Date
+      ? savedAt
+      : typeof savedAt === 'string'
+        ? new Date(savedAt)
+        : null;
+  const mealSavedAt =
+    savedDate && Number.isFinite(savedDate.getTime())
+      ? savedDate.toISOString()
+      : null;
   const preview: RecipeImportSyncPreview = {
     mealId,
     mealName:
@@ -676,6 +688,8 @@ async function prepareNutritionSync(
     sourceChanged,
     existingNutrition: recipe.nutrition ?? {},
     batchNutrition: totals,
+    nutritionCoverage: coverage,
+    mealSavedAt,
     nutrition: Object.fromEntries(
       Object.entries(totals).map(([key, value]) => [
         key,
@@ -688,6 +702,8 @@ async function prepareNutritionSync(
       mealName: record.name ?? null,
       servings,
       patch,
+      coverage,
+      mealSavedAt,
     }),
   };
   return { source, client, recipe, preview, patch, meal };
