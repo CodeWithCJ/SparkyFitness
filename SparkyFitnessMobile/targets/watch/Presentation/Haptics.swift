@@ -22,6 +22,12 @@ enum Haptics {
         play(.success)
     }
 
+    /// One of the last seconds of a rest or hold countdown. The cue at zero is
+    /// the rest-finished buzz, which plays a different haptic.
+    static func countdownTick() {
+        play(.click)
+    }
+
     /// A check-in was saved and sent.
     static func saved() {
         play(.success)

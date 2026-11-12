@@ -128,6 +128,12 @@ final class WorkoutSessionStore: ObservableObject {
     /// zero: they are looking at the watch and already know.
     var onRestFinished: (() -> Void)?
 
+    /// Seconds of audible countdown to play before a rest or hold ends, read
+    /// each time one starts so a change on the phone applies to the next one.
+    /// `onCountdownTick` plays one cue; the cue at zero is `onRestFinished`.
+    var countdownSeconds: () -> Int = { 0 }
+    var onCountdownTick: (() -> Void)?
+
     /// Called when the phone confirms a set logged on this watch is a
     /// personal record. Once per set.
     var onPersonalRecord: (() -> Void)?
@@ -146,6 +152,8 @@ final class WorkoutSessionStore: ObservableObject {
     private var elapsedTimer: Timer?
     private var restTimer: Timer?
     private var holdTimer: Timer?
+    private let restCues = CountdownCues()
+    private let holdCues = CountdownCues()
     private var holdBuzzed = false
     /// The running timer was started on the phone. If the phone stops it
     /// without logging the set, this one stops too.
@@ -371,6 +379,7 @@ final class WorkoutSessionStore: ObservableObject {
             restPausedRemaining = max(0, restEndsAt.timeIntervalSinceNow)
             restTimer?.invalidate()
             restTimer = nil
+            restCues.cancel()
         case .ready:
             stopRestTimer()
         }
@@ -1094,6 +1103,7 @@ final class WorkoutSessionStore: ObservableObject {
         }
         restEndsAt = newEndsAt
         restDurationSeconds = max(1, restDurationSeconds + delta)
+        scheduleRestCues(endsAt: newEndsAt)
         onRestChangedHere?(endsAt, newEndsAt)
     }
 
@@ -1481,6 +1491,7 @@ final class WorkoutSessionStore: ObservableObject {
         restPausedRemaining = nil
         restEndsAt = endsAt
         restDurationSeconds = max(1, durationSeconds)
+        scheduleRestCues(endsAt: endsAt)
         restTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let endsAt = self.restEndsAt else { return }
@@ -1495,9 +1506,16 @@ final class WorkoutSessionStore: ObservableObject {
         }
     }
 
+    private func scheduleRestCues(endsAt: Date) {
+        restCues.schedule(endsAt: endsAt, seconds: countdownSeconds()) { [weak self] in
+            self?.onCountdownTick?()
+        }
+    }
+
     private func stopRestTimer() {
         restTimer?.invalidate()
         restTimer = nil
+        restCues.cancel()
         restEndsAt = nil
         restDurationSeconds = 0
         restPausedRemaining = nil
@@ -1505,6 +1523,11 @@ final class WorkoutSessionStore: ObservableObject {
 
     private func startHoldTimer() {
         holdTimer?.invalidate()
+        if let endsAt = holdEndsAt {
+            holdCues.schedule(endsAt: endsAt, seconds: countdownSeconds()) { [weak self] in
+                self?.onCountdownTick?()
+            }
+        }
         holdTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let endsAt = self.holdEndsAt else { return }
@@ -1525,6 +1548,7 @@ final class WorkoutSessionStore: ObservableObject {
     private func stopHoldTimer() {
         holdTimer?.invalidate()
         holdTimer = nil
+        holdCues.cancel()
     }
 
     private func clearHold() {
