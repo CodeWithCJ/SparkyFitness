@@ -1,7 +1,8 @@
 import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { WebHideableTabId } from '@workspace/shared';
+import { WEB_TABS_PAGE_KEY, type WebHideableTabId } from '@workspace/shared';
+import { dashboardLayoutKeys } from '@/api/keys/dashboardLayouts';
 import {
   useHiddenWebTabs,
   useSetWebTabHidden,
@@ -35,10 +36,11 @@ function setup() {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return renderHook(
+  const rendered = renderHook(
     () => ({ read: useHiddenWebTabs(), write: useSetWebTabHidden() }),
     { wrapper }
   );
+  return { ...rendered, client };
 }
 
 const hiddenOf = (result: {
@@ -198,6 +200,45 @@ describe('useHiddenWebTabs', () => {
 
     await act(async () => second.resolve(['labs', 'goals']));
     await waitFor(() => expect(hiddenOf(result)).toEqual(['goals', 'labs']));
+  });
+
+  it('keeps the list as the server saved it', async () => {
+    getMock.mockResolvedValue(['labs']);
+    saveMock.mockResolvedValue(['goals', 'labs']);
+    const { result, client } = setup();
+    await waitFor(() => expect(hiddenOf(result)).toEqual(['labs']));
+
+    act(() => result.current.write.setTabHidden('goals', true));
+
+    await waitFor(() =>
+      expect(
+        client.getQueryData(dashboardLayoutKeys.byPage(WEB_TABS_PAGE_KEY))
+      ).toEqual(['goals', 'labs'])
+    );
+    expect(saveMock).toHaveBeenCalledWith(['labs', 'goals']);
+  });
+
+  it("does not write a save's answer once another account has taken over", async () => {
+    getMock.mockResolvedValueOnce(['labs']).mockResolvedValueOnce([]);
+    const save = deferred<WebHideableTabId[]>();
+    saveMock.mockImplementationOnce(() => save.promise);
+    const { result, rerender, client } = setup();
+    await waitFor(() => expect(hiddenOf(result)).toEqual(['labs']));
+
+    act(() => result.current.write.setTabHidden('goals', true));
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(1));
+
+    // useAuth clears the cache for the new account, and the tab bar then
+    // reads that account's own list.
+    act(() => client.clear());
+    rerender();
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.read.editState).toBe('ready'));
+
+    // The previous account's save answers after the switch.
+    await act(async () => save.resolve(['labs', 'goals']));
+    await settle();
+    expect(hiddenOf(result)).toEqual([]);
   });
 
   it('goes back to the saved list when a save fails', async () => {
