@@ -27,7 +27,7 @@ import WhatsNewBanner, {
 } from './WhatsNewBanner';
 import { AnnouncementModal } from './AnnouncementModal';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-import { useVerticalBar } from '../hooks/useVerticalBar';
+import { useConfirmedVerticalBar } from '../hooks/useVerticalBar';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useTranslation } from 'react-i18next';
 
@@ -287,10 +287,11 @@ export function NativeTabsLayout({
   );
   const inactiveTintColor = resolveColor(tabInactive, '#8E8E93');
   const whatsNewState = useWhatsNewBannerState();
-  // Hide the Add tab only while the system shows a vertical bar, where the
-  // native detached Add button replaces it. Side insets alone also occur on a
-  // notched iPhone in landscape, which keeps a horizontal bar and the Add tab.
-  const hasSideBar = useVerticalBar();
+  // Hide the Add tab only on a confirmed vertical bar, where the native
+  // detached Add button replaces it. Not on side insets (a notched iPhone has
+  // them with a horizontal bar) and not on a guess: until the system has said so
+  // the tab stays, so there is never a moment with no Add control at all.
+  const hasSideBar = useConfirmedVerticalBar();
 
   return (
     <NativeTabsOverlayContext.Provider value={whatsNewState}>

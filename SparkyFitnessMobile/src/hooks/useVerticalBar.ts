@@ -25,7 +25,7 @@ function osSupportsVerticalBars(): boolean {
  * the native module, side insets stand in for it, but only on an OS that has
  * vertical bars at all: older iOS and other platforms are always `false`.
  */
-export function useVerticalBar(): boolean {
+function useVerticalBarState(): { guess: boolean; confirmed: boolean | null } {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const supported = osSupportsVerticalBars();
@@ -52,7 +52,27 @@ export function useVerticalBar(): boolean {
     };
   }, [supported, insets.left, insets.right, width, height]);
 
-  if (!supported) return false;
-  if (SideBarMetricsModule == null) return insetGuess;
-  return measured ?? insetGuess;
+  if (!supported) return { guess: false, confirmed: false };
+  if (SideBarMetricsModule == null)
+    return { guess: insetGuess, confirmed: null };
+  return { guess: measured ?? insetGuess, confirmed: measured };
+}
+
+/**
+ * Best current answer, for layout that is cheap to correct a moment later
+ * (spacing, rails, button placement): the native reading once there is one,
+ * the side-inset guess until then.
+ */
+export function useVerticalBar(): boolean {
+  return useVerticalBarState().guess;
+}
+
+/**
+ * Only a confirmed native reading counts, never the inset guess. Use it for
+ * anything that removes a control: while the system has not said (module
+ * missing, trait unreadable, first reading still pending) this is `false`, so
+ * the control stays visible.
+ */
+export function useConfirmedVerticalBar(): boolean {
+  return useVerticalBarState().confirmed === true;
 }

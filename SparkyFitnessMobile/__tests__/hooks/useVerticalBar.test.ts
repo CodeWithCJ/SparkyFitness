@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { Platform } from 'react-native';
-import { useVerticalBar } from '../../src/hooks/useVerticalBar';
+import {
+  useConfirmedVerticalBar,
+  useVerticalBar,
+} from '../../src/hooks/useVerticalBar';
 
 let mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 let mockNative: { verticalBarEdge: jest.Mock } | null = null;
@@ -140,5 +143,64 @@ describe('useVerticalBar', () => {
     await flush();
     // The inset guess stands in until a reading succeeds.
     expect(result.current).toBe(true);
+  });
+
+  describe('useConfirmedVerticalBar', () => {
+    it('is false while the first reading is pending, even with side insets', () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('trailing') };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      expect(result.current).toBe(false);
+    });
+
+    it('is true once the system reports a vertical bar edge', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('trailing') };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(true);
+    });
+
+    it('is false when the native module is missing, even with side insets', () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = null;
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      expect(result.current).toBe(false);
+    });
+
+    it('is false when the trait cannot be read', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('unknown') };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(false);
+    });
+
+    it('is false when a reading fails', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = {
+        verticalBarEdge: jest.fn().mockRejectedValue(new Error('x')),
+      };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(false);
+    });
+
+    it('is false for a notched iPhone whose reading is none', async () => {
+      mockInsets = { top: 0, bottom: 21, left: 59, right: 59 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('none') };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(false);
+    });
+
+    it('is false on iOS before 27.1', async () => {
+      setVersion('26.4');
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('trailing') };
+      const { result } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(false);
+    });
   });
 });
