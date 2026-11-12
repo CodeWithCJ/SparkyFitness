@@ -26,6 +26,7 @@ import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
   MAX_GOAL_MODE_PERCENTAGE,
@@ -829,10 +830,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">
-                  {t('calorieSettings.adaptiveFallbackWithUnit', {
+                  {t('calorieSettings.adaptiveEstimateRangeWithUnit', {
                     defaultValue:
-                      'The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±{{amount}} {{unit}} of BMR × this multiplier.',
-                    amount: roundedEnergy(500, normalized.energyUnit),
+                      'Activity Level sets the starting estimate and the ±{{amount}} {{unit}} plausibility range around BMR × this multiplier. Estimates can take several weeks to settle; weight fluctuations and incomplete food logs add uncertainty.',
+                    amount: roundedEnergy(
+                      ADAPTIVE_TDEE_CLAMP_KCAL,
+                      normalized.energyUnit
+                    ),
                     unit: energyUnitLabel(normalized.energyUnit, t),
                   })}
                 </Text>

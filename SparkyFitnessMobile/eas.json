@@ -50,7 +50,7 @@
     },
     "wearos": {
       "android": {
-        "track": "wear:alpha"
+        "track": "wear:WearAlpha"
       }
     }
   }

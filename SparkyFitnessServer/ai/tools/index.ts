@@ -7,6 +7,8 @@ import {
   type ChatToolCategorySlug,
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { withFixedActor } from '../../db/poolManager.js';
+import { ERRORS, isPermissionDenied } from './errors.js';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
@@ -61,11 +63,16 @@ type ToolMap = Record<string, Tool>;
 // lands on whatever ends up last (see applyChatProviderTuning), and
 // tests/chatbotToolsIndex.test.ts pins the full/core surfaces against it.
 /**
- * Per-turn context a builder may use. Only the vision category needs it today
- * (it hands the structured photo estimate to the turn so it can be persisted
- * and logged verbatim); every other builder ignores the argument.
+ * Per-turn context for one chat turn. Chat passes one on every turn; MCP and
+ * tests build without it, and then the tools act for the person they were
+ * built for. Each builder reads only the fields it needs.
  */
 export interface ToolBuildContext {
+  /**
+   * The signed-in person. Every chat tool acts as them in the database, even
+   * in a family member's account.
+   */
+  actorUserId: string;
   /** Trusted text from the current user turn, used to authorize lasting memory. */
   latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
@@ -236,6 +243,53 @@ function stripNullValues(value: unknown): unknown {
   return value;
 }
 
+// Tools for things that only work in your own account: run programs and
+// fitness tests (their routes refuse a switched user), the Compare report
+// (likewise), Sparky's saved food preferences and tasks, which belong to the
+// signed-in person, and the profile and settings, which the web hides after a
+// switch. In a family member's account they say so, instead of failing on
+// row-level security or reporting the data as empty.
+const OWN_ACCOUNT_ONLY_TOOLS = new Set([
+  'sparky_manage_profile',
+  'sparky_manage_run_program',
+  'sparky_compare_metrics',
+  'sparky_food_assistant_state',
+]);
+
+// Chat can work in a family member's account, so every tool runs with the
+// signed-in person fixed as the actor. Each tool is replaced rather than edited
+// so a tool object shared between builds never keeps another person's actor.
+function fixChatToolActor(
+  tools: ToolMap,
+  actorUserId: string,
+  accountUserId: string
+): void {
+  const inFamilyAccount = actorUserId !== accountUserId;
+  for (const [name, t] of Object.entries(tools)) {
+    const { execute } = t;
+    if (!execute) continue;
+    tools[name] = {
+      ...t,
+      execute:
+        inFamilyAccount && OWN_ACCOUNT_ONLY_TOOLS.has(name)
+          ? async () =>
+              ERRORS.FORBIDDEN(
+                "This only works in the user's own account, not in a family member's."
+              )
+          : async (...args: Parameters<typeof execute>) => {
+              try {
+                return await withFixedActor(actorUserId, () =>
+                  execute(...args)
+                );
+              } catch (error) {
+                if (isPermissionDenied(error)) return ERRORS.NOT_ALLOWED();
+                throw error;
+              }
+            },
+    };
+  }
+}
+
 // Applies chat-provider tuning that only matters when the tools are sent to an
 // LLM provider through the AI SDK. The MCP surface skips this — MCP publishes
 // the schemas over JSON-RPC where strict-mode flags and Anthropic cache
@@ -300,9 +354,11 @@ const toolCache = new Map<string, { tools: ToolMap; expiresAt: number }>();
 
 /**
  * Composes the in-process chatbot tool set for generateText/streamText.
- * Handlers close over the authenticated userId — chat tools always act as the
- * session user, so two-actor services receive (userId, userId, …) — and the
- * user's IANA timezone, used for "today" defaults and day bucketing.
+ * Handlers close over `userId`, the account being worked in, and its IANA
+ * timezone, used for "today" defaults and day bucketing. Chat tools act as
+ * `ctx.actorUserId` in the database (see fixChatToolActor), so in a family
+ * member's account their Family Access grant applies; services that record who
+ * made an entry get that person via actorUserIdFor.
  *
  * `providerTuning` (default true) applies the chat/AI-SDK provider settings
  * (strict off, Anthropic cache breakpoint). The MCP adapter passes false to
@@ -352,6 +408,7 @@ export function buildChatbotTools(
   }
   if (providerTuning) {
     applyChatProviderTuning(tools);
+    fixChatToolActor(tools, ctx?.actorUserId ?? userId, userId);
   }
 
   if (!cacheable) return tools;
@@ -414,6 +471,7 @@ export function buildChatToolSurface(
   // active, so the marker is always sent regardless of per-request narrowing.
   Object.assign(tools, buildMetaTools());
   applyChatProviderTuning(tools);
+  fixChatToolActor(tools, ctx?.actorUserId ?? userId, userId);
 
   const surface: ChatToolSurface = { tools, toolNamesByCategory };
   if (!cacheable) return surface;

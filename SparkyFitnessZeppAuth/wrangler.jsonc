@@ -1,0 +1,9 @@
+{
+  "name": "sparkyfitness-zepp-auth",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "zepp-auth.sparkyfitness.com", "custom_domain": true },
+  ],
+}

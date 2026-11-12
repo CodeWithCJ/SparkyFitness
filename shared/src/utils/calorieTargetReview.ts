@@ -11,14 +11,14 @@ import { ENERGY_DENSITY_KCAL_PER_KG } from '../constants/calorieConstants.ts';
 export interface CalorieTargetReviewInput {
   /** Estimated maintenance calories (adaptive TDEE). */
   maintenanceKcal: number;
-  /** False while the estimate is a fallback or has too little history. */
+  /** False while the estimate's contributing history is not eligible for advice. */
   maintenanceReliable: boolean;
-  /** Days with food logged inside the estimate's window. */
+  /** Contributing food dates within the estimate's matching observation span. */
   daysLogged: number;
   windowDays: number;
-  /** Average logged intake over the logged days. */
+  /** Intake used by the estimate; matched evidence uses a regression-weighted mean. */
   averageIntakeKcal: number | null;
-  /** Smoothed weight change over the window, kg per day (negative is loss). */
+  /** Observed fitted weight rate, kg per day (negative is loss). */
   dailyWeightChangeKg: number | null;
   /** The saved calorie goal, when there is one. */
   currentTargetKcal: number | null;
@@ -46,7 +46,7 @@ export interface CalorieTargetReview {
   /** Weekly change the weight trend actually shows. */
   observedKgPerWeek: number | null;
   averageIntakeKcal: number | null;
-  /** Average intake as a percent of the target. */
+  /** Intake used by the estimate as a percent of the current target. */
   adherencePercent: number | null;
   /** Intake within 10% of the target; null without both. */
   followedTarget: boolean | null;

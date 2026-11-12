@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dbContextStorage, getClient } from '../db/poolManager.js';
+import {
+  actorUserIdFor,
+  dbContextStorage,
+  getClient,
+  signedInUserIdOr,
+  withFixedActor,
+} from '../db/poolManager.js';
 
 const { client, connect } = vi.hoisted(() => {
   const client = { query: vi.fn(), release: vi.fn() };
@@ -57,6 +63,52 @@ describe('getClient', () => {
       expect(client.release).not.toHaveBeenCalled();
     }
   );
+
+  it('ignores an explicit actor inside withFixedActor', async () => {
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      withFixedActor('delegate', () => getClient('owner', 'owner'))
+    );
+
+    expect(client.query).toHaveBeenCalledExactlyOnceWith(
+      'SELECT public.set_app_context($1, $2)',
+      ['owner', 'delegate']
+    );
+  });
+
+  it('fixes the actor in withFixedActor outside a request too', async () => {
+    await withFixedActor('delegate', () => getClient('owner', 'owner'));
+
+    expect(client.query).toHaveBeenCalledExactlyOnceWith(
+      'SELECT public.set_app_context($1, $2)',
+      ['owner', 'delegate']
+    );
+  });
+
+  it('names the fixed actor as the one acting inside withFixedActor', () => {
+    expect(withFixedActor('delegate', () => actorUserIdFor('owner'))).toBe(
+      'delegate'
+    );
+  });
+
+  it('names the account itself as the one acting otherwise', async () => {
+    expect(actorUserIdFor('owner')).toBe('owner');
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      expect(actorUserIdFor('owner')).toBe('owner')
+    );
+  });
+
+  it('names the signed-in person of a request, also after a switch', async () => {
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      expect(signedInUserIdOr('owner')).toBe('delegate')
+    );
+    expect(withFixedActor('delegate', () => signedInUserIdOr('owner'))).toBe(
+      'delegate'
+    );
+  });
+
+  it('falls back to the given user outside a request', () => {
+    expect(signedInUserIdOr('owner')).toBe('owner');
+  });
 
   it('does not borrow a client without a user ID', async () => {
     await expect(getClient(null)).rejects.toThrow('userId is required');

@@ -1,6 +1,8 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import CalorieCyclingCard from '../../src/components/CalorieCyclingCard';
+import CalorieCyclingCard, {
+  percentSignFirst,
+} from '../../src/components/CalorieCyclingCard';
 
 type Props = React.ComponentProps<typeof CalorieCyclingCard>;
 
@@ -156,5 +158,26 @@ describe('CalorieCyclingCard at the safety floor', () => {
     );
     expect(getByTestId('calorie-cycling-chart')).toBeTruthy();
     expect(queryByTestId('calorie-cycling-week-total')).toBeNull();
+  });
+});
+
+describe('percentSignFirst', () => {
+  // Hermes on iOS has no Intl.NumberFormat#formatToParts; rendering the
+  // percent field must not depend on it.
+  const proto = Intl.NumberFormat.prototype as unknown as Record<
+    string,
+    unknown
+  >;
+  const original = proto.formatToParts;
+  beforeAll(() => {
+    delete proto.formatToParts;
+  });
+  afterAll(() => {
+    proto.formatToParts = original;
+  });
+
+  it('works without formatToParts', () => {
+    expect(percentSignFirst('en')).toBe(false);
+    expect(percentSignFirst('tr')).toBe(true);
   });
 });

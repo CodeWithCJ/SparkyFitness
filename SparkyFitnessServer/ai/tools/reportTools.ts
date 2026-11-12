@@ -17,6 +17,7 @@ import {
   dailyReportSchema,
   type ManageReportInput,
 } from './schemas/report.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 async function getWeeklyReport(
   userId: string,
@@ -29,7 +30,10 @@ async function getWeeklyReport(
   const nutrition = await getNutritionalSummaryRows(userId, start, end);
   const water = await getWaterHistoryRows(userId, start, end);
   const bio = await getBiometricsHistoryRows(userId, start, end);
-  const prefs = await preferenceService.getUserPreferences(userId, userId);
+  const prefs = await preferenceService.getUserPreferences(
+    actorUserIdFor(userId),
+    userId
+  );
   const energyUnit = (prefs?.energy_unit as string) || 'kcal';
 
   let report = `# Weekly Performance Report (${start} to ${end})\n\n`;
@@ -110,7 +114,7 @@ async function getDailyReport(
     endDate
   );
   const preferences = await preferenceService.getUserPreferences(
-    userId,
+    actorUserIdFor(userId),
     userId
   );
   const energyUnit =

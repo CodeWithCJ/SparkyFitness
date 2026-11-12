@@ -14,6 +14,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 import { addLog } from './LogService';
+import { getActiveServerConfig } from './storage';
 import {
   flushPendingMedicationNotificationActions,
   syncSnoozedMedicationReminders,
@@ -126,6 +127,10 @@ export async function reconcileMedicationReminders(
   schedulingLock.add('medication-reminders');
 
   try {
+    // Each reminder is stamped with the server it was made for, so the iOS
+    // native handler logs a button press only against that same server.
+    const activeServerId =
+      (await getActiveServerConfig().catch(() => null))?.id ?? null;
     const flushedAny = await flushPendingMedicationNotificationActions();
     if (flushedAny) {
       try {
@@ -522,6 +527,7 @@ export async function reconcileMedicationReminders(
         ...(doses[0].medication.user_id
           ? { userId: doses[0].medication.user_id }
           : {}),
+        ...(activeServerId ? { serverId: activeServerId } : {}),
         entryDate: date,
         key: baseKey,
         baseKey,

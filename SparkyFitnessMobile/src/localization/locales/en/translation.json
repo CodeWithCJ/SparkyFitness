@@ -311,7 +311,8 @@
       "fasting": "Fasting",
       "hydration": "Hydration reminders",
       "moodCheckin": "Mood check-ins",
-      "oralCare": "Brushing reminders"
+      "oralCare": "Brushing reminders",
+      "mindfulness": "Meditation timer"
     },
     "moodCheckin": {
       "title": "How are you feeling?",
@@ -362,6 +363,10 @@
     "brushingTimer": {
       "title": "Brushing done",
       "body": "Open SparkyFitness to save the brush."
+    },
+    "meditationTimer": {
+      "title": "Meditation complete",
+      "body": "Open SparkyFitness to save your session."
     }
   },
   "activeWorkout": {
@@ -1147,7 +1152,7 @@
     "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
     "activityLevel": "Activity Level",
     "activityBaseline": "Used as a baseline for TDEE.",
-    "adaptiveFallbackWithUnit": "The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±{{amount}} {{unit}} of BMR × this multiplier.",
+    "adaptiveEstimateRangeWithUnit": "Activity Level sets the starting estimate and the ±{{amount}} {{unit}} plausibility range around BMR × this multiplier. Estimates can take several weeks to settle; weight fluctuations and incomplete food logs add uncertainty.",
     "allowNegative": "Allow Lower Fallback Projection",
     "negativeDescription": "When a device total is unavailable, let the BMR + active calories fallback lower your target.",
     "includeResting": "Include Resting Calories",
@@ -2922,6 +2927,17 @@
     },
     "label": {
       "analyzing": "Analyzing label...",
+      "cropHelp": "Drag the corners to frame the nutrition label.",
+      "cropPhoto": "Nutrition label photo",
+      "cropMove": "Move label crop",
+      "cropTopLeft": "Top left crop handle",
+      "cropTopRight": "Top right crop handle",
+      "cropBottomLeft": "Bottom left crop handle",
+      "cropBottomRight": "Bottom right crop handle",
+      "cropLeft": "Move left",
+      "cropRight": "Move right",
+      "cropUp": "Move up",
+      "cropDown": "Move down",
       "retake": "Retake",
       "usePhoto": "Use Photo"
     },

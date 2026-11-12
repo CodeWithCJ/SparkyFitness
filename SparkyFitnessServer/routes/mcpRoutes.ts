@@ -123,9 +123,9 @@ function stripNulls(val: unknown): unknown {
 /**
  * Stateless StreamableHTTP MCP endpoint; auth has already run by here.
  *
- * Scope to authenticatedUserId (the logged-in actor) to match the in-process
- * chat path — not req.userId/activeUserId, which would honor a delegation
- * cookie and silently make MCP act as a delegated user.
+ * Scope to authenticatedUserId (the logged-in actor), not req.userId/activeUserId,
+ * which would honor a delegation cookie. Unlike chat, MCP tools run without a
+ * fixed actor, so building them for a delegated user would act as that user.
  *
  * A fresh McpServer + transport per request: the stateless transport is
  * single-use (its _hasHandledRequest guard throws on reuse).

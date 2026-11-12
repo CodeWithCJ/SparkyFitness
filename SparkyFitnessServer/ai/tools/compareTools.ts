@@ -38,8 +38,9 @@ import {
 
 // The Compare report's questions for the chat and MCP: the same service and shared analysis as
 // GET /api/v2/reports/compare, rendered as text the model can put into words. The wording follows
-// the mobile app's (SparkyFitnessMobile/src/utils/compareCopy.ts), in English. Chat tools always
-// act as the session user, so the route's owner-only rule holds here too.
+// the mobile app's (SparkyFitnessMobile/src/utils/compareCopy.ts), in English. In a family
+// member's account chat refuses this tool (OWN_ACCOUNT_ONLY_TOOLS in index.ts), matching the
+// route's owner-only rule.
 
 const VALID_ACTIONS = [...COMPARE_TOOL_ACTIONS];
 

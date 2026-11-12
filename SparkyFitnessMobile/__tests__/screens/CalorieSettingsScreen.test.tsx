@@ -84,6 +84,49 @@ const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 const route = { params: {} } as never;
 
 describe('CalorieSettingsScreen', () => {
+  it.each([
+    { unit: 'kcal', amount: 500 },
+    { unit: 'kJ', amount: 2092 },
+  ])(
+    'describes an uncertain adaptive estimate with the converted $unit range',
+    ({ unit, amount }) => {
+      mockPreferences.energy_unit = unit;
+      const screen = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+      expect(screen.queryByText(/Your measured TDEE is capped/i)).toBeNull();
+      expect(screen.getByText(new RegExp(`±${amount} ${unit}`))).toBeTruthy();
+      expect(
+        screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
+      ).toBeTruthy();
+      expect(screen.queryByText(/42 days|55 days|6 weeks|8 weeks/i)).toBeNull();
+      expect(mockMutate).not.toHaveBeenCalled();
+    }
+  );
+
+  it('falls back to current English uncertainty text when the registered locale still has the old adaptive hint', async () => {
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+    expect(
+      screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
+    ).toBeTruthy();
+  });
+
+  it('keeps adaptive timing caveats out of Device Projection', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'tdee';
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+    expect(
+      screen.queryByText(/starting estimate.*several weeks.*uncertainty/i)
+    ).toBeNull();
+    expect(screen.getByText(/Current-day device total calories/)).toBeTruthy();
+  });
+
   it.each([false, true])(
     'shows and updates the exercise macro preference from %s',
     (enabled) => {

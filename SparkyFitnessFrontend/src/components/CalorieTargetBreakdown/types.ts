@@ -1,31 +1,10 @@
-import type { CalorieCyclingDay, CalorieTargetResult } from '@workspace/shared';
+import type {
+  AdaptiveTdeeResult,
+  CalorieCyclingDay,
+  CalorieTargetResult,
+} from '@workspace/shared';
 
-export interface AdaptiveTdeeData {
-  tdee?: number;
-  isFallback?: boolean;
-  fallbackReason?: string;
-  daysOfData?: number;
-  avgIntake?: number;
-  weightTrend?: number | null;
-  confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
-  // Derivation terms for the Active branch (see AdaptiveTdeeService).
-  startWeightTrend?: number;
-  endWeightTrend?: number;
-  weightChangeKg?: number;
-  daysInWindow?: number;
-  windowStartDate?: string;
-  windowEndDate?: string;
-  dailyWeightChangeKg?: number;
-  weightChangeCalories?: number;
-  rawTdee?: number;
-  wasClamped?: boolean;
-  clampMin?: number;
-  clampMax?: number;
-  activityAdjustedTdee?: number;
-  rawActivityAdjustedTdee?: number;
-  averageActivityCalories?: number;
-  activityDaysOfData?: number;
-}
+export type AdaptiveTdeeData = Partial<AdaptiveTdeeResult>;
 
 export interface CalorieTargetBreakdownProps {
   title?: string;
