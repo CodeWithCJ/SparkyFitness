@@ -36,6 +36,10 @@ jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
     mutateAsync: jest.fn(),
     isPending: false,
   }),
+  useUpdatePresetSessionMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
   useWorkoutLocations: () => ({ data: [] }),
   fetchExerciseProgressionStats: jest.fn(async () => null),
 }));

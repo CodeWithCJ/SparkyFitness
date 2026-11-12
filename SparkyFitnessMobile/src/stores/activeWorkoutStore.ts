@@ -48,8 +48,8 @@ import {
   ungroupSessionExercise,
 } from '../utils/workoutSession';
 import type {
-  AssumedSetValues,
   LiveExerciseConfig,
+  PlannedSetValues,
   PrBaselineEntry,
 } from '../utils/workoutSession';
 import { newUuid } from '../utils/ids';
@@ -263,9 +263,10 @@ export interface ActiveWorkoutState {
    * placeholder fallback only — never written back to sets except through
    * completion adoption. Keys are birth server ids (live starts create every
    * set server-side), so they survive autosaves. Persisted: the plan can't be
-   * recaptured after a cold start.
+   * recaptured after a cold start. Each value carries `preferOverHistory`
+   * when "Use planned values as placeholders" was on at the start.
    */
-  plannedSetValues: Record<string, AssumedSetValues>;
+  plannedSetValues: Record<string, PlannedSetValues>;
   /**
    * Each exercise's most recent prior-session sets (keyed by `exercise_id`),
    * captured once per exercise from the stats query like `prBaseline`. This is
@@ -340,7 +341,7 @@ export interface ActiveWorkoutState {
     session: PresetSessionResponse,
     opts?: {
       createdByLiveStart?: boolean;
-      plannedSetValues?: AssumedSetValues[][];
+      plannedSetValues?: PlannedSetValues[][];
       /** Positional with `session.exercises`, like `plannedSetValues`. */
       exerciseConfigs?: LiveExerciseConfig[];
       sourcePresetId?: number;
@@ -1401,7 +1402,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // Key the live-start plan (positional, from the stripped create
         // payload) to the created session's set ids — same exercise and set
         // order by construction.
-        const plannedSetValues: Record<string, AssumedSetValues> = {};
+        const plannedSetValues: Record<string, PlannedSetValues> = {};
         opts?.plannedSetValues?.forEach((plannedSets, exerciseIndex) => {
           session.exercises[exerciseIndex]?.sets.forEach((s, setIndex) => {
             const planned = plannedSets[setIndex];

@@ -9,6 +9,7 @@ import {
   CreateExerciseEntryRequest,
   CreatePresetSessionRequest,
   UpdateExerciseEntryRequest,
+  UpdatePresetSessionRequest,
   exerciseProgressResponseSchema,
   ExerciseProgressResponse,
   PresetSessionResponse,
@@ -146,6 +147,26 @@ export const createPresetSession = async (
     body: JSON.stringify(payload),
     headers: { 'Content-Type': 'application/json' },
   });
+};
+
+/**
+ * Updates a grouped workout session (#1995 phase 1). Carries the lifecycle
+ * writes: a finished_at timestamp ends the session, null reopens a partial
+ * one. Pass the revision the client last saw; a mismatch is answered with
+ * 409 instead of silently overwriting edits made from another device.
+ */
+export const updatePresetSession = async (
+  presetEntryId: string,
+  payload: UpdatePresetSessionRequest
+): Promise<PresetSessionResponse> => {
+  return apiCall(
+    `/exercise-preset-entries/${encodeURIComponent(presetEntryId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 };
 
 /**

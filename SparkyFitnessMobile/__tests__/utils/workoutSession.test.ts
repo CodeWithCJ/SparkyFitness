@@ -4661,6 +4661,125 @@ describe('workoutSession', () => {
         });
       });
 
+      describe('planned values as placeholders (#3417)', () => {
+        // The plan was changed to 110 x 5 after last session's 100 x 8.
+        const lastSession = [prev(100, 8), prev(100, 8)];
+        const changedPlan = (preferOverHistory?: boolean) => {
+          const set = {
+            weight: 110,
+            reps: 5,
+            ...(preferOverHistory ? { preferOverHistory } : {}),
+          };
+          return { '1': set, '2': set };
+        };
+
+        it('shows a changed plan before last session when the plan is preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(true)
+          );
+          expect(result).toEqual([
+            { weight: 110, reps: 5, duration: null, distance: null },
+            { weight: 110, reps: 5, duration: null, distance: null },
+          ]);
+        });
+
+        it('keeps last session first when the plan is not preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan()
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [100, 8],
+            [100, 8],
+          ]);
+        });
+
+        it('keeps active auto-progression on last session when the plan is not preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(),
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [102.5, 9],
+            [102.5, 9],
+          ]);
+        });
+
+        it('puts a preferred plan before active auto-progression', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(true),
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [110, 5],
+            [110, 5],
+          ]);
+        });
+
+        it('keeps progression and history for a field the preferred plan leaves empty', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            {
+              '1': { weight: 110, reps: null, preferOverHistory: true },
+              '2': { weight: null, reps: 5, preferOverHistory: true },
+            },
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [110, 9],
+            [102.5, 5],
+          ]);
+        });
+
+        it('leaves a set without a planned value on its history', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            { '2': { weight: 110, reps: 5, preferOverHistory: true } }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [100, 8],
+            [110, 5],
+          ]);
+        });
+
+        it('still lightens a preferred plan on an adaptive lighter day', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1)],
+            [prev(100, 8)],
+            { '1': { weight: 100, reps: 5, preferOverHistory: true } },
+            { adaptiveLoadFactor: 0.9, weightUnit: 'kg' }
+          );
+          expect(result[0].weight).toBe(90);
+          expect(result[0].reps).toBe(5);
+        });
+
+        it('prefers planned duration and distance too', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1)],
+            [{ ...prev(null, null), duration: 600, distance: 2 }],
+            {
+              '1': {
+                weight: null,
+                reps: null,
+                duration: 900,
+                distance: 3,
+                preferOverHistory: true,
+              },
+            }
+          );
+          expect(result[0]).toMatchObject({ duration: 900, distance: 3 });
+        });
+      });
+
       it('keeps warmup and working mirrors separate', () => {
         // A typed warmup must not become the assumption for working sets that
         // have nothing of their own.
@@ -4876,6 +4995,44 @@ describe('workoutSession', () => {
             }
           );
           expect(result.map((r) => r.weight)).toEqual([102.5, 102.5]);
+        });
+
+        it('shows a preferred plan instead of the progression bump (#3417)', () => {
+          const sources = {
+            exerciseConfigs: {
+              'ex-1': {
+                progression_mode: 'rep_goal' as const,
+                rep_goal: 16,
+                increment_type: 'weight' as const,
+                increment_value: 2.5,
+              },
+            },
+            weightUnit: 'lbs' as const,
+          };
+          const history = [prev(100, 8), prev(100, 8)];
+          const plan = (preferOverHistory?: boolean) => {
+            const set = {
+              weight: 110,
+              reps: 5,
+              ...(preferOverHistory ? { preferOverHistory } : {}),
+            };
+            return { '1': set, '2': set };
+          };
+          expect(
+            resolveLiveAssumedSetValues(exercise, history, {
+              ...sources,
+              plannedSetValues: plan(),
+            }).map((r) => r.weight)
+          ).toEqual([102.5, 102.5]);
+          expect(
+            resolveLiveAssumedSetValues(exercise, history, {
+              ...sources,
+              plannedSetValues: plan(true),
+            }).map((r) => [r.weight, r.reps])
+          ).toEqual([
+            [110, 5],
+            [110, 5],
+          ]);
         });
 
         it('raises working-set reps when progression adds reps, warm-ups untouched', () => {
@@ -5269,6 +5426,32 @@ describe('workoutSession', () => {
           },
         ],
       } as unknown as WorkoutPreset);
+
+      it('marks every planned set when the plan is preferred (#3417)', () => {
+        expect(
+          extractPlannedSetValues(exercises, { preferOverHistory: true })
+        ).toEqual([
+          [
+            {
+              weight: 80,
+              reps: 5,
+              duration: null,
+              distance: null,
+              preferOverHistory: true,
+            },
+            {
+              weight: 80,
+              reps: 5,
+              duration: null,
+              distance: null,
+              preferOverHistory: true,
+            },
+          ],
+        ]);
+        expect(extractPlannedSetValues(exercises)[0][0]).not.toHaveProperty(
+          'preferOverHistory'
+        );
+      });
 
       it('captures the plan positionally and strips it from the create payload', () => {
         expect(extractPlannedSetValues(exercises)).toEqual([

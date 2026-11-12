@@ -2387,7 +2387,8 @@ CREATE TABLE public.exercise_entry_sets (
     completed_at timestamp with time zone,
     is_pr boolean DEFAULT false NOT NULL,
     distance numeric,
-    rir numeric(3,1)
+    rir numeric(3,1),
+    started_at timestamp with time zone
 );
 
 
@@ -2417,6 +2418,13 @@ COMMENT ON COLUMN public.exercise_entry_sets.is_pr IS 'Whether this set was a pe
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.rir IS 'Reps In Reserve (0-10 scale)';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.started_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.started_at IS 'Client-recorded moment the set was started during a live workout. NULL = no start recorded. An update that omits the field keeps the stored value.';
 
 
 --
@@ -2457,6 +2465,8 @@ CREATE TABLE public.exercise_preset_entries (
     source text DEFAULT 'manual'::text NOT NULL,
     location character varying(255),
     workout_format character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    finished_at timestamp with time zone,
+    revision integer DEFAULT 1 NOT NULL,
     CONSTRAINT chk_exercise_preset_entries_format CHECK (((workout_format)::text = ANY ((ARRAY['standard'::character varying, 'interval'::character varying, 'tabata'::character varying, 'amrap'::character varying, 'emom'::character varying, 'for_time'::character varying])::text[])))
 );
 
@@ -2473,6 +2483,20 @@ COMMENT ON COLUMN public.exercise_preset_entries.location IS 'Optional location 
 --
 
 COMMENT ON COLUMN public.exercise_preset_entries.workout_format IS 'Workout format of the source preset at the time the session was logged; not updated when the preset is edited or deleted';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.finished_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.finished_at IS 'Client-stamped moment the live workout session was ended. NULL = still planned or in progress. Split point between the derived partial and completed statuses.';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.revision; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.revision IS 'Monotonic write counter for optimistic concurrency, incremented on every update. A client presenting an older revision is rejected with 409 instead of overwriting newer edits.';
 
 
 --
@@ -3142,6 +3166,21 @@ CREATE TABLE public.injection_entries (
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: intervals_nutrition_pushes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.intervals_nutrition_pushes (
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    kcal_consumed integer,
+    protein numeric,
+    carbohydrates numeric,
+    fat_total numeric,
+    pushed_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -5218,6 +5257,7 @@ CREATE TABLE public.user_preferences (
     calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
+    intervals_push_nutrition boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
@@ -6645,6 +6685,14 @@ ALTER TABLE ONLY public.health_metric_samples
 
 ALTER TABLE ONLY public.injection_entries
     ADD CONSTRAINT injection_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_pkey PRIMARY KEY (user_id, entry_date);
 
 
 --
@@ -10110,6 +10158,14 @@ ALTER TABLE ONLY public.injection_entries
 
 
 --
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: lab_markers lab_markers_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11897,6 +11953,12 @@ CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((publi
 
 
 --
+-- Name: intervals_nutrition_pushes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.intervals_nutrition_pushes ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: jwks; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12721,6 +12783,13 @@ CREATE POLICY owner_policy ON public.food_assistant_tasks USING ((user_id = publ
 --
 
 CREATE POLICY owner_policy ON public.health_appointments USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: intervals_nutrition_pushes owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.intervals_nutrition_pushes USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -14563,6 +14632,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_metric_samples TO spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_app;
+
+
+--
+-- Name: TABLE intervals_nutrition_pushes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.intervals_nutrition_pushes TO sparky_app;
 
 
 --

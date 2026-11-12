@@ -148,6 +148,7 @@ export const PREFERENCE_DEFAULTS = {
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
+  plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
   warmupPlateRounding: { ...DEFAULT_WARMUP_PLATE_ROUNDING },
@@ -258,6 +259,13 @@ export type AppPreferencesData = {
    */
   duckMusicDuringCues: boolean;
   workoutKeepAwakeEnabled: boolean;
+  /**
+   * Live workouts started from a plan or saved workout show its planned
+   * values as placeholders before last session's (#3417). Read once at live
+   * start. Off by default: placeholders follow the last session and
+   * progression.
+   */
+  plannedValuesAsPlaceholders: boolean;
   /** Offer "Add warm-ups" on an exercise's menu. */
   warmupCalculatorEnabled: boolean;
   /** The warm-up ramp: percent of the working weight x reps, ascending. */
@@ -396,6 +404,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
   setWarmupPlateRounding: (unit: 'kg' | 'lbs', value: number) => void;
@@ -570,6 +579,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
+      setPlannedValuesAsPlaceholders: (value) =>
+        set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
         set({ warmupCalculatorEnabled: value }),
       setWarmupMethod: (steps) =>
@@ -782,6 +793,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
         warmupMethod: state.warmupMethod,
         warmupPlateRounding: state.warmupPlateRounding,

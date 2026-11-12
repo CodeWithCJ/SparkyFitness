@@ -59,6 +59,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `pregnancy_checklist_state` | Weekly pregnancy checklist completion/custom items | Owner-Only | Owner-Only |
 | `run_programs` | A person's run program (Beginner 5K), their place in it, its Diary schedule, goal date, AI adjustments and how hard finished workouts felt | Owner-Only | Owner-Only |
 | `run_goals` | A person's running goals: a weekly running distance target and a race (name, day, distance) to count down to | Owner-Only | Owner-Only |
+| `intervals_nutrition_pushes` | Daily nutrition totals last pushed to Intervals.icu (one row per user per day) | Owner-Only | Owner-Only |
 | `custom_run_programs` | A person's own saved run or walk plans (name, activity, workouts) that they can start | Owner-Only | Owner-Only |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): the measurements, the surface (outdoor or treadmill) and incline, the result and the derived training paces, linked to the recorded activity | Owner-Only | Owner-Only |
 | `routes` | A person's saved routes (a simplified track of points, optional turn cues, distance and elevation) that they drew, imported from GPX or saved from a recorded activity | Owner-Only | Owner-Only |
@@ -85,7 +86,7 @@ These tables contain user profiles, layouts, display settings, and custom databa
 | `user_nutrient_display_preferences` | Rearranged nutrient column preferences | **Owner-Only** | Switched Delegate |
 | `user_medication_display_preferences` | Private preference on GLP-1/Medication display | **Owner-Only** | Delegate with `can_manage_medications` or `can_view_reports` |
 | `user_calorie_rule_history` | The `user_preferences` calorie settings in force from `effective_date` on (`-infinity` for the rules before the first recorded change), including `adjust_macros_with_exercise` and the calorie cycling settings, so a past day keeps its calorie and macro targets (#1795). Written only by the `record_calorie_rule_change` trigger on `user_preferences`; same policies as `user_preferences`. | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions | **Owner-Only** | Switched Delegate |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`, whose `hidden` list holds tab ids from the shared `WEB_HIDEABLE_TAB_IDS`; the web does not apply it while acting for someone, whose tabs follow their permissions) | **Owner-Only** | Switched Delegate |
 | `onboarding_data` | Initial user onboarding metrics | **Owner-Only** | Switched Delegate |
 | `onboarding_status` | User onboarding status | **Owner-Only** | Switched Delegate |
 | `meal_types` | Custom breakfast, lunch, dinner, snack layouts | **Owner-Only** | Switched Delegate with `can_manage_diary` or `can_view_reports` |
