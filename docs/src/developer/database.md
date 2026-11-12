@@ -199,7 +199,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient (predefined or custom) |
 | `user_water_containers` | Configured container sizes |
 | `user_calorie_rule_history` | Calorie settings in force from each change on, so past days keep their target |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`) |
 | `user_medication_display_preferences` | GLP-1/Medication display preferences |
 | `user_mood_display_preferences` | Mood picker visibility settings |
 | `user_cycle_display_preferences` | Cycle dashboard tile visibility |

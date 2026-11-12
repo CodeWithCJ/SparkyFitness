@@ -154,6 +154,7 @@ export * from './constants/calorieConstants.ts';
 export * from './constants/foodVariantNutrients.ts';
 export * from './constants/nutrientGoalDefaults.ts';
 export * from './constants/chatToolCategories.ts';
+export * from './constants/webTabs.ts';
 export * from './constants/exercise.ts';
 export * from './constants/exerciseTaxonomy.ts';
 export * from './constants/chatAskUser.ts';
