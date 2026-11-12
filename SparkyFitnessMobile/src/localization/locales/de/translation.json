@@ -1754,7 +1754,25 @@
     "energyUnitLabel": "Energieeinheit",
     "energyUnitKcal": "Kalorien (kcal)",
     "energyUnitKj": "Kilojoule (kJ)",
-    "energyUnitDescription": "Legt fest, wie Energie in der App, in Widgets und auf der Watch angezeigt und eingegeben wird. Ändert auch die Web-App."
+    "energyUnitDescription": "Legt fest, wie Energie in der App, in Widgets und auf der Watch angezeigt und eingegeben wird. Ändert auch die Web-App.",
+    "cycling": {
+      "title": "Kalorien-Cycling",
+      "description": "Iss an Trainingstagen mehr und an Ruhetagen weniger. Dein Wochentotal bleibt gleich: dein Tagesziel × 7.",
+      "unavailable": "Nicht verfügbar, solange Trainingskalorien auf dein Ziel angerechnet werden: Dein Ziel erhöht sich bereits an Tagen, an denen du ein Workout einträgst. Wähle „Adaptiv“ oder „Fest“ (oder nutze ganztägig adaptive Ziele), um Kalorien-Cycling zu nutzen.",
+      "off": "Aus",
+      "pausedByWeeklyPlan": "Ein wöchentlicher Zielplan ist aktiv, daher ist das Kalorien-Cycling an den durch den Plan festgelegten Tagen pausiert.",
+      "trainingPercent": "Zusätzlich an Trainingstagen",
+      "needTrainingDays": "Wähle zwischen 1 und 6 Trainingstagen sowie einen Prozentsatz über 0 %, sonst bleibt jeder Tag gleich.",
+      "needDifferentDays": "Vergib für mindestens zwei Tage unterschiedliche Prozentsätze, sonst bleibt jeder Tag gleich.",
+      "atFloor": "Sicherheitsuntergrenze",
+      "previewNote": "Basiert auf dem heutigen Ziel. Die Differenz wird über die Kohlenhydrate ausgeglichen, das Protein bleibt gleich.",
+      "replaceCustomTitle": "Benutzerdefinierte Tage ersetzen?",
+      "replaceCustomMessage": "„Training / Ruhetag“ legt jeden Tag anhand der Trainingstage und eines festen Prozentsatzes fest. Deine benutzerdefinierten Prozentsätze werden dadurch ersetzt.",
+      "replaceCustomConfirm": "Ersetzen",
+      "waitingForTarget": "Deine Tage werden hier angezeigt, sobald das heutige Kalorienziel geladen wurde.",
+      "baseAtFloorWithUnit": "Dein Tagesziel ({{target}} {{unit}}) liegt an oder unter deiner Sicherheitsuntergrenze ({{floor}} {{unit}}). Kein Tag kann niedriger ausfallen und jeder Tag bleibt gleich. Cycling greift erst, wenn dein Ziel über der Untergrenze liegt oder du eine niedrigere Untergrenze festlegst.",
+      "weekTotalWithBase": "Woche: {{total}} von {{budget}} {{unit}} (dein Tagesziel {{target}} × 7)"
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",

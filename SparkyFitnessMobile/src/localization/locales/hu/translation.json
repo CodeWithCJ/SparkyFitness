@@ -829,5 +829,10 @@
     "unavailable": {
       "healthConnect": "A Health Connect szolgáltatás nem érhető el. Kérjük, ellenőrizze, hogy telepítve van-e és engedélyezve van-e."
     }
+  },
+  "barcodeSources": {
+    "currentSource": "Forrás: {{name}}",
+    "otherSources": "További források",
+    "empty": "Nincsenek további elérhető források"
   }
 }
