@@ -1,263 +1,321 @@
 {
-  "fill-specializations" : [
+  "fill-specializations": [
     {
-      "value" : "system-light"
+      "value": {
+        "linear-gradient": [
+          "srgb:1.00000,0.47843,0.36078,1.00000",
+          "srgb:0.70980,0.12157,0.18039,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.371,
+            "y": 0.017
+          },
+          "stop": {
+            "x": 0.629,
+            "y": 0.983
+          }
+        }
+      }
     },
     {
-      "appearance" : "dark",
-      "value" : "system-dark"
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.29020,0.08235,0.09020,1.00000",
+          "srgb:0.05490,0.01569,0.01961,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.371,
+            "y": 0.017
+          },
+          "stop": {
+            "x": 0.629,
+            "y": 0.983
+          }
+        }
+      }
     }
   ],
-  "groups" : [
+  "groups": [
     {
-      "blend-mode-specializations" : [
+      "blend-mode-specializations": [
         {
-          "appearance" : "dark",
-          "value" : "lighten"
+          "appearance": "dark",
+          "value": "normal"
         }
       ],
-      "blur-material-specializations" : [
+      "blur-material-specializations": [
         {
-          "value" : null
+          "value": null
         },
         {
-          "appearance" : "dark",
-          "value" : null
+          "appearance": "dark",
+          "value": null
         },
         {
-          "appearance" : "tinted",
-          "value" : null
+          "appearance": "tinted",
+          "value": null
         }
       ],
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "Asset 2.png",
-          "name" : "Asset 2",
-          "opacity-specializations" : [
+          "image-name": "ribbon-fold-highlight.svg",
+          "name": "ribbon-fold-highlight",
+          "opacity-specializations": [
             {
-              "appearance" : "tinted",
-              "value" : 0.6
+              "value": 1
+            },
+            {
+              "appearance": "dark",
+              "value": 0.8
+            },
+            {
+              "appearance": "tinted",
+              "value": 0.5
             }
-          ],
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              158.8671875,
-              0
-            ]
-          }
+          ]
         },
         {
-          "hidden" : false,
-          "image-name" : "Asset 1.png",
-          "name" : "Asset 1",
-          "opacity-specializations" : [
+          "image-name": "ribbon-face.svg",
+          "name": "ribbon-face",
+          "fill-specializations": [
             {
-              "appearance" : "tinted",
-              "value" : 0.6
-            }
-          ],
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              -16.8125,
-              160.0625
-            ]
-          }
-        }
-      ],
-      "lighting-specializations" : [
-        {
-          "value" : "individual"
-        },
-        {
-          "appearance" : "dark",
-          "value" : "combined"
-        },
-        {
-          "appearance" : "tinted",
-          "value" : "combined"
-        }
-      ],
-      "opacity-specializations" : [
-        {
-          "appearance" : "dark",
-          "value" : 1
-        }
-      ],
-      "shadow-specializations" : [
-        {
-          "value" : {
-            "kind" : "neutral",
-            "opacity" : 0.5
-          }
-        },
-        {
-          "appearance" : "dark",
-          "value" : {
-            "kind" : "neutral",
-            "opacity" : 0.49
-          }
-        },
-        {
-          "appearance" : "tinted",
-          "value" : {
-            "kind" : "neutral",
-            "opacity" : 0.5
-          }
-        }
-      ],
-      "specular-specializations" : [
-        {
-          "value" : false
-        },
-        {
-          "appearance" : "dark",
-          "value" : false
-        },
-        {
-          "appearance" : "tinted",
-          "value" : false
-        }
-      ],
-      "translucency-specializations" : [
-        {
-          "value" : {
-            "enabled" : false,
-            "value" : 0.45
-          }
-        },
-        {
-          "appearance" : "dark",
-          "value" : {
-            "enabled" : false,
-            "value" : 1
-          }
-        },
-        {
-          "appearance" : "tinted",
-          "value" : {
-            "enabled" : false,
-            "value" : 0.45
-          }
-        }
-      ]
-    },
-    {
-      "blur-material-specializations" : [
-        {
-          "appearance" : "dark",
-          "value" : null
-        }
-      ],
-      "layers" : [
-        {
-          "blend-mode-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "normal"
-            }
-          ],
-          "fill-specializations" : [
-            {
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.81569,0.25882,0.24314,1.00000",
-                  "display-p3:0.59093,0.25786,0.24711,1.00000"
+              "value": {
+                "linear-gradient": [
+                  "srgb:1.00000,1.00000,1.00000,1.00000",
+                  "srgb:1.00000,0.82353,0.74510,1.00000"
                 ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.390029296875,
-                    "y" : 0.07980387667887667
+                "orientation": {
+                  "start": {
+                    "x": 0.8,
+                    "y": 0
                   },
-                  "stop" : {
-                    "x" : 0.793701171875,
-                    "y" : 1.1477220695970696
+                  "stop": {
+                    "x": 0.3,
+                    "y": 1
                   }
                 }
               }
             },
             {
-              "appearance" : "dark",
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.81569,0.25882,0.24314,1.00000",
-                  "display-p3:0.49774,0.21720,0.20815,1.00000"
+              "appearance": "dark",
+              "value": {
+                "linear-gradient": [
+                  "srgb:1.00000,0.54118,0.41961,1.00000",
+                  "srgb:1.00000,0.35294,0.29020,1.00000"
                 ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.179521484375,
-                    "y" : -0.0688816391941392
+                "orientation": {
+                  "start": {
+                    "x": 0.8,
+                    "y": 0
                   },
-                  "stop" : {
-                    "x" : 0.766806640625,
-                    "y" : 1
+                  "stop": {
+                    "x": 0.3,
+                    "y": 1
                   }
                 }
               }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
             }
           ],
-          "image-name" : "Asset 3.png",
-          "name" : "Asset 3",
-          "opacity-specializations" : [
+          "opacity-specializations": [
             {
-              "appearance" : "tinted",
-              "value" : 0.75
+              "value": 1
+            },
+            {
+              "appearance": "dark",
+              "value": 1
+            },
+            {
+              "appearance": "tinted",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "image-name": "ribbon-fold-shadow.svg",
+          "name": "ribbon-fold-shadow",
+          "opacity-specializations": [
+            {
+              "value": 1
+            },
+            {
+              "appearance": "dark",
+              "value": 0.6
+            },
+            {
+              "appearance": "tinted",
+              "value": 0.7
+            }
+          ]
+        },
+        {
+          "image-name": "ribbon-underside.svg",
+          "name": "ribbon-underside",
+          "fill-specializations": [
+            {
+              "value": {
+                "linear-gradient": [
+                  "srgb:1.00000,0.89020,0.83922,1.00000",
+                  "srgb:1.00000,0.78039,0.69804,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 1
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.91373,0.21961,0.22745,1.00000",
+                  "srgb:0.70980,0.12157,0.18039,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 1
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.62000,0.62000,0.62000,1.00000"
+              }
+            }
+          ],
+          "opacity-specializations": [
+            {
+              "value": 1
+            },
+            {
+              "appearance": "dark",
+              "value": 1
+            },
+            {
+              "appearance": "tinted",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "image-name": "ribbon-glow.svg",
+          "name": "ribbon-glow",
+          "opacity-specializations": [
+            {
+              "value": 0
+            },
+            {
+              "appearance": "dark",
+              "value": 0.4
+            },
+            {
+              "appearance": "tinted",
+              "value": 0
             }
           ]
         }
       ],
-      "lighting" : "combined",
-      "shadow-specializations" : [
+      "lighting-specializations": [
         {
-          "value" : {
-            "kind" : "layer-color",
-            "opacity" : 0.5
+          "value": "individual"
+        },
+        {
+          "appearance": "dark",
+          "value": "combined"
+        },
+        {
+          "appearance": "tinted",
+          "value": "combined"
+        }
+      ],
+      "opacity-specializations": [
+        {
+          "appearance": "dark",
+          "value": 1
+        }
+      ],
+      "shadow-specializations": [
+        {
+          "value": {
+            "kind": "neutral",
+            "opacity": 0.35
           }
         },
         {
-          "appearance" : "dark",
-          "value" : {
-            "kind" : "neutral",
-            "opacity" : 0.5
+          "appearance": "dark",
+          "value": {
+            "kind": "neutral",
+            "opacity": 0.5
+          }
+        },
+        {
+          "appearance": "tinted",
+          "value": {
+            "kind": "neutral",
+            "opacity": 0.35
           }
         }
       ],
-      "specular-specializations" : [
+      "specular-specializations": [
         {
-          "value" : false
+          "value": true
         },
         {
-          "appearance" : "dark",
-          "value" : false
+          "appearance": "dark",
+          "value": true
+        },
+        {
+          "appearance": "tinted",
+          "value": false
         }
       ],
-      "translucency-specializations" : [
+      "translucency-specializations": [
         {
-          "value" : {
-            "enabled" : false,
-            "value" : 0.5
+          "value": {
+            "enabled": false,
+            "value": 0.5
           }
         },
         {
-          "appearance" : "dark",
-          "value" : {
-            "enabled" : false,
-            "value" : 0.5
+          "appearance": "dark",
+          "value": {
+            "enabled": false,
+            "value": 0.5
           }
         },
         {
-          "appearance" : "tinted",
-          "value" : {
-            "enabled" : false,
-            "value" : 0.5
+          "appearance": "tinted",
+          "value": {
+            "enabled": false,
+            "value": 0.5
           }
         }
       ]
     }
   ],
-  "supported-platforms" : {
-    "squares" : [
+  "supported-platforms": {
+    "squares": [
       "iOS"
     ]
   }
