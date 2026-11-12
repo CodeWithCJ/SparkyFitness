@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
-import { zodSchema } from 'ai';
+import { jsonSchema, tool, zodSchema } from 'ai';
 import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
@@ -553,6 +553,65 @@ describe('buildChatToolSurface', () => {
     expect(buildChatToolSurface('memo-surface', 'America/New_York')).not.toBe(
       first
     );
+  });
+
+  describe('tools from outside MCP servers', () => {
+    const outsideTools = {
+      mcp_notes__search: tool({
+        description: 'Searches notes.',
+        inputSchema: jsonSchema({ type: 'object', properties: {} }),
+        execute: async () => 'notes found',
+      }),
+    };
+
+    it('composes them after Sparky’s own tools and before the quick-reply and escalation tools', () => {
+      const { tools, toolNamesByCategory } = buildChatToolSurface(
+        'outside-user',
+        'UTC',
+        { actorUserId: 'outside-user', outsideTools }
+      );
+
+      expect(Object.keys(tools).slice(-3)).toEqual([
+        'mcp_notes__search',
+        ASK_USER_TOOL_NAME,
+        ENABLE_TOOLS_TOOL_NAME,
+      ]);
+      // They belong to no category, so widening never adds or drops them.
+      expect(Object.values(toolNamesByCategory).flat()).not.toContain(
+        'mcp_notes__search'
+      );
+      expect(tools.mcp_notes__search.strict).toBe(false);
+      expect(
+        tools.mcp_notes__search.providerOptions?.anthropic?.cacheControl
+      ).toBeUndefined();
+      expect(
+        tools[ENABLE_TOOLS_TOOL_NAME].providerOptions?.anthropic?.cacheControl
+      ).toEqual({ type: 'ephemeral' });
+    });
+
+    it('leaves them out of a hand-picked selection', () => {
+      const tools = buildChatbotTools(
+        'outside-user',
+        'UTC',
+        'full',
+        true,
+        ['food'],
+        true,
+        { actorUserId: 'outside-user', outsideTools }
+      );
+
+      expect(Object.keys(tools)).not.toContain('mcp_notes__search');
+    });
+
+    // Outside tools are named mcp_<server>__<tool>, so a built-in tool with
+    // that prefix could be replaced by one.
+    it('gives no built-in tool a name starting with mcp_', () => {
+      const { tools } = buildChatToolSurface('surface-user', 'UTC');
+
+      expect(
+        Object.keys(tools).filter((name) => name.startsWith('mcp_'))
+      ).toEqual([]);
+    });
   });
 });
 

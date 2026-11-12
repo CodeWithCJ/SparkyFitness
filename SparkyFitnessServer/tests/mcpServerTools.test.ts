@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { Tool } from 'ai';
+import { asSchema, type Tool } from 'ai';
 import {
   afterAll,
   afterEach,
@@ -85,8 +85,11 @@ let seen: SeenRequest[] = [];
 let elsewhereRequests = 0;
 let answerWith500 = false;
 let goQuiet = false;
-let deepSchema = false;
+let pagedSchema: string | undefined;
 let wentQuiet: () => void = () => undefined;
+// '/drip' holds each page of its tool list until a test lets it go.
+const heldPages: (() => void)[] = [];
+let pageHeld: () => void = () => undefined;
 const sessions = new Map<string, StreamableHTTPServerTransport>();
 
 const text = (value: string) => ({
@@ -183,12 +186,13 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
   return body ? JSON.parse(body) : undefined;
 }
 
-// A field schema nested far deeper than any real server writes one. It goes
-// into the reply as text, because JSON.stringify runs out of stack on it.
+// A schema nested far deeper than any real server writes one. It goes into a
+// reply as text, because JSON.stringify runs out of stack on it.
 const DEEP_SCHEMA = `${'{"anyOf":['.repeat(50_000)}{"type":"string"}${']}'.repeat(50_000)}`;
 
 // A server that hands out its tool list one tool per page, which the SDK's own
-// server never does: '/paged' has two pages, '/endless' never stops.
+// server never does: '/paged' and '/drip' have two pages, '/endless' never
+// stops.
 function answerPagedList(
   path: string,
   method: string,
@@ -199,11 +203,7 @@ function answerPagedList(
     | {
         id?: number;
         method?: string;
-        params?: {
-          cursor?: string;
-          protocolVersion?: string;
-          arguments?: unknown;
-        };
+        params?: { cursor?: string; protocolVersion?: string };
       }
     | undefined;
   if (method !== 'POST' || !rpc) {
@@ -214,18 +214,6 @@ function answerPagedList(
     // '/stall' answers the first request of the handshake and then goes quiet.
     if (path === '/stall' || goQuiet) wentQuiet();
     else response.writeHead(202).end();
-    return;
-  }
-  if (rpc.method === 'tools/call') {
-    // A call is answered with the arguments the server was sent.
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(
-      JSON.stringify({
-        jsonrpc: '2.0',
-        id: rpc.id,
-        result: text(JSON.stringify(rpc.params?.arguments)),
-      })
-    );
     return;
   }
   const page = Number(rpc.params?.cursor ?? '1');
@@ -254,29 +242,32 @@ function answerPagedList(
                     },
                   }
                 : {}),
-              // A careless schema, which the SDK still accepts.
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  choice: { enum: 5 },
-                  either: { anyOf: 'string' },
-                  nested: { type: 'object', properties: { inner: null } },
-                  deep: deepSchema ? 'DEEP_SCHEMA' : {},
-                },
-              },
+              // Page 1's tool takes the input schema a test set, as text.
+              inputSchema:
+                page === 1 && pagedSchema !== undefined
+                  ? 'PAGED_SCHEMA'
+                  : { type: 'object', properties: {} },
             },
           ],
           ...(path === '/endless' || page < 2
             ? { nextCursor: String(page + 1) }
             : {}),
         };
-  response.writeHead(200, { 'Content-Type': 'application/json' });
-  response.end(
-    JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }).replace(
-      '"DEEP_SCHEMA"',
-      DEEP_SCHEMA
-    )
-  );
+  const send = () => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(
+      JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }).replace(
+        '"PAGED_SCHEMA"',
+        () => pagedSchema ?? ''
+      )
+    );
+  };
+  if (path === '/drip' && rpc.method === 'tools/list') {
+    heldPages.push(send);
+    pageHeld();
+    return;
+  }
+  send();
 }
 
 async function handle(
@@ -299,7 +290,12 @@ async function handle(
     token: header('authorization'),
   });
 
-  if (path === '/paged' || path === '/endless' || path === '/stall') {
+  if (
+    path === '/paged' ||
+    path === '/drip' ||
+    path === '/endless' ||
+    path === '/stall'
+  ) {
     answerPagedList(path, method, body, response);
     return;
   }
@@ -430,7 +426,7 @@ beforeEach(() => {
   elsewhereRequests = 0;
   answerWith500 = false;
   goQuiet = false;
-  deepSchema = false;
+  pagedSchema = undefined;
 });
 
 afterEach(() => {
@@ -477,6 +473,141 @@ describe('which tools chat gets', () => {
     ]);
     await expect(loadMcpServerTools(OWN_ACCOUNT)).resolves.toEqual({});
     expect(seen).toEqual([]);
+  });
+
+  // The SDK itself refuses a list whose top-level schema is not for an object
+  // or has a field that is not one, so those never reach this check.
+  it.each([
+    {
+      problem: 'an enum that is not a list',
+      schema: '{"type":"object","properties":{"a":{"enum":5}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'a type JSON Schema does not have',
+      schema: '{"type":"object","properties":{"a":{"type":"nonsense"}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'such a type in a list of types',
+      schema:
+        '{"type":"object","properties":{"a":{"type":["string","nonsense"]}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'an empty list of types',
+      schema: '{"type":"object","properties":{"a":{"type":[]}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'text where a number belongs',
+      schema:
+        '{"type":"object","properties":{"a":{"type":"string","minLength":"1"}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'a $ref that is not text',
+      schema: '{"type":"object","properties":{"a":{"$ref":5}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'an enum too long to check quickly',
+      schema: `{"type":"object","properties":{"a":{"enum":${JSON.stringify(Array.from({ length: 30_000 }, (_, i) => `v${i}`))}}}}`,
+      reason: 'is too large',
+    },
+    {
+      problem: 'more fields than a list can be spread into',
+      schema: `{"type":"object","properties":{${Array.from({ length: 200_000 }, (_, i) => `"f${i}":{}`).join(',')}}}`,
+      reason: 'is too large',
+    },
+    {
+      problem: 'an anyOf that is not a list',
+      schema:
+        '{"type":"object","properties":{"a":{"anyOf":{"type":"string"}}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'a nested field that is null',
+      schema:
+        '{"type":"object","properties":{"a":{"type":"object","properties":{"b":null}}}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'a propertyNames the OpenAI adapter refuses',
+      schema: '{"type":"object","propertyNames":{"pattern":"^a"}}',
+      reason: 'is malformed',
+    },
+    {
+      problem: 'forty levels of nesting',
+      schema: `{"type":"object","properties":{"a":${'{"items":'.repeat(40)}{}${'}'.repeat(40)}}}`,
+      reason: 'is nested too deeply',
+    },
+    {
+      problem: 'more nesting than the stack holds',
+      schema: `{"type":"object","properties":{"a":${DEEP_SCHEMA}}}`,
+      reason: 'is nested too deeply',
+    },
+    {
+      problem: 'forty thousand characters',
+      schema: `{"type":"object","description":"${'x'.repeat(40_000)}"}`,
+      reason: 'is too large',
+    },
+    {
+      problem: 'the token in it',
+      schema: `{"type":"object","description":"Bearer ${TOKEN}"}`,
+      reason: 'contains the token',
+    },
+  ])(
+    'leaves out a tool whose input schema has $problem, and keeps the rest',
+    async ({ schema, reason }) => {
+      pagedSchema = schema;
+      getServers.mockResolvedValue([
+        toolServer(['page_1', 'page_2'], { path: '/paged' }),
+      ]);
+      expect(Object.keys(await loadMcpServerTools(OWN_ACCOUNT))).toEqual([
+        'mcp_household_tools__page_2',
+      ]);
+      expect(JSON.stringify(vi.mocked(log).mock.calls)).toContain(
+        `page_1 is left out: its input schema ${reason}`
+      );
+    }
+  );
+
+  it('gives a list with no items any items, which OpenAI asks for, and keeps the tool', async () => {
+    pagedSchema =
+      '{"type":"object","properties":{"values":{"type":["array","null"]}}}';
+    getServers.mockResolvedValue([toolServer(['page_1'], { path: '/paged' })]);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    expect(
+      await asSchema(tools.mcp_household_tools__page_1.inputSchema).jsonSchema
+    ).toEqual({
+      type: 'object',
+      properties: { values: { type: ['array', 'null'], items: {} } },
+    });
+  });
+
+  it('keeps a schema written for a later draft', async () => {
+    pagedSchema =
+      '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"a":{"$ref":"#/$defs/a"}},"$defs":{"a":{"type":"string","minLength":1}}}';
+    getServers.mockResolvedValue([toolServer(['page_1'], { path: '/paged' })]);
+    expect(Object.keys(await loadMcpServerTools(OWN_ACCOUNT))).toEqual([
+      'mcp_household_tools__page_1',
+    ]);
+  });
+
+  it('takes at most 40 tools from all servers together, in server order', async () => {
+    const tenTools = Array.from({ length: 10 }, (_, i) => `page_${i + 1}`);
+    getServers.mockResolvedValue(
+      ['A', 'B', 'C', 'D', 'E'].map((name) =>
+        toolServer(tenTools, { provider_name: name, path: '/endless' })
+      )
+    );
+    const names = Object.keys(await loadMcpServerTools(OWN_ACCOUNT));
+    expect(names).toHaveLength(40);
+    expect(names.some((name) => name.startsWith('mcp_e__'))).toBe(false);
+    expect(JSON.stringify(vi.mocked(log).mock.calls)).toContain(
+      '10 MCP server tools are left out'
+    );
   });
 
   it('keeps going when the servers cannot be looked up', async () => {
@@ -590,15 +721,6 @@ describe('what the outside server is told', () => {
     });
   });
 
-  it('keeps a null where the tool’s schema cannot be read', async () => {
-    getServers.mockResolvedValue([toolServer(['page_1'], { path: '/paged' })]);
-    const tools = await loadMcpServerTools(OWN_ACCOUNT);
-    const input = { choice: null, either: null, nested: { inner: null } };
-    await expect(run(tools.mcp_household_tools__page_1, input)).resolves.toBe(
-      JSON.stringify(input)
-    );
-  });
-
   it.each([[['hi']], ['hi'], [null]])(
     'refuses arguments that are not an object, without calling the server (%j)',
     async (input) => {
@@ -677,16 +799,17 @@ describe('what chat gets back', () => {
     expect(logged).not.toContain(TOKEN);
   });
 
-  it('says the tool is unavailable, instead of throwing, when its schema is too deep to read', async () => {
-    deepSchema = true;
-    getServers.mockResolvedValue([toolServer(['page_1'], { path: '/paged' })]);
+  it('says the tool is unavailable, instead of throwing, when its arguments are too deep to read', async () => {
+    getServers.mockResolvedValue([toolServer(['echo'])]);
     const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    let deep: unknown = 'hi';
+    for (let level = 0; level < 200_000; level += 1) deep = { deep };
     await expect(
-      run(tools.mcp_household_tools__page_1, { deep: null })
+      run(tools.mcp_household_tools__echo, { text: deep })
     ).resolves.toMatch(/^Error \[EXTERNAL_TOOL_UNAVAILABLE\]/);
     expect(calls('tools/call')).toEqual([]);
     expect(JSON.stringify(vi.mocked(log).mock.calls)).toMatch(
-      /page_1 failed after \d+ ms: RangeError/
+      /echo failed after \d+ ms: RangeError/
     );
   });
 
@@ -798,6 +921,32 @@ describe('how a server is contacted', () => {
       await vi.advanceTimersByTimeAsync(5_000);
       expect(Object.keys(await loading)).toEqual(['mcp_household_tools__echo']);
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up on a server whose list takes more than five seconds in all, though each page is quick', async () => {
+    const nextPage = () =>
+      new Promise<void>((resolve) => {
+        pageHeld = resolve;
+      });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      getServers.mockResolvedValue([
+        toolServer(['page_1'], { provider_name: 'Drip', path: '/drip' }),
+        toolServer(['echo']),
+      ]);
+      let arrived = nextPage();
+      const loading = loadMcpServerTools(OWN_ACCOUNT);
+      await arrived;
+      await vi.advanceTimersByTimeAsync(4_000);
+      arrived = nextPage();
+      heldPages.shift()?.();
+      await arrived;
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(Object.keys(await loading)).toEqual(['mcp_household_tools__echo']);
+    } finally {
+      for (const release of heldPages.splice(0)) release();
       vi.useRealTimers();
     }
   });

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { Ajv } from 'ajv';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   StreamableHTTPClientTransport,
@@ -68,10 +69,32 @@ const failedListCache = new TtlCache<true>(FAILED_LIST_TTL_MS, 100);
 // The strictest naming rule among the model providers: letters, digits, _ and
 // -, 64 characters at most.
 const TOOL_NAME_MAX_LENGTH = 64;
+// No built-in chat tool name starts with this.
+const TOOL_NAME_PREFIX = 'mcp_';
 const SERVER_SLUG_MAX_LENGTH = 24;
 const NAME_HASH_LENGTH = 8;
+// For all servers together. OpenAI-style chat refuses a request with more than
+// 128 tools, which would fail every chat, and Sparky's own can take 58 of them.
+const MAX_OUTSIDE_TOOLS = 40;
 // The description is the outside server's text and is sent with every request.
 const DESCRIPTION_MAX_LENGTH = 1_024;
+// So is the input schema. Sparky's own largest is about 10 KB.
+const SCHEMA_MAX_LENGTH = 32_768;
+const SCHEMA_MAX_DEPTH = 32;
+// Keywords whose value is one schema, a list of them or a map of them: the
+// ones the AI SDK's OpenAI adapter walks before a request is sent.
+const ONE_SCHEMA = [
+  'additionalProperties',
+  'additionalItems',
+  'contains',
+  'not',
+  'if',
+  'then',
+  'else',
+  'propertyNames',
+];
+const SCHEMA_LIST = ['allOf', 'anyOf', 'oneOf'];
+const SCHEMA_MAP = ['properties', 'patternProperties', 'definitions', '$defs'];
 
 const TRUNCATION_HINT =
   'The result came from an outside tool server and cannot be paged here. If the tool takes a filter or a limit, call it again asking for less.';
@@ -100,6 +123,101 @@ const skipOutputSchemas: jsonSchemaValidator = {
     });
   },
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isStringList = (value: unknown): boolean =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+// Checks a schema against JSON Schema's own rules for one, without compiling
+// it, so nothing is printed and no format is looked up.
+const schemaRules = new Ajv({
+  strict: false,
+  logger: false,
+  validateFormats: false,
+});
+
+// The keyword types the walk below and the OpenAI adapter rely on, and the
+// only propertyNames that adapter takes.
+function keywordsFit(node: Record<string, unknown>): boolean {
+  return (
+    (node.enum === undefined || Array.isArray(node.enum)) &&
+    (node.required === undefined || isStringList(node.required)) &&
+    (node.propertyNames === undefined ||
+      (isRecord(node.propertyNames) && node.propertyNames.type === 'string')) &&
+    (node.dependencies === undefined || isRecord(node.dependencies)) &&
+    SCHEMA_LIST.every(
+      (key) => node[key] === undefined || Array.isArray(node[key])
+    ) &&
+    SCHEMA_MAP.every((key) => node[key] === undefined || isRecord(node[key]))
+  );
+}
+
+// Why a tool's input schema cannot go to the model provider, or null when it
+// can. Every allowed tool's schema goes with every chat request, and one the
+// provider's adapter cannot walk, or the provider refuses, fails the whole
+// request, so such a tool is left out instead. A list with no items is given
+// `items: {}` on the way: OpenAI refuses one without, and to JSON Schema the
+// two mean the same.
+function schemaProblem(schema: unknown, server: McpServerRow): string | null {
+  if (!isRecord(schema) || schema.type !== 'object') {
+    return 'is not for an object';
+  }
+  // Walked without recursion, so no schema can run this out of stack.
+  const pending: [unknown, number][] = [[schema, 1]];
+  for (let next = pending.pop(); next; next = pending.pop()) {
+    const [node, depth] = next;
+    if (typeof node === 'boolean') continue;
+    if (depth > SCHEMA_MAX_DEPTH) return 'is nested too deeply';
+    if (!isRecord(node) || !keywordsFit(node)) return 'is malformed';
+    const types = Array.isArray(node.type) ? node.type : [node.type];
+    if (types.includes('array') && node.items === undefined) node.items = {};
+    // One at a time: spreading a list this wide as arguments would throw.
+    const add = (child: unknown) => pending.push([child, depth + 1]);
+    for (const key of ONE_SCHEMA) {
+      if (node[key] !== undefined) add(node[key]);
+    }
+    for (const key of SCHEMA_LIST) {
+      if (node[key] !== undefined) (node[key] as unknown[]).forEach(add);
+    }
+    for (const key of SCHEMA_MAP) {
+      if (node[key] !== undefined) {
+        Object.values(node[key] as Record<string, unknown>).forEach(add);
+      }
+    }
+    if (Array.isArray(node.items)) node.items.forEach(add);
+    else if (node.items !== undefined) add(node.items);
+    if (isRecord(node.dependencies)) {
+      // A list of property names is not a schema.
+      for (const value of Object.values(node.dependencies)) {
+        if (!Array.isArray(value)) add(value);
+      }
+    }
+  }
+  let text: string;
+  try {
+    // Keywords that hold data, such as a default, are not walked above.
+    text = JSON.stringify(schema);
+  } catch {
+    return 'cannot be read';
+  }
+  if (text.length > SCHEMA_MAX_LENGTH) return 'is too large';
+  const token = server.app_key?.trim();
+  if (token && text.includes(JSON.stringify(token).slice(1, -1))) {
+    return 'contains the token';
+  }
+  // The rest of JSON Schema's rules, such as a number where one belongs, by
+  // its draft-07 meta-schema whatever $schema names. Keywords added in later
+  // drafts are not checked by it. After the size limit: this blocks the
+  // server while it runs, and a long enum takes it a while.
+  try {
+    if (!schemaRules.validateSchema({ ...schema, $schema: undefined })) {
+      return 'is malformed';
+    }
+  } catch {
+    return 'is malformed';
+  }
+  return null;
+}
 
 class NoAnswerError extends Error {
   override name = 'NoAnswerError';
@@ -189,10 +307,47 @@ async function withServerClient<T>(
   }
 }
 
+async function readAllowedTools(
+  client: Client,
+  server: McpServerRow,
+  allowed: ReadonlySet<string>
+): Promise<ListedTool[]> {
+  const tools: ListedTool[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
+    const result = await client.listTools(cursor ? { cursor } : undefined, {
+      timeout: LIST_TIMEOUT_MS,
+    });
+    for (const { name, description, inputSchema } of result.tools) {
+      if (!allowed.has(name)) continue;
+      const problem = schemaProblem(inputSchema, server);
+      if (problem) {
+        log(
+          'warn',
+          `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: its input schema ${problem}`
+        );
+        continue;
+      }
+      tools.push({
+        name,
+        description,
+        inputSchema: inputSchema as JSONSchema7,
+      });
+    }
+    cursor = result.nextCursor;
+    if (!cursor) break;
+  }
+  return tools;
+}
+
 // The list is shared by everyone, so the request never says who is chatting.
+// Only the allowed tools are kept, and only those whose input schema can go to
+// the model provider. The allowed list is part of the row, so the cache key
+// still fits.
 async function listServerTools(
   server: McpServerRow,
-  endpoint: ProviderFetchEndpoint
+  endpoint: ProviderFetchEndpoint,
+  allowed: ReadonlySet<string>
 ): Promise<ListedTool[] | null> {
   const key = `${server.id}|${server.updated_at.getTime()}`;
   const cached = listCache.get(key);
@@ -202,26 +357,10 @@ async function listServerTools(
     const listed = await withServerClient(
       endpoint,
       authHeaders(server),
-      async (client) => {
-        const tools: ListedTool[] = [];
-        let cursor: string | undefined;
-        for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
-          const result = await client.listTools(
-            cursor ? { cursor } : undefined,
-            { timeout: LIST_TIMEOUT_MS }
-          );
-          for (const { name, description, inputSchema } of result.tools) {
-            tools.push({
-              name,
-              description,
-              inputSchema: inputSchema as JSONSchema7,
-            });
-          }
-          cursor = result.nextCursor;
-          if (!cursor) break;
-        }
-        return tools;
-      }
+      // The client's own time limit is per page, and chat waits for this
+      // list, so the whole of it has one limit too.
+      (client) =>
+        within(LIST_TIMEOUT_MS, readAllowedTools(client, server, allowed))
     );
     listCache.set(key, listed);
     return listed;
@@ -255,12 +394,12 @@ async function allowedServerTools(
     'MCP tool server'
   );
   if (!endpoint) return [];
-  const listed = await listServerTools(server, endpoint);
+  const listed = await listServerTools(server, endpoint, allowed);
   if (!listed) return [];
 
   const byName = new Map<string, ListedTool>();
   for (const listedTool of listed) {
-    if (allowed.has(listedTool.name) && !byName.has(listedTool.name)) {
+    if (!byName.has(listedTool.name)) {
       byName.set(listedTool.name, listedTool);
     }
   }
@@ -286,7 +425,7 @@ function serverSlug(providerName: string): string {
 
 function plainToolName({ server, listed }: OutsideTool): string {
   const toolPart = listed.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return `mcp_${serverSlug(server.provider_name)}__${toolPart}`.slice(
+  return `${TOOL_NAME_PREFIX}${serverSlug(server.provider_name)}__${toolPart}`.slice(
     0,
     TOOL_NAME_MAX_LENGTH
   );
@@ -420,8 +559,8 @@ async function callServerTool(
   if (sendUserId) headers[MCP_SERVER_USER_ID_HEADER] = actorUserId;
   const startedAt = Date.now();
   try {
-    // Inside the try: the server's own schema steers this walk, and one deep
-    // enough to run out of stack must not make the tool throw.
+    // Inside the try: arguments nested deeply enough can run this walk out of
+    // stack, and that must not make the tool throw.
     const args = dropRefusedNulls(input, listed.inputSchema) as Record<
       string,
       unknown
@@ -483,6 +622,11 @@ function toChatTool(
   });
 }
 
+/** True for the chat name of a tool from an outside MCP server. */
+export function isMcpServerToolName(name: string): boolean {
+  return name.startsWith(TOOL_NAME_PREFIX);
+}
+
 /**
  * The chat tools from the outside MCP servers an admin added, for one turn.
  * Only the tools the admin allowed are returned, and a server with none
@@ -516,8 +660,16 @@ export async function loadMcpServerTools(
     })
   );
   const tools: Record<string, Tool> = {};
-  for (const [name, outsideTool] of nameTools(perServer.flat())) {
+  const named = [...nameTools(perServer.flat())];
+  // Servers come in name order, so the same tools are left out every turn.
+  for (const [name, outsideTool] of named.slice(0, MAX_OUTSIDE_TOOLS)) {
     tools[name] = toChatTool(outsideTool, context);
+  }
+  if (named.length > MAX_OUTSIDE_TOOLS) {
+    log(
+      'warn',
+      `${named.length - MAX_OUTSIDE_TOOLS} MCP server tools are left out: chat takes at most ${MAX_OUTSIDE_TOOLS} from all servers together`
+    );
   }
   return tools;
 }

@@ -1,7 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
 import { APICallError } from 'ai';
-import { simulateReadableStream } from 'ai';
+import { jsonSchema, simulateReadableStream, tool } from 'ai';
 import type { UIMessageChunk } from 'ai';
 import chatService, {
   mapUsageToMetadata,
@@ -22,7 +22,13 @@ import mealTypeRepository from '../models/mealType.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
 import { createOpenAI } from '@ai-sdk/openai';
+import { loadMcpServerTools } from '../ai/tools/mcpServerTools.js';
 // Mock dependencies
+// These tests have no outside MCP tool servers unless one says so.
+vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../ai/tools/mcpServerTools.js')>()),
+  loadMcpServerTools: vi.fn(async () => ({})),
+}));
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/measurementRepository');
@@ -1164,6 +1170,113 @@ describe('chatService', () => {
       );
 
       expect(modelToolNames(model)).not.toContain(ASK_USER_TOOL_NAME);
+    });
+
+    describe('tools from outside MCP servers', () => {
+      const outsideTools = () => ({
+        mcp_notes__search: tool({
+          description: 'Searches notes.',
+          inputSchema: jsonSchema({ type: 'object', properties: {} }),
+          execute: async () => 'notes found',
+        }),
+      });
+
+      it('sends them in auto mode, before the quick-reply and escalation tools', async () => {
+        vi.mocked(loadMcpServerTools).mockResolvedValueOnce(outsideTools());
+        const model = scriptModel([textStep('Sure.')]);
+
+        await chatService.processChatMessage(
+          [{ role: 'user', content: 'hello' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+
+        expect(loadMcpServerTools).toHaveBeenCalledExactlyOnceWith({
+          actorUserId,
+          accountUserId: activeUserId,
+        });
+        expect(modelToolNames(model).slice(-3)).toEqual([
+          'mcp_notes__search',
+          ASK_USER_TOOL_NAME,
+          'sparky_enable_tools',
+        ]);
+      });
+
+      it('runs one the model calls and hands it the result', async () => {
+        vi.mocked(loadMcpServerTools).mockResolvedValueOnce(outsideTools());
+        const model = scriptModel([
+          {
+            finishReason: { unified: 'tool-calls' as const, raw: undefined },
+            usage,
+            content: [
+              {
+                type: 'tool-call' as const,
+                toolCallId: 'call-1',
+                toolName: 'mcp_notes__search',
+                input: '{"query":"private words"}',
+              },
+            ],
+            warnings: [],
+          },
+          textStep('Found them.'),
+        ]);
+
+        await chatService.processChatMessage(
+          [{ role: 'user', content: 'search my notes' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+
+        expect(JSON.stringify(model.doGenerateCalls[1].prompt)).toContain(
+          'notes found'
+        );
+        // What was sent to the other server is not logged.
+        expect(log).toHaveBeenCalledWith(
+          'info',
+          'Agent executed tool call: mcp_notes__search'
+        );
+        expect(JSON.stringify(vi.mocked(log).mock.calls)).not.toContain(
+          'private words'
+        );
+      });
+
+      it('leaves them out of a hand-picked selection', async () => {
+        scriptModel([textStep('Sure.')]);
+
+        await chatService.processChatMessage(
+          [{ role: 'user', content: 'log my lunch' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          ['food']
+        );
+
+        expect(loadMcpServerTools).not.toHaveBeenCalled();
+      });
+
+      it('leaves them out of the core profile', async () => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValue({
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
+          chat_tool_profile: 'core',
+        });
+        scriptModel([textStep('Hi there!')]);
+
+        await chatService.processChatMessage(
+          [{ role: 'user', content: 'hello' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+
+        expect(loadMcpServerTools).not.toHaveBeenCalled();
+      });
     });
 
     // Tool parts are stripped from the LLM window, so an assistant turn that

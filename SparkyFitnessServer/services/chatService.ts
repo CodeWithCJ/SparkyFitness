@@ -96,6 +96,10 @@ import {
   type ToolBuildContext,
 } from '../ai/tools/index.js';
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
+import {
+  isMcpServerToolName,
+  loadMcpServerTools,
+} from '../ai/tools/mcpServerTools.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import {
@@ -674,6 +678,17 @@ async function prepareChatContext(
 
   const selectedCategories = resolveCategories(toolProfile, toolCategories);
 
+  // Tools from the outside MCP servers an admin added. They belong to no
+  // category, so a hand-picked selection, which is a strict ceiling, leaves
+  // them out, and so does the core profile, which is for small local models.
+  const outsideTools =
+    !categoriesAreManual && toolProfile === 'full'
+      ? await loadMcpServerTools({
+          actorUserId: authenticatedUserId,
+          accountUserId: userId,
+        })
+      : {};
+
   // Two tool-loading modes:
   //
   // - Manual selection (categoriesAreManual): a strict ceiling. Compose the
@@ -702,6 +717,7 @@ async function prepareChatContext(
     serviceConfigId,
     foodResearchTool,
     latestUserText,
+    outsideTools,
   };
 
   if (categoriesAreManual) {
@@ -729,6 +745,7 @@ async function prepareChatContext(
           )
         ),
       ].filter((name) => !heldBackTools.includes(name)),
+      ...Object.keys(outsideTools),
       ENABLE_TOOLS_TOOL_NAME,
       // Quick-reply chips: full profile only. The tool belongs to no category,
       // so it is never pulled in by the classifier — it has to be added here.
@@ -2438,9 +2455,13 @@ async function processChatMessage(
           onStepFinish({ toolCalls, toolResults }) {
             if (toolCalls && toolCalls.length > 0) {
               toolCalls.forEach((call) => {
+                // What chat sends another server stays out of the log, as
+                // in the client itself.
                 log(
                   'info',
-                  `Agent executed tool call: ${call.toolName} with args: ${JSON.stringify(call.input)}`
+                  isMcpServerToolName(call.toolName)
+                    ? `Agent executed tool call: ${call.toolName}`
+                    : `Agent executed tool call: ${call.toolName} with args: ${JSON.stringify(call.input)}`
                 );
                 executedToolsList.push({
                   name: call.toolName,

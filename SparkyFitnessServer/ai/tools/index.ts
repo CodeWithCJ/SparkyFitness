@@ -90,6 +90,12 @@ export interface ToolBuildContext {
   serviceConfigId?: string | null;
   /** Provider-executed web research, offered within the food category only. */
   foodResearchTool?: Tool;
+  /**
+   * This turn's tools from the outside MCP servers an admin added (see
+   * mcpServerTools.ts). Only buildChatToolSurface reads them: they belong to
+   * no category, so a hand-picked selection leaves them out.
+   */
+  outsideTools?: ToolMap;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -459,6 +465,10 @@ export function buildChatToolSurface(
     tz,
     ctx
   );
+  // After Sparky's own tools and before the two below, which keeps the cache
+  // breakpoint on the escalation tool. Their names all start with mcp_, which
+  // no built-in tool uses, so none can replace one.
+  Object.assign(tools, ctx?.outsideTools);
   // The quick-reply tool is composed for every surface but only made active for
   // the 'full' profile (see activeToolNames in chatService.ts); it belongs to no
   // category, so it is not in toolNamesByCategory.
