@@ -8,8 +8,10 @@ import {
   addWorkoutSetToExercise,
   clearWorkoutPlaybackDraftFromStorage,
   buildPresetSessionCreateRequestFromDraft,
+  buildPresetSessionUpdateRequestFromDraft,
   completeCurrentWorkoutSet,
   createWorkoutPlaybackDraftFromExercise,
+  createWorkoutPlaybackDraftFromSession,
   createWorkoutPlaybackDraftFromPreset,
   createWorkoutPlaybackRouteState,
   createWorkoutPlaybackRouteStateFromExercise,
@@ -819,5 +821,67 @@ describe('adaptive draft helpers', () => {
       72.5, 72.5,
     ]);
     expect(setWorkoutAdaptiveDeclined(back, 1, true)).toBe(back);
+  });
+});
+describe('#1995 phase 1 resume lifecycle', () => {
+  const buildResumedSession = (revision: number) =>
+    ({
+      type: 'preset',
+      id: 'session-1',
+      entry_date: '2026-11-10',
+      workout_preset_id: 42,
+      name: 'Evening Workout',
+      description: null,
+      notes: 'half done',
+      location: null,
+      source: 'sparky',
+      status: 'partial',
+      finished_at: '2026-11-10T18:00:00.000Z',
+      revision,
+      total_duration_minutes: 30,
+      exercises: [
+        {
+          id: 'entry-1',
+          exercise_id: 'exercise-1',
+          exercise_snapshot: { name: 'Bench Press' },
+          sets: [
+            {
+              set_number: 1,
+              reps: 8,
+              weight: 80,
+              completed_at: '2026-11-10T17:00:00.000Z',
+            },
+            { set_number: 2, reps: 8, weight: 80, completed_at: null },
+          ],
+        },
+      ],
+      activity_details: [],
+    }) as unknown as Parameters<
+      typeof createWorkoutPlaybackDraftFromSession
+    >[0];
+
+  it('seeds a resumable draft from the reopened response, carrying its fresh revision', () => {
+    // The resume PUT bumps the server revision, so the draft must be
+    // built from the reopened session (revision 5), not the stale
+    // pre-update snapshot (revision 4).
+    const draft = createWorkoutPlaybackDraftFromSession(buildResumedSession(5));
+    expect(draft).not.toBeNull();
+    expect(draft!.session_id).toBe('session-1');
+    expect(draft!.revision).toBe(5);
+    expect(draft!.started_at).toBe('2026-11-10T17:00:00.000Z');
+    expect(draft!.exercises[0]!.sets[0]!.completed).toBe(true);
+    expect(draft!.exercises[0]!.sets[1]!.completed).toBe(false);
+  });
+
+  it('presents the draft revision on the finish update so concurrent edits are refused, not overwritten', () => {
+    const draft = createWorkoutPlaybackDraftFromSession(
+      buildResumedSession(5)
+    )!;
+    const update = buildPresetSessionUpdateRequestFromDraft(draft, 'UTC');
+    expect(update.revision).toBe(5);
+    expect(update.finished_at).toEqual(expect.any(String));
+    expect((update.exercises as unknown as { id?: string }[])[0]!.id).toBe(
+      'entry-1'
+    );
   });
 });

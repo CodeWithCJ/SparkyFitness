@@ -1466,7 +1466,8 @@
       "noDraft": "No active workout draft was found for this date.",
       "setRow": "Set {{setNumber}}",
       "sets": "sets",
-      "title": "Live Workout"
+      "title": "Live Workout",
+      "sessionConflictError": "This workout was updated on another device or tab. Close the player, reload the diary, and resume it again."
     },
     "workoutPlaybackPage": {
       "addDropSets": "Add {{sets}} Drop Sets (-{{percent}}%)",
@@ -1707,7 +1708,17 @@
     "equipment2": "Equipment:",
     "effort": "Effort",
     "effortOutOf": "{{rating}}/10",
-    "effortValue": "Effort {{rating}}/10"
+    "effortValue": "Effort {{rating}}/10",
+    "sessionStatus": {
+      "planned": "Planned",
+      "in_progress": "In Progress",
+      "partial": "Partial",
+      "completed": "Completed"
+    },
+    "resumeWorkoutButton": "Resume Workout",
+    "resumeWorkoutFailed": "Failed to resume this workout. Please try again.",
+    "resumeEmptySession": "Nothing to resume in this session.",
+    "sessionUpdatedElsewhere": "This workout was updated on another device or tab. Reload the diary and try again."
   },
   "foodSearchDialog": {
     "title": "Search and Add Food",
