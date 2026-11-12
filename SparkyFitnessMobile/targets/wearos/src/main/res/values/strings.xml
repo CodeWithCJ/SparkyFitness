@@ -114,7 +114,7 @@
     <string name="sleep_title">Sleep Health</string>
     <string name="sleep_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s sleep data.</string>
 
-<!-- Tiles & Sleep Stages -->
+    <!-- Tiles & Sleep Stages -->
     <string name="tile_tap_to_open">Tap to open</string>
     <string name="tile_nutrition_header">NUTRITION</string>
     <string name="tile_nutrition_tap_goals">Tap to open Goals</string>
@@ -160,6 +160,26 @@
     <string name="tile_exercise_tap_start">Tap to start a workout</string>
     <string name="tile_exercise_scheduled">Scheduled</string>
     <string name="tile_exercise_workouts_pill">Workouts</string>
+
+    <!-- Workout & Run Stores -->
+    <string name="water_default_drink">Drink</string>
+    <string name="workout_error_phone_unreachable">Phone isn\'t reachable. Open SparkyFitness on your phone and try again.</string>
+    <string name="workout_error_start_failed">Couldn\'t start workout on phone. Make sure SparkyFitness is open.</string>
+    <string name="workout_new_pr_banner">🏆 New PR!</string>
+    <string name="workout_default_exercise_name">Exercise</string>
+
+    <string name="run_place_indoor">indoor</string>
+    <string name="run_place_outdoor">outdoor</string>
+    <string name="run_kind_walk">walk</string>
+    <string name="run_kind_run">run</string>
+    <string name="run_cue_starting">Starting %1$s \%2$s</string>
+    <string name="run_cue_test">Voice cues active. Have a great workout!</string>
+    <string name="run_cue_lap">Lap %1$d</string>
+    <string name="run_alert_hr_high">Heart rate high: %1$d BPM</string>
+    <string name="run_alert_hr_low">Heart rate low: %1$d BPM</string>
+    <string name="run_alert_pace_below">Pace below target</string>
+    <string name="run_alert_pace_above">Pace above target</string>
+    <string name="run_cue_checkin_km">%1$d minutes. Distance %2$.2f kilometers.</string>
 
     <color name="iconBackground">#FFFFFF</color>
 </resources>
