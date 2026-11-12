@@ -167,6 +167,7 @@ const syncedRow = (over: Row = {}): Row => ({
   calories_burned: 425,
   source: 'Garmin',
   source_id: 'g-1',
+  exercise_preset_entry_id: null,
   exercise_name: 'Other workout',
   ...over,
 });
@@ -193,7 +194,7 @@ describe('getCalorieLinkSuggestions', () => {
     answer([
       [/FROM exercise_entry_sets/, [{ completed_at: at }]],
       [
-        /NOT IN \('manual', 'sparky', 'hevy'\)/,
+        /NOT IN \('manual', 'sparky'\)/,
         [
           syncedRow({
             id: 's-early',
@@ -217,6 +218,85 @@ describe('getCalorieLinkSuggestions', () => {
     expect(result.candidates[0]).toMatchObject({
       start_time: '09:55',
       source: 'Garmin',
+    });
+  });
+
+  it('offers a synced strength session once, summed over its exercises', async () => {
+    answer([
+      [/FROM exercise_entry_sets/, []],
+      [
+        /NOT IN \('manual', 'sparky'\)/,
+        [
+          syncedRow({
+            id: 'g-a',
+            exercise_preset_entry_id: 'pe-1',
+            preset_name: 'Strength',
+            entry_time: '09:55:00',
+            duration_minutes: 20,
+            calories_burned: 200,
+          }),
+          syncedRow({
+            id: 'g-b',
+            exercise_preset_entry_id: 'pe-1',
+            preset_name: 'Strength',
+            entry_time: '10:15:00',
+            duration_minutes: 40,
+            calories_burned: 273,
+          }),
+          syncedRow({ id: 'cardio', entry_time: '06:00:00' }),
+        ],
+      ],
+      [/WHERE user_id = \$2/, [manualRow()]],
+    ]);
+
+    const result = await getCalorieLinkSuggestions('u1', 'u1', 'm1');
+
+    expect(result.candidates).toHaveLength(2);
+    const session = result.candidates.find((c) => c.id === 'g-a');
+    expect(session).toMatchObject({
+      name: 'Strength',
+      start_time: '09:55',
+      duration_minutes: 60,
+      calories_burned: 473,
+      match: 'overlap',
+    });
+    expect(result.candidates.some((c) => c.id === 'g-b')).toBe(false);
+  });
+
+  it('reports a linked session by the id the sheet offers', async () => {
+    answer([
+      [/FROM exercise_entry_sets/, []],
+      [
+        /NOT IN \('manual', 'sparky'\)/,
+        [
+          syncedRow({
+            id: 'g-a',
+            exercise_preset_entry_id: 'pe-1',
+            calorie_link_id: 'link-1',
+          }),
+          syncedRow({
+            id: 'g-b',
+            exercise_preset_entry_id: 'pe-1',
+            calorie_link_id: 'link-1',
+          }),
+        ],
+      ],
+      [
+        /WHERE user_id = \$2/,
+        [
+          manualRow({
+            calorie_link_id: 'link-1',
+            calorie_link_resolution: 'average',
+          }),
+        ],
+      ],
+    ]);
+
+    const result = await getCalorieLinkSuggestions('u1', 'u1', 'm1');
+
+    expect(result.link).toEqual({
+      resolution: 'average',
+      synced_entry_id: 'g-a',
     });
   });
 
@@ -339,6 +419,135 @@ describe('setCalorieLink', () => {
     ]);
   });
 
+  it('links every exercise of a synced strength session', async () => {
+    answer([
+      [
+        /id = \$1 AND user_id = \$2 FOR UPDATE/,
+        [syncedRow({ id: 'g-a', exercise_preset_entry_id: 'pe-1' })],
+      ],
+      [
+        /exercise_preset_entry_id = \$2\s+ORDER BY/,
+        [
+          syncedRow({
+            id: 'g-a',
+            exercise_preset_entry_id: 'pe-1',
+            calories_burned: 200,
+          }),
+          syncedRow({
+            id: 'g-b',
+            exercise_preset_entry_id: 'pe-1',
+            calories_burned: 273,
+          }),
+        ],
+      ],
+      [/WHERE user_id = \$2/, [manualRow()]],
+    ]);
+
+    await setCalorieLink(
+      'u1',
+      'u1',
+      'm1',
+      body('sparkyfitness', { synced_entry_id: 'g-a' })
+    );
+
+    const calls = updates();
+    expect(calls.map((c) => [c[1][0], c[1][2]])).toEqual([
+      ['m1', null],
+      ['g-a', 0],
+      ['g-b', 0],
+    ]);
+    expect(calls[1]![1][3]).toBe(calls[0]![1][3]);
+    expect(calls[2]![1][3]).toBe(calls[0]![1][3]);
+  });
+
+  it.each([
+    // Summed synced side is 575, above the 475 logged: only the whole-session
+    // total makes `higher` keep the synced side (the picked row alone, 300,
+    // would not), and `average` is (475 + 575) / 2.
+    [
+      'higher',
+      [
+        ['m1', 0],
+        ['g-a', null],
+        ['g-b', null],
+      ],
+    ],
+    [
+      'average',
+      [
+        ['m1', 525],
+        ['g-a', 0],
+        ['g-b', 0],
+      ],
+    ],
+  ] as const)(
+    'resolves %s from the summed calories of a synced session',
+    async (resolution, expected) => {
+      answer([
+        [
+          /id = \$1 AND user_id = \$2 FOR UPDATE/,
+          [syncedRow({ id: 'g-a', exercise_preset_entry_id: 'pe-1' })],
+        ],
+        [
+          /exercise_preset_entry_id = \$2\s+ORDER BY/,
+          [
+            syncedRow({
+              id: 'g-a',
+              exercise_preset_entry_id: 'pe-1',
+              calories_burned: 300,
+            }),
+            syncedRow({
+              id: 'g-b',
+              exercise_preset_entry_id: 'pe-1',
+              calories_burned: 275,
+            }),
+          ],
+        ],
+        [/WHERE user_id = \$2/, [manualRow()]],
+      ]);
+
+      await setCalorieLink(
+        'u1',
+        'u1',
+        'm1',
+        body(resolution, { synced_entry_id: 'g-a' })
+      );
+
+      expect(updates().map((c) => [c[1][0], c[1][2]])).toEqual(expected);
+    }
+  );
+
+  it('refuses a session when one of its exercises is linked elsewhere', async () => {
+    answer([
+      [
+        /id = \$1 AND user_id = \$2 FOR UPDATE/,
+        [syncedRow({ id: 'g-a', exercise_preset_entry_id: 'pe-1' })],
+      ],
+      [
+        /exercise_preset_entry_id = \$2\s+ORDER BY/,
+        [
+          syncedRow({ id: 'g-a', exercise_preset_entry_id: 'pe-1' }),
+          syncedRow({
+            id: 'g-b',
+            exercise_preset_entry_id: 'pe-1',
+            calorie_link_id: 'other',
+          }),
+        ],
+      ],
+      [/WHERE user_id = \$2/, [manualRow()]],
+    ]);
+
+    await expect(
+      setCalorieLink(
+        'u1',
+        'u1',
+        'm1',
+        body('synced', { synced_entry_id: 'g-a' })
+      )
+    ).rejects.toMatchObject({ status: 409 });
+    expect(updates()).toHaveLength(0);
+  });
+
   it('clears the earlier link of the workout before relinking', async () => {
     answer([
       [/id = \$1 AND user_id = \$2 FOR UPDATE/, [syncedRow()]],
@@ -361,11 +570,6 @@ describe('setCalorieLink', () => {
   it.each([
     ['a manual entry', syncedRow({ source: 'manual' }), 400],
     ['a Hevy workout on the device side', syncedRow({ source: 'Hevy' }), 400],
-    [
-      'a grouped imported workout',
-      syncedRow({ exercise_preset_entry_id: 'group' }),
-      400,
-    ],
     [
       'a daily Active Calories total',
       syncedRow({ exercise_name: 'Active Calories' }),

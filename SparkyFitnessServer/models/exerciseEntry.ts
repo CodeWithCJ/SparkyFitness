@@ -1306,25 +1306,26 @@ async function _createExerciseEntryWithClient<T extends object>(
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
-      if (Array.isArray(entryData.sets) && entryData.sets.length > 0) {
-        assertSetWeightSign(entryData.sets, snapshot.modality);
-        const setsValues = (entryData.sets as Record<string, unknown>[]).map(
-          (set) => [
-            newEntryId,
-            set.set_number,
-            set.set_type,
-            set.reps,
-            set.weight,
-            set.duration,
-            set.rest_time,
-            set.notes,
-            set.rpe,
-            set.rir ?? null,
-            set.completed_at ?? null,
-            set.is_pr ?? false,
-            set.distance ?? null,
-          ]
-        );
+      if (
+        Array.isArray(suppliedEntryData.sets) &&
+        suppliedEntryData.sets.length > 0
+      ) {
+        assertSetWeightSign(suppliedEntryData.sets, snapshot.modality);
+        const setsValues = suppliedEntryData.sets.map((set) => [
+          newEntryId,
+          set.set_number,
+          set.set_type,
+          set.reps,
+          set.weight,
+          set.duration,
+          set.rest_time,
+          set.notes,
+          set.rpe,
+          set.rir ?? null,
+          set.completed_at ?? null,
+          set.is_pr ?? false,
+          set.distance ?? null,
+        ]);
         const setsQuery = format(
           'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
           setsValues

@@ -167,6 +167,43 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     );
   };
 
+  const addGroupedHealthSession = async (source: string) => {
+    const parent: { id: string } =
+      await exercisePresetEntryRepository.createExercisePresetEntry(
+        userId,
+        {
+          name: 'Synthetic recorded strength session',
+          entry_date: '2026-11-01',
+          source,
+        },
+        userId
+      );
+    const first: { id: string } = await addHealthSession(source);
+    await db.query(
+      `UPDATE exercise_entries
+       SET exercise_preset_entry_id = $3, duration_minutes = 30,
+           calories_burned = 200
+       WHERE id = $1 AND user_id = $2`,
+      [first.id, userId, parent.id]
+    );
+    const second = await db.query<{ id: string }>(
+      `INSERT INTO exercise_entries
+         (user_id, exercise_id, exercise_name, entry_date, entry_time,
+          record_timezone, duration_minutes, calories_burned, source,
+          source_id, exercise_preset_entry_id)
+       SELECT user_id, exercise_id, exercise_name, entry_date, '18:30'::time,
+              record_timezone, 30, 250, source,
+              'synthetic-health-session-second', exercise_preset_entry_id
+       FROM exercise_entries WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [first.id, userId]
+    );
+    return {
+      parentId: parent.id,
+      entryIds: [first.id, second.rows[0]!.id],
+    };
+  };
+
   const countedCalories = async () =>
     (
       await db.query<{ total: number }>(
@@ -354,6 +391,72 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
         synced_entry_id: health.id,
         custom_calories: total,
       });
+    }
+  );
+
+  it.each(['Health Connect', 'HealthKit'])(
+    'retains a manually linked grouped %s recording through reimport and unlink',
+    async (source) => {
+      const workouts = [workout(), workout('another-session')];
+      await sync(workouts);
+      const original = await entries();
+      const health = await addGroupedHealthSession(source);
+      const suggestions = await calorieLinkService.getCalorieLinkSuggestions(
+        userId,
+        userId,
+        original[0]!.id
+      );
+      expect(suggestions.candidates).toHaveLength(1);
+      expect(suggestions.candidates[0]).toMatchObject({
+        name: 'Synthetic recorded strength session',
+        source,
+        duration_minutes: 60,
+        calories_burned: 450,
+      });
+      const selected = suggestions.candidates[0]!.id;
+      expect(health.entryIds).toContain(selected);
+      await setCalorieLink(userId, userId, original[0]!.id, {
+        synced_entry_id: selected,
+        resolution: 'custom',
+        custom_calories: 350,
+      });
+      expect(await countedCalories()).toBe(350);
+
+      await sync(workouts);
+      const saved = await entries();
+      expect(saved).toHaveLength(original.length + health.entryIds.length);
+      for (const row of original) {
+        expect(saved.find((entry) => entry.id === row.id)).toMatchObject(row);
+      }
+      for (const id of health.entryIds) {
+        expect(saved.find((entry) => entry.id === id)).toMatchObject({
+          exercise_preset_entry_id: health.parentId,
+        });
+      }
+      const reopened = await calorieLinkService.getCalorieLinkSuggestions(
+        userId,
+        userId,
+        original[0]!.id
+      );
+      expect(reopened.link).toMatchObject({
+        resolution: 'custom',
+        synced_entry_id: selected,
+        custom_calories: 350,
+      });
+      expect(reopened.candidates).toHaveLength(1);
+      expect(await countedCalories()).toBe(350);
+
+      await clearCalorieLink(userId, userId, original[0]!.id);
+      expect(await countedCalories()).toBe(
+        450 + original.reduce((sum, entry) => sum + entry.calories_burned, 0)
+      );
+      const links = await db.query<{ calorie_link_id: string | null }>(
+        'SELECT calorie_link_id FROM exercise_entries WHERE user_id = $1',
+        [userId]
+      );
+      expect(links.rows.every((row) => row.calorie_link_id === null)).toBe(
+        true
+      );
     }
   );
 
