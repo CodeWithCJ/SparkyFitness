@@ -107,9 +107,11 @@ struct WorkoutMoreExercisePage: View {
     @State private var confirmingDelete = false
     @State private var swapping = false
     @State private var confirmingDeleteExercise = false
+    @State private var showingPlates = false
 
     var body: some View {
         let upcoming = store.upcomingExercises
+        let plates = platesTile
         VStack(spacing: WatchStyle.m(6)) {
             // Under the system clock at the top right.
             Color.clear.frame(height: WatchStyle.m(18))
@@ -119,15 +121,19 @@ struct WorkoutMoreExercisePage: View {
                     String(localized: "watch.workout.moreType", defaultValue: "Type"),
                     subtitle: Self.typeName(step.plannedSet.setType)
                 ) { choosingType = true }
-                MoreTile(
-                    String(localized: "watch.workout.moreAddSet", defaultValue: "Add Set"),
-                    subtitle: String(localized: "watch.workout.moreAddSetHint", defaultValue: "+1 set")
-                ) {
-                    session.sendWorkoutEdit(.addSet(exerciseEntryId: step.exerciseEntryId))
+                if let plates {
+                    MoreTile(String(localized: "watch.workout.morePlates", defaultValue: "Plates"), subtitle: plates.summary) { showingPlates = true }
+                } else {
+                    addSetTile
                 }
             }
-            MoreRow(lone: true) {
-                MoreTile(String(localized: "watch.workout.moreDeleteSet", defaultValue: "Delete Set"), destructive: true) { confirmingDelete = true }
+            if plates != nil {
+                MoreRow {
+                    addSetTile
+                    deleteSetTile
+                }
+            } else {
+                MoreRow(lone: true) { deleteSetTile }
             }
             MoreSection(String(localized: "watch.workout.moreExercise", defaultValue: "Exercise"))
             MoreRow {
@@ -155,6 +161,12 @@ struct WorkoutMoreExercisePage: View {
             }
         }
         .sheet(isPresented: $swapping) { SwapExerciseSheet() }
+        #if DEBUG
+        .onAppear { if ScreenshotSeed.opensPlates { showingPlates = true } }
+        #endif
+        .sheet(isPresented: $showingPlates) {
+            if let plates { PlatesSheet(config: plates.config, weightKg: plates.weightKg) }
+        }
         .confirmationDialog(
             String(localized: "watch.workout.deleteExerciseConfirm", defaultValue: "Delete \(step.exerciseName)?"),
             isPresented: $confirmingDeleteExercise,
@@ -181,6 +193,35 @@ struct WorkoutMoreExercisePage: View {
         } message: {
             Text(String(localized: "watch.workout.lastSetRemovesExercise", defaultValue: "An exercise's last set removes the exercise."))
         }
+    }
+
+    private var addSetTile: some View {
+        MoreTile(
+            String(localized: "watch.workout.moreAddSet", defaultValue: "Add Set"),
+            subtitle: String(localized: "watch.workout.moreAddSetHint", defaultValue: "+1 set")
+        ) {
+            session.sendWorkoutEdit(.addSet(exerciseEntryId: step.exerciseEntryId))
+        }
+    }
+
+    private var deleteSetTile: some View {
+        MoreTile(String(localized: "watch.workout.moreDeleteSet", defaultValue: "Delete Set"), destructive: true) { confirmingDelete = true }
+    }
+
+    /// The Plates tile, for a barbell exercise whose set has a weight: plates
+    /// per side for the weight as it is now, so an edit on the wrist shows.
+    private var platesTile: (config: WatchPlateConfig, weightKg: Double, summary: String)? {
+        guard let config = step.plates, let weightKg = store.values(for: step).weightKg, weightKg > 0 else { return nil }
+        let summary: String
+        switch WatchPlates.calculate(targetKg: weightKg, config: config) {
+        case .exact(let load):
+            summary = load.plates.isEmpty
+                ? String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only")
+                : WatchPlates.summary(load.plates)
+        case .inexact, .invalid:
+            summary = String(localized: "watch.workout.platesNotExact", defaultValue: "Not exact")
+        }
+        return (config, weightKg, summary)
     }
 
     private static func typeName(_ type: String?) -> String {
@@ -334,5 +375,95 @@ private struct MoreTile: View {
             .contentShape(RoundedRectangle(cornerRadius: WatchStyle.m(14), style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Plates per side for a set's weight: the bar, each plate on one side, and,
+/// when the weight cannot be built from the plates owned, the nearest weights
+/// either side of it.
+struct PlatesSheet: View {
+    let config: WatchPlateConfig
+    let weightKg: Double
+
+    private var unit: String { config.unit }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: WatchStyle.m(8)) {
+                    row(String(localized: "watch.workout.platesBar", defaultValue: "Bar"), "\(WatchPlates.number(config.barWeight)) \(unit)")
+                    switch WatchPlates.calculate(targetKg: weightKg, config: config) {
+                    case .exact(let load):
+                        perSide(load)
+                    case .inexact(let below, let above):
+                        inexact(below: below, above: above)
+                    case .invalid:
+                        Text(String(localized: "watch.workout.platesUnavailable", defaultValue: "Cannot work this out"))
+                            .font(.footnote)
+                            .foregroundStyle(WatchStyle.grey)
+                    }
+                }
+                .padding(.horizontal, WatchStyle.m(4))
+            }
+            .navigationTitle(String(localized: "watch.workout.morePlates", defaultValue: "Plates"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    @ViewBuilder
+    private func perSide(_ load: WatchPlates.Load) -> some View {
+        heading(String(localized: "watch.workout.platesPerSide", defaultValue: "Per side"))
+        if load.plates.isEmpty {
+            Text(String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only"))
+                .font(.system(size: WatchStyle.m(18), weight: .semibold))
+        } else {
+            ForEach(load.plates, id: \.weight) { plate in
+                row("\(WatchPlates.number(plate.weight)) \(unit)", "×\(plate.count)", strong: true)
+            }
+        }
+        row(String(localized: "watch.workout.platesTotal", defaultValue: "Total"), "\(WatchPlates.number(load.total)) \(unit)")
+    }
+
+    @ViewBuilder
+    private func inexact(below: WatchPlates.Load?, above: WatchPlates.Load?) -> some View {
+        Text(String(localized: "watch.workout.platesNotExactLong", defaultValue: "Your plates cannot make exactly \(WatchPlates.number(WatchPlates.inUnit(weightKg, of: config))) \(unit)."))
+            .font(.footnote)
+            .foregroundStyle(WatchStyle.grey)
+        let closest = [below, above].compactMap { $0 }
+        if !closest.isEmpty {
+            row(
+                String(localized: "watch.workout.platesClosest", defaultValue: "Closest"),
+                closest.map { WatchPlates.number($0.total) }.joined(separator: " / ") + " \(unit)",
+                strong: true
+            )
+            ForEach(Array(closest.enumerated()), id: \.offset) { _, load in
+                row(WatchPlates.number(load.total), load.plates.isEmpty ? String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only") : WatchPlates.summary(load.plates))
+            }
+        }
+    }
+
+    private func heading(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: WatchStyle.m(12), weight: .bold))
+            .tracking(0.5)
+            .foregroundStyle(WatchStyle.grey)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func row(_ title: String, _ value: String, strong: Bool = false) -> some View {
+        HStack(spacing: WatchStyle.m(6)) {
+            Text(title)
+                .font(.system(size: WatchStyle.m(15), weight: strong ? .semibold : .regular))
+                .foregroundStyle(strong ? Color.white : WatchStyle.grey)
+            Spacer(minLength: 0)
+            Text(value)
+                .font(.system(size: WatchStyle.m(15), weight: .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .padding(.horizontal, WatchStyle.m(10))
+        .frame(minHeight: WatchStyle.m(36))
+        .background(WatchStyle.surface, in: RoundedRectangle(cornerRadius: WatchStyle.m(12), style: .continuous))
     }
 }

@@ -87,6 +87,7 @@ enum ContextPayloadMapper {
             upNextPage: payload["upNextPage"] as? Bool ?? previous.upNextPage,
             newWorkout: payload["newWorkout"] as? Bool ?? previous.newWorkout,
             workoutCountdown: (payload["workoutCountdown"] as? NSNumber)?.intValue ?? previous.workoutCountdown,
+            holdCountdown: payload["holdCountdown"] as? Bool ?? previous.holdCountdown,
             workoutTopLine: payload["workoutTopLine"] as? String ?? previous.workoutTopLine,
             fast: fastKnown(in: payload) ? fast(from: payload["fast"]) : previous.fast,
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
@@ -641,6 +642,8 @@ enum ContextPayloadMapper {
                 name: name,
                 supersetRun: intValue(raw["supersetRun"]),
                 bodyweight: raw["bodyweight"] as? Bool,
+                equipment: raw["equipment"] as? String,
+                plates: plateConfig(from: raw["plates"]),
                 sets: sets
             )
         }
@@ -783,6 +786,21 @@ enum ContextPayloadMapper {
         if let d = raw as? Double { return Int(d) }
         if let n = raw as? NSNumber { return n.intValue }
         return nil
+    }
+
+    /// The bar and plates for a barbell exercise. Nil when absent or damaged,
+    /// which hides the Plates tile rather than showing a wrong breakdown.
+    private static func plateConfig(from raw: Any?) -> WatchPlateConfig? {
+        guard let dict = raw as? [String: Any],
+              let unit = dict["unit"] as? String, unit == "kg" || unit == "lbs",
+              let bar = doubleValue(dict["barWeight"]),
+              let rawPlates = dictionaryArray(dict["plates"])
+        else { return nil }
+        let plates: [WatchPlateConfig.Plate] = rawPlates.compactMap { plate in
+            guard let weight = doubleValue(plate["weight"]), let pairs = intValue(plate["pairs"]) else { return nil }
+            return WatchPlateConfig.Plate(weight: weight, pairs: pairs)
+        }
+        return WatchPlateConfig(unit: unit, barWeight: bar, collarWeight: doubleValue(dict["collarWeight"]) ?? 0, plates: plates)
     }
 
     private static func doubleValue(_ raw: Any?) -> Double? {

@@ -60,6 +60,9 @@ struct PlannedExercise: Codable, Equatable, Identifiable {
     /// new workout view. Nil until the phone sends it; the line then shows the
     /// set's label instead.
     var equipment: String? = nil
+    /// The bar and plates the wearer owns, for the Plates tile on More. Sent
+    /// only for an exercise loaded on a bar; nil from an older phone.
+    var plates: WatchPlateConfig? = nil
     let sets: [PlannedSet]
 
     var id: String { exerciseEntryId }
@@ -182,6 +185,8 @@ struct WorkoutStep: Identifiable, Equatable {
     let supersetRun: Int?
     /// `PlannedExercise.equipment`.
     var equipment: String? = nil
+    /// `PlannedExercise.plates`.
+    var plates: WatchPlateConfig? = nil
 
     var id: String { plannedSet.setId }
 
