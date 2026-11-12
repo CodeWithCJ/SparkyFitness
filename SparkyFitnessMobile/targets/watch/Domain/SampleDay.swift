@@ -125,7 +125,6 @@ enum SampleDay {
             exerciseDoNow: true,
             setScreenMetrics: !ScreenshotSeed.has("nometrics"),
             upNextPage: ScreenshotSeed.has("upnext"),
-            largerText: ScreenshotSeed.has("large"),
             newWorkout: ScreenshotSeed.has("newworkout"),
             workoutCountdown: ScreenshotSeed.has("countdown") ? 3 : nil,
             // `fast`: 14 h into a 16:8 fast; otherwise synced and not fasting.

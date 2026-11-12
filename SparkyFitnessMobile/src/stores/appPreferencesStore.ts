@@ -867,14 +867,16 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           watchClassicWorkout?: boolean;
           watchLargerText?: boolean;
         };
-        // v1 → v2: the larger-text workout page (larger text on, original page
-        // off) is now the new workout view's switch, and both old keys go.
+        // v1 → v2: larger text is now the new workout view's switch, which
+        // also enlarges the other watch pages, and the original workout page
+        // choice is gone: anyone with larger text on gets the new view.
         if (version < 2) {
-          const { watchClassicWorkout, watchLargerText, ...rest } = state;
-          state = {
-            ...rest,
-            watchNewWorkout: watchLargerText === true && !watchClassicWorkout,
-          };
+          const {
+            watchLargerText,
+            watchClassicWorkout: _classic,
+            ...rest
+          } = state;
+          state = { ...rest, watchNewWorkout: watchLargerText === true };
         }
         return state as AppPreferencesState;
       },

@@ -214,46 +214,42 @@ jobs:
             full && shoot workout-stopwatch stopwatch workout
             full && shoot workout-interval interval workout
             full && shoot goals none goals
-            full && shoot goals-large none goals "" large
+            full && shoot goals-large none goals "" newworkout
             full && shoot water none water
-            full && shoot water-large none water "" large
+            full && shoot water-large none water "" newworkout
             full && shoot medications none medications
             full && shoot medications-dose none medications dose
             full && shoot fasting none fasting
             full && shoot fasting-running none fasting "" fast
 
-            # The same pages with larger text on, to compare with the
-            # original look above (this PR's "Larger text on the watch").
-            shoot workout-active-large active workout "" large
-            shoot workout-resting-large resting workout "" large
-            shoot workout-metrics-large active workout metrics large,nometrics
-            shoot workout-upnext-large active workout upnext large,upnext
-            full && shoot workout-exercise-options-large active workout exerciseoptions large
-            shoot workout-rpe-large active workout rpe large
-            full && shoot fasting-running-large none fasting "" large,fast
+            # The same pages with the new workout view on (larger text and the new
+            # workout), to compare with the original look above.
+            shoot workout-active-large active workout "" newworkout
+            shoot workout-resting-large resting workout "" newworkout
+            shoot workout-metrics-large active workout metrics newworkout,nometrics
+            shoot workout-upnext-large active workout upnext newworkout,upnext
+            full && shoot workout-exercise-options-large active workout exerciseoptions newworkout
+            shoot workout-rpe-large active workout rpe newworkout
+            full && shoot fasting-running-large none fasting "" newworkout,fast
 
             # A name too long to fit: the set screen and effort picker
             # title should scroll rather than be cut off.
             shoot workout-longname active workout "" longname
-            shoot workout-longname-large active workout "" longname,large
+            shoot workout-longname-large active workout "" longname,newworkout
             # Two later frames of the same screen: a scrolling title moves.
             sleep 3
             xcrun simctl io "$UDID" screenshot "screenshots/workout-longname-large-later-$SIZE.png"
             sleep 3
             xcrun simctl io "$UDID" screenshot "screenshots/workout-longname-large-later2-$SIZE.png"
-            shoot workout-resting-longname-large resting workout "" longname,large
+            shoot workout-resting-longname-large resting workout "" longname,newworkout
             shoot workout-rpe-longname active workout rpe longname
-            shoot workout-rpe-longname-large active workout rpe longname,large
+            shoot workout-rpe-longname-large active workout rpe longname,newworkout
 
-            # The new workout view.
-            shoot workout-active-new active workout "" newworkout
-            shoot workout-longname-new active workout "" longname,newworkout
-            shoot workout-rpe-longname-new active workout rpe longname,newworkout
 
             # The workout picker and medications follow the text size too.
-            shoot workout-idle-large none workout "" large
-            shoot medications-large none medications "" large
-            shoot medications-dose-large none medications dose large
+            shoot workout-idle-large none workout "" newworkout
+            shoot medications-large none medications "" newworkout
+            shoot medications-dose-large none medications dose newworkout
           done <<< "$DEVICES"
 
           ls -la screenshots

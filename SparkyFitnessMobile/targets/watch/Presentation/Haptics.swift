@@ -22,10 +22,11 @@ enum Haptics {
         play(.success)
     }
 
-    /// One of the last seconds of a rest or hold countdown: a haptic that
-    /// carries a tone, so it can be heard without looking. Gated on the rest
-    /// alerts setting, like the buzz at zero, and not on the general haptics
-    /// switch (the countdown has its own setting). The cue at zero is the
+    /// One of the last seconds of a rest or hold countdown: a tone and a tap
+    /// together (the watch's silent mode leaves only the tap), so it can be
+    /// noticed without looking. Gated on the rest alerts setting, like the buzz
+    /// at zero, and not on the general haptics switch; the countdown has its
+    /// own setting. The cue at zero is the
     /// rest-finished buzz, which plays a different haptic.
     static func countdownTick() {
         MainActor.assumeIsolated {

@@ -323,7 +323,7 @@ describe('appPreferencesStore', () => {
     });
   });
 
-  describe('the retired original workout page setting', () => {
+  describe('the retired larger text and original workout page settings', () => {
     const persist = async (state: Record<string, unknown>) => {
       await AsyncStorage.setItem(
         '@SparkyFitness/app-preferences',
@@ -335,24 +335,26 @@ describe('appPreferencesStore', () => {
       await useAppPreferencesStore.persist.rehydrate();
     };
 
-    it('turns the new workout view on for larger text without the original page', async () => {
+    it('turns the new workout view on for anyone who had larger text on', async () => {
       await persist({ watchLargerText: true, watchClassicWorkout: false });
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(true);
+      await persist({ watchLargerText: true, watchClassicWorkout: true });
       expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(true);
     });
 
-    it('leaves it off when the original page was kept or larger text was off', async () => {
-      await persist({ watchLargerText: true, watchClassicWorkout: true });
-      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
+    it('leaves it off when larger text was off', async () => {
       await persist({ watchLargerText: false, watchClassicWorkout: false });
       expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
     });
 
-    it('drops the old key on the next write', async () => {
+    it('drops both old keys on the next write', async () => {
       await persist({ watchLargerText: true, watchClassicWorkout: false });
       useAppPreferencesStore.getState().setWatchWorkoutCountdown(3);
       const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
       const parsed = JSON.parse(raw!);
       expect(parsed.state).not.toHaveProperty('watchClassicWorkout');
+      expect(parsed.state).not.toHaveProperty('watchLargerText');
+      expect(parsed.state.watchNewWorkout).toBe(true);
       expect(parsed.state.watchWorkoutCountdown).toBe(3);
       expect(parsed.version).toBe(2);
     });

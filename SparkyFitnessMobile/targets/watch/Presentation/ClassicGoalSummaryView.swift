@@ -1,5 +1,8 @@
 import SwiftUI
 
+// The original layout of this page, shown while Settings → Apple Watch → "New
+// workout view" is off; `GoalSummaryView` is the larger one. `ContentView` picks.
+
 /// Today's nutrition against the phone's goals
 ///
 /// Read-only by design: everything here is logged on the phone, so this is a

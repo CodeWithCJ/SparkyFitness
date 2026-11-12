@@ -141,7 +141,7 @@ describe('WatchSettingsScreen', () => {
 
     expect(prefs().watchNewWorkout).toBe(false);
     expect(prefs().watchWorkoutCountdown).toBe(0);
-    expect(screen.queryByText('Countdown sound')).toBeNull();
+    expect(screen.queryByText('Countdown sound & haptic')).toBeNull();
 
     fireEvent(
       screen.getByTestId('watch-new-workout-switch'),

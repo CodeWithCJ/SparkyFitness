@@ -277,7 +277,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               })}
               subtitle={t('watchSettings.newWorkoutSubtitle', {
                 defaultValue:
-                  'A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
+                  'The new workout layout and larger text on every watch page: a Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original look.',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={
@@ -321,13 +321,13 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
                 />
                 <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
                   {t('watchSettings.countdownTitle', {
-                    defaultValue: 'Countdown sound',
+                    defaultValue: 'Countdown sound & haptic',
                   })}
                 </Text>
                 <Text className="text-text-secondary text-sm mb-4">
                   {t('watchSettings.countdownDescription', {
                     defaultValue:
-                      'A tick on the watch each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking.',
+                      'Sound and tap for each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking. With the watch on silent only the tap plays.',
                   })}
                 </Text>
                 <SegmentedControl<`${WatchWorkoutCountdown}`>
