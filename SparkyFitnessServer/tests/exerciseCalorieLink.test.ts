@@ -420,6 +420,63 @@ describe('setCalorieLink', () => {
     expect(calls[2]![1][3]).toBe(calls[0]![1][3]);
   });
 
+  it.each([
+    // Summed synced side is 575, above the 475 logged: only the whole-session
+    // total makes `higher` keep the synced side (the picked row alone, 300,
+    // would not), and `average` is (475 + 575) / 2.
+    [
+      'higher',
+      [
+        ['m1', 0],
+        ['g-a', null],
+        ['g-b', null],
+      ],
+    ],
+    [
+      'average',
+      [
+        ['m1', 525],
+        ['g-a', 0],
+        ['g-b', 0],
+      ],
+    ],
+  ] as const)(
+    'resolves %s from the summed calories of a synced session',
+    async (resolution, expected) => {
+      answer([
+        [
+          /id = \$1 AND user_id = \$2 FOR UPDATE/,
+          [syncedRow({ id: 'g-a', exercise_preset_entry_id: 'pe-1' })],
+        ],
+        [
+          /exercise_preset_entry_id = \$2\s+ORDER BY/,
+          [
+            syncedRow({
+              id: 'g-a',
+              exercise_preset_entry_id: 'pe-1',
+              calories_burned: 300,
+            }),
+            syncedRow({
+              id: 'g-b',
+              exercise_preset_entry_id: 'pe-1',
+              calories_burned: 275,
+            }),
+          ],
+        ],
+        [/WHERE user_id = \$2/, [manualRow()]],
+      ]);
+
+      await setCalorieLink(
+        'u1',
+        'u1',
+        'm1',
+        body(resolution, { synced_entry_id: 'g-a' })
+      );
+
+      expect(updates().map((c) => [c[1][0], c[1][2]])).toEqual(expected);
+    }
+  );
+
   it('refuses a session when one of its exercises is linked elsewhere', async () => {
     answer([
       [
