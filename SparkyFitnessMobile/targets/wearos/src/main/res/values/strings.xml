@@ -186,5 +186,96 @@
     <string name="notification_recording_run_hr">Recording run &amp; heart rate</string>
     <string name="notification_recording_workout">Recording workout</string>
 
+    <!-- Workout & Cardio Screens -->
+    <string name="workout_title">Workouts</string>
+    <string name="workout_cardio_title">Cardio (Run / Walk)</string>
+    <string name="workout_cardio_subtitle">Outdoor GPS or Treadmill</string>
+    <string name="workout_empty_state">Sync workout presets from your phone to start strength workouts here.</string>
+
+    <string name="cardio_start_title">Start Cardio</string>
+    <string name="cardio_kind_run">Run</string>
+    <string name="cardio_kind_walk">Walk</string>
+    <string name="cardio_place_outdoor">Outdoor</string>
+    <string name="cardio_place_indoor">Indoor</string>
+    <string name="cardio_plan_free">Plan: Free</string>
+    <string name="cardio_pace_checked">Pace ✓</string>
+    <string name="cardio_pace">Pace</string>
+    <string name="cardio_hr_checked">HR ✓</string>
+    <string name="cardio_hr">HR</string>
+    <string name="cardio_back">Back</string>
+    <string name="cardio_start_btn">Start ▶</string>
+
+    <string name="workout_preset_fallback">Preset</string>
+    <string name="workout_keypad_reps">Reps</string>
+    <string name="workout_set_counter">Set %1$d/\%2$d</string>
+    <string name="workout_superset_badge">• SS#%1$d</string>
+    <string name="workout_reps_label">reps</string>
+    <string name="workout_carry_label">carry</string>
+    <string name="workout_timer_stop">Stop ⏹</string>
+    <string name="workout_timer_start">Timer ▶</string>
+    <string name="workout_done_check">Done ✓</string>
+
+    <string name="workout_preset_update_title">Update Preset?</string>
+    <string name="workout_preset_update_desc">Save your watch changes to \"%1$s\"?</string>
+    <string name="workout_preset_keep_old">Keep Old</string>
+    <string name="workout_preset_update_btn">Update</string>
+
+    <string name="workout_rest_title">Rest</string>
+    <string name="workout_rest_next">Next: %1$s (Set \%2$d)</string>
+    <string name="workout_rest_add_15">+15s</string>
+
+    <string name="workout_rpe_title">Rate Effort (RPE)</string>
+    <string name="workout_end_btn">End Workout</string>
+
+    <string name="workout_add_exercise_title">Add Exercise</string>
+    <string name="workout_no_recent_exercises">No recent exercises synced from phone.</string>
+    <string name="workout_options_title">Workout Options</string>
+    <string name="workout_back_to_set">Back to Set</string>
+    <string name="workout_add_set">+ Add Set</string>
+    <string name="workout_set_type_label">Type: %1$s</string>
+    <string name="workout_set_type_normal">Normal</string>
+    <string name="workout_set_type_warmup">Warmup</string>
+    <string name="workout_set_type_drop">Drop</string>
+    <string name="workout_set_type_failure">Failure</string>
+    <string name="workout_delete_set">Delete Set</string>
+    <string name="workout_add_exercise_btn">+ Add Exercise</string>
+    <string name="workout_delete_exercise">Delete Exercise</string>
+    <string name="workout_skip_exercise">Skip Exercise</string>
+    <string name="workout_finish_btn">Finish Workout</string>
+    <string name="workout_discard_btn">Discard</string>
+
+    <string name="workout_complete_title">Workout Complete!</string>
+    <plurals name="workout_summary_sets_duration">
+        <item quantity="one">%1$d set • %2$s</item>
+        <item quantity="other">%1$d sets • %2$s</item>
+    </plurals>
+    <string name="workout_summary_avg_hr">♥ %1$d avg</string>
+
+    <string name="recording_activity_walk">Walk</string>
+    <string name="recording_activity_run">Run</string>
+    <string name="recording_activity_ride">Ride</string>
+    <string name="recording_resume">Resume</string>
+    <string name="recording_pause">Pause</string>
+    <string name="recording_lap_count">Lap (%1$d)</string>
+    <string name="recording_lap">Lap</string>
+    <string name="recording_stop">Stop</string>
+
+    <string name="run_saved_title">Workout Saved!</string>
+    <plurals name="run_laps_count">
+        <item quantity="one">%1$d lap</item>
+        <item quantity="other">%1$d laps</item>
+    </plurals>
+    <string name="run_auto_paused">AUTO-PAUSED</string>
+    <string name="run_settings_title">Run Settings</string>
+    <string name="run_setting_on">ON</string>
+    <string name="run_setting_off">OFF</string>
+    <string name="run_setting_auto_pause">Auto-Pause: %1$s</string>
+    <string name="run_setting_voice_cues">Voice Cues: %1$s</string>
+    <string name="run_setting_pace_alerts">Pace Alerts: %1$s</string>
+    <string name="run_setting_hr_alerts">HR Alerts: %1$s</string>
+    <string name="run_setting_test_voice">🔊 Test Voice</string>
+    <string name="run_keypad_distance">Distance (%1$s)</string>
+    <string name="run_treadmill_distance_title">Treadmill Distance</string>
+
     <color name="iconBackground">#FFFFFF</color>
 </resources>
