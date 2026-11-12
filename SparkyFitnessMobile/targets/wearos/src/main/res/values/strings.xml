@@ -15,5 +15,25 @@
     <string name="tile_medications_description">Today\'s medication schedule and dose status</string>
     <string name="tile_exercise_label">Sparky Exercise</string>
     <string name="tile_exercise_description">Daily exercise minutes, calories, and workouts</string>
+
+    <!-- Common -->
+    <string name="common_protein">Protein</string>
+    <string name="common_carbs">Carbs</string>
+    <string name="common_fat">Fat</string>
+
+    <!-- Complications -->
+    <string name="complication_macro_desc">%1$s: %2$d / %3$dg (%4$d%%)</string>
+    <string name="complication_energy_desc">Energy: %1$d / %2$d %3$s (%4$d%%)</string>
+    <string name="complication_water_desc">Water: %1$s</string>
+    <string name="complication_fasting_idle">Idle</string>
+    <string name="complication_fasting_desc">Fasting: %1$s / %2$dh</string>
+    <string name="complication_steps_desc">Steps: %1$d / %2$d</string>
+
+    <!-- Goals Screen -->
+    <!-- Hier kommen als Nächstes die Strings aus GoalsSummaryPage.kt rein -->
+
+    <!-- Water Screen -->
+    <!-- Hier kommen als Nächstes die Strings aus WaterPage.kt rein -->
+
     <color name="iconBackground">#FFFFFF</color>
 </resources>
