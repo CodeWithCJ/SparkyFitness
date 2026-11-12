@@ -392,6 +392,8 @@ export interface WatchContextPayload {
   newWorkout?: boolean;
   /** Seconds of audible countdown before a rest or hold ends: 0, 3 or 5. Absent means off. */
   workoutCountdown?: number;
+  /** A 3-2-1 Get ready screen before a timed hold starts. Absent means on. */
+  holdCountdown?: boolean;
   /** What the new workout view's top line shows first: 'time' or 'metrics'. Absent means time. */
   workoutTopLine?: 'time' | 'metrics';
   /**
@@ -521,7 +523,22 @@ export interface WatchPlannedExercisePayload {
    * shows it as "BW +10" / "BW −20". Absent from an older phone build.
    */
   bodyweight?: boolean;
+  /** The exercise's first equipment name ("Barbell"). Absent from an older phone build. */
+  equipment?: string;
+  /** Present only for an exercise loaded on a bar: what the watch needs for its Plates tile. */
+  plates?: WatchPlateConfigPayload;
   sets: WatchPlannedSetPayload[];
+}
+
+/** The bar and plates a person owns, for the watch's plates-per-side tile. */
+export interface WatchPlateConfigPayload {
+  /** Unit of every weight below. Set weights themselves stay in kg. */
+  unit: 'kg' | 'lbs';
+  barWeight: number;
+  /** Weight of one collar; 0 when collars are off. */
+  collarWeight: number;
+  /** Pairs owned of each plate weight, heaviest first. */
+  plates: { weight: number; pairs: number }[];
 }
 
 /** The workout plan pushed to the watch when a live session starts. */
