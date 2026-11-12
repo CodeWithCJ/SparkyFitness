@@ -96,6 +96,9 @@ final class WorkoutSessionStore: ObservableObject {
     /// seconds can still be read.
     @Published private(set) var holdEndsAt: Date?
     @Published private(set) var holdTotalSeconds: Int = 0
+    /// The set whose hold countdown just reached 0:00 while running here, so
+    /// the set screen can log it. Cleared when a hold starts or is dropped.
+    @Published private(set) var holdFinishedSetId: String?
     /// Set instead of `holdEndsAt` when a timed set has no planned length and
     /// counts up. `holdStoppedAt` freezes it once the set is logged.
     @Published private(set) var holdStartedAt: Date?
@@ -133,6 +136,10 @@ final class WorkoutSessionStore: ObservableObject {
     /// `onCountdownTick` plays one cue; the cue at zero is `onRestFinished`.
     var countdownSeconds: () -> Int = { 0 }
     var onCountdownTick: (() -> Void)?
+
+    /// Whether Finish skips the "Update Workout?" question because the summary
+    /// asks it afterwards (the new workout view).
+    var defersPresetUpdate: () -> Bool = { false }
 
     /// Called when the phone confirms a set logged on this watch is a
     /// personal record. Once per set.
@@ -339,7 +346,7 @@ final class WorkoutSessionStore: ObservableObject {
         onPersonalRecord?()
         prBannerTask?.cancel()
         prBannerTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard !Task.isCancelled else { return }
             self?.dismissPrBanner()
         }
@@ -420,6 +427,21 @@ final class WorkoutSessionStore: ObservableObject {
                 && !isCompleted(step)
                 && seen.insert(step.exerciseEntryId).inserted
         }
+    }
+
+    /// Which exercise of the workout a set belongs to, 1-based, and how many
+    /// there are, for the "2/6" pill.
+    func exercisePosition(of step: WorkoutStep) -> (index: Int, total: Int) {
+        let exercises = plan?.exercises ?? []
+        let index = exercises.firstIndex { $0.exerciseEntryId == step.exerciseEntryId } ?? 0
+        return (index + 1, exercises.count)
+    }
+
+    /// The rest logging `step` starts: the next set's, as `completeCurrentSet`
+    /// uses. Zero when no set follows.
+    func restAfter(_ step: WorkoutStep) -> Int {
+        guard let index = steps.firstIndex(of: step), steps.indices.contains(index + 1) else { return 0 }
+        return steps[index + 1].plannedSet.restSeconds
     }
 
     /// The plan's sets in the order the phone walks them (`setOrder`,
@@ -680,7 +702,8 @@ final class WorkoutSessionStore: ObservableObject {
             averageBpm: heartRateCount > 0 ? heartRateSum / Double(heartRateCount) : nil,
             maxBpm: heartRateMax,
             activeEnergyKcal: activeEnergyKcal,
-            sessionId: plan?.sessionId
+            sessionId: plan?.sessionId,
+            changedPresetName: defersPresetUpdate() && changedFromPreset ? plan?.workoutName : nil
         )
     }
 
@@ -715,7 +738,7 @@ final class WorkoutSessionStore: ObservableObject {
     /// and returns true when the workout changed from its saved one; the
     /// caller then waits for the answer instead of ending the workout.
     func askPresetUpdateBeforeFinish() -> Bool {
-        guard changedFromPreset else { return false }
+        guard changedFromPreset, !defersPresetUpdate() else { return false }
         // Raised a moment later: the Finish confirmation or the exercise sheet
         // is still closing, and SwiftUI drops an alert presented over a
         // dismissal in progress, which left Finish doing nothing at all.
@@ -728,6 +751,12 @@ final class WorkoutSessionStore: ObservableObject {
             self.askingPresetUpdate = true
         }
         return true
+    }
+
+    /// Seconds since the workout started, to the fraction, for a display that
+    /// shows hundredths while the wrist is raised.
+    func elapsed(at now: Date) -> TimeInterval {
+        startedAt.map { max(0, now.timeIntervalSince($0)) } ?? TimeInterval(elapsedSeconds)
     }
 
     func recordActiveEnergy(kcal: Double) {
@@ -747,6 +776,11 @@ final class WorkoutSessionStore: ObservableObject {
         if let reps { values.reps = reps }
         if let distanceKm { values.distanceKm = distanceKm }
         editedValues[setId] = values
+        // Edited after logging: the summary's volume follows the edit.
+        if completedSetIds.contains(setId),
+           let step = steps.first(where: { $0.plannedSet.setId == setId }) {
+            loggedValues[setId] = self.values(for: step)
+        }
         persistSnapshot(reportedEnergyKcal: nil)
         onSetValueEditedHere?(setId, weightKg, reps, distanceKm)
     }
@@ -780,6 +814,7 @@ final class WorkoutSessionStore: ObservableObject {
         holdStartedAt = nil
         holdStoppedAt = nil
         holdLoggedHere = false
+        holdFinishedSetId = nil
         holdSetId = setId
         holdTotalSeconds = seconds
         let start = startedAt ?? Date()
@@ -1535,6 +1570,7 @@ final class WorkoutSessionStore: ObservableObject {
                 self.stopHoldTimer()
                 guard !self.holdBuzzed else { return }
                 self.holdBuzzed = true
+                self.holdFinishedSetId = self.holdSetId
                 self.onRestFinished?()
             }
         }
@@ -1561,5 +1597,6 @@ final class WorkoutSessionStore: ObservableObject {
         holdBuzzed = false
         holdFollowsPhone = false
         holdLoggedHere = false
+        holdFinishedSetId = nil
     }
 }

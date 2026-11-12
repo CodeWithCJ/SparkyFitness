@@ -28,6 +28,9 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate, UNUserNotificatio
             WorkoutSessionStore.shared.countdownSeconds = {
                 MainActor.assumeIsolated { CheckInStore.shared.context.effectiveWorkoutCountdown }
             }
+            WorkoutSessionStore.shared.defersPresetUpdate = {
+                MainActor.assumeIsolated { CheckInStore.shared.context.effectiveNewWorkout }
+            }
             WorkoutSessionStore.shared.onCountdownTick = { Haptics.countdownTick() }
             WorkoutSessionStore.shared.onRestFinished = {
                 // Called by the main-actor workout store. Silent when the

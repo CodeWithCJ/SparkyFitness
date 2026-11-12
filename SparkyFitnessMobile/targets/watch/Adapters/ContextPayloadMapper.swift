@@ -88,6 +88,7 @@ enum ContextPayloadMapper {
             largerText: payload["largerText"] as? Bool ?? previous.largerText,
             newWorkout: payload["newWorkout"] as? Bool ?? previous.newWorkout,
             workoutCountdown: (payload["workoutCountdown"] as? NSNumber)?.intValue ?? previous.workoutCountdown,
+            workoutTopLine: payload["workoutTopLine"] as? String ?? previous.workoutTopLine,
             fast: fastKnown(in: payload) ? fast(from: payload["fast"]) : previous.fast,
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
             steps: steps(from: payload["steps"]),

@@ -9,6 +9,9 @@ import SwiftUI
 /// `save` runs the actual write and reports whether it worked; the picker only
 /// tracks the choice and the saved state.
 struct WorkoutEffortPicker: View {
+    /// The new workout view's picker: a segmented track set with the crown or a
+    /// drag instead of a card that has to be selected first.
+    var trackStyle = false
     let save: (Int, @escaping (Bool) -> Void) -> Void
 
     @EnvironmentObject private var checkIn: CheckInStore
@@ -28,21 +31,54 @@ struct WorkoutEffortPicker: View {
         String(localized: "watch.effort.title", defaultValue: "How hard was that?")
     }
 
-    /// Apple Health's four bands: 1-3, 4-6, 7-8 and 9-10.
-    private var band: (name: String, color: Color) {
-        switch rating {
-        case ...3:
-            return (String(localized: "watch.effort.band.easy", defaultValue: "Easy"), .green)
-        case 4...6:
-            return (String(localized: "watch.effort.band.moderate", defaultValue: "Moderate"), .yellow)
-        case 7...8:
-            return (String(localized: "watch.effort.band.hard", defaultValue: "Hard"), .orange)
-        default:
-            return (String(localized: "watch.effort.band.allOut", defaultValue: "All Out"), .red)
+        private var band: EffortBand { EffortBand(score: Double(rating)) }
+
+    var body: some View {
+        if trackStyle { trackBody } else { cardBody }
+    }
+
+    private var trackBody: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if saved {
+                Label(
+                    String(localized: "watch.effort.saved", defaultValue: "Saved"),
+                    systemImage: "checkmark"
+                )
+                .font(.headline)
+                .foregroundStyle(.green)
+            } else {
+                Text("\(rating)")
+                    .font(.system(size: WatchStyle.s(40), weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                Text(band.name)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(band.color)
+                EffortTrack(
+                    values: Self.scores,
+                    index: Binding(get: { rating - 1 }, set: { position = Double($0 + 1) }),
+                    hapticsEnabled: checkIn.context.effectiveHapticsEnabled
+                )
+                Button(action: Haptics.tapping(saveRating)) {
+                    Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
+                        .font(.headline)
+                        .foregroundStyle(Color.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: WatchStyle.s(40))
+                        .background(Color.white, in: WatchStyle.shape)
+                        .contentShape(WatchStyle.shape)
+                }
+                .buttonStyle(.plain)
+                .disabled(saving)
+            }
         }
     }
 
-    var body: some View {
+    private static let scores: [Double] = (1...10).map(Double.init)
+
+    private var cardBody: some View {
         VStack(spacing: 4) {
             Text(title)
                 .watchFont(.footnote, classic: .caption)

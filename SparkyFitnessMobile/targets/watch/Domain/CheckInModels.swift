@@ -525,6 +525,9 @@ struct WatchContext: Codable, Equatable {
     /// Seconds of audible countdown before a rest or hold ends
     /// (`workoutCountdown`): 3 or 5. Nil or 0 means off.
     var workoutCountdown: Int? = nil
+    /// What the new workout view's top line shows first (`workoutTopLine`):
+    /// "time" or "metrics". Nil means time.
+    var workoutTopLine: String? = nil
     /// The fast running now. Nil with `fastSynced` true means "not fasting".
     var fast: WatchFast? = nil
     /// True once the phone has said anything about fasting, so "not fasting"
@@ -640,6 +643,7 @@ struct WatchContext: Codable, Equatable {
     var effectiveUpNextPage: Bool { upNextPage ?? false }
     var effectiveLargerText: Bool { largerText ?? false }
     var effectiveNewWorkout: Bool { newWorkout ?? false }
+    var effectiveWorkoutTopLineIsMetrics: Bool { workoutTopLine == "metrics" }
     var effectiveWorkoutCountdown: Int { effectiveNewWorkout ? max(0, workoutCountdown ?? 0) : 0 }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie

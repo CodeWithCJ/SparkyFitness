@@ -205,6 +205,9 @@ struct WorkoutSummary: Equatable {
     /// The workout it describes, so a question the phone asks about it can be
     /// matched to this summary and not to a later one.
     var sessionId: String? = nil
+    /// The saved workout's name when this one changed from it and the summary
+    /// is to ask whether to update it. Nil otherwise.
+    var changedPresetName: String? = nil
 }
 
 /// A change the wearer makes to the running workout from the wrist. The phone

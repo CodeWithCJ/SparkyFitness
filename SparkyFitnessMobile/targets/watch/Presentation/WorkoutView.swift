@@ -67,11 +67,10 @@ struct WorkoutView: View {
         Group {
             if store.isActive {
                 ActiveWorkoutView()
-                    .overlay(alignment: .top) {
+                    .overlay {
                         if let exercise = store.prBannerExercise {
-                            PersonalRecordBanner(exercise: exercise)
-                                .onTapGesture { store.dismissPrBanner() }
-                                .transition(.move(edge: .top).combined(with: .opacity))
+                            NewPrView(exercise: exercise) { store.dismissPrBanner() }
+                                .transition(.opacity)
                         }
                     }
                     .animation(.easeOut(duration: 0.25), value: store.prBannerExercise)
@@ -85,87 +84,10 @@ struct WorkoutView: View {
                 // a page of its own.
                 RecordingView()
             } else if let summary = store.lastSummary {
-                WorkoutSummaryView(summary: summary)
+                WorkoutFinishSummaryView(summary: summary)
             } else {
                 WaitingForWorkoutView()
             }
-        }
-    }
-}
-
-/// Banner over the active workout when a set logged on the wrist is a record.
-private struct PersonalRecordBanner: View {
-    let exercise: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Label(String(localized: "watch.workout.newPr", defaultValue: "New PR!"), systemImage: "trophy.fill")
-                .font(.headline)
-            if !exercise.isEmpty {
-                Text(exercise).font(.footnote).lineLimit(1)
-            }
-        }
-        .foregroundStyle(.black)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(Color.yellow))
-    }
-}
-
-/// Shown after a workout ends, until dismissed. Scrolls: the totals do not
-/// fit a 40mm screen next to the Done button.
-private struct WorkoutSummaryView: View {
-    @EnvironmentObject private var store: WorkoutSessionStore
-    @EnvironmentObject private var checkIn: CheckInStore
-    @EnvironmentObject private var session: WatchSessionManager
-    let summary: WorkoutSummary
-    private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
-
-    private var duration: String {
-        let s = summary.durationSeconds
-        return s >= 3600
-            ? String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
-            : String(format: "%d:%02d", s / 60, s % 60)
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                Label(String(localized: "watch.workout.done", defaultValue: "Workout done"), systemImage: "checkmark.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.green)
-                row(String(localized: "watch.summary.time", defaultValue: "Time"), duration)
-                row(String(localized: "watch.summary.sets", defaultValue: "Sets"), "\(summary.setsCompleted)")
-                if summary.volumeKg > 0 {
-                    row(String(localized: "watch.summary.volume", defaultValue: "Volume"), "\(Int(unit.fromKg(summary.volumeKg).rounded())) \(unit.suffix)")
-                }
-                if let avg = summary.averageBpm {
-                    row(String(localized: "watch.summary.avgHr", defaultValue: "Avg HR"), "\(Int(avg.rounded())) bpm")
-                }
-                if let max = summary.maxBpm {
-                    row(String(localized: "watch.summary.maxHr", defaultValue: "Max HR"), "\(Int(max.rounded())) bpm")
-                }
-                if let kcal = summary.activeEnergyKcal, kcal > 0 {
-                    row(String(localized: "watch.summary.active", defaultValue: "Active"), "\(Int(checkIn.context.energyFromKcal(kcal).rounded())) \(checkIn.context.energyUnitLabel)")
-                }
-                WorkoutEffortPicker { score, done in
-                    session.rateWorkoutEffort(score, sessionId: summary.sessionId, completion: done)
-                }
-                Button(String(localized: "watch.common.done", defaultValue: "Done")) { store.dismissSummary() }
-                    .padding(.top, 4)
-            }
-            .padding(.horizontal, 4)
-            // The clock sits over the top of a scrolling page, so the title
-            // starts below it.
-            .padding(.top, 22)
-        }
-    }
-
-    private func row(_ title: String, _ value: String) -> some View {
-        HStack {
-            Text(title).font(.body).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).font(.body.weight(.semibold)).monospacedDigit()
         }
     }
 }
@@ -429,54 +351,27 @@ private struct ActiveWorkoutView: View {
         { showingExercises = true }
     }
 
-    /// Sends the answer first so the phone has it by the time it hears the
-    /// workout ended, then ends the workout.
-    private func finish(updatingPreset update: Bool) {
-        store.askingPresetUpdate = false
-        if let sessionId = store.plan?.sessionId {
-            session.sendPresetUpdateAnswer(sessionId: sessionId, update: update)
-        }
-        session.endWorkout()
-    }
-
     var body: some View {
-        // The set screen, then (scrolling up from the bottom, as in Hevy) what
-        // can be done to the set, to the exercise, and to the workout. Each is
-        // one screen tall and the scroll snaps to it. The crown scrolls only
-        // while no value box has claimed it for adjusting a number.
+        // From the top: the two More stops, the set screen, then the metrics.
+        // Each is one screen tall and the scroll snaps to it. The crown scrolls
+        // only while no value box has claimed it for adjusting a number.
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
-                    // Above the set screen, a swipe down away, when the set
-                    // screen leaves its readings off (Settings → Apple Watch on
-                    // the phone): checking them is a glance back, not a trip
-                    // past the set and exercise options below.
-                    if !checkIn.context.effectiveSetScreenMetrics {
-                        WorkoutMetricsPage()
+                    if let step = store.currentStep {
+                        WorkoutMoreExercisePage(step: step, onOpenList: { showingExercises = true })
                             .workoutPage(geo)
-                            .id(WorkoutPageID.metrics)
+                            .id(WorkoutPageID.moreExercise)
                     }
+                    WorkoutMoreWorkoutPage()
+                        .workoutPage(geo)
+                        .id(WorkoutPageID.moreWorkout)
                     setScreen
                         .workoutPage(geo, alignment: .top)
                         .id(WorkoutPageID.set)
-                    // The wearer's choice (Settings → Apple Watch on the
-                    // phone).
-                    if checkIn.context.effectiveUpNextPage {
-                        UpNextPage(onOpenList: { showingExercises = true })
-                            .workoutPage(geo)
-                            .id(WorkoutPageID.upNext)
-                    }
-                    if let step = store.currentStep {
-                        SetOptionsPage(step: step)
-                            .workoutPage(geo)
-                            .id(WorkoutPageID.setOptions)
-                        ExerciseOptionsPage(step: step)
-                            .workoutPage(geo)
-                            .id(WorkoutPageID.exerciseOptions)
-                    }
-                    WorkoutActionsPage()
+                    WorkoutMetricsPage()
                         .workoutPage(geo)
-                        .id(WorkoutPageID.actions)
+                        .id(WorkoutPageID.metrics)
                 }
                 .scrollTargetLayout()
             }
@@ -527,20 +422,6 @@ private struct ActiveWorkoutView: View {
                 .background(Color.black.ignoresSafeArea())
             }
         }
-        // Asked when Finish is tapped on a workout that changed from the saved
-        // one it started from, as Hevy does. Only buttons close it.
-        .alert(
-            String(localized: "watch.workout.updatePresetTitle", defaultValue: "Update Workout?"),
-            isPresented: Binding(
-                get: { store.askingPresetUpdate },
-                set: { _ in }
-            )
-        ) {
-            Button(String(localized: "watch.workout.updatePreset", defaultValue: "Update")) { finish(updatingPreset: true) }
-            Button(String(localized: "watch.workout.keepOriginal", defaultValue: "Keep Original"), role: .cancel) { finish(updatingPreset: false) }
-        } message: {
-            Text(String(localized: "watch.workout.updatePresetMessage", defaultValue: "Save the changes you made to \"\(store.plan?.workoutName ?? "")\"?"))
-        }
         .onAppear {
             if pendingRpe == nil, let pending = store.pendingSetCompletion,
                let step = store.steps.first(where: { $0.plannedSet.setId == pending.setId }) {
@@ -557,11 +438,9 @@ private struct ActiveWorkoutView: View {
                 showingExercises = true
             }
             switch ScreenshotSeed.workoutPage {
-            case "upnext", "swap": page = .upNext
+            case "upnext", "swap", "setoptions", "exerciseoptions": page = .moreExercise
             case "metrics": page = .metrics
-            case "setoptions": page = .setOptions
-            case "exerciseoptions": page = .exerciseOptions
-            case "actions": page = .actions
+            case "actions": page = .moreWorkout
             default: break
             }
             if ScreenshotSeed.opensRpe, let step = store.currentStep {
@@ -571,9 +450,6 @@ private struct ActiveWorkoutView: View {
                     completedAt: Date()
                 )
             }
-            if ScreenshotSeed.opensPresetUpdate {
-                store.askingPresetUpdate = true
-            }
             #endif
         }
         .onChange(of: store.pendingSetCompletion) {
@@ -582,17 +458,16 @@ private struct ActiveWorkoutView: View {
     }
 
     private var setScreen: some View {
-        // Time, heart rate and calories sit on one line here when the wearer
-        // keeps them on the set screen (the default), else on the metrics
-        // page; the heart rate is also inside the rest ring.
+        // Time, or heart rate and calories, on one line in the clock's row;
+        // the heart rate is also inside the rest ring.
         VStack(spacing: 4) {
             if let format = store.plan?.workoutFormat?.lowercased(), format != "standard" {
                 IntervalCaptionView(plan: store.plan)
             }
             // During a rest too: the ring shows the heart rate, but not the
             // elapsed time or calories.
-            if checkIn.context.effectiveSetScreenMetrics, store.isResting || store.currentStep != nil {
-                SetScreenMetricsLine()
+            if store.isResting || store.currentStep != nil {
+                WorkoutTopLine()
             }
 
             Group {
@@ -609,7 +484,7 @@ private struct ActiveWorkoutView: View {
 }
 
 private enum WorkoutPageID: Hashable {
-    case set, upNext, metrics, setOptions, exerciseOptions, actions
+    case moreExercise, moreWorkout, set, metrics
 }
 
 /// Shown after the last set is logged. Finish used to live only in the
@@ -936,7 +811,7 @@ struct UpNextPage: View {
                     }
                     .accessibilityElement()
                     .accessibilityLabel(String(localized: "watch.workout.upNextSetCount", defaultValue: "Sets: \(next.setCount)"))
-                    if let target = RestView.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
+                    if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
                         Text(target)
                             .watchFont(.body, classic: .footnote)
                             .foregroundStyle(.secondary)
@@ -987,7 +862,7 @@ struct SwapExerciseSheet: View {
                         Text(step.exerciseName)
                             .font(.body)
                             .lineLimit(2)
-                        if let target = RestView.target(for: step, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
+                        if let target = SetValueText.target(for: step, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
                             Text(target)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -998,42 +873,6 @@ struct SwapExerciseSheet: View {
             .navigationTitle(String(localized: "watch.workout.doNowTitle", defaultValue: "Do Now"))
             .navigationBarTitleDisplayMode(.inline)
         }
-    }
-}
-
-/// Elapsed time, heart rate and calories on one line over the set, for the
-/// wearer who wants them in view while lifting. It sits in the clock's row,
-/// where the time sat before, so it costs the set no height.
-private struct SetScreenMetricsLine: View {
-    @EnvironmentObject private var store: WorkoutSessionStore
-
-    /// The clock's width at the top right, measured on 40 and 46 mm, with a
-    /// gap so the calories do not touch its running glyph.
-    private static var clockWidth: CGFloat { WatchStyle.s(64) }
-
-    var body: some View {
-        // One Text, so a 40 mm screen shrinks the line as a whole rather than
-        // cutting off the calories.
-        let bpm = store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--"
-        let kcal = store.activeEnergyKcal.map {
-            "\(Int(CheckInStore.shared.context.energyFromKcal($0)))"
-        } ?? "--"
-        (Text(WorkoutMetricsPage.elapsed(store.elapsedSeconds)).foregroundStyle(.yellow)
-            + Text(" ")
-            + Text(Image(systemName: "heart.fill")).foregroundStyle(.red)
-            + Text("\(bpm) ").foregroundStyle(.red)
-            + Text(Image(systemName: "flame.fill")).foregroundStyle(.orange)
-            + Text("\(kcal)").foregroundStyle(.orange))
-            .font(.footnote.weight(.semibold))
-            .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.65)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.trailing, Self.clockWidth)
-            // Up into the clock's row instead of pushing the set down.
-            .padding(.top, -WatchStyle.s(20))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(String(localized: "watch.workout.metricsLine", defaultValue: "Time \(WorkoutMetricsPage.elapsed(store.elapsedSeconds)), heart rate \(bpm), \(kcal) calories"))
     }
 }
 
@@ -1147,6 +986,7 @@ private struct CurrentSetView: View {
     /// Steps the current drag has moved, so each new step clicks once.
     @State private var dragSteps: Double = 0
     @FocusState private var crownFocused: Bool
+    @State private var editingPrevious = false
 
     private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
     private var carryUnit: CarryUnit { checkIn.context.effectiveCarryUnit }
@@ -1172,6 +1012,7 @@ private struct CurrentSetView: View {
         VStack(spacing: 4) {
             ExerciseTitle(
                 name: step.exerciseName,
+                position: store.exercisePosition(of: step),
                 supersetColor: supersetColor,
                 supersetWith: step.supersetWith,
                 action: onOpenList
@@ -1189,7 +1030,7 @@ private struct CurrentSetView: View {
                     valueBox(.weight)
                 }
                 if let holdSeconds {
-                    HoldCountdown(setId: step.plannedSet.setId, totalSeconds: holdSeconds)
+                    HoldCountdown(setId: step.plannedSet.setId, totalSeconds: holdSeconds, onEnd: logSet)
                 } else if timed {
                     HoldStopwatch(setId: step.plannedSet.setId)
                 } else if store.isCarry(step) {
@@ -1221,46 +1062,27 @@ private struct CurrentSetView: View {
                     .minimumScaleFactor(0.6)
             }
 
-            // Previous and next set either side of a still-wide Done: the dots
-            // jump within this exercise, these also cross into the next one.
+            // Edit the previous set beside the wide Log set; the dots above
+            // jump to a set of this exercise.
             HStack(spacing: 6) {
                 SquircleButton(systemImage: "chevron.left") {
                     endCrownEditing()
-                    store.goToPreviousStep()
+                    editingPrevious = true
                 }
                 .frame(width: WatchStyle.s(40))
-                .disabled(store.currentStepIndex == 0)
-                .accessibilityLabel(String(localized: "watch.workout.previousSet", defaultValue: "Previous set"))
-                DoneButton(isCompleted: store.isCompleted(step)) {
+                .disabled(!store.steps.contains(where: store.isCompleted))
+                .accessibilityLabel(String(localized: "watch.workout.editPreviousSet", defaultValue: "Edit previous set"))
+                LogSetButton(
+                    isCompleted: store.isCompleted(step),
+                    restSeconds: store.restAfter(step)
+                ) {
                     endCrownEditing()
                     if store.uncompleteStep(step) {
                         session.sendSetUncompleted(step)
                     }
                 } onComplete: {
-                    // The value on screen is what gets logged, settled or not.
-                    endCrownEditing()
-                    if checkIn.context.effectiveRpeEnabled {
-                        if let completed = store.completeCurrentSet(holdForEffort: true),
-                           let pending = store.pendingSetCompletion {
-                            onAwaitRpe(
-                                PendingRpe(
-                                    step: completed,
-                                    values: pending.values,
-                                    completedAt: pending.completedAt
-                                )
-                            )
-                        }
-                    } else if let completed = store.completeCurrentSet() {
-                        session.sendSetCompleted(completed, values: store.values(for: completed))
-                    }
+                    logSet()
                 }
-                SquircleButton(systemImage: "chevron.right") {
-                    endCrownEditing()
-                    store.goToNextStep()
-                }
-                .frame(width: WatchStyle.s(40))
-                .disabled(store.currentStepIndex >= store.steps.count - 1)
-                .accessibilityLabel(String(localized: "watch.workout.nextSet", defaultValue: "Next set"))
             }
         }
         // The phone logging this set, or a jump from the exercise list, has
@@ -1277,6 +1099,13 @@ private struct CurrentSetView: View {
             if editing == .distance { editing = nil }
         }
         .onDisappear { endCrownEditing() }
+        // A running hold that reaches 0:00 logs the set on its own.
+        .onChange(of: store.holdFinishedSetId) {
+            if store.holdFinishedSetId == step.plannedSet.setId, !store.isCompleted(step) { logSet() }
+        }
+        .sheet(isPresented: $editingPrevious) {
+            EditPreviousSetView(startingAt: EditPreviousSetView.startIndex(in: store))
+        }
         .sheet(item: $editing) { field in
             NumericKeypadView(
                 title: title(for: field),
@@ -1290,6 +1119,26 @@ private struct CurrentSetView: View {
         }
     }
 
+    /// Logs the set on screen, with the value on screen, settled or not. From
+    /// Log set, double tap, or a hold ring tapped early or run out.
+    private func logSet() {
+        endCrownEditing()
+        if checkIn.context.effectiveRpeEnabled {
+            if let completed = store.completeCurrentSet(holdForEffort: true),
+               let pending = store.pendingSetCompletion {
+                onAwaitRpe(
+                    PendingRpe(
+                        step: completed,
+                        values: pending.values,
+                        completedAt: pending.completedAt
+                    )
+                )
+            }
+        } else if let completed = store.completeCurrentSet() {
+            session.sendSetCompleted(completed, values: store.values(for: completed))
+        }
+    }
+
     private func valueBox(_ field: EditableField) -> some View {
         let isSelected = crownField == field
         let shown = isSelected && crownAdjusted
@@ -1297,7 +1146,7 @@ private struct CurrentSetView: View {
             : storedValue(for: field)
         let text = field == .weight && store.isBodyweight(step)
             ? Self.bodyweightText(shown)
-            : Self.format(shown)
+            : SetValueText.format(shown)
         return ValueBox(
             value: text,
             unit: title(for: field),
@@ -1545,17 +1394,46 @@ private struct CurrentSetView: View {
     /// "BW −20", or plain "BW" when nothing is added or taken off.
     private static func bodyweightText(_ value: Double?) -> String {
         guard let value, value != 0 else { return "BW" }
-        let magnitude = format(abs(value))
+        let magnitude = SetValueText.format(abs(value))
         return value > 0 ? "BW +\(magnitude)" : "BW −\(magnitude)"
     }
+}
 
+@MainActor
+enum SetValueText {
     /// Whole numbers lose the decimal point — "60kg", not "60.0kg" — but a
     /// real fraction keeps it, since plate maths routinely lands on 2.5s.
-    static func format(_ value: Double?) -> String {
+    nonisolated static func format(_ value: Double?) -> String {
         guard let value else { return "–" }
         return value == value.rounded()
             ? String(Int(value))
             : String(format: "%.1f", value)
+    }
+
+    /// "40kg × 10" alone; nil when the set has no values yet.
+    static func target(for step: WorkoutStep, store: WorkoutSessionStore, unit: WeightUnit, carry: CarryUnit) -> String? {
+        let values = store.values(for: step)
+        let weight = values.weightKg.map { "\(weightText($0, unit: unit))\(unit.suffix)" }
+        if let seconds = store.targetDurationSec(for: step) {
+            let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
+            return weight.map { "\($0) × \(clock)" } ?? clock
+        }
+        if store.isCarry(step), let km = values.distanceKm {
+            let distance = "\(Int(carry.fromKm(km).rounded())) \(carry.suffix)"
+            return weight.map { "\($0) × \(distance)" } ?? distance
+        }
+        switch (weight, values.reps) {
+        case let (weight?, reps?): return "\(weight) × \(Int(reps))"
+        case let (nil, reps?): return "\(Int(reps)) reps"
+        default: return nil
+        }
+    }
+
+    private static func weightText(_ kg: Double, unit: WeightUnit) -> String {
+        let shown = unit.fromKg(kg)
+        return shown == shown.rounded()
+            ? String(Int(shown))
+            : String(format: "%.1f", shown)
     }
 }
 
@@ -1585,15 +1463,21 @@ private struct HoldPill: View {
     }
 }
 
-/// Hold countdown for a duration set. Tap starts it; at 0:00 it buzzes
-/// through the same rest-finished hook. `TimelineView` rather than a stored
-/// timer publisher: the store republishes every second and would freeze a
-/// `Timer.publish` the way the rest screen used to.
+/// Hold countdown for a duration set, as a ring that empties with the time
+/// left and the heart rate in it. Tap the ring to start; while it runs a tap
+/// ends the hold early and logs the set (`onEnd`), and at 0:00 the set screen
+/// logs it on its own. It buzzes at the end through the rest-finished hook.
+/// `TimelineView` rather than a stored timer publisher: the store republishes
+/// every second and would freeze a `Timer.publish` the way the rest screen
+/// used to.
 private struct HoldCountdown: View {
     let setId: String
     let totalSeconds: Int
+    let onEnd: () -> Void
 
     @EnvironmentObject private var store: WorkoutSessionStore
+
+    private let tint = Color.mint
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -1601,26 +1485,52 @@ private struct HoldCountdown: View {
             let remaining = started
                 ? (store.holdRemaining(for: setId, now: context.date) ?? 0)
                 : totalSeconds
-            VStack(spacing: 2) {
-                Text(Self.clock(remaining))
-                    .font(.system(size: WatchStyle.s(30), weight: .bold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                if !started {
-                    HoldPill(title: String(localized: "watch.workout.holdStart", defaultValue: "Start"), tint: .green) {
-                        store.startHold(for: setId, seconds: totalSeconds)
+            let fraction = totalSeconds > 0 ? Double(remaining) / Double(totalSeconds) : 0
+            Button(action: Haptics.tapping {
+                if started { onEnd() } else { store.startHold(for: setId, seconds: totalSeconds) }
+            }) {
+                ZStack {
+                    Circle().stroke(tint.opacity(0.25), lineWidth: WatchStyle.s(6))
+                    Circle()
+                        .trim(from: 0, to: CGFloat(fraction))
+                        .stroke(tint, style: StrokeStyle(lineWidth: WatchStyle.s(6), lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    VStack(spacing: 0) {
+                        Text(started ? Self.short(remaining) : String(localized: "watch.workout.holdStart", defaultValue: "Start"))
+                            .font(.system(size: WatchStyle.s(24), weight: .bold, design: .rounded))
+                            .foregroundStyle(tint)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                        if let bpm = store.latestBpm {
+                            Label("\(Int(bpm.rounded()))", systemImage: "heart.fill")
+                                .font(.footnote.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.red)
+                        }
                     }
+                    .padding(WatchStyle.s(8))
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: WatchStyle.s(84))
+                .contentShape(Circle())
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, WatchStyle.s(8))
-            .background(WatchStyle.fill, in: WatchStyle.shape)
+            .buttonStyle(.plain)
+            .accessibilityHint(started
+                ? String(localized: "watch.workout.holdEndHint", defaultValue: "Ends the hold and logs the set")
+                : "")
         }
     }
 
-    private static func clock(_ seconds: Int) -> String {
-        String(format: "%d:%02d", max(0, seconds) / 60, max(0, seconds) % 60)
+    /// `30s`, `1m`, `1h`; with a remainder, `1:30` or `1:01:30`.
+    static func short(_ seconds: Int) -> String {
+        let s = max(0, seconds)
+        if s < 60 { return "\(s)s" }
+        if s % 3600 == 0 { return "\(s / 3600)h" }
+        if s % 60 == 0 && s < 3600 { return "\(s / 60)m" }
+        return s >= 3600
+            ? String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+            : String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
@@ -1715,11 +1625,13 @@ struct ValueBox: View {
     }
 }
 
-/// The set's one main action, full width at the bottom where a thumb lands:
-/// Done in white, or once the set is logged, Undo in orange, so a second tap
-/// does not read as logging it again.
-private struct DoneButton: View {
+/// The set's one main action, beside the edit-previous button at the bottom
+/// where a thumb lands: Log set in white with the rest it starts, or once the
+/// set is logged, Undo in orange, so a second tap does not read as logging it
+/// again. Double tap presses it where the watch has the gesture.
+private struct LogSetButton: View {
     let isCompleted: Bool
+    let restSeconds: Int
     let onUncomplete: () -> Void
     let onComplete: () -> Void
 
@@ -1746,13 +1658,21 @@ private struct DoneButton: View {
                 onComplete()
             }
         } label: {
-            Label(
-                isCompleted
-                    ? String(localized: "watch.workout.undo", defaultValue: "Undo")
-                    : String(localized: "watch.workout.logSet", defaultValue: "Done"),
-                systemImage: isCompleted ? "arrow.uturn.backward" : "checkmark"
-            )
+            HStack(spacing: 4) {
+                Image(systemName: isCompleted ? "arrow.uturn.backward" : "checkmark")
+                Text(isCompleted
+                     ? String(localized: "watch.workout.undo", defaultValue: "Undo")
+                     : String(localized: "watch.workout.logSetButton", defaultValue: "Log set"))
+                if !isCompleted, restSeconds > 0 {
+                    Text(String(format: "%d:%02d", restSeconds / 60, restSeconds % 60))
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .opacity(0.6)
+                }
+            }
             .font(.headline)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             // Spelled `Color.x` rather than `.x`: the parameter is an opaque
             // `some ShapeStyle`, which gives a ternary's two branches nothing
             // to infer a shared type from.
@@ -1777,91 +1697,100 @@ private struct DoneButton: View {
     }
 }
 
-/// The exercise's name, one scrolling line, with a chevron: tapping it opens the
-/// exercise list, where the other exercises, Add Exercise and Finish are. A
-/// superset member wears its superset's colour as a bar beside the name.
+/// The exercise's progress pill ("2/6", a tap opens the exercise list) and its
+/// name on one line that shrinks to fit. A superset member wears its superset's
+/// colour as a bar beside the name.
 private struct ExerciseTitle: View {
     let name: String
+    let position: (index: Int, total: Int)
     let supersetColor: Color?
     let supersetWith: String?
     let action: () -> Void
 
     var body: some View {
-        Button(action: Haptics.tapping(action)) {
-            HStack(alignment: .center, spacing: 6) {
-                if let supersetColor {
-                    Capsule()
-                        .fill(supersetColor)
-                        .frame(width: 4)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    // One line that scrolls when the name is long, so it is
-                    // never cut off and a 40 mm screen keeps room for the
-                    // buttons; the effort picker's title does the same.
-                    MarqueeText(text: name)
-                        .font(.headline)
-                    // Who this set alternates with: the bar's colour alone
-                    // does not say.
-                    if let supersetWith {
-                        Text(String(localized: "watch.workout.superset", defaultValue: "Superset · \(supersetWith)"))
-                            .font(.footnote)
-                            .foregroundStyle(supersetColor ?? Color.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "list.bullet")
+        HStack(alignment: .center, spacing: 6) {
+            Button(action: Haptics.tapping(action)) {
+                Text("\(position.index)/\(position.total)")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(WatchStyle.fill, in: Capsule())
+                    .contentShape(Capsule())
             }
-            .fixedSize(horizontal: false, vertical: true)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "watch.workout.exerciseOf", defaultValue: "Exercise \(position.index) of \(position.total)"))
+            .accessibilityHint(String(localized: "watch.workout.showExercises", defaultValue: "Shows all exercises"))
+            if let supersetColor {
+                Capsule()
+                    .fill(supersetColor)
+                    .frame(width: 4)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                // Who this set alternates with: the bar's colour alone
+                // does not say.
+                if let supersetWith {
+                    Text(String(localized: "watch.workout.superset", defaultValue: "Superset · \(supersetWith)"))
+                        .font(.footnote)
+                        .foregroundStyle(supersetColor ?? Color.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(supersetWith.map {
-            String(localized: "watch.workout.supersetWith", defaultValue: "\(name), superset with \($0)")
-        } ?? name)
-        .accessibilityHint(String(localized: "watch.workout.showExercises", defaultValue: "Shows all exercises"))
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .contain)
     }
 }
 
-/// "Set 2 of 3" and one dot per set of this exercise: filled once logged,
-/// ringed for the one on screen, orange for a warm-up. A tap on a dot moves to
-/// that set, which is how to go back to one or skip ahead.
+/// Set progress, right-aligned: one dot per set of this exercise (filled once
+/// logged, ringed for the one on screen, orange for a warm-up) up to 6 sets,
+/// then text such as "Set 2/8". A tap on a dot moves to that set, which is how
+/// to go back to one or skip ahead; without `onSelect` the dots only show.
 private struct SetProgressRow: View {
     let step: WorkoutStep
-    let onSelect: (String) -> Void
+    var onSelect: ((String) -> Void)?
+    var centered = false
 
     @EnvironmentObject private var store: WorkoutSessionStore
 
     var body: some View {
         let sets = store.steps.filter { $0.exerciseEntryId == step.exerciseEntryId }
         HStack(spacing: 0) {
-            Text(Self.title(for: step))
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Self.isWarmup(step) ? Color.orange : Color.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .layoutPriority(1)
-            Spacer(minLength: 4)
-            // More dots than fit read as noise; the title still counts them.
-            if sets.count <= 8 {
+            if !centered { Spacer(minLength: 0) }
+            if sets.count <= 6 {
                 ForEach(sets) { set in
-                    Button {
-                        guard set.id != step.id else { return }
-                        Haptics.tap()
-                        onSelect(set.id)
-                    } label: {
-                        dot(for: set)
-                            // A finger-sized target around a small dot.
-                            .frame(width: WatchStyle.s(16), height: WatchStyle.s(28))
-                            .contentShape(Rectangle())
+                    if let onSelect {
+                        Button {
+                            guard set.id != step.id else { return }
+                            Haptics.tap()
+                            onSelect(set.id)
+                        } label: {
+                            dot(for: set)
+                                // A finger-sized target around a small dot.
+                                .frame(width: WatchStyle.s(16), height: WatchStyle.s(28))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Self.title(for: set))
+                    } else {
+                        dot(for: set).frame(width: WatchStyle.s(16), height: WatchStyle.s(14))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Self.title(for: set))
                 }
+            } else {
+                Text(step.label)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Self.isWarmup(step) ? Color.orange : Color.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
+            if centered { Spacer(minLength: 0) }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func dot(for set: WorkoutStep) -> some View {
@@ -1908,6 +1837,7 @@ private struct RestView: View {
 
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
+    @Environment(\.workoutPageActive) private var workoutPageActive
 
     /// `TimelineView`, not a stored `Timer.publish`: the store republishes
     /// every second, re-creating this struct and its publisher before it can
@@ -1940,8 +1870,8 @@ private struct RestView: View {
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    // Not when the metrics line above already shows it.
-                    if let bpm = store.latestBpm, !checkIn.context.effectiveSetScreenMetrics {
+                    // Not when the top line already shows it.
+                    if let bpm = store.latestBpm {
                         Label("\(Int(bpm.rounded()))", systemImage: "heart.fill")
                             .font(.footnote.weight(.semibold))
                             .monospacedDigit()
@@ -1950,48 +1880,55 @@ private struct RestView: View {
                 }
                 .padding(WatchStyle.s(10))
             }
-            // Smaller than the set screen's numbers: during a rest the next
-            // set is what gets read, the ring only needs a glance.
-            .frame(width: WatchStyle.s(88), height: WatchStyle.s(88))
+            .frame(width: WatchStyle.s(80), height: WatchStyle.s(80))
 
-            // Back 15 s, skip the rest, forward 15 s: three equal squircles.
+            // Back 15 s, Skip (a double tap skips too), forward 15 s.
             HStack(spacing: 6) {
                 SquircleButton(systemImage: "gobackward.15", height: 36) {
                     store.adjustRest(bySeconds: -15)
                 }
-                SquircleButton(systemImage: "forward.fill", height: 36) {
-                    store.skipRest()
+                .frame(width: WatchStyle.s(40))
+                Button(action: Haptics.tapping { store.skipRest() }) {
+                    Text(String(localized: "watch.workout.skipRest", defaultValue: "Skip"))
+                        .font(.headline)
+                        .foregroundStyle(Color.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: WatchStyle.s(36))
+                        .background(Color.white, in: WatchStyle.shape)
+                        .contentShape(WatchStyle.shape)
                 }
+                .buttonStyle(.plain)
+                .doubleTapGesture(enabled: workoutPageActive && checkIn.context.effectiveDoubleTapEnabled)
                 SquircleButton(systemImage: "goforward.15", height: 36) {
                     store.adjustRest(bySeconds: 15)
                 }
+                .frame(width: WatchStyle.s(40))
             }
             // Paused on the phone: it owns the rest until it resumes.
             .disabled(store.restPausedRemaining != nil)
 
             if let next = store.currentStep {
                 Button(action: Haptics.tapping(onOpenList)) {
-                    // The next set reads from across the bench: the
-                    // exercise, then its target in large type, with which set
-                    // it is in smaller print.
-                    VStack(spacing: 0) {
+                    // The next set reads from across the bench: the exercise,
+                    // then its weight and reps in large type, then dots for
+                    // where it falls among the exercise's sets.
+                    VStack(spacing: 1) {
+                        Text(String(localized: "watch.workout.restNext", defaultValue: "Next:"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                         Text(next.exerciseName)
                             .font(.headline)
                             .foregroundStyle(nextSupersetColor(next) ?? Color.primary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        if let target = Self.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
+                            .minimumScaleFactor(0.5)
+                        if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
                             Text(target)
-                                .font(.title3.weight(.semibold))
-                                .fontDesign(.rounded)
+                                .font(.system(size: WatchStyle.s(26), weight: .bold, design: .rounded))
                                 .monospacedDigit()
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .minimumScaleFactor(0.6)
                         }
-                        Text(SetProgressRow.title(for: next))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        SetProgressRow(step: next, centered: true)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -2037,31 +1974,6 @@ private struct RestView: View {
         return SupersetPalette.color(for: run)
     }
 
-    /// "40kg × 10" alone; nil when the set has no values yet.
-    static func target(for step: WorkoutStep, store: WorkoutSessionStore, unit: WeightUnit, carry: CarryUnit) -> String? {
-        let values = store.values(for: step)
-        let weight = values.weightKg.map { "\(Self.weightText($0, unit: unit))\(unit.suffix)" }
-        if let seconds = store.targetDurationSec(for: step) {
-            let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
-            return weight.map { "\($0) × \(clock)" } ?? clock
-        }
-        if store.isCarry(step), let km = values.distanceKm {
-            let distance = "\(Int(carry.fromKm(km).rounded())) \(carry.suffix)"
-            return weight.map { "\($0) × \(distance)" } ?? distance
-        }
-        switch (weight, values.reps) {
-        case let (weight?, reps?): return "\(weight) × \(Int(reps))"
-        case let (nil, reps?): return "\(Int(reps)) reps"
-        default: return nil
-        }
-    }
-
-    private static func weightText(_ kg: Double, unit: WeightUnit) -> String {
-        let shown = unit.fromKg(kg)
-        return shown == shown.rounded()
-            ? String(Int(shown))
-            : String(format: "%.1f", shown)
-    }
 }
 
 /// Digit pad for one value. watchOS has no usable inline number field, and
@@ -2183,7 +2095,7 @@ private struct PendingRpe: Identifiable {
     func summary(unit: WeightUnit) -> String {
         var parts: [String] = []
         if let kg = values.weightKg, kg > 0 {
-            parts.append("\(CurrentSetView.format(unit.fromKg(kg))) \(unit.suffix)")
+            parts.append("\(SetValueText.format(unit.fromKg(kg))) \(unit.suffix)")
         }
         if let reps = values.reps {
             parts.append(String(format: "%.0f", reps))
@@ -2283,33 +2195,26 @@ struct MarqueeText: View {
     }
 }
 
-/// Effort picked after a set: the set it is for, one big value card the Digital
-/// Crown changes through the scale, what that value means in reps left, and
-/// Skip / Save. Same flat dark squircles as the set screens. `onDone(nil)` skips.
+/// Effort picked after a set: the set it is for, the value with what it means
+/// in reps left, and the same segmented track as the workout effort picker, set
+/// with the Digital Crown or a drag. Skip / Save; a double tap saves.
+/// `onDone(nil)` skips.
 private struct RpePickerView: View {
     let title: String
     let summary: String
     let hapticsEnabled: Bool
     let onDone: (Double?) -> Void
 
+    @EnvironmentObject private var checkIn: CheckInStore
+    @Environment(\.workoutPageActive) private var workoutPageActive
+
     /// Whole numbers from 1 through 6, then half steps through 10.
     private static let values: [Double] = [
         1, 2, 3, 4, 5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
     ]
 
-    private static let fill = Color(white: 0.14)
-    private static let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-
-    /// Crown position in `values`, as a Double because that is what the crown
-    /// binds to. Starts on 8, the middle of what most working sets are.
-    @State private var position: Double = Double(
-        RpePickerView.values.firstIndex(of: 8) ?? 0
-    )
-    @FocusState private var focused: Bool
-
-    private var index: Int {
-        min(max(Int(position.rounded()), 0), Self.values.count - 1)
-    }
+    /// Starts on 8, the middle of what most working sets are.
+    @State private var index = RpePickerView.values.firstIndex(of: 8) ?? 0
 
     private var value: Double { Self.values[index] }
 
@@ -2354,8 +2259,10 @@ private struct RpePickerView: View {
     var body: some View {
         VStack(spacing: 3) {
             VStack(alignment: .leading, spacing: 0) {
-                MarqueeText(text: title)
+                Text(title)
                     .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 Text(summary)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -2366,67 +2273,46 @@ private struct RpePickerView: View {
             .padding(.trailing, 52)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // The card the crown is adjusting, so it wears the white border the
-            // set screen's selected value card does.
-            VStack(spacing: 0) {
-                Text(valueText)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                Text(String(localized: "watch.rpe.label", defaultValue: "RPE"))
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .background(Self.fill, in: Self.shape)
-            .overlay(Self.shape.stroke(Color.white, lineWidth: 2))
-
+            Text(valueText)
+                .font(.system(size: WatchStyle.s(40), weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(EffortBand(score: value).color)
             Text(meaning)
-                .font(.system(size: 13, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 26)
 
+            EffortTrack(values: Self.values, index: $index, hapticsEnabled: hapticsEnabled)
+
             HStack(spacing: 4) {
                 Button { onDone(nil) } label: {
                     Text(String(localized: "watch.rpe.skip", defaultValue: "Skip"))
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.headline)
                         .foregroundStyle(Color.white.opacity(0.6))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                        .background(Self.fill, in: Self.shape)
-                        .contentShape(Self.shape)
+                        .frame(height: WatchStyle.s(38))
+                        .background(WatchStyle.fill, in: WatchStyle.shape)
+                        .contentShape(WatchStyle.shape)
                 }
                 .buttonStyle(.plain)
                 Button { onDone(value) } label: {
                     Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.headline)
                         .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                        .background(Color.white, in: Self.shape)
-                        .contentShape(Self.shape)
+                        .frame(height: WatchStyle.s(38))
+                        .background(Color.white, in: WatchStyle.shape)
+                        .contentShape(WatchStyle.shape)
                 }
                 .buttonStyle(.plain)
+                .doubleTapGesture(enabled: workoutPageActive && checkIn.context.effectiveDoubleTapEnabled)
             }
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 4)
-        .focusable()
-        .focused($focused)
-        .digitalCrownRotation(
-            $position,
-            from: 0,
-            through: Double(Self.values.count - 1),
-            by: 1,
-            sensitivity: .low,
-            isContinuous: false,
-            isHapticFeedbackEnabled: hapticsEnabled
-        )
-        .onAppear { focused = true }
     }
 }
 
