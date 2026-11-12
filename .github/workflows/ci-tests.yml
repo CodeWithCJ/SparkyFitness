@@ -344,7 +344,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # One runner initializes the empty database; the other reapplies after the lock is released.
-      - name: Initialize an empty database from two processes
+      - name: Initialize an empty database from two processes and verify persistent Hevy workouts
         run: |
           pnpm run test:migrations &
           first_pid=$!
@@ -353,18 +353,10 @@ jobs:
           migration_status=0
           wait "$first_pid" || migration_status=1
           wait "$second_pid" || migration_status=1
-          exit "$migration_status"
-        env:
-          SPARKY_FITNESS_DB_HOST: localhost
-          SPARKY_FITNESS_DB_PORT: "5432"
-          SPARKY_FITNESS_DB_NAME: sparky_test
-          SPARKY_FITNESS_DB_USER: postgres
-          SPARKY_FITNESS_DB_PASSWORD: postgres
-          SPARKY_FITNESS_APP_DB_USER: sparky_app
-          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
-
-      - name: Verify persistent Hevy workouts
-        run: pnpm exec vitest run --no-file-parallelism tests/hevyWorkoutPersistence.integration.test.ts
+          if [ "$migration_status" -ne 0 ]; then
+            exit "$migration_status"
+          fi
+          pnpm exec vitest run --no-file-parallelism tests/hevyWorkoutPersistence.integration.test.ts
         env:
           SPARKY_FITNESS_DB_HOST: localhost
           SPARKY_FITNESS_DB_PORT: "5432"
