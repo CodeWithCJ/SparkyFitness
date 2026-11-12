@@ -1253,6 +1253,81 @@ describe('activeWorkoutStore', () => {
         expect(set0.reps).toBe(5);
       });
 
+      it('adopts the plan over the history when it was started plan-first (#3417)', () => {
+        // The plan was raised to 110 x 5 after the last session (100 x 8):
+        // logging without typing records what the row showed, the plan.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 110, reps: 5, preferOverHistory: true },
+              { weight: 110, reps: 5, preferOverHistory: true },
+            ],
+            [{ weight: 120, reps: 3, preferOverHistory: true }],
+          ],
+        });
+        expect(
+          useActiveWorkoutStore.getState().plannedSetValues['101']
+        ).toEqual({ weight: 110, reps: 5, preferOverHistory: true });
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(110);
+        expect(set0.reps).toBe(5);
+      });
+
+      it('adopts the history over an unmarked plan, as before', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 110, reps: 5 },
+              { weight: 110, reps: 5 },
+            ],
+            [{ weight: 120, reps: 3 }],
+          ],
+        });
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
+      });
+
+      it('adopts the history when a session resumes without its plan', () => {
+        // A resumed diary workout has no live-start plan to prefer.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [{ weight: 110, reps: 5, preferOverHistory: true }],
+          ],
+        });
+        useActiveWorkoutStore
+          .getState()
+          .startWorkoutAtSet(makeEmptySession(), '101');
+        expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({});
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
+      });
+
       it('adopts the ramped weight from the live-start preset config', () => {
         useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
           createdByLiveStart: true,
