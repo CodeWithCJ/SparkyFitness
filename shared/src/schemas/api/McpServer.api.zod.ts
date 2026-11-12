@@ -11,3 +11,32 @@ export const mcpServerOptionsSchema = z
   .strict();
 
 export type McpServerOptions = z.infer<typeof mcpServerOptionsSchema>;
+
+// An admin asking an MCP tool server for its tools, to choose which chat may
+// use. Without a token, an existing server's stored one is used.
+export const mcpServerToolsRequestSchema = z
+  .object({
+    base_url: z.string().trim().min(1).max(2048),
+    app_key: z.string().trim().max(4096).optional(),
+    provider_id: z.uuid().optional(),
+  })
+  .strict();
+
+export type McpServerToolsRequest = z.infer<typeof mcpServerToolsRequestSchema>;
+
+export const mcpServerToolChoiceSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  // Why chat would leave this tool out, or null when it can use it.
+  problem: z.string().nullable(),
+});
+
+export type McpServerToolChoice = z.infer<typeof mcpServerToolChoiceSchema>;
+
+export const mcpServerToolsResponseSchema = z.object({
+  tools: z.array(mcpServerToolChoiceSchema),
+});
+
+export type McpServerToolsResponse = z.infer<
+  typeof mcpServerToolsResponseSchema
+>;

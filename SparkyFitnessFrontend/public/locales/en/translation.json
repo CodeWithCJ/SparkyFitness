@@ -3261,7 +3261,10 @@
       "urlLabel": "URL:",
       "appIdLabel": "App ID:",
       "appKeyLabel": "App Key:",
-      "syncLabel": "Sync:"
+      "syncLabel": "Sync:",
+      "mcpServerToolCount_one": "Chat may use {{count}} tool",
+      "mcpServerToolCount_other": "Chat may use {{count}} tools",
+      "mcpServerSendsUserId": "Tells the server who is chatting"
     },
     "routingProvider": {
       "baseUrlLabel": "Valhalla server URL",
@@ -3278,6 +3281,20 @@
       "privacyNote": "The time a GPS-recorded activity started and its start place, rounded to two decimals (about 1 km), are sent to this server, which can see them. Use a server you trust, or run your own. With no weather provider, nothing is looked up or sent.",
       "freeTierNote": "There is no default server. Open-Meteo's free service ({{url}}; its archive for older activities is served from archive-api.open-meteo.com) is for non-commercial use only. For commercial use, use its paid service (customer-api.open-meteo.com) with an API key, or run your own Open-Meteo server. A sent API key is used only for this provider.",
       "resultNote": "Once this provider is active, new GPS-recorded activities get the temperature and conditions at their start. Activities that already have weather (such as from Garmin) keep it."
+    },
+    "mcpServer": {
+      "trustNote": "Whatever the assistant passes to these tools is sent to this server, and what comes back enters the chat. Add only servers you trust.",
+      "baseUrlLabel": "MCP server URL",
+      "tokenLabel": "Bearer token (optional)",
+      "tokenKeepPlaceholder": "Leave blank to keep the saved token",
+      "loadTools": "Load tools",
+      "loadingTools": "Loading tools...",
+      "allowedCount": "Chat may use {{count}} of at most {{max}} tools.",
+      "noTools": "The server lists no tools.",
+      "toolProblem": "Chat leaves this tool out: its input schema {{problem}}.",
+      "toolGone": "The server no longer lists this tool.",
+      "sendUserIdLabel": "Tell the server who is chatting",
+      "sendUserIdHelp": "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person. Its tools then work only in that person's own account, not in a family member's."
     },
     "providerSpecificFields": {
       "appURL": "App URL",

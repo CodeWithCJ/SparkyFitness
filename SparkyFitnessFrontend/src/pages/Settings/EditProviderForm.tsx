@@ -13,6 +13,9 @@ import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { WeatherProviderFields } from './WeatherProviderFields';
+import { McpServerFields } from './McpServerFields';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import { isProviderTypeOffered } from '@/utils/settings';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -44,6 +47,9 @@ export const EditProviderForm = ({
   // Fatsecret shares the credential fields with Nutritionix, but its dashboard
   // issues OAuth 2.0 Client ID / Client Secret rather than an App ID / App Key.
   const isFatsecret = editData.provider_type === 'fatsecret';
+  // The API refuses to change a tool server into another type, or another
+  // type into one.
+  const isMcpServer = provider.provider_type === MCP_SERVER_PROVIDER_TYPE;
   return (
     <form
       onSubmit={(e) => {
@@ -72,6 +78,7 @@ export const EditProviderForm = ({
             {t('settings.editProviderForm.providerType', 'Provider Type')}
           </Label>
           <Select
+            disabled={isMcpServer}
             value={editData.provider_type || ''}
             onValueChange={(value) =>
               setEditData((prev) => ({
@@ -92,12 +99,15 @@ export const EditProviderForm = ({
             </SelectTrigger>
             <SelectContent>
               {(providerTypes || [])
+                .filter(
+                  (type) =>
+                    isProviderTypeOffered(type, isAdminMode) &&
+                    (type.id === MCP_SERVER_PROVIDER_TYPE) === isMcpServer
+                )
                 .map((type) => ({
                   value: type.id,
                   label: type.display_name,
-                  is_strictly_private: type.is_strictly_private,
                 }))
-                .filter((type) => !isAdminMode || !type.is_strictly_private)
                 .map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
@@ -235,6 +245,24 @@ export const EditProviderForm = ({
           }
           onAppKeyChange={(value) =>
             setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {isMcpServer && (
+        <McpServerFields
+          idPrefix="edit"
+          providerId={provider.id}
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          options={editData.provider_options}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+          onOptionsChange={(options) =>
+            setEditData((prev) => ({ ...prev, provider_options: options }))
           }
         />
       )}

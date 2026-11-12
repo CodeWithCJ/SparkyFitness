@@ -21,7 +21,11 @@ import {
   vi,
 } from 'vitest';
 import { z } from 'zod';
-import { loadMcpServerTools } from '../ai/tools/mcpServerTools.js';
+import {
+  listToolsForAdmin,
+  loadMcpServerTools,
+  McpServerListError,
+} from '../ai/tools/mcpServerTools.js';
 import { log } from '../config/logging.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
@@ -133,6 +137,9 @@ function buildMcpServer(request: IncomingMessage): McpServer {
       isError: true,
       ...text(`refused ${request.headers.authorization}`),
     })
+  );
+  mcp.registerTool(`named_${TOKEN}`, { description: 'Named.' }, async () =>
+    text('named')
   );
   mcp.registerTool('big', { description: 'A long answer.' }, async () =>
     text('x'.repeat(20_000))
@@ -475,8 +482,8 @@ describe('which tools chat gets', () => {
     expect(seen).toEqual([]);
   });
 
-  // The SDK itself refuses a list whose top-level schema is not for an object
-  // or has a field that is not one, so those never reach this check.
+  // The SDK itself refuses a list whose top-level schema does not describe an
+  // object or has a field that is not one, so those never reach this check.
   it.each([
     {
       problem: 'an enum that is not a list',
@@ -766,6 +773,12 @@ describe('what chat gets back', () => {
     });
   });
 
+  it('leaves out a tool whose name holds the token', async () => {
+    getServers.mockResolvedValue([toolServer(['whoami', `named_${TOKEN}`])]);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    expect(Object.keys(tools)).toEqual(['mcp_household_tools__whoami']);
+  });
+
   it('cuts a long answer and says how to ask for less', async () => {
     getServers.mockResolvedValue([toolServer(['big'])]);
     const tools = await loadMcpServerTools(OWN_ACCOUNT);
@@ -1019,5 +1032,52 @@ describe('how a server is contacted', () => {
       .map((request) => request.sessionId);
     expect(opened.size).toBe(2);
     expect(new Set(ended)).toEqual(opened);
+  });
+});
+
+describe('the tool list an admin chooses from', () => {
+  it('lists every tool, allowed or not, with why chat would leave one out', async () => {
+    pagedSchema = '{"type":"object","properties":{"a":{"enum":5}}}';
+    const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+    expect(tools).toEqual([
+      {
+        name: 'page_1',
+        description: 'The tool on page 1.',
+        problem: 'is malformed',
+      },
+      { name: 'page_2', description: 'The tool on page 2.', problem: null },
+    ]);
+  });
+
+  it('asks the server again each time, so a change on the server shows at once', async () => {
+    const row = toolServer([]);
+    await listToolsForAdmin(row);
+    await listToolsForAdmin(row);
+    expect(calls('tools/list')).toHaveLength(2);
+  });
+
+  it('never shows the admin the token a server repeats', async () => {
+    const tools = await listToolsForAdmin(toolServer([]));
+    expect(JSON.stringify(tools)).not.toContain(TOKEN);
+    expect(tools.find((listed) => listed.name === 'leaky')?.description).toBe(
+      'Repeats Bearer [redacted].'
+    );
+    expect(tools.map((listed) => listed.name)).not.toContain(`named_${TOKEN}`);
+  });
+
+  it('says why in this app’s words when the server fails, without the token', async () => {
+    const failing = listToolsForAdmin(toolServer([], { path: '/broken' }));
+    await expect(failing).rejects.toThrow(McpServerListError);
+    await expect(failing).rejects.toThrow(
+      /^The server did not list its tools: HTTP 500$/
+    );
+  });
+
+  it('does not reach this machine for an owner who is not an admin', async () => {
+    isAdmin.mockResolvedValue(false);
+    await expect(listToolsForAdmin(toolServer([]))).rejects.toThrow(
+      'This server URL is not valid or not allowed.'
+    );
+    expect(seen).toEqual([]);
   });
 });

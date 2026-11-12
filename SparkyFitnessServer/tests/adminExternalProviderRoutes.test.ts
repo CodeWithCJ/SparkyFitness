@@ -11,6 +11,10 @@ import errorHandler from '../middleware/errorHandler.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import { logAdminAction } from '../services/authService.js';
+import {
+  listToolsForAdmin,
+  McpServerListError,
+} from '../ai/tools/mcpServerTools.js';
 
 const ADMIN_ID = 'admin-1';
 const ACTIVE_TARGET_ID = 'family-owner-2';
@@ -68,6 +72,10 @@ vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
   invalidateOpenFoodFactsSession: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../ai/tools/mcpServerTools.js')>()),
+  listToolsForAdmin: vi.fn(),
+}));
 vi.mock('../utils/adminCheck.js', () => ({
   resolveIsAdmin: vi.fn().mockResolvedValue(true),
   resolveIsAdminByUserId: vi.fn().mockResolvedValue(true),
@@ -518,5 +526,111 @@ describe('admin global MCP tool servers', () => {
     expect(
       externalProviderRepository.updateGlobalExternalDataProvider
     ).not.toHaveBeenCalled();
+  });
+});
+
+describe('listing an MCP tool server’s tools', () => {
+  const SERVER_ID = '7f1d6c2e-3b4a-4c5d-8e9f-0a1b2c3d4e5f';
+  const listing = [
+    { name: 'search', description: 'Searches notes.', problem: null },
+  ];
+
+  it('asks the server with the token the admin typed', async () => {
+    vi.mocked(listToolsForAdmin).mockResolvedValue(listing);
+
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ base_url: 'https://tools.example', app_key: 'typed' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({ tools: listing });
+    expect(listToolsForAdmin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: ADMIN_ID,
+        base_url: 'https://tools.example',
+        app_key: 'typed',
+      })
+    );
+  });
+
+  it('uses the stored token of a saved server when none is typed', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(
+      makeStoredProvider({
+        id: SERVER_ID,
+        provider_type: 'mcp_server',
+        app_key: 'stored',
+      })
+    );
+    vi.mocked(listToolsForAdmin).mockResolvedValue(listing);
+
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ base_url: 'https://tools.example', provider_id: SERVER_ID });
+
+    expect(response.statusCode).toBe(200);
+    expect(listToolsForAdmin).toHaveBeenCalledWith(
+      expect.objectContaining({ app_key: 'stored' })
+    );
+  });
+
+  it('will not use the stored key of another kind of provider', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(
+      makeStoredProvider({ id: SERVER_ID, app_key: 'usda-key' })
+    );
+
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ base_url: 'https://tools.example', provider_id: SERVER_ID });
+
+    expect(response.statusCode).toBe(400);
+    expect(listToolsForAdmin).not.toHaveBeenCalled();
+  });
+
+  it('will not use the stored token of a user’s own server', async () => {
+    vi.mocked(
+      externalProviderRepository.getExternalDataProviderById
+    ).mockResolvedValue(
+      makeStoredProvider({
+        id: SERVER_ID,
+        provider_type: 'mcp_server',
+        app_key: 'private-token',
+        is_public: false,
+      })
+    );
+
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ base_url: 'https://tools.example', provider_id: SERVER_ID });
+
+    expect(response.statusCode).toBe(400);
+    expect(listToolsForAdmin).not.toHaveBeenCalled();
+  });
+
+  it('answers 502 with the reason when the server fails', async () => {
+    vi.mocked(listToolsForAdmin).mockRejectedValue(
+      new McpServerListError('The server did not list its tools: HTTP 401')
+    );
+
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ base_url: 'https://tools.example' });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.body).toEqual({
+      error: 'The server did not list its tools: HTTP 401',
+    });
+  });
+
+  it('refuses a request without a server URL', async () => {
+    const response = await request(app)
+      .post('/admin/external-data-providers/mcp-server/tools')
+      .send({ app_key: 'typed' });
+
+    expect(response.statusCode).toBe(400);
+    expect(listToolsForAdmin).not.toHaveBeenCalled();
   });
 });

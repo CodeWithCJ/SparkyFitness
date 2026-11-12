@@ -14,6 +14,7 @@ import { jsonSchema, tool, type JSONSchema7, type Tool } from 'ai';
 import {
   MCP_SERVER_USER_ID_HEADER,
   mcpServerOptionsSchema,
+  type McpServerToolChoice,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import externalProviderRepository, {
@@ -160,7 +161,7 @@ function keywordsFit(node: Record<string, unknown>): boolean {
 // two mean the same.
 function schemaProblem(schema: unknown, server: McpServerRow): string | null {
   if (!isRecord(schema) || schema.type !== 'object') {
-    return 'is not for an object';
+    return 'does not describe an object';
   }
   // Walked without recursion, so no schema can run this out of stack.
   const pending: [unknown, number][] = [[schema, 1]];
@@ -247,11 +248,12 @@ async function within<T>(
   }
 }
 
-// What went wrong, for the log, in this app's words only. The other side's
-// words stay out: an HTTP error from the transport carries the response body,
-// and a server can echo the arguments or the token back in it.
+// What went wrong, for the log and the admin, in this app's words only. The
+// other side's words stay out: an HTTP error from the transport carries the
+// response body, and a server can echo the arguments or the token back in it.
 function failureReason(error: unknown): string {
   if (isOutboundUrlBlockedError(error)) return 'refused by the network policy';
+  if (error instanceof NoAnswerError) return 'no answer in time';
   if (error instanceof StreamableHTTPError) return `HTTP ${error.code}`;
   if (error instanceof McpError) return `MCP error ${error.code}`;
   if (!(error instanceof Error)) return 'unknown error';
@@ -307,36 +309,54 @@ async function withServerClient<T>(
   }
 }
 
+// Every tool the server lists, page by page, except any whose name holds the
+// token: a name is shown to the admin and the model as it is, and renaming it
+// would leave nothing to call.
+async function eachListedTool(
+  client: Client,
+  server: McpServerRow,
+  visit: (listed: {
+    name: string;
+    description?: string;
+    inputSchema: unknown;
+  }) => void
+): Promise<void> {
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
+    const result = await client.listTools(cursor ? { cursor } : undefined, {
+      timeout: LIST_TIMEOUT_MS,
+    });
+    const token = server.app_key?.trim();
+    for (const listed of result.tools) {
+      if (!token || !listed.name.includes(token)) visit(listed);
+    }
+    cursor = result.nextCursor;
+    if (!cursor) break;
+  }
+}
+
 async function readAllowedTools(
   client: Client,
   server: McpServerRow,
   allowed: ReadonlySet<string>
 ): Promise<ListedTool[]> {
   const tools: ListedTool[] = [];
-  let cursor: string | undefined;
-  for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
-    const result = await client.listTools(cursor ? { cursor } : undefined, {
-      timeout: LIST_TIMEOUT_MS,
-    });
-    for (const { name, description, inputSchema } of result.tools) {
-      if (!allowed.has(name)) continue;
-      const problem = schemaProblem(inputSchema, server);
-      if (problem) {
-        log(
-          'warn',
-          `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: its input schema ${problem}`
-        );
-        continue;
-      }
-      tools.push({
-        name,
-        description,
-        inputSchema: inputSchema as JSONSchema7,
-      });
+  await eachListedTool(client, server, ({ name, description, inputSchema }) => {
+    if (!allowed.has(name)) return;
+    const problem = schemaProblem(inputSchema, server);
+    if (problem) {
+      log(
+        'warn',
+        `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: its input schema ${problem}`
+      );
+      return;
     }
-    cursor = result.nextCursor;
-    if (!cursor) break;
-  }
+    tools.push({
+      name,
+      description,
+      inputSchema: inputSchema as JSONSchema7,
+    });
+  });
   return tools;
 }
 
@@ -620,6 +640,59 @@ function toChatTool(
         ? ERRORS.OWN_ACCOUNT_ONLY()
         : callServerTool(outsideTool, actorUserId, input, abortSignal),
   });
+}
+
+/** Why an admin could not get a server's tool list, in this app's words. */
+export class McpServerListError extends Error {
+  override name = 'McpServerListError';
+}
+
+/**
+ * The tools a server lists, for an admin choosing which ones chat may use.
+ * Never cached, so a change on the server shows on the next load. A tool chat
+ * would leave out for its input schema is still listed, with the reason.
+ */
+export async function listToolsForAdmin(
+  server: McpServerRow
+): Promise<McpServerToolChoice[]> {
+  const endpoint = await resolveProviderFetchEndpoint(
+    server,
+    'MCP tool server'
+  );
+  if (!endpoint) {
+    throw new McpServerListError(
+      'This server URL is not valid or not allowed.'
+    );
+  }
+  try {
+    return await withServerClient(endpoint, authHeaders(server), (client) =>
+      within(
+        LIST_TIMEOUT_MS,
+        (async () => {
+          const tools: McpServerToolChoice[] = [];
+          await eachListedTool(
+            client,
+            server,
+            ({ name, description, inputSchema }) => {
+              tools.push({
+                name,
+                description: withoutToken(
+                  description?.trim() ?? '',
+                  server
+                ).slice(0, DESCRIPTION_MAX_LENGTH),
+                problem: schemaProblem(inputSchema, server),
+              });
+            }
+          );
+          return tools;
+        })()
+      )
+    );
+  } catch (error) {
+    throw new McpServerListError(
+      `The server did not list its tools: ${failureReason(error)}`
+    );
+  }
 }
 
 /** True for the chat name of a tool from an outside MCP server. */

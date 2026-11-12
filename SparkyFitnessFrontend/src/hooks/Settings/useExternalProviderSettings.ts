@@ -16,6 +16,7 @@ import {
   createGlobalExternalProvider,
   updateGlobalExternalProvider,
   deleteGlobalExternalProvider,
+  listMcpServerTools,
 } from '@/api/Settings/externalProviderService';
 import type { CreateGlobalProviderPayload } from '@/api/Settings/externalProviderService';
 export type { CreateGlobalProviderPayload };
@@ -187,6 +188,11 @@ export const useCreateGlobalProvider = () => {
     },
   });
 };
+
+// Asks an MCP tool server for its tools while an admin fills in the form.
+// Nothing is saved, so nothing is invalidated.
+export const useListMcpServerToolsMutation = () =>
+  useMutation({ mutationFn: listMcpServerTools });
 
 export const useUpdateGlobalProvider = () => {
   const queryClient = useQueryClient();

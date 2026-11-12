@@ -1,5 +1,9 @@
 import express from 'express';
-import { aiServiceSettingsMutatorSchema } from '@workspace/shared';
+import {
+  aiServiceSettingsMutatorSchema,
+  MCP_SERVER_PROVIDER_TYPE,
+  mcpServerToolsRequestSchema,
+} from '@workspace/shared';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import authService from '../services/authService.js';
 import userRepository from '../models/userRepository.js';
@@ -20,6 +24,10 @@ import { auth } from '../auth.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import { evaluateOpenFoodFactsProviderCredentials } from '../services/openFoodFactsProviderCredentials.js';
 import externalProviderService from '../services/externalProviderService.js';
+import {
+  listToolsForAdmin,
+  McpServerListError,
+} from '../ai/tools/mcpServerTools.js';
 const router = express.Router();
 // Middleware to ensure only admins can access these routes
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
@@ -1003,6 +1011,90 @@ router.post('/external-data-providers/global', async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @swagger
+ * /admin/external-data-providers/mcp-server/tools:
+ *   post:
+ *     summary: List the tools an MCP tool server offers
+ *     description: Asks the server for its tools, so an admin can choose which ones chat may use. Without app_key, the stored token of provider_id is used.
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [base_url]
+ *             properties:
+ *               base_url:
+ *                 type: string
+ *               app_key:
+ *                 type: string
+ *               provider_id:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: The server's tools. Each has a problem, why chat would leave it out for its input schema, or null.
+ *       400:
+ *         description: Invalid request body, or provider_id is not an MCP tool server.
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       502:
+ *         description: The server URL was refused, or the server could not be reached or did not list its tools.
+ */
+router.post(
+  '/external-data-providers/mcp-server/tools',
+  async (req, res, next) => {
+    try {
+      const bodyResult = mcpServerToolsRequestSchema.safeParse(req.body);
+      if (!bodyResult.success) {
+        return res.status(400).json({
+          error: 'Invalid request body',
+          details: bodyResult.error.flatten().fieldErrors,
+        });
+      }
+      const { base_url, app_key, provider_id } = bodyResult.data;
+      let token = app_key || null;
+      if (!token && provider_id) {
+        const stored =
+          await externalProviderRepository.getExternalDataProviderById(
+            provider_id
+          );
+        if (
+          !stored ||
+          stored.provider_type !== MCP_SERVER_PROVIDER_TYPE ||
+          !stored.is_public
+        ) {
+          return res
+            .status(400)
+            .json({ error: 'That provider is not an MCP tool server.' });
+        }
+        token = stored.app_key;
+      }
+      const tools = await listToolsForAdmin({
+        id: provider_id ?? 'new',
+        user_id: req.authenticatedUserId,
+        provider_name: 'new',
+        base_url,
+        app_key: token,
+        provider_options: null,
+        updated_at: new Date(),
+      });
+      return res.status(200).json({ tools });
+    } catch (error) {
+      if (error instanceof McpServerListError) {
+        return res.status(502).json({ error: error.message });
+      }
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger
