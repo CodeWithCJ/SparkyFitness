@@ -325,5 +325,4 @@
 "watch.workout.exerciseOf" = "Exercise %lld of %lld";
 "watch.workout.holdEndHint" = "Ends the hold and logs the set";
 "watch.workout.skipRest" = "Skip";
-"watch.workout.restNext" = "Next:";
 "watch.workout.holdTime" = "TIME";

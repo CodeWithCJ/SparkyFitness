@@ -63,6 +63,9 @@ struct ContentView: View {
             }
         }
         .environment(\.watchLargeText, store.context.effectiveNewWorkout)
+        #if DEBUG
+        .modifier(ForcedDimming())
+        #endif
         .onAppear {
             store.pruneStaleDayData()
             // Cheap, local, and works with the phone out of range — unlike

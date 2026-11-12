@@ -246,6 +246,17 @@ jobs:
             shoot workout-rpe-longname-large active workout rpe longname,newworkout
 
 
+            # The new workout view's own screens: the top line in both modes and
+            # as the always-on display draws it, New PR, the summary with its
+            # changes card, and Edit previous set.
+            shoot workout-top-metrics active workout "" newworkout,topmetrics
+            shoot workout-dimmed active workout "" newworkout,dimmed
+            shoot workout-dimmed-metrics active workout "" newworkout,dimmed,topmetrics
+            shoot workout-new-pr active workout newpr newworkout
+            shoot workout-summary summary workout "" newworkout
+            shoot workout-edit-previous logged workout editprevious newworkout
+            shoot workout-more-workout active workout actions newworkout
+
             # The workout picker and medications follow the text size too.
             shoot workout-idle-large none workout "" newworkout
             shoot medications-large none medications "" newworkout

@@ -127,6 +127,7 @@ enum SampleDay {
             upNextPage: ScreenshotSeed.has("upnext"),
             newWorkout: ScreenshotSeed.has("newworkout"),
             workoutCountdown: ScreenshotSeed.has("countdown") ? 3 : nil,
+            workoutTopLine: ScreenshotSeed.has("topmetrics") ? "metrics" : nil,
             // `fast`: 14 h into a 16:8 fast; otherwise synced and not fasting.
             fast: ScreenshotSeed.has("fast")
                 ? WatchFast(startedAt: Date().addingTimeInterval(-14 * 3600), targetEndAt: Date().addingTimeInterval(2 * 3600), label: "16:8")
@@ -305,6 +306,18 @@ enum SampleDay {
     /// A plausible working heart rate mid-set. Only ever visible in a preview
     /// or on a real wrist — the simulator has no sensor behind
     /// `HKLiveWorkoutBuilder`, so it renders the no-BPM layout instead.
+    /// A finished workout that changed from its saved one, for the summary.
+    static let workoutSummary = WorkoutSummary(
+        durationSeconds: 2712,
+        setsCompleted: 14,
+        volumeKg: 5230,
+        averageBpm: 118,
+        maxBpm: 164,
+        activeEnergyKcal: 312,
+        sessionId: "sample",
+        changedPresetName: "Push Day"
+    )
+
     static let workoutBpm: Double = 142
 
     /// Active energy a few minutes into the session, for the metrics strip.

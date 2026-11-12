@@ -46,6 +46,7 @@ struct WorkoutMoreExercisePage: View {
             }
         }
         .padding(.horizontal, 2)
+        .modifier(MorePageInsets())
         .sheet(isPresented: $choosingType) {
             SetTypeSheet(current: step.plannedSet.setType) { type in
                 session.sendWorkoutEdit(.setSetType(setId: step.plannedSet.setId, type: type))
@@ -161,12 +162,23 @@ struct WorkoutMoreWorkoutPage: View {
             MoreTile(String(localized: "watch.workout.finishWorkout", defaultValue: "Finish Workout"), fill: .blue) { confirmingFinish = true }
         }
         .padding(.horizontal, 2)
+        .modifier(MorePageInsets())
         .sheet(isPresented: $addingExercise) { AddExerciseSheet() }
         .sheet(isPresented: $logWater) { WaterIntakeView() }
         .endWorkoutDialogs(
             confirmingFinish: $confirmingFinish,
             confirmingDiscard: $confirmingDiscard
         )
+    }
+}
+
+/// Room under the system clock at the top right and above the page dots at the
+/// bottom, which both sit over a full-screen page.
+private struct MorePageInsets: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.top, WatchStyle.s(22))
+            .padding(.bottom, WatchStyle.s(14))
     }
 }
 

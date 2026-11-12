@@ -358,6 +358,11 @@ final class WorkoutSessionStore: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// The New PR screen on demand, for screenshots.
+    func seedPrBanner(_ exercise: String) { prBannerExercise = exercise }
+    #endif
+
     func dismissPrBanner() {
         prBannerTask?.cancel()
         prBannerTask = nil

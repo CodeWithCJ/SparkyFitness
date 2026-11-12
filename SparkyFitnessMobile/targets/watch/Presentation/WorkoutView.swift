@@ -323,6 +323,8 @@ private struct IntervalCaptionView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.yellow)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
         }
     }
@@ -448,6 +450,7 @@ private struct ActiveWorkoutView: View {
             case "actions": page = .moreWorkout
             default: break
             }
+            if ScreenshotSeed.opensNewPr { store.seedPrBanner("Barbell Bench Press") }
             if ScreenshotSeed.opensRpe, let step = store.currentStep {
                 pendingRpe = PendingRpe(
                     step: step,
@@ -466,13 +469,14 @@ private struct ActiveWorkoutView: View {
         // Time, or heart rate and calories, on one line in the clock's row;
         // the heart rate is also inside the rest ring.
         VStack(spacing: 4) {
-            if let format = store.plan?.workoutFormat?.lowercased(), format != "standard" {
-                IntervalCaptionView(plan: store.plan)
-            }
             // During a rest too: the ring shows the heart rate, but not the
-            // elapsed time or calories.
+            // elapsed time or calories. First, so it pulls up into the
+            // clock's row with nothing above it to run into.
             if store.isResting || store.currentStep != nil {
                 WorkoutTopLine()
+            }
+            if let format = store.plan?.workoutFormat?.lowercased(), format != "standard" {
+                IntervalCaptionView(plan: store.plan)
             }
 
             Group {
@@ -704,6 +708,8 @@ enum WatchStyle {
     static func s(_ value: CGFloat) -> CGFloat { (value * scale).rounded() }
 
     static let fill = Color(white: 0.14)
+    /// The main action on the new workout view's set screen.
+    static let accent = Color(red: 0.353, green: 0.690, blue: 1)
     static let corner: CGFloat = WatchStyle.s(20)
     static var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -1105,6 +1111,9 @@ private struct CurrentSetView: View {
         }
         .onDisappear { endCrownEditing() }
         // A running hold that reaches 0:00 logs the set on its own.
+        #if DEBUG
+        .onAppear { if ScreenshotSeed.opensEditPrevious { editingPrevious = true } }
+        #endif
         .onChange(of: store.holdFinishedSetId) {
             if store.holdFinishedSetId == step.plannedSet.setId, !store.isCompleted(step) { logSet() }
         }
@@ -1685,7 +1694,7 @@ private struct LogSetButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: WatchStyle.s(44))
             .background(
-                isCompleted ? Color.orange.opacity(0.2) : Color.white,
+                isCompleted ? Color.orange.opacity(0.2) : WatchStyle.accent,
                 in: WatchStyle.shape
             )
             .contentShape(WatchStyle.shape)
@@ -1735,7 +1744,7 @@ private struct ExerciseTitle: View {
                 Text(name)
                     .font(.headline)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(0.6)
                 // Who this set alternates with: the bar's colour alone
                 // does not say.
                 if let supersetWith {
@@ -1743,6 +1752,7 @@ private struct ExerciseTitle: View {
                         .font(.footnote)
                         .foregroundStyle(supersetColor ?? Color.secondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1885,7 +1895,7 @@ private struct RestView: View {
                 }
                 .padding(WatchStyle.s(10))
             }
-            .frame(width: WatchStyle.s(80), height: WatchStyle.s(80))
+            .frame(width: WatchStyle.s(74), height: WatchStyle.s(74))
 
             // Back 15 s, Skip (a double tap skips too), forward 15 s.
             HStack(spacing: 6) {
@@ -1918,9 +1928,6 @@ private struct RestView: View {
                     // then its weight and reps in large type, then dots for
                     // where it falls among the exercise's sets.
                     VStack(spacing: 1) {
-                        Text(String(localized: "watch.workout.restNext", defaultValue: "Next:"))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                         Text(next.exerciseName)
                             .font(.headline)
                             .foregroundStyle(nextSupersetColor(next) ?? Color.primary)

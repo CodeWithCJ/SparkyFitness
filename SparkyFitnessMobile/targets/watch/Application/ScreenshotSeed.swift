@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import SwiftUI
 
 /// Fills the stores with `SampleDay` data at launch so a simulator with no
 /// paired phone can still render populated pages for screenshots.
@@ -26,6 +27,10 @@ enum ScreenshotSeed {
         case stopwatch
         /// An AMRAP, so the interval caption shows.
         case interval
+        /// A set already logged and its rest skipped, so Edit previous has one.
+        case logged
+        /// A finished workout that changed from its saved one: the summary.
+        case summary
         /// Nothing armed — what the tab shows until the phone starts a workout.
         case none
     }
@@ -41,7 +46,8 @@ enum ScreenshotSeed {
     }
 
     /// Settings the phone would send, as a comma list in
-    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `fast`, `longname`, `newworkout`, `countdown`.
+    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `fast`, `longname`, `newworkout`, `countdown`, `topmetrics` (the new view's top line starts on
+    /// heart rate and calories), `dimmed` (the new view as the always-on display draws it).
     static func has(_ option: String) -> Bool {
         (ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_OPTIONS"] ?? "")
             .split(separator: ",")
@@ -59,6 +65,17 @@ enum ScreenshotSeed {
     static var workoutPage: String? {
         let v = ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"]
         return ["upnext", "swap", "metrics", "setoptions", "exerciseoptions", "actions"].contains(v) ? v : nil
+    }
+
+    /// Shows the New PR screen over the set on appear (`SPARKY_SCREENSHOT_SHEET=newpr`).
+    static var opensNewPr: Bool {
+        ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "newpr"
+    }
+
+    /// Opens Edit previous set on appear (`SPARKY_SCREENSHOT_SHEET=editprevious`,
+    /// with workout state `logged`).
+    static var opensEditPrevious: Bool {
+        ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "editprevious"
     }
 
     /// Opens the effort screen for the current set on appear.
@@ -108,6 +125,15 @@ enum ScreenshotSeed {
             }
             workout.recordHeartRate(bpm: SampleDay.workoutBpm)
             workout.recordActiveEnergy(kcal: SampleDay.workoutKcal)
+        case .logged:
+            workout.start(with: SampleDay.workoutPlan)
+            workout.recordHeartRate(bpm: SampleDay.workoutBpm)
+            workout.recordActiveEnergy(kcal: SampleDay.workoutKcal)
+            workout.completeCurrentSet()
+            workout.skipRest()
+        case .summary:
+            workout.reset()
+            workout.recordSummary(SampleDay.workoutSummary)
         case .active, .resting:
             workout.start(with: SampleDay.workoutPlan)
             workout.recordHeartRate(bpm: SampleDay.workoutBpm)
@@ -118,6 +144,16 @@ enum ScreenshotSeed {
                 workout.completeCurrentSet()
             }
         }
+    }
+}
+
+/// Draws the app as the always-on display does, for a screenshot with the
+/// `dimmed` option: the simulator has no wrist-down state to wait for.
+struct ForcedDimming: ViewModifier {
+    @Environment(\.isLuminanceReduced) private var real
+
+    func body(content: Content) -> some View {
+        content.environment(\.isLuminanceReduced, real || (ScreenshotSeed.isEnabled && ScreenshotSeed.has("dimmed")))
     }
 }
 #endif
