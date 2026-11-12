@@ -33,7 +33,7 @@ struct WorkoutMoreUpNextPage: View {
     private func card(_ next: WorkoutStep?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if let next {
-                HStack(spacing: 0) {
+                HStack(spacing: WatchStyle.m(4)) {
                     Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
                         .font(.system(size: WatchStyle.m(17), weight: .medium))
                         .foregroundStyle(WatchStyle.grey)

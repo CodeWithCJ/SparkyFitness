@@ -2107,8 +2107,10 @@ struct FitName: View {
             }
             .foregroundStyle(color)
             .frame(width: available, height: proxy.size.height, alignment: .leading)
+            .clipped()
         }
         .frame(height: height)
+        .clipped()
         // The name's width at full size, to know whether it needs to scroll.
         .background(alignment: .leading) {
             Text(text)
@@ -2422,7 +2424,7 @@ private struct RestView: View {
                     // then its weight and reps in large type, then dots for
                     // where it falls among the exercise's sets.
                     VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 0) {
+                        HStack(spacing: WatchStyle.m(4)) {
                             Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
                                 .font(.system(size: WatchStyle.m(17), weight: .medium))
                                 .foregroundStyle(WatchStyle.grey)
