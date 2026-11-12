@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
+import { pickMealTypeForTime, userHourMinute } from '@workspace/shared';
 import {
   Select,
   SelectContent,
@@ -30,11 +31,20 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
+export type CopyQuickTarget = 'now' | 'today' | 'tomorrow';
+
 interface CopyFoodEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onCopy: (targetDate: string, targetMealType: string) => void;
+  /** `quickTarget` is the quick choice behind the date, if one was used. */
+  onCopy: (
+    targetDate: string,
+    targetMealType: string,
+    quickTarget: CopyQuickTarget | null
+  ) => void;
   sourceMealType: string;
+  /** Set when copying one food instead of a whole meal or day. */
+  foodName?: string;
 }
 
 const CopyFoodEntryDialog = ({
@@ -42,9 +52,10 @@ const CopyFoodEntryDialog = ({
   onClose,
   onCopy,
   sourceMealType,
+  foodName,
 }: CopyFoodEntryDialogProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, loggingLevel } = usePreferences();
+  const { formatDateInUserTimezone, loggingLevel, timezone } = usePreferences();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
@@ -54,6 +65,36 @@ const CopyFoodEntryDialog = ({
   const { data: availableMealTypes } = useMealTypes();
 
   const isAllDayCopy = sourceMealType === 'all';
+  const isSingleFood = foodName !== undefined;
+  const [quickTarget, setQuickTarget] = useState<CopyQuickTarget | null>(null);
+  // Now logs a single food at the current time. Copying a meal or a day keeps
+  // each entry's own time, so those get Today and Tomorrow only.
+  const quickTargets: CopyQuickTarget[] = isSingleFood
+    ? ['now', 'today', 'tomorrow']
+    : ['today', 'tomorrow'];
+
+  const applyQuickTarget = (target: CopyQuickTarget) => {
+    setSelectedDate(
+      target === 'tomorrow' ? addDays(new Date(), 1) : new Date()
+    );
+    // Now also picks the meal for the current time of day; Today and Tomorrow
+    // keep the meal already chosen.
+    if (target === 'now') {
+      const mealType = pickMealTypeForTime(
+        availableMealTypes ?? [],
+        userHourMinute(timezone)
+      );
+      if (mealType) setSelectedMealType(mealType.name);
+    }
+    setQuickTarget(target);
+  };
+
+  const quickTargetLabel = (target: CopyQuickTarget) => {
+    if (target === 'now') return t('copyFoodEntryDialog.quick.now', 'Now');
+    if (target === 'today')
+      return t('copyFoodEntryDialog.quick.today', 'Today');
+    return t('copyFoodEntryDialog.quick.tomorrow', 'Tomorrow');
+  };
 
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
@@ -61,6 +102,7 @@ const CopyFoodEntryDialog = ({
     setPrevIsOpen(isOpen);
     if (isOpen) {
       setSelectedMealType(sourceMealType);
+      setQuickTarget(null);
     }
   }
 
@@ -74,7 +116,7 @@ const CopyFoodEntryDialog = ({
         loggingLevel,
         `Attempting to copy to date: ${formattedDate}, meal type: ${selectedMealType}`
       );
-      onCopy(formattedDate, selectedMealType);
+      onCopy(formattedDate, selectedMealType, quickTarget);
       onClose();
     } else {
       warn(loggingLevel, 'No date selected for copying.');
@@ -95,23 +137,51 @@ const CopyFoodEntryDialog = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isAllDayCopy
-              ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
-              : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
+            {isSingleFood
+              ? t('copyFoodEntryDialog.titleFood', 'Copy {{food}}', {
+                  food: foodName,
+                })
+              : isAllDayCopy
+                ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
+                : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
           </DialogTitle>
           <DialogDescription>
-            {isAllDayCopy
+            {isSingleFood
               ? t(
-                  'copyFoodEntryDialog.descriptionAll',
-                  'Select the target date to copy all food entries from this day.'
+                  'copyFoodEntryDialog.descriptionFood',
+                  'Log this food again now, or pick a date and meal type.'
                 )
-              : t(
-                  'copyFoodEntryDialog.description',
-                  'Select the target date and meal type to copy the food entries.'
-                )}
+              : isAllDayCopy
+                ? t(
+                    'copyFoodEntryDialog.descriptionAll',
+                    'Select the target date to copy all food entries from this day.'
+                  )
+                : t(
+                    'copyFoodEntryDialog.description',
+                    'Select the target date and meal type to copy the food entries.'
+                  )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              {t('copyFoodEntryDialog.copyTo', 'Copy to')}
+            </Label>
+            <div className="col-span-3 flex flex-wrap gap-2">
+              {quickTargets.map((target) => (
+                <Button
+                  key={target}
+                  type="button"
+                  size="sm"
+                  variant={quickTarget === target ? 'default' : 'outline'}
+                  aria-pressed={quickTarget === target}
+                  onClick={() => applyQuickTarget(target)}
+                >
+                  {quickTargetLabel(target)}
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="targetDate" className="text-right">
               {t('copyFoodEntryDialog.targetDate', 'Target Date')}
@@ -139,6 +209,7 @@ const CopyFoodEntryDialog = ({
                   selected={selectedDate}
                   onSelect={(date) => {
                     setSelectedDate(date);
+                    setQuickTarget(null);
                     debug(loggingLevel, 'Selected date in dialog:', date);
                   }}
                 />
