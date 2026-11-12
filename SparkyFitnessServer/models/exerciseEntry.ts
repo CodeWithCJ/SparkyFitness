@@ -191,7 +191,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
              COALESCE(
                (SELECT json_agg(set_data ORDER BY set_data.set_number)
                 FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
                   FROM exercise_entry_sets ees
                   WHERE ees.exercise_entry_id = ee.id
                 ) AS set_data
@@ -744,6 +744,31 @@ type ResolveExerciseEntryUpdate = (currentEntry: Record<string, unknown>) => {
   markManualFields: readonly string[];
 };
 
+// A set's started_at is optional for clients (#2840): an update that omits it
+// keeps the stored value, an explicit null clears it. Clients that do not know
+// the field yet must not wipe a start recorded by a newer one.
+interface SetStartedAtInput {
+  id?: string | number | null;
+  started_at?: string | null;
+}
+
+function toStoredSetId(id: SetStartedAtInput['id']): number | null {
+  if (id === undefined || id === null) return null;
+  const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+  return Number.isFinite(numericId) ? numericId : null;
+}
+
+// Value to write when the sets of an entry are replaced (delete + insert): an
+// omitted started_at is taken from the stored set with the same id.
+function resolveReplacedSetStartedAt(
+  set: SetStartedAtInput,
+  storedStartedAt: ReadonlyMap<number, Date | string | null>
+): Date | string | null {
+  if (set.started_at !== undefined) return set.started_at;
+  const storedId = toStoredSetId(set.id);
+  return storedId === null ? null : (storedStartedAt.get(storedId) ?? null);
+}
+
 async function _updateExerciseEntryWithClient(
   client: PoolClient,
   id: string,
@@ -1018,7 +1043,20 @@ async function _updateExerciseEntryWithClient(
   }
   // Handle sets update
   if (updateData.sets !== undefined) {
-    // Only modify sets if they are explicitly provided
+    // Only modify sets if they are explicitly provided. The rows are replaced,
+    // so read the stored started_at first to keep it for sets sent back by id.
+    const storedStartedAtResult = await client.query(
+      'SELECT id, started_at FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+      [id]
+    );
+    const storedStartedAt = new Map<number, Date | string | null>(
+      (
+        storedStartedAtResult.rows as {
+          id: number;
+          started_at: Date | string | null;
+        }[]
+      ).map((row) => [row.id, row.started_at])
+    );
     await client.query(
       'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
       [id]
@@ -1040,9 +1078,10 @@ async function _updateExerciseEntryWithClient(
         set.completed_at ?? null,
         set.is_pr ?? false,
         set.distance ?? null,
+        resolveReplacedSetStartedAt(set, storedStartedAt),
       ]);
       const setsQuery = format(
-        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -1299,9 +1338,10 @@ async function _createExerciseEntryWithClient(
           set.completed_at ?? null,
           set.is_pr ?? false,
           set.distance ?? null,
+          set.started_at ?? null,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -1637,7 +1677,8 @@ async function _reconcileExerciseEntrySetsWithClient(
            completed_at = $9,
            is_pr = $10,
            distance = $11,
-           rir = $12
+           rir = $12,
+           started_at = CASE WHEN $15::boolean THEN $16::timestamptz ELSE started_at END
        WHERE id = $13 AND exercise_entry_id = $14`,
       [
         set.set_number,
@@ -1654,6 +1695,9 @@ async function _reconcileExerciseEntrySetsWithClient(
         set.rir ?? null,
         set.id,
         exerciseEntryId,
+        // Omitted keeps the stored start; null clears it (#2840).
+        set.started_at !== undefined,
+        set.started_at ?? null,
       ]
     );
   }
@@ -1674,9 +1718,10 @@ async function _reconcileExerciseEntrySetsWithClient(
       set.completed_at ?? null,
       set.is_pr ?? false,
       set.distance ?? null,
+      set.started_at ?? null,
     ]);
     const setsQuery = format(
-      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
       setsValues
     );
     await client.query(setsQuery);
@@ -1723,7 +1768,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1941,7 +1986,7 @@ async function getExerciseProgressData(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1978,7 +2023,7 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
