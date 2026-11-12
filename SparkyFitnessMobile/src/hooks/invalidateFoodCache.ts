@@ -10,6 +10,8 @@ import {
   fastingRootQueryKey,
   foodEntriesRangeRootQueryKey,
   foodsQueryKey,
+  foodSearchRootQueryKey,
+  favoritesQueryKey,
   waterIntakeLogQueryKey,
 } from './queryKeys';
 
@@ -49,6 +51,8 @@ export function invalidateFoodCache(
       refetchType: 'all',
     });
   }
+  void queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+  void queryClient.invalidateQueries({ queryKey: foodSearchRootQueryKey });
   void queryClient.invalidateQueries({
     queryKey: [...foodsQueryKey],
   });

@@ -1,3 +1,4 @@
+import { lastLoggedFoodQuantitySql } from './lastLoggedFoodQuantitySql.js';
 import type { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
@@ -763,14 +764,6 @@ async function getFoodsWithPagination(
     // later LIMIT/OFFSET/exact-match placeholders don't collide with it.
     paramIndex = queryParams.length + 1;
 
-    let query = `
-      SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
-        ${DEFAULT_VARIANT_JSON_SQL}
-      FROM foods f
-      ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
-      WHERE ${whereClauses.join(' AND ')}
-    `;
     let orderByClause = 'f.name ASC, f.id ASC';
     if (sortBy) {
       const [sortField, sortOrder] = sortBy.split(':');
@@ -801,9 +794,18 @@ async function getFoodsWithPagination(
       selectParamIndex++;
       orderByClause = `${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, ${orderByClause}`;
     }
-    query += ` ORDER BY ${orderByClause}`;
-    query += ` LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}`;
     selectQueryParams.push(limit, offset);
+    const ownerParam = selectQueryParams.push(authenticatedUserId);
+    const query = `
+      SELECT
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        ${lastLoggedFoodQuantitySql(ownerParam)},
+        ${DEFAULT_VARIANT_JSON_SQL}
+      FROM foods f
+      ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
+      WHERE ${whereClauses.join(' AND ')}
+      ORDER BY ${orderByClause} LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}
+    `;
     const foodsResult = await client.query(query, selectQueryParams);
     return foodsResult.rows;
   } finally {

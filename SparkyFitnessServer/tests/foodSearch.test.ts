@@ -45,6 +45,8 @@ describe('food model search query builder', () => {
       // Limit, offset
       expect(params[4]).toBe(10);
       expect(params[5]).toBe(0);
+      expect(sql).toContain('last_entry.user_id = $7');
+      expect(params[6]).toBe('user-1');
 
       expect(sql).toContain("CONCAT(f.brand, ' ', f.name) ILIKE $1");
       expect(sql).toContain("CONCAT(f.brand, ' ', f.name) ILIKE $2");
@@ -76,6 +78,7 @@ describe('food model search query builder', () => {
           '%whey protein%',
           10,
           0,
+          'user-1',
         ]);
         expect(sql).toContain('f.provider_type = $3');
         expect(sql).toContain(
@@ -97,7 +100,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual([10, 0]);
+        expect(params).toEqual([10, 0, 'user-1']);
         expect(sql).toContain('f.provider_type IS NULL');
         expect(sql).toContain('LIMIT $1 OFFSET $2');
       });
@@ -115,7 +118,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual([10, 0]);
+        expect(params).toEqual([10, 0, 'user-1']);
         expect(sql).not.toContain('provider_type =');
         expect(sql).not.toContain('provider_type IS NULL');
       });
@@ -134,7 +137,7 @@ describe('food model search query builder', () => {
           );
 
           const [sql, params] = mockClient.query.mock.calls[0];
-          expect(params).toEqual([10, 0]);
+          expect(params).toEqual([10, 0, 'user-1']);
           expect(sql).not.toContain('provider_type =');
           expect(sql).not.toContain('provider_type IS NULL');
         }
@@ -153,7 +156,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual(['user-1', 'fatsecret', 10, 0]);
+        expect(params).toEqual(['user-1', 'fatsecret', 10, 0, 'user-1']);
         expect(sql).toContain('f.user_id = $1');
         expect(sql).toContain('f.provider_type = $2');
         expect(sql).toContain('LIMIT $3 OFFSET $4');

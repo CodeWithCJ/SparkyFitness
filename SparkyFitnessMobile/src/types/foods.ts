@@ -38,6 +38,8 @@ export interface FoodDefaultVariant {
 }
 
 export interface FoodItem {
+  // Present on recent, frequent and favorite foods when the serving basis matches.
+  last_logged_quantity?: number | null;
   id: string;
   name: string;
   brand: string | null;

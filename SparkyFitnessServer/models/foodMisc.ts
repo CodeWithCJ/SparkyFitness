@@ -1,3 +1,4 @@
+import { lastLoggedFoodQuantitySql } from './lastLoggedFoodQuantitySql.js';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { FoodVariantNutrientField } from '@workspace/shared';
@@ -109,6 +110,7 @@ async function getRecentFoods(
         f.provider_verified,
         f.images,
         rfe.last_used_date,
+        ${lastLoggedFoodQuantitySql(1)},
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       JOIN RecentFoodEntries rfe ON f.id = rfe.food_id
@@ -161,6 +163,7 @@ async function getTopFoods(
         f.provider_verified,
         f.images,
         tfe.usage_count,
+        ${lastLoggedFoodQuantitySql(1)},
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       JOIN TopFoodEntries tfe ON f.id = tfe.food_id
@@ -191,6 +194,7 @@ async function getFavoriteFoods(userId: string) {
         f.provider_verified,
         f.images,
         ff.created_at AS favorited_at,
+        ${lastLoggedFoodQuantitySql(1)},
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff
       JOIN foods f ON f.id = ff.food_id
