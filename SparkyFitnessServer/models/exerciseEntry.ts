@@ -1,8 +1,8 @@
+import type { ExerciseEntrySetRequest } from '@workspace/shared';
 import {
   compareByEntryTime,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
-  type ExerciseEntrySetRequest,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
