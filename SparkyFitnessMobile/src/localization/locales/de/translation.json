@@ -6774,9 +6774,7 @@
     "upNextTitle": "Seite „Als Nächstes“",
     "upNextSubtitle": "Eine Seite, einmal nach oben gewischt vom Satzbildschirm, mit der nächsten Übung, ihrem Ziel und einer Tauschen-Schaltfläche, um zuerst eine andere Übung zu machen.",
     "largerTextTitle": "Größere Schrift auf der Uhr",
-    "largerTextSubtitle": "Größere Schrift und die neueren Layouts auf der ganzen Uhr: Ziele, Wasser, Training, Fasten, Schritte und mehr. Aus behält den ursprünglichen Look.",
-    "classicWorkoutTitle": "Ursprüngliche Trainingsseite",
-    "classicWorkoutSubtitle": "Behalte den ursprünglichen Trainingsbildschirm, während überall sonst größere Schrift aktiv ist. Ist größere Schrift aus, nutzt das Training ihn immer."
+    "largerTextSubtitle": "Größere Schrift und die neueren Layouts auf der ganzen Uhr: Ziele, Wasser, Training, Fasten, Schritte und mehr. Aus behält den ursprünglichen Look."
   },
   "exerciseStatistics": {
     "title": "Übungsstatistiken",

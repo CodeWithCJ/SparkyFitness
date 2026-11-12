@@ -7233,9 +7233,7 @@
     "upNextTitle": "Page « À suivre »",
     "upNextSubtitle": "Une page, accessible en balayant vers le haut depuis l'écran de série, avec l'exercice suivant, son objectif et un bouton Remplacer pour faire d'abord un autre exercice.",
     "largerTextTitle": "Texte plus grand sur la montre",
-    "largerTextSubtitle": "Caractères plus grands et nouvelles mises en page sur toute la montre : Objectifs, Eau, la séance, Jeûne, Pas, etc. Désactivé, l'apparence d'origine est conservée.",
-    "classicWorkoutTitle": "Page de séance d'origine",
-    "classicWorkoutSubtitle": "Conserve l'écran de séance d'origine quand le texte plus grand est activé partout ailleurs. Sans texte plus grand, la séance l'utilise toujours."
+    "largerTextSubtitle": "Caractères plus grands et nouvelles mises en page sur toute la montre : Objectifs, Eau, la séance, Jeûne, Pas, etc. Désactivé, l'apparence d'origine est conservée."
   },
   "aiSettings": {
     "server": {

@@ -245,10 +245,10 @@ jobs:
             shoot workout-rpe-longname active workout rpe longname
             shoot workout-rpe-longname-large active workout rpe longname,large
 
-            # Larger text on everywhere else, with the original workout page.
-            shoot workout-active-large-classic active workout "" large,classicworkout
-            shoot workout-longname-large-classic active workout "" longname,large,classicworkout
-            shoot workout-rpe-longname-large-classic active workout rpe longname,large,classicworkout
+            # The new workout view.
+            shoot workout-active-new active workout "" newworkout
+            shoot workout-longname-new active workout "" longname,newworkout
+            shoot workout-rpe-longname-new active workout rpe longname,newworkout
 
             # The workout picker and medications follow the text size too.
             shoot workout-idle-large none workout "" large

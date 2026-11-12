@@ -390,8 +390,10 @@ export interface WatchContextPayload {
   upNextPage?: boolean;
   /** The larger-text layout of the Goals and Water pages. Absent means off. */
   largerText?: boolean;
-  /** Keep the original workout page while larger text is on. Absent means off. */
-  classicWorkout?: boolean;
+  /** Use the new workout view on the watch. Absent means off. */
+  newWorkout?: boolean;
+  /** Seconds of audible countdown before a rest or hold ends: 0, 3 or 5. Absent means off. */
+  workoutCountdown?: number;
   /**
    * This phone handles the `doExerciseNow` workout edit. The watch offers
    * Swap only while it is true.

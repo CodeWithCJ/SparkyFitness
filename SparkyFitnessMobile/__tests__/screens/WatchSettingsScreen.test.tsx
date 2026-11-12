@@ -122,24 +122,25 @@ describe('WatchSettingsScreen', () => {
     expect(prefs().watchLargerText).toBe(true);
   });
 
-  test('the original workout page switch only shows while larger text is on', () => {
+  test('the countdown choice only shows while the new workout view is on', () => {
     renderScreen();
     const prefs = () => useAppPreferencesStore.getState();
 
-    expect(screen.queryByTestId('watch-classic-workout-switch')).toBeNull();
-    fireEvent(
-      screen.getByTestId('watch-larger-text-switch'),
-      'valueChange',
-      true
-    );
-    expect(prefs().watchClassicWorkout).toBe(false);
+    expect(prefs().watchNewWorkout).toBe(false);
+    expect(prefs().watchWorkoutCountdown).toBe(0);
+    expect(screen.queryByText('Countdown sound')).toBeNull();
 
     fireEvent(
-      screen.getByTestId('watch-classic-workout-switch'),
+      screen.getByTestId('watch-new-workout-switch'),
       'valueChange',
       true
     );
-    expect(prefs().watchClassicWorkout).toBe(true);
+    expect(prefs().watchNewWorkout).toBe(true);
+
+    fireEvent.press(screen.getByText('5 s'));
+    expect(prefs().watchWorkoutCountdown).toBe(5);
+    fireEvent.press(screen.getByText('Off'));
+    expect(prefs().watchWorkoutCountdown).toBe(0);
   });
 
   test('toggling a page hides and shows it', () => {

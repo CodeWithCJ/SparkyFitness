@@ -126,7 +126,8 @@ enum SampleDay {
             setScreenMetrics: !ScreenshotSeed.has("nometrics"),
             upNextPage: ScreenshotSeed.has("upnext"),
             largerText: ScreenshotSeed.has("large"),
-            classicWorkout: ScreenshotSeed.has("classicworkout"),
+            newWorkout: ScreenshotSeed.has("newworkout"),
+            workoutCountdown: ScreenshotSeed.has("countdown") ? 3 : nil,
             // `fast`: 14 h into a 16:8 fast; otherwise synced and not fasting.
             fast: ScreenshotSeed.has("fast")
                 ? WatchFast(startedAt: Date().addingTimeInterval(-14 * 3600), targetEndAt: Date().addingTimeInterval(2 * 3600), label: "16:8")

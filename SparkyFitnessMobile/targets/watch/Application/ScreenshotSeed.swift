@@ -41,7 +41,7 @@ enum ScreenshotSeed {
     }
 
     /// Settings the phone would send, as a comma list in
-    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `large`, `fast`, `longname`, `classicworkout`.
+    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `large`, `fast`, `longname`, `newworkout`, `countdown`.
     static func has(_ option: String) -> Bool {
         (ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_OPTIONS"] ?? "")
             .split(separator: ",")

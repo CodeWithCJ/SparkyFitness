@@ -12,7 +12,9 @@ import { getNutrientLabel } from '../constants/nutrients';
 import {
   WATCH_PAGE_KEYS,
   WATCH_PAGE_LABELS,
+  WATCH_WORKOUT_COUNTDOWNS,
   type WatchSetInputStyle,
+  type WatchWorkoutCountdown,
 } from '../constants/watchPages';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -61,11 +63,15 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const setWatchLargerText = useAppPreferencesStore(
     (s) => s.setWatchLargerText
   );
-  const watchClassicWorkout = useAppPreferencesStore(
-    (s) => s.watchClassicWorkout
+  const watchNewWorkout = useAppPreferencesStore((s) => s.watchNewWorkout);
+  const setWatchNewWorkout = useAppPreferencesStore(
+    (s) => s.setWatchNewWorkout
   );
-  const setWatchClassicWorkout = useAppPreferencesStore(
-    (s) => s.setWatchClassicWorkout
+  const watchWorkoutCountdown = useAppPreferencesStore(
+    (s) => s.watchWorkoutCountdown
+  );
+  const setWatchWorkoutCountdown = useAppPreferencesStore(
+    (s) => s.setWatchWorkoutCountdown
   );
   const setWatchRpeEnabled = useAppPreferencesStore(
     (s) => s.setWatchRpeEnabled
@@ -263,7 +269,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               })}
               subtitle={t('watchSettings.largerTextSubtitle', {
                 defaultValue:
-                  'Larger type and the newer layouts across the watch: Goals, Water, the workout, Fasting, Steps and more. Off keeps the original look.',
+                  'Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={
@@ -274,24 +280,57 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
                 />
               }
             />
-            {watchLargerText && (
-              <SettingsRow
-                title={t('watchSettings.classicWorkoutTitle', {
-                  defaultValue: 'Original workout page',
-                })}
-                subtitle={t('watchSettings.classicWorkoutSubtitle', {
-                  defaultValue:
-                    'Keep the original workout screen while larger text is on everywhere else. With larger text off the workout always uses it.',
-                })}
-                subtitleNumberOfLines={0}
-                rightAccessory={
-                  <Switch
-                    testID="watch-classic-workout-switch"
-                    value={watchClassicWorkout}
-                    onValueChange={setWatchClassicWorkout}
-                  />
-                }
-              />
+            <SettingsRow
+              title={t('watchSettings.newWorkoutTitle', {
+                defaultValue: 'New workout view',
+              })}
+              subtitle={t('watchSettings.newWorkoutSubtitle', {
+                defaultValue:
+                  'A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-new-workout-switch"
+                  value={watchNewWorkout}
+                  onValueChange={setWatchNewWorkout}
+                />
+              }
+            />
+            {watchNewWorkout && (
+              <>
+                <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+                  {t('watchSettings.countdownTitle', {
+                    defaultValue: 'Countdown sound',
+                  })}
+                </Text>
+                <Text className="text-text-secondary text-sm mb-4">
+                  {t('watchSettings.countdownDescription', {
+                    defaultValue:
+                      'A tick on the watch each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking.',
+                  })}
+                </Text>
+                <SegmentedControl<`${WatchWorkoutCountdown}`>
+                  segments={WATCH_WORKOUT_COUNTDOWNS.map((seconds) => ({
+                    key: `${seconds}` as const,
+                    label:
+                      seconds === 0
+                        ? t('watchSettings.countdownOff', {
+                            defaultValue: 'Off',
+                          })
+                        : t('watchSettings.countdownSeconds', {
+                            defaultValue: '{{seconds}} s',
+                            seconds,
+                          }),
+                  }))}
+                  activeKey={`${watchWorkoutCountdown}`}
+                  onSelect={(key) =>
+                    setWatchWorkoutCountdown(
+                      Number(key) as WatchWorkoutCountdown
+                    )
+                  }
+                />
+              </>
             )}
           </>
         )}
