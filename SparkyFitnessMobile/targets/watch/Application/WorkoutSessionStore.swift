@@ -149,6 +149,8 @@ final class WorkoutSessionStore: ObservableObject {
     /// Name of the exercise whose set just set a record, shown as a banner
     /// until it clears itself or the wearer taps it.
     @Published private(set) var prBannerExercise: String?
+    /// The set that earned the banner, so it can show the weight and reps.
+    @Published private(set) var prBannerSetId: String?
     /// Sets completed on this watch, so a PR the phone flagged for a set
     /// logged there (or one carried in by a resumed session) is not
     /// celebrated here.
@@ -349,6 +351,7 @@ final class WorkoutSessionStore: ObservableObject {
         guard prBannerExercise == nil, !pendingPrSetIds.isEmpty else { return }
         let setId = pendingPrSetIds.removeFirst()
         celebratedPrSetIds.insert(setId)
+        prBannerSetId = setId
         prBannerExercise = steps.first { $0.plannedSet.setId == setId }?.exerciseName ?? ""
         onPersonalRecord?()
         prBannerTask?.cancel()
@@ -361,13 +364,17 @@ final class WorkoutSessionStore: ObservableObject {
 
     #if DEBUG
     /// The New PR screen on demand, for screenshots.
-    func seedPrBanner(_ exercise: String) { prBannerExercise = exercise }
+    func seedPrBanner(_ exercise: String, setId: String? = nil) {
+        prBannerSetId = setId
+        prBannerExercise = exercise
+    }
     #endif
 
     func dismissPrBanner() {
         prBannerTask?.cancel()
         prBannerTask = nil
         prBannerExercise = nil
+        prBannerSetId = nil
         guard !pendingPrSetIds.isEmpty else { return }
         // Next turn, so the banner can leave before the following record.
         Task { @MainActor [weak self] in

@@ -130,6 +130,7 @@ enum ScreenshotSeed {
             workout.skipRest()
         }
         workout.goToStep(setId: landingSetId)
+        if has("pr") { workout.setValue(for: "m2b", weightKg: 85, reps: 8) }
         if has("holdrunning") { workout.startHold(for: "m30", seconds: 60) }
         if workoutState == .resting {
             workout.completeCurrentSet()

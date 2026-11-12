@@ -58,19 +58,19 @@ struct EditPreviousSetView: View {
         let values = store.values(for: step)
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
-                HStack(spacing: WatchStyle.m(8)) {
+                HStack(spacing: WatchStyle.m(7)) {
                     Text("✎")
                         .font(.system(size: WatchStyle.m(17)))
-                        .frame(width: WatchStyle.m(36), height: WatchStyle.m(36))
+                        .frame(width: WatchStyle.m(34), height: WatchStyle.m(34))
                         .background(tint.pillIcon, in: Circle())
                     Text(String(localized: "watch.workout.editingSet", defaultValue: "Set \(step.setNumber)"))
-                        .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                        .font(.system(size: WatchStyle.m(17), weight: .semibold))
                         .monospacedDigit()
                 }
                 .foregroundStyle(tint.color)
-                .padding(.leading, WatchStyle.m(5))
-                .padding(.trailing, WatchStyle.m(14))
-                .frame(height: WatchStyle.m(46))
+                .padding(.leading, WatchStyle.m(4))
+                .padding(.trailing, WatchStyle.m(13))
+                .frame(height: WatchStyle.m(42))
                 .background(tint.pill, in: Capsule())
                 Spacer(minLength: 0)
             }
@@ -85,12 +85,12 @@ struct EditPreviousSetView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 EditSetDots(step: step)
             }
-            .padding(.leading, WatchStyle.m(3))
+            .padding(.leading, WatchStyle.m(4))
             .frame(height: WatchStyle.m(18))
-            .padding(.top, WatchStyle.m(3))
+            .padding(.top, WatchStyle.m(2))
             let holdSeconds = store.targetDurationSec(for: step)
             let timed = store.isTimed(step)
-            HStack(spacing: WatchStyle.m(5)) {
+            HStack(spacing: WatchStyle.m(6)) {
                 if !timed || values.weightKg != nil || store.isWeightedHold(step) {
                     ValueBox(
                         value: SetValueText.format(values.weightKg.map(unit.fromKg)),
@@ -137,7 +137,7 @@ struct EditPreviousSetView: View {
                         .font(.system(size: WatchStyle.m(17), weight: .bold))
                         .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.m(40))
+                        .frame(height: WatchStyle.m(44))
                         .background(Color.white, in: Capsule())
                         .contentShape(Capsule())
                 }
@@ -146,10 +146,10 @@ struct EditPreviousSetView: View {
                     .disabled(index >= count - 1)
                     .accessibilityLabel(String(localized: "watch.workout.nextLoggedSet", defaultValue: "Next set"))
             }
-            .padding(.bottom, WatchStyle.m(22) + WatchStyle.mockSlack)
+            .padding(.bottom, WatchStyle.bottom)
         }
-        .padding(.horizontal, max(0, WatchStyle.m(29) - 5.5))
-        .padding(.top, WatchStyle.m(34) + 1)
+        .padding(.horizontal, WatchStyle.overlaySide)
+        .padding(.top, WatchStyle.top)
         .ignoresSafeArea(edges: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .sheet(item: $editing) { field in

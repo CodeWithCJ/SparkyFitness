@@ -346,16 +346,21 @@ enum SampleDay {
     /// or on a real wrist — the simulator has no sensor behind
     /// `HKLiveWorkoutBuilder`, so it renders the no-BPM layout instead.
     /// A finished workout that changed from its saved one, for the summary.
-    static let workoutSummary = WorkoutSummary(
-        durationSeconds: 2712,
-        setsCompleted: 14,
-        volumeKg: 5230,
-        averageBpm: 118,
-        maxBpm: 164,
-        activeEnergyKcal: 312,
-        sessionId: "sample",
-        changedPresetName: "Push Day"
-    )
+    static let workoutSummary: WorkoutSummary = ScreenshotSeed.has("mockup")
+        ? WorkoutSummary(
+            durationSeconds: 2892, setsCompleted: 21, volumeKg: 6240, averageBpm: 127, maxBpm: 168,
+            activeEnergyKcal: 312, sessionId: "sample", changedPresetName: "Push Day"
+        )
+        : WorkoutSummary(
+            durationSeconds: 2712,
+            setsCompleted: 14,
+            volumeKg: 5230,
+            averageBpm: 118,
+            maxBpm: 164,
+            activeEnergyKcal: 312,
+            sessionId: "sample",
+            changedPresetName: "Push Day"
+        )
 
     static let workoutBpm: Double = 142
 

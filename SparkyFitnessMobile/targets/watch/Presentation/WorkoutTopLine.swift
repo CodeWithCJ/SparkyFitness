@@ -91,19 +91,19 @@ private struct TopLineContent: View, Equatable {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, WatchStyle.m(3))
-        .frame(height: WatchStyle.m(42))
+        .padding(.leading, WatchStyle.m(4))
+        .frame(height: WatchStyle.m(30))
         .padding(.top, WatchStyle.m(8))
     }
 
     private var metricsLine: some View {
         let stale = dimmed
         let heart = stale ? WatchStyle.grey.opacity(0.7) : WatchStyle.heart
-        let size = WatchStyle.num(30)
-        return HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(12)) {
+        let size = WatchStyle.num(22)
+        return HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(9)) {
             HStack(spacing: WatchStyle.m(4)) {
                 Image(systemName: stale ? "heart" : "heart.fill")
-                    .font(.system(size: WatchStyle.m(24), weight: .medium))
+                    .font(.system(size: WatchStyle.m(18), weight: .medium))
                 Text(readings.bpm)
                     .font(.system(size: size, weight: WatchStyle.numWeight))
                     .monospacedDigit()
@@ -114,7 +114,7 @@ private struct TopLineContent: View, Equatable {
                     .font(.system(size: size, weight: WatchStyle.numWeight))
                     .monospacedDigit()
                 Text(String(localized: "watch.workout.kcalUnit", defaultValue: "kcal"))
-                    .font(.system(size: WatchStyle.m(15), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(12), weight: .semibold))
             }
             .foregroundStyle(tint.light.opacity(stale ? 0.7 : 1))
         }
@@ -128,7 +128,7 @@ private struct TopLineContent: View, Equatable {
         let seconds = Self.elapsedSeconds(startedAt: startedAt, now: now)
         return Text(Self.elapsed(seconds, minutesOnly: dimmed))
             .foregroundStyle(tint.light)
-            .font(.system(size: WatchStyle.num(37), weight: WatchStyle.numWeight))
+            .font(.system(size: WatchStyle.num(26), weight: WatchStyle.numWeight))
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize()

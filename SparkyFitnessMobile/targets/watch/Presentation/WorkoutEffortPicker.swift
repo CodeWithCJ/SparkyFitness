@@ -21,6 +21,8 @@ struct WorkoutEffortPicker: View {
     @State private var position: Double = 5
     @State private var selected = false
     @State private var saved = false
+    /// Skip hides the picker without rating the workout.
+    @State private var skipped = false
     /// True while the write is in flight, so a second tap cannot send it twice.
     @State private var saving = false
     @FocusState private var crownFocused: Bool
@@ -39,40 +41,64 @@ struct WorkoutEffortPicker: View {
     }
 
     private var trackBody: some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(String(localized: "watch.effort.trackTitle", defaultValue: "How hard?"))
+                .font(.system(size: WatchStyle.m(23), weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(height: WatchStyle.m(28))
+                .accessibilityAddTraits(.isHeader)
             if saved {
                 Label(
                     String(localized: "watch.effort.saved", defaultValue: "Saved"),
                     systemImage: "checkmark"
                 )
-                .font(.headline)
+                .font(.system(size: WatchStyle.m(21), weight: .semibold))
                 .foregroundStyle(.green)
-            } else {
-                Text("\(rating)")
-                    .font(.system(size: WatchStyle.s(40), weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                Text(band.name)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(band.color)
+                .padding(.top, WatchStyle.m(12))
+            } else if !skipped {
+                HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(10)) {
+                    Text("\(rating)")
+                        .font(.system(size: WatchStyle.num(68), weight: .semibold))
+                        .monospacedDigit()
+                        .tracking(-WatchStyle.m(2))
+                    Text(band.name)
+                        .font(.system(size: WatchStyle.m(21), weight: .semibold))
+                        .foregroundStyle(band.color)
+                }
+                .padding(.top, WatchStyle.m(12))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(String(localized: "watch.effort.value", defaultValue: "Effort \(rating) of 10, \(band.name)"))
                 EffortTrack(
                     values: Self.scores,
                     index: Binding(get: { rating - 1 }, set: { position = Double($0 + 1) }),
                     hapticsEnabled: checkIn.context.effectiveHapticsEnabled
                 )
-                Button(action: Haptics.tapping(saveRating)) {
-                    Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
-                        .font(.headline)
-                        .foregroundStyle(Color.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.s(40))
-                        .background(Color.white, in: WatchStyle.shape)
-                        .contentShape(WatchStyle.shape)
+                .padding(.top, WatchStyle.m(10))
+                HStack(spacing: WatchStyle.m(6)) {
+                    Button(action: Haptics.tapping { skipped = true }) {
+                        Text(String(localized: "watch.rpe.skip", defaultValue: "Skip"))
+                            .font(.system(size: WatchStyle.m(16), weight: .semibold))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: WatchStyle.m(46))
+                            .background(WatchStyle.surface, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: Haptics.tapping(saveRating)) {
+                        Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
+                            .font(.system(size: WatchStyle.m(16), weight: .bold))
+                            .foregroundStyle(Color.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: WatchStyle.m(46))
+                            .background(Color.white, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(saving)
                 }
-                .buttonStyle(.plain)
-                .disabled(saving)
+                .padding(.top, WatchStyle.m(10))
             }
         }
     }

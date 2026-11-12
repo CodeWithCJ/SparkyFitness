@@ -22,12 +22,13 @@ enum EffortBand {
         }
     }
 
+    /// The mockups' band colours: teal, amber, orange, red.
     var color: Color {
         switch self {
-        case .easy: return .green
-        case .moderate: return .yellow
-        case .hard: return .orange
-        case .allOut: return .red
+        case .easy: return Color(red: 60 / 255, green: 200 / 255, blue: 180 / 255)
+        case .moderate: return Color(red: 233 / 255, green: 192 / 255, blue: 74 / 255)
+        case .hard: return Color(red: 1, green: 138 / 255, blue: 61 / 255)
+        case .allOut: return Color(red: 1, green: 90 / 255, blue: 78 / 255)
         }
     }
 }
@@ -48,15 +49,25 @@ struct EffortTrack: View {
     /// page, so reading down a screen never moves the value.
     @State private var engaged = false
 
+    /// One colour for every segment (the set effort, which has no bands).
+    var uniform: Color?
+
+    private static let off = Color(red: 42 / 255, green: 44 / 255, blue: 48 / 255)
+
     var body: some View {
+        let dense = values.count > 10
         GeometryReader { geo in
-            HStack(spacing: 2) {
+            HStack(spacing: WatchStyle.m(dense ? 3 : 4)) {
                 ForEach(values.indices, id: \.self) { i in
-                    let color = EffortBand(score: values[i]).color
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(color.opacity(i <= index ? 1 : 0.22))
-                        .frame(height: i == index ? WatchStyle.s(22) : WatchStyle.s(14))
-                        .frame(maxHeight: .infinity)
+                    let color = uniform ?? EffortBand(score: values[i]).color
+                    if i == index {
+                        thumb(color)
+                    } else {
+                        RoundedRectangle(cornerRadius: WatchStyle.m(dense ? 3 : 5), style: .continuous)
+                            .fill(i < index ? color : Self.off)
+                            .frame(height: WatchStyle.m(dense ? 8 : 10))
+                            .frame(maxHeight: .infinity)
+                    }
                 }
             }
             .contentShape(Rectangle())
@@ -72,7 +83,7 @@ struct EffortTrack: View {
                 }
             )
         }
-        .frame(height: WatchStyle.s(26))
+        .frame(height: WatchStyle.m(28))
         .focusable(engaged)
         .focused($focused)
         .digitalCrownRotation(
@@ -93,5 +104,21 @@ struct EffortTrack: View {
         .accessibilityAdjustableAction { direction in
             index = min(max(index + (direction == .increment ? 1 : -1), 0), values.count - 1)
         }
+    }
+
+    /// The chosen value's handle: white, ringed in black and then the colour.
+    private func thumb(_ color: Color) -> some View {
+        RoundedRectangle(cornerRadius: WatchStyle.m(8), style: .continuous)
+            .fill(Color.white)
+            .overlay(
+                Capsule().fill(Color.black.opacity(0.35)).frame(width: WatchStyle.m(2), height: WatchStyle.m(10))
+            )
+            .frame(width: WatchStyle.m(16), height: WatchStyle.m(26))
+            .padding(WatchStyle.m(2))
+            .background(Color.black, in: RoundedRectangle(cornerRadius: WatchStyle.m(10), style: .continuous))
+            .padding(WatchStyle.m(2))
+            .background(color, in: RoundedRectangle(cornerRadius: WatchStyle.m(12), style: .continuous))
+            .padding(-WatchStyle.m(4))
+            .frame(width: WatchStyle.m(16), height: WatchStyle.m(26))
     }
 }

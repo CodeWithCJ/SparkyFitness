@@ -33,7 +33,7 @@ private extension View {
 /// (`workoutSupersets.ts`). Run 0 is blue, then orange, violet, green, pink,
 /// teal, amber, slate. Values are the dark `--color-cat-*` tokens from
 /// `global.css`, not the light ones — the watch UI is always dark.
-private enum SupersetPalette {
+enum SetSupersetPalette {
     private static let rgb: [(Double, Double, Double)] = [
         (105, 146, 211), (209, 138, 97), (145, 102, 204), (106, 164, 111),
         (204, 102, 136), (90, 173, 175), (212, 169, 84), (110, 118, 135),
@@ -66,13 +66,21 @@ struct WorkoutView: View {
     @EnvironmentObject private var run: WatchRunStore
     @EnvironmentObject private var recording: RecordingStore
 
+    @EnvironmentObject private var checkIn: CheckInStore
+
+    /// "85 kg × 8": what the set that set the record was.
+    private var prDetail: String? {
+        guard let id = store.prBannerSetId, let step = store.steps.first(where: { $0.plannedSet.setId == id }) else { return nil }
+        return SetValueText.target(for: step, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true)
+    }
+
     var body: some View {
         Group {
             if store.isActive {
                 ActiveWorkoutView()
                     .overlay {
                         if let exercise = store.prBannerExercise {
-                            NewPrView(exercise: exercise) { store.dismissPrBanner() }
+                            NewPrView(exercise: exercise, detail: prDetail) { store.dismissPrBanner() }
                                 .transition(.opacity)
                         }
                     }
@@ -368,19 +376,22 @@ private struct ActiveWorkoutView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
+                    WorkoutMoreUpNextPage(onOpenList: { showingExercises = true })
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .id(WorkoutPageID.moreUpNext)
                     if let step = store.currentStep {
                         WorkoutMoreExercisePage(step: step, onOpenList: { showingExercises = true })
-                            .workoutPage(geo)
+                            .workoutPage(geo, alignment: .top, fromScreenTop: true)
                             .id(WorkoutPageID.moreExercise)
                     }
                     WorkoutMoreWorkoutPage()
-                        .workoutPage(geo)
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.moreWorkout)
                     setScreen
                         .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.set)
                     WorkoutMetricsPage()
-                        .workoutPage(geo)
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.metrics)
                 }
                 .scrollTargetLayout()
@@ -420,8 +431,7 @@ private struct ActiveWorkoutView: View {
         .overlay {
             if let pending = pendingRpe {
                 RpePickerView(
-                    title: pending.step.exerciseName,
-                    summary: pending.summary(unit: checkIn.context.effectiveWeightUnit),
+                    summary: String(localized: "watch.rpe.setDone", defaultValue: "Set \(pending.step.setNumber) done"),
                     hapticsEnabled: checkIn.context.effectiveHapticsEnabled
                 ) { rpe in
                     store.markPendingReadyToSend(rpe: rpe)
@@ -460,12 +470,13 @@ private struct ActiveWorkoutView: View {
             }
             if ScreenshotSeed.opensEditPrevious { editingPrevious = true }
             switch ScreenshotSeed.workoutPage {
-            case "upnext", "swap", "setoptions", "exerciseoptions": page = .moreExercise
+            case "upnext": page = .moreUpNext
+            case "swap", "setoptions", "exerciseoptions": page = .moreExercise
             case "metrics": page = .metrics
             case "actions": page = .moreWorkout
             default: break
             }
-            if ScreenshotSeed.opensNewPr { store.seedPrBanner("Barbell Bench Press") }
+            if ScreenshotSeed.opensNewPr { store.seedPrBanner(ScreenshotSeed.has("mockup") ? "Incline Bench Press" : "Barbell Bench Press", setId: ScreenshotSeed.has("mockup") ? "m2b" : nil) }
             if ScreenshotSeed.opensRpe, let step = store.currentStep {
                 pendingRpe = PendingRpe(
                     step: step,
@@ -490,7 +501,7 @@ private struct ActiveWorkoutView: View {
                     SetPill(step: step) { showingExercises = true }
                     Spacer(minLength: 0)
                 }
-                .frame(height: WatchStyle.m(46))
+                .frame(height: WatchStyle.m(42))
             }
             // During a rest too: the ring shows the heart rate, but not the
             // elapsed time or calories.
@@ -518,14 +529,16 @@ private struct ActiveWorkoutView: View {
         }
         // The mockups' side margin on the 45 mm screen is 29 px; the page
         // already keeps 4 pt of its own.
-        .padding(.horizontal, max(0, WatchStyle.m(29) - 5.5))
+        .padding(.horizontal, WatchStyle.side)
+        .padding(.bottom, WatchStyle.bottom)
+        .frame(maxHeight: .infinity, alignment: .top)
         // Dimmed (always-on), the screen keeps its layout at 55% brightness.
         .colorMultiply(dimmedBrightness)
     }
 }
 
 private enum WorkoutPageID: Hashable {
-    case moreExercise, moreWorkout, set, metrics
+    case moreUpNext, moreExercise, moreWorkout, set, metrics
 }
 
 /// Shown after the last set is logged. Finish used to live only in the
@@ -639,7 +652,7 @@ private struct ExerciseListView: View {
                     } header: {
                         if let header = block.header, let run = block.supersetRun {
                             Text(header)
-                                .foregroundStyle(SupersetPalette.color(for: run))
+                                .foregroundStyle(SetSupersetPalette.color(for: run))
                         }
                     }
                 }
@@ -715,7 +728,7 @@ private struct ExerciseRow: View {
         .padding(.leading, exercise.supersetRun == nil ? 0 : 8)
         .background(alignment: .leading) {
             if let run = exercise.supersetRun {
-                SupersetPalette.color(for: run)
+                SetSupersetPalette.color(for: run)
                     .frame(width: 3)
             }
         }
@@ -806,6 +819,14 @@ enum WatchStyle {
     static var mockSlack: CGFloat {
         max(0, WKInterfaceDevice.current().screenBounds.height - m(305))
     }
+    /// The revised mockups' edge-to-edge insets, 11 px at the sides and top and
+    /// 10 px at the bottom. `side` is for a page inside the workout scroll,
+    /// which already keeps about 5.5 pt of its own at each side.
+    static var side: CGFloat { max(0, m(11) - 5.5) }
+    /// For a page laid over the scroll (effort, edit previous, record), with no padding of its own.
+    static var overlaySide: CGFloat { max(0, m(11) - 1.5) }
+    static var top: CGFloat { m(11) }
+    static var bottom: CGFloat { m(10) }
     static let heart = Color(red: 237 / 255, green: 94 / 255, blue: 99 / 255)
     /// The mockups are set in SF Pro, whose numerals draw about 12% larger than
     /// the watch's own font at the same size; large numerals use this.
@@ -910,7 +931,7 @@ struct UpNextPage: View {
                 if let next = upcoming.first {
                     Text(next.exerciseName)
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(next.supersetRun.map(SupersetPalette.color(for:)) ?? Color.primary)
+                        .foregroundStyle(next.supersetRun.map(SetSupersetPalette.color(for:)) ?? Color.primary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     // One dot per set: a count without a plural to translate.
@@ -993,53 +1014,74 @@ struct SwapExerciseSheet: View {
 /// about the set.
 struct WorkoutMetricsPage: View {
     @EnvironmentObject private var store: WorkoutSessionStore
+    @Environment(\.setTint) private var tint
+
+    private var elapsed: Int {
+        #if DEBUG
+        if let frozen = ScreenshotSeed.elapsedOverride { return frozen }
+        #endif
+        return store.elapsedSeconds
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(Self.elapsed(store.elapsedSeconds))
-                .font(.system(size: WatchStyle.s(40), weight: .semibold, design: .rounded))
-                .foregroundStyle(.yellow)
-            reading(
-                store.latestBpm.map { "\(Int($0.rounded()))" },
-                unit: String(localized: "watch.workout.bpm", defaultValue: "BPM"),
-                systemImage: "heart.fill",
-                tint: .red
-            )
-            reading(
-                store.activeEnergyKcal.map {
-                    "\(Int(CheckInStore.shared.context.energyFromKcal($0)))"
-                },
-                unit: CheckInStore.shared.context.usesKilojoules
-                    ? String(localized: "watch.workout.kj", defaultValue: "KJ")
-                    : String(localized: "watch.workout.kcal", defaultValue: "KCAL"),
-                systemImage: "flame.fill",
-                tint: .orange
-            )
-            if !store.steps.isEmpty {
-                let done = store.steps.filter(store.isCompleted).count
-                Text(String(localized: "watch.workout.setsDone", defaultValue: "\(done) of \(store.steps.count) sets"))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
+        let kcalUnit = CheckInStore.shared.context.usesKilojoules
+            ? String(localized: "watch.workout.kj", defaultValue: "KJ")
+            : String(localized: "watch.workout.kcal", defaultValue: "KCAL")
+        VStack(alignment: .leading, spacing: 0) {
+            Text(String(localized: "watch.workout.metricsTitle", defaultValue: "Live"))
+                .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                .frame(height: WatchStyle.m(42))
+                .accessibilityAddTraits(.isHeader)
+            Text(Self.elapsed(elapsed))
+                .font(.system(size: WatchStyle.num(36), weight: WatchStyle.numWeight))
+                .foregroundStyle(tint.light)
+                .frame(height: WatchStyle.m(48), alignment: .leading)
+            // A dash until the first sample arrives, so the layout does not jump.
+            HStack(spacing: WatchStyle.m(6)) {
+                Text(store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--")
+                    .font(.system(size: WatchStyle.num(36), weight: WatchStyle.numWeight))
+                Image(systemName: "heart.fill")
+                    .font(.system(size: WatchStyle.m(30)))
             }
+            .foregroundStyle(WatchStyle.heart)
+            .frame(height: WatchStyle.m(48), alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(String(localized: "watch.workout.heartRateReading", defaultValue: "Heart rate \(store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--")"))
+            HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(6)) {
+                Text(store.activeEnergyKcal.map { "\(Int(CheckInStore.shared.context.energyFromKcal($0)))" } ?? "--")
+                    .font(.system(size: WatchStyle.num(36), weight: WatchStyle.numWeight))
+                Text(kcalUnit)
+                    .font(.system(size: WatchStyle.m(14), weight: .bold))
+                    .foregroundStyle(SetTint.hold.color)
+            }
+            .frame(height: WatchStyle.m(48), alignment: .leading)
+            if !store.steps.isEmpty {
+                let counts = setCounts
+                HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(6)) {
+                    Text(String(localized: "watch.workout.setsProgress", defaultValue: "\(counts.done) of \(counts.total)"))
+                        .font(.system(size: WatchStyle.num(28), weight: WatchStyle.numWeight))
+                    Text(String(localized: "watch.workout.setsUnit", defaultValue: "SETS"))
+                        .font(.system(size: WatchStyle.m(14), weight: .bold))
+                        .foregroundStyle(tint.color)
+                }
+                .frame(height: WatchStyle.m(40), alignment: .leading)
+                .padding(.top, WatchStyle.m(4))
+            }
+            Spacer(minLength: 0)
         }
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.7)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, WatchStyle.m(7))
+        .padding(.horizontal, WatchStyle.side)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// A dash until the first sample arrives, so the layout does not jump.
-    private func reading(_ value: String?, unit: String, systemImage: String, tint: Color) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(value ?? "--")
-                .font(.system(size: WatchStyle.s(32), weight: .semibold, design: .rounded))
-            Text(unit)
-                .font(.footnote.weight(.semibold))
-            Image(systemName: systemImage)
-                .font(.footnote)
-        }
-        .foregroundStyle(tint)
+    private var setCounts: (done: Int, total: Int) {
+        #if DEBUG
+        if ScreenshotSeed.has("mockup") { return (6, 21) }
+        #endif
+        return (store.steps.filter(store.isCompleted).count, store.steps.count)
     }
 
     static func elapsed(_ seconds: Int) -> String {
@@ -1106,7 +1148,7 @@ private struct CurrentSetView: View {
 
     private var supersetColor: Color? {
         guard let run = step.supersetRun else { return nil }
-        return SupersetPalette.color(for: run)
+        return SetSupersetPalette.color(for: run)
     }
 
     private enum EditableField: Identifiable {
@@ -1126,18 +1168,17 @@ private struct CurrentSetView: View {
                 HoldRunning(step: step, totalSeconds: seconds, onEnd: logSet)
             } else {
             SetTitle(name: step.exerciseName)
-                .padding(.top, -WatchStyle.m(4))
             SetDetailRow(step: step) { setId in
                 endCrownEditing()
                 store.goToStep(setId: setId)
             }
-            .padding(.top, WatchStyle.m(3))
-            .padding(.bottom, WatchStyle.m(4))
+            .padding(.top, WatchStyle.m(2))
+            .padding(.bottom, WatchStyle.m(6))
 
             let values = store.values(for: step)
             let holdSeconds = store.targetDurationSec(for: step)
             let timed = store.isTimed(step)
-            HStack(spacing: WatchStyle.m(5)) {
+            HStack(spacing: WatchStyle.m(6)) {
                 if !timed || values.weightKg != nil || store.isWeightedHold(step) {
                     valueBox(.weight)
                 }
@@ -1175,7 +1216,8 @@ private struct CurrentSetView: View {
             }
 
             // Edit the previous set beside the wide Log set; the dots above
-            // jump to a set of this exercise.
+            // jump to a set of this exercise. Pinned to the bottom edge.
+            Spacer(minLength: WatchStyle.m(8))
             HStack(spacing: WatchStyle.m(6)) {
                 RoundBackButton {
                     endCrownEditing()
@@ -1196,7 +1238,6 @@ private struct CurrentSetView: View {
                     logSet()
                 }
             }
-            .padding(.top, WatchStyle.m(8))
             }
         }
         // The phone logging this set, or a jump from the exercise list, has
@@ -1616,24 +1657,24 @@ private struct HoldTile: View {
         Button(action: Haptics.tapping(action)) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(label)
-                    .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(14), weight: .semibold))
                 Spacer(minLength: 0)
                 HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(3)) {
                     Text(value)
-                        .font(.system(size: WatchStyle.num(26), weight: WatchStyle.numWeight))
+                        .font(.system(size: WatchStyle.num(32), weight: WatchStyle.numWeight))
                         .monospacedDigit()
                     if let suffix {
-                        Text(suffix).font(.system(size: WatchStyle.m(14), weight: .medium))
+                        Text(suffix).font(.system(size: WatchStyle.m(16), weight: .medium))
                     }
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
             }
             .foregroundStyle(amber.color)
-            .padding(.horizontal, WatchStyle.m(8))
-            .padding(.vertical, WatchStyle.m(5))
+            .padding(.horizontal, WatchStyle.m(10))
+            .padding(.vertical, WatchStyle.m(8))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: WatchStyle.m(54))
+            .frame(height: WatchStyle.m(76))
             .background(amber.mixed(0.26), in: RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
             .overlay(alignment: .topTrailing) {
                 Image(systemName: running ? "stop.fill" : "play.fill")
@@ -1641,8 +1682,8 @@ private struct HoldTile: View {
                     .foregroundStyle(Color.black)
                     .frame(width: WatchStyle.m(28), height: WatchStyle.m(28))
                     .background(running ? Color.red : Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255), in: Circle())
-                    .padding(.top, WatchStyle.m(13))
-                    .padding(.trailing, WatchStyle.m(7))
+                    .padding(.top, WatchStyle.m(18))
+                    .padding(.trailing, WatchStyle.m(10))
                     .accessibilityHidden(true)
             }
             .contentShape(RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
@@ -1704,7 +1745,7 @@ private struct HoldRunning: View {
             let setId = step.plannedSet.setId
             let remaining = remaining(setId: setId, now: context.date)
             let fraction = totalSeconds > 0 ? Double(remaining) / Double(totalSeconds) : 0
-            let size = WatchStyle.m(116)
+            let size = WatchStyle.m(130)
             let line = size * 12 / 136
             let weight = store.values(for: step).weightKg
             VStack(spacing: 0) {
@@ -1868,27 +1909,27 @@ struct ValueBox: View {
         Button(action: Haptics.tapping(onTap)) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(label)
-                    .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(14), weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
                 HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(3)) {
                     Text(value)
-                        .font(.system(size: WatchStyle.num(26), weight: WatchStyle.numWeight))
+                        .font(.system(size: WatchStyle.num(32), weight: WatchStyle.numWeight))
                         .monospacedDigit()
                     if let suffix {
                         Text(suffix)
-                            .font(.system(size: WatchStyle.m(14), weight: .medium))
+                            .font(.system(size: WatchStyle.m(16), weight: .medium))
                     }
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
             }
             .foregroundStyle(tint.color)
-            .padding(.horizontal, WatchStyle.m(8))
-            .padding(.vertical, WatchStyle.m(5))
+            .padding(.horizontal, WatchStyle.m(10))
+            .padding(.vertical, WatchStyle.m(8))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: WatchStyle.m(54))
+            .frame(height: WatchStyle.m(76))
             .background(fill ?? tint.tile, in: RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
             // The "edit" badge: the tile opens its value for change.
             .overlay(alignment: .topTrailing) {
@@ -1929,7 +1970,7 @@ struct RoundBackButton: View {
                 .font(.system(size: WatchStyle.m(28), weight: .medium))
                 .foregroundStyle(dimmed ? WatchStyle.lightGrey : Color.white)
                 .padding(.bottom, WatchStyle.m(3))
-                .frame(width: WatchStyle.m(40), height: WatchStyle.m(40))
+                .frame(width: WatchStyle.m(44), height: WatchStyle.m(44))
                 .background(WatchStyle.surface, in: Circle())
                 .opacity(isEnabled ? 1 : 0.35)
                 .contentShape(Circle())
@@ -1980,7 +2021,7 @@ private struct LogSetButton: View {
                 Text(isCompleted
                      ? String(localized: "watch.workout.undo", defaultValue: "Undo")
                      : String(localized: "watch.workout.logSetButton", defaultValue: "Log set"))
-                    .font(.system(size: WatchStyle.m(17), weight: .bold))
+                    .font(.system(size: WatchStyle.m(18), weight: .bold))
                 if !isCompleted, let thenLabel {
                     Text(String(localized: "watch.workout.thenNext", defaultValue: "then \(thenLabel)"))
                         .font(.system(size: WatchStyle.m(13), weight: .semibold))
@@ -1999,7 +2040,7 @@ private struct LogSetButton: View {
             // to infer a shared type from.
             .foregroundStyle(isCompleted ? Color.orange : (dimmed ? WatchStyle.lightGrey : Color.black))
             .frame(maxWidth: .infinity)
-            .frame(height: WatchStyle.m(40))
+            .frame(height: WatchStyle.m(44))
             .background(
                 isCompleted ? Color.orange.opacity(0.2) : (dimmed ? WatchStyle.surface : tint.color),
                 in: Capsule()
@@ -2018,11 +2059,11 @@ private struct LogSetButton: View {
     }
 }
 
-/// The exercise's name, as large as 32 px but shrunk to fit within 93% of the
+/// The exercise's name, as large as 38 px but shrunk to fit within 97% of the
 /// row's width, so a long name is smaller rather than cut off.
 struct SetTitle: View {
     let name: String
-    var maxSize: CGFloat = 32
+    var maxSize: CGFloat = 38
 
     var body: some View {
         GeometryReader { proxy in
@@ -2030,10 +2071,10 @@ struct SetTitle: View {
                 .font(.system(size: WatchStyle.m(maxSize), weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
-                .frame(width: proxy.size.width * 0.93, height: proxy.size.height, alignment: .leading)
+                .frame(width: proxy.size.width * 0.97, height: proxy.size.height, alignment: .leading)
         }
-        .padding(.leading, WatchStyle.m(3))
-        .frame(height: WatchStyle.m(36))
+        .padding(.leading, WatchStyle.m(4))
+        .frame(height: WatchStyle.m(44))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(name)
         .accessibilityAddTraits(.isHeader)
@@ -2077,12 +2118,12 @@ struct SetPill: View {
     @Environment(\.setTint) private var blue
 
     /// A superset member wears its superset's colour.
-    private var tint: SetTint { step.supersetRun.map(SupersetPalette.tint(for:)) ?? blue }
+    private var tint: SetTint { step.supersetRun.map(SetSupersetPalette.tint(for:)) ?? blue }
 
     var body: some View {
         let position = store.exercisePosition(of: step)
         Button(action: Haptics.tapping(action)) {
-            HStack(spacing: WatchStyle.m(8)) {
+            HStack(spacing: WatchStyle.m(7)) {
                 ZStack {
                     Circle().fill(tint.pillIcon)
                     if let badge = store.supersetBadge(for: step) {
@@ -2092,15 +2133,15 @@ struct SetPill: View {
                         StrengthFigure()
                     }
                 }
-                .frame(width: WatchStyle.m(36), height: WatchStyle.m(36))
+                .frame(width: WatchStyle.m(34), height: WatchStyle.m(34))
                 Text("\(position.index)/\(position.total)")
-                    .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(17), weight: .semibold))
                     .monospacedDigit()
             }
             .foregroundStyle(tint.color)
-            .padding(.leading, WatchStyle.m(5))
-            .padding(.trailing, WatchStyle.m(14))
-            .frame(height: WatchStyle.m(46))
+            .padding(.leading, WatchStyle.m(4))
+            .padding(.trailing, WatchStyle.m(13))
+            .frame(height: WatchStyle.m(42))
             .background(tint.pill, in: Capsule())
             .contentShape(Capsule())
         }
@@ -2129,7 +2170,7 @@ private struct SetDetailRow: View {
             SetProgressRow(step: step, onSelect: onSelect)
                 .fixedSize()
         }
-        .padding(.leading, WatchStyle.m(3))
+        .padding(.leading, WatchStyle.m(4))
         .frame(height: WatchStyle.m(18))
     }
 
@@ -2143,7 +2184,7 @@ private struct SetDetailRow: View {
         let text = store.isCompleted(step)
             ? Text(base + " · " + String(localized: "watch.workout.logged", defaultValue: "logged"))
             : Text(base)
-        return text.foregroundStyle(step.supersetRun.map { SupersetPalette.tint(for: $0).color } ?? WatchStyle.grey)
+        return text.foregroundStyle(step.supersetRun.map { SetSupersetPalette.tint(for: $0).color } ?? WatchStyle.grey)
     }
 }
 
@@ -2251,7 +2292,7 @@ private struct RestView: View {
 
     private func content(now: Date) -> some View {
         let paused = store.restPausedRemaining != nil
-        let ringSize = WatchStyle.m(96)
+        let ringSize = WatchStyle.m(114)
         let ringLine = ringSize * 12 / 136
         return VStack(spacing: 0) {
             // A ring that empties as the rest runs down, with the time left in
@@ -2267,7 +2308,7 @@ private struct RestView: View {
                     .rotationEffect(.degrees(-90))
                 VStack(spacing: 0) {
                     Text(remainingLabel(now: now))
-                        .font(.system(size: WatchStyle.num(30), weight: .semibold))
+                        .font(.system(size: WatchStyle.num(34), weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(tint.color)
                         .lineLimit(1)
@@ -2282,7 +2323,7 @@ private struct RestView: View {
                             Image(systemName: "heart.fill")
                             Text("\(Int(bpm.rounded()))").monospacedDigit()
                         }
-                        .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                        .font(.system(size: WatchStyle.m(15), weight: .semibold))
                         .foregroundStyle(WatchStyle.heart)
                     }
                 }
@@ -2301,7 +2342,7 @@ private struct RestView: View {
                         .font(.system(size: WatchStyle.m(15), weight: .bold))
                         .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.m(40))
+                        .frame(height: WatchStyle.m(46))
                         .background(Color.white, in: Capsule())
                         .contentShape(Capsule())
                 }
@@ -2359,7 +2400,7 @@ private struct RestView: View {
                 .font(.system(size: WatchStyle.m(15), weight: .semibold))
                 .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: WatchStyle.m(40))
+                .frame(height: WatchStyle.m(46))
                 .background(WatchStyle.surface, in: Capsule())
                 .contentShape(Capsule())
         }
@@ -2402,7 +2443,7 @@ private struct RestView: View {
 
     private func nextSupersetColor(_ step: WorkoutStep) -> Color? {
         guard continuesSuperset(step), let run = step.supersetRun else { return nil }
-        return SupersetPalette.color(for: run)
+        return SetSupersetPalette.color(for: run)
     }
 
 }
@@ -2631,12 +2672,13 @@ struct MarqueeText: View {
 /// with the Digital Crown or a drag. Skip / Save; a double tap saves.
 /// `onDone(nil)` skips.
 private struct RpePickerView: View {
-    let title: String
     let summary: String
     let hapticsEnabled: Bool
     let onDone: (Double?) -> Void
 
+    @Environment(\.setTint) private var tint
     @EnvironmentObject private var checkIn: CheckInStore
+    private var title: String { String(localized: "watch.effort.setTitle", defaultValue: "How hard?") }
     @Environment(\.workoutPageActive) private var workoutPageActive
 
     /// Whole numbers from 1 through 6, then half steps through 10.
@@ -2687,63 +2729,89 @@ private struct RpePickerView: View {
         }
     }
 
+    /// The short form under the number: "2 reps left".
+    private var repsLeft: String {
+        switch value {
+        case 10: return String(localized: "watch.rpe.short.10", defaultValue: "0 reps left")
+        case 9.5: return String(localized: "watch.rpe.short.9_5", defaultValue: "0–1 reps left")
+        case 9: return String(localized: "watch.rpe.short.9", defaultValue: "1 rep left")
+        case 8.5: return String(localized: "watch.rpe.short.8_5", defaultValue: "1–2 reps left")
+        case 8: return String(localized: "watch.rpe.short.8", defaultValue: "2 reps left")
+        case 7.5: return String(localized: "watch.rpe.short.7_5", defaultValue: "2–3 reps left")
+        case 7: return String(localized: "watch.rpe.short.7", defaultValue: "3 reps left")
+        case 6.5: return String(localized: "watch.rpe.short.6_5", defaultValue: "3–4 reps left")
+        case 6: return String(localized: "watch.rpe.short.6", defaultValue: "4+ reps left")
+        case 5: return String(localized: "watch.rpe.short.5", defaultValue: "5+ reps left")
+        case 4: return String(localized: "watch.rpe.short.4", defaultValue: "Light")
+        case 3: return String(localized: "watch.rpe.short.3", defaultValue: "Very light")
+        default: return String(localized: "watch.rpe.short.low", defaultValue: "Easy")
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 3) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title)
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.system(size: WatchStyle.m(24), weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(height: WatchStyle.m(28))
+                .accessibilityAddTraits(.isHeader)
+            Text(summary)
+                .font(.system(size: WatchStyle.m(14)))
+                .foregroundStyle(WatchStyle.grey)
+                .lineLimit(1)
+                .frame(height: WatchStyle.m(18))
+                .padding(.top, WatchStyle.m(1))
+            HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(10)) {
+                Text(valueText)
+                    .font(.system(size: WatchStyle.num(68), weight: .semibold))
+                    .monospacedDigit()
+                    .tracking(-WatchStyle.m(2))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                Text(summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(repsLeft)
+                    .font(.system(size: WatchStyle.m(21), weight: .semibold))
+                    .foregroundStyle(tint.color)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.5)
             }
-            // Room for the system clock, which sits over the top right.
-            .padding(.trailing, 52)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, WatchStyle.m(16))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(String(localized: "watch.rpe.label", defaultValue: "RPE \(valueText), \(meaning)"))
 
-            Text(valueText)
-                .font(.system(size: WatchStyle.s(40), weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(EffortBand(score: value).color)
-            Text(meaning)
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 26)
+            EffortTrack(values: Self.values, index: $index, hapticsEnabled: hapticsEnabled, uniform: tint.color)
+                .padding(.top, WatchStyle.m(16))
 
-            EffortTrack(values: Self.values, index: $index, hapticsEnabled: hapticsEnabled)
-
-            HStack(spacing: 4) {
+            Spacer(minLength: WatchStyle.m(8))
+            HStack(spacing: WatchStyle.m(6)) {
                 Button { onDone(nil) } label: {
                     Text(String(localized: "watch.rpe.skip", defaultValue: "Skip"))
-                        .font(.headline)
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .font(.system(size: WatchStyle.m(16), weight: .semibold))
+                        .foregroundStyle(Color.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.s(38))
-                        .background(WatchStyle.fill, in: WatchStyle.shape)
-                        .contentShape(WatchStyle.shape)
+                        .frame(height: WatchStyle.m(48))
+                        .background(WatchStyle.surface, in: Capsule())
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 Button { onDone(value) } label: {
                     Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
-                        .font(.headline)
+                        .font(.system(size: WatchStyle.m(16), weight: .bold))
                         .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.s(38))
-                        .background(Color.white, in: WatchStyle.shape)
-                        .contentShape(WatchStyle.shape)
+                        .frame(height: WatchStyle.m(48))
+                        .background(Color.white, in: Capsule())
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .doubleTapGesture(enabled: workoutPageActive && checkIn.context.effectiveDoubleTapEnabled)
             }
+            .padding(.bottom, WatchStyle.bottom)
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 4)
+        .padding(.horizontal, WatchStyle.overlaySide)
+        .padding(.top, WatchStyle.top)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
     }
 }
 
@@ -2814,8 +2882,9 @@ private extension View {
     func workoutPage(_ geo: GeometryProxy, alignment: Alignment = .center, fromScreenTop: Bool = false) -> some View {
         self
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .padding(.top, fromScreenTop ? WatchStyle.m(34) + 1 : geo.safeAreaInsets.top)
-            .padding(.bottom, geo.safeAreaInsets.bottom)
+            .padding(.top, fromScreenTop ? WatchStyle.top : geo.safeAreaInsets.top)
+            // The page dots sit in the bottom 14 pt of a set page.
+            .padding(.bottom, fromScreenTop ? WatchStyle.m(14) : geo.safeAreaInsets.bottom)
             .frame(
                 height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             )
