@@ -86,3 +86,33 @@ final class WatchPlatesTests: XCTestCase {
         XCTAssertEqual(WatchPlates.number(0.5), "0.5")
     }
 }
+
+final class WatchPlatesStepTests: XCTestCase {
+    private let kg = WatchPlateConfig(
+        unit: "kg", barWeight: 20, collarWeight: 0,
+        plates: [20, 10, 5, 2.5, 1.25].map { .init(weight: $0, pairs: 2) }
+    )
+
+    func testStepsToTheNeighbouringLoadableWeights() {
+        XCTAssertEqual(WatchPlates.nextLoadable(from: 82.5, up: true, config: kg), 85)
+        XCTAssertEqual(WatchPlates.nextLoadable(from: 82.5, up: false, config: kg), 80)
+    }
+
+    func testANonLoadableTargetGoesToTheNearerLoadableSide() {
+        XCTAssertEqual(WatchPlates.nextLoadable(from: 83, up: true, config: kg), 85)
+        XCTAssertEqual(WatchPlates.nextLoadable(from: 83, up: false, config: kg), 82.5)
+    }
+
+    func testStopsAtTheBarAndAtTheHeaviestLoad() {
+        XCTAssertNil(WatchPlates.nextLoadable(from: 20, up: false, config: kg))
+        // Two pairs of each: 20 + 2 * 2 * (20 + 10 + 5 + 2.5 + 1.25) = 175.
+        XCTAssertEqual(WatchPlates.nextLoadable(from: 172.5, up: true, config: kg), 175)
+        XCTAssertNil(WatchPlates.nextLoadable(from: 175, up: true, config: kg))
+    }
+
+    func testPoundsComeBackAsKg() {
+        let lbs = WatchPlateConfig(unit: "lbs", barWeight: 45, collarWeight: 0, plates: [45, 25, 10, 5, 2.5].map { .init(weight: $0, pairs: 2) })
+        let next = WatchPlates.nextLoadable(from: 135 * 0.45359237, up: true, config: lbs)
+        XCTAssertEqual(next ?? 0, 140 * 0.45359237, accuracy: 1e-6)
+    }
+}

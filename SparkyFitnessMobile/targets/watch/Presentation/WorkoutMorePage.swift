@@ -164,7 +164,11 @@ struct WorkoutMoreExercisePage: View {
         .onAppear { if ScreenshotSeed.opensPlates { showingPlates = true } }
         #endif
         .sheet(isPresented: $showingPlates) {
-            if let plates { PlatesSheet(config: plates.config, weightKg: plates.weightKg) }
+            if let plates {
+                PlatesSheet(config: plates.config, weightKg: plates.weightKg) { kg in
+                    store.setValue(for: step.plannedSet.setId, weightKg: kg)
+                }
+            }
         }
         .confirmationDialog(
             String(localized: "watch.workout.deleteExerciseConfirm", defaultValue: "Delete \(step.exerciseName)?"),
@@ -376,92 +380,201 @@ private struct MoreTile: View {
     }
 }
 
-/// Plates per side for a set's weight: the bar, each plate on one side, and,
-/// when the weight cannot be built from the plates owned, the nearest weights
-/// either side of it.
+/// The plate calculator for a set's weight. Opens at the set's weight and
+/// shows the loaded bar, the total, and the plates on each side. The Digital
+/// Crown and the − and + buttons move to the next weight the plates can make
+/// (`WatchPlates.nextLoadable`); a weight they cannot make shows the two
+/// nearest. "Use" writes the weight to the set, through the store's usual
+/// value edit, and closes; closing any other way leaves the set as it was.
 struct PlatesSheet: View {
     let config: WatchPlateConfig
     let weightKg: Double
+    /// Writes the chosen weight (kg) to the set.
+    let onUse: (Double) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var targetKg: Double
+    @State private var crown = 0.0
+    @State private var crownSeen = 0.0
+    @FocusState private var crownFocused: Bool
+
+    init(config: WatchPlateConfig, weightKg: Double, onUse: @escaping (Double) -> Void) {
+        self.config = config
+        self.weightKg = weightKg
+        self.onUse = onUse
+        _targetKg = State(initialValue: weightKg)
+    }
 
     private var unit: String { config.unit }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: WatchStyle.m(8)) {
-                    row(String(localized: "watch.workout.platesBar", defaultValue: "Bar"), "\(WatchPlates.number(config.barWeight)) \(unit)")
-                    switch WatchPlates.calculate(targetKg: weightKg, config: config) {
-                    case .exact(let load):
-                        perSide(load)
-                    case .inexact(let below, let above):
-                        inexact(below: below, above: above)
-                    case .invalid:
-                        Text(String(localized: "watch.workout.platesUnavailable", defaultValue: "Cannot work this out"))
-                            .font(.footnote)
-                            .foregroundStyle(WatchStyle.grey)
-                    }
+        let result = WatchPlates.calculate(targetKg: targetKg, config: config)
+        let shown = Self.shown(result)
+        VStack(spacing: WatchStyle.m(5)) {
+            HStack(spacing: WatchStyle.m(4)) {
+                stepButton("−", up: false)
+                HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(3)) {
+                    Text(WatchPlates.number(WatchPlates.inUnit(targetKg, of: config)))
+                        .font(.system(size: WatchStyle.num(38), weight: WatchStyle.numWeight))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(unit)
+                        .font(.system(size: WatchStyle.m(16), weight: .semibold))
+                        .foregroundStyle(WatchStyle.lightGrey)
                 }
-                .padding(.horizontal, WatchStyle.m(4))
+                .frame(maxWidth: .infinity)
+                stepButton("+", up: true)
             }
-            .navigationTitle(String(localized: "watch.workout.morePlates", defaultValue: "Plates"))
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    @ViewBuilder
-    private func perSide(_ load: WatchPlates.Load) -> some View {
-        heading(String(localized: "watch.workout.platesPerSide", defaultValue: "Per side"))
-        if load.plates.isEmpty {
-            Text(String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only"))
-                .font(.system(size: WatchStyle.m(18), weight: .semibold))
-        } else {
-            ForEach(load.plates, id: \.weight) { plate in
-                row("\(WatchPlates.number(plate.weight)) \(unit)", "×\(plate.count)", strong: true)
-            }
-        }
-        row(String(localized: "watch.workout.platesTotal", defaultValue: "Total"), "\(WatchPlates.number(load.total)) \(unit)")
-    }
-
-    @ViewBuilder
-    private func inexact(below: WatchPlates.Load?, above: WatchPlates.Load?) -> some View {
-        Text(String(localized: "watch.workout.platesNotExactLong", defaultValue: "Your plates cannot make exactly \(WatchPlates.number(WatchPlates.inUnit(weightKg, of: config))) \(unit)."))
-            .font(.footnote)
-            .foregroundStyle(WatchStyle.grey)
-        let closest = [below, above].compactMap { $0 }
-        if !closest.isEmpty {
-            row(
-                String(localized: "watch.workout.platesClosest", defaultValue: "Closest"),
-                closest.map { WatchPlates.number($0.total) }.joined(separator: " / ") + " \(unit)",
-                strong: true
-            )
-            ForEach(Array(closest.enumerated()), id: \.offset) { _, load in
-                row(WatchPlates.number(load.total), load.plates.isEmpty ? String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only") : WatchPlates.summary(load.plates))
-            }
-        }
-    }
-
-    private func heading(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.system(size: WatchStyle.m(12), weight: .bold))
-            .tracking(0.5)
-            .foregroundStyle(WatchStyle.grey)
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    private func row(_ title: String, _ value: String, strong: Bool = false) -> some View {
-        HStack(spacing: WatchStyle.m(6)) {
-            Text(title)
-                .font(.system(size: WatchStyle.m(15), weight: strong ? .semibold : .regular))
-                .foregroundStyle(strong ? Color.white : WatchStyle.grey)
-            Spacer(minLength: 0)
-            Text(value)
-                .font(.system(size: WatchStyle.m(15), weight: .semibold))
-                .monospacedDigit()
+            .padding(.top, WatchStyle.m(46))
+            BarbellView(config: config, plates: shown?.plates ?? [], dim: !isExact(result))
+                .frame(height: WatchStyle.m(70))
+            Text(caption(result))
+                .font(.system(size: WatchStyle.m(19), weight: .semibold))
+                .foregroundStyle(isExact(result) ? Color.white : Color(red: 0.96, green: 0.70, blue: 0.20))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .frame(height: WatchStyle.m(24))
+            Text(String(localized: "watch.workout.platesBarLine", defaultValue: "Bar \(WatchPlates.number(config.barWeight)) \(unit)"))
+                .font(.system(size: WatchStyle.m(15)))
+                .foregroundStyle(WatchStyle.lightGrey)
+            Spacer(minLength: 0)
+            Button {
+                if let kg = exactKg(result) {
+                    Haptics.setLogged()
+                    onUse(kg)
+                    dismiss()
+                }
+            } label: {
+                Text(String(localized: "watch.workout.platesUse", defaultValue: "Use \(WatchPlates.number(WatchPlates.inUnit(targetKg, of: config))) \(unit)"))
+                    .font(.system(size: WatchStyle.m(19), weight: .bold))
+                    .foregroundStyle(Color.black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: WatchStyle.m(44))
+                    .background(Color.white, in: Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!isExact(result))
+            .opacity(isExact(result) ? 1 : 0.35)
         }
-        .padding(.horizontal, WatchStyle.m(10))
-        .frame(minHeight: WatchStyle.m(36))
-        .background(WatchStyle.surface, in: RoundedRectangle(cornerRadius: WatchStyle.m(12), style: .continuous))
+        .padding(.horizontal, WatchStyle.overlaySide)
+        .padding(.bottom, WatchStyle.bottom)
+        .focusable()
+        .focused($crownFocused)
+        .digitalCrownRotation($crown, from: -10_000, through: 10_000, by: 1, sensitivity: .low, isContinuous: true, isHapticFeedbackEnabled: true)
+        .onChange(of: crown) {
+            let detents = Int((crown - crownSeen).rounded())
+            guard detents != 0 else { return }
+            crownSeen += Double(detents)
+            for _ in 0..<abs(detents) { step(up: detents > 0) }
+        }
+        .onAppear { crownFocused = true }
+    }
+
+    private func step(up: Bool) {
+        if let next = WatchPlates.nextLoadable(from: targetKg, up: up, config: config) { targetKg = next }
+    }
+
+    private func stepButton(_ glyph: String, up: Bool) -> some View {
+        Button { Haptics.tap(); step(up: up) } label: {
+            Text(glyph)
+                .font(.system(size: WatchStyle.m(28), weight: .semibold))
+                .frame(width: WatchStyle.m(42), height: WatchStyle.m(42))
+                .background(WatchStyle.surface, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(up
+            ? String(localized: "watch.workout.platesHeavier", defaultValue: "Heavier")
+            : String(localized: "watch.workout.platesLighter", defaultValue: "Lighter"))
+    }
+
+    private func isExact(_ result: WatchPlates.Result) -> Bool {
+        if case .exact = result { return true }
+        return false
+    }
+
+    private func exactKg(_ result: WatchPlates.Result) -> Double? {
+        isExact(result) ? targetKg : nil
+    }
+
+    /// The load drawn: the exact one, else the nearest below, else above.
+    private static func shown(_ result: WatchPlates.Result) -> WatchPlates.Load? {
+        switch result {
+        case .exact(let load): return load
+        case .inexact(let below, let above): return below ?? above
+        case .invalid: return nil
+        }
+    }
+
+    /// Per side as "20 · 10 · 1.25", or the two nearest weights.
+    private func caption(_ result: WatchPlates.Result) -> String {
+        switch result {
+        case .exact(let load):
+            return load.plates.isEmpty
+                ? String(localized: "watch.workout.platesBarOnly", defaultValue: "Bar only")
+                : load.plates.flatMap { Array(repeating: WatchPlates.number($0.weight), count: $0.count) }.joined(separator: " · ")
+        case .inexact(let below, let above):
+            let nearest = [below, above].compactMap { $0 }.map { WatchPlates.number($0.total) }.joined(separator: " / ")
+            return String(localized: "watch.workout.platesClosest", defaultValue: "Closest") + " " + nearest
+        case .invalid:
+            return String(localized: "watch.workout.platesUnavailable", defaultValue: "Cannot work this out")
+        }
+    }
+}
+
+/// One side of a barbell seen from the side: the bar, the plates in order from
+/// the centre out, as rectangles whose height follows the weight, and the
+/// collar.
+private struct BarbellView: View {
+    let config: WatchPlateConfig
+    let plates: [WatchPlates.Count]
+    let dim: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let flat = plates.flatMap { Array(repeating: $0.weight, count: $0.count) }
+            let height = proxy.size.height
+            let thickness = min(WatchStyle.m(14), (proxy.size.width * 0.62) / CGFloat(max(flat.count, 6)))
+            HStack(alignment: .center, spacing: 1) {
+                // The stop at the centre of the bar.
+                RoundedRectangle(cornerRadius: 2).fill(Color(white: 0.55))
+                    .frame(width: WatchStyle.m(8), height: height * 0.34)
+                ForEach(Array(flat.enumerated()), id: \.offset) { _, weight in
+                    let kgWeight = config.unit == "lbs" ? weight * 0.45359237 : weight
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Self.color(kgWeight))
+                        .frame(width: thickness, height: max(height * 0.28, height * min(1, CGFloat(0.38 + kgWeight / 25 * 0.62))))
+                }
+                if config.collarWeight > 0 {
+                    RoundedRectangle(cornerRadius: 2).fill(Color(white: 0.8))
+                        .frame(width: WatchStyle.m(6), height: height * 0.3)
+                }
+                // The bar's sleeve running out past the plates.
+                RoundedRectangle(cornerRadius: 3).fill(Color(white: 0.7))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: height * 0.12)
+            }
+            .frame(width: proxy.size.width, height: height, alignment: .leading)
+            .opacity(dim ? 0.4 : 1)
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// The competition colours, by kg: 25 red, 20 blue, 15 yellow, 10 green,
+    /// 5 white, then lighter ones in greys and orange.
+    private static func color(_ kg: Double) -> Color {
+        switch kg {
+        case 25...: return Color(red: 0.90, green: 0.25, blue: 0.27)
+        case 20...: return Color(red: 0.26, green: 0.52, blue: 0.96)
+        case 15...: return Color(red: 0.96, green: 0.80, blue: 0.25)
+        case 10...: return Color(red: 0.30, green: 0.75, blue: 0.40)
+        case 5...: return Color(white: 0.92)
+        case 2.5...: return Color(red: 0.95, green: 0.55, blue: 0.20)
+        default: return Color(white: 0.62)
+        }
     }
 }

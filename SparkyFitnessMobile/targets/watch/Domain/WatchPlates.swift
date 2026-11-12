@@ -103,6 +103,24 @@ enum WatchPlates {
         return .inexact(below: below, above: above)
     }
 
+    /// A weight in the config's unit as kg, the unit a set's weight is stored in.
+    static func toKg(_ value: Double, of config: WatchPlateConfig) -> Double {
+        config.unit == "lbs" ? value * kgPerLb : value
+    }
+
+    /// The nearest loadable total strictly above (`up`) or below `targetKg`, in
+    /// kg; nil past the lightest or heaviest the plates allow. The target is
+    /// nudged by half a thousandth, below the search's resolution, so a
+    /// loadable target steps to its neighbour and any other to the nearer
+    /// loadable weight on that side. This is how the plate calculator's crown
+    /// moves through only the weights the plates can make.
+    static func nextLoadable(from targetKg: Double, up: Bool, config: WatchPlateConfig) -> Double? {
+        let probe = inUnit(targetKg, of: config) + (up ? 0.0005 : -0.0005)
+        guard case .inexact(let below, let above) = calculate(targetKg: toKg(probe, of: config), config: config),
+              let load = up ? above : below else { return nil }
+        return toKg(load.total, of: config)
+    }
+
     /// "20+10+1.25": each plate on one side, a repeated plate repeated.
     static func summary(_ plates: [Count]) -> String {
         plates.flatMap { Array(repeating: number($0.weight), count: $0.count) }.joined(separator: "+")

@@ -367,11 +367,11 @@
 "watch.workout.morePlates" = "Plates";
 "watch.workout.platesBarOnly" = "Bar only";
 "watch.workout.platesNotExact" = "Not exact";
-"watch.workout.platesNotExactLong" = "Your plates cannot make exactly %@ %@.";
 "watch.workout.platesUnavailable" = "Cannot work this out";
-"watch.workout.platesBar" = "Bar";
-"watch.workout.platesPerSide" = "Per side";
-"watch.workout.platesTotal" = "Total";
+"watch.workout.platesUse" = "Use %@ %@";
+"watch.workout.platesBarLine" = "Bar %@ %@";
+"watch.workout.platesHeavier" = "Heavier";
+"watch.workout.platesLighter" = "Lighter";
 "watch.workout.platesClosest" = "Closest";
 "watch.workout.holdTapToEnd" = "Tap the ring to end early";
 "watch.workout.kcalUnit" = "kcal";
