@@ -444,10 +444,41 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Which exercise of the workout a set belongs to, 1-based, and how many
     /// there are, for the "2/6" pill.
+    /// Where the exercise falls among the workout's blocks: a superset's
+    /// members are one block, as in the exercise list.
     func exercisePosition(of step: WorkoutStep) -> (index: Int, total: Int) {
-        let exercises = plan?.exercises ?? []
-        let index = exercises.firstIndex { $0.exerciseEntryId == step.exerciseEntryId } ?? 0
-        return (index + 1, exercises.count)
+        var blocks = 0, mine = 0
+        var previousRun: Int?
+        for exercise in plan?.exercises ?? [] {
+            if exercise.supersetRun == nil || exercise.supersetRun != previousRun { blocks += 1 }
+            previousRun = exercise.supersetRun
+            if exercise.exerciseEntryId == step.exerciseEntryId { mine = blocks }
+        }
+        return (max(mine, 1), blocks)
+    }
+
+    /// "A1": the letter of the superset and the exercise's place in it. Nil
+    /// for an exercise on its own.
+    func supersetBadge(for step: WorkoutStep) -> String? {
+        guard let run = step.supersetRun else { return nil }
+        let members = (plan?.exercises ?? []).filter { $0.supersetRun == run }
+        guard members.count >= 2,
+              let place = members.firstIndex(where: { $0.exerciseEntryId == step.exerciseEntryId })
+        else { return nil }
+        let letter = Character(UnicodeScalar(UInt8(65 + abs(run) % 26)))
+        return "\(letter)\(place + 1)"
+    }
+
+    /// The badge of the next set when logging this one moves on to another
+    /// member of the same superset: no rest in between.
+    func supersetPartnerNext(after step: WorkoutStep) -> String? {
+        guard let index = steps.firstIndex(where: { $0.id == step.id }),
+              steps.indices.contains(index + 1),
+              step.supersetRun != nil,
+              steps[index + 1].supersetRun == step.supersetRun,
+              steps[index + 1].exerciseEntryId != step.exerciseEntryId
+        else { return nil }
+        return supersetBadge(for: steps[index + 1])
     }
 
     /// The rest that logging the current set starts: the set `completeCurrentSet`
@@ -469,7 +500,8 @@ final class WorkoutSessionStore: ObservableObject {
                     setNumber: index + 1,
                     setCount: exercise.sets.count,
                     supersetWith: partners[exercise.exerciseEntryId],
-                    supersetRun: exercise.supersetRun
+                    supersetRun: exercise.supersetRun,
+                    equipment: exercise.equipment
                 )
             }
         }

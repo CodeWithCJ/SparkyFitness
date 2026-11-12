@@ -34,19 +34,22 @@ private extension View {
 /// teal, amber, slate. Values are the dark `--color-cat-*` tokens from
 /// `global.css`, not the light ones — the watch UI is always dark.
 private enum SupersetPalette {
-    private static let colors: [Color] = [
-        Color(red: 105 / 255, green: 146 / 255, blue: 211 / 255),
-        Color(red: 209 / 255, green: 138 / 255, blue: 97 / 255),
-        Color(red: 145 / 255, green: 102 / 255, blue: 204 / 255),
-        Color(red: 106 / 255, green: 164 / 255, blue: 111 / 255),
-        Color(red: 204 / 255, green: 102 / 255, blue: 136 / 255),
-        Color(red: 90 / 255, green: 173 / 255, blue: 175 / 255),
-        Color(red: 212 / 255, green: 169 / 255, blue: 84 / 255),
-        Color(red: 110 / 255, green: 118 / 255, blue: 135 / 255),
+    private static let rgb: [(Double, Double, Double)] = [
+        (105, 146, 211), (209, 138, 97), (145, 102, 204), (106, 164, 111),
+        (204, 102, 136), (90, 173, 175), (212, 169, 84), (110, 118, 135),
     ]
 
     static func color(for run: Int) -> Color {
-        colors[abs(run) % colors.count]
+        let c = rgb[abs(run) % rgb.count]
+        return Color(red: c.0 / 255, green: c.1 / 255, blue: c.2 / 255)
+    }
+
+    /// The set screen's colour for a superset member: its category colour
+    /// lightened so text in it reads on the dark tiles.
+    static func tint(for run: Int) -> SetTint {
+        let c = rgb[abs(run) % rgb.count]
+        func light(_ v: Double) -> Double { (v + (255 - v) * 0.45) / 255 }
+        return SetTint(r: light(c.0), g: light(c.1), b: light(c.2))
     }
 }
 
@@ -345,6 +348,8 @@ private struct ActiveWorkoutView: View {
     /// view for `RestView` and would take the screen, and the set with it,
     /// away before anything was sent. Sent once, on save, skip or dismissal.
     @State private var pendingRpe: PendingRpe?
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    private var dimmedBrightness: Color { reducedLuminance || WatchStyle.forcedDimming ? Color(white: 0.55) : .white }
 
     /// Always available, including during rest: Finish lives in the picker
     /// sheet, and hiding the chevron while resting left no way to end the
@@ -369,7 +374,7 @@ private struct ActiveWorkoutView: View {
                         .workoutPage(geo)
                         .id(WorkoutPageID.moreWorkout)
                     setScreen
-                        .workoutPage(geo, alignment: .top)
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.set)
                     WorkoutMetricsPage()
                         .workoutPage(geo)
@@ -466,12 +471,19 @@ private struct ActiveWorkoutView: View {
     }
 
     private var setScreen: some View {
-        // Time, or heart rate and calories, on one line in the clock's row;
-        // the heart rate is also inside the rest ring.
-        VStack(spacing: 4) {
+        // The exercise pill and, under it, the time (or heart rate and
+        // calories); the heart rate is also inside the rest ring.
+        let tint = store.currentStep?.supersetRun.map(SupersetPalette.tint(for:)) ?? .blue
+        return VStack(spacing: 0) {
+            if let step = store.currentStep {
+                HStack(spacing: 0) {
+                    SetPill(step: step) { showingExercises = true }
+                    Spacer(minLength: 0)
+                }
+                .frame(height: WatchStyle.m(46))
+            }
             // During a rest too: the ring shows the heart rate, but not the
-            // elapsed time or calories. First, so it pulls up into the
-            // clock's row with nothing above it to run into.
+            // elapsed time or calories.
             if store.isResting || store.currentStep != nil {
                 WorkoutTopLine()
             }
@@ -489,6 +501,12 @@ private struct ActiveWorkoutView: View {
                 }
             }
         }
+        // The mockups' side margin on the 45 mm screen is 29 px; the page
+        // already keeps 4 pt of its own.
+        .padding(.horizontal, max(0, WatchStyle.m(29) - 5.5))
+        .environment(\.setTint, tint)
+        // Dimmed (always-on), the screen keeps its layout at 55% brightness.
+        .colorMultiply(dimmedBrightness)
     }
 }
 
@@ -690,6 +708,45 @@ private struct ExerciseRow: View {
     }
 }
 
+/// The colour the new set, rest and effort screens are drawn in: blue, or a
+/// superset's colour. The mockup derives every surface from it by mixing it
+/// into black (or the dark navy of a value tile) at a fixed share.
+struct SetTint {
+    let r: Double, g: Double, b: Double
+
+    static let blue = SetTint(r: 90 / 255, g: 176 / 255, b: 255 / 255)
+
+    /// This colour at `share` over a base colour.
+    func mixed(_ share: Double, over base: (Double, Double, Double) = (0, 0, 0)) -> Color {
+        Color(
+            red: r * share + base.0 * (1 - share),
+            green: g * share + base.1 * (1 - share),
+            blue: b * share + base.2 * (1 - share)
+        )
+    }
+
+    var color: Color { Color(red: r, green: g, blue: b) }
+    /// The clock line: half way to white.
+    var light: Color { mixed(0.5, over: (1, 1, 1)) }
+    /// The exercise pill, and the circle inside it.
+    var pill: Color { mixed(0.24) }
+    var pillIcon: Color { mixed(0.22) }
+    /// A value tile, and its small edit badge.
+    var tile: Color { mixed(0.28, over: (4 / 255, 18 / 255, 46 / 255)) }
+    var badge: Color { mixed(0.45) }
+}
+
+private struct SetTintKey: EnvironmentKey {
+    static let defaultValue = SetTint.blue
+}
+
+extension EnvironmentValues {
+    var setTint: SetTint {
+        get { self[SetTintKey.self] }
+        set { self[SetTintKey.self] = newValue }
+    }
+}
+
 /// The one control shape on the workout screens: a flat dark squircle with a
 /// glyph in it. Big enough to hit with a thumb (44 pt tall in a row, 34 pt in
 /// the header), the same fill as the value cards, and dimmed while disabled.
@@ -710,6 +767,31 @@ enum WatchStyle {
     static let fill = Color(white: 0.14)
     /// The main action on the new workout view's set screen.
     static let accent = Color(red: 0.353, green: 0.690, blue: 1)
+
+    /// The design mockups are drawn on a 264 px wide screen for the 45 mm
+    /// watch (198 pt), so a mockup px is 0.75 pt there and scales with the
+    /// screen's width on the other sizes.
+    static let mockScale: CGFloat = 0.75 * WKInterfaceDevice.current().screenBounds.width / 198
+    /// A size taken straight from the mockup's CSS, in px.
+    static func m(_ px: CGFloat) -> CGFloat { px * mockScale }
+    /// The mockup's raised surface and its two greys.
+    static let surface = Color(red: 31 / 255, green: 32 / 255, blue: 35 / 255)
+    static let grey = Color(red: 166 / 255, green: 169 / 255, blue: 176 / 255)
+    static let lightGrey = Color(red: 199 / 255, green: 202 / 255, blue: 209 / 255)
+    /// The `dimmed` screenshot option stands in for the wrist-down state the
+    /// simulator cannot enter.
+    static var forcedDimming: Bool {
+        #if DEBUG
+        ScreenshotSeed.isEnabled && ScreenshotSeed.has("dimmed")
+        #else
+        false
+        #endif
+    }
+    static let heart = Color(red: 237 / 255, green: 94 / 255, blue: 99 / 255)
+    /// The mockups are set in SF Pro, whose numerals draw about 12% larger than
+    /// the watch's own font at the same size; large numerals use this.
+    static func num(_ px: CGFloat) -> CGFloat { m(px) * 1.12 }
+    static let numWeight = Font.Weight.semibold
     static let corner: CGFloat = WatchStyle.s(20)
     static var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -1020,23 +1102,20 @@ private struct CurrentSetView: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            ExerciseTitle(
-                name: step.exerciseName,
-                position: store.exercisePosition(of: step),
-                supersetColor: supersetColor,
-                supersetWith: step.supersetWith,
-                action: onOpenList
-            )
-            SetProgressRow(step: step) { setId in
+        VStack(spacing: 0) {
+            SetTitle(name: step.exerciseName)
+                .padding(.top, -WatchStyle.m(4))
+            SetDetailRow(step: step) { setId in
                 endCrownEditing()
                 store.goToStep(setId: setId)
             }
+            .padding(.top, WatchStyle.m(3))
+            .padding(.bottom, WatchStyle.m(4))
 
             let values = store.values(for: step)
             let holdSeconds = store.targetDurationSec(for: step)
             let timed = store.isTimed(step)
-            HStack(spacing: 4) {
+            HStack(spacing: WatchStyle.m(5)) {
                 if !timed || values.weightKg != nil || store.isWeightedHold(step) {
                     valueBox(.weight)
                 }
@@ -1075,17 +1154,17 @@ private struct CurrentSetView: View {
 
             // Edit the previous set beside the wide Log set; the dots above
             // jump to a set of this exercise.
-            HStack(spacing: 6) {
-                SquircleButton(systemImage: "chevron.left") {
+            HStack(spacing: WatchStyle.m(6)) {
+                RoundBackButton {
                     endCrownEditing()
                     editingPrevious = true
                 }
-                .frame(width: WatchStyle.s(40))
                 .disabled(!store.steps.contains(where: store.isCompleted))
                 .accessibilityLabel(String(localized: "watch.workout.editPreviousSet", defaultValue: "Edit previous set"))
                 LogSetButton(
                     isCompleted: store.isCompleted(step),
-                    restSeconds: store.restAfterCurrentSet()
+                    restSeconds: store.restAfterCurrentSet(),
+                    thenLabel: store.supersetPartnerNext(after: step)
                 ) {
                     endCrownEditing()
                     if store.uncompleteStep(step) {
@@ -1095,6 +1174,7 @@ private struct CurrentSetView: View {
                     logSet()
                 }
             }
+            .padding(.top, WatchStyle.m(8))
         }
         // The phone logging this set, or a jump from the exercise list, has
         // already swapped `step` by the time this runs. The commit uses
@@ -1158,12 +1238,14 @@ private struct CurrentSetView: View {
         let shown = isSelected && crownAdjusted
             ? editedValue(for: field)
             : storedValue(for: field)
-        let text = field == .weight && store.isBodyweight(step)
+        let bodyweight = field == .weight && store.isBodyweight(step)
+        let text = bodyweight
             ? Self.bodyweightText(shown)
             : SetValueText.format(shown)
         return ValueBox(
             value: text,
-            unit: title(for: field),
+            label: label(for: field),
+            suffix: bodyweight && (shown ?? 0) == 0 ? nil : suffix(for: field),
             isSelected: isSelected
         ) {
             tapped(field)
@@ -1375,6 +1457,35 @@ private struct CurrentSetView: View {
         }
     }
 
+    /// The tile's caption: "WEIGHT", "REPS", "DISTANCE", or for a bodyweight
+    /// movement what the number is, "ADDED" or "ASSISTED".
+    private func label(for field: EditableField) -> String {
+        switch field {
+        case .weight:
+            if store.isBodyweight(step) {
+                let value = editedOrStored(.weight) ?? 0
+                return value < 0
+                    ? String(localized: "watch.workout.field.assisted", defaultValue: "Assisted").uppercased()
+                    : String(localized: "watch.workout.field.added", defaultValue: "Added").uppercased()
+            }
+            return String(localized: "watch.workout.field.weight", defaultValue: "Weight").uppercased()
+        case .reps: return String(localized: "watch.workout.field.reps", defaultValue: "Reps").uppercased()
+        case .distance: return String(localized: "watch.workout.field.distance", defaultValue: "Distance").uppercased()
+        }
+    }
+
+    private func suffix(for field: EditableField) -> String? {
+        switch field {
+        case .weight: return unit == .lbs ? "lb" : "kg"
+        case .reps: return nil
+        case .distance: return carryUnit.suffix
+        }
+    }
+
+    private func editedOrStored(_ field: EditableField) -> Double? {
+        crownField == field && crownAdjusted ? editedValue(for: field) : storedValue(for: field)
+    }
+
     /// Half a pound or kilo per crown detent, as Hevy does; a rep at a time.
     private func stepSize(for field: EditableField) -> Double {
         switch field {
@@ -1404,12 +1515,12 @@ private struct CurrentSetView: View {
         field == .weight && store.isBodyweight(step) ? -maxValue(for: .weight) : 0
     }
 
-    /// A bodyweight set's weight as a change to body weight: "BW +10",
-    /// "BW −20", or plain "BW" when nothing is added or taken off.
+    /// A bodyweight set's weight as a change to body weight: "+10", "−20", or
+    /// plain "BW" when nothing is added or taken off.
     private static func bodyweightText(_ value: Double?) -> String {
         guard let value, value != 0 else { return "BW" }
         let magnitude = SetValueText.format(abs(value))
-        return value > 0 ? "BW +\(magnitude)" : "BW −\(magnitude)"
+        return value > 0 ? "+\(magnitude)" : "−\(magnitude)"
     }
 }
 
@@ -1602,9 +1713,9 @@ private struct HoldStopwatch: View {
     }
 }
 
-/// One big tappable number with its unit underneath. Outlined while the crown
-/// is adjusting it.
-struct ValueBox: View {
+/// The plain value card the effort picker still uses: the number, its unit
+/// under it, a white border while selected.
+struct PlainValueBox: View {
     let value: String
     let unit: String
     var isSelected = false
@@ -1627,13 +1738,101 @@ struct ValueBox: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, WatchStyle.s(8))
             .background(WatchStyle.fill, in: WatchStyle.shape)
-            // The card being adjusted by the crown or a drag.
             .overlay(
                 WatchStyle.shape.strokeBorder(
                     Color.white,
                     lineWidth: isSelected ? 2.5 : 0
                 )
             )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// One big tappable number with its unit underneath. Outlined while the crown
+/// is adjusting it.
+struct ValueBox: View {
+    let value: String
+    /// The caption in the top left: "WEIGHT", "REPS".
+    let label: String
+    /// The unit after the number: "kg".
+    var suffix: String? = nil
+    var isSelected = false
+    /// The tile's fill: the set screen's blue tile unless a screen asks for another.
+    var fill: Color? = nil
+    let onTap: () -> Void
+
+    @Environment(\.setTint) private var tint
+
+    var body: some View {
+        Button(action: Haptics.tapping(onTap)) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(label)
+                    .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(3)) {
+                    Text(value)
+                        .font(.system(size: WatchStyle.num(26), weight: WatchStyle.numWeight))
+                        .monospacedDigit()
+                    if let suffix {
+                        Text(suffix)
+                            .font(.system(size: WatchStyle.m(14), weight: .medium))
+                    }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            }
+            .foregroundStyle(tint.color)
+            .padding(.horizontal, WatchStyle.m(8))
+            .padding(.vertical, WatchStyle.m(5))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: WatchStyle.m(54))
+            .background(fill ?? tint.tile, in: RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
+            // The "edit" badge: the tile opens its value for change.
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: "plusminus")
+                    .font(.system(size: WatchStyle.m(8), weight: .bold))
+                    .foregroundStyle(Color.black)
+                    .frame(width: WatchStyle.m(14), height: WatchStyle.m(14))
+                    .background(tint.badge, in: Circle())
+                    .padding(.top, WatchStyle.m(6))
+                    .padding(.trailing, WatchStyle.m(7))
+                    .accessibilityHidden(true)
+            }
+            // The card being adjusted by the crown or a drag.
+            .overlay(
+                RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous)
+                    .strokeBorder(tint.light, lineWidth: isSelected ? WatchStyle.m(2) : 0)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label.capitalized), \(value)\(suffix.map { " \($0)" } ?? "")")
+    }
+}
+
+/// The round "previous set" button at the left of the bottom row.
+struct RoundBackButton: View {
+    var glyph = "‹"
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    private var dimmed: Bool { reducedLuminance || WatchStyle.forcedDimming }
+
+    var body: some View {
+        Button(action: Haptics.tapping(action)) {
+            Text(glyph)
+                .font(.system(size: WatchStyle.m(28), weight: .medium))
+                .foregroundStyle(dimmed ? WatchStyle.lightGrey : Color.white)
+                .padding(.bottom, WatchStyle.m(3))
+                .frame(width: WatchStyle.m(40), height: WatchStyle.m(40))
+                .background(WatchStyle.surface, in: Circle())
+                .opacity(isEnabled ? 1 : 0.35)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }
@@ -1646,9 +1845,14 @@ struct ValueBox: View {
 private struct LogSetButton: View {
     let isCompleted: Bool
     let restSeconds: Int
+    /// "A2": the next member of a superset, shown instead of a rest.
+    var thenLabel: String? = nil
     let onUncomplete: () -> Void
     let onComplete: () -> Void
 
+    @Environment(\.setTint) private var tint
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    private var dimmed: Bool { reducedLuminance || WatchStyle.forcedDimming }
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
     @Environment(\.workoutPageActive) private var workoutPageActive
@@ -1672,32 +1876,35 @@ private struct LogSetButton: View {
                 onComplete()
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: isCompleted ? "arrow.uturn.backward" : "checkmark")
+            HStack(spacing: WatchStyle.m(7)) {
                 Text(isCompleted
                      ? String(localized: "watch.workout.undo", defaultValue: "Undo")
                      : String(localized: "watch.workout.logSetButton", defaultValue: "Log set"))
-                if !isCompleted, restSeconds > 0 {
-                    Text(String(format: "%d:%02d", restSeconds / 60, restSeconds % 60))
-                        .font(.footnote)
+                    .font(.system(size: WatchStyle.m(17), weight: .bold))
+                if !isCompleted, let thenLabel {
+                    Text(String(localized: "watch.workout.thenNext", defaultValue: "then \(thenLabel)"))
+                        .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                        .opacity(0.62)
+                } else if !isCompleted, restSeconds > 0 {
+                    Text(String(localized: "watch.workout.restTime", defaultValue: "Rest \(String(format: "%d:%02d", restSeconds / 60, restSeconds % 60))"))
+                        .font(.system(size: WatchStyle.m(13), weight: .semibold))
                         .monospacedDigit()
-                        .opacity(0.6)
+                        .opacity(0.62)
                 }
             }
-            .font(.headline)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             // Spelled `Color.x` rather than `.x`: the parameter is an opaque
             // `some ShapeStyle`, which gives a ternary's two branches nothing
             // to infer a shared type from.
-            .foregroundStyle(isCompleted ? Color.orange : Color.black)
+            .foregroundStyle(isCompleted ? Color.orange : (dimmed ? WatchStyle.lightGrey : Color.black))
             .frame(maxWidth: .infinity)
-            .frame(height: WatchStyle.s(44))
+            .frame(height: WatchStyle.m(40))
             .background(
-                isCompleted ? Color.orange.opacity(0.2) : WatchStyle.accent,
-                in: WatchStyle.shape
+                isCompleted ? Color.orange.opacity(0.2) : (dimmed ? WatchStyle.surface : tint.color),
+                in: Capsule()
             )
-            .contentShape(WatchStyle.shape)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         // Double-tap logs the set, but only while this page is showing and
@@ -1711,117 +1918,192 @@ private struct LogSetButton: View {
     }
 }
 
-/// The exercise's progress pill ("2/6", a tap opens the exercise list) and its
-/// name on one line that shrinks to fit. A superset member wears its superset's
-/// colour as a bar beside the name.
-private struct ExerciseTitle: View {
+/// The exercise's name, as large as 32 px but shrunk to fit within 88% of the
+/// row's width, so a long name is smaller rather than cut off.
+struct SetTitle: View {
     let name: String
-    let position: (index: Int, total: Int)
-    let supersetColor: Color?
-    let supersetWith: String?
-    let action: () -> Void
+    var maxSize: CGFloat = 32
 
     var body: some View {
-        HStack(alignment: .center, spacing: 6) {
-            Button(action: Haptics.tapping(action)) {
-                Text("\(position.index)/\(position.total)")
-                    .font(.footnote.weight(.semibold))
-                    .monospacedDigit()
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(WatchStyle.fill, in: Capsule())
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "watch.workout.exerciseOf", defaultValue: "Exercise \(position.index) of \(position.total)"))
-            .accessibilityHint(String(localized: "watch.workout.showExercises", defaultValue: "Shows all exercises"))
-            if let supersetColor {
-                Capsule()
-                    .fill(supersetColor)
-                    .frame(width: 4)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                // Who this set alternates with: the bar's colour alone
-                // does not say.
-                if let supersetWith {
-                    Text(String(localized: "watch.workout.superset", defaultValue: "Superset · \(supersetWith)"))
-                        .font(.footnote)
-                        .foregroundStyle(supersetColor ?? Color.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        GeometryReader { proxy in
+            Text(name)
+                .font(.system(size: WatchStyle.m(maxSize), weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .frame(width: proxy.size.width * 0.88, height: proxy.size.height, alignment: .leading)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityElement(children: .contain)
+        .padding(.leading, WatchStyle.m(3))
+        .frame(height: WatchStyle.m(36))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// Set progress, right-aligned: one dot per set of this exercise (filled once
-/// logged, ringed for the one on screen, orange for a warm-up) up to 6 sets,
-/// then text such as "Set 2/8". A tap on a dot moves to that set, which is how
-/// to go back to one or skip ahead; without `onSelect` the dots only show.
+/// The dumbbell figure in the exercise pill, drawn as in the mockups.
+struct StrengthFigure: View {
+    var body: some View {
+        let side = WatchStyle.m(22)
+        let k = side / 24
+        ZStack(alignment: .topLeading) {
+            Circle()
+                .frame(width: 4.8 * k, height: 4.8 * k)
+                .offset(x: (12 - 2.4) * k, y: (6 - 2.4) * k)
+            Path { p in
+                p.move(to: CGPoint(x: 3, y: 10)); p.addLine(to: CGPoint(x: 21, y: 10))
+                p.move(to: CGPoint(x: 5, y: 8)); p.addLine(to: CGPoint(x: 5, y: 12))
+                p.move(to: CGPoint(x: 19, y: 8)); p.addLine(to: CGPoint(x: 19, y: 12))
+                p.move(to: CGPoint(x: 8.5, y: 10)); p.addLine(to: CGPoint(x: 10, y: 15)); p.addLine(to: CGPoint(x: 8, y: 21))
+                p.move(to: CGPoint(x: 15.5, y: 10)); p.addLine(to: CGPoint(x: 14, y: 15)); p.addLine(to: CGPoint(x: 16, y: 21))
+                p.move(to: CGPoint(x: 10, y: 15)); p.addLine(to: CGPoint(x: 14, y: 15))
+            }
+            .applying(CGAffineTransform(scaleX: k, y: k))
+            .stroke(style: StrokeStyle(lineWidth: 2.2 * k, lineCap: .round))
+        }
+        .frame(width: side, height: side, alignment: .topLeading)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The exercise pill at the top left, in the clock's row: the exercise's
+/// position among the workout's blocks ("2/6"; a tap opens the exercise
+/// list). A superset member shows its place in the superset ("A1") in the
+/// circle instead of the dumbbell.
+struct SetPill: View {
+    let step: WorkoutStep
+    let action: () -> Void
+
+    @EnvironmentObject private var store: WorkoutSessionStore
+    @Environment(\.setTint) private var tint
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    private var dimmed: Bool { reducedLuminance || WatchStyle.forcedDimming }
+
+    var body: some View {
+        let position = store.exercisePosition(of: step)
+        Button(action: Haptics.tapping(action)) {
+            HStack(spacing: WatchStyle.m(8)) {
+                ZStack {
+                    Circle().fill(tint.pillIcon)
+                    if let badge = store.supersetBadge(for: step) {
+                        Text(badge)
+                            .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                    } else {
+                        StrengthFigure()
+                    }
+                }
+                .frame(width: WatchStyle.m(36), height: WatchStyle.m(36))
+                Text("\(position.index)/\(position.total)")
+                    .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(tint.color)
+            .padding(.leading, WatchStyle.m(5))
+            .padding(.trailing, WatchStyle.m(14))
+            .frame(height: WatchStyle.m(46))
+            .background(tint.pill, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "watch.workout.exerciseOf", defaultValue: "Exercise \(position.index) of \(position.total)"))
+        .accessibilityHint(String(localized: "watch.workout.showExercises", defaultValue: "Shows all exercises"))
+    }
+}
+
+/// The line under the exercise's name: its equipment (or, without it, which
+/// set this is; a superset says who it alternates with) at the left and the
+/// set dots at the right.
+private struct SetDetailRow: View {
+    let step: WorkoutStep
+    var onSelect: ((String) -> Void)?
+
+    @EnvironmentObject private var store: WorkoutSessionStore
+
+    var body: some View {
+        HStack(spacing: WatchStyle.m(8)) {
+            caption
+                .font(.system(size: WatchStyle.m(15)))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            SetProgressRow(step: step, onSelect: onSelect)
+                .fixedSize()
+        }
+        .padding(.leading, WatchStyle.m(3))
+        .frame(height: WatchStyle.m(18))
+    }
+
+    private var caption: Text {
+        let base: String
+        if let partner = step.supersetWith {
+            base = String(localized: "watch.workout.superset", defaultValue: "Superset · \(partner)")
+        } else {
+            base = step.equipment ?? SetProgressRow.title(for: step)
+        }
+        let text = store.isCompleted(step)
+            ? Text(base + " · " + String(localized: "watch.workout.logged", defaultValue: "logged"))
+            : Text(base)
+        return text.foregroundStyle(WatchStyle.grey)
+    }
+}
+
+/// Set progress: one dot per set of this exercise (filled in the screen's
+/// colour once logged, larger and white for the one on screen, orange for a
+/// warm-up) up to 6 sets, then text such as "Set 2/8". A tap on a dot moves
+/// to that set, which is how to go back to one or skip ahead; without
+/// `onSelect` the dots only show.
 private struct SetProgressRow: View {
     let step: WorkoutStep
     var onSelect: ((String) -> Void)?
     var centered = false
 
     @EnvironmentObject private var store: WorkoutSessionStore
+    @Environment(\.setTint) private var tint
 
     var body: some View {
         let sets = store.steps.filter { $0.exerciseEntryId == step.exerciseEntryId }
         HStack(spacing: 0) {
             if !centered { Spacer(minLength: 0) }
             if sets.count <= 6 {
-                ForEach(sets) { set in
-                    if let onSelect {
-                        Button {
-                            guard set.id != step.id else { return }
-                            Haptics.tap()
-                            onSelect(set.id)
-                        } label: {
-                            dot(for: set)
-                                // A finger-sized target around a small dot.
-                                .frame(width: WatchStyle.s(16), height: WatchStyle.s(28))
-                                .contentShape(Rectangle())
+                HStack(spacing: 0) {
+                    ForEach(sets) { set in
+                        if let onSelect {
+                            Button {
+                                guard set.id != step.id else { return }
+                                Haptics.tap()
+                                onSelect(set.id)
+                            } label: {
+                                dot(for: set)
+                                    // A finger-sized target around a small dot.
+                                    .frame(width: WatchStyle.m(10), height: WatchStyle.m(28))
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Self.title(for: set))
+                        } else {
+                            dot(for: set).frame(width: WatchStyle.m(10))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Self.title(for: set))
-                    } else {
-                        dot(for: set).frame(width: WatchStyle.s(16), height: WatchStyle.s(14))
                     }
                 }
+                .padding(.vertical, onSelect == nil ? 0 : -WatchStyle.m(5))
+                .padding(.trailing, centered ? 0 : -WatchStyle.m(4))
             } else {
                 Text(step.label)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Self.isWarmup(step) ? Color.orange : Color.secondary)
+                    .font(.system(size: WatchStyle.m(14), weight: .semibold))
+                    .foregroundStyle(Self.isWarmup(step) ? Color.orange : tint.color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             if centered { Spacer(minLength: 0) }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: centered ? .infinity : nil)
     }
 
     private func dot(for set: WorkoutStep) -> some View {
-        let color = Self.isWarmup(set) ? Color.orange : Color.white
-        let size = WatchStyle.s(8)
-        return ZStack {
-            if store.isCompleted(set) {
-                Circle().fill(color)
-            } else {
-                Circle().fill(color.opacity(0.25))
-            }
-            if set.id == step.id {
-                Circle().strokeBorder(color, lineWidth: 2).padding(-3)
-            }
-        }
-        .frame(width: size, height: size)
+        let accent = Self.isWarmup(set) ? Color.orange : tint.color
+        let current = set.id == step.id
+        let size = WatchStyle.m(current ? 8 : 6)
+        let fill: Color = current ? .white : (store.isCompleted(set) ? accent : Color.white.opacity(0.26))
+        return Circle().fill(fill).frame(width: size, height: size)
     }
 
     private static func isWarmup(_ step: WorkoutStep) -> Bool {
@@ -2390,10 +2672,12 @@ private func previewStore(
 private extension View {
     /// One full screen tall, with the content kept inside the safe area, so
     /// it sits where a plain page would.
-    func workoutPage(_ geo: GeometryProxy, alignment: Alignment = .center) -> some View {
+    /// `fromScreenTop`: the content starts at the top of the screen, under the
+    /// clock, as the set screen does.
+    func workoutPage(_ geo: GeometryProxy, alignment: Alignment = .center, fromScreenTop: Bool = false) -> some View {
         self
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .padding(.top, geo.safeAreaInsets.top)
+            .padding(.top, fromScreenTop ? WatchStyle.m(34) + 1 : geo.safeAreaInsets.top)
             .padding(.bottom, geo.safeAreaInsets.bottom)
             .frame(
                 height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom

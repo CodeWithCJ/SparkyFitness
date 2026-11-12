@@ -92,7 +92,7 @@ struct WorkoutEffortPicker: View {
                 .watchFont(.headline, classic: .caption.weight(.semibold))
                 .foregroundStyle(.green)
             } else {
-                ValueBox(
+                PlainValueBox(
                     value: "\(rating)",
                     unit: band.name,
                     isSelected: selected,

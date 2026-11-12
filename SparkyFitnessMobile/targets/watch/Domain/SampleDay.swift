@@ -234,6 +234,45 @@ enum SampleDay {
         setOrder: []
     )
 
+    /// The workout the design mockups show (`mockup` option): six blocks, the
+    /// sixth a superset, with an exercise of every kind for the screen to land on.
+    static let mockupPlan = ActiveWorkoutPlan(
+        sessionId: "mockup-session",
+        workoutName: "Push Day",
+        exercises: [
+            PlannedExercise(exerciseEntryId: "m1", name: "Band Pull-apart", supersetRun: nil, equipment: "Band", sets: [
+                PlannedSet(setId: "m1a", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
+                PlannedSet(setId: "m1b", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m2", name: "Incline Bench Press", supersetRun: nil, equipment: "Barbell", sets: [
+                PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: 80, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2d", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m3", name: "Weighted Plank", supersetRun: nil, equipment: "Plate", sets: (0..<6).map {
+                PlannedSet(setId: "m3\($0)", targetReps: nil, targetWeightKg: 20, restSeconds: 60, setType: "normal", targetDurationSec: 60, weighted: true)
+            }),
+            PlannedExercise(exerciseEntryId: "m4", name: "Farmer's Carry", supersetRun: nil, equipment: "Dumbbells", sets: (0..<4).map {
+                PlannedSet(setId: "m4\($0)", targetReps: nil, targetWeightKg: 40, restSeconds: 90, setType: "normal", carry: true, targetDistanceKm: 0.05)
+            }),
+            PlannedExercise(exerciseEntryId: "m5", name: "Pull-up", supersetRun: nil, bodyweight: true, equipment: "Bodyweight", sets: (0..<8).map {
+                PlannedSet(setId: "m5\($0)", targetReps: 8, targetWeightKg: 5, restSeconds: 120, setType: "normal")
+            }),
+            PlannedExercise(exerciseEntryId: "m6", name: "Dumbbell Row", supersetRun: 0, equipment: "Dumbbells", sets: [
+                PlannedSet(setId: "m6a", targetReps: 10, targetWeightKg: 30, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m6b", targetReps: 10, targetWeightKg: 30, restSeconds: 120, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m7", name: "Face Pull", supersetRun: 0, equipment: "Cable", sets: [
+                PlannedSet(setId: "m7a", targetReps: 12, targetWeightKg: 20, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m7b", targetReps: 12, targetWeightKg: 20, restSeconds: 120, setType: "normal"),
+            ]),
+        ],
+        setOrder: ["m1a", "m1b", "m2a", "m2b", "m2c", "m2d", "m30", "m31", "m32", "m33", "m34", "m35",
+                   "m40", "m41", "m42", "m43", "m50", "m51", "m52", "m53", "m54", "m55", "m56", "m57",
+                   "m6a", "m7a", "m6b", "m7b"]
+    )
+
     /// A loaded hold with a countdown, then a plain hold: the timer card beside
     /// the weight card.
     static let timedPlan = ActiveWorkoutPlan(

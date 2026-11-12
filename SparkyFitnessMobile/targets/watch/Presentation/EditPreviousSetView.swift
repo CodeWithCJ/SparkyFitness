@@ -11,6 +11,7 @@ struct EditPreviousSetView: View {
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.setTint) private var tint
 
     private enum Field: Identifiable {
         case weight, reps, distance
@@ -52,59 +53,102 @@ struct EditPreviousSetView: View {
 
     private func content(for step: WorkoutStep, count: Int) -> some View {
         let values = store.values(for: step)
-        return VStack(spacing: 4) {
-            Text(step.exerciseName)
-                .font(.headline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(step.label)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        return VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                HStack(spacing: WatchStyle.m(8)) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: WatchStyle.m(17), weight: .semibold))
+                        .frame(width: WatchStyle.m(36), height: WatchStyle.m(36))
+                        .background(tint.pillIcon, in: Circle())
+                    Text(String(localized: "watch.workout.editingSet", defaultValue: "Set \(step.setNumber)"))
+                        .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                        .monospacedDigit()
+                }
+                .foregroundStyle(tint.color)
+                .padding(.leading, WatchStyle.m(5))
+                .padding(.trailing, WatchStyle.m(14))
+                .frame(height: WatchStyle.m(46))
+                .background(tint.pill, in: Capsule())
+                Spacer(minLength: 0)
+            }
+            SetTitle(name: step.exerciseName)
+                .padding(.top, WatchStyle.m(6))
+            HStack(spacing: WatchStyle.m(8)) {
+                Text((step.equipment ?? step.label) + " · " + String(localized: "watch.workout.logged", defaultValue: "logged"))
+                    .font(.system(size: WatchStyle.m(15)))
+                    .foregroundStyle(WatchStyle.grey)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                EditSetDots(step: step)
+            }
+            .padding(.leading, WatchStyle.m(3))
+            .frame(height: WatchStyle.m(18))
+            .padding(.top, WatchStyle.m(3))
             let holdSeconds = store.targetDurationSec(for: step)
             let timed = store.isTimed(step)
-            HStack(spacing: 4) {
+            HStack(spacing: WatchStyle.m(5)) {
                 if !timed || values.weightKg != nil || store.isWeightedHold(step) {
-                    ValueBox(value: SetValueText.format(values.weightKg.map(unit.fromKg)), unit: title(for: .weight)) {
+                    ValueBox(
+                        value: SetValueText.format(values.weightKg.map(unit.fromKg)),
+                        label: String(localized: "watch.workout.field.weight", defaultValue: "Weight").uppercased(),
+                        suffix: unit == .lbs ? "lb" : "kg"
+                    ) {
                         editing = .weight
                     }
                 }
                 if let holdSeconds {
                     // The hold's time is logged by the timer, not typed.
-                    ValueBox(value: SetValueText.short(holdSeconds), unit: String(localized: "watch.workout.holdTime", defaultValue: "TIME")) {}
+                    ValueBox(
+                        value: SetValueText.short(holdSeconds),
+                        label: String(localized: "watch.workout.holdTime", defaultValue: "TIME")
+                    ) {}
                         .disabled(true)
                 } else if timed {
                     EmptyView()
                 } else if store.isCarry(step) {
-                    ValueBox(value: SetValueText.format(values.distanceKm.map { (carryUnit.fromKm($0) * 10).rounded() / 10 }), unit: title(for: .distance)) {
+                    ValueBox(
+                        value: SetValueText.format(values.distanceKm.map { (carryUnit.fromKm($0) * 10).rounded() / 10 }),
+                        label: String(localized: "watch.workout.field.distance", defaultValue: "Distance").uppercased(),
+                        suffix: carryUnit.suffix
+                    ) {
                         editing = .distance
                     }
                 } else {
-                    ValueBox(value: SetValueText.format(values.reps), unit: title(for: .reps)) {
+                    ValueBox(
+                        value: SetValueText.format(values.reps),
+                        label: String(localized: "watch.workout.field.reps", defaultValue: "Reps").uppercased()
+                    ) {
                         editing = .reps
                     }
                 }
             }
-            HStack(spacing: 6) {
-                SquircleButton(systemImage: "chevron.left") { move(by: -1) }
-                    .frame(width: WatchStyle.s(40))
+            .padding(.top, WatchStyle.m(6))
+            Spacer(minLength: WatchStyle.m(8))
+            HStack(spacing: WatchStyle.m(6)) {
+                RoundBackButton { move(by: -1) }
                     .disabled(index == 0)
+                    .accessibilityLabel(String(localized: "watch.workout.previousLoggedSet", defaultValue: "Previous logged set"))
                 Button(action: Haptics.tapping(save)) {
                     Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
-                        .font(.headline)
+                        .font(.system(size: WatchStyle.m(17), weight: .bold))
                         .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity)
-                        .frame(height: WatchStyle.s(44))
-                        .background(Color.white, in: WatchStyle.shape)
-                        .contentShape(WatchStyle.shape)
+                        .frame(height: WatchStyle.m(40))
+                        .background(Color.white, in: Capsule())
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                SquircleButton(systemImage: "chevron.right") { move(by: 1) }
-                    .frame(width: WatchStyle.s(40))
+                RoundBackButton(glyph: "›") { move(by: 1) }
                     .disabled(index >= count - 1)
+                    .accessibilityLabel(String(localized: "watch.workout.nextLoggedSet", defaultValue: "Next set"))
             }
+            .padding(.bottom, WatchStyle.m(22))
         }
+        .padding(.horizontal, max(0, WatchStyle.m(29) - 5.5))
+        .padding(.top, WatchStyle.m(34))
+        .ignoresSafeArea(edges: .top)
+        .frame(maxHeight: .infinity, alignment: .top)
         .sheet(item: $editing) { field in
             NumericKeypadView(
                 title: title(for: field),
@@ -143,4 +187,27 @@ struct EditPreviousSetView: View {
     }
 
     private func save() { dismiss() }
+}
+
+/// The dots of the set on screen, as on the set screen but for display only.
+private struct EditSetDots: View {
+    let step: WorkoutStep
+
+    @EnvironmentObject private var store: WorkoutSessionStore
+    @Environment(\.setTint) private var tint
+
+    var body: some View {
+        let sets = store.steps.filter { $0.exerciseEntryId == step.exerciseEntryId }
+        if sets.count <= 6 {
+            HStack(spacing: WatchStyle.m(4)) {
+                ForEach(sets) { set in
+                    let current = set.id == step.id
+                    Circle()
+                        .fill(current ? Color.white : (store.isCompleted(set) ? tint.color : Color.white.opacity(0.26)))
+                        .frame(width: WatchStyle.m(current ? 8 : 6), height: WatchStyle.m(current ? 8 : 6))
+                }
+            }
+            .accessibilityHidden(true)
+        }
+    }
 }

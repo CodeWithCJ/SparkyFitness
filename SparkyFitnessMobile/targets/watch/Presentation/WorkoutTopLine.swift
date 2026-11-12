@@ -18,7 +18,8 @@ import SwiftUI
 struct WorkoutTopLine: View {
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
-    @Environment(\.isLuminanceReduced) private var dimmed
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    private var dimmed: Bool { reducedLuminance || WatchStyle.forcedDimming }
 
     /// The wearer's tap; nil until then, so the phone's setting decides.
     @State private var showsMetricsOverride: Bool?
@@ -68,9 +69,7 @@ private struct TopLineContent: View, Equatable {
     let readings: WorkoutTopLine.Readings
     let onToggle: () -> Void
 
-    /// The clock's width at the top right, measured on 40 and 46 mm, with a
-    /// gap so the line does not touch its running glyph.
-    private static var clockWidth: CGFloat { WatchStyle.s(64) }
+    @Environment(\.setTint) private var tint
 
     static func == (a: Self, b: Self) -> Bool {
         a.startedAt == b.startedAt && a.showsMetrics == b.showsMetrics
@@ -92,39 +91,55 @@ private struct TopLineContent: View, Equatable {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.trailing, Self.clockWidth)
-        // Up into the clock's row instead of pushing the set down.
-        .padding(.top, -WatchStyle.s(20))
+        .padding(.leading, WatchStyle.m(3))
+        .frame(height: WatchStyle.m(42))
+        .padding(.top, WatchStyle.m(8))
     }
 
     private var metricsLine: some View {
         let stale = dimmed
-        let heart = stale ? Color.gray : Color.red
-        let flame = stale ? Color.gray : Color.orange
-        return (Text(Image(systemName: stale ? "heart" : "heart.fill")).foregroundStyle(heart)
-            + Text("\(readings.bpm) ").foregroundStyle(heart)
-            + Text(Image(systemName: stale ? "flame" : "flame.fill")).foregroundStyle(flame)
-            + Text(readings.kcal).foregroundStyle(flame))
-            .modifier(LineStyle())
-            .accessibilityLabel(String(localized: "watch.workout.metricsOnlyLine", defaultValue: "Heart rate \(readings.bpm), \(readings.kcal) calories"))
+        let heart = stale ? WatchStyle.grey.opacity(0.7) : WatchStyle.heart
+        let size = WatchStyle.num(30)
+        return HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(12)) {
+            HStack(spacing: WatchStyle.m(4)) {
+                Image(systemName: stale ? "heart" : "heart.fill")
+                    .font(.system(size: WatchStyle.m(24), weight: .medium))
+                Text(readings.bpm)
+                    .font(.system(size: size, weight: WatchStyle.numWeight))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(heart)
+            HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(4)) {
+                Text(readings.kcal)
+                    .font(.system(size: size, weight: WatchStyle.numWeight))
+                    .monospacedDigit()
+                Text(String(localized: "watch.workout.kcalUnit", defaultValue: "kcal"))
+                    .font(.system(size: WatchStyle.m(15), weight: .semibold))
+            }
+            .foregroundStyle(tint.light.opacity(stale ? 0.7 : 1))
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "watch.workout.metricsOnlyLine", defaultValue: "Heart rate \(readings.bpm), \(readings.kcal) calories"))
     }
 
     private func timeLine(now: Date) -> some View {
-        let seconds = startedAt.map { max(0, Int(now.timeIntervalSince($0))) } ?? 0
+        let seconds = Self.elapsedSeconds(startedAt: startedAt, now: now)
         return Text(Self.elapsed(seconds, minutesOnly: dimmed))
-            .foregroundStyle(.yellow)
-            .modifier(LineStyle())
+            .foregroundStyle(tint.light)
+            .font(.system(size: WatchStyle.num(37), weight: WatchStyle.numWeight))
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
             .accessibilityLabel(String(localized: "watch.workout.timeLine", defaultValue: "Time \(Self.elapsed(seconds, minutesOnly: false))"))
     }
 
-    private struct LineStyle: ViewModifier {
-        func body(content: Content) -> some View {
-            content
-                .font(.footnote.weight(.semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-        }
+    private static func elapsedSeconds(startedAt: Date?, now: Date) -> Int {
+        #if DEBUG
+        if let frozen = ScreenshotSeed.elapsedOverride { return frozen }
+        #endif
+        return startedAt.map { max(0, Int(now.timeIntervalSince($0))) } ?? 0
     }
 
     /// `12:34` or `1:05:09`; dimmed, minutes only: `24 min` or `1 h 05 min`.

@@ -97,6 +97,42 @@ enum ScreenshotSeed {
         ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "updatealert"
     }
 
+    /// Frozen readings for a pixel-for-pixel comparison with the design mockups
+    /// (`mockup` option): elapsed time, and the rest's time left.
+    static var elapsedOverride: Int? { has("mockup") ? 24 * 60 + 18 : nil }
+    static var restRemainingOverride: Int? { has("mockup") ? 78 : nil }
+
+    /// `SPARKY_SCREENSHOT_AT`: the mockup plan's block to land on (1...6, with
+    /// 6 the superset), or a set id.
+    private static var landingSetId: String {
+        switch ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_AT"] ?? "2" {
+        case "1": return "m1a"
+        case "3": return "m30"
+        case "4": return "m42"
+        case "5": return "m51"
+        case "6": return "m6a"
+        default: return "m2b"
+        }
+    }
+
+    @MainActor
+    private static func seedMockup(_ workout: WorkoutSessionStore) {
+        workout.start(with: SampleDay.mockupPlan)
+        workout.recordHeartRate(bpm: 141)
+        workout.recordActiveEnergy(kcal: 186)
+        // Logged before the screen under test: both band sets, the first
+        // bench set, a carry pair, the first pull-up.
+        for id in ["m1a", "m1b", "m2a", "m40", "m41", "m50"] {
+            workout.goToStep(setId: id)
+            workout.completeCurrentSet()
+            workout.skipRest()
+        }
+        workout.goToStep(setId: landingSetId)
+        if workoutState == .resting {
+            workout.completeCurrentSet()
+        }
+    }
+
     private static var workoutState: WorkoutState {
         WorkoutState(
             rawValue: ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_WORKOUT"] ?? ""
@@ -134,6 +170,8 @@ enum ScreenshotSeed {
         case .summary:
             workout.reset()
             workout.recordSummary(SampleDay.workoutSummary)
+        case .active where has("mockup"), .resting where has("mockup"):
+            seedMockup(workout)
         case .active, .resting:
             workout.start(with: SampleDay.workoutPlan)
             workout.recordHeartRate(bpm: SampleDay.workoutBpm)
