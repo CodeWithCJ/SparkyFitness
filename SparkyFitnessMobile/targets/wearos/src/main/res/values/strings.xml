@@ -77,13 +77,13 @@
     <!-- Weight & Trend Screens -->
     <string name="weight_title">Weight Check-In</string>
     <string name="weight_keypad_title">Weight (%1$s)</string>
-    <string name="weight_body_fat_title">Body Fat %%</string>
+    <string name="weight_body_fat_title">Body Fat %</string>
     <string name="weight_tap_to_type">TAP TO TYPE</string>
     <string name="weight_no_prior">No prior weight</string>
     <string name="weight_same_as_last">Same as last</string>
     <string name="weight_set_start">Set Start</string>
     <string name="weight_bf_short">BF %1$.1f%%</string>
-    <string name="weight_add_bf">+BF%%</string>
+    <string name="weight_add_bf">+BF%</string>
     <string name="weight_queued">Queued ✓</string>
     <string name="weight_save_delta">Save %1$s%2$.1f</string>
     <string name="weight_starting_title">Starting Weight</string>
