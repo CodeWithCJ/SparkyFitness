@@ -15,6 +15,7 @@ import {
   WATCH_WORKOUT_COUNTDOWNS,
   type WatchSetInputStyle,
   type WatchWorkoutCountdown,
+  type WatchWorkoutTopLine,
 } from '../constants/watchPages';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -59,13 +60,15 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const setWatchUpNextPage = useAppPreferencesStore(
     (s) => s.setWatchUpNextPage
   );
-  const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
-  const setWatchLargerText = useAppPreferencesStore(
-    (s) => s.setWatchLargerText
-  );
   const watchNewWorkout = useAppPreferencesStore((s) => s.watchNewWorkout);
   const setWatchNewWorkout = useAppPreferencesStore(
     (s) => s.setWatchNewWorkout
+  );
+  const watchWorkoutTopLine = useAppPreferencesStore(
+    (s) => s.watchWorkoutTopLine
+  );
+  const setWatchWorkoutTopLine = useAppPreferencesStore(
+    (s) => s.setWatchWorkoutTopLine
   );
   const watchWorkoutCountdown = useAppPreferencesStore(
     (s) => s.watchWorkoutCountdown
@@ -264,23 +267,6 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               }
             />
             <SettingsRow
-              title={t('watchSettings.largerTextTitle', {
-                defaultValue: 'Larger text on the watch',
-              })}
-              subtitle={t('watchSettings.largerTextSubtitle', {
-                defaultValue:
-                  'Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.',
-              })}
-              subtitleNumberOfLines={0}
-              rightAccessory={
-                <Switch
-                  testID="watch-larger-text-switch"
-                  value={watchLargerText}
-                  onValueChange={setWatchLargerText}
-                />
-              }
-            />
-            <SettingsRow
               title={t('watchSettings.newWorkoutTitle', {
                 defaultValue: 'New workout view',
               })}
@@ -299,6 +285,35 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             />
             {watchNewWorkout && (
               <>
+                <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+                  {t('watchSettings.topLineTitle', {
+                    defaultValue: 'Top line',
+                  })}
+                </Text>
+                <Text className="text-text-secondary text-sm mb-4">
+                  {t('watchSettings.topLineDescription', {
+                    defaultValue:
+                      'What the top of the watch workout shows first: the elapsed time or live heart rate and calories. Tap it on the watch to switch.',
+                  })}
+                </Text>
+                <SegmentedControl<WatchWorkoutTopLine>
+                  segments={[
+                    {
+                      key: 'time',
+                      label: t('watchSettings.topLineTime', {
+                        defaultValue: 'Time',
+                      }),
+                    },
+                    {
+                      key: 'metrics',
+                      label: t('watchSettings.topLineMetrics', {
+                        defaultValue: 'Metrics',
+                      }),
+                    },
+                  ]}
+                  activeKey={watchWorkoutTopLine}
+                  onSelect={setWatchWorkoutTopLine}
+                />
                 <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
                   {t('watchSettings.countdownTitle', {
                     defaultValue: 'Countdown sound',

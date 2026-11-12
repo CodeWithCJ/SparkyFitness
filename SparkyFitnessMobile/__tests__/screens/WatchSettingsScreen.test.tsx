@@ -103,7 +103,7 @@ describe('WatchSettingsScreen', () => {
 
     expect(prefs().watchSetScreenMetrics).toBe(true);
     expect(prefs().watchUpNextPage).toBe(false);
-    expect(prefs().watchLargerText).toBe(false);
+    expect(prefs().watchNewWorkout).toBe(false);
 
     fireEvent(
       screen.getByTestId('watch-set-screen-metrics-switch'),
@@ -112,17 +112,17 @@ describe('WatchSettingsScreen', () => {
     );
     fireEvent(screen.getByTestId('watch-up-next-switch'), 'valueChange', true);
     fireEvent(
-      screen.getByTestId('watch-larger-text-switch'),
+      screen.getByTestId('watch-new-workout-switch'),
       'valueChange',
       true
     );
 
     expect(prefs().watchSetScreenMetrics).toBe(false);
     expect(prefs().watchUpNextPage).toBe(true);
-    expect(prefs().watchLargerText).toBe(true);
+    expect(prefs().watchNewWorkout).toBe(true);
   });
 
-  test('the countdown choice only shows while the new workout view is on', () => {
+  test('the top line and countdown choices only show while the new workout view is on', () => {
     renderScreen();
     const prefs = () => useAppPreferencesStore.getState();
 
@@ -137,6 +137,8 @@ describe('WatchSettingsScreen', () => {
     );
     expect(prefs().watchNewWorkout).toBe(true);
 
+    fireEvent.press(screen.getByText('Metrics'));
+    expect(prefs().watchWorkoutTopLine).toBe('metrics');
     fireEvent.press(screen.getByText('5 s'));
     expect(prefs().watchWorkoutCountdown).toBe(5);
     fireEvent.press(screen.getByText('Off'));
