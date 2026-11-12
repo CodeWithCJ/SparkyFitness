@@ -40,19 +40,17 @@ describe('BirthPrep', () => {
     expect(packed(1)).toBeInTheDocument();
   });
 
-  it('gives lists saved before they were per person to the first person who opens them', () => {
+  it('never shows lists saved before they were kept per person, and removes them', () => {
     window.localStorage.setItem(
       'cycle.hospitalBag',
       JSON.stringify({ [firstItem.key]: true })
     );
 
-    const { unmount } = render(<BirthPrep />);
-    expect(packed(1)).toBeInTheDocument();
-    expect(window.localStorage.getItem('cycle.hospitalBag')).toBeNull();
-    unmount();
-
-    mockActiveUserId = 'user-2';
     render(<BirthPrep />);
     expect(packed(0)).toBeInTheDocument();
+    expect(window.localStorage.getItem('cycle.hospitalBag')).toBeNull();
+    expect(
+      JSON.parse(window.localStorage.getItem('cycle.hospitalBag:user-1')!)
+    ).toEqual({});
   });
 });

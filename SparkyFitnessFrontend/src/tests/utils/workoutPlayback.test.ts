@@ -89,10 +89,12 @@ describe('workoutPlayback utils', () => {
     const routeState = createWorkoutPlaybackRouteState(
       createPresetFixture(),
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.entry_date).toBe('2026-04-27');
     expect(routeState.draft?.name).toBe('Upper Body');
   });
@@ -136,10 +138,12 @@ describe('workoutPlayback utils', () => {
     const routeState = createWorkoutPlaybackRouteStateFromExercise(
       exercise,
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.name).toBe('Bicep Curl');
     expect(routeState.draft?.exercises[0]?.exercise_id).toBe('ex-123');
   });

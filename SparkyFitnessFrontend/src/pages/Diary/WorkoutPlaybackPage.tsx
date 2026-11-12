@@ -119,7 +119,13 @@ function getInitialDraft(
   requestedDate: string | null,
   routeState: WorkoutPlaybackRouteState | null
 ): WorkoutPlaybackDraft | null {
-  const existingDraft = routeState?.draft ?? null;
+  // A draft handed over by the page that opened the player counts only for the
+  // person it was made for: a resume that finishes after someone else has
+  // taken over must not give them the previous person's workout.
+  const existingDraft =
+    ownerId && routeState?.ownerId === ownerId
+      ? (routeState.draft ?? null)
+      : null;
   if (existingDraft) {
     if (requestedDate && existingDraft.entry_date !== requestedDate) {
       return null;

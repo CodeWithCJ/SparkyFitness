@@ -16,19 +16,6 @@ const BAG_KEY = 'cycle.hospitalBag';
 
 const ownKey = (key: string, ownerId: string) => `${key}:${ownerId}`;
 
-// Lists saved before they were kept per person have no owner: the first person
-// to open theirs takes them over, so nobody loses what they wrote.
-function readOwnOrUnclaimed(key: string, ownerId: string): string | null {
-  const own = localStorage.getItem(ownKey(key, ownerId));
-  if (own !== null) return own;
-  const unclaimed = localStorage.getItem(key);
-  if (unclaimed !== null) {
-    localStorage.setItem(ownKey(key, ownerId), unclaimed);
-    localStorage.removeItem(key);
-  }
-  return unclaimed;
-}
-
 function useLocalState<T>(
   key: string,
   ownerId: string,
@@ -36,12 +23,21 @@ function useLocalState<T>(
 ): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
-      const raw = readOwnOrUnclaimed(key, ownerId);
+      const raw = localStorage.getItem(ownKey(key, ownerId));
       return raw ? (JSON.parse(raw) as T) : initial;
     } catch {
       return initial;
     }
   });
+  // Lists saved before they were kept per person have no owner, so nobody can
+  // tell whose they are: they are never shown, and are removed.
+  useEffect(() => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore privacy-mode errors */
+    }
+  }, [key]);
   useEffect(() => {
     try {
       localStorage.setItem(ownKey(key, ownerId), JSON.stringify(value));

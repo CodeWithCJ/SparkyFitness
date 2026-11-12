@@ -14,7 +14,11 @@ const mockNavigate = jest.fn();
 const mockCreatePresetSession = jest.fn();
 const mockUpdatePresetSession = jest.fn();
 const mockSearchParams = new URLSearchParams('date=2026-04-27');
-let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
+let mockLocationState: {
+  returnTo?: string;
+  draft?: unknown;
+  ownerId?: string;
+} | null = null;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -31,7 +35,10 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ state: mockLocationState }),
+  // Route state as the Diary builds it: a draft for the person on screen.
+  useLocation: () => ({
+    state: mockLocationState && { ownerId: 'user-1', ...mockLocationState },
+  }),
   useSearchParams: () => [mockSearchParams],
 }));
 
@@ -262,6 +269,28 @@ describe('WorkoutPlaybackPage', () => {
       expect(screen.getByText('Upper Body')).toBeInTheDocument();
     });
     expect(screen.getAllByLabelText('Reps set 1')[0]).toBeInTheDocument();
+  });
+
+  it('does not take a draft handed over for someone else', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      presetFixture,
+      '2026-04-27'
+    );
+    // A resume made for user-2 that finished after user-1 took over.
+    mockLocationState = {
+      returnTo: '/?date=2026-04-27',
+      draft,
+      ownerId: 'user-2',
+    };
+
+    render(<WorkoutPlaybackPage />);
+
+    expect(screen.queryByText('Upper Body')).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem(
+        'sparky.workoutPlaybackDraft.v2:user-1:2026-04-27'
+      )
+    ).toBeNull();
   });
 
   it("does not show one person's stored draft to someone else", async () => {

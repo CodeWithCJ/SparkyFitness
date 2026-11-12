@@ -182,6 +182,11 @@ export interface WorkoutPlaybackStats {
 export interface WorkoutPlaybackRouteState {
   returnTo?: string;
   draft?: WorkoutPlaybackDraft | null;
+  /**
+   * Whose draft it is (the active profile when it was made). The player only
+   * takes a draft for the person it is showing.
+   */
+  ownerId?: string | null;
 }
 
 // Drafts are kept in this browser per person (the diary being logged), so a
@@ -597,11 +602,13 @@ export function createWorkoutPlaybackDraftFromPreset(
 export function createWorkoutPlaybackRouteState(
   preset: WorkoutPreset,
   entryDate: string,
+  ownerId: string | null,
   returnTo?: string
 ): WorkoutPlaybackRouteState {
   return {
     returnTo,
     draft: createWorkoutPlaybackDraftFromPreset(preset, entryDate),
+    ownerId,
   };
 }
 
@@ -638,11 +645,13 @@ export function createWorkoutPlaybackDraftFromExercise(
 export function createWorkoutPlaybackRouteStateFromExercise(
   exercise: Exercise,
   entryDate: string,
+  ownerId: string | null,
   returnTo?: string
 ): WorkoutPlaybackRouteState {
   return {
     returnTo,
     draft: createWorkoutPlaybackDraftFromExercise(exercise, entryDate),
+    ownerId,
   };
 }
 

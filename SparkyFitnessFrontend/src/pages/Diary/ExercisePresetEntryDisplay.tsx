@@ -157,6 +157,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
       navigate(`/workout-playback?date=${draft.entry_date}`, {
         state: {
           draft,
+          ownerId: activeUserId,
           returnTo: `${window.location.pathname}${window.location.search}`,
         },
       });
