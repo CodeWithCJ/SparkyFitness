@@ -62,6 +62,56 @@ type Props = {
   minWidth?: number;
 };
 
+type MenuPlacement =
+  { anchorsLeft: true; left: number } | { anchorsLeft: false; right: number };
+
+/**
+ * Horizontal placement of a menu hung from its trigger, kept inside the usable
+ * width (the window minus the side insets and an 8 pt margin). The nearer half
+ * of the usable width picks the side, but only when a menu of `minWidth` fits
+ * that way; otherwise it hangs from the other edge, so a vertical bar taking one
+ * edge cannot push the menu under it or off the other side.
+ */
+export function getAnchoredMenuPlacement({
+  anchor,
+  screenWidth,
+  insets,
+  minWidth,
+}: {
+  anchor: { x: number; width: number };
+  screenWidth: number;
+  insets: { left: number; right: number };
+  minWidth: number;
+}): MenuPlacement {
+  // Judge the half from the usable width: a vertical bar takes one edge.
+  const usableCenter = (insets.left + screenWidth - insets.right) / 2;
+  const usableLeft = 8 + insets.left;
+  const usableRight = screenWidth - 8 - insets.right;
+  const anchorRight = anchor.x + anchor.width;
+  // Where the menu's edge lands when it hangs from the trigger's left or right
+  // edge, kept inside the usable area.
+  const leftEdge = Math.max(usableLeft, anchor.x);
+  const rightEdge = Math.min(usableRight, anchorRight);
+  const fitsFromLeft = leftEdge + minWidth <= usableRight;
+  const fitsFromRight = rightEdge - minWidth >= usableLeft;
+  const prefersLeft = anchor.x + anchor.width / 2 < usableCenter;
+  const anchorsLeft = prefersLeft
+    ? fitsFromLeft || !fitsFromRight
+    : !fitsFromRight && fitsFromLeft;
+  if (anchorsLeft) {
+    return {
+      anchorsLeft: true,
+      left: Math.min(leftEdge, Math.max(usableLeft, usableRight - minWidth)),
+    };
+  }
+  return {
+    anchorsLeft: false,
+    right:
+      screenWidth -
+      Math.max(rightEdge, Math.min(usableRight, usableLeft + minWidth)),
+  };
+}
+
 // A lightweight popover-style menu anchored under a trigger, so the options
 // appear right where the user tapped (rather than a bottom sheet far away).
 const AnchoredMenu: React.FC<Props> = ({
@@ -92,19 +142,17 @@ const AnchoredMenu: React.FC<Props> = ({
   const statusBarOffset =
     Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const top = anchor.y + anchor.height + 6 + statusBarOffset;
-  // Judge the half from the usable width: a vertical bar takes one edge.
-  const usableCenter = (insets.left + screenWidth - insets.right) / 2;
-  const isLeftHalf = anchor.x + anchor.width / 2 < usableCenter;
-  const menuStyle = isLeftHalf
-    ? { top, left: Math.max(8 + insets.left, anchor.x), minWidth }
-    : {
-        top,
-        right: Math.max(
-          8 + insets.right,
-          screenWidth - (anchor.x + anchor.width)
-        ),
-        minWidth,
-      };
+  const placement = getAnchoredMenuPlacement({
+    anchor,
+    screenWidth,
+    insets,
+    minWidth,
+  });
+  const isLeftHalf = placement.anchorsLeft;
+  const menuStyle =
+    'left' in placement
+      ? { top, left: placement.left, minWidth }
+      : { top, right: placement.right, minWidth };
 
   return (
     <Modal

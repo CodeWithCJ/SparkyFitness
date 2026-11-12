@@ -56,20 +56,31 @@ const ProgressPhotoViewer: React.FC<ProgressPhotoViewerProps> = ({
       <View className="flex-1 bg-black">
         {/* Keyed on `visible`: zoom belongs to one viewing session, so it is
             cleared on the way out and reopening starts at 1x. */}
-        <ZoomableView
-          resetKey={visible}
+        {/* The photo's area is padded by the safe area and the photo centred
+            in it, so unequal insets cannot push it under a cutout. */}
+        <View
+          className="flex-1 items-center justify-center"
           style={{
-            width: Math.max(0, width - insets.left - insets.right),
-            height: Math.max(0, height - insets.top - insets.bottom),
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
           }}
-          className="self-center my-auto"
         >
-          <SafeImage
-            source={source}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="contain"
-          />
-        </ZoomableView>
+          <ZoomableView
+            resetKey={visible}
+            style={{
+              width: Math.max(0, width - insets.left - insets.right),
+              height: Math.max(0, height - insets.top - insets.bottom),
+            }}
+          >
+            <SafeImage
+              source={source}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="contain"
+            />
+          </ZoomableView>
+        </View>
 
         <Pressable
           onPress={onClose}

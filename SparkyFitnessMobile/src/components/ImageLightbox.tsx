@@ -152,7 +152,16 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
           renderItem={({ item, index: itemIndex }) => (
             <View
-              style={{ width, height }}
+              // Paging stays one full window wide; only the picture's own area
+              // is inset, and centred inside that, so it clears the cutout.
+              style={{
+                width,
+                height,
+                paddingTop: insets.top,
+                paddingBottom: insets.bottom,
+                paddingLeft: insets.left,
+                paddingRight: insets.right,
+              }}
               className="items-center justify-center"
             >
               {/* Back to 1x once paged away from, and on close. */}

@@ -1581,13 +1581,15 @@ function SafeAreaToast() {
 function HorizontalInsetsFrame({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const nativeNav = useNativeIOSTabsActive();
-  if (nativeNav) return <>{children}</>;
+  // One View in both modes: returning a Fragment for native tabs would change
+  // the element type when the Liquid Glass setting flips and remount the whole
+  // navigator, discarding screen state. Native tabs get zero padding.
   return (
     <View
       style={{
         flex: 1,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
+        paddingLeft: nativeNav ? 0 : insets.left,
+        paddingRight: nativeNav ? 0 : insets.right,
       }}
     >
       {children}

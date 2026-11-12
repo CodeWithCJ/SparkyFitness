@@ -11,8 +11,12 @@ export interface SideBarMetrics {
   addTop?: number;
 }
 
+/** The edge of the system's vertical bar, `none` for horizontal bars, `unknown` if unreadable. */
+export type VerticalBarEdge = 'leading' | 'trailing' | 'none' | 'unknown';
+
 declare class SideBarMetricsModuleType extends NativeModule {
   measure(): Promise<SideBarMetrics | null>;
+  verticalBarEdge(): Promise<VerticalBarEdge>;
 }
 
 function loadSideBarMetrics(): SideBarMetricsModuleType | null {

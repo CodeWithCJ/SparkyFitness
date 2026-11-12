@@ -71,6 +71,7 @@ import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useSleepDay } from '../hooks/useSleepDay';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { FoodEntry } from '../types/foodEntries';
@@ -111,11 +112,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     ? 'pl-PL'
     : 'en-US';
   const insets = useSafeAreaInsets();
+  const verticalBar = useVerticalBar();
   // A live activity lengthens the status cluster in a side-bar pose and can
   // push the date buttons onto the Add button; then only the calendar stays.
-  const dateColumnCollapsed = useDateColumnCollapsed(
-    insets.left + insets.right > 0
-  );
+  const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { data: familyUsers = [] } = useFamilyUsers({ enabled: isConnected });
   const hasFamilyDiaries = isConnected && familyUsers.length > 0;
@@ -198,7 +198,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         dateTintColor,
-        compactCalendarButton: insets.left + insets.right > 0,
+        compactCalendarButton: verticalBar,
         collapseToCalendar: dateColumnCollapsed,
         accessibilityLabel: t('diary.chooseDate', {
           defaultValue: 'Choose diary date',
@@ -235,8 +235,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     selectedDate,
     t,
     usesNativeTabs,
-    insets.left,
-    insets.right,
+    verticalBar,
     dateColumnCollapsed,
   ]);
 
@@ -603,7 +602,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           paddingHorizontal: 16,
           // Beside a vertical bar the gap under the large title is 12 pt, the
           // same as Dashboard, Library and Settings.
-          paddingTop: usesNativeTabs && insets.left + insets.right > 0 ? 12 : 8,
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 8,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}

@@ -41,6 +41,7 @@ import {
   normalizeWeightUnit,
 } from '../utils/workoutSession';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import type { RootStackParamList } from '../types/navigation';
 import LiquidGlassSurface, {
   LIQUID_GLASS_VERTICAL_GAP,
@@ -407,7 +408,8 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // height" is the bar's length along the screen edge, not a bottom strip, so
   // the bar must not sit above it. It floats above the bottom edge instead and
   // stays clear of the side bar horizontally.
-  const hasSideBar = usesNativeTabs && insets.left + insets.right > 0;
+  const verticalBar = useVerticalBar();
+  const hasSideBar = usesNativeTabs && verticalBar;
   const tabBarBottomOffset = hasSideBar
     ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
     : (nativeTabBarHeight ?? TAB_BAR_HEIGHT + Math.max(insets.bottom, 4));
@@ -1074,8 +1076,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       style={[
         positionStyle,
         {
-          left: hasSideBar ? insets.left : 0,
-          right: hasSideBar ? insets.right : 0,
+          // Always clear the side insets. Height follows the native vertical
+          // bar (`hasSideBar`), but the custom tab bar path pads the app
+          // content while this bar is mounted outside that padding, and a
+          // notched iPhone in landscape has insets with no vertical bar.
+          left: insets.left,
+          right: insets.right,
         },
       ]}
     >

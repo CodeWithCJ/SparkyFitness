@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/ios/ProminentTab.swift
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,164 @@
 +import SwiftUI
 +
 +#if !os(macOS)
@@ -30,9 +30,11 @@ index 0000000..1111111
 +      props: TabViewProps, tabController: UITabBarController, onAdd: @escaping (String) -> Void
 +    ) {
 +      guard isSupported, #available(iOS 18.0, *) else { return }
++      let addItem = props.items.first { $0.role == .search }
 +      SideAddButton.update(
 +        controller: tabController,
-+        addKey: props.items.first { $0.role == .search }?.key,
++        addKey: addItem?.key,
++        title: addItem?.title,
 +        onAdd: onAdd)
 +
 +      let title = props.filteredItems.first { $0.role == .search }?.title
@@ -67,6 +69,10 @@ index 0000000..1111111
 +    static let size: CGFloat = 49
 +    static let gap: CGFloat = 8
 +    var addKey: String?
++    /// The Add tab's own (translated) title, used as the button's accessibility label.
++    var addTitle: String? {
++      didSet { button.accessibilityLabel = addTitle ?? "Add" }
++    }
 +    weak var controller: UITabBarController?
 +    var onAdd: ((String) -> Void)?
 +    private let glass = UIVisualEffectView(effect: nil)
@@ -141,7 +147,8 @@ index 0000000..1111111
 +
 +  enum SideAddButton {
 +    static func update(
-+      controller: UITabBarController, addKey: String?, onAdd: @escaping (String) -> Void
++      controller: UITabBarController, addKey: String?, title: String?,
++      onAdd: @escaping (String) -> Void
 +    ) {
 +      let bar = controller.tabBar
 +      let existing = controller.view.subviews.compactMap { $0 as? SideAddHost }.first
@@ -152,6 +159,7 @@ index 0000000..1111111
 +        return h
 +      }()
 +      host.addKey = addKey
++      host.addTitle = title
 +      host.controller = controller
 +      host.onAdd = onAdd
 +      controller.view.bringSubviewToFront(host)

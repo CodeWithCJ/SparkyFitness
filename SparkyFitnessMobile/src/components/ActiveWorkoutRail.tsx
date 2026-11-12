@@ -135,17 +135,20 @@ function ActiveWorkoutRail({
     [scrollToEntry]
   );
 
+  // A fresh orientation of the rail has new offsets, so measure again. This
+  // runs before the focus effect below: that one re-runs on the same change,
+  // and must not scroll the new axis with offsets measured on the old one.
+  useEffect(() => {
+    itemOffsetsRef.current = {};
+  }, [vertical]);
   // Keep the focused chip in view as the cursor advances or the log scrolls.
+  // With the offsets cleared it stays pending until the item re-measures.
   useEffect(() => {
     if (focusedEntryId == null) return;
     pendingFocusRef.current = scrollToEntry(focusedEntryId)
       ? null
       : focusedEntryId;
   }, [focusedEntryId, scrollToEntry]);
-  // A fresh orientation of the rail has new offsets, so measure again.
-  useEffect(() => {
-    itemOffsetsRef.current = {};
-  }, [vertical]);
 
   return (
     <ScrollView

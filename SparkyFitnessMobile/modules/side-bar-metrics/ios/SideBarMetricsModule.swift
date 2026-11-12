@@ -13,6 +13,36 @@ public class SideBarMetricsModule: Module {
         AsyncFunction("measure") { () -> [String: Double]? in
             return SideBarMetricsModule.measureNow()
         }.runOnQueue(.main)
+
+        // Which edge the system puts its vertical bar on right now: "leading",
+        // "trailing" or "none"; "unknown" when the trait cannot be read, so the
+        // caller can fall back. Side safe-area insets alone are not an answer: a
+        // notched iPhone in landscape has them too and keeps horizontal bars.
+        AsyncFunction("verticalBarEdge") { () -> String in
+            return SideBarMetricsModule.verticalBarEdgeNow()
+        }.runOnQueue(.main)
+    }
+
+    /// `UITraitCollection.verticalBarEdge` (iOS 27.1). Read through key-value
+    /// coding so this compiles against any SDK; on a system without the
+    /// property the answer is "unknown", not "none": a wrong "none" would show
+    /// the Add tab beside the native Add button on a Duo.
+    static func verticalBarEdgeNow() -> String {
+        let windows = visibleWindows()
+        guard let window = windows.first(where: { $0.isKeyWindow }) ?? windows.first else {
+            return "unknown"
+        }
+        let traits = window.traitCollection
+        guard traits.responds(to: NSSelectorFromString("verticalBarEdge")),
+              let raw = traits.value(forKey: "verticalBarEdge") as? Int else {
+            return "unknown"
+        }
+        // UIVerticalBarEdge: unspecified = 0, leading = 1, trailing = 2.
+        switch raw {
+        case 1: return "leading"
+        case 2: return "trailing"
+        default: return "none"
+        }
     }
 
     /// Every window on screen. The app's own window is not always the key

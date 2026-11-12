@@ -75,6 +75,7 @@ import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { getActiveServerConfig } from '../services/storage';
 import {
   useActiveWorkoutStore,
@@ -106,6 +107,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   useLiveCoachingSignals();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const railBeside = useVerticalBar();
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
   const sourcePresetId = useActiveWorkoutStore((s) => s.sourcePresetId);
@@ -1044,10 +1046,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
     16;
 
-  // A side inset means a vertical bar or the status strip takes one edge (the
-  // iPhone Duo's inner display wide, or its closed outer display). The tall
-  // inner pose has none and keeps the rail as a row.
-  const railBeside = insets.left + insets.right > 0;
+  // `railBeside` (read with the other hooks above): the system's vertical bar
+  // owns one edge, i.e. the iPhone Duo's inner display wide or its closed outer
+  // display. The tall inner pose and every other iPhone, notched ones in
+  // landscape included, keep the rail as a row.
   // The strip column sits in the safe-area inset, under the clock and Wi-Fi
   // glyphs (about 100 pt tall on the Duo). Never cache: the side swaps by pose.
   const stripWidth = Math.max(insets.left, insets.right);
@@ -1076,6 +1078,25 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       onPressAdd={handleAddExercise}
       vertical={railBeside}
     />
+  );
+  // Focus mode has no rail, but the header's back and menu buttons still move
+  // into the strip beside a vertical bar, so mount them there on their own.
+  const stripButtonsOnly = (
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        top: stripButtonsTop,
+        alignItems: 'center',
+        width: RAIL_WIDTH,
+        ...(stripOnRight ? { right: -stripWidth } : { left: -stripWidth }),
+      }}
+    >
+      <ActiveWorkoutStripButtons
+        onBack={safeGoBack}
+        onMenu={() => openMenuRef.current?.()}
+      />
+    </View>
   );
   const railInStrip = (
     <View
@@ -1127,49 +1148,52 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       />
 
       {focusMode ? (
-        <ActiveWorkoutFocusView
-          scrollRef={scrollRef}
-          showRequest={focusShowRequest}
-          onDismissKeyboard={handleAccessoryDone}
-          session={session}
-          prSetIds={prSetIds}
-          activeExerciseId={activeExerciseId}
-          supersetBorders={supersetBorders}
-          sessionId={sessionId}
-          verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
-          historyScopeSettled={historyScopeSettled}
-          completedSetIds={completedSetIds}
-          activeSetId={activeSetId}
-          setRenderKeys={setRenderKeys}
-          metricColumn={metricColumn}
-          weightUnit={weightUnit}
-          distanceUnit={distanceUnit}
-          getImageSource={getImageSource}
-          scrollContentStyle={scrollContentStyle}
-          keyboardBottomOffset={keyboardBottomOffset}
-          onSwap={handleSwapExercise}
-          onPressOverflow={handlePressOverflow}
-          onSeeAlternatives={handleReplaceExercise}
-          onCompleteSet={handleCompleteSet}
-          onUncomplete={handleUncomplete}
-          onCommitField={handleCommitField}
-          onDeleteSet={handleDeleteSet}
-          onPressRestChip={handlePressRestChip}
-          onPressMetricHeader={handlePressMetricHeader}
-          onPressSetType={handlePressSetType}
-          onToggleSetDetail={handleToggleSetDetail}
-          expandedSetKey={expandedSetKey}
-          noteEditorEntryId={noteEditorEntryId}
-          onCommitExerciseNote={handleCommitExerciseNote}
-          onAddSet={handleAddSet}
-          onActivateRpe={handleActivateRpe}
-          focusedSetKey={focusedSetKey}
-          focusedField={focusedField}
-          onActivateSet={handleActivateSet}
-          onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
-        >
-          {footerButtons}
-        </ActiveWorkoutFocusView>
+        <View className="flex-1">
+          <ActiveWorkoutFocusView
+            scrollRef={scrollRef}
+            showRequest={focusShowRequest}
+            onDismissKeyboard={handleAccessoryDone}
+            session={session}
+            prSetIds={prSetIds}
+            activeExerciseId={activeExerciseId}
+            supersetBorders={supersetBorders}
+            sessionId={sessionId}
+            verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
+            historyScopeSettled={historyScopeSettled}
+            completedSetIds={completedSetIds}
+            activeSetId={activeSetId}
+            setRenderKeys={setRenderKeys}
+            metricColumn={metricColumn}
+            weightUnit={weightUnit}
+            distanceUnit={distanceUnit}
+            getImageSource={getImageSource}
+            scrollContentStyle={scrollContentStyle}
+            keyboardBottomOffset={keyboardBottomOffset}
+            onSwap={handleSwapExercise}
+            onPressOverflow={handlePressOverflow}
+            onSeeAlternatives={handleReplaceExercise}
+            onCompleteSet={handleCompleteSet}
+            onUncomplete={handleUncomplete}
+            onCommitField={handleCommitField}
+            onDeleteSet={handleDeleteSet}
+            onPressRestChip={handlePressRestChip}
+            onPressMetricHeader={handlePressMetricHeader}
+            onPressSetType={handlePressSetType}
+            onToggleSetDetail={handleToggleSetDetail}
+            expandedSetKey={expandedSetKey}
+            noteEditorEntryId={noteEditorEntryId}
+            onCommitExerciseNote={handleCommitExerciseNote}
+            onAddSet={handleAddSet}
+            onActivateRpe={handleActivateRpe}
+            focusedSetKey={focusedSetKey}
+            focusedField={focusedField}
+            onActivateSet={handleActivateSet}
+            onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
+          >
+            {footerButtons}
+          </ActiveWorkoutFocusView>
+          {railBeside && stripButtonsOnly}
+        </View>
       ) : (
         <View className="flex-1">
           {!railBeside && railElement}
