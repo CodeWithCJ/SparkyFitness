@@ -35,25 +35,25 @@ struct WorkoutMoreUpNextPage: View {
             if let next {
                 HStack(spacing: WatchStyle.m(4)) {
                     Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
-                        .font(.system(size: WatchStyle.m(17), weight: .medium))
-                        .foregroundStyle(WatchStyle.grey)
+                        .font(.system(size: WatchStyle.m(20), weight: .medium))
+                        .foregroundStyle(WatchStyle.lightGrey)
                         .fixedSize()
-                    FitName(text: next.exerciseName, size: 17, color: next.supersetRun.map(SetSupersetPalette.color(for:)) ?? Color.white, height: WatchStyle.m(21))
+                    FitName(text: next.exerciseName, size: 20, color: next.supersetRun.map(SetSupersetPalette.color(for:)) ?? Color.white, height: WatchStyle.m(25))
                 }
-                .frame(height: WatchStyle.m(21))
+                .frame(height: WatchStyle.m(25))
                 if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true) {
                     Text(target)
-                        .font(.system(size: WatchStyle.m(21), weight: .semibold, design: .rounded))
+                        .font(.system(size: WatchStyle.m(26), weight: .semibold, design: .rounded))
                         .foregroundStyle(tint.light)
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                        .frame(height: WatchStyle.m(25))
+                        .frame(height: WatchStyle.m(31))
                 }
                 Text(String(localized: "watch.workout.upNextSets", defaultValue: "\(next.setCount) sets"))
-                    .font(.system(size: WatchStyle.m(13)))
-                    .foregroundStyle(WatchStyle.grey)
-                    .frame(height: WatchStyle.m(16))
+                    .font(.system(size: WatchStyle.m(17)))
+                    .foregroundStyle(WatchStyle.lightGrey)
+                    .frame(height: WatchStyle.m(21))
             } else {
                 Text(String(localized: "watch.workout.lastExercise", defaultValue: "This is the last exercise"))
                     .font(.system(size: WatchStyle.m(17), weight: .semibold))
@@ -74,19 +74,19 @@ struct WorkoutMoreUpNextPage: View {
         .padding(.horizontal, WatchStyle.m(12))
         .padding(.vertical, WatchStyle.m(9))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: WatchStyle.m(140))
+        .frame(height: WatchStyle.m(168))
         .background(tint.mixed(0.26, over: (4 / 255, 18 / 255, 46 / 255)), in: RoundedRectangle(cornerRadius: WatchStyle.m(18), style: .continuous))
     }
 
     private func cardButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: Haptics.tapping(action)) {
             Text(title)
-                .font(.system(size: WatchStyle.m(14), weight: .semibold))
+                .font(.system(size: WatchStyle.m(19), weight: .semibold))
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
-                .frame(height: WatchStyle.m(34))
+                .frame(height: WatchStyle.m(42))
                 .background(WatchStyle.surface, in: Capsule())
                 .contentShape(Capsule())
         }
@@ -306,9 +306,9 @@ private struct MoreSection: View {
 
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: WatchStyle.m(12), weight: .bold))
+            .font(.system(size: WatchStyle.m(15), weight: .bold))
             .tracking(0.5)
-            .foregroundStyle(Color(red: 142 / 255, green: 146 / 255, blue: 154 / 255))
+            .foregroundStyle(WatchStyle.grey)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, WatchStyle.m(7))
             .padding(.top, WatchStyle.m(2))
@@ -350,21 +350,22 @@ private struct MoreTile: View {
         Button(action: Haptics.tapping(action)) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
-                    .font(.system(size: WatchStyle.m(15), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(23), weight: .semibold))
                     .foregroundStyle(destructive ? Color(red: 1, green: 138 / 255, blue: 142 / 255) : Color.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: WatchStyle.m(12)))
-                        .foregroundStyle(WatchStyle.grey)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .font(.system(size: WatchStyle.m(18)))
+                        .foregroundStyle(WatchStyle.lightGrey)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, WatchStyle.m(10))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: WatchStyle.m(50))
+            .frame(height: WatchStyle.m(82))
             .background(WatchStyle.surface, in: RoundedRectangle(cornerRadius: WatchStyle.m(14), style: .continuous))
             .opacity(isEnabled ? 1 : 0.35)
             .contentShape(RoundedRectangle(cornerRadius: WatchStyle.m(14), style: .continuous))

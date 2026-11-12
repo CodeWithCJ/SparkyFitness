@@ -481,12 +481,17 @@ private struct ActiveWorkoutView: View {
                 showingExercises = true
             }
             if ScreenshotSeed.opensEditPrevious { editingPrevious = true }
-            switch ScreenshotSeed.workoutPage {
-            case "upnext": page = .moreUpNext
-            case "swap", "setoptions", "exerciseoptions", "plates": page = .moreExercise
-            case "metrics": page = .metrics
-            case "actions": page = .moreWorkout
-            default: break
+            // After the pages are laid out: set earlier, the scroll lands
+            // short on the smaller screens.
+            let seededPage = ScreenshotSeed.workoutPage
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                switch seededPage {
+                case "upnext": page = .moreUpNext
+                case "swap", "setoptions", "exerciseoptions", "plates": page = .moreExercise
+                case "metrics": page = .metrics
+                case "actions": page = .moreWorkout
+                default: break
+                }
             }
             if ScreenshotSeed.opensNewPr { store.seedPrBanner(ScreenshotSeed.has("mockup") ? "Incline Bench Press" : "Barbell Bench Press", setId: ScreenshotSeed.has("mockup") ? "m2b" : nil) }
             if ScreenshotSeed.opensRpe, let step = store.currentStep {
