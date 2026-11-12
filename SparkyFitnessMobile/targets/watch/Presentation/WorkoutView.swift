@@ -1271,11 +1271,13 @@ private struct CurrentSetView: View {
             isSelected: isSelected,
             // The mockup's timed, carry, bodyweight and superset screens use a
             // darker tile (the tint at 26% over black) and no edit badge.
-            fill: standardTiles ? nil : (step.supersetRun.map(SetSupersetPalette.tint(for:)) ?? SetTint.blue).mixed(0.26),
+            fill: standardTiles ? nil : SetTint.blue.mixed(0.26),
             badge: standardTiles
         ) {
             tapped(field)
         }
+        // The mockup keeps the value tiles blue in a superset too.
+        .environment(\.setTint, .blue)
         // Drag up to raise, down to lower, one step per 12pt — only on the
         // box being adjusted, so a stray swipe elsewhere changes nothing.
         .highPriorityGesture(
