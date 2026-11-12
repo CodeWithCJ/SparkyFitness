@@ -114,6 +114,8 @@ export const exerciseEntrySetResponseSchema = z.object({
   notes: z.string().nullable(),
   rpe: z.number().nullable(),
   completed_at: z.string().nullable(),
+  // Optional: servers before started_at omit it.
+  started_at: z.string().nullable().optional(),
   is_pr: z.boolean(),
   rir: z.number().nullable().optional(),
   // Km. Optional: pre-distance servers omit it.
@@ -169,6 +171,9 @@ export const exerciseEntrySetRequestSchema = z
     rpe: z.number().nullable().optional(),
     rir: z.number().min(RIR_MIN).max(RIR_MAX).nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
+    // When the set was started. Omitted on an update keeps the stored value,
+    // so clients that do not send it yet do not clear it; null clears it.
+    started_at: z.iso.datetime().nullable().optional(),
     is_pr: z.boolean().optional(),
     // Km; only meaningful on duration_distance sets.
     distance: z.number().nullable().optional(),
