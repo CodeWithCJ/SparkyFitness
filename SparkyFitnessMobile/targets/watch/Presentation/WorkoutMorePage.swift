@@ -329,7 +329,7 @@ private struct MoreTile: View {
             }
             .padding(.horizontal, WatchStyle.m(10))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: WatchStyle.m(56))
+            .frame(height: WatchStyle.m(50))
             .background(WatchStyle.surface, in: RoundedRectangle(cornerRadius: WatchStyle.m(14), style: .continuous))
             .opacity(isEnabled ? 1 : 0.35)
             .contentShape(RoundedRectangle(cornerRadius: WatchStyle.m(14), style: .continuous))

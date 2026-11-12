@@ -1038,7 +1038,7 @@ struct WorkoutMetricsPage: View {
                 .frame(height: WatchStyle.m(48), alignment: .leading)
             // A dash until the first sample arrives, so the layout does not jump.
             HStack(spacing: WatchStyle.m(6)) {
-                Text(store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--")
+                Text(bpmText)
                     .font(.system(size: WatchStyle.num(36), weight: WatchStyle.numWeight))
                 Image(systemName: "heart.fill")
                     .font(.system(size: WatchStyle.m(30)))
@@ -1046,7 +1046,7 @@ struct WorkoutMetricsPage: View {
             .foregroundStyle(WatchStyle.heart)
             .frame(height: WatchStyle.m(48), alignment: .leading)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(String(localized: "watch.workout.heartRateReading", defaultValue: "Heart rate \(store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--")"))
+            .accessibilityLabel(String(localized: "watch.workout.heartRateReading", defaultValue: "Heart rate \(bpmText)"))
             HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(6)) {
                 Text(store.activeEnergyKcal.map { "\(Int(CheckInStore.shared.context.energyFromKcal($0)))" } ?? "--")
                     .font(.system(size: WatchStyle.num(36), weight: WatchStyle.numWeight))
@@ -1076,6 +1076,8 @@ struct WorkoutMetricsPage: View {
         .padding(.horizontal, WatchStyle.side)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+
+    private var bpmText: String { store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--" }
 
     private var setCounts: (done: Int, total: Int) {
         #if DEBUG
@@ -1762,7 +1764,7 @@ private struct HoldRunning: View {
                                 Text("\(remaining)")
                                     .font(.system(size: WatchStyle.num(42), weight: WatchStyle.numWeight))
                                     .monospacedDigit()
-                                Text("s").font(.system(size: WatchStyle.m(26), weight: WatchStyle.numWeight))
+                                Text("s").font(.system(size: WatchStyle.m(26), weight: WatchStyle.numWeight)) // i18n-ignore
                             }
                             .foregroundStyle(amber.color)
                             if let bpm = store.latestBpm {
@@ -2000,6 +2002,10 @@ private struct LogSetButton: View {
 
     /// The current set's stopwatch is counting. Its Stop button holds the
     /// double-tap while it is.
+    private static func clock(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     private var stopwatchRunning: Bool {
         guard store.steps.indices.contains(store.currentStepIndex) else { return false }
         return store.isStopwatchRunning(
@@ -2027,7 +2033,7 @@ private struct LogSetButton: View {
                         .font(.system(size: WatchStyle.m(13), weight: .semibold))
                         .opacity(0.62)
                 } else if !isCompleted, restSeconds > 0 {
-                    Text(String(localized: "watch.workout.restTime", defaultValue: "Rest \(String(format: "%d:%02d", restSeconds / 60, restSeconds % 60))"))
+                    Text(String(localized: "watch.workout.restTime", defaultValue: "Rest \(Self.clock(restSeconds))"))
                         .font(.system(size: WatchStyle.m(13), weight: .semibold))
                         .monospacedDigit()
                         .opacity(0.62)
@@ -2070,7 +2076,7 @@ struct SetTitle: View {
             Text(name)
                 .font(.system(size: WatchStyle.m(maxSize), weight: .semibold))
                 .lineLimit(1)
-                .minimumScaleFactor(0.4)
+                .minimumScaleFactor(0.3)
                 .frame(width: proxy.size.width * 0.97, height: proxy.size.height, alignment: .leading)
         }
         .padding(.leading, WatchStyle.m(4))
