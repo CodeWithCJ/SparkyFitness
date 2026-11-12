@@ -5,6 +5,7 @@ import {
   AppState,
   Keyboard,
   LayoutAnimation,
+  Platform,
   Text,
   View,
   type LayoutChangeEvent,
@@ -81,6 +82,7 @@ import {
   useActiveWorkoutStore,
   type ActiveSetPatch,
 } from '../stores/activeWorkoutStore';
+import { shouldPlaceHeaderInStatusRow } from '../utils/activeWorkoutHeaderLayout';
 import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
@@ -1065,7 +1067,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const stripButtonsTop = windowWidth < 500 ? 98 : 54;
   // The tall inner pose has a status row across the top (82 pt inset) that is
   // empty left of the clock and Wi-Fi cluster. Draw the header in that row.
-  const headerInStatusRow = !railBeside && insets.top > 0 && windowWidth >= 600;
+  const headerInStatusRow = shouldPlaceHeaderInStatusRow({
+    os: Platform.OS,
+    railBeside,
+    topInset: insets.top,
+    windowWidth,
+  });
   const railElement = (
     <ActiveWorkoutRail
       exercises={session.exercises}
