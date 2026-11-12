@@ -267,7 +267,11 @@ export async function runNightlyNutritionPush(): Promise<void> {
     try {
       const started = await startProviderSync(
         { userId: user_id, providerId: provider_id },
-        () => pushNutrition(user_id, provider_id)
+        // The user list is read once; a removal since then turns pushing off.
+        async () => {
+          if (!(await pushRepo.getPushSetting(user_id))) return undefined;
+          return pushNutrition(user_id, provider_id);
+        }
       );
       if (started) await started.running;
     } catch (error) {

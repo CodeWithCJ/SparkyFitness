@@ -275,6 +275,7 @@ describe('runNightlyNutritionPush', () => {
       { user_id: 'a', provider_id: 'pa' },
       { user_id: 'b', provider_id: 'pb' },
     ]);
+    vi.mocked(pushRepo.getPushSetting).mockResolvedValue(true);
     vi.mocked(intervalsGet).mockRejectedValueOnce(new Error('down'));
 
     await expect(runNightlyNutritionPush()).resolves.toBeUndefined();
@@ -287,5 +288,19 @@ describe('runNightlyNutritionPush', () => {
       { userId: 'b', providerId: 'pb' },
       expect.any(Function)
     );
+  });
+
+  it('skips a user who turned pushing off after the list was read', async () => {
+    vi.mocked(pushRepo.getUsersWithPushEnabled).mockResolvedValue([
+      { user_id: 'a', provider_id: 'pa' },
+    ]);
+    vi.mocked(pushRepo.getPushSetting).mockResolvedValue(false);
+
+    await runNightlyNutritionPush();
+
+    expect(pushRepo.getPushSetting).toHaveBeenCalledWith('a');
+    expect(getDailyNutritionTotalsRange).not.toHaveBeenCalled();
+    expect(intervalsPut).not.toHaveBeenCalled();
+    expect(pushRepo.upsertPushes).not.toHaveBeenCalled();
   });
 });

@@ -387,10 +387,13 @@ export const useRemoveIntervalsPushedDataMutation = () => {
 
   return useMutation({
     mutationFn: (providerId?: string) => removeIntervalsPushedData(providerId),
-    onSuccess: (data: IntervalsRemoveResult) => {
+    // The server turns pushing off even when clearing then fails.
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: externalProviderKeys.lists(),
       });
+    },
+    onSuccess: (data: IntervalsRemoveResult) => {
       toast({
         variant: data.failed > 0 ? 'destructive' : 'default',
         title: t(

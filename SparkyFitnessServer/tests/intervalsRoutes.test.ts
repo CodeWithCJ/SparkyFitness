@@ -335,6 +335,7 @@ describe('intervalsRoutes', () => {
 
       expect(res.status).toBe(409);
       expect(intervalsNutritionPush.removePushedData).not.toHaveBeenCalled();
+      expect(intervalsNutritionPush.setPushEnabled).not.toHaveBeenCalled();
     });
   });
 });

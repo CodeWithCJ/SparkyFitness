@@ -306,10 +306,13 @@ router.post(
     const userId = req.userId as string;
     const { providerId } = parsed.data;
     try {
-      await intervalsNutritionPush.setPushEnabled(userId, false);
+      // Turn pushing off only once the claim is held, so a 409 changes nothing.
       const started = await startProviderSync(
         syncClaimTarget(userId, 'intervals', providerId),
-        () => intervalsNutritionPush.removePushedData(userId, providerId)
+        async () => {
+          await intervalsNutritionPush.setPushEnabled(userId, false);
+          return intervalsNutritionPush.removePushedData(userId, providerId);
+        }
       );
       if (!started) {
         return res.status(409).json(SYNC_ALREADY_RUNNING_RESPONSE);
