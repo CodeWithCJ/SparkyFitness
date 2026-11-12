@@ -117,13 +117,19 @@ describe.runIf(RUN)('set started_at', () => {
   });
 
   afterAll(async () => {
-    await db.query('DELETE FROM public.exercise_entries WHERE user_id = $1', [
-      userId,
-    ]);
-    await db.query('DELETE FROM public.exercises WHERE user_id = $1', [userId]);
-    await db.query('DELETE FROM public."user" WHERE id = $1', [userId]);
-    await db.end();
-    await endPool();
+    try {
+      await db.query('DELETE FROM public.exercise_entries WHERE user_id = $1', [
+        userId,
+      ]);
+      await db.query('DELETE FROM public.exercises WHERE user_id = $1', [
+        userId,
+      ]);
+      await db.query('DELETE FROM public."user" WHERE id = $1', [userId]);
+    } finally {
+      // Close the connections even when a cleanup statement fails.
+      await db.end();
+      await endPool();
+    }
   });
 
   it('returns started_at next to completed_at in the diary read', async () => {
