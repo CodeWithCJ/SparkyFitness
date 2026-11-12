@@ -22,7 +22,16 @@ final class WorkoutSessionStore: ObservableObject {
     /// Every set of every exercise, in the order they are meant to be done.
     @Published private(set) var steps: [WorkoutStep] = []
     @Published private(set) var currentStepIndex: Int = 0
-    @Published private(set) var completedSetIds: Set<String> = []
+    @Published private(set) var completedSetIds: Set<String> = [] {
+        didSet { loggedOrder = LoggedSetOrder.synced(loggedOrder, completed: completedSetIds, planOrder: steps.map(\.plannedSet.setId)) }
+    }
+    /// The logged sets' ids in the order they were logged, across exercises
+    /// and supersets. Kept in step with `completedSetIds`.
+    private(set) var loggedOrder: [String] = []
+    /// The logged sets, oldest first.
+    var loggedSteps: [WorkoutStep] {
+        loggedOrder.compactMap { id in steps.first { $0.plannedSet.setId == id } }
+    }
     /// Edited weight/reps by set id. A set with no entry here is still on its
     /// planned targets.
     @Published private(set) var editedValues: [String: SetValues] = [:]
@@ -1520,7 +1529,7 @@ final class WorkoutSessionStore: ObservableObject {
         let snapshot = Snapshot(
             plan: plan,
             currentStepIndex: currentStepIndex,
-            completedSetIds: Array(completedSetIds),
+            completedSetIds: loggedOrder,
             editedValues: editedValues,
             startedAt: startedAt,
             reportedEnergyKcal: energy,
@@ -1562,6 +1571,7 @@ final class WorkoutSessionStore: ObservableObject {
         currentStepIndex = min(snapshot.currentStepIndex, steps.count)
         openCurrentExerciseWindow()
         completedSetIds = Set(snapshot.completedSetIds)
+        loggedOrder = LoggedSetOrder.synced(snapshot.completedSetIds, completed: completedSetIds, planOrder: steps.map(\.plannedSet.setId))
         editedValues = snapshot.editedValues
         loggedValues = snapshot.loggedValues ?? [:]
         heartRateSum = snapshot.heartRateSum ?? 0

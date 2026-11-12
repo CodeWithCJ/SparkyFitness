@@ -3,10 +3,11 @@ import SwiftUI
 /// Edit a set already logged: the boxes that fit the kind of set, as on the set
 /// screen (weight and reps; distance for a carry; the hold's time, shown only,
 /// for a timed set), tap one to type the number, and a `‹ Save ›` row. `‹` and
-/// `›` step through the logged sets in workout order, so on an exercise's first
-/// set `‹` goes to the last set of the one before. An edit reaches the phone
-/// through the store's value-edit hook, as one made on the set screen does;
-/// Save returns to the current set.
+/// `›` step through the logged sets in the order they were logged, across
+/// exercises and supersets; `›` on the newest returns to the current set. An
+/// edit is held here until Save, which writes it (through the store's value-edit
+/// hook, as one made on the set screen does) and returns to the current set;
+/// moving to another set drops it.
 struct EditPreviousSetView: View {
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
@@ -17,12 +18,13 @@ struct EditPreviousSetView: View {
         var id: Int { self == .weight ? 0 : (self == .reps ? 1 : 2) }
     }
 
-    /// Position in the logged sets, starting at the one logged last before the
-    /// cursor.
+    /// Position in the logged sets, oldest first, starting at the one logged last.
     @State private var index: Int
     @State private var editing: Field?
+    /// Edits not saved yet, for the set on screen.
+    @State private var draft = SetValues()
 
-    private var logged: [WorkoutStep] { store.steps.filter(store.isCompleted) }
+    private var logged: [WorkoutStep] { store.loggedSteps }
     private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
     private var carryUnit: CarryUnit { checkIn.context.effectiveCarryUnit }
 
@@ -34,13 +36,9 @@ struct EditPreviousSetView: View {
         self.onClose = onClose
     }
 
-    /// The logged set nearest before the cursor, else the last one logged.
+    /// The set logged last.
     static func startIndex(in store: WorkoutSessionStore) -> Int {
-        let logged = store.steps.filter(store.isCompleted)
-        let before = logged.lastIndex { step in
-            store.steps.firstIndex(of: step).map { $0 < store.currentStepIndex } ?? false
-        }
-        return before ?? max(0, logged.count - 1)
+        max(0, store.loggedSteps.count - 1)
     }
 
     var body: some View {
@@ -55,7 +53,10 @@ struct EditPreviousSetView: View {
     }
 
     private func content(for step: WorkoutStep, count: Int) -> some View {
-        let values = store.values(for: step)
+        var values = store.values(for: step)
+        if let weight = draft.weightKg { values.weightKg = weight }
+        if let reps = draft.reps { values.reps = reps }
+        if let distance = draft.distanceKm { values.distanceKm = distance }
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 HStack(spacing: WatchStyle.m(7)) {
@@ -129,10 +130,10 @@ struct EditPreviousSetView: View {
             .padding(.top, WatchStyle.m(6))
             Spacer(minLength: WatchStyle.m(8))
             HStack(spacing: WatchStyle.m(6)) {
-                RoundBackButton { move(by: -1) }
-                    .disabled(index == 0)
+                RoundBackButton { moveOlder() }
+                    .disabled(LoggedSetOrder.older(than: index) == nil)
                     .accessibilityLabel(String(localized: "watch.workout.previousLoggedSet", defaultValue: "Previous logged set"))
-                Button(action: Haptics.tapping(save)) {
+                Button(action: Haptics.tapping { save(step) }) {
                     Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
                         .font(.system(size: WatchStyle.m(17), weight: .bold))
                         .foregroundStyle(Color.black)
@@ -142,8 +143,7 @@ struct EditPreviousSetView: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                RoundBackButton(glyph: "›") { move(by: 1) }
-                    .disabled(index >= count - 1)
+                RoundBackButton(glyph: "›") { moveNewer(count: count) }
                     .accessibilityLabel(String(localized: "watch.workout.nextLoggedSet", defaultValue: "Next set"))
             }
             .padding(.bottom, WatchStyle.bottom)
@@ -160,9 +160,9 @@ struct EditPreviousSetView: View {
                 allowsNegative: field == .weight && store.isBodyweight(step)
             ) { entered in
                 switch field {
-                case .weight: store.setValue(for: step.plannedSet.setId, weightKg: unit.toKg(entered))
-                case .reps: store.setValue(for: step.plannedSet.setId, reps: entered)
-                case .distance: store.setValue(for: step.plannedSet.setId, distanceKm: carryUnit.toKm(entered))
+                case .weight: draft.weightKg = unit.toKg(entered)
+                case .reps: draft.reps = entered
+                case .distance: draft.distanceKm = carryUnit.toKm(entered)
                 }
                 editing = nil
             }
@@ -185,11 +185,30 @@ struct EditPreviousSetView: View {
         }
     }
 
-    private func move(by delta: Int) {
-        index = min(max(index + delta, 0), logged.count - 1)
+    /// Moving never saves: the edits made on this set are dropped.
+    private func moveOlder() {
+        guard let older = LoggedSetOrder.older(than: index) else { return }
+        draft = SetValues()
+        index = older
     }
 
-    private func save() { onClose() }
+    private func moveNewer(count: Int) {
+        draft = SetValues()
+        switch LoggedSetOrder.newer(than: index, count: count) {
+        case .set(let newer): index = newer
+        case .current: onClose()
+        }
+    }
+
+    private func save(_ step: WorkoutStep) {
+        store.setValue(
+            for: step.plannedSet.setId,
+            weightKg: draft.weightKg,
+            reps: draft.reps,
+            distanceKm: draft.distanceKm
+        )
+        onClose()
+    }
 }
 
 /// The dots of the set on screen, as on the set screen but for display only.
