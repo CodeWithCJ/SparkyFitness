@@ -304,6 +304,16 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     openfoodfacts_product_read_rate_limit: 'custom',
     passkey_registration_tickets: 'custom',
     rate_limit: 'custom',
+    // Challenges: members read (is_challenge_member, the signed-in person
+    // only, never a delegate); only the server's owner pool writes. The score
+    // queue is internal to the score job and denied to the app role.
+    challenges: 'custom',
+    challenge_members: 'custom',
+    challenge_daily_scores: 'custom',
+    challenge_activity_cards: 'custom',
+    challenge_results: 'custom',
+    challenge_rule_changes: 'custom',
+    challenge_score_queue: 'custom',
   };
 
   // Expected helper substrings for the generic-policy domains.
@@ -620,6 +630,49 @@ describe.runIf(RUN)('RLS permission matrix', () => {
         policy: 'select_policy',
         col: 'qual',
         mustContain: 'has_profile_read_access',
+      },
+      // Challenges: member read, server write.
+      {
+        table: 'challenges',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(id)',
+      },
+      {
+        table: 'challenge_members',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(challenge_id)',
+      },
+      {
+        table: 'challenge_daily_scores',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(challenge_id)',
+      },
+      {
+        table: 'challenge_activity_cards',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(challenge_id)',
+      },
+      {
+        table: 'challenge_results',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(challenge_id)',
+      },
+      {
+        table: 'challenge_rule_changes',
+        policy: 'select_policy',
+        col: 'qual',
+        mustContain: 'is_challenge_member(challenge_id)',
+      },
+      {
+        table: 'challenge_score_queue',
+        policy: 'deny_all_policy',
+        col: 'qual',
+        mustContain: 'false',
       },
       // Admin / global / sharing-specific logic.
       {
@@ -1600,6 +1653,184 @@ describe.runIf(RUN)('Active calorie imports with shared exercises', () => {
       const before = await entries();
       await sys.query(migration);
       expect(await entries()).toEqual(before);
+    });
+  });
+});
+
+// Challenges: joining is the consent. A member reads the challenge's rows; a
+// non-member, and a family delegate acting for a member, read nothing; the app
+// role cannot write any of it; the exercise-entry trigger queues the changed
+// day; deleting an account removes that person's challenge rows.
+describe.runIf(RUN)('Challenge membership RLS', () => {
+  const HOST = '00000000-0000-4000-b400-000000000001';
+  const AMY = '00000000-0000-4000-b400-000000000002';
+  const OUTSIDER = '00000000-0000-4000-b400-000000000003';
+  const USERS = [HOST, AMY, OUTSIDER];
+  let challengeId = '';
+  let sys: pg.PoolClient;
+
+  const rules = JSON.stringify({ version: 1, metric: 'steps' });
+
+  beforeAll(async () => {
+    sys = await getSystemClient();
+    await sys.query('DELETE FROM public."user" WHERE id = ANY($1::uuid[])', [
+      USERS,
+    ]);
+    for (const id of USERS) {
+      await sys.query(
+        'INSERT INTO public."user" (id, email, email_verified) VALUES ($1, $2, true)',
+        [id, `rls-challenge-${id}@example.test`]
+      );
+    }
+    // The outsider holds full diary access to the host's account.
+    await sys.query(
+      `INSERT INTO public.family_access
+         (owner_user_id, family_user_id, family_email, access_permissions, is_active, status)
+       VALUES ($1, $2, 'rls-challenge-delegate@example.test', '{"can_manage_diary": true, "can_view_reports": true}'::jsonb, true, 'active')`,
+      [HOST, OUTSIDER]
+    );
+    const c = await sys.query(
+      `INSERT INTO public.challenges (owner_user_id, name, rules, start_date, end_date)
+       VALUES ($1, 'rls-challenge', $2::jsonb, '2026-11-09', '2026-11-30') RETURNING id`,
+      [HOST, rules]
+    );
+    challengeId = c.rows[0].id;
+    await sys.query(
+      `INSERT INTO public.challenge_members (challenge_id, user_id, role, display_name)
+       VALUES ($1, $2, 'host', 'Host'), ($1, $3, 'member', 'Amy')`,
+      [challengeId, HOST, AMY]
+    );
+    await sys.query(
+      `INSERT INTO public.challenge_daily_scores (challenge_id, user_id, day, total)
+       VALUES ($1, $2, '2026-11-10', 9000), ($1, $3, '2026-11-10', 12000)`,
+      [challengeId, HOST, AMY]
+    );
+    await sys.query(
+      `INSERT INTO public.challenge_rule_changes (challenge_id, changed_by_user_id, effective_from, rules)
+       VALUES ($1, $2, '2026-11-09', $3::jsonb)`,
+      [challengeId, HOST, rules]
+    );
+    await sys.query(
+      `INSERT INTO public.challenge_results (challenge_id, period_start, period_end, user_id, display_name, rank, total)
+       VALUES ($1, '2026-11-09', '2026-11-15', $2, 'Amy', 1, 12000)`,
+      [challengeId, AMY]
+    );
+  });
+
+  afterAll(async () => {
+    await sys.query('DELETE FROM public.challenges WHERE id = $1', [
+      challengeId,
+    ]);
+    await sys.query('DELETE FROM public."user" WHERE id = ANY($1::uuid[])', [
+      USERS,
+    ]);
+    sys.release();
+  });
+
+  const count = async (
+    userId: string,
+    actor: string,
+    table: string
+  ): Promise<number> => {
+    const client = await getClient(userId, actor);
+    try {
+      const { rows } = await client.query(
+        `SELECT COUNT(*)::int AS n FROM public.${table} WHERE ${
+          table === 'challenges' ? 'id' : 'challenge_id'
+        } = $1`,
+        [challengeId]
+      );
+      return rows[0].n;
+    } finally {
+      client.release();
+    }
+  };
+
+  it('a member reads the challenge, its members, scores, results and rules log', async () => {
+    expect(await count(AMY, AMY, 'challenges')).toBe(1);
+    expect(await count(AMY, AMY, 'challenge_members')).toBe(2);
+    expect(await count(AMY, AMY, 'challenge_daily_scores')).toBe(2);
+    expect(await count(AMY, AMY, 'challenge_results')).toBe(1);
+    expect(await count(AMY, AMY, 'challenge_rule_changes')).toBe(1);
+  });
+
+  it.each([
+    ['a non-member', OUTSIDER, OUTSIDER],
+    ['a diary delegate acting for the host', HOST, OUTSIDER],
+  ])('%s reads nothing', async (_label, userId, actor) => {
+    for (const table of [
+      'challenges',
+      'challenge_members',
+      'challenge_daily_scores',
+      'challenge_activity_cards',
+      'challenge_results',
+      'challenge_rule_changes',
+    ]) {
+      expect(await count(userId, actor, table), table).toBe(0);
+    }
+  });
+
+  it('the app role cannot write challenge rows, even as the host', async () => {
+    const client = await getClient(HOST, HOST);
+    try {
+      await expect(
+        client.query(
+          `INSERT INTO public.challenge_daily_scores (challenge_id, user_id, day, total)
+           VALUES ($1, $2, '2026-11-11', 99999)`,
+          [challengeId, HOST]
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+      const updated = await client.query(
+        "UPDATE public.challenges SET name = 'hijacked' WHERE id = $1",
+        [challengeId]
+      );
+      expect(updated.rowCount).toBe(0);
+      const deleted = await client.query(
+        'DELETE FROM public.challenge_members WHERE challenge_id = $1',
+        [challengeId]
+      );
+      expect(deleted.rowCount).toBe(0);
+      expect(await count(HOST, HOST, 'challenge_score_queue')).toBe(0);
+    } finally {
+      client.release();
+    }
+  });
+
+  it('an exercise entry on a challenge day queues that member-day; one outside it does not', async () => {
+    const client = await getClient(AMY, AMY);
+    try {
+      await client.query(
+        `INSERT INTO exercise_entries (user_id, entry_date, calories_burned, duration_minutes, exercise_name)
+         VALUES ($1, '2026-11-12', 100, 30, 'rls-challenge run'),
+                ($1, '2026-12-05', 100, 30, 'rls-challenge late run')`,
+        [AMY]
+      );
+    } finally {
+      client.release();
+    }
+    const { rows } = await sys.query(
+      `SELECT TO_CHAR(day, 'YYYY-MM-DD') AS day FROM public.challenge_score_queue
+        WHERE challenge_id = $1 AND user_id = $2 ORDER BY day`,
+      [challengeId, AMY]
+    );
+    expect(rows.map((r: { day: string }) => r.day)).toEqual(['2026-11-12']);
+  });
+
+  it("deleting an account removes that person's challenge rows", async () => {
+    await sys.query('DELETE FROM public."user" WHERE id = $1', [AMY]);
+    const left = await sys.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM public.challenge_members WHERE user_id = $1) AS members,
+         (SELECT COUNT(*)::int FROM public.challenge_daily_scores WHERE user_id = $1) AS scores,
+         (SELECT COUNT(*)::int FROM public.challenge_results WHERE user_id = $1) AS results,
+         (SELECT COUNT(*)::int FROM public.challenge_score_queue WHERE user_id = $1) AS queued`,
+      [AMY]
+    );
+    expect(left.rows[0]).toEqual({
+      members: 0,
+      scores: 0,
+      results: 0,
+      queued: 0,
     });
   });
 });

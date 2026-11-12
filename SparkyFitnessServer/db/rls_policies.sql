@@ -144,7 +144,14 @@ BEGIN
     'health_metric_samples',
     'vitals_entries',
     'daily_health_metrics',
-    'user_fasting_preferences'
+    'user_fasting_preferences',
+    'challenges',
+    'challenge_members',
+    'challenge_daily_scores',
+    'challenge_activity_cards',
+    'challenge_results',
+    'challenge_rule_changes',
+    'challenge_score_queue'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -452,6 +459,20 @@ AS $function$
     SELECT 1 FROM public."user" u
     WHERE u.id = authenticated_user_id()
     AND u.role = 'admin'
+  );
+$function$;
+
+-- Challenges: is the signed-in person (never a delegate acting for someone)
+-- a member of the challenge? SECURITY DEFINER so the check does not recurse
+-- through challenge_members' own policy.
+CREATE OR REPLACE FUNCTION public.is_challenge_member(p_challenge_id uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.challenge_members m
+    WHERE m.challenge_id = p_challenge_id
+      AND m.user_id = authenticated_user_id()
   );
 $function$;
 
@@ -1134,3 +1155,25 @@ CREATE POLICY deny_all_policy ON public.openfoodfacts_product_read_rate_limit FO
 -- own owner pool, which bypasses RLS; the rows hold client addresses, so the
 -- app role is denied entirely.
 CREATE POLICY deny_all_policy ON public.rate_limit FOR ALL TO PUBLIC USING (false) WITH CHECK (false);
+
+-- Challenges (Tier 2 - member-read, server-write). Joining is the consent:
+-- members read the challenge, its members' display names, scores, workout
+-- cards, results and rules log, and nothing else of each other. Rows are
+-- written only by the server's owner pool after the service has checked
+-- membership and the host role in code, so the app role gets no write policy.
+-- Family delegation does not apply: is_challenge_member checks the signed-in
+-- person only.
+CREATE POLICY select_policy ON public.challenges FOR SELECT TO PUBLIC
+USING (is_challenge_member(id));
+CREATE POLICY select_policy ON public.challenge_members FOR SELECT TO PUBLIC
+USING (is_challenge_member(challenge_id));
+CREATE POLICY select_policy ON public.challenge_daily_scores FOR SELECT TO PUBLIC
+USING (is_challenge_member(challenge_id));
+CREATE POLICY select_policy ON public.challenge_activity_cards FOR SELECT TO PUBLIC
+USING (is_challenge_member(challenge_id));
+CREATE POLICY select_policy ON public.challenge_results FOR SELECT TO PUBLIC
+USING (is_challenge_member(challenge_id));
+CREATE POLICY select_policy ON public.challenge_rule_changes FOR SELECT TO PUBLIC
+USING (is_challenge_member(challenge_id));
+-- The score queue is internal to the score job (and its trigger).
+CREATE POLICY deny_all_policy ON public.challenge_score_queue FOR ALL TO PUBLIC USING (false) WITH CHECK (false);

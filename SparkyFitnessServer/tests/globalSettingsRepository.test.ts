@@ -280,6 +280,24 @@ describe('globalSettingsRepository', () => {
       );
       expect(params[14]).toBe(false);
     });
+    it('saves the Challenges switch', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_challenges: false,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        'enable_challenges = COALESCE($18, enable_challenges, true)'
+      );
+      expect(params[17]).toBe(false);
+    });
+    it('leaves the Challenges switch alone when a save does not send it', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_version_check: true,
+      });
+      expect(mockClient.query.mock.calls[0][1][17]).toBeNull();
+    });
     it('should update and return global settings', async () => {
       const inputSettings = {
         enable_email_password_login: true,
@@ -308,6 +326,7 @@ describe('globalSettingsRepository', () => {
           false,
           null,
           false,
+          null,
           null,
           null,
           null,
@@ -440,6 +459,22 @@ describe('globalSettingsRepository', () => {
           'SELECT enable_version_check FROM global_settings WHERE id = 1'
         );
         expect(mockClient.release).toHaveBeenCalled();
+      }
+    );
+  });
+  describe('isChallengesEnabled', () => {
+    it.each([true, false])(
+      'returns the stored enable_challenges (%s)',
+      async (stored) => {
+        mockClient.query.mockResolvedValue({
+          rows: [{ enable_challenges: stored }],
+        });
+        await expect(
+          globalSettingsRepository.isChallengesEnabled()
+        ).resolves.toBe(stored);
+        expect(mockClient.query).toHaveBeenCalledWith(
+          'SELECT enable_challenges FROM global_settings WHERE id = 1'
+        );
       }
     );
   });
