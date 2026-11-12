@@ -290,8 +290,25 @@ const Diary = () => {
     const reference = slot
       ? { hour: Number(slot.slice(0, 2)), minute: Number(slot.slice(3, 5)) }
       : userHourMinute(timezone);
-    const mealType = pickMealTypeForTime(visibleMealTypes, reference);
-    if (!mealType) return;
+    // Hidden meal types still accept entries, so fall back to them when the
+    // user has hidden every meal type.
+    const mealType = pickMealTypeForTime(
+      visibleMealTypes.length > 0
+        ? visibleMealTypes
+        : (availableMealTypes ?? []),
+      reference
+    );
+    if (!mealType) {
+      toast({
+        title: t('diary.timeline.noMealTypes', 'No meal types to add to'),
+        description: t(
+          'diary.timeline.noMealTypesDescription',
+          'Add a meal type in Settings to log food from the timeline.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
     setTimelineAddTime(
       slot ??
         prefillEntryTime({
@@ -488,7 +505,7 @@ const Diary = () => {
             selectedDate={selectedDate}
             foodEntries={foodEntries}
             foodEntryMeals={foodEntryMeals ?? []}
-            mealTypes={visibleMealTypes}
+            mealTypes={availableMealTypes ?? []}
             onFoodSelect={handleTimelineFoodSelect}
             onEditEntry={handleEditEntry}
             onRemoveEntry={handleRemoveEntry}

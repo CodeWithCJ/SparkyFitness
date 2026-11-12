@@ -3794,8 +3794,10 @@
       "title": "Timeline",
       "addFood": "Add food",
       "addAt": "Add food at {{time}}",
-      "addDescription": "Pick a food or meal. You can adjust the time and meal next.",
+      "addDescription": "Pick a food or meal. For a food, you can adjust the time and meal next.",
       "noTime": "No time",
+      "noMealTypes": "No meal types to add to",
+      "noMealTypesDescription": "Add a meal type in Settings to log food from the timeline.",
       "macros": "P {{p}} · C {{c}} · F {{f}}"
     },
     "nutrientLabels": {

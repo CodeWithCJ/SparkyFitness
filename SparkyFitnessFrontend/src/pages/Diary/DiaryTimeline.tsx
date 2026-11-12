@@ -252,7 +252,7 @@ const DiaryTimeline = ({
             <DialogDescription>
               {t(
                 'diary.timeline.addDescription',
-                'Pick a food or meal. You can adjust the time and meal next.'
+                'Pick a food or meal. For a food, you can adjust the time and meal next.'
               )}
               {dateRelation !== 'today' && (
                 <>
