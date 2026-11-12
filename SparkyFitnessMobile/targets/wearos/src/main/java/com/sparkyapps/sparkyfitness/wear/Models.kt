@@ -1,21 +1,23 @@
 package com.sparkyapps.sparkyfitness.wear
 
+import androidx.annotation.StringRes
+import com.SparkyApps.SparkyFitnessMobile.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-enum class WatchPage(val key: String, val label: String) {
-  GOALS("goals", "Goals"),
-  WATER("water", "Water"),
-  MEDICATIONS("medications", "Medications"),
-  ENTRY("entry", "Weight"),
-  TREND("trend", "Trend"),
-  WORKOUT("workout", "Workout"),
-  NOW_PLAYING("nowPlaying", "Now Playing"),
-  FASTING("fasting", "Fasting"),
-  STEPS("steps", "Steps");
+enum class WatchPage(val key: String, val label: String, @StringRes val labelRes: Int) {
+  GOALS("goals", "Goals", R.string.page_goals),
+  WATER("water", "Water", R.string.page_water),
+  MEDICATIONS("medications", "Medications", R.string.page_medications),
+  ENTRY("entry", "Weight", R.string.page_weight),
+  TREND("trend", "Trend", R.string.page_trend),
+  WORKOUT("workout", "Workout", R.string.page_workout),
+  NOW_PLAYING("nowPlaying", "Now Playing", R.string.page_now_playing),
+  FASTING("fasting", "Fasting", R.string.page_fasting),
+  STEPS("steps", "Steps", R.string.page_steps);
 
   companion object {
     val defaultOrder = listOf(
