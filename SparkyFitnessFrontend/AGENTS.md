@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-09_
+_Last updated: 2026-11-12_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -107,7 +107,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Routing/navigation/permission issue: `src/App.tsx` (router, `PrivateRoute`, `PermissionRoute`) and `src/layouts/MainLayout.tsx`.
 - Main tabs a person can hide (Settings > Profile & Account > Tabs, `pages/Settings/WebTabsSettings.tsx`): the owner's module tabs, their labels, icons and + menu entries come from `constants/webTabs.ts` (`visibleModuleTabs`; cycle still follows `cycle_settings.enabled`). The choice is a Customize layout row (`page_key` `web-tabs`, ids from the shared `WEB_HIDEABLE_TAB_IDS`) read and written by `hooks/Settings/useHiddenWebTabs.ts`: nothing hidden while loading or acting for someone else, the cache is the session's source of truth (no refetch on focus) and saves run one at a time with the whole list. The switches only work once the saved list has loaded (`editState`, with a Retry when the load fails) and never while acting for someone else; only the last queued save may write its answer or reread the list, and a tap cancels a reread still in flight. Hiding only changes navigation: the routes stay open, and the Diary links that lead only to a hidden tab (`DailyProgress` Enter Measurements, `RunProgramBanner` Open program) are dropped. Components that call the hook need it mocked in tests rendered without a `QueryClientProvider`.
 - API/error-toast issue: `src/api/api.ts`, then the domain client in `src/api/<Domain>/`, then the query/mutation `meta` in the calling hook.
-- Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages.
+- Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages. Most query keys don't name the account, so `useAuth` clears the whole query cache whenever the account changes: sign-out, an expired session, a profile switch, and a different account taking over without a sign-out (signed in from another browser tab, or a sign-in over another account). The page's first account keeps what was cached before it.
 - Remote MCP OAuth admin, consent, or connected-app issue: `src/pages/Admin/AuthenticationSettings.tsx`, `src/pages/Auth/OAuthConsent.tsx`, `src/pages/Settings/OAuthClientSettings.tsx`, `src/api/Auth/oauth.ts`, and `src/hooks/Auth/useOAuth.ts`.
 - Family-access/acting-user issue: `src/contexts/ActiveUserContext.tsx` and the hooks consuming it.
 - Chat (Sparky) issue: `src/pages/Chat/`, `src/components/ai/`, `src/api/Chatbot/`. Voice controls live in `VoiceInputControl.tsx`; `VoiceInputSettings.tsx` shares server-backed enable/System/AI choices with mobile. `active_voice_ai_service_id: null` means System, never automatic inheritance from Chat. A compatible Chat model is only a suggestion. Cancelling, leaving the page, hiding the tab, or changing voice preferences releases the microphone and aborts uploads.
