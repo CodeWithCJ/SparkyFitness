@@ -99,6 +99,7 @@ const MedicationTimeGroupsCard: React.FC<MedicationTimeGroupsCardProps> = ({
               <Text className="text-xs text-text-muted mt-0.5">
                 {t('medications.timeGroups.pendingCount', {
                   defaultValue: '{{count}} doses pending',
+                  defaultValue_one: '{{count}} dose pending',
                   count: group.pending.length,
                 })}
               </Text>
@@ -110,6 +111,8 @@ const MedicationTimeGroupsCard: React.FC<MedicationTimeGroupsCardProps> = ({
               accessibilityRole="button"
               accessibilityLabel={t('medications.timeGroups.markAllA11y', {
                 defaultValue: 'Mark all {{count}} doses at {{time}} as taken',
+                defaultValue_one:
+                  'Mark all {{count}} dose at {{time}} as taken',
                 count: group.pending.length,
                 time: timeLabel,
               })}

@@ -174,6 +174,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                     <Text className="text-xs text-text-muted mt-0.5">
                       {t('medications.timeGroups.pendingCount', {
                         defaultValue: '{{count}} doses pending',
+                        defaultValue_one: '{{count}} dose pending',
                         count: pendingCount,
                       })}
                     </Text>
@@ -190,6 +191,8 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                       {
                         defaultValue:
                           'Mark all {{count}} doses at {{time}} as taken',
+                        defaultValue_one:
+                          'Mark all {{count}} dose at {{time}} as taken',
                         count: pendingCount,
                         time: timeLabel,
                       }

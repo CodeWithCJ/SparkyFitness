@@ -448,10 +448,12 @@ export function useLogDose(
             status === 'taken'
               ? t('medications.timeGroups.takenToast', {
                   defaultValue: 'Marked {{count}} doses as taken',
+                  defaultValue_one: 'Marked {{count}} dose as taken',
                   count: changed,
                 })
               : t('medications.timeGroups.skippedToast', {
                   defaultValue: 'Marked {{count}} doses as skipped',
+                  defaultValue_one: 'Marked {{count}} dose as skipped',
                   count: changed,
                 }),
         });
