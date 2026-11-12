@@ -150,6 +150,9 @@ export function buildNutrientDisplayList(
 }
 
 export interface FoodInfoItem {
+  recipe_has_nutrition?: boolean;
+  recipeProviderId?: string;
+  recipeImportScope?: string;
   id: string;
   name: string;
   brand: string | null;
@@ -257,6 +260,8 @@ export const foodItemToFoodInfo = (
 export const externalFoodItemToFoodInfo = (
   item: ExternalFoodItem
 ): FoodInfoItem => ({
+  recipe_has_nutrition: item.recipe_has_nutrition,
+  recipeProviderId: item.recipe_provider_id,
   id: item.id,
   name: item.name,
   brand: item.brand,

@@ -4,6 +4,7 @@ import type {
   FoodPhotoEstimateErrorCode,
   FoodPhotoEstimateResponse,
   BarcodeLookupResponse,
+  NormalizedFood,
 } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
@@ -485,25 +486,6 @@ interface NormalizedFoodVariant {
   traces?: string[] | null;
 }
 
-interface NormalizedFood {
-  id?: string;
-  name: string;
-  brand: string | null;
-  barcode?: string;
-  provider_external_id?: string;
-  provider_type?: string;
-  is_custom: boolean;
-  provider_verified?: boolean;
-  // Provider photo. The server's NormalizedFoodSchema declares these, so they
-  // arrive on the wire; they only reach the UI if this interface declares them
-  // AND transformNormalizedFood copies them across.
-  image_url?: string | null;
-  image_source_url?: string | null;
-  images?: string[];
-  default_variant: NormalizedFoodVariant;
-  variants?: NormalizedFoodVariant[];
-}
-
 export interface BarcodeFood {
   id?: string;
   name: string;
@@ -581,6 +563,8 @@ export function _transformNormalizedFood(
     barcode: food.barcode,
     provider_type: food.provider_type ?? providerType,
     provider_external_id: food.provider_external_id,
+    recipe_has_nutrition: food.recipe_has_nutrition,
+    recipe_servings: food.recipe_servings,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
     allergens: displayVariant.allergens,
@@ -604,6 +588,24 @@ interface V2SearchResponse {
   pagination: ExternalFoodSearchPagination;
 }
 
+export async function searchNormalizedExternalFoods(
+  providerType: string,
+  query: string,
+  page: number,
+  providerId?: string,
+  autoScale?: boolean
+): Promise<V2SearchResponse> {
+  const params = new URLSearchParams({ query, page: String(page) });
+  if (providerId) params.set('providerId', providerId);
+  if (autoScale !== undefined) params.set('autoScale', String(autoScale));
+
+  return apiFetch<V2SearchResponse>({
+    endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,
+    serviceName: 'External Food Search',
+    operation: `search ${providerType} (v2)`,
+  });
+}
+
 export async function searchExternalFoods(
   providerType: string,
   query: string,
@@ -611,16 +613,13 @@ export async function searchExternalFoods(
   providerId?: string,
   autoScale?: boolean
 ): Promise<PaginatedExternalFoodSearchResult> {
-  const params = new URLSearchParams({ query, page: String(page) });
-  if (providerId) params.set('providerId', providerId);
-  if (autoScale !== undefined) params.set('autoScale', String(autoScale));
-
-  const response = await apiFetch<V2SearchResponse>({
-    endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,
-    serviceName: 'External Food Search',
-    operation: `search ${providerType} (v2)`,
-  });
-
+  const response = await searchNormalizedExternalFoods(
+    providerType,
+    query,
+    page,
+    providerId,
+    autoScale
+  );
   return {
     items: response.foods.map((f) => _transformNormalizedFood(f, providerType)),
     pagination: response.pagination,

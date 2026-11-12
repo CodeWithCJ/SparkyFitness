@@ -737,6 +737,16 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         (selectedProvider === ALL_PROVIDERS_VALUE
           ? providers.find((p) => p.provider_type === item.source)?.id
           : selectedProvider);
+      const toFoodInfo = (value: ExternalFoodItem) =>
+        value.source === 'mealie' || value.provider_type === 'mealie'
+          ? {
+              ...externalFoodItemToFoodInfo({
+                ...value,
+                recipe_provider_id: providerId ?? undefined,
+              }),
+              recipeImportScope: ownerScope ?? undefined,
+            }
+          : externalFoodItemToFoodInfo(value);
       if (
         (item.source === 'fatsecret' ||
           item.source === 'yazio' ||
@@ -762,7 +772,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           // result carried, so re-attach it rather than losing the image the
           // user just saw. Mirrors the web food search.
           showFoodInfo(
-            externalFoodItemToFoodInfo({
+            toFoodInfo({
               ...detailed,
               images: detailed.images?.length ? detailed.images : item.images,
               image_url: detailed.image_url ?? item.image_url,
@@ -784,13 +794,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             }),
             text2: message,
           });
-          if (!recipeImportTarget)
-            showFoodInfo(externalFoodItemToFoodInfo(item));
+          if (!recipeImportTarget) showFoodInfo(toFoodInfo(item));
         }
         if (current()) setLoadingFood(null);
         return;
       }
-      showFoodInfo(externalFoodItemToFoodInfo(item));
+      showFoodInfo(toFoodInfo(item));
     },
     [
       selectedProvider,
@@ -798,6 +807,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       showFoodInfo,
       recipeImportTarget,
       detailScope,
+      ownerScope,
       t,
     ]
   );

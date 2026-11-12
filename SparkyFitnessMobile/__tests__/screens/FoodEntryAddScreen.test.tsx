@@ -506,6 +506,40 @@ describe('FoodEntryAddScreen', () => {
     }));
   });
 
+  it('opens the exact missing-nutrition Mealie recipe as an ingredient meal without logging food', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseExternalItem,
+        provider_type: 'mealie',
+        provider_external_id: 'rice / beans',
+        recipe_has_nutrition: false,
+        recipeProviderId: 'personal-provider',
+        recipeImportScope: 'owner-server',
+      },
+    });
+    fireEvent.press(screen.getByText('Import ingredients as a meal'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RecipeImport', {
+      providerId: 'personal-provider',
+      recipeSlug: 'rice / beans',
+      scope: 'owner-server',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+    expect(mockAddMeal).not.toHaveBeenCalled();
+  });
+
+  it('does not offer the recipe handoff after the owner changes', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseExternalItem,
+        provider_type: 'mealie',
+        provider_external_id: 'rice',
+        recipe_has_nutrition: false,
+        recipeProviderId: 'personal-provider',
+        recipeImportScope: 'previous-owner',
+      },
+    });
+    expect(screen.queryByText('Import ingredients as a meal')).toBeNull();
+  });
   it('logs an imported cooked batch as an ordinary 450g portion worth 600kcal', () => {
     const item = mealToFoodInfo({
       id: 'cooked-meal',

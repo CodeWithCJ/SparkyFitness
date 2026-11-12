@@ -13,7 +13,13 @@ import {
   previewRecipeNutritionSync,
   syncRecipeNutrition,
 } from '@/api/Foods/recipeImportService';
-import MealManagement from '@/pages/Foods/MealManagement';
+import MealManagementView from '@/pages/Foods/MealManagement';
+import { MemoryRouter } from 'react-router-dom';
+const MealManagement = () => (
+  <MemoryRouter>
+    <MealManagementView />
+  </MemoryRouter>
+);
 import type { Meal } from '@/types/meal';
 import type { RecipeImportSource } from '@workspace/shared';
 import { renderWithClient } from '../test-utils';

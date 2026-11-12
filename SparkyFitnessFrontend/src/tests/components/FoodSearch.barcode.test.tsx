@@ -11,6 +11,9 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch';
 import { searchBarcodeV2, searchFoodsV2 } from '@/api/Foods/foodService';
 import type { BarcodeLookupResponse } from '@workspace/shared';
 import type { DataProvider } from '@/types/settings';
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user', isActingOnBehalf: false }),
+}));
 
 const mockEmpty: never[] = [];
 const mockSearchData = { pages: [] };

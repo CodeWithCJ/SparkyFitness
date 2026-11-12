@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { RecipeImportPreview } from '@workspace/shared';
+import type {
+  RecipeImportPreview,
+  RecipeImportPreviewRequest,
+} from '@workspace/shared';
 import { useRecipeImportBrowserQueries } from '@/hooks/Foods/useRecipeImportQueries';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
@@ -15,17 +18,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RecipeImportReview from './RecipeImportReview';
 import RecipeImportSavedMappings from './RecipeImportSavedMappings';
+import RecipeImportSearchResult from './RecipeImportSearchResult';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenMeal: (mealId: string) => void;
+  initialRecipe?: RecipeImportPreviewRequest;
 }
 
 export default function RecipeImportDialog({
   open,
   onOpenChange,
   onOpenMeal,
+  initialRecipe,
 }: Props) {
   const { t } = useTranslation();
   const { isActingOnBehalf, activeUserId } = useActiveUser();
@@ -48,9 +54,10 @@ export default function RecipeImportDialog({
           </DialogDescription>
         </DialogHeader>
         <RecipeImportBrowser
-          key={activeUserId}
+          key={`${activeUserId}:${initialRecipe?.providerId}:${initialRecipe?.recipeSlug}`}
           ownerId={activeUserId}
           onOpenMeal={onOpenMeal}
+          initialRecipe={initialRecipe}
         />
       </DialogContent>
     </Dialog>
@@ -60,17 +67,20 @@ export default function RecipeImportDialog({
 function RecipeImportBrowser({
   ownerId,
   onOpenMeal,
+  initialRecipe,
 }: {
   ownerId: string;
   onOpenMeal: (mealId: string) => void;
+  initialRecipe?: RecipeImportPreviewRequest;
 }) {
   const { t } = useTranslation();
-  const [providerId, setProviderId] = useState('');
+  const [providerId, setProviderId] = useState(initialRecipe?.providerId ?? '');
+  const [initialDismissed, setInitialDismissed] = useState(false);
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<RecipeImportPreview | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [manualBusy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const generation = useRef(0);
   useEffect(
@@ -79,12 +89,14 @@ function RecipeImportBrowser({
     },
     []
   );
-  const { providers, recipes, previewRecipe } = useRecipeImportBrowserQueries(
-    ownerId,
-    providerId,
-    submittedSearch,
-    page
-  );
+  const { providers, recipes, previewRecipe, initialPreview } =
+    useRecipeImportBrowserQueries(
+      ownerId,
+      providerId,
+      submittedSearch,
+      page,
+      initialDismissed ? undefined : initialRecipe
+    );
   const mealieProviders = (providers.data ?? []).filter(
     (provider) =>
       provider.provider_type === 'mealie' &&
@@ -92,8 +104,15 @@ function RecipeImportBrowser({
       'user_id' in provider &&
       provider.user_id === ownerId
   );
+  const busy = manualBusy || initialPreview.isFetching;
+  const activePreview =
+    preview ??
+    (!initialDismissed && !initialPreview.isFetching
+      ? initialPreview.data
+      : null);
 
   async function choose(recipeSlug: string) {
+    setInitialDismissed(true);
     const request = ++generation.current;
     setBusy(true);
     setFailure(null);
@@ -117,12 +136,15 @@ function RecipeImportBrowser({
     }
   }
 
-  if (preview)
+  if (activePreview)
     return (
       <RecipeImportReview
-        key={`${preview.providerId}:${preview.recipeSlug}:${preview.sourceFingerprint}`}
-        preview={preview}
-        onBack={() => setPreview(null)}
+        key={`${activePreview.providerId}:${activePreview.recipeSlug}:${activePreview.sourceFingerprint}`}
+        preview={activePreview}
+        onBack={() => {
+          setInitialDismissed(true);
+          setPreview(null);
+        }}
         onOpenMeal={onOpenMeal}
       />
     );
@@ -137,6 +159,7 @@ function RecipeImportBrowser({
           className="w-full rounded-md border border-input bg-background p-2"
           value={providerId}
           onChange={(event) => {
+            setInitialDismissed(true);
             generation.current += 1;
             setProviderId(event.target.value);
             setPage(1);
@@ -201,17 +224,28 @@ function RecipeImportBrowser({
           )}
           {recipes.error && <p role="alert">{recipes.error.message}</p>}
           {failure && <p role="alert">{failure.message}</p>}
+          {!initialDismissed && initialPreview.error && (
+            <p role="alert">{initialPreview.error.message}</p>
+          )}
           <ul className="space-y-2">
             {recipes.data?.items.map((recipe) => (
               <li key={recipe.slug}>
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void choose(recipe.slug)}
-                >
-                  {recipe.name}
-                </Button>
+                {recipe.food ? (
+                  <RecipeImportSearchResult
+                    recipe={recipe}
+                    disabled={busy}
+                    onChoose={() => void choose(recipe.slug)}
+                  />
+                ) : (
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void choose(recipe.slug)}
+                  >
+                    {recipe.name}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

@@ -50,14 +50,14 @@ it('forgets only the saved mapping using DELETE on the pinned owner connection',
 });
 it('browses encoded recipe search using the authenticated API transport', async () => {
   request.mockResolvedValue({
-    items: [],
+    foods: [],
     pagination: { page: 2, pageSize: 10, totalCount: 0, hasMore: false },
   });
   await browseRecipes('provider', 'rice & beans', 2);
   expect(request).toHaveBeenCalledWith(
     expect.objectContaining({
       endpoint:
-        '/api/v2/recipe-imports/mealie/provider/recipes?search=rice+%26+beans&page=2',
+        '/api/v2/foods/search/mealie?query=rice+%26+beans&page=2&providerId=provider',
     })
   );
 });

@@ -10159,7 +10159,14 @@
     "suggestFailed": "Suggestions could not be loaded. Choose foods manually.",
     "finishReview": "Confirm every ingredient before saving.",
     "amountRequired": "Enter the whole-recipe amount in the selected unit. Volume is never automatically treated as mass.",
-    "missingServings": "The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable."
+    "missingServings": "The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.",
+    "reviewIngredients": "Review ingredients",
+    "recipeYield_one": "Recipe makes {{servings}} serving",
+    "recipeYield_other": "Recipe makes {{servings}} servings",
+    "noDeclaredNutrition": "No declared nutrition",
+    "missingNutritionHint": "This Mealie recipe has no declared nutrition. Calculate it from matched ingredients.",
+    "importAsMeal": "Import ingredients as a meal",
+    "searchMacros": "Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g"
   },
   "measurementTimeline": {
     "glucose": "Blood glucose (CGM)",

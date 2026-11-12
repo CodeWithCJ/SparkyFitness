@@ -1,6 +1,6 @@
 import { apiCall, HttpApiError } from '@/api/api';
 import {
-  recipeImportBrowseResponseSchema,
+  recipeImportBrowseFromFoodSearch,
   recipeImportPreviewSchema,
   recipeImportSaveResponseSchema,
   recipeImportSourceSchema,
@@ -13,6 +13,7 @@ import {
   type RecipeImportSaveRequest,
   type RecipeImportSuggestionRequest,
 } from '@workspace/shared';
+import { searchFoodsV2 } from './foodService';
 
 const root = '/v2/recipe-imports';
 const quiet = { suppressErrorToast: true };
@@ -39,11 +40,8 @@ export const browseRecipes = async (
   search: string,
   page: number
 ) =>
-  recipeImportBrowseResponseSchema.parse(
-    await apiCall(`${root}/mealie/${encodeURIComponent(providerId)}/recipes`, {
-      ...quiet,
-      params: { search, page },
-    })
+  recipeImportBrowseFromFoodSearch(
+    await searchFoodsV2('mealie', search, providerId, page)
   );
 export const previewRecipe = async (body: RecipeImportPreviewRequest) =>
   recipeImportPreviewSchema.parse(

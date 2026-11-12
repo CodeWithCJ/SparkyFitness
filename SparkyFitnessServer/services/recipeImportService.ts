@@ -1,5 +1,6 @@
 import {
   getConversionFactor,
+  recipeImportBrowseFromFoodSearch,
   recipeImportNoteNeedsReview,
   RECIPE_IMPORT_MAPPING_PAGE_SIZE,
   type RecipeImportPreview,
@@ -19,6 +20,7 @@ import {
   type RecipeImportSyncPreview,
   type RecipeImportSavedMappingsResponse,
 } from '@workspace/shared';
+import { searchMealieFoods } from './foodIntegrationService.js';
 import externalProviderService from './externalProviderService.js';
 import MealieService, {
   type MealieIngredientRecipe,
@@ -64,10 +66,7 @@ function requireOwner(userId: string, actorId: string): void {
       'Recipe import and nutrition sync are only available for your own account.'
     );
 }
-async function adapter(
-  userId: string,
-  providerId: string
-): Promise<MealieService> {
+async function ownedProvider(userId: string, providerId: string) {
   let provider: {
     user_id: string;
     provider_type: string;
@@ -100,9 +99,16 @@ async function adapter(
       'PROVIDER_FORBIDDEN',
       'Choose an active personal Mealie provider with a server URL and API key.'
     );
+  return { baseUrl: provider.base_url, apiKey: provider.app_key };
+}
+async function adapter(
+  userId: string,
+  providerId: string
+): Promise<MealieService> {
+  const provider = await ownedProvider(userId, providerId);
   return new MealieService(
-    provider.base_url,
-    provider.app_key,
+    provider.baseUrl,
+    provider.apiKey,
     await resolveFoodProviderNetworkPolicy(await resolveIsAdminByUserId(userId))
   );
 }
@@ -111,7 +117,7 @@ async function readRecipe(
   slug: string
 ): Promise<MealieIngredientRecipe> {
   try {
-    return await client.readIngredientRecipe(slug);
+    return await client.getRecipeDetails(slug, { requireIngredients: true });
   } catch {
     throw new RecipeImportError(
       502,
@@ -358,9 +364,20 @@ async function browse(
   page: number
 ): Promise<RecipeImportBrowseResponse> {
   requireOwner(userId, actorId);
-  const client = await adapter(userId, providerId);
+  const provider = await ownedProvider(userId, providerId);
   try {
-    return await client.browseIngredientRecipes(search, page);
+    const result = await searchMealieFoods(
+      search,
+      provider.baseUrl,
+      provider.apiKey,
+      userId,
+      providerId,
+      page
+    );
+    return recipeImportBrowseFromFoodSearch({
+      foods: result.items,
+      pagination: result.pagination,
+    });
   } catch {
     throw new RecipeImportError(
       502,

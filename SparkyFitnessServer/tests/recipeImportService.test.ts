@@ -25,7 +25,7 @@ vi.mock('../services/externalProviderService.js', () => ({
 }));
 vi.mock('../integrations/mealie/mealieService.js', () => ({
   default: class {
-    readIngredientRecipe = m.recipe;
+    getRecipeDetails = m.recipe;
     patchRecipeNutrition = m.patch;
   },
 }));

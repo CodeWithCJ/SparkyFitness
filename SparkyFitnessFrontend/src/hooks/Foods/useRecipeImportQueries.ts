@@ -13,6 +13,7 @@ import {
 import type {
   RecipeImportMapping,
   RecipeImportSource,
+  RecipeImportPreviewRequest,
 } from '@workspace/shared';
 import {
   browseRecipes,
@@ -49,7 +50,8 @@ export function useRecipeImportBrowserQueries(
   ownerId: string,
   providerId: string,
   search: string,
-  page: number
+  page: number,
+  initialRecipe?: RecipeImportPreviewRequest
 ) {
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   const allowed = !isActingOnBehalf && activeUserId === ownerId;
@@ -62,10 +64,41 @@ export function useRecipeImportBrowserQueries(
   const recipes = useQuery({
     queryKey: ['recipe-import-recipes', ownerId, providerId, search, page],
     queryFn: () => browseRecipes(providerId, search, page),
-    enabled: allowed && !!providerId,
+    enabled:
+      allowed &&
+      !!providerId &&
+      (providers.data ?? []).some(
+        (provider) =>
+          provider.id === providerId &&
+          provider.provider_type === 'mealie' &&
+          provider.is_active &&
+          'user_id' in provider &&
+          provider.user_id === ownerId
+      ),
     retry: false,
   });
-  return { providers, recipes, previewRecipe };
+  const initialPreview = useQuery({
+    queryKey: [
+      'recipe-import-direct',
+      ownerId,
+      initialRecipe?.providerId,
+      initialRecipe?.recipeSlug,
+    ],
+    queryFn: () => previewRecipe(initialRecipe!),
+    enabled:
+      allowed &&
+      !!initialRecipe &&
+      (providers.data ?? []).some(
+        (provider) =>
+          provider.id === initialRecipe.providerId &&
+          provider.provider_type === 'mealie' &&
+          provider.is_active &&
+          'user_id' in provider &&
+          provider.user_id === ownerId
+      ),
+    retry: false,
+  });
+  return { providers, recipes, previewRecipe, initialPreview };
 }
 
 export function useRecipeImportSavedMappings(

@@ -1,5 +1,4 @@
 import type {
-  RecipeImportBrowseResponse,
   RecipeImportPreviewRequest,
   RecipeImportPreview,
   RecipeImportSuggestionRequest,
@@ -13,11 +12,13 @@ import type {
 import {
   recipeImportSavedMappingsResponseSchema,
   recipeImportForgetMappingResponseSchema,
+  recipeImportBrowseFromFoodSearch,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
 import { ApiError, getApiErrorMessage } from './errors';
 import type { FoodItem } from '../../types/foods';
 import type { ServerConfig } from '../storage';
+import { searchNormalizedExternalFoods } from './externalFoodSearchApi';
 
 const root = '/api/v2/recipe-imports';
 async function request<T>(
@@ -67,13 +68,13 @@ export const forgetRecipeMapping = async (
       'DELETE'
     )
   );
-export const browseRecipes = (
+export const browseRecipes = async (
   providerId: string,
   search: string,
   page: number
 ) =>
-  request<RecipeImportBrowseResponse>(
-    `/mealie/${encodeURIComponent(providerId)}/recipes?${new URLSearchParams({ search, page: String(page) })}`
+  recipeImportBrowseFromFoodSearch(
+    await searchNormalizedExternalFoods('mealie', search, page, providerId)
   );
 export const previewRecipe = (payload: RecipeImportPreviewRequest) =>
   request<RecipeImportPreview>('/mealie/preview', payload);

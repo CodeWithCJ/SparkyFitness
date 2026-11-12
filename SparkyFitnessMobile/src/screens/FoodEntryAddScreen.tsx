@@ -1,4 +1,5 @@
 import { setPendingRecipeImportSelection } from '../services/recipeImportSelection';
+import Button from '../components/ui/Button';
 import AllergenWarning from '../components/AllergenWarning';
 import BarcodeSources from '../components/BarcodeSources';
 import React, {
@@ -1886,6 +1887,37 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           allergens={activeItem.allergens}
           traces={activeItem.traces}
         />
+        {!isRecipeImportSelection &&
+          !isFoodSelectionMode(pickerMode) &&
+          recipeOwnerScope &&
+          activeItem.recipeImportScope === recipeOwnerScope &&
+          activeItem.provider_type === 'mealie' &&
+          activeItem.recipe_has_nutrition === false &&
+          activeItem.recipeProviderId &&
+          activeItem.provider_external_id && (
+            <View className="rounded-xl border border-border-subtle p-3 gap-2">
+              <Text className="text-text-secondary">
+                {t('recipeImport.missingNutritionHint', {
+                  defaultValue:
+                    'This Mealie recipe has no declared nutrition. Calculate it from matched ingredients.',
+                })}
+              </Text>
+              <Button
+                variant="secondary"
+                onPress={() =>
+                  navigation.navigate('RecipeImport', {
+                    providerId: activeItem.recipeProviderId!,
+                    recipeSlug: activeItem.provider_external_id!,
+                    scope: recipeOwnerScope,
+                  })
+                }
+              >
+                {t('recipeImport.importAsMeal', {
+                  defaultValue: 'Import ingredients as a meal',
+                })}
+              </Button>
+            </View>
+          )}
 
         <FoodNutritionHeader
           name={adjustedValues?.name || activeItem.name}

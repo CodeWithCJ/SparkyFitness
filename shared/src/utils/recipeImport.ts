@@ -4,12 +4,36 @@ import type {
   RecipeImportIngredient,
   RecipeImportMapping,
   RecipeImportSuggestedMapping,
+  RecipeImportBrowseResponse,
 } from '../schemas/api/RecipeImport.api.zod.ts';
+import { NormalizedFoodSchema } from '../schemas/api/FoodLookup.api.zod.ts';
 import { getConversionFactor } from './servingSizeConversions.ts';
 
 type Suggestions = RecipeImportSuggestionResponse['ingredients'];
 
 const CORE_NUTRIENTS = ['calories', 'protein', 'carbs', 'fat'] as const;
+
+/** One food-search response feeds both the food picker and recipe browser. */
+export function recipeImportBrowseFromFoodSearch(response: {
+  foods: readonly unknown[];
+  pagination: RecipeImportBrowseResponse['pagination'];
+}): RecipeImportBrowseResponse {
+  return {
+    items: response.foods.map((value) => {
+      const food = NormalizedFoodSchema.parse(value);
+      if (food.provider_type !== 'mealie' || !food.provider_external_id)
+        throw new Error('Invalid Mealie recipe search result');
+      return {
+        id: food.id ?? null,
+        slug: food.provider_external_id,
+        name: food.name,
+        recipeServings: food.recipe_servings ?? null,
+        food,
+      };
+    }),
+    pagination: response.pagination,
+  };
+}
 
 /** Remembered choices never count as this preparation's explicit confirmations. */
 export function recipeImportInitialMappings(

@@ -51,6 +51,9 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   }),
 }));
 jest.mock('@/api/Foods/recipeImportService');
+jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
+  useCustomNutrients: () => ({ data: [] }),
+}));
 jest.mock('@/api/Foods/meals', () => ({ getMeals: jest.fn() }));
 jest.mock('@/api/Settings/externalProviderService', () => ({
   getExternalDataProviders: jest.fn(async () => [
@@ -208,7 +211,9 @@ const saved: RecipeImportSaveResponse = {
   totalServings: 4,
 };
 const api = jest.mocked(service);
-function setup() {
+function setup(
+  initialRecipe?: ComponentProps<typeof RecipeImportDialog>['initialRecipe']
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -220,6 +225,7 @@ function setup() {
           open
           onOpenChange={jest.fn()}
           onOpenMeal={jest.fn()}
+          initialRecipe={initialRecipe}
         />
       </QueryClientProvider>
     ),
@@ -312,6 +318,68 @@ beforeEach(() => {
     ingredients: [],
     aiUsed: true,
     warnings: [],
+  });
+});
+it('opens the exact handed-off recipe only after checking the personal provider', async () => {
+  setup({ providerId: 'provider', recipeSlug: 'rice / beans' });
+  await screen.findByRole('button', { name: 'Save meal' });
+  expect(api.previewRecipe).toHaveBeenCalledWith({
+    providerId: 'provider',
+    recipeSlug: 'rice / beans',
+  });
+  expect(api.saveRecipe).not.toHaveBeenCalled();
+});
+it('does not fetch a handed-off provider unavailable to the current owner', async () => {
+  setup({ providerId: 'foreign-provider', recipeSlug: 'rice' });
+  await screen.findByRole('option', { name: 'My Mealie' });
+  expect(api.previewRecipe).not.toHaveBeenCalled();
+  expect(api.browseRecipes).not.toHaveBeenCalled();
+});
+it('shows food-search nutrients and a separate ingredient review action on recipe results', async () => {
+  api.browseRecipes.mockResolvedValue({
+    items: [
+      {
+        id: 'recipe',
+        slug: 'rice',
+        name: 'Rice batch',
+        recipeServings: 4,
+        food: {
+          name: 'Rice batch',
+          brand: null,
+          is_custom: true,
+          provider_type: 'mealie',
+          provider_external_id: 'rice',
+          recipe_has_nutrition: true,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'serving',
+            is_default: true,
+            calories: 123,
+            protein: 4,
+            carbs: 20,
+            fat: 3,
+          },
+        },
+      },
+    ],
+    pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+  });
+  setup();
+  await screen.findByRole('option', { name: 'My Mealie' });
+  fireEvent.change(screen.getByLabelText('Mealie provider'), {
+    target: { value: 'provider' },
+  });
+  expect(
+    await screen.findByText('Recipe makes 4 servings')
+  ).toBeInTheDocument();
+  expect(screen.getByText('protein')).toBeInTheDocument();
+  expect(screen.getByText('carbs')).toBeInTheDocument();
+  expect(screen.getByText('fat')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Review ingredients' }));
+  await screen.findByRole('button', { name: 'Save meal' });
+  expect(api.previewRecipe).toHaveBeenCalledWith({
+    providerId: 'provider',
+    recipeSlug: 'rice',
   });
 });
 it('selects a recipe, requires a manual mapping and saves whole cooked grams separately from ingredient amounts', async () => {

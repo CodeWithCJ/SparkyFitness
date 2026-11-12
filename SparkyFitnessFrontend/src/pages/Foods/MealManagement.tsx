@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,10 @@ import {
 } from '@/utils/nutrientUtils';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { filterAndSortByTerms } from '@workspace/shared';
+import {
+  filterAndSortByTerms,
+  recipeImportPreviewRequestSchema,
+} from '@workspace/shared';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -90,6 +94,24 @@ const MealManagement: React.FC = () => {
   const { t } = useTranslation();
   const { isActingOnBehalf, activeUserId } = useActiveUser();
   const [showRecipeImport, setShowRecipeImport] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const parsedRecipe = recipeImportPreviewRequestSchema.safeParse({
+    providerId: searchParams.get('mealieProvider'),
+    recipeSlug: searchParams.get('mealieRecipe'),
+  });
+  const initialRecipe = parsedRecipe.success ? parsedRecipe.data : undefined;
+  function closeRecipeImport() {
+    setShowRecipeImport(false);
+    if (
+      searchParams.has('mealieProvider') ||
+      searchParams.has('mealieRecipe')
+    ) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('mealieProvider');
+      next.delete('mealieRecipe');
+      setSearchParams(next, { replace: true });
+    }
+  }
   const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
@@ -732,19 +754,24 @@ const MealManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {showRecipeImport && !isActingOnBehalf && activeUserId && (
-        <React.Suspense fallback={null}>
-          <RecipeImportDialog
-            key={activeUserId}
-            open
-            onOpenChange={setShowRecipeImport}
-            onOpenMeal={(mealId) => {
-              setShowRecipeImport(false);
-              handleEditMeal(mealId);
-            }}
-          />
-        </React.Suspense>
-      )}
+      {(showRecipeImport || initialRecipe) &&
+        !isActingOnBehalf &&
+        activeUserId && (
+          <React.Suspense fallback={null}>
+            <RecipeImportDialog
+              key={activeUserId}
+              open
+              initialRecipe={initialRecipe}
+              onOpenChange={(open) => {
+                if (!open) closeRecipeImport();
+              }}
+              onOpenMeal={(mealId) => {
+                closeRecipeImport();
+                handleEditMeal(mealId);
+              }}
+            />
+          </React.Suspense>
+        )}
 
       <BulkActionToolbar
         selectedCount={selectedCount}

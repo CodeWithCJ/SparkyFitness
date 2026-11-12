@@ -134,7 +134,14 @@
       "mapping_unavailable": "The saved food mapping is unavailable. Choose a food again.",
       "incomplete_nutrition": "Some optional nutrients are unknown. Known nutrition can still be used.",
       "incompatible_unit": "Review the quantity in the selected food unit. Volume is never treated as mass."
-    }
+    },
+    "reviewIngredients": "Review ingredients",
+    "recipeYield_one": "Recipe makes {{servings}} serving",
+    "recipeYield_other": "Recipe makes {{servings}} servings",
+    "noDeclaredNutrition": "No declared nutrition",
+    "missingNutritionHint": "This Mealie recipe has no declared nutrition. Calculate it from matched ingredients.",
+    "importAsMeal": "Import ingredients as a meal",
+    "searchMacros": "Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g"
   },
   "barcodeLookup": {
     "title": "Barcode results",

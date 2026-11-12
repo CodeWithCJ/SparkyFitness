@@ -122,7 +122,8 @@ export type RootStackParamList = {
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
-  RecipeImport: undefined;
+  RecipeImport:
+    { providerId: string; recipeSlug: string; scope: string } | undefined;
   MealPlans: undefined;
   WorkoutPlans: undefined;
   WorkoutPlanForm: { template?: WorkoutPlanTemplate } | undefined;

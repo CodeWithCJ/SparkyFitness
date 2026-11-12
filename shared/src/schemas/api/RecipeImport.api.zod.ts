@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NormalizedFoodSchema } from './FoodLookup.api.zod.ts';
 
 const positive = z.number().finite().positive().max(1e9);
 const identifier = z.string().min(1).max(300);
@@ -156,6 +157,7 @@ export const recipeImportBrowseResponseSchema = z.object({
       slug: z.string(),
       name: z.string(),
       recipeServings: positive.nullable(),
+      food: NormalizedFoodSchema.optional(),
     })
   ),
   pagination: z.object({

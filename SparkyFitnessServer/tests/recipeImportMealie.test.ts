@@ -55,10 +55,10 @@ describe('Mealie targeted ingredient transport', () => {
       vi.fn().mockResolvedValue(new Response('error', { status: 500 }))
     );
     await expect(
-      new MealieService(
-        'https://recipe.example',
-        'fixture'
-      ).readIngredientRecipe('recipe')
+      new MealieService('https://recipe.example', 'fixture').getRecipeDetails(
+        'recipe',
+        { requireIngredients: true }
+      )
     ).rejects.toThrow(/Mealie recipe read failed/);
   });
 });
@@ -67,12 +67,12 @@ describe('sanitized ingredient operation failures', () => {
     {
       operation: 'recipe read',
       call: (adapter: MealieService) =>
-        adapter.readIngredientRecipe('private-slug'),
+        adapter.getRecipeDetails('private-slug', { requireIngredients: true }),
     },
     {
       operation: 'recipe search',
       call: (adapter: MealieService) =>
-        adapter.browseIngredientRecipes('private-search', 1),
+        adapter.searchRecipes('private-search', 1),
     },
     {
       operation: 'nutrition update',

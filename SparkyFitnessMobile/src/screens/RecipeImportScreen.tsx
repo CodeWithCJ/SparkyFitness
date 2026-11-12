@@ -3,6 +3,11 @@ import { ScrollView, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDebounce } from '../hooks/useDebounce';
+import { useCSSVariable } from 'uniwind';
+import { OnlineResultRow } from '../components/foodSearch/FoodSearchResultRow';
+import { _transformNormalizedFood } from '../services/api/externalFoodSearchApi';
+import { formatLocalizedNumber } from '../localization';
 import type { RecipeImportPreview } from '@workspace/shared';
 import { fetchExternalProviders } from '../services/api/externalProvidersApi';
 import { browseRecipes, previewRecipe } from '../services/api/recipeImportApi';
@@ -19,16 +24,22 @@ import type { RootStackScreenProps } from '../types/navigation';
 function RecipeImportWorkspace({
   scope,
   navigation,
+  initialRecipe,
 }: {
   scope: string;
   navigation: RootStackScreenProps<'RecipeImport'>['navigation'];
+  initialRecipe?: { providerId: string; recipeSlug: string };
 }) {
   const { t } = useTranslation();
-  const [providerId, setProviderId] = useState('');
+  const [providerId, setProviderId] = useState(initialRecipe?.providerId ?? '');
+  const [initialDismissed, setInitialDismissed] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<RecipeImportPreview | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [manualBusy, setBusy] = useState(false);
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  const searching = search.trim() !== debouncedSearch;
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
   useEffect(
@@ -47,12 +58,34 @@ function RecipeImportWorkspace({
       (provider) => provider.provider_type === 'mealie' && provider.is_active
     ) ?? [];
   const recipes = useQuery({
-    queryKey: ['recipeImportBrowse', scope, providerId, search, page],
-    queryFn: () => browseRecipes(providerId, search, page),
-    enabled: !!providerId,
+    queryKey: ['recipeImportBrowse', scope, providerId, debouncedSearch, page],
+    queryFn: () => browseRecipes(providerId, debouncedSearch, page),
+    enabled:
+      !searching && available.some((provider) => provider.id === providerId),
     retry: false,
   });
+  const initialPreview = useQuery({
+    queryKey: [
+      'recipeImportDirect',
+      scope,
+      initialRecipe?.providerId,
+      initialRecipe?.recipeSlug,
+    ],
+    queryFn: () => previewRecipe(initialRecipe!),
+    enabled:
+      !initialDismissed &&
+      !!initialRecipe &&
+      available.some((provider) => provider.id === initialRecipe.providerId),
+    retry: false,
+  });
+  const busy = manualBusy || initialPreview.isFetching || searching;
+  const activePreview =
+    preview ??
+    (!initialDismissed && !initialPreview.isFetching
+      ? initialPreview.data
+      : null);
   async function openRecipe(slug: string) {
+    setInitialDismissed(true);
     const request = ++generation.current;
     setBusy(true);
     setError(null);
@@ -72,15 +105,16 @@ function RecipeImportWorkspace({
       if (generation.current === request) setBusy(false);
     }
   }
-  if (preview)
+  if (activePreview)
     return (
       <RecipeImportReview
-        key={`${scope}:${preview.providerId}:${preview.recipeSlug}:${preview.sourceFingerprint}`}
-        preview={preview}
+        key={`${scope}:${activePreview.providerId}:${activePreview.recipeSlug}:${activePreview.sourceFingerprint}`}
+        preview={activePreview}
         scope={scope}
         navigation={navigation}
         onBack={() => {
           generation.current += 1;
+          setInitialDismissed(true);
           setPreview(null);
         }}
       />
@@ -121,6 +155,7 @@ function RecipeImportWorkspace({
           disabled={busy}
           onPress={() => {
             generation.current += 1;
+            setInitialDismissed(true);
             setProviderId(provider.id);
             setPage(1);
             setError(null);
@@ -151,7 +186,7 @@ function RecipeImportWorkspace({
               setBusy(false);
             }}
           />
-          {recipes.isLoading && (
+          {(recipes.isLoading || searching || initialPreview.isFetching) && (
             <Text className="text-text-secondary">
               {t('recipeImport.loadingRecipes', {
                 defaultValue: 'Loading recipes…',
@@ -164,14 +199,38 @@ function RecipeImportWorkspace({
             </Text>
           )}
           {recipes.data?.items.map((recipe) => (
-            <Button
-              key={recipe.slug}
-              variant="secondary"
-              disabled={busy}
-              onPress={() => void openRecipe(recipe.slug)}
-            >
-              {recipe.name}
-            </Button>
+            <View key={recipe.slug}>
+              {recipe.food ? (
+                <>
+                  <OnlineResultRow
+                    item={_transformNormalizedFood(recipe.food, 'mealie')}
+                    providerId={providerId}
+                    accentColor={accentColor}
+                    loadingFoodId={busy ? recipe.slug : null}
+                    getProviderColor={() => accentColor}
+                    showMacros
+                    onSelect={async () => openRecipe(recipe.slug)}
+                  />
+                  {recipe.recipeServings && (
+                    <Text className="text-text-secondary text-xs">
+                      {t('recipeImport.recipeYield', {
+                        defaultValue: 'Recipe makes {{servings}} servings',
+                        count: recipe.recipeServings,
+                        servings: formatLocalizedNumber(recipe.recipeServings),
+                      })}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onPress={() => void openRecipe(recipe.slug)}
+                >
+                  {recipe.name}
+                </Button>
+              )}
+            </View>
           ))}
           {recipes.data && !recipes.data.items.length && (
             <Text className="text-text-secondary">
@@ -203,12 +262,18 @@ function RecipeImportWorkspace({
           {error}
         </Text>
       )}
+      {!initialDismissed && initialPreview.error && (
+        <Text accessibilityRole="alert" className="text-danger">
+          {initialPreview.error.message}
+        </Text>
+      )}
     </View>
   );
 }
 
 export default function RecipeImportScreen({
   navigation,
+  route,
 }: RootStackScreenProps<'RecipeImport'>) {
   const { t } = useTranslation();
   const scope = useRecipeImportAccess();
@@ -237,9 +302,17 @@ export default function RecipeImportScreen({
       >
         {scope ? (
           <RecipeImportWorkspace
-            key={scope}
+            key={`${scope}:${route.params?.scope === scope ? route.params?.recipeSlug : ''}`}
             scope={scope}
             navigation={navigation}
+            initialRecipe={
+              route.params?.scope === scope
+                ? {
+                    providerId: route.params.providerId,
+                    recipeSlug: route.params.recipeSlug,
+                  }
+                : undefined
+            }
           />
         ) : (
           <Text className="text-text-secondary">
