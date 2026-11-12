@@ -1871,7 +1871,7 @@ private struct HoldRunning: View {
                     .padding(.top, WatchStyle.m(7))
                 // The name on its own line, shrinking and then scrolling when it
                 // is long, and the weight under it in the hold's colour.
-                FitName(text: step.exerciseName, size: 21, widthFraction: 0.97, height: WatchStyle.m(26))
+                FitName(text: step.exerciseName, size: 21, alignment: .center, height: WatchStyle.m(26))
                     .padding(.top, WatchStyle.m(4))
                 if let weight {
                     Text(SetValueText.weightLabel(weight, unit: checkIn.context.effectiveWeightUnit))
@@ -1879,7 +1879,6 @@ private struct HoldRunning: View {
                         .foregroundStyle(amber.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .frame(height: WatchStyle.m(24))
                 }
                 Text(String(localized: "watch.workout.holdTapToEnd", defaultValue: "Tap the ring to end early"))
@@ -2165,6 +2164,8 @@ struct FitName: View {
     var color: Color = .white
     /// The share of the available width the text may use.
     var widthFraction: CGFloat = 1
+    /// Where a name that fits sits in its row; one that scrolls fills it.
+    var alignment: Alignment = .leading
     let height: CGFloat
 
     @Environment(\.isLuminanceReduced) private var reducedLuminance
@@ -2194,7 +2195,7 @@ struct FitName: View {
                 }
             }
             .foregroundStyle(color)
-            .frame(width: available, height: proxy.size.height, alignment: .leading)
+            .frame(width: available, height: proxy.size.height, alignment: alignment)
             .clipped()
         }
         .frame(height: height)
