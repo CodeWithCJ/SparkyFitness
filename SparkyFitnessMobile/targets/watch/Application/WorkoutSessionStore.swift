@@ -966,6 +966,12 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Seconds left on a hold that was started for this set. Nil when it
     /// was never started, so the view can show the full target instead.
+    /// The hold countdown for this set is running: the set screen then shows the
+    /// ring in place of the set's values.
+    func isHoldRunning(_ step: WorkoutStep) -> Bool {
+        holdSetId == step.plannedSet.setId && holdEndsAt != nil && targetDurationSec(for: step) != nil
+    }
+
     func holdRemaining(for setId: String, now: Date = Date()) -> Int? {
         guard holdSetId == setId, let endsAt = holdEndsAt else { return nil }
         return max(0, Int(endsAt.timeIntervalSince(now).rounded()))

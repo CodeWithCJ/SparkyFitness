@@ -10,7 +10,6 @@ import SwiftUI
 struct EditPreviousSetView: View {
     @EnvironmentObject private var store: WorkoutSessionStore
     @EnvironmentObject private var checkIn: CheckInStore
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.setTint) private var tint
 
     private enum Field: Identifiable {
@@ -27,8 +26,12 @@ struct EditPreviousSetView: View {
     private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
     private var carryUnit: CarryUnit { checkIn.context.effectiveCarryUnit }
 
-    init(startingAt index: Int) {
+    /// Called by Save: the page that presented this closes it.
+    let onClose: () -> Void
+
+    init(startingAt index: Int, onClose: @escaping () -> Void) {
         _index = State(initialValue: index)
+        self.onClose = onClose
     }
 
     /// The logged set nearest before the cursor, else the last one logged.
@@ -56,8 +59,8 @@ struct EditPreviousSetView: View {
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 HStack(spacing: WatchStyle.m(8)) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: WatchStyle.m(17), weight: .semibold))
+                    Text("✎")
+                        .font(.system(size: WatchStyle.m(17)))
                         .frame(width: WatchStyle.m(36), height: WatchStyle.m(36))
                         .background(tint.pillIcon, in: Circle())
                     Text(String(localized: "watch.workout.editingSet", defaultValue: "Set \(step.setNumber)"))
@@ -143,10 +146,10 @@ struct EditPreviousSetView: View {
                     .disabled(index >= count - 1)
                     .accessibilityLabel(String(localized: "watch.workout.nextLoggedSet", defaultValue: "Next set"))
             }
-            .padding(.bottom, WatchStyle.m(22))
+            .padding(.bottom, WatchStyle.m(22) + WatchStyle.mockSlack)
         }
         .padding(.horizontal, max(0, WatchStyle.m(29) - 5.5))
-        .padding(.top, WatchStyle.m(34))
+        .padding(.top, WatchStyle.m(34) + 1)
         .ignoresSafeArea(edges: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .sheet(item: $editing) { field in
@@ -186,7 +189,7 @@ struct EditPreviousSetView: View {
         index = min(max(index + delta, 0), logged.count - 1)
     }
 
-    private func save() { dismiss() }
+    private func save() { onClose() }
 }
 
 /// The dots of the set on screen, as on the set screen but for display only.

@@ -102,6 +102,8 @@ enum ScreenshotSeed {
     static var elapsedOverride: Int? { has("mockup") ? 24 * 60 + 18 : nil }
     static var restRemainingOverride: Int? { has("mockup") ? 78 : nil }
 
+    static var holdRemainingOverride: Int? { has("mockup") ? 32 : nil }
+
     /// `SPARKY_SCREENSHOT_AT`: the mockup plan's block to land on (1...6, with
     /// 6 the superset), or a set id.
     private static var landingSetId: String {
@@ -118,7 +120,7 @@ enum ScreenshotSeed {
     @MainActor
     private static func seedMockup(_ workout: WorkoutSessionStore) {
         workout.start(with: SampleDay.mockupPlan)
-        workout.recordHeartRate(bpm: 141)
+        workout.recordHeartRate(bpm: Double(ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_BPM"] ?? "") ?? 141)
         workout.recordActiveEnergy(kcal: 186)
         // Logged before the screen under test: both band sets, the first
         // bench set, a carry pair, the first pull-up.
@@ -128,6 +130,7 @@ enum ScreenshotSeed {
             workout.skipRest()
         }
         workout.goToStep(setId: landingSetId)
+        if has("holdrunning") { workout.startHold(for: "m30", seconds: 60) }
         if workoutState == .resting {
             workout.completeCurrentSet()
         }
