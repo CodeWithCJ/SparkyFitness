@@ -40,6 +40,80 @@
     <string name="page_fasting">Fasting</string>
     <string name="page_steps">Steps</string>
 
+    <!-- Common Actions & Labels -->
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_done">Done</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_skip">Skip</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_close">Close</string>
+
+    <!-- Goals Screen -->
+    <string name="goals_title">Today\'s Goals</string>
+    <string name="goals_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s nutrition goals.</string>
+    <string name="goals_energy_left">%1$d \%2$s left</string>
+    <string name="goals_energy_over">%1$d \%2$s over</string>
+
+    <!-- Water Screen -->
+    <string name="water_title">Hydration</string>
+    <string name="water_default_glass">Glass</string>
+    <string name="water_default_bottle">Bottle</string>
+    <string name="water_includes_from_food">Includes %1$s from food</string>
+    <string name="water_sync_failed">Sync failed • Tap to retry</string>
+    <string name="water_syncing_amount">+%1$s syncing…</string>
+    <string name="water_log_count">Log (%1$d)</string>
+    <string name="water_undo_last">Undo Last</string>
+    <string name="water_remove_drink_title">Remove Drink?</string>
+    <string name="water_todays_drinks_title">Today\'s Drinks</string>
+    <string name="water_no_drinks_logged">No drinks logged today.</string>
+
+    <!-- Medications Screen -->
+    <string name="meds_title_empty">Medications</string>
+    <string name="meds_title_count">Meds (%1$d/\%2$d)</string>
+    <string name="meds_none_scheduled">No medications scheduled for today.</string>
+
+    <!-- Weight & Trend Screens -->
+    <string name="weight_title">Weight Check-In</string>
+    <string name="weight_keypad_title">Weight (%1$s)</string>
+    <string name="weight_body_fat_title">Body Fat %%</string>
+    <string name="weight_tap_to_type">TAP TO TYPE</string>
+    <string name="weight_no_prior">No prior weight</string>
+    <string name="weight_same_as_last">Same as last</string>
+    <string name="weight_set_start">Set Start</string>
+    <string name="weight_bf_short">BF %1$.1f%%</string>
+    <string name="weight_add_bf">+BF%%</string>
+    <string name="weight_queued">Queued ✓</string>
+    <string name="weight_save_delta">Save %1$s\%2$.1f</string>
+    <string name="weight_starting_title">Starting Weight</string>
+    <string name="trend_body_fat_title">Body Fat Trend</string>
+    <string name="trend_weight_title">Weight Trend</string>
+    <string name="trend_bf_summary">Last %1$d: %2$s\%3$.1f%% (%4$.1f–\%5$.1f%%)</string>
+    <string name="trend_weight_summary">Last %1$d: \%2$s%3$.1f \%4$s (%5$.1f–\%6$.1f)</string>
+    <string name="trend_empty_state">Log at least 2 weight check-ins to see your trend chart.</string>
+
+    <!-- Now Playing Screen -->
+    <string name="now_playing_title">Now Playing</string>
+    <string name="now_playing_vol_down">Vol −</string>
+    <string name="now_playing_vol_up">Vol +</string>
+
+    <!-- Fasting Screen -->
+    <string name="fasting_title">Fasting</string>
+    <string name="fasting_title_active">Fasting (%1$s)</string>
+    <string name="fasting_progress_of">%1$d\%\% of \%2$dh</string>
+    <string name="fasting_end_button">End Fast</string>
+    <string name="fasting_start_prompt">Start a Fast</string>
+
+    <!-- Steps Screen -->
+    <string name="steps_title">Daily Steps</string>
+    <string name="steps_remaining">%1$s steps to goal</string>
+    <string name="steps_goal_reached">Goal reached! 🎉</string>
+
+    <!-- Sleep Screen -->
+    <string name="sleep_title">Sleep Health</string>
+    <string name="sleep_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s sleep data.</string>
+
     <!-- Goals Screen -->
     <!-- Hier kommen als Nächstes die Strings aus GoalsSummaryPage.kt rein -->
 
