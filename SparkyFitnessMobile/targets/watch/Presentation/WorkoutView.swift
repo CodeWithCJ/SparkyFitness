@@ -2065,25 +2065,78 @@ private struct LogSetButton: View {
     }
 }
 
-/// The exercise's name, as large as 38 px but shrunk to fit within 97% of the
-/// row's width, so a long name is smaller rather than cut off.
+/// One line of text that keeps its size down to 85% to fit, then scrolls
+/// (`MarqueeText`, with its pauses at the ends). Dimmed (always-on) it does not
+/// move: the start of the text is shown, cut with an ellipsis, to spare the
+/// battery.
+struct FitName: View {
+    let text: String
+    /// Mockup px at full size.
+    let size: CGFloat
+    var weight: Font.Weight = .semibold
+    var color: Color = .white
+    /// The share of the available width the text may use.
+    var widthFraction: CGFloat = 1
+    let height: CGFloat
+
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+    @State private var natural: CGFloat = 0
+
+    private static let floor: CGFloat = 0.85
+
+    var body: some View {
+        let font = Font.system(size: WatchStyle.m(size), weight: weight)
+        GeometryReader { proxy in
+            let available = proxy.size.width * widthFraction
+            let overflows = natural * Self.floor > available + 0.5
+            Group {
+                if overflows && (reducedLuminance || WatchStyle.forcedDimming) {
+                    Text(text)
+                        .font(.system(size: WatchStyle.m(size) * Self.floor, weight: weight))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                } else if overflows {
+                    MarqueeText(text: text)
+                        .font(.system(size: WatchStyle.m(size) * Self.floor, weight: weight))
+                } else {
+                    Text(text)
+                        .font(font)
+                        .lineLimit(1)
+                        .minimumScaleFactor(Self.floor)
+                }
+            }
+            .foregroundStyle(color)
+            .frame(width: available, height: proxy.size.height, alignment: .leading)
+        }
+        .frame(height: height)
+        // The name's width at full size, to know whether it needs to scroll.
+        .background(alignment: .leading) {
+            Text(text)
+                .font(font)
+                .lineLimit(1)
+                .fixedSize()
+                .hidden()
+                .background(GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { natural = proxy.size.width }
+                        .onChange(of: proxy.size.width) { natural = proxy.size.width }
+                })
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+}
+
+/// The exercise's name, as large as 38 px and within 97% of the row; a long
+/// one shrinks a little, then scrolls (`FitName`).
 struct SetTitle: View {
     let name: String
     var maxSize: CGFloat = 38
 
     var body: some View {
-        GeometryReader { proxy in
-            Text(name)
-                .font(.system(size: WatchStyle.m(maxSize), weight: .semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.3)
-                .frame(width: proxy.size.width * 0.97, height: proxy.size.height, alignment: .leading)
-        }
-        .padding(.leading, WatchStyle.m(4))
-        .frame(height: WatchStyle.m(44))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(name)
-        .accessibilityAddTraits(.isHeader)
+        FitName(text: name, size: maxSize, widthFraction: 0.97, height: WatchStyle.m(44))
+            .padding(.leading, WatchStyle.m(4))
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -2168,11 +2221,13 @@ private struct SetDetailRow: View {
 
     var body: some View {
         HStack(spacing: WatchStyle.m(8)) {
-            caption
-                .font(.system(size: WatchStyle.m(15)))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            FitName(
+                text: captionText,
+                size: 15,
+                weight: .regular,
+                color: step.supersetRun.map { SetSupersetPalette.tint(for: $0).color } ?? WatchStyle.grey,
+                height: WatchStyle.m(18)
+            )
             SetProgressRow(step: step, onSelect: onSelect)
                 .fixedSize()
         }
@@ -2180,17 +2235,16 @@ private struct SetDetailRow: View {
         .frame(height: WatchStyle.m(18))
     }
 
-    private var caption: Text {
+    private var captionText: String {
         let base: String
         if let partner = step.supersetWith {
             base = String(localized: "watch.workout.superset", defaultValue: "Superset · \(partner)")
         } else {
             base = step.equipment ?? SetProgressRow.title(for: step)
         }
-        let text = store.isCompleted(step)
-            ? Text(base + " · " + String(localized: "watch.workout.logged", defaultValue: "logged"))
-            : Text(base)
-        return text.foregroundStyle(step.supersetRun.map { SetSupersetPalette.tint(for: $0).color } ?? WatchStyle.grey)
+        return store.isCompleted(step)
+            ? base + " · " + String(localized: "watch.workout.logged", defaultValue: "logged")
+            : base
     }
 }
 
@@ -2368,15 +2422,14 @@ private struct RestView: View {
                     // then its weight and reps in large type, then dots for
                     // where it falls among the exercise's sets.
                     VStack(alignment: .leading, spacing: 0) {
-                        (Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
-                            .font(.system(size: WatchStyle.m(17), weight: .medium))
-                            .foregroundStyle(WatchStyle.grey)
-                         + Text(next.exerciseName)
-                            .font(.system(size: WatchStyle.m(17), weight: .semibold))
-                            .foregroundColor(nextSupersetColor(next) ?? Color.white))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                            .frame(height: WatchStyle.m(21))
+                        HStack(spacing: 0) {
+                            Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
+                                .font(.system(size: WatchStyle.m(17), weight: .medium))
+                                .foregroundStyle(WatchStyle.grey)
+                                .fixedSize()
+                            FitName(text: next.exerciseName, size: 17, color: nextSupersetColor(next) ?? Color.white, height: WatchStyle.m(21))
+                        }
+                        .frame(height: WatchStyle.m(21))
                         if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true) {
                             Text(target)
                                 .font(.system(size: WatchStyle.m(21), weight: .semibold, design: .rounded))

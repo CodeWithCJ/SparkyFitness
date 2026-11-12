@@ -33,15 +33,14 @@ struct WorkoutMoreUpNextPage: View {
     private func card(_ next: WorkoutStep?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if let next {
-                (Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
-                    .font(.system(size: WatchStyle.m(17), weight: .medium))
-                    .foregroundStyle(WatchStyle.grey)
-                 + Text(next.exerciseName)
-                    .font(.system(size: WatchStyle.m(17), weight: .semibold))
-                    .foregroundColor(next.supersetRun.map(SetSupersetPalette.color(for:)) ?? Color.white))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(height: WatchStyle.m(21))
+                HStack(spacing: 0) {
+                    Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
+                        .font(.system(size: WatchStyle.m(17), weight: .medium))
+                        .foregroundStyle(WatchStyle.grey)
+                        .fixedSize()
+                    FitName(text: next.exerciseName, size: 17, color: next.supersetRun.map(SetSupersetPalette.color(for:)) ?? Color.white, height: WatchStyle.m(21))
+                }
+                .frame(height: WatchStyle.m(21))
                 if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true) {
                     Text(target)
                         .font(.system(size: WatchStyle.m(21), weight: .semibold, design: .rounded))
