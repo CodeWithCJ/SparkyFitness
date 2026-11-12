@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PanelsTopLeft, type LucideIcon } from 'lucide-react';
 import { WEB_HIDEABLE_TAB_IDS } from '@workspace/shared';
 import { AccordionContent, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCycleSettings } from '@/hooks/useCycle';
@@ -23,7 +24,7 @@ function TabIcon({ icon: Icon }: { icon: LucideIcon }) {
 /** Settings > Profile & Account > Tabs: show or hide the main website tabs. */
 export const WebTabsSettings = () => {
   const { t } = useTranslation();
-  const { hidden, isLoading } = useHiddenWebTabs();
+  const { hidden, editState, reload } = useHiddenWebTabs();
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
 
@@ -40,6 +41,27 @@ export const WebTabsSettings = () => {
         {t('settings.webTabs.title', 'Tabs')}
       </AccordionTrigger>
       <AccordionContent className="p-4 pt-0 space-y-4">
+        {editState === 'actingOnBehalf' && (
+          <p className="text-sm text-muted-foreground">
+            {t(
+              'settings.webTabs.actingOnBehalf',
+              'You can only change the tabs on your own account.'
+            )}
+          </p>
+        )}
+        {editState === 'loadFailed' && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-destructive">
+              {t(
+                'settings.webTabs.loadError',
+                'Could not load your tab choices.'
+              )}
+            </p>
+            <Button variant="outline" size="sm" onClick={reload}>
+              {t('common.retry', 'Retry')}
+            </Button>
+          </div>
+        )}
         {WEB_HIDEABLE_TAB_IDS.map((id) => {
           const switchId = `web-tab-${id}`;
           return (
@@ -51,7 +73,7 @@ export const WebTabsSettings = () => {
               <Switch
                 id={switchId}
                 checked={!hidden.has(id)}
-                disabled={isLoading}
+                disabled={editState !== 'ready'}
                 onCheckedChange={(visible) => setTabHidden(id, !visible)}
               />
             </div>

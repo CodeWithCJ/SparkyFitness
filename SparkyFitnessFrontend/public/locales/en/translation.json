@@ -3260,7 +3260,9 @@
       "cycleOff": "Off",
       "cycleHint": "{{name}} has its own on/off switch in the Wellness settings tab.",
       "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
-      "saveError": "Could not save your tab choice. Please try again."
+      "saveError": "Could not save your tab choice. Please try again.",
+      "loadError": "Could not load your tab choices.",
+      "actingOnBehalf": "You can only change the tabs on your own account."
     }
   },
   "admin": {

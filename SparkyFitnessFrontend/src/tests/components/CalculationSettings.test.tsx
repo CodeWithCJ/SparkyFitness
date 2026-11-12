@@ -35,7 +35,7 @@ const defaultCalorieInputs: CalorieInputs = {
 let mockCalorieInputs: CalorieInputs | undefined = defaultCalorieInputs;
 
 jest.mock('@/hooks/Settings/useHiddenWebTabs', () => ({
-  useHiddenWebTabs: () => ({ hidden: new Set(), isLoading: false }),
+  useHiddenWebTabs: () => ({ hidden: new Set(), editState: 'ready' }),
 }));
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({

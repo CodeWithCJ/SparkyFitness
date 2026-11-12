@@ -32,7 +32,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 }));
 let mockHiddenTabs = new Set<string>();
 jest.mock('@/hooks/Settings/useHiddenWebTabs', () => ({
-  useHiddenWebTabs: () => ({ hidden: mockHiddenTabs, isLoading: false }),
+  useHiddenWebTabs: () => ({ hidden: mockHiddenTabs, editState: 'ready' }),
 }));
 
 const today = todayInZone('UTC');

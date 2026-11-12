@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import type { WebHideableTabId } from '@workspace/shared';
+import type { WebTabsEditState } from '@/hooks/Settings/useHiddenWebTabs';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { WebTabsSettings } from '@/pages/Settings/WebTabsSettings';
 
@@ -9,9 +10,15 @@ jest.mock('react-i18next', () =>
 );
 
 let mockHidden = new Set<WebHideableTabId>();
+let mockEditState: WebTabsEditState = 'ready';
 const mockSetTabHidden = jest.fn();
+const mockReload = jest.fn();
 jest.mock('@/hooks/Settings/useHiddenWebTabs', () => ({
-  useHiddenWebTabs: () => ({ hidden: mockHidden, isLoading: false }),
+  useHiddenWebTabs: () => ({
+    hidden: mockHidden,
+    editState: mockEditState,
+    reload: mockReload,
+  }),
   useSetWebTabHidden: () => ({
     setTabHidden: mockSetTabHidden,
     isPending: false,
@@ -41,6 +48,7 @@ describe('WebTabsSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHidden = new Set();
+    mockEditState = 'ready';
     mockCycleSettings = null;
   });
 
@@ -68,6 +76,38 @@ describe('WebTabsSettings', () => {
     expect(mockSetTabHidden).toHaveBeenCalledWith('labs', true);
     fireEvent.click(screen.getByLabelText('Goals'));
     expect(mockSetTabHidden).toHaveBeenCalledWith('goals', false);
+  });
+
+  it.each<WebTabsEditState>(['loading', 'loadFailed', 'actingOnBehalf'])(
+    'keeps every switch off limits while %s',
+    (state) => {
+      mockEditState = state;
+      renderSettings();
+      screen
+        .getAllByRole('switch')
+        .forEach((toggle) => expect(toggle).toBeDisabled());
+    }
+  );
+
+  it('says why while acting for someone else', () => {
+    mockEditState = 'actingOnBehalf';
+    renderSettings();
+    expect(
+      screen.getByText('You can only change the tabs on your own account.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers to load the list again when it failed', () => {
+    mockEditState = 'loadFailed';
+    renderSettings();
+    expect(
+      screen.getByText('Could not load your tab choices.')
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(mockReload).toHaveBeenCalledTimes(1);
   });
 
   it('shows cycle with its state and no switch of its own', () => {

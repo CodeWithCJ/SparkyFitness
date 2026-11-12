@@ -15,6 +15,14 @@ const SAVE_MUTATION_KEY = ['webTabs', 'save'] as const;
 const NONE: ReadonlySet<WebHideableTabId> = new Set();
 
 /**
+ * Whether the Tabs switches can be used: only once the saved list has loaded
+ * (a guess would overwrite it), and never while acting for someone else (the
+ * server only lets people change their own tabs).
+ */
+export type WebTabsEditState =
+  'ready' | 'loading' | 'loadFailed' | 'actingOnBehalf';
+
+/**
  * The main web tabs the signed-in person turned off. Nothing is hidden while
  * the list loads, if it fails, or while acting for someone else: a delegate's
  * bar follows their permissions only.
@@ -35,7 +43,18 @@ export function useHiddenWebTabs() {
     () => (isActingOnBehalf || !query.data ? NONE : new Set(query.data)),
     [isActingOnBehalf, query.data]
   );
-  return { hidden, isLoading: !isActingOnBehalf && query.isLoading };
+  const editState: WebTabsEditState = isActingOnBehalf
+    ? 'actingOnBehalf'
+    : query.isSuccess
+      ? 'ready'
+      : query.isError
+        ? 'loadFailed'
+        : 'loading';
+  const { refetch } = query;
+  const reload = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+  return { hidden, editState, reload };
 }
 
 /**
@@ -49,14 +68,17 @@ export function useSetWebTabHidden() {
     mutationKey: SAVE_MUTATION_KEY,
     scope: { id: 'web-tabs' },
     mutationFn: (hidden: WebHideableTabId[]) => saveHiddenWebTabs(hidden),
+    // While later saves are queued they carry the newest whole list, so only
+    // the last save to settle may write its answer or reread the list.
     onSuccess: (saved) => {
-      // An older save finishing must not undo taps still waiting to be saved.
       if (queryClient.isMutating({ mutationKey: SAVE_MUTATION_KEY }) <= 1) {
         queryClient.setQueryData(hiddenWebTabsKey, saved);
       }
     },
     onError: () => {
-      void queryClient.invalidateQueries({ queryKey: hiddenWebTabsKey });
+      if (queryClient.isMutating({ mutationKey: SAVE_MUTATION_KEY }) <= 1) {
+        void queryClient.invalidateQueries({ queryKey: hiddenWebTabsKey });
+      }
     },
     meta: {
       errorMessage: t(
@@ -69,7 +91,12 @@ export function useSetWebTabHidden() {
   const setTabHidden = useCallback(
     (tab: WebHideableTabId, hide: boolean) => {
       const current =
-        queryClient.getQueryData<WebHideableTabId[]>(hiddenWebTabsKey) ?? [];
+        queryClient.getQueryData<WebHideableTabId[]>(hiddenWebTabsKey);
+      // Not loaded (or acting for someone else): saving a guess would replace
+      // the person's saved list.
+      if (!current) return;
+      // A reread still in flight predates this change and must not undo it.
+      void queryClient.cancelQueries({ queryKey: hiddenWebTabsKey });
       const next = withWebTabHidden(current, tab, hide);
       queryClient.setQueryData(hiddenWebTabsKey, next);
       mutate(next);
