@@ -26,6 +26,10 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParams],
 }));
 
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user-1' }),
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     weightUnit: 'kg',

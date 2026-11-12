@@ -110,7 +110,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   // The feedback panel autosaves, so only people who can write the diary
   // get it (#1560); report-only viewers can't save and don't see it here.
-  const { hasWritePermission } = useActiveUser();
+  const { hasWritePermission, activeUserId } = useActiveUser();
   const canGiveFeedback = hasWritePermission('diary');
   const navigate = useNavigate();
   const { mutateAsync: updatePresetSession } = useUpdatePresetSessionMutation();
@@ -153,7 +153,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
         });
         return;
       }
-      saveWorkoutPlaybackDraftToStorage(draft);
+      saveWorkoutPlaybackDraftToStorage(activeUserId, draft);
       navigate(`/workout-playback?date=${draft.entry_date}`, {
         state: {
           draft,
@@ -179,7 +179,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
     } finally {
       setIsResuming(false);
     }
-  }, [isResuming, navigate, presetEntry, t, updatePresetSession]);
+  }, [activeUserId, isResuming, navigate, presetEntry, t, updatePresetSession]);
 
   // Linking works on the whole session, so any of its exercises will do.
   const linkableEntry = presetEntry.exercises?.[0];

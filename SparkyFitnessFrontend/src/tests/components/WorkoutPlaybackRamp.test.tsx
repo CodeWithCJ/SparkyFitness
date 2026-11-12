@@ -16,6 +16,10 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () => [new URLSearchParams('date=2026-09-25')],
 }));
 
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user-1' }),
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     weightUnit: 'kg',
