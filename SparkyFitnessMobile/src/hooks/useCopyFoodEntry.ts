@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
@@ -54,5 +55,22 @@ export function useCopyFoodEntry(options?: { onSuccess?: () => void }) {
     },
   });
 
-  return { copyFood: mutation.mutate, isPending: mutation.isPending };
+  // isPending only updates on the next render, so a quick double tap could
+  // send two creates. The ref blocks a second copy until the first settles.
+  const inFlight = useRef(false);
+  const { mutate } = mutation;
+  const copyFood = useCallback(
+    (input: CopyFoodEntryInput) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      mutate(input, {
+        onSettled: () => {
+          inFlight.current = false;
+        },
+      });
+    },
+    [mutate]
+  );
+
+  return { copyFood, isPending: mutation.isPending };
 }

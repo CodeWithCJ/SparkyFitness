@@ -69,7 +69,9 @@ export function buildFoodEntryCopyPayload(
     if (value !== undefined) payload[field] = value;
   }
   if (entry.glycemic_index) payload.glycemic_index = entry.glycemic_index;
-  if (entry.custom_nutrients && Object.keys(entry.custom_nutrients).length) {
+  // Send even an empty set, so the copy keeps the entry's snapshot instead of
+  // taking the linked food's current custom nutrients.
+  if (entry.custom_nutrients) {
     payload.custom_nutrients = entry.custom_nutrients;
   }
   return payload;

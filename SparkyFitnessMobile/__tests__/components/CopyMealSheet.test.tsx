@@ -214,29 +214,16 @@ describe('CopyMealSheet', () => {
     );
   });
 
-  it('copies to now: today and the meal for the current time', () => {
-    useMealTypesMock.mockReturnValue({
-      mealTypes: defaultMealTypes,
-      defaultMealTypeId: 'breakfast-id',
-    });
-    const onCopy = jest.fn();
+  it('offers Now only for a single food, not a whole meal', () => {
     const ref = createRef<CopyMealSheetRef>();
-    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
-    const sourceDate = addDays(getTodayDate(), -3);
-    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
-
-    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
-    fireEvent.press(view.getByLabelText('Copy'));
-
-    expect(onCopy).toHaveBeenCalledWith(
-      {
-        sourceDate,
-        sourceMealType: 'Brunch',
-        targetDate: getTodayDate(),
-        targetMealType: 'Breakfast',
-      },
-      expect.objectContaining({ targetMealTypeId: expect.any(String) })
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() =>
+      ref.current?.present(addDays(getTodayDate(), -3), 'brunch-id', 'Brunch')
     );
+
+    expect(view.queryByTestId('copy-meal-quick-now')).toBeNull();
+    expect(view.getByTestId('copy-meal-quick-today')).toBeTruthy();
+    expect(view.getByTestId('copy-meal-quick-tomorrow')).toBeTruthy();
   });
 
   it('keeps the quick target when another meal is picked', () => {

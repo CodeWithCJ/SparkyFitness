@@ -51,6 +51,15 @@ describe('buildFoodEntryCopyPayload', () => {
     });
   });
 
+  it('sends an empty custom nutrient set so the food is not used instead', () => {
+    const payload = buildFoodEntryCopyPayload(
+      { ...baseEntry, custom_nutrients: {} },
+      '2026-11-02',
+      'lunch-id'
+    );
+    expect(payload.custom_nutrients).toEqual({});
+  });
+
   it('copies a food deleted from the library as a standalone entry', () => {
     const payload = buildFoodEntryCopyPayload(
       { ...baseEntry, food_id: undefined, variant_id: undefined },

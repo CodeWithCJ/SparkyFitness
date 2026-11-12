@@ -291,7 +291,12 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                 {t('copyMeal.copyTo', { defaultValue: 'Copy to' })}
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-4">
-                {QUICK_TARGETS.map((target) => {
+                {/* Now logs a single food at the current time. The meal copy
+                    endpoint keeps each entry's own time, so a whole meal gets
+                    Today and Tomorrow only. */}
+                {QUICK_TARGETS.filter(
+                  (target) => source.singleFood || target !== 'now'
+                ).map((target) => {
                   const isSelected = quickTarget === target;
                   const label = quickTargetLabel(target);
                   return (
