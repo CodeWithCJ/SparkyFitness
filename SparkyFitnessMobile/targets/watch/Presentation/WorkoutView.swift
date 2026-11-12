@@ -346,6 +346,7 @@ private struct ActiveWorkoutView: View {
     @EnvironmentObject private var checkIn: CheckInStore
 
     @State private var showingExercises = false
+    @State private var moreHeight: CGFloat = 0
     /// Nil until the view appears: set to `.set` then, so the scroll moves
     /// to the set screen even with the metrics page above it. Starting at
     /// `.set` asked for nothing and left the scroll at the top page.
@@ -391,6 +392,9 @@ private struct ActiveWorkoutView: View {
                     .padding(.top, WatchStyle.top)
                     // Room under the last button and the page dots.
                     .padding(.bottom, WatchStyle.m(30))
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: MoreHeightKey.self, value: proxy.size.height)
+                    })
                     setScreen
                         .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.set)
@@ -401,8 +405,9 @@ private struct ActiveWorkoutView: View {
                 .scrollTargetLayout()
             }
             .scrollPosition(id: $page)
-            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight))
+            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, setTop: moreHeight))
             .scrollIndicators(.hidden)
+            .onPreferenceChange(MoreHeightKey.self) { moreHeight = $0 }
             // Pages are laid out against the whole screen, so each snaps to
             // exactly one screen; `workoutPage` puts the content back inside
             // the area the clock and page dots leave free.
@@ -506,6 +511,7 @@ private struct ActiveWorkoutView: View {
                     SetPill(step: step) { showingExercises = true }
                     Spacer(minLength: 0)
                 }
+                .padding(.leading, WatchStyle.pillCornerExtra)
                 .frame(height: WatchStyle.m(42))
             }
             // During a rest too: the ring shows the heart rate, but not the
@@ -547,19 +553,30 @@ private struct ActiveWorkoutView: View {
 /// tall each, and everything above them is the list.
 private struct WorkoutScrollBehavior: ScrollTargetBehavior {
     let pageHeight: CGFloat
+    /// Where the set screen starts: the measured height of the More list above
+    /// it. Not derived from the content size, which can include the scroll
+    /// view's insets and then lands every page that much off its boundary.
+    let setTop: CGFloat
 
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        guard pageHeight > 0 else { return }
-        let setTop = context.contentSize.height - 2 * pageHeight
-        let y = target.rect.minY
-        // Half a page above the set screen the list hands over to paging.
-        guard y > setTop - pageHeight / 2 else {
-            target.rect.origin.y = max(0, y)
-            return
-        }
-        let pages = ((y - setTop) / pageHeight).rounded().clamped(to: 0...1)
-        target.rect.origin.y = setTop + pages * pageHeight
+        target.rect.origin.y = Self.snapped(target.rect.minY, setTop: setTop, pageHeight: pageHeight)
     }
+
+    /// Offsets in the More list stay where they are; from half a page above the
+    /// set screen on, the nearest of the set and metrics screens, so a swipe or
+    /// the crown can never rest between pages.
+    static func snapped(_ y: CGFloat, setTop: CGFloat, pageHeight: CGFloat) -> CGFloat {
+        guard pageHeight > 0, setTop > 0 else { return y }
+        guard y > setTop - pageHeight / 2 else { return Swift.max(0, y) }
+        let pages = ((y - setTop) / pageHeight).rounded().clamped(to: 0...1)
+        return setTop + pages * pageHeight
+    }
+}
+
+/// The height of the More list, reported up to the scroll's snapping.
+private struct MoreHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private extension CGFloat {
@@ -781,6 +798,22 @@ enum WatchStyle {
     /// For a page laid over the scroll (effort, edit previous, record), with no padding of its own.
     static var overlaySide: CGFloat { max(0, m(11) - 1.5) }
     static var top: CGFloat { m(11) }
+    /// Extra room at the left of the exercise pill so its round end clears the
+    /// display's rounded corner. The corner radius is taken as a share of the
+    /// screen's width; the pill's circle (m(34) across, m(4) under the top
+    /// margin) must sit inside that arc, and any shortfall beyond the margins
+    /// the row already has is added.
+    static var pillCornerExtra: CGFloat {
+        let radius = WKInterfaceDevice.current().screenBounds.width * 0.28
+        let r = m(17)
+        let y = top + m(4)
+        let reach = radius - r
+        let dy = radius - y - r
+        guard reach > 0, dy < reach else { return 0 }
+        let needed = reach - (reach * reach - dy * dy).squareRoot()
+        let have = 4 + side + m(4)
+        return max(0, needed - have)
+    }
     static var bottom: CGFloat { m(10) }
     static let heart = Color(red: 237 / 255, green: 94 / 255, blue: 99 / 255)
     /// The mockups are set in SF Pro, whose numerals draw about 12% larger than
@@ -1794,7 +1827,7 @@ private struct HoldRunning: View {
             let setId = step.plannedSet.setId
             let remaining = remaining(setId: setId, now: context.date)
             let fraction = totalSeconds > 0 ? Double(remaining) / Double(totalSeconds) : 0
-            let size = WatchStyle.m(130)
+            let size = WatchStyle.m(140)
             let line = size * 12 / 136
             let weight = store.values(for: step).weightKg
             VStack(spacing: 0) {
@@ -1809,9 +1842,9 @@ private struct HoldRunning: View {
                         VStack(spacing: 0) {
                             HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(2)) {
                                 Text("\(remaining)")
-                                    .font(.system(size: WatchStyle.num(42), weight: WatchStyle.numWeight))
+                                    .font(.system(size: WatchStyle.num(50), weight: WatchStyle.numWeight))
                                     .monospacedDigit()
-                                Text("s").font(.system(size: WatchStyle.m(26), weight: WatchStyle.numWeight)) // i18n-ignore
+                                Text("s").font(.system(size: WatchStyle.m(30), weight: WatchStyle.numWeight)) // i18n-ignore
                             }
                             .foregroundStyle(amber.color)
                             if let bpm = store.latestBpm {
@@ -1836,15 +1869,19 @@ private struct HoldRunning: View {
                 SetProgressRow(step: step, centered: true)
                     .frame(height: WatchStyle.m(8))
                     .padding(.top, WatchStyle.m(7))
-                (Text(step.exerciseName).foregroundColor(.white)
-                 + Text(weight.map { " " + SetValueText.weightLabel($0, unit: checkIn.context.effectiveWeightUnit) } ?? "")
-                    .font(.system(size: WatchStyle.m(18), weight: .medium))
-                    .foregroundColor(WatchStyle.grey))
-                    .font(.system(size: WatchStyle.m(18), weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .frame(height: WatchStyle.m(24))
-                    .padding(.top, WatchStyle.m(5))
+                // The name on its own line, shrinking and then scrolling when it
+                // is long, and the weight under it in the hold's colour.
+                FitName(text: step.exerciseName, size: 21, widthFraction: 0.97, height: WatchStyle.m(26))
+                    .padding(.top, WatchStyle.m(4))
+                if let weight {
+                    Text(SetValueText.weightLabel(weight, unit: checkIn.context.effectiveWeightUnit))
+                        .font(.system(size: WatchStyle.m(20), weight: .semibold))
+                        .foregroundStyle(amber.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: WatchStyle.m(24))
+                }
                 Text(String(localized: "watch.workout.holdTapToEnd", defaultValue: "Tap the ring to end early"))
                     .font(.system(size: WatchStyle.m(14), weight: .medium))
                     .foregroundStyle(WatchStyle.lightGrey)
