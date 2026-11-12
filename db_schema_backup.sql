@@ -3162,6 +3162,21 @@ CREATE TABLE public.injection_entries (
 
 
 --
+-- Name: intervals_nutrition_pushes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.intervals_nutrition_pushes (
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    kcal_consumed integer,
+    protein numeric,
+    carbohydrates numeric,
+    fat_total numeric,
+    pushed_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: jwks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5234,6 +5249,7 @@ CREATE TABLE public.user_preferences (
     calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
+    intervals_push_nutrition boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
@@ -6661,6 +6677,14 @@ ALTER TABLE ONLY public.health_metric_samples
 
 ALTER TABLE ONLY public.injection_entries
     ADD CONSTRAINT injection_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_pkey PRIMARY KEY (user_id, entry_date);
 
 
 --
@@ -10126,6 +10150,14 @@ ALTER TABLE ONLY public.injection_entries
 
 
 --
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: lab_markers lab_markers_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11913,6 +11945,12 @@ CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((publi
 
 
 --
+-- Name: intervals_nutrition_pushes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.intervals_nutrition_pushes ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: jwks; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12737,6 +12775,13 @@ CREATE POLICY owner_policy ON public.food_assistant_tasks USING ((user_id = publ
 --
 
 CREATE POLICY owner_policy ON public.health_appointments USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: intervals_nutrition_pushes owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.intervals_nutrition_pushes USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -14579,6 +14624,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_metric_samples TO spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_app;
+
+
+--
+-- Name: TABLE intervals_nutrition_pushes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.intervals_nutrition_pushes TO sparky_app;
 
 
 --
