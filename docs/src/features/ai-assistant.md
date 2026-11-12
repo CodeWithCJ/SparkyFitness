@@ -47,6 +47,44 @@ Multi-step food tasks keep their ingredient selections, portion variants, source
 
 This information belongs to the signed-in person and is not shared with family diary viewers.
 
+## Tools from an outside MCP server
+
+An admin can give chat the tools of another MCP server, such as a notes app or a home automation server, so the assistant can use them next to its own.
+
+Whatever the assistant passes to these tools is sent to that server, and what comes back enters the chat. Add only servers you trust.
+
+### Add a server
+
+1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add one, and it is never offered in a person's own settings.
+2. Enter the server's URL, the address of its Streamable HTTP endpoint (for example `https://tools.example.com/mcp`), and a bearer token if the server needs one. When you edit a saved server, leave the token blank to keep the saved one. A server that only speaks the older SSE transport, or that needs an OAuth sign-in, cannot be added.
+3. Select **Load tools**. Every tool the server lists is shown. Tick the ones chat may use, up to 20 per server. A tool chat would leave out is listed with the reason and cannot be ticked. A tool you allowed earlier that the server no longer lists is marked, so you can untick it.
+4. Turn on **Tell the server who is chatting** only for a server that keeps data per person (see below).
+5. Turn on **Activate this provider** and save; chat reads only active servers. Nothing is allowed until you tick it, so a new server gives chat no tools until then.
+
+A server on your own network works too, since only an admin adds one. Over plain `http` the token is sent unencrypted, so use `https` unless the network is one you trust.
+
+### When chat uses them
+
+- Only when chat chooses its tools itself, which is the default. Picking categories under **Chatbot tools**, even all of them with **Full**, leaves them out until you select **Clear all**. So does the **core** tool profile for small local models.
+- At most 40 tools from all servers together. Servers are taken in name order, then each server's tools in name order; the rest are left out, and the SparkyFitness log says how many.
+- Each tool is named after its server, for example `mcp_household_tools__search`.
+- A server that is down or slow is skipped, and chat goes on without it. It has 5 seconds to connect and 5 more to list its tools, and a call has 30 seconds to answer. A server that failed to list its tools is tried again after 15 seconds.
+- The tool list is kept for a minute. Saving the provider applies a change at once.
+- SparkyFitness's own [MCP server](/features/mcp-server) does not offer these tools to the apps that connect to it.
+
+### Tell the server who is chatting
+
+With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. After switching to a family member's profile, the server's tools refuse to run, since the server would only know who is signed in. With it off, the server is not told who is chatting, so it cannot tell people apart, and its tools also run in a family member's profile. The server should accept the header only together with the token, since SparkyFitness does not sign it.
+
+### Limits and safety
+
+- Chat reads only the text of an answer; images and other parts are left out, and the assistant is told how many.
+- An answer longer than 8,000 characters is cut, and the assistant is told to ask for less. A server that can return a lot should offer filters or a limit; SparkyFitness does not page through results.
+- A tool's description is cut at 1,024 characters.
+- Every allowed tool's input schema goes with every chat request, so one the model provider refuses would fail every chat. A schema is checked first: it must describe an object, follow JSON Schema's draft-07 rules, and be at most 32 KB and 32 levels deep. A tool that fails is left out. The check covers what model providers commonly refuse, but a provider can still refuse a schema that passes.
+- The token is sent only to the server's URL, never to another host or port on a redirect. If the server repeats it in a description, an answer or an error, it is replaced with `[redacted]`. A tool whose name or input schema holds the token is left out.
+- What the assistant passes to a tool is not written to the SparkyFitness log.
+
 ## Troubleshooting AI Providers
 
 Most "OpenAI Compatible / OpenRouter isn't working" reports come from provider configuration, not from SparkyFitness itself. The most common cases:
