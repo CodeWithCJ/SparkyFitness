@@ -64,7 +64,12 @@ enum ScreenshotSeed {
     /// exerciseoptions or actions.
     static var workoutPage: String? {
         let v = ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"]
-        return ["upnext", "swap", "metrics", "setoptions", "exerciseoptions", "actions"].contains(v) ? v : nil
+        return ["upnext", "swap", "metrics", "setoptions", "exerciseoptions", "actions", "plates"].contains(v) ? v : nil
+    }
+
+    /// Opens the plates detail from More (`SPARKY_SCREENSHOT_SHEET=plates`).
+    static var opensPlates: Bool {
+        ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "plates"
     }
 
     /// Shows the New PR screen over the set on appear (`SPARKY_SCREENSHOT_SHEET=newpr`).
@@ -99,10 +104,13 @@ enum ScreenshotSeed {
 
     /// Frozen readings for a pixel-for-pixel comparison with the design mockups
     /// (`mockup` option): elapsed time, and the rest's time left.
-    static var elapsedOverride: Int? { has("mockup") ? 24 * 60 + 18 : nil }
-    static var restRemainingOverride: Int? { has("mockup") ? 78 : nil }
+    static var frozen: Bool { has("mockup") && !has("live") }
+    static var elapsedOverride: Int? { frozen ? 24 * 60 + 18 : nil }
+    static var restRemainingOverride: Int? { frozen ? 78 : nil }
 
-    static var holdRemainingOverride: Int? { has("mockup") ? 32 : nil }
+    static var holdRemainingOverride: Int? { frozen ? 32 : nil }
+    /// The Get ready screen as the mockup draws it: a 3, the ring two thirds full.
+    static var getReadyFrozen: (number: Int, fraction: Double)? { has("holdcountdown") ? (3, 2.0 / 3.0) : nil }
 
     /// `SPARKY_SCREENSHOT_AT`: the mockup plan's block to land on (1...6, with
     /// 6 the superset), or a set id.
@@ -132,6 +140,12 @@ enum ScreenshotSeed {
         workout.goToStep(setId: landingSetId)
         if has("pr") { workout.setValue(for: "m2b", weightKg: 85, reps: 8) }
         if has("holdrunning") { workout.startHold(for: "m30", seconds: 60) }
+        // Long enough that the screenshot is taken while it is still counting.
+        if has("holdcountdown") {
+            // The app delegate's hook may not be set yet this early.
+            workout.holdCountdownEnabled = { true }
+            workout.beginHold(for: "m30", seconds: 60, getReady: 3600)
+        }
         if workoutState == .resting {
             workout.completeCurrentSet()
         }

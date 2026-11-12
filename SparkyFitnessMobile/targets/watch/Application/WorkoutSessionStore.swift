@@ -103,6 +103,13 @@ final class WorkoutSessionStore: ObservableObject {
     /// counts up. `holdStoppedAt` freezes it once the set is logged.
     @Published private(set) var holdStartedAt: Date?
     private(set) var holdStoppedAt: Date?
+    /// The set whose "Get ready" 3-2-1 is showing before its hold starts, and
+    /// when it ends. Local to the wrist and never persisted: a relaunch drops
+    /// it and the hold is simply not started.
+    @Published private(set) var getReadySetId: String?
+    @Published private(set) var getReadyEndsAt: Date?
+    /// Seconds the Get ready screen counts, from the first number to the start.
+    static let getReadySeconds = 3
 
     /// Called with the outgoing exercise's entry id just before the cursor
     /// moves onto a set belonging to a different exercise, so the session
@@ -136,6 +143,9 @@ final class WorkoutSessionStore: ObservableObject {
     /// `onCountdownTick` plays one tick; the cue at zero is `onRestFinished`,
     /// played by the countdown itself (not the poll) while it is on.
     var countdownSeconds: () -> Int = { 0 }
+    /// Whether a timed hold starts with a Get ready countdown
+    /// (`WatchContext.effectiveHoldCountdown`).
+    var holdCountdownEnabled: () -> Bool = { false }
     var onCountdownTick: (() -> Void)?
 
     /// Whether the new workout view is on. Its Finish skips the "Update
@@ -166,6 +176,9 @@ final class WorkoutSessionStore: ObservableObject {
     private var holdTimer: Timer?
     private let restCues = CountdownCues()
     private let holdCues = CountdownCues()
+    private let getReadyCues = CountdownCues()
+    private var getReadyTimer: Timer?
+    private var getReadyHoldSeconds = 0
     /// Whether the countdown plays this rest's or hold's end cue, so the poll
     /// that notices the deadline does not buzz a second time.
     private var restCuesOwnEnd = false
@@ -508,7 +521,8 @@ final class WorkoutSessionStore: ObservableObject {
                     setCount: exercise.sets.count,
                     supersetWith: partners[exercise.exerciseEntryId],
                     supersetRun: exercise.supersetRun,
-                    equipment: exercise.equipment
+                    equipment: exercise.equipment,
+                    plates: exercise.plates
                 )
             }
         }
@@ -876,6 +890,7 @@ final class WorkoutSessionStore: ObservableObject {
     func startHold(for setId: String, seconds: Int, startedAt: Date? = nil) {
         guard seconds > 0 else { return }
         if holdSetId == setId, holdEndsAt != nil { return }
+        if getReadySetId == setId { cancelGetReady() }
         holdStartedAt = nil
         holdStoppedAt = nil
         holdLoggedHere = false
@@ -891,6 +906,61 @@ final class WorkoutSessionStore: ObservableObject {
         if !holdBuzzed { startHoldTimer() }
         persistSnapshot(reportedEnergyKcal: nil)
         if startedAt == nil { onSetTimerStartedHere?(setId, start) }
+    }
+
+    /// Starts a hold from the new workout view: a 3-2-1 Get ready first when
+    /// "Countdown before holds" is on, with the hold starting at its end, and
+    /// at once when it is off. Each number ticks when the countdown sound is
+    /// on, and the start cue plays at 0. `getReady` is a seam for screenshots.
+    func beginHold(for setId: String, seconds: Int, getReady: Int = WorkoutSessionStore.getReadySeconds) {
+        guard seconds > 0, getReadySetId != setId else { return }
+        if holdSetId == setId, holdEndsAt != nil { return }
+        guard holdCountdownEnabled(), getReady > 0 else {
+            startHold(for: setId, seconds: seconds)
+            return
+        }
+        let endsAt = Date().addingTimeInterval(TimeInterval(getReady))
+        getReadySetId = setId
+        getReadyEndsAt = endsAt
+        getReadyHoldSeconds = seconds
+        // The number 3 is on screen now; the schedule covers the ones after it.
+        let ticks = countdownSeconds() > 0
+        if ticks { onCountdownTick?() }
+        getReadyCues.schedule(
+            endsAt: endsAt,
+            seconds: ticks ? getReady : 0,
+            tick: { [weak self] in self?.onCountdownTick?() },
+            end: { [weak self] in self?.onRestFinished?() }
+        )
+        getReadyTimer = Timer(fire: endsAt, interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.finishGetReady() }
+        }
+        if let getReadyTimer { RunLoop.main.add(getReadyTimer, forMode: .common) }
+    }
+
+    /// A tap on the Get ready screen: start the hold now.
+    func skipGetReady() {
+        guard let setId = getReadySetId else { return }
+        let seconds = getReadyHoldSeconds
+        getReadyCues.cancel()
+        startHold(for: setId, seconds: seconds)
+    }
+
+    func isGetReady(_ step: WorkoutStep) -> Bool {
+        getReadySetId == step.plannedSet.setId
+    }
+
+    private func finishGetReady() {
+        guard let setId = getReadySetId else { return }
+        startHold(for: setId, seconds: getReadyHoldSeconds)
+    }
+
+    private func cancelGetReady() {
+        getReadyTimer?.invalidate()
+        getReadyTimer = nil
+        getReadyCues.cancel()
+        getReadySetId = nil
+        getReadyEndsAt = nil
     }
 
     /// A duration exercise: counts down when the phone planned a length, and
@@ -1150,6 +1220,9 @@ final class WorkoutSessionStore: ObservableObject {
            steps.indices.contains(index),
            steps[index].exerciseEntryId != outgoing {
             onExerciseWillChange?(outgoing)
+        }
+        if let pending = getReadySetId, !steps.indices.contains(index) || steps[index].plannedSet.setId != pending {
+            cancelGetReady()
         }
         currentStepIndex = index
         openCurrentExerciseWindow()
@@ -1671,6 +1744,7 @@ final class WorkoutSessionStore: ObservableObject {
     }
 
     private func clearHold() {
+        cancelGetReady()
         stopHoldTimer()
         holdSetId = nil
         holdEndsAt = nil

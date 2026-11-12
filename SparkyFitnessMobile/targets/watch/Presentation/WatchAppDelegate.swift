@@ -28,6 +28,9 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate, UNUserNotificatio
             WorkoutSessionStore.shared.countdownSeconds = {
                 MainActor.assumeIsolated { CheckInStore.shared.context.effectiveWorkoutCountdown }
             }
+            WorkoutSessionStore.shared.holdCountdownEnabled = {
+                MainActor.assumeIsolated { CheckInStore.shared.context.effectiveHoldCountdown }
+            }
             WorkoutSessionStore.shared.usesNewWorkoutView = {
                 MainActor.assumeIsolated { CheckInStore.shared.context.effectiveNewWorkout }
             }

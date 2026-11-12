@@ -236,6 +236,12 @@ enum SampleDay {
 
     /// The workout the design mockups show (`mockup` option): six blocks, the
     /// sixth a superset, with an exercise of every kind for the screen to land on.
+    /// A 20 kg bar and no 25s or 15s, so 82.5 kg is 20 + 10 + 1.25 a side.
+    static let mockupPlates = WatchPlateConfig(
+        unit: "kg", barWeight: 20, collarWeight: 0,
+        plates: [20, 10, 5, 2.5, 1.25].map { .init(weight: $0, pairs: 2) }
+    )
+
     static let mockupPlan = ActiveWorkoutPlan(
         sessionId: "mockup-session",
         workoutName: "Push Day",
@@ -244,7 +250,7 @@ enum SampleDay {
                 PlannedSet(setId: "m1a", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
                 PlannedSet(setId: "m1b", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
             ]),
-            PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", sets: [
+            PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", plates: mockupPlates, sets: [
                 PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: 80, restSeconds: 120, setType: "normal"),
                 PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
                 PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),

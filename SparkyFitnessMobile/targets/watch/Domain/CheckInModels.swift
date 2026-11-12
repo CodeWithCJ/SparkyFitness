@@ -523,6 +523,9 @@ struct WatchContext: Codable, Equatable {
     /// Seconds of audible countdown before a rest or hold ends
     /// (`workoutCountdown`): 3 or 5. Nil or 0 means off.
     var workoutCountdown: Int? = nil
+    /// A 3-2-1 Get ready screen before a timed hold starts
+    /// (`holdCountdown`). Nil, from an older phone, means on.
+    var holdCountdown: Bool? = nil
     /// What the new workout view's top line shows first (`workoutTopLine`):
     /// "time" or "metrics". Nil means time.
     var workoutTopLine: String? = nil
@@ -641,6 +644,7 @@ struct WatchContext: Codable, Equatable {
     var effectiveUpNextPage: Bool { upNextPage ?? false }
     var effectiveNewWorkout: Bool { newWorkout ?? false }
     var effectiveWorkoutTopLineIsMetrics: Bool { workoutTopLine == "metrics" }
+    var effectiveHoldCountdown: Bool { effectiveNewWorkout && (holdCountdown ?? true) }
     var effectiveWorkoutCountdown: Int { effectiveNewWorkout ? max(0, workoutCountdown ?? 0) : 0 }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie

@@ -35,14 +35,13 @@ private extension View {
 /// `global.css`, not the light ones — the watch UI is always dark.
 enum SetSupersetPalette {
     private static let rgb: [(Double, Double, Double)] = [
-        (105, 146, 211), (209, 138, 97), (145, 102, 204), (106, 164, 111),
+        (186, 117, 237), (209, 138, 97), (145, 102, 204), (106, 164, 111),
         (204, 102, 136), (90, 173, 175), (212, 169, 84), (110, 118, 135),
     ]
 
-    static func color(for run: Int) -> Color {
-        let c = rgb[abs(run) % rgb.count]
-        return Color(red: c.0 / 255, green: c.1 / 255, blue: c.2 / 255)
-    }
+    /// The mockup draws a superset in one light colour throughout (lilac
+    /// #D9B3F5 for the first), so text, bars and the pill share the tint.
+    static func color(for run: Int) -> Color { tint(for: run).color }
 
     /// The set screen's colour for a superset member: its category colour
     /// lightened so text in it reads on the dark tiles.
@@ -471,7 +470,7 @@ private struct ActiveWorkoutView: View {
             if ScreenshotSeed.opensEditPrevious { editingPrevious = true }
             switch ScreenshotSeed.workoutPage {
             case "upnext": page = .moreUpNext
-            case "swap", "setoptions", "exerciseoptions": page = .moreExercise
+            case "swap", "setoptions", "exerciseoptions", "plates": page = .moreExercise
             case "metrics": page = .metrics
             case "actions": page = .moreWorkout
             default: break
@@ -494,7 +493,7 @@ private struct ActiveWorkoutView: View {
     private var setScreen: some View {
         // The exercise pill and, under it, the time (or heart rate and
         // calories); the heart rate is also inside the rest ring.
-        let holdRunning = store.currentStep.map(store.isHoldRunning) ?? false
+        let holdRunning = store.currentStep.map { store.isHoldRunning($0) || store.isGetReady($0) } ?? false
         return VStack(spacing: 0) {
             if let step = store.currentStep {
                 HStack(spacing: 0) {
@@ -1166,7 +1165,9 @@ private struct CurrentSetView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let seconds = store.targetDurationSec(for: step), store.isHoldRunning(step) {
+            if store.isGetReady(step), let endsAt = store.getReadyEndsAt {
+                HoldGetReady(step: step, endsAt: endsAt)
+            } else if let seconds = store.targetDurationSec(for: step), store.isHoldRunning(step) {
                 HoldRunning(step: step, totalSeconds: seconds, onEnd: logSet)
             } else {
             SetTitle(name: step.exerciseName)
@@ -1293,6 +1294,11 @@ private struct CurrentSetView: View {
         }
     }
 
+    /// The standard reps set keeps the navy tile with its edit badge.
+    private var standardTiles: Bool {
+        !(store.isTimed(step) || store.isCarry(step) || store.isBodyweight(step) || step.supersetRun != nil)
+    }
+
     private func valueBox(_ field: EditableField) -> some View {
         let isSelected = crownField == field
         let shown = isSelected && crownAdjusted
@@ -1306,7 +1312,11 @@ private struct CurrentSetView: View {
             value: text,
             label: label(for: field),
             suffix: bodyweight && (shown ?? 0) == 0 ? nil : suffix(for: field),
-            isSelected: isSelected
+            isSelected: isSelected,
+            // The mockup's timed, carry, bodyweight and superset screens use a
+            // darker tile (the tint at 26% over black) and no edit badge.
+            fill: standardTiles ? nil : (step.supersetRun.map(SetSupersetPalette.tint(for:)) ?? SetTint.blue).mixed(0.26),
+            badge: standardTiles
         ) {
             tapped(field)
         }
@@ -1714,7 +1724,7 @@ private struct HoldCountdown: View {
             running: false,
             accessibilityHint: String(localized: "watch.workout.holdStartHint", defaultValue: "Starts the hold")
         ) {
-            store.startHold(for: setId, seconds: totalSeconds)
+            store.beginHold(for: setId, seconds: totalSeconds)
         }
     }
 
@@ -1723,6 +1733,85 @@ private struct HoldCountdown: View {
         if seconds < 60 { return ("\(seconds)", "s") }
         if seconds % 60 == 0 { return ("\(seconds / 60)", "m") }
         return (String(format: "%d:%02d", seconds / 60, seconds % 60), nil)
+    }
+}
+
+/// "Get ready": the 3-2-1 before a timed hold, in place of the set's values. A
+/// ring that empties over the three seconds, the number in it and the exercise
+/// under it; the hold starts when it ends, or at once on a tap anywhere.
+/// `ticks` and the start cue come from the store (`beginHold`).
+private struct HoldGetReady: View {
+    let step: WorkoutStep
+    let endsAt: Date
+
+    @EnvironmentObject private var store: WorkoutSessionStore
+    @EnvironmentObject private var checkIn: CheckInStore
+
+    private let amber = SetTint.hold
+
+    var body: some View {
+        TimelineView(.animation) { context in
+            let total = Double(WorkoutSessionStore.getReadySeconds)
+            let (number, fraction) = reading(now: context.date, total: total)
+            let size = WatchStyle.m(144)
+            let line = size * 12 / 136
+            let weight = store.values(for: step).weightKg
+            Button(action: Haptics.tapping(store.skipGetReady)) {
+                VStack(spacing: 0) {
+                    ZStack {
+                        Circle().inset(by: size * 8 / 136)
+                            .stroke(amber.mixed(0.26), lineWidth: line)
+                        Circle().inset(by: size * 8 / 136)
+                            .trim(from: 0, to: CGFloat(fraction))
+                            .stroke(amber.color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        VStack(spacing: 0) {
+                            Text("\(number)")
+                                .font(.system(size: WatchStyle.num(64), weight: WatchStyle.numWeight))
+                                .monospacedDigit()
+                                .foregroundStyle(amber.color)
+                                .frame(height: WatchStyle.m(66))
+                            Text(String(localized: "watch.workout.getReady", defaultValue: "Get ready"))
+                                .font(.system(size: WatchStyle.m(14), weight: .semibold))
+                                .foregroundStyle(WatchStyle.lightGrey)
+                                .frame(height: WatchStyle.m(18))
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    }
+                    .frame(width: size, height: size)
+                    (Text(step.exerciseName).foregroundColor(.white)
+                     + Text(weight.map { " " + SetValueText.weightLabel($0, unit: checkIn.context.effectiveWeightUnit) } ?? "")
+                        .font(.system(size: WatchStyle.m(18), weight: .medium))
+                        .foregroundColor(WatchStyle.grey))
+                        .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .frame(height: WatchStyle.m(24))
+                        .padding(.top, WatchStyle.m(6))
+                    Text(String(localized: "watch.workout.getReadySkip", defaultValue: "Tap to skip"))
+                        .font(.system(size: WatchStyle.m(14), weight: .medium))
+                        .foregroundStyle(WatchStyle.lightGrey)
+                        .frame(height: WatchStyle.m(18))
+                        .padding(.top, WatchStyle.m(6))
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(String(localized: "watch.workout.getReadyA11y", defaultValue: "Get ready, \(number)"))
+            .accessibilityHint(String(localized: "watch.workout.getReadySkipHint", defaultValue: "Skips the countdown and starts the hold"))
+        }
+    }
+
+    /// The number on screen and how full the ring is, which empties smoothly.
+    private func reading(now: Date, total: Double) -> (number: Int, fraction: Double) {
+        #if DEBUG
+        if let frozen = ScreenshotSeed.getReadyFrozen { return frozen }
+        #endif
+        let left = max(0, endsAt.timeIntervalSince(now))
+        return (max(1, Int(left.rounded(.up))), min(1, left / total))
     }
 }
 
@@ -1903,6 +1992,9 @@ struct ValueBox: View {
     var isSelected = false
     /// The tile's fill: the set screen's blue tile unless a screen asks for another.
     var fill: Color? = nil
+    /// The small edit badge in the corner. The mockup leaves it off the
+    /// timed, carry, bodyweight and superset screens.
+    var badge = true
     let onTap: () -> Void
 
     @Environment(\.setTint) private var tint
@@ -1935,7 +2027,7 @@ struct ValueBox: View {
             .background(fill ?? tint.tile, in: RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous))
             // The "edit" badge: the tile opens its value for change.
             .overlay(alignment: .topTrailing) {
-                Image(systemName: "plusminus")
+                if badge { Image(systemName: "plusminus")
                     .font(.system(size: WatchStyle.m(8), weight: .bold))
                     .foregroundStyle(Color.black)
                     .frame(width: WatchStyle.m(14), height: WatchStyle.m(14))
@@ -1943,6 +2035,7 @@ struct ValueBox: View {
                     .padding(.top, WatchStyle.m(6))
                     .padding(.trailing, WatchStyle.m(7))
                     .accessibilityHidden(true)
+                }
             }
             // The card being adjusted by the crown or a drag.
             .overlay(
@@ -2268,7 +2361,7 @@ private struct SetProgressRow: View {
     var body: some View {
         let sets = store.steps.filter { $0.exerciseEntryId == step.exerciseEntryId }
         HStack(spacing: 0) {
-            if !centered && !leading { Spacer(minLength: 0) }
+            if !leading { Spacer(minLength: 0) }
             if sets.count <= 6 {
                 HStack(spacing: 0) {
                     ForEach(sets) { set in
