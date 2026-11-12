@@ -1,6 +1,10 @@
 package com.sparkyapps.sparkyfitness.wear
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Resources
 import androidx.compose.ui.graphics.toArgb
+import com.SparkyApps.SparkyFitnessMobile.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -8,8 +12,65 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class WearOsParityTest {
+
+    @Suppress("DEPRECATION")
+    private fun createTestContext(): Context {
+        val fakeResources = object : Resources(
+            android.content.res.AssetManager::class.java.getDeclaredConstructor().apply { isAccessible = true }.newInstance(),
+            android.util.DisplayMetrics(),
+            android.content.res.Configuration()
+        ) {
+            override fun getString(id: Int): String = when (id) {
+                R.string.common_protein -> "Protein"
+                R.string.common_carbs -> "Carbs"
+                R.string.common_fat -> "Fat"
+                R.string.tile_sleep_no_logged -> "No sleep logged today"
+                R.string.sleep_stage_deep -> "Deep"
+                R.string.sleep_stage_rem -> "REM"
+                R.string.sleep_stage_light -> "Light"
+                R.string.tile_meds_not_synced -> "Not synced"
+                R.string.tile_meds_open_app -> "Open app to sync"
+                R.string.tile_meds_none_today -> "No doses scheduled today"
+                R.string.tile_meds_all_done -> "All doses completed"
+                R.string.tile_exercise_planned_today -> "Workout planned today"
+                R.string.tile_exercise_tap_start -> "Tap to start a workout"
+                R.string.tile_exercise_scheduled -> "Scheduled"
+                else -> ""
+            }
+
+            override fun getString(id: Int, vararg formatArgs: Any?): String = when (id) {
+                R.string.tile_sleep_in_bed -> String.format(Locale.US, "In bed %s", *formatArgs)
+                R.string.tile_sleep_score -> String.format(Locale.US, "Score %d", *formatArgs)
+                R.string.tile_meds_taken_count -> String.format(Locale.US, "%d / %d Taken", *formatArgs)
+                R.string.tile_meds_pending_today -> String.format(Locale.US, "%d pending today", *formatArgs)
+                R.string.tile_meds_skipped_done -> String.format(Locale.US, "%d skipped · All done", *formatArgs)
+                R.string.tile_exercise_steps_count -> String.format(Locale.US, "%d steps", *formatArgs)
+                R.string.tile_exercise_goal_minutes -> String.format(Locale.US, "Goal %dm", *formatArgs)
+                else -> ""
+            }
+
+            override fun getQuantityString(id: Int, quantity: Int, vararg formatArgs: Any?): String = when (id) {
+                R.plurals.tile_sleep_naps -> if (quantity == 1) {
+                    String.format(Locale.US, "%d nap (%s)", *formatArgs)
+                } else {
+                    String.format(Locale.US, "%d naps (%s)", *formatArgs)
+                }
+                R.plurals.tile_exercise_workouts -> if (quantity == 1) {
+                    String.format(Locale.US, "%d workout", *formatArgs)
+                } else {
+                    String.format(Locale.US, "%d workouts", *formatArgs)
+                }
+                else -> ""
+            }
+        }
+
+        return object : ContextWrapper(null) {
+            override fun getResources(): Resources = fakeResources
+        }
+    }
 
     @Test
     fun `water context parsing, food hydration, and tap or delete outbound payloads`() {
@@ -413,6 +474,7 @@ class WearOsParityTest {
     @Test
     fun `tiles models build nutrition, sleep, medications, and exercise summaries`() {
         val today = CheckInDate.today()
+        val testContext = createTestContext()
         val rawCtx = JSONObject().apply {
             put("today", today)
             put("caloriesConsumed", 1650.0)
@@ -498,7 +560,7 @@ class WearOsParityTest {
 
         val ctx = ContextPayloadMapper.parseContext(rawCtx, WatchContext.empty)
 
-        val nutritionTile = TileModels.buildNutritionTileModel(ctx.nutrition)
+        val nutritionTile = TileModels.buildNutritionTileModel(testContext, ctx.nutrition)
         assertTrue(nutritionTile.hasData)
         assertEquals(1650, nutritionTile.consumedKcal)
         assertEquals(2200, nutritionTile.goalKcal)
@@ -510,7 +572,7 @@ class WearOsParityTest {
         assertEquals("24/32g", nutritionTile.macros[1].valueText)
         assertEquals(SparkyColors.Green.toArgb(), nutritionTile.macros[1].colorArgb)
 
-        val sleepTile = TileModels.buildSleepTileModel(ctx.sleep)
+        val sleepTile = TileModels.buildSleepTileModel(testContext, ctx.sleep)
         assertTrue(sleepTile.hasData)
         assertEquals("7h 45m", sleepTile.durationText)
         assertEquals("Score 86", sleepTile.scoreText)
@@ -518,7 +580,7 @@ class WearOsParityTest {
         assertEquals(3, sleepTile.stages.size)
         assertEquals("RHR 54bpm · HRV 64ms", sleepTile.biometricsText)
 
-        val medsTile = TileModels.buildMedicationsTileModel(ctx.medications)
+        val medsTile = TileModels.buildMedicationsTileModel(testContext, ctx.medications)
         assertTrue(medsTile.hasData)
         assertEquals(1, medsTile.takenCount)
         assertEquals(2, medsTile.totalCount)
@@ -527,6 +589,7 @@ class WearOsParityTest {
         assertEquals("Magnesium", medsTile.doseRows[0].name)
 
         val exerciseTile = TileModels.buildExerciseTileModel(
+            context = testContext,
             exercise = ctx.exerciseSummary,
             scheduledWorkouts = emptyList(),
             steps = null,
