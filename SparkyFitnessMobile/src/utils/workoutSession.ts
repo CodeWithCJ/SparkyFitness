@@ -588,12 +588,14 @@ export function quantizeSetWeightKg(kg: number): number {
   return Math.round(kg * 100) / 100;
 }
 
-/** Epley estimated one-rep max. Returns 0 when weight or reps are missing/zero. */
+/** Epley estimated one-rep max. Returns 0 when weight or reps are missing/zero
+ * or when reps exceed 15 — the formula is only valid for low-rep strength work. */
 export function epley1RmKg(
   weightKg: number | null,
   reps: number | null
 ): number {
   if (weightKg == null || reps == null || weightKg <= 0 || reps <= 0) return 0;
+  if (reps > 15) return 0;
   if (reps === 1) return weightKg;
   return weightKg * (1 + reps / 30);
 }

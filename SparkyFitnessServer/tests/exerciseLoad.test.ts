@@ -35,7 +35,7 @@ describe('effectiveLoadKg', () => {
     expect(setVolumeKg({ weight: 10, reps: 5 }, 'bodyweight_reps', 70)).toBe(
       400
     );
-    expect(epleyOneRepMaxKg(100, 30)).toBe(200);
+    expect(epleyOneRepMaxKg(100, 30)).toBe(0); // 30 reps exceeds EPLEY_MAX_REPS (15)
     expect(epleyOneRepMaxKg(0, 5)).toBe(0);
     expect(epleyOneRepMaxKg(100, 0)).toBe(0);
   });

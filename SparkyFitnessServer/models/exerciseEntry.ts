@@ -2077,6 +2077,10 @@ async function getBestSetForExercise(
           AND (ees.weight IS NOT NULL OR ee.modality = 'bodyweight_reps')
           AND (ees.set_type IS NULL OR regexp_replace(LOWER(ees.set_type), '[^a-z0-9]', '', 'g') NOT LIKE 'warmup%')
           AND COALESCE(epe.workout_format, 'standard') = 'standard'
+          -- Exclude high-rep sets: the Epley formula is only valid for
+          -- low-rep strength work. A 135 lb × 55-rep endurance set would
+          -- otherwise produce a nonsensical 382.5 lb estimated 1RM.
+          AND COALESCE(ees.reps, 0) <= 15
           AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
         ORDER BY COALESCE(ees.weight, 0) DESC,
                  ees.reps DESC NULLS LAST,
