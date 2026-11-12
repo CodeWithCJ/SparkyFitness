@@ -2457,6 +2457,8 @@ CREATE TABLE public.exercise_preset_entries (
     source text DEFAULT 'manual'::text NOT NULL,
     location character varying(255),
     workout_format character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    finished_at timestamp with time zone,
+    revision integer DEFAULT 1 NOT NULL,
     CONSTRAINT chk_exercise_preset_entries_format CHECK (((workout_format)::text = ANY ((ARRAY['standard'::character varying, 'interval'::character varying, 'tabata'::character varying, 'amrap'::character varying, 'emom'::character varying, 'for_time'::character varying])::text[])))
 );
 
@@ -2473,6 +2475,20 @@ COMMENT ON COLUMN public.exercise_preset_entries.location IS 'Optional location 
 --
 
 COMMENT ON COLUMN public.exercise_preset_entries.workout_format IS 'Workout format of the source preset at the time the session was logged; not updated when the preset is edited or deleted';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.finished_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.finished_at IS 'Client-stamped moment the live workout session was ended. NULL = still planned or in progress. Split point between the derived partial and completed statuses.';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.revision; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.revision IS 'Monotonic write counter for optimistic concurrency, incremented on every update. A client presenting an older revision is rejected with 409 instead of overwriting newer edits.';
 
 
 --
