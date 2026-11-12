@@ -30,7 +30,15 @@ function useVerticalBarState(): { guess: boolean; confirmed: boolean | null } {
   const { width, height } = useWindowDimensions();
   const supported = osSupportsVerticalBars();
   const insetGuess = supported && insets.left + insets.right > 0;
-  const [measured, setMeasured] = useState<boolean | null>(null);
+  // The layout a reading was taken at is kept with it: a reading describes
+  // that layout only, so once the insets or window size change it no longer
+  // counts until a fresh one arrives.
+  const layoutKey = `${insets.left}|${insets.right}|${width}|${height}`;
+  const [reading, setReading] = useState<{
+    vertical: boolean;
+    layoutKey: string;
+  } | null>(null);
+  const measured = reading?.layoutKey === layoutKey ? reading.vertical : null;
 
   useEffect(() => {
     const native = SideBarMetricsModule;
@@ -39,10 +47,18 @@ function useVerticalBarState(): { guess: boolean; confirmed: boolean | null } {
     const read = async () => {
       try {
         const edge = await native.verticalBarEdge();
-        if (cancelled || edge === 'unknown') return;
-        setMeasured(edge !== 'none' && edge !== 'unsupported');
+        if (cancelled) return;
+        // An unreadable trait drops the confirmation instead of keeping it.
+        setReading(
+          edge === 'unknown'
+            ? null
+            : {
+                vertical: edge !== 'none' && edge !== 'unsupported',
+                layoutKey,
+              }
+        );
       } catch {
-        // Keep the last answer.
+        if (!cancelled) setReading(null);
       }
     };
     const timers = SETTLE_DELAYS_MS.map((ms) => setTimeout(read, ms));
@@ -50,7 +66,7 @@ function useVerticalBarState(): { guess: boolean; confirmed: boolean | null } {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [supported, insets.left, insets.right, width, height]);
+  }, [supported, layoutKey]);
 
   if (!supported) return { guess: false, confirmed: false };
   if (SideBarMetricsModule == null)

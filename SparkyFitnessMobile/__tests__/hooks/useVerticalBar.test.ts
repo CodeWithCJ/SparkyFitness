@@ -194,6 +194,59 @@ describe('useVerticalBar', () => {
       expect(result.current).toBe(false);
     });
 
+    it('drops a confirmed bar as soon as the layout changes', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      mockNative = { verticalBarEdge: jest.fn().mockResolvedValue('trailing') };
+      const { result, rerender } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(true);
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+      rerender({});
+      expect(result.current).toBe(false);
+    });
+
+    it('stays unconfirmed when the reading after a layout change is unknown', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      const verticalBarEdge = jest.fn().mockResolvedValue('trailing');
+      mockNative = { verticalBarEdge };
+      const { result, rerender } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(true);
+      verticalBarEdge.mockResolvedValue('unknown');
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+      rerender({});
+      await flush();
+      expect(result.current).toBe(false);
+    });
+
+    it('stays unconfirmed when the reading after a layout change fails', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      const verticalBarEdge = jest.fn().mockResolvedValue('trailing');
+      mockNative = { verticalBarEdge };
+      const { result, rerender } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      expect(result.current).toBe(true);
+      verticalBarEdge.mockRejectedValue(new Error('x'));
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+      rerender({});
+      await flush();
+      expect(result.current).toBe(false);
+    });
+
+    it('confirms again when a fresh reading follows the layout change', async () => {
+      mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+      const verticalBarEdge = jest.fn().mockResolvedValue('trailing');
+      mockNative = { verticalBarEdge };
+      const { result, rerender } = renderHook(() => useConfirmedVerticalBar());
+      await flush();
+      mockInsets = { top: 0, bottom: 0, left: 84, right: 0 };
+      verticalBarEdge.mockResolvedValue('leading');
+      rerender({});
+      expect(result.current).toBe(false);
+      await flush();
+      expect(result.current).toBe(true);
+    });
+
     it('is false on iOS before 27.1', async () => {
       setVersion('26.4');
       mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
