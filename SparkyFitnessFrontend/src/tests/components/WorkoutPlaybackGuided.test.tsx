@@ -12,6 +12,7 @@ import { playIntervalCue } from '@/utils/workoutSounds';
 
 const mockNavigate = jest.fn();
 const mockCreatePresetSession = jest.fn();
+const mockUpdatePresetSession = jest.fn();
 const mockSearchParams = new URLSearchParams('date=2026-09-25');
 let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
 
@@ -38,6 +39,10 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
   useCreatePresetSessionMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockCreatePresetSession(...args),
+    isPending: false,
+  }),
+  useUpdatePresetSessionMutation: () => ({
+    mutateAsync: (...args: unknown[]) => mockUpdatePresetSession(...args),
     isPending: false,
   }),
   useWorkoutLocations: () => ({ data: [] }),

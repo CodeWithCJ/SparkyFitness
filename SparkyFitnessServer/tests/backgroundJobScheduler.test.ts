@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   cleanupSessions: vi.fn(),
   deleteExpiredTickets: vi.fn(),
   demoReset: vi.fn(),
+  intervalsPush: vi.fn(),
   log: vi.fn(),
 }));
 
@@ -29,6 +30,9 @@ vi.mock('../services/providerSyncScheduler.js', () => ({
 vi.mock('../services/demoSeedService.js', () => ({
   scheduleDemoMidnightReset: mocks.demoReset,
 }));
+vi.mock('../integrations/intervals/intervalsNutritionPush.js', () => ({
+  runNightlyNutritionPush: mocks.intervalsPush,
+}));
 
 import { scheduleBackgroundJobs } from '../services/backgroundJobScheduler.js';
 
@@ -48,10 +52,20 @@ describe('scheduleBackgroundJobs', () => {
     expect(mocks.openFoodFacts).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.providerSyncs).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.demoReset).toHaveBeenCalledExactlyOnceWith();
-    expect(mocks.schedule).toHaveBeenCalledExactlyOnceWith(
+    expect(mocks.schedule).toHaveBeenCalledTimes(2);
+    expect(mocks.schedule).toHaveBeenCalledWith(
       '0 3 * * *',
       expect.any(Function),
       expect.objectContaining({ name: 'session-cleanup', distributed: true })
+    );
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      '45 23 * * *',
+      expect.any(Function),
+      expect.objectContaining({
+        name: 'intervals-nutrition-push',
+        noOverlap: true,
+        distributed: true,
+      })
     );
   });
 

@@ -43,6 +43,7 @@ BEGIN
     'food_variants',
     'foods',
     'goal_presets',
+    'intervals_nutrition_pushes',
     'meal_foods',
     'meal_plan_template_assignments',
     'meal_plan_templates',
@@ -815,6 +816,8 @@ SELECT create_owner_policy('fitness_tests');
 SELECT create_owner_policy('recipe_imports');
 SELECT create_owner_policy('recipe_food_mappings');
 SELECT create_owner_policy('routes');
+-- Intervals.icu nutrition push log: owner-only, never shared.
+SELECT create_owner_policy('intervals_nutrition_pushes');
 
 -- User-defined mood tags. Mood is check-in data (mood_entries uses the check-in
 -- policy), and custom check-in definitions like custom_categories are shared with

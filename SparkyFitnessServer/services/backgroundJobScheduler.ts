@@ -7,6 +7,7 @@ import { deleteExpiredTickets } from './passkeyTicketService.js';
 import { scheduleDemoMidnightReset } from './demoSeedService.js';
 import { log } from '../config/logging.js';
 import { scheduledJobsDisabled } from '../utils/scheduledJobs.js';
+import { runNightlyNutritionPush } from '../integrations/intervals/intervalsNutritionPush.js';
 
 // Backup scheduling is handled by services/backupScheduler.ts
 // Session cleanup scheduling
@@ -45,5 +46,13 @@ export async function scheduleBackgroundJobs(): Promise<void> {
   await scheduleOpenFoodFactsAutoSyncOnStartup();
   scheduleSessionCleanup();
   startProviderSyncSchedulers();
+  scheduleJob(
+    'intervals-nutrition-push',
+    '45 23 * * *',
+    runNightlyNutritionPush,
+    {
+      noOverlap: true,
+    }
+  );
   scheduleDemoMidnightReset();
 }

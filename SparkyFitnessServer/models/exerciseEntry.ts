@@ -1,7 +1,10 @@
 import {
   compareByEntryTime,
+  deriveWorkoutSessionStatus,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
+  type ExercisePresetEntries,
+  type WorkoutSessionStatusSet,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
@@ -1704,12 +1707,44 @@ async function deleteExerciseEntry(id: any, userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Row shape of the preset SELECT in the V1 diary path, taken from the shared
+ * database schema so the columns stay in sync with it (#1995 phase 1). The
+ * lifecycle columns must ride along so the status can be derived from the
+ * same rows that define it.
+ */
+type DiaryPresetEntryRow = Pick<
+  ExercisePresetEntries,
+  | 'id'
+  | 'workout_preset_id'
+  | 'name'
+  | 'description'
+  | 'notes'
+  | 'location'
+  | 'created_at'
+  | 'entry_date'
+  | 'source'
+  | 'finished_at'
+  | 'revision'
+>;
+
+/**
+ * Session child fields the status derivation reads on the V1 diary path. The
+ * children are loosely shaped legacy rows; only the fields the derivation
+ * touches are declared.
+ */
+interface DiaryPresetChildExercise {
+  workout_plan_assignment_id?: string | null;
+  sets?: WorkoutSessionStatusSet[] | null;
+}
+
 async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   const client = await getClient(userId);
   try {
     // 1. Fetch all exercise preset entries for the given date and user
     const presetEntriesResult = await client.query(
-      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location
+      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location,
+              entry_date, finished_at, revision
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -1740,8 +1775,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Map to store grouped exercises
     const groupedEntries = new Map();
     // Initialize grouped entries with preset entries
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    presetEntries.forEach((preset: any) => {
+    presetEntries.forEach((preset: DiaryPresetEntryRow) => {
       groupedEntries.set(preset.id, {
         type: 'preset',
         id: preset.id,
@@ -1751,7 +1785,10 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         notes: preset.notes,
         location: preset.location ?? null,
         created_at: preset.created_at,
+        entry_date: preset.entry_date,
         source: preset.source,
+        finished_at: preset.finished_at,
+        revision: preset.revision,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
@@ -1852,6 +1889,27 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Now add the preset entries (which now contain their associated exercises) to the final list
     for (const preset of groupedEntries.values()) {
       preset.activity_details = activityDetailsByPresetId.get(preset.id) || [];
+      // #1995 phase 1 lifecycle: derive the session status from the same rows
+      // that define it. Never stored, so it can never drift from the data.
+      const finishedAt =
+        preset.finished_at instanceof Date
+          ? preset.finished_at.toISOString()
+          : preset.finished_at
+            ? String(preset.finished_at)
+            : null;
+      preset.finished_at = finishedAt;
+      preset.revision = Number(preset.revision ?? 1);
+      preset.status = deriveWorkoutSessionStatus({
+        source: preset.source,
+        finishedAt,
+        hasPlanAssignment: (preset.exercises || []).some(
+          (exercise: DiaryPresetChildExercise) =>
+            (exercise.workout_plan_assignment_id ?? null) !== null
+        ),
+        sets: (preset.exercises || []).flatMap(
+          (exercise: DiaryPresetChildExercise) => exercise.sets || []
+        ),
+      });
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
