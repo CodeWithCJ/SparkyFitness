@@ -53,8 +53,8 @@
     <!-- Goals Screen -->
     <string name="goals_title">Today\'s Goals</string>
     <string name="goals_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s nutrition goals.</string>
-    <string name="goals_energy_left">%1$d \%2$s left</string>
-    <string name="goals_energy_over">%1$d \%2$s over</string>
+    <string name="goals_energy_left">%1$d %2$s left</string>
+    <string name="goals_energy_over">%1$d %2$s over</string>
 
     <!-- Water Screen -->
     <string name="water_title">Hydration</string>
@@ -71,7 +71,7 @@
 
     <!-- Medications Screen -->
     <string name="meds_title_empty">Medications</string>
-    <string name="meds_title_count">Meds (%1$d/\%2$d)</string>
+    <string name="meds_title_count">Meds (%1$d/%2$d)</string>
     <string name="meds_none_scheduled">No medications scheduled for today.</string>
 
     <!-- Weight & Trend Screens -->
@@ -85,12 +85,12 @@
     <string name="weight_bf_short">BF %1$.1f%%</string>
     <string name="weight_add_bf">+BF%%</string>
     <string name="weight_queued">Queued ✓</string>
-    <string name="weight_save_delta">Save %1$s\%2$.1f</string>
+    <string name="weight_save_delta">Save %1$s%2$.1f</string>
     <string name="weight_starting_title">Starting Weight</string>
     <string name="trend_body_fat_title">Body Fat Trend</string>
     <string name="trend_weight_title">Weight Trend</string>
-    <string name="trend_bf_summary">Last %1$d: %2$s\%3$.1f%% (%4$.1f–\%5$.1f%%)</string>
-    <string name="trend_weight_summary">Last %1$d: \%2$s%3$.1f \%4$s (%5$.1f–\%6$.1f)</string>
+    <string name="trend_bf_summary">Last %1$d: %2$s%3$.1f%% (%4$.1f–%5$.1f%%)</string>
+    <string name="trend_weight_summary">Last %1$d: %2$s%3$.1f %4$s (%5$.1f–%6$.1f)</string>
     <string name="trend_empty_state">Log at least 2 weight check-ins to see your trend chart.</string>
 
     <!-- Now Playing Screen -->
@@ -101,7 +101,7 @@
     <!-- Fasting Screen -->
     <string name="fasting_title">Fasting</string>
     <string name="fasting_title_active">Fasting (%1$s)</string>
-    <string name="fasting_progress_of">%1$d\%\% of \%2$dh</string>
+    <string name="fasting_progress_of">%1$d%% of %2$dh</string>
     <string name="fasting_end_button">End Fast</string>
     <string name="fasting_start_prompt">Start a Fast</string>
 
@@ -172,7 +172,7 @@
     <string name="run_place_outdoor">outdoor</string>
     <string name="run_kind_walk">walk</string>
     <string name="run_kind_run">run</string>
-    <string name="run_cue_starting">Starting %1$s \%2$s</string>
+    <string name="run_cue_starting">Starting %1$s %2$s</string>
     <string name="run_cue_test">Voice cues active. Have a great workout!</string>
     <string name="run_cue_lap">Lap %1$d</string>
     <string name="run_alert_hr_high">Heart rate high: %1$d BPM</string>
@@ -207,7 +207,7 @@
 
     <string name="workout_preset_fallback">Preset</string>
     <string name="workout_keypad_reps">Reps</string>
-    <string name="workout_set_counter">Set %1$d/\%2$d</string>
+    <string name="workout_set_counter">Set %1$d/%2$d</string>
     <string name="workout_superset_badge">• SS#%1$d</string>
     <string name="workout_reps_label">reps</string>
     <string name="workout_carry_label">carry</string>
@@ -221,7 +221,7 @@
     <string name="workout_preset_update_btn">Update</string>
 
     <string name="workout_rest_title">Rest</string>
-    <string name="workout_rest_next">Next: %1$s (Set \%2$d)</string>
+    <string name="workout_rest_next">Next: %1$s (Set %2$d)</string>
     <string name="workout_rest_add_15">+15s</string>
 
     <string name="workout_rpe_title">Rate Effort (RPE)</string>
