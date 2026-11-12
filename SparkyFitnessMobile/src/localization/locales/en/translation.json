@@ -10051,7 +10051,7 @@
     "syncCaffeine": "Caffeine",
     "syncAlcohol": "Alcohol",
     "syncWater": "Water",
-    "syncSavedValues": "Check these saved values after correcting a food in your library. Edit and save the meal to refresh its ingredients.",
+    "syncSavedValues": "These are saved ingredient values. To include a library correction, replace the affected ingredient using its corrected food variant, check the values, then save the meal.",
     "syncSavedAt": "Last saved: {{date}}",
     "syncSavedAtUnknown": "Last saved time unavailable.",
     "syncPartial": "Partial: {{known}}/{{total}} values known",

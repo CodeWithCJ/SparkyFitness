@@ -120,7 +120,9 @@ it('shows optional writes, partial coverage, skipped reasons and the saved-meal 
   ).toBeInTheDocument();
   expect(screen.getByText(/Last saved:/)).toHaveTextContent('2026');
   expect(
-    screen.getByText(/Check these saved values after correcting a food/)
+    screen.getByText(
+      /replace the affected ingredient using its corrected food variant/
+    )
   ).toBeInTheDocument();
   expect(api.syncRecipeNutrition).not.toHaveBeenCalled();
 });

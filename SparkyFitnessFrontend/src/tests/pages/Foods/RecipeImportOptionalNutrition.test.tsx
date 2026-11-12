@@ -189,9 +189,7 @@ it.each([null, undefined, -1, Number.NaN, Number.POSITIVE_INFINITY, 0])(
       });
     try {
       const { client } = setup();
-      await waitFor(() =>
-        expect(screen.getByRole('button', { name: 'Save meal' })).toBeEnabled()
-      );
+      expect(screen.getByRole('button', { name: 'Save meal' })).toBeDisabled();
       fireEvent.click(
         screen.getByRole('button', { name: 'Choose food for Rice' })
       );

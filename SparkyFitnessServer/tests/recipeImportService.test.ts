@@ -1463,6 +1463,9 @@ describe('explicit safe nutrition sync', () => {
       ],
     });
     const preview = await service.previewNutritionSync('u', 'u', 'meal');
+    expect(m.meal).toHaveBeenCalledWith('meal', 'u', undefined, {
+      snapshotOnly: true,
+    });
     expect(preview).toMatchObject({
       mealSavedAt: '2026-11-11T17:00:00.000Z',
       batchNutrition: { dietary_fiber: 12.5, sodium: null },

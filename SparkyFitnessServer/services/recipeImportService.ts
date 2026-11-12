@@ -654,7 +654,12 @@ async function getSource(
   mealId: string
 ): Promise<RecipeImportSource> {
   const source = await storedSource(userId, actorId, mealId);
-  const meal: unknown = await mealRepository.getMealById(mealId, userId);
+  const meal: unknown = await mealRepository.getMealById(
+    mealId,
+    userId,
+    undefined,
+    { snapshotOnly: true }
+  );
   try {
     currentMealNutrition(meal, userId);
     return { ...publicSource(source), syncEligible: true };
@@ -718,7 +723,9 @@ async function prepareNutritionSync(
   const client = await adapter(userId, source.providerId);
   const [recipe, meal] = await Promise.all([
     readRecipe(client, source.recipeSlug),
-    mealRepository.getMealById(mealId, userId) as Promise<unknown>,
+    mealRepository.getMealById(mealId, userId, undefined, {
+      snapshotOnly: true,
+    }) as Promise<unknown>,
   ]);
   const { record, totals, coverage } = currentMealNutrition(meal, userId);
   const servings = positiveSource(recipe.recipeServings);

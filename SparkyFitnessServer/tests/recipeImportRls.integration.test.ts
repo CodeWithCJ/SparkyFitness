@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getClient, getSystemClient, endPool } from '../db/poolManager.js';
+import mealRepository from '../models/mealRepository.js';
 
 // Explicit app-role DB environment only. Never falls back to a local default DB.
 async function databaseAvailable(): Promise<boolean> {
@@ -108,6 +109,12 @@ INSERT INTO meals (id,user_id,name) VALUES ($1,$2,$3)
       );
       await sys.query(
         `
+INSERT INTO meal_foods (meal_id,food_id,variant_id,quantity,unit,serving_size,serving_unit,calories,protein,carbs,fat,dietary_fiber,trans_fat) VALUES ($1,$2,$3,100,'g',100,'g',400,10,60,10,NULL,0)
+`,
+        [meal, food, variant]
+      );
+      await sys.query(
+        `
 INSERT INTO recipe_imports (id,user_id,meal_id,provider_id,source) VALUES ($1,$2,$3,$4,$5::jsonb)
 `,
         [provenance, owner, meal, provider, JSON.stringify({})]
@@ -136,6 +143,90 @@ INSERT INTO recipe_food_mappings (id,user_id,provider_id,source_food_key,food_id
       sys.release();
       await endPool();
     }
+  });
+  it('keeps unknown saved nutrition separate from later live library corrections for sync', async () => {
+    const client = await getClient(owner, owner);
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'UPDATE food_variants SET dietary_fiber=7,calories=800,trans_fat=1 WHERE id=$1',
+        [variant]
+      );
+      const ordinary = await mealRepository.getMealById(meal, owner, client);
+      expect(ordinary.foods[0]).toMatchObject({
+        calories: 400,
+        dietary_fiber: 7,
+        trans_fat: 0,
+      });
+      const snapshot = await mealRepository.getMealById(meal, owner, client, {
+        snapshotOnly: true,
+      });
+      expect(snapshot.foods[0]).toMatchObject({
+        calories: 400,
+        dietary_fiber: null,
+        trans_fat: 0,
+      });
+      expect(snapshot.updated_at).toEqual(ordinary.updated_at);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+  it('retains an existing snapshot until the corrected ingredient is explicitly replaced and saved', async () => {
+    const client: PoolClient = await getClient(owner, owner);
+    let corrected: Record<string, unknown>;
+    try {
+      const result = await client.query<Record<string, unknown>>(
+        'UPDATE food_variants SET calories=800,dietary_fiber=7 WHERE id=$1 RETURNING *',
+        [variant]
+      );
+      corrected = result.rows[0]!;
+    } finally {
+      client.release();
+    }
+    const snapshot = await mealRepository.getMealById(meal, owner, undefined, {
+      snapshotOnly: true,
+    });
+    const ingredients = snapshot.foods;
+    expect(ingredients[0]).toMatchObject({
+      calories: 400,
+      dietary_fiber: null,
+    });
+    await mealRepository.updateMeal(meal, owner, {
+      name: 'Renamed saved meal',
+    });
+    const unchanged = await mealRepository.getMealById(meal, owner, undefined, {
+      snapshotOnly: true,
+    });
+    expect(unchanged.foods[0]).toMatchObject({
+      calories: 400,
+      dietary_fiber: null,
+    });
+    await mealRepository.updateMeal(meal, owner, {
+      name: 'Corrected saved meal',
+      foods: [
+        {
+          food_id: food,
+          variant_id: variant,
+          quantity: 100,
+          unit: 'g',
+          serving_size: Number(corrected.serving_size),
+          serving_unit: String(corrected.serving_unit),
+          calories: Number(corrected.calories),
+          protein: Number(corrected.protein),
+          carbs: Number(corrected.carbs),
+          fat: Number(corrected.fat),
+          dietary_fiber: Number(corrected.dietary_fiber),
+        },
+      ],
+    });
+    const refreshed = await mealRepository.getMealById(meal, owner, undefined, {
+      snapshotOnly: true,
+    });
+    expect(refreshed.foods[0]).toMatchObject({
+      calories: 800,
+      dietary_fiber: 7,
+    });
   });
   for (const table of tables) {
     it.each(actors)(

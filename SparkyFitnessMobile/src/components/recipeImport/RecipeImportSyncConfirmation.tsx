@@ -116,7 +116,7 @@ export default function RecipeImportSyncConfirmation({
                 <Text className="text-text-secondary">
                   {t('recipeImport.syncSavedValues', {
                     defaultValue:
-                      'Check these saved values after correcting a food in your library. Edit and save the meal to refresh its ingredients.',
+                      'These are saved ingredient values. To include a library correction, replace the affected ingredient using its corrected food variant, check the values, then save the meal.',
                   })}
                 </Text>
                 <Text className="text-text-secondary">

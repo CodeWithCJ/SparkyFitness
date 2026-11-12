@@ -163,7 +163,9 @@ it('shows partial optional writes, skipped reasons and the saved-meal date in na
   expect(screen.getByText('Potassium — not supported by Mealie.')).toBeTruthy();
   expect(screen.getByText(/Last saved:/).props.children).toContain('2026');
   expect(
-    screen.getByText(/Check these saved values after correcting a food/)
+    screen.getByText(
+      /replace the affected ingredient using its corrected food variant/
+    )
   ).toBeTruthy();
 });
 
