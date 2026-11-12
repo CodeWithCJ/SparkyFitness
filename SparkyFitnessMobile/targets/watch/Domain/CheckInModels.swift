@@ -521,7 +521,7 @@ struct WatchContext: Codable, Equatable {
     /// page (`newWorkout`). Nil means off, the original look.
     var newWorkout: Bool? = nil
     /// Seconds of audible countdown before a rest or hold ends
-    /// (`workoutCountdown`): 3 or 5. Nil or 0 means off.
+    /// (`workoutCountdown`): 3 or 5. Nil, from an older phone, means 3; 0 means off.
     var workoutCountdown: Int? = nil
     /// A 3-2-1 Get ready screen before a timed hold starts
     /// (`holdCountdown`). Nil, from an older phone, means on.
@@ -645,7 +645,7 @@ struct WatchContext: Codable, Equatable {
     var effectiveNewWorkout: Bool { newWorkout ?? false }
     var effectiveWorkoutTopLineIsMetrics: Bool { workoutTopLine == "metrics" }
     var effectiveHoldCountdown: Bool { effectiveNewWorkout && (holdCountdown ?? true) }
-    var effectiveWorkoutCountdown: Int { effectiveNewWorkout ? max(0, workoutCountdown ?? 0) : 0 }
+    var effectiveWorkoutCountdown: Int { effectiveNewWorkout ? max(0, workoutCountdown ?? 3) : 0 }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie
     /// and the delta line would reassure falsely.

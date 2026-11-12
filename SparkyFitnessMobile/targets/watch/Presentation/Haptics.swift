@@ -24,14 +24,15 @@ enum Haptics {
 
     /// One of the last seconds of a rest or hold countdown: a tone and a tap
     /// together (the watch's silent mode leaves only the tap), so it can be
-    /// noticed without looking. Gated on the rest alerts setting, like the buzz
+    /// noticed without looking. `.start` is a short audible tone, unlike
+    /// `.directionUp`, which is a tap with no sound, and it differs from the
+    /// longer `.notification` at zero. Gated on the rest alerts setting, like the buzz
     /// at zero, and not on the general haptics switch; the countdown has its
-    /// own setting. The cue at zero is the
-    /// rest-finished buzz, which plays a different haptic.
+    /// own setting.
     static func countdownTick() {
         MainActor.assumeIsolated {
             guard CheckInStore.shared.context.effectiveRestBuzzEnabled else { return }
-            WKInterfaceDevice.current().play(.directionUp)
+            WKInterfaceDevice.current().play(.start)
         }
     }
 

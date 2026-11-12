@@ -173,7 +173,7 @@ export const PREFERENCE_DEFAULTS = {
   watchSetScreenMetrics: true,
   watchUpNextPage: false,
   watchNewWorkout: false,
-  watchWorkoutCountdown: 0 as WatchWorkoutCountdown,
+  watchWorkoutCountdown: 3 as WatchWorkoutCountdown,
   watchHoldCountdown: true,
   watchWorkoutTopLine: 'time' as WatchWorkoutTopLine,
   activeWorkoutNowCard: false,

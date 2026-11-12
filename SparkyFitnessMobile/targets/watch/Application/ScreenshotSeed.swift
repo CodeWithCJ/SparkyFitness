@@ -168,6 +168,9 @@ enum ScreenshotSeed {
         CheckInStore.shared.apply(context: SampleDay.context)
 
         let workout = WorkoutSessionStore.shared
+        // The app delegate's hook may not be set yet this early, and a rest
+        // seeded here schedules its countdown cues at once.
+        workout.countdownSeconds = { CheckInStore.shared.context.effectiveWorkoutCountdown }
         switch workoutState {
         case .none:
             workout.reset()

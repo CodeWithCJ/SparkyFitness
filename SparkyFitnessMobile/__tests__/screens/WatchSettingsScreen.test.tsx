@@ -140,7 +140,7 @@ describe('WatchSettingsScreen', () => {
     const prefs = () => useAppPreferencesStore.getState();
 
     expect(prefs().watchNewWorkout).toBe(false);
-    expect(prefs().watchWorkoutCountdown).toBe(0);
+    expect(prefs().watchWorkoutCountdown).toBe(3);
     expect(screen.queryByText('Countdown sound & haptic')).toBeNull();
 
     fireEvent(
