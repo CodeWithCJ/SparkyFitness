@@ -1,16 +1,18 @@
 import { z } from 'zod';
 import { recipeImportSourceSchema } from '../api/RecipeImport.api.zod.ts';
 // Storage-only metadata; the strict public source DTO must never include it.
-export const recipeImportStoredSourceSchema = recipeImportSourceSchema.extend({
-  syncBaseline: z
-    .object({
-      version: z.literal(1),
-      contentFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-      nutritionFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-    })
-    .strict()
-    .optional(),
-});
+export const recipeImportStoredSourceSchema = recipeImportSourceSchema
+  .extend({
+    syncBaseline: z
+      .object({
+        version: z.literal(1),
+        contentFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+        nutritionFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict()
+      .optional(),
+  })
+  .strip(); // Ignore obsolete metadata in historical provenance JSON.
 export type RecipeImportStoredSource = z.infer<
   typeof recipeImportStoredSourceSchema
 >;

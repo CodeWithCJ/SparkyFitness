@@ -3,6 +3,114 @@ import MealieService from '../integrations/mealie/mealieService.js';
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 afterEach(() => vi.unstubAllGlobals());
 describe('shared Mealie recipe read and nutrition discovery', () => {
+  it('skips malformed search items while retaining valid neighbors and upstream pagination', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            items: [
+              { slug: 'rice', name: 'Rice' },
+              { slug: 'broken', name: null },
+              null,
+              { slug: 'beans', name: 'Beans' },
+            ],
+            total: 21,
+          })
+        )
+      )
+    );
+    const result = await new MealieService(
+      'https://recipe.example',
+      'fixture'
+    ).searchRecipes('', 2);
+    expect(result.items.map((item) => item.slug)).toEqual(['rice', 'beans']);
+    expect(result.pagination).toEqual({
+      page: 2,
+      pageSize: 10,
+      totalCount: 21,
+      hasMore: true,
+    });
+  });
+  it('keeps the next page available when every item on this page is malformed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            items: [{ slug: 'broken', name: null }],
+            total: 11,
+          })
+        )
+      )
+    );
+    const result = await new MealieService(
+      'https://recipe.example',
+      'fixture'
+    ).searchRecipes('rice');
+    expect(result.items).toEqual([]);
+    expect(result.pagination.hasMore).toBe(true);
+    expect(result.pagination.totalCount).toBe(11);
+  });
+  it.each(['transport', 'http', 'envelope', 'credentials'] as const)(
+    'keeps the existing food search available after a %s failure',
+    async (failure) => {
+      const fetcher = vi.fn();
+      if (failure === 'transport')
+        fetcher.mockRejectedValue(new Error('private upstream details'));
+      else
+        fetcher.mockResolvedValue(
+          new Response(JSON.stringify({ private: 'details' }), {
+            status: failure === 'http' ? 503 : 200,
+          })
+        );
+      vi.stubGlobal('fetch', fetcher);
+      const result = await new MealieService(
+        'https://recipe.example',
+        failure === 'credentials' ? undefined : 'fixture'
+      ).searchRecipes('rice', 3);
+      expect(result).toEqual({
+        items: [],
+        pagination: { page: 3, pageSize: 10, totalCount: 0, hasMore: false },
+      });
+    }
+  );
+  it.each([100, 101])(
+    'distinguishes the ingredient import limit at %s rows from connection failures',
+    async (count) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(
+          async () =>
+            new Response(
+              JSON.stringify({
+                slug: 'rice',
+                name: 'Rice',
+                recipeIngredient: Array.from({ length: count }, (_, i) => ({
+                  referenceId: String(i),
+                  quantity: 1,
+                  food: { name: 'Rice' },
+                })),
+              })
+            )
+        )
+      );
+      const adapter = new MealieService('https://recipe.example', 'fixture');
+      // The existing food detail flow still accepts the full recipe.
+      expect(
+        (await adapter.getRecipeDetails('rice'))?.recipeIngredient
+      ).toHaveLength(count);
+      if (count === 100)
+        expect(
+          (await adapter.getRecipeDetails('rice', { requireIngredients: true }))
+            .recipeIngredient
+        ).toHaveLength(100);
+      else
+        await expect(
+          adapter.getRecipeDetails('rice', { requireIngredients: true })
+        ).rejects.toMatchObject({ name: 'MealieRecipeTooLargeError' });
+    }
+  );
   it('validates food-search recipe details instead of trusting malformed responses', async () => {
     vi.stubGlobal(
       'fetch',

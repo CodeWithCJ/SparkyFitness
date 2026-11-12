@@ -27,7 +27,6 @@ const syncedSource: RecipeImportStoredSource = {
   syncWarnings: [],
   mealId: '00000000-0000-4000-a000-000000000002',
   mappings: [],
-  mealFingerprint: 'b'.repeat(64),
   syncEligible: true,
   lastSyncedAt: '2026-11-09T16:00:00.000Z',
 };
@@ -39,6 +38,37 @@ beforeEach(() => {
   m.getMealById.mockResolvedValue({ id: 'meal', foods: [] });
 });
 describe('recipe import persistence', () => {
+  it('saves atomically without rereading the meal or persisting unused fingerprint metadata', async () => {
+    const {
+      mealId: _mealId,
+      lastSyncedAt: _lastSyncedAt,
+      ...source
+    } = syncedSource;
+    const saved = await repository.save(
+      'owner',
+      { name: 'Recipe', foods: [] },
+      source,
+      []
+    );
+    expect(m.getMealById).not.toHaveBeenCalled();
+    expect(saved).not.toHaveProperty('mealFingerprint');
+    const insert = m.query.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO recipe_imports')
+    );
+    expect(JSON.parse(insert?.[1][3])).not.toHaveProperty('mealFingerprint');
+    expect(m.query).toHaveBeenCalledWith('BEGIN');
+    expect(m.query).toHaveBeenCalledWith('COMMIT');
+    expect(m.release).toHaveBeenCalledOnce();
+  });
+  it('reads historical source JSON while dropping obsolete stored fingerprint metadata', async () => {
+    m.query.mockResolvedValue({
+      rows: [{ source: { ...syncedSource, mealFingerprint: 'obsolete' } }],
+    });
+    const saved = await repository.getSource('owner', 'meal');
+    expect(saved?.recipeSlug).toBe('rice');
+    expect(saved).not.toHaveProperty('mealFingerprint');
+    expect(recipeImportSourceSchema.safeParse(saved).success).toBe(true);
+  });
   it('lists a bounded provider page in the owner RLS context', async () => {
     m.query
       .mockResolvedValueOnce({ rows: [{ count: '26' }] })
@@ -109,7 +139,6 @@ describe('recipe import persistence', () => {
         syncWarnings: [],
         mealId: id,
         mappings: [],
-        mealFingerprint: 'b'.repeat(64),
         syncEligible: true,
         lastSyncedAt: null,
         ...(withBaseline
@@ -160,7 +189,7 @@ describe('recipe import persistence', () => {
       expect.objectContaining({ user_id: 'owner' }),
       client
     );
-    expect(m.getMealById).toHaveBeenCalledWith('meal', 'owner', client);
+    expect(m.getMealById).not.toHaveBeenCalled();
     expect(m.getClient).toHaveBeenCalledOnce();
     expect(m.query).not.toHaveBeenCalledWith('COMMIT');
     expect(m.release).toHaveBeenCalledOnce();

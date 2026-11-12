@@ -47,7 +47,6 @@ const source: RecipeImportSource = {
   name: 'Rice',
   recipeServings: 4,
   sourceFingerprint: 'base',
-  mealFingerprint: 'base',
   ingredients: [],
   mappings: [],
   syncWarnings: [],

@@ -86,7 +86,6 @@ export type RecipeImportSaveRequest = z.infer<
 export const recipeImportSourceSchema = recipeImportPreviewSchema.extend({
   mealId: z.uuid(),
   mappings: z.array(recipeImportMappingSchema),
-  mealFingerprint: z.string(),
   syncEligible: z.boolean(),
   lastSyncedAt: z.string().nullable(),
 });
@@ -146,10 +145,6 @@ export const recipeImportSuggestionResponseSchema = z.object({
 export type RecipeImportSuggestionResponse = z.infer<
   typeof recipeImportSuggestionResponseSchema
 >;
-export const recipeImportBrowseQuerySchema = z.object({
-  search: z.string().trim().max(200).default(''),
-  page: z.coerce.number().int().min(1).max(10000).default(1),
-});
 export const recipeImportBrowseResponseSchema = z.object({
   items: z.array(
     z.object({

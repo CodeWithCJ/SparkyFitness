@@ -54,14 +54,15 @@ function RecipeImportWorkspace({
     retry: false,
   });
   const available =
-    providers.data?.filter(
-      (provider) => provider.provider_type === 'mealie' && provider.is_active
-    ) ?? [];
+    providers.data?.filter((provider) => provider.provider_type === 'mealie') ??
+    [];
+  const selectedProvider = available.find(
+    (provider) => provider.id === providerId
+  );
   const recipes = useQuery({
     queryKey: ['recipeImportBrowse', scope, providerId, debouncedSearch, page],
     queryFn: () => browseRecipes(providerId, debouncedSearch, page),
-    enabled:
-      !searching && available.some((provider) => provider.id === providerId),
+    enabled: !searching && !!selectedProvider?.is_active,
     retry: false,
   });
   const initialPreview = useQuery({
@@ -75,15 +76,19 @@ function RecipeImportWorkspace({
     enabled:
       !initialDismissed &&
       !!initialRecipe &&
-      available.some((provider) => provider.id === initialRecipe.providerId),
+      available.some(
+        (provider) =>
+          provider.id === initialRecipe.providerId && provider.is_active
+      ),
     retry: false,
   });
   const busy = manualBusy || initialPreview.isFetching || searching;
-  const activePreview =
-    preview ??
-    (!initialDismissed && !initialPreview.isFetching
-      ? initialPreview.data
-      : null);
+  const activePreview = selectedProvider?.is_active
+    ? (preview ??
+      (!initialDismissed && !initialPreview.isFetching
+        ? initialPreview.data
+        : null))
+    : null;
   async function openRecipe(slug: string) {
     setInitialDismissed(true);
     const request = ++generation.current;
@@ -161,100 +166,120 @@ function RecipeImportWorkspace({
             setError(null);
           }}
         >
-          {provider.provider_name}
+          {provider.is_active
+            ? provider.provider_name
+            : `${provider.provider_name} (${t('recipeImport.inactive', { defaultValue: 'Inactive' })})`}
         </Button>
       ))}
-      {!!providerId && (
+      {!!selectedProvider && (
         <>
           <RecipeImportSavedMappings
             key={providerId}
             providerId={providerId}
             scope={scope}
           />
-          <FormInput
-            accessibilityLabel={t('recipeImport.search', {
-              defaultValue: 'Search Mealie recipes',
-            })}
-            placeholder={t('recipeImport.search', {
-              defaultValue: 'Search Mealie recipes',
-            })}
-            value={search}
-            onChangeText={(value) => {
-              generation.current += 1;
-              setSearch(value);
-              setPage(1);
-              setBusy(false);
-            }}
-          />
-          {(recipes.isLoading || searching || initialPreview.isFetching) && (
+          {!selectedProvider.is_active && (
             <Text className="text-text-secondary">
-              {t('recipeImport.loadingRecipes', {
-                defaultValue: 'Loading recipes…',
+              {t('recipeImport.inactiveManagement', {
+                defaultValue:
+                  'Activate this provider in Settings to import recipes. Saved choices can still be managed here.',
               })}
             </Text>
           )}
-          {recipes.error && (
-            <Text accessibilityRole="alert" className="text-danger">
-              {recipes.error.message}
-            </Text>
-          )}
-          {recipes.data?.items.map((recipe) => (
-            <View key={recipe.slug}>
-              {recipe.food ? (
-                <>
-                  <OnlineResultRow
-                    item={_transformNormalizedFood(recipe.food, 'mealie')}
-                    providerId={providerId}
-                    accentColor={accentColor}
-                    loadingFoodId={busy ? recipe.slug : null}
-                    getProviderColor={() => accentColor}
-                    showMacros
-                    onSelect={async () => openRecipe(recipe.slug)}
-                  />
-                  {recipe.recipeServings && (
-                    <Text className="text-text-secondary text-xs">
-                      {t('recipeImport.recipeYield', {
-                        defaultValue: 'Recipe makes {{servings}} servings',
-                        count: recipe.recipeServings,
-                        servings: formatLocalizedNumber(recipe.recipeServings),
-                      })}
-                    </Text>
+          {selectedProvider.is_active && (
+            <>
+              <FormInput
+                accessibilityLabel={t('recipeImport.search', {
+                  defaultValue: 'Search Mealie recipes',
+                })}
+                placeholder={t('recipeImport.search', {
+                  defaultValue: 'Search Mealie recipes',
+                })}
+                value={search}
+                onChangeText={(value) => {
+                  generation.current += 1;
+                  setSearch(value);
+                  setPage(1);
+                  setBusy(false);
+                }}
+              />
+              {(recipes.isLoading ||
+                searching ||
+                initialPreview.isFetching) && (
+                <Text className="text-text-secondary">
+                  {t('recipeImport.loadingRecipes', {
+                    defaultValue: 'Loading recipes…',
+                  })}
+                </Text>
+              )}
+              {recipes.error && (
+                <Text accessibilityRole="alert" className="text-danger">
+                  {recipes.error.message}
+                </Text>
+              )}
+              {recipes.data?.items.map((recipe) => (
+                <View key={recipe.slug}>
+                  {recipe.food ? (
+                    <>
+                      <OnlineResultRow
+                        item={_transformNormalizedFood(recipe.food, 'mealie')}
+                        providerId={providerId}
+                        accentColor={accentColor}
+                        loadingFoodId={busy ? recipe.slug : null}
+                        getProviderColor={() => accentColor}
+                        showMacros
+                        onSelect={async () => openRecipe(recipe.slug)}
+                      />
+                      {recipe.recipeServings && (
+                        <Text className="text-text-secondary text-xs">
+                          {t('recipeImport.recipeYield', {
+                            defaultValue: 'Recipe makes {{servings}} servings',
+                            count: recipe.recipeServings,
+                            servings: formatLocalizedNumber(
+                              recipe.recipeServings
+                            ),
+                          })}
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onPress={() => void openRecipe(recipe.slug)}
+                    >
+                      {recipe.name}
+                    </Button>
                   )}
-                </>
-              ) : (
+                </View>
+              ))}
+              {recipes.data && !recipes.data.items.length && (
+                <Text className="text-text-secondary">
+                  {t('recipeImport.noRecipes', {
+                    defaultValue: 'No recipes found.',
+                  })}
+                </Text>
+              )}
+              <View className="flex-row gap-2">
                 <Button
                   variant="secondary"
-                  disabled={busy}
-                  onPress={() => void openRecipe(recipe.slug)}
+                  disabled={page === 1 || busy}
+                  onPress={() => setPage((value) => value - 1)}
                 >
-                  {recipe.name}
+                  {t('recipeImport.previous', {
+                    defaultValue: 'Previous page',
+                  })}
                 </Button>
-              )}
-            </View>
-          ))}
-          {recipes.data && !recipes.data.items.length && (
-            <Text className="text-text-secondary">
-              {t('recipeImport.noRecipes', {
-                defaultValue: 'No recipes found.',
-              })}
-            </Text>
+                <Button
+                  variant="secondary"
+                  disabled={!recipes.data?.pagination.hasMore || busy}
+                  onPress={() => setPage((value) => value + 1)}
+                >
+                  {t('recipeImport.next', { defaultValue: 'Next page' })}
+                </Button>
+              </View>
+            </>
           )}
-          <View className="flex-row gap-2">
-            <Button
-              variant="secondary"
-              disabled={page === 1 || busy}
-              onPress={() => setPage((value) => value - 1)}
-            >
-              {t('recipeImport.previous', { defaultValue: 'Previous page' })}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!recipes.data?.pagination.hasMore || busy}
-              onPress={() => setPage((value) => value + 1)}
-            >
-              {t('recipeImport.next', { defaultValue: 'Next page' })}
-            </Button>
-          </View>
         </>
       )}
       {error && (

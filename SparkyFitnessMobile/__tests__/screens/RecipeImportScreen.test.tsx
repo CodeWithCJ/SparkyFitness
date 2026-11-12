@@ -8,8 +8,14 @@ import { fetchExternalProviders } from '../../src/services/api/externalProviders
 import {
   browseRecipes,
   previewRecipe,
+  listRecipeMappings,
+  forgetRecipeMapping,
 } from '../../src/services/api/recipeImportApi';
 import type { RootStackScreenProps } from '../../src/types/navigation';
+import {
+  profileQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
 let mockScope: string | null = 'server-owner';
 jest.mock('../../src/components/FoodImageSourceProvider', () => ({
   useFoodImageSourceContext: () => () => undefined,
@@ -36,6 +42,8 @@ jest.mock('../../src/services/api/externalProvidersApi', () => ({
 jest.mock('../../src/services/api/recipeImportApi', () => ({
   browseRecipes: jest.fn(),
   previewRecipe: jest.fn(),
+  listRecipeMappings: jest.fn(),
+  forgetRecipeMapping: jest.fn(),
 }));
 jest.mock('../../src/components/recipeImport/RecipeImportReview', () => {
   const React = jest.requireActual('react');
@@ -49,6 +57,116 @@ const route = {
   name: 'RecipeImport' as const,
   params: undefined,
 };
+function renderBrowser() {
+  const config = {
+    id: 'test-server',
+    url: 'https://example.test',
+    apiKey: 'synthetic-test-key',
+  };
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  client.setQueryData(profileQueryKey, { id: 'owner' });
+  client.setQueryData(serverConfigsQueryKey, { activeConfig: config });
+  mockScope = `${config.id}:${config.url}:owner`;
+  return render(
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider
+        initialMetrics={{
+          insets: { top: 0, bottom: 0, left: 0, right: 0 },
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+        }}
+      >
+        <RecipeImportScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+}
+it('keeps inactive Mealie choices manageable without browsing or importing', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_type: 'mealie',
+      provider_name: 'Inactive Mealie',
+      is_active: false,
+    },
+  ]);
+  const empty = {
+    items: [],
+    pagination: { page: 1, pageSize: 25, totalCount: 0, hasMore: false },
+  };
+  jest
+    .mocked(listRecipeMappings)
+    .mockResolvedValueOnce({
+      ...empty,
+      items: [
+        {
+          id: 'choice',
+          foodId: 'food',
+          variantId: 'variant',
+          foodName: 'Rice',
+          ingredientName: 'Rice',
+          sourceUnit: 'g',
+          quantityPerSourceUnit: 1,
+          unit: 'g',
+          updatedAt: '2026-11-12T00:00:00Z',
+        },
+      ],
+      pagination: { ...empty.pagination, totalCount: 1 },
+    })
+    .mockResolvedValue(empty);
+  jest.mocked(forgetRecipeMapping).mockResolvedValue({ deleted: true });
+  const view = renderBrowser();
+  fireEvent.press(await view.findByText(/Inactive Mealie/));
+  fireEvent.press(await view.findByText('Manage saved choices'));
+  fireEvent.press(await view.findByLabelText('Forget saved choice for Rice'));
+  await waitFor(() =>
+    expect(forgetRecipeMapping).toHaveBeenCalledWith(
+      'provider',
+      'choice',
+      expect.any(Object)
+    )
+  );
+  expect(
+    view.getByText(
+      'Activate this provider in Settings to import recipes. Saved choices can still be managed here.'
+    )
+  ).toBeTruthy();
+  expect(view.queryByPlaceholderText('Search Mealie recipes')).toBeNull();
+  expect(browseRecipes).not.toHaveBeenCalled();
+  expect(previewRecipe).not.toHaveBeenCalled();
+});
+it('shows an actionable recipe-size API message without creating a meal', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_type: 'mealie',
+      provider_name: 'Private Mealie',
+      is_active: true,
+    },
+  ]);
+  jest.mocked(browseRecipes).mockResolvedValue({
+    items: [
+      { id: 'large', slug: 'large', name: 'Large recipe', recipeServings: 4 },
+    ],
+    pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+  });
+  jest
+    .mocked(previewRecipe)
+    .mockRejectedValueOnce(
+      new Error(
+        'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+      )
+    );
+  const view = renderBrowser();
+  fireEvent.press(await view.findByText('Private Mealie'));
+  fireEvent.press(await view.findByText('Large recipe'));
+  expect(await view.findByText(/more than 100 ingredients/)).toBeTruthy();
+});
 it.each(['server-owner', 'stale-owner'])(
   'loads a direct import only for the retained owner (%s)',
   async (requestScope) => {

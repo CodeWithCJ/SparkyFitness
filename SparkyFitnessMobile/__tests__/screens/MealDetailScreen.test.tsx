@@ -279,7 +279,6 @@ describe('MealDetailScreen', () => {
         name: 'Original rice recipe',
         recipeServings: 4,
         sourceFingerprint: 'a'.repeat(64),
-        mealFingerprint: 'base',
         ingredients: [],
         mappings: [],
         syncWarnings: [],

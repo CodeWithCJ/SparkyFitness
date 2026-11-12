@@ -1,6 +1,5 @@
 import {
   getConversionFactor,
-  recipeImportBrowseFromFoodSearch,
   recipeImportNoteNeedsReview,
   RECIPE_IMPORT_MAPPING_PAGE_SIZE,
   type RecipeImportPreview,
@@ -14,15 +13,15 @@ import {
   type RecipeImportCandidate,
   type RecipeImportIngredient,
   type RecipeImportMapping,
-  type RecipeImportBrowseResponse,
   type RecipeImportSyncResponse,
   type RecipeImportSyncRequest,
   type RecipeImportSyncPreview,
   type RecipeImportSavedMappingsResponse,
 } from '@workspace/shared';
-import { searchMealieFoods } from './foodIntegrationService.js';
 import externalProviderService from './externalProviderService.js';
+import externalProviderRepository from '../models/externalProviderRepository.js';
 import MealieService, {
+  MealieRecipeTooLargeError,
   type MealieIngredientRecipe,
 } from '../integrations/mealie/mealieService.js';
 import repository, {
@@ -118,7 +117,13 @@ async function readRecipe(
 ): Promise<MealieIngredientRecipe> {
   try {
     return await client.getRecipeDetails(slug, { requireIngredients: true });
-  } catch {
+  } catch (error) {
+    if (error instanceof MealieRecipeTooLargeError)
+      throw new RecipeImportError(
+        422,
+        'RECIPE_TOO_LARGE',
+        'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+      );
     throw new RecipeImportError(
       502,
       'PROVIDER_UNAVAILABLE',
@@ -356,35 +361,18 @@ async function preview(
     await readRecipe(client, input.recipeSlug)
   );
 }
-async function browse(
-  userId: string,
-  actorId: string,
-  providerId: string,
-  search: string,
-  page: number
-): Promise<RecipeImportBrowseResponse> {
-  requireOwner(userId, actorId);
-  const provider = await ownedProvider(userId, providerId);
-  try {
-    const result = await searchMealieFoods(
-      search,
-      provider.baseUrl,
-      provider.apiKey,
-      userId,
+async function requireProviderOwner(userId: string, providerId: string) {
+  if (
+    !(await externalProviderRepository.checkExternalDataProviderOwnership(
       providerId,
-      page
-    );
-    return recipeImportBrowseFromFoodSearch({
-      foods: result.items,
-      pagination: result.pagination,
-    });
-  } catch {
+      userId
+    ))
+  )
     throw new RecipeImportError(
-      502,
-      'PROVIDER_UNAVAILABLE',
-      'Unable to browse Mealie recipes. Check the provider connection.'
+      403,
+      'PROVIDER_FORBIDDEN',
+      'This recipe provider is not available to your account.'
     );
-  }
 }
 async function listMappings(
   userId: string,
@@ -393,7 +381,7 @@ async function listMappings(
   page: number
 ): Promise<RecipeImportSavedMappingsResponse> {
   requireOwner(userId, actorId);
-  await adapter(userId, providerId);
+  await requireProviderOwner(userId, providerId);
   const result = await repository.listMappings(userId, providerId, page);
   return {
     items: result.rows.map((row) => ({
@@ -422,7 +410,7 @@ async function forgetMapping(
   mappingId: string
 ): Promise<{ deleted: true }> {
   requireOwner(userId, actorId);
-  await adapter(userId, providerId);
+  await requireProviderOwner(userId, providerId);
   if (!(await repository.deleteMapping(userId, providerId, mappingId)))
     throw new RecipeImportError(
       404,
@@ -682,7 +670,6 @@ function publicSource(source: RecipeImportStoredSource): RecipeImportSource {
     syncWarnings: source.syncWarnings,
     mealId: source.mealId,
     mappings: source.mappings,
-    mealFingerprint: source.mealFingerprint,
     syncEligible: source.syncEligible,
     lastSyncedAt: source.lastSyncedAt,
   };
@@ -782,7 +769,7 @@ async function prepareNutritionSync(
       mealSavedAt,
     }),
   };
-  return { source, client, recipe, preview, patch, meal };
+  return { source, client, recipe, preview, patch };
 }
 async function previewNutritionSync(
   userId: string,
@@ -797,8 +784,11 @@ async function syncNutrition(
   mealId: string,
   input: RecipeImportSyncRequest = {}
 ): Promise<RecipeImportSyncResponse> {
-  const { source, client, recipe, preview, patch, meal } =
-    await prepareNutritionSync(userId, actorId, mealId);
+  const { source, client, recipe, preview, patch } = await prepareNutritionSync(
+    userId,
+    actorId,
+    mealId
+  );
   if (input.confirmationFingerprint) {
     if (input.confirmationFingerprint !== preview.confirmationFingerprint)
       throw new RecipeImportError(
@@ -852,7 +842,6 @@ async function syncNutrition(
     ...source,
     sourceFingerprint: recipeFingerprint(updated),
     syncBaseline: syncBaseline(updated),
-    mealFingerprint: mealFingerprint(meal),
     syncEligible: true,
     recipeServings: preview.recipeServings,
     lastSyncedAt: new Date().toISOString(),
@@ -914,12 +903,7 @@ async function suggest(
     recipeSlug: input.recipeSlug,
   });
   checkFingerprint(current.sourceFingerprint, input.sourceFingerprint);
-  const confirmed = new Set([
-    ...input.confirmedIngredientIds,
-    ...current.ingredients
-      .filter((row) => row.mapping?.confirmed)
-      .map((row) => row.ingredientId),
-  ]);
+  const confirmed = new Set(input.confirmedIngredientIds);
   const selected = current.ingredients
     .filter(
       (row) =>
@@ -1094,7 +1078,6 @@ async function suggest(
 export default {
   listMappings,
   forgetMapping,
-  browse,
   preview,
   suggest,
   save,

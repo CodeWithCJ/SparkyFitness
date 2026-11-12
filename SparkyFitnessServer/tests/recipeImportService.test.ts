@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const m = vi.hoisted(() => ({
   provider: vi.fn(),
+  providerOwner: vi.fn(),
   recipe: vi.fn(),
   patch: vi.fn(),
   mappings: vi.fn(),
@@ -23,7 +24,11 @@ const m = vi.hoisted(() => ({
 vi.mock('../services/externalProviderService.js', () => ({
   default: { getExternalDataProviderDetails: m.provider },
 }));
+vi.mock('../models/externalProviderRepository.js', () => ({
+  default: { checkExternalDataProviderOwnership: m.providerOwner },
+}));
 vi.mock('../integrations/mealie/mealieService.js', () => ({
+  MealieRecipeTooLargeError: class extends Error {},
   default: class {
     getRecipeDetails = m.recipe;
     patchRecipeNutrition = m.patch;
@@ -69,9 +74,9 @@ vi.mock('../utils/outboundUrlPolicy.js', () => ({
 }));
 import service from '../services/recipeImportService.js';
 import { recipeFingerprint } from '../services/recipeImportMath.js';
-import { mealFingerprint } from '../services/recipeImportMealSnapshot.js';
 import { recipeImportSourceSchema } from '@workspace/shared';
 import type { MealieIngredientRecipe } from '../integrations/mealie/mealieService.js';
+import { MealieRecipeTooLargeError } from '../integrations/mealie/mealieService.js';
 import type {
   MappingWrite,
   SourceWrite,
@@ -111,6 +116,7 @@ const variant = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  m.providerOwner.mockResolvedValue(true);
   m.provider.mockResolvedValue({
     id: 'p',
     user_id: 'u',
@@ -128,6 +134,63 @@ beforeEach(() => {
   m.targets.mockResolvedValue([]);
   m.lookup.mockResolvedValue({ source: 'not_found', food: null });
   m.markSynced.mockResolvedValue(undefined);
+});
+
+describe('local saved-choice ownership and import limits', () => {
+  it('lists and forgets owned saved choices without active status, URL, key or decryption', async () => {
+    m.provider.mockRejectedValue(new Error('No credentials available'));
+    m.listMappings.mockResolvedValue({ rows: [], total: 0 });
+    m.deleteMapping.mockResolvedValue(true);
+    expect(await service.listMappings('u', 'u', 'p', 2)).toEqual({
+      items: [],
+      pagination: { page: 2, pageSize: 25, totalCount: 0, hasMore: false },
+    });
+    expect(await service.forgetMapping('u', 'u', 'p', 'mapping')).toEqual({
+      deleted: true,
+    });
+    expect(m.providerOwner).toHaveBeenNthCalledWith(1, 'p', 'u');
+    expect(m.providerOwner).toHaveBeenNthCalledWith(2, 'p', 'u');
+    expect(m.listMappings).toHaveBeenCalledWith('u', 'p', 2);
+    expect(m.deleteMapping).toHaveBeenCalledWith('u', 'p', 'mapping');
+    expect(m.provider).not.toHaveBeenCalled();
+    expect(m.recipe).not.toHaveBeenCalled();
+    expect(m.patch).not.toHaveBeenCalled();
+    expect(m.save).not.toHaveBeenCalled();
+  });
+  it('rejects a missing or foreign provider before reading or deleting saved choices', async () => {
+    m.providerOwner.mockResolvedValue(false);
+    await expect(
+      service.listMappings('u', 'u', 'foreign', 1)
+    ).rejects.toMatchObject({ status: 403, code: 'PROVIDER_FORBIDDEN' });
+    await expect(
+      service.forgetMapping('u', 'u', 'foreign', 'mapping')
+    ).rejects.toMatchObject({ status: 403, code: 'PROVIDER_FORBIDDEN' });
+    expect(m.listMappings).not.toHaveBeenCalled();
+    expect(m.deleteMapping).not.toHaveBeenCalled();
+    expect(m.provider).not.toHaveBeenCalled();
+  });
+  it('rejects delegated saved-choice operations before checking provider ownership', async () => {
+    await expect(
+      service.listMappings('u', 'delegate', 'p', 1)
+    ).rejects.toMatchObject({ status: 403, code: 'OWNER_REQUIRED' });
+    await expect(
+      service.forgetMapping('u', 'delegate', 'p', 'mapping')
+    ).rejects.toMatchObject({ status: 403, code: 'OWNER_REQUIRED' });
+    expect(m.providerOwner).not.toHaveBeenCalled();
+    expect(m.deleteMapping).not.toHaveBeenCalled();
+  });
+  it('reports the ingredient cap as a distinct actionable error without writing', async () => {
+    m.recipe.mockRejectedValue(new MealieRecipeTooLargeError());
+    await expect(
+      service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' })
+    ).rejects.toMatchObject({
+      status: 422,
+      code: 'RECIPE_TOO_LARGE',
+      message: expect.stringContaining('100 ingredients'),
+    });
+    expect(m.save).not.toHaveBeenCalled();
+    expect(m.patch).not.toHaveBeenCalled();
+  });
 });
 describe('ordinary Mealie units and remembered food choices', () => {
   it.each(['1 Cup Flour', '1/2 cup flour', '½ cup flour', '2 eggs'])(
@@ -272,7 +335,6 @@ describe('ordinary Mealie units and remembered food choices', () => {
         return {
           ...source,
           mealId: 'meal',
-          mealFingerprint: mealFingerprint(meal),
           lastSyncedAt: null,
         };
       }
@@ -356,7 +418,6 @@ describe('ordinary Mealie units and remembered food choices', () => {
           return {
             ...source,
             mealId: 'meal',
-            mealFingerprint: mealFingerprint(meal),
             lastSyncedAt: null,
           };
         }
@@ -433,7 +494,6 @@ describe('ordinary Mealie units and remembered food choices', () => {
         return {
           ...source,
           mealId: 'meal',
-          mealFingerprint: mealFingerprint(meal),
           lastSyncedAt: null,
         };
       }
@@ -616,7 +676,6 @@ describe('source row identity and safe mapping reuse', () => {
         return {
           ...source,
           mealId: 'meal',
-          mealFingerprint: mealFingerprint(meal),
           lastSyncedAt: null,
         };
       });
@@ -923,7 +982,6 @@ describe('owner-only ingredient imports', () => {
     m.save.mockImplementation(async (_user, meal, source) => ({
       ...source,
       mealId: 'meal',
-      mealFingerprint: mealFingerprint(meal),
       lastSyncedAt: null,
     }));
     const result = await service.save('u', 'u', {
@@ -1015,7 +1073,6 @@ describe('confirmed ingredient mapping context', () => {
       return {
         ...source,
         mealId: 'meal',
-        mealFingerprint: mealFingerprint(meal),
         lastSyncedAt: null,
       };
     });
@@ -1149,7 +1206,6 @@ describe('explicit safe nutrition sync', () => {
       recipeServings: 4,
       ingredients: [{ ingredientId: 'i', quantity: 600, unit: 'g' }],
       mappings: [mapping],
-      mealFingerprint: mealFingerprint({ foods }),
       syncEligible: true,
       lastSyncedAt: null,
     });
@@ -1258,7 +1314,7 @@ describe('explicit safe nutrition sync', () => {
     });
     const changed = await service.getSource('u', 'u', 'meal');
     expect(changed.syncEligible).toBe(true);
-    expect(changed.mealFingerprint).toBe(baseline.mealFingerprint);
+    expect(changed).not.toHaveProperty('mealFingerprint');
     expect(baseline.syncEligible).toBe(true);
     expect(m.provider).not.toHaveBeenCalled();
     expect(m.recipe).not.toHaveBeenCalled();
@@ -1291,7 +1347,6 @@ describe('explicit safe nutrition sync', () => {
     m.meal.mockResolvedValue(incomplete);
     m.source.mockResolvedValue({
       ...source,
-      mealFingerprint: mealFingerprint(incomplete),
     });
     await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
       { code: 'INCOMPLETE_NUTRITION' }
@@ -1435,7 +1490,6 @@ describe('explicit safe nutrition sync', () => {
       m.meal.mockResolvedValue(zeroMeal);
       m.source.mockResolvedValue({
         ...(await m.source()),
-        mealFingerprint: mealFingerprint(zeroMeal),
       });
       m.patch.mockResolvedValue({
         ...recipe,
@@ -1583,7 +1637,6 @@ describe('private sync baselines and strict public compatibility', () => {
       const stored = {
         ...source,
         mealId: id,
-        mealFingerprint: mealFingerprint(meal),
         lastSyncedAt: null,
       };
       m.source.mockResolvedValue(stored);

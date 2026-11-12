@@ -26,6 +26,7 @@ import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useRecipeImport } from '@/hooks/Foods/useRecipeImport';
 import { useRecipeImportFoodAccess } from '@/hooks/Foods/useRecipeImportQueries';
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
+import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
 
 let mockActing = false;
 let mockOwner = 'owner';
@@ -51,6 +52,9 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   }),
 }));
 jest.mock('@/api/Foods/recipeImportService');
+jest.mock('@/api/allergenPreferences', () => ({
+  allergenPreferenceService: { getAll: jest.fn(async () => []) },
+}));
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
   useCustomNutrients: () => ({ data: [] }),
 }));
@@ -135,9 +139,7 @@ jest.mock('@/components/FoodUnitSelector', () => ({
     >
   ) => {
     if (mockRealSelector) {
-      const Actual = jest.requireActual<
-        typeof import('@/components/FoodUnitSelector')
-      >('@/components/FoodUnitSelector').default;
+      const Actual = mockActualFoodUnitSelector;
       return <Actual {...props} />;
     }
     return props.open ? (
@@ -170,6 +172,11 @@ jest.mock('@/components/FoodSearch/FoodFormDialog', () => ({
   ),
 }));
 
+// Load the real selector before timed tests, including a cold transform cache.
+const mockActualFoodUnitSelector = jest.requireActual<
+  typeof import('@/components/FoodUnitSelector')
+>('@/components/FoodUnitSelector').default;
+
 const preview: RecipeImportPreview = {
   providerId: 'provider',
   recipeSlug: 'rice',
@@ -201,7 +208,6 @@ const saved: RecipeImportSaveResponse = {
     ...preview,
     mealId: 'meal',
     mappings: [],
-    mealFingerprint: 'base',
     syncEligible: true,
     lastSyncedAt: null,
   },
@@ -1050,6 +1056,89 @@ it('lets the owner inspect and forget saved choices without importing a recipe a
     await screen.findByText('No saved choices for this provider.')
   ).toBeInTheDocument();
   expect(service.previewRecipe).not.toHaveBeenCalled();
+  expect(service.saveRecipe).not.toHaveBeenCalled();
+});
+it('keeps inactive personal Mealie providers available for forgetting saved choices without searching', async () => {
+  const inactiveProvider = {
+    id: 'provider',
+    name: 'Mealie',
+    app_key: '',
+    provider_type: 'mealie',
+    provider_name: 'My Mealie',
+    is_active: false,
+    user_id: 'owner',
+  };
+  jest
+    .mocked(getExternalDataProviders)
+    .mockResolvedValueOnce([inactiveProvider]);
+  const empty = {
+    items: [],
+    pagination: { page: 1, pageSize: 25, totalCount: 0, hasMore: false },
+  };
+  api.listRecipeMappings
+    .mockResolvedValueOnce({
+      ...empty,
+      items: [
+        {
+          id: 'choice',
+          foodId: 'food',
+          variantId: 'variant',
+          foodName: 'Rice',
+          ingredientName: 'Rice',
+          sourceUnit: 'g',
+          quantityPerSourceUnit: 1,
+          unit: 'g',
+          updatedAt: '2026-11-12T00:00:00Z',
+        },
+      ],
+      pagination: { ...empty.pagination, totalCount: 1 },
+    })
+    .mockResolvedValue(empty);
+  api.forgetRecipeMapping.mockResolvedValue({ deleted: true });
+  setup();
+  await screen.findByRole('option', { name: /My Mealie/ });
+  fireEvent.change(screen.getByLabelText('Mealie provider'), {
+    target: { value: 'provider' },
+  });
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Manage saved choices' })
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Forget saved choice for Rice' })
+  );
+  await waitFor(() =>
+    expect(service.forgetRecipeMapping).toHaveBeenCalledWith(
+      'provider',
+      'choice'
+    )
+  );
+  expect(
+    screen.getByText(
+      'Activate this provider in Settings to import recipes. Saved choices can still be managed here.'
+    )
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('textbox', { name: 'Search Mealie recipes' })
+  ).not.toBeInTheDocument();
+  expect(service.browseRecipes).not.toHaveBeenCalled();
+  expect(service.previewRecipe).not.toHaveBeenCalled();
+});
+it('shows the actionable ingredient-limit API message without suggesting a provider connection problem', async () => {
+  api.previewRecipe.mockRejectedValueOnce(
+    new HttpApiError(
+      'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.',
+      422
+    )
+  );
+  setup();
+  await screen.findByRole('option', { name: 'My Mealie' });
+  fireEvent.change(screen.getByLabelText('Mealie provider'), {
+    target: { value: 'provider' },
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Rice batch' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'more than 100 ingredients'
+  );
   expect(service.saveRecipe).not.toHaveBeenCalled();
 });
 it('highlights an amount-like note as a possible separate ingredient', () => {

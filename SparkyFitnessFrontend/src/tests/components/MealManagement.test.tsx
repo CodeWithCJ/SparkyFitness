@@ -271,7 +271,6 @@ describe('MealManagement', () => {
       name: 'Original source',
       recipeServings: 1,
       sourceFingerprint: 'a'.repeat(64),
-      mealFingerprint: 'saved-meal',
       ingredients: [],
       mappings: [],
       syncWarnings: [],

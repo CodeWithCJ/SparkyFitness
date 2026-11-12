@@ -101,7 +101,6 @@ const source: RecipeImportSource = {
   ...preview,
   mealId: 'meal',
   mappings: [mapping],
-  mealFingerprint: 'base',
   syncEligible: true,
   lastSyncedAt: null,
 };

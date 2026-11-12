@@ -1,5 +1,7 @@
 {
   "recipeImport": {
+    "inactive": "Inactive",
+    "inactiveManagement": "Activate this provider in Settings to import recipes. Saved choices can still be managed here.",
     "syncEnergy": "Energy",
     "syncProtein": "Protein",
     "syncCarbs": "Carbohydrates",

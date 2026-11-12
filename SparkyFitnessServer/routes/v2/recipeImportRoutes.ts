@@ -12,7 +12,6 @@ import {
   recipeImportPreviewRequestSchema,
   recipeImportSaveRequestSchema,
   recipeImportSuggestionRequestSchema,
-  recipeImportBrowseQuerySchema,
   recipeImportProviderParamsSchema,
   recipeImportMealParamsSchema,
   recipeImportSyncBodySchema,
@@ -32,19 +31,6 @@ const actor = (req: Request) =>
   req.originalUserId || req.authenticatedUserId || req.userId;
 /**
  * @swagger
- * /v2/recipe-imports/mealie/{providerId}/recipes:
- *   get:
- *     summary: Browse a personal Mealie provider without importing foods
- *     tags: [Foods & Nutrition]
- *     security: [{cookieAuth: []}]
- *     parameters:
- *       - {in: path, name: providerId, required: true, schema: {type: string, format: uuid}}
- *       - {in: query, name: search, schema: {type: string}}
- *       - {in: query, name: page, schema: {type: integer, minimum: 1}}
- *     responses:
- *       200: {description: Recipe summaries and pagination}
- *       403: {description: Owner-only provider access required}
- *       502: {description: Provider unavailable}
  * /v2/recipe-imports/mealie/preview:
  *   post:
  *     summary: Preview original Mealie ingredients and reusable confirmed mappings
@@ -59,6 +45,7 @@ const actor = (req: Request) =>
  *       200: {description: Source fingerprint and every ingredient with review issues}
  *       400: {description: Invalid request}
  *       403: {description: Owner-only}
+ *       422: {description: Recipe exceeds the 100-ingredient import limit}
  * /v2/recipe-imports/mealie/suggest:
  *   post:
  *     summary: Retrieve real food candidates and optional unconfirmed AI selections
@@ -193,23 +180,6 @@ router.delete(
     }
   }
 );
-router.get('/mealie/:providerId/recipes', async (req, res, next) => {
-  try {
-    const { providerId } = recipeImportProviderParamsSchema.parse(req.params);
-    const query = recipeImportBrowseQuerySchema.parse(req.query);
-    res.json(
-      await service.browse(
-        req.userId,
-        actor(req),
-        providerId,
-        query.search,
-        query.page
-      )
-    );
-  } catch (error) {
-    next(error);
-  }
-});
 router.post('/mealie/preview', async (req, res, next) => {
   try {
     res.json(

@@ -34,6 +34,33 @@ beforeEach(() => {
   state.preview.mockResolvedValue({ ingredients: [] });
 });
 describe('recipe import route boundary', () => {
+  it('has no duplicate recipe browsing endpoint outside the existing food search', async () => {
+    const response = await request(app).get(
+      '/api/v2/recipe-imports/mealie/00000000-0000-4000-a000-000000000001/recipes'
+    );
+    expect(response.status).toBe(404);
+    expect(state.browse).not.toHaveBeenCalled();
+  });
+  it('returns the actionable recipe-size error as 422 rather than a provider connection failure', async () => {
+    state.preview.mockRejectedValue(
+      new RecipeImportError(
+        422,
+        'RECIPE_TOO_LARGE',
+        'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+      )
+    );
+    const response = await request(app)
+      .post('/api/v2/recipe-imports/mealie/preview')
+      .send({
+        providerId: '00000000-0000-4000-a000-000000000001',
+        recipeSlug: 'large',
+      });
+    expect(response.status).toBe(422);
+    expect(response.body).toMatchObject({
+      code: 'RECIPE_TOO_LARGE',
+      error: expect.stringContaining('100 ingredients'),
+    });
+  });
   it('lists the current owner saved choices with bounded pagination', async () => {
     state.listMappings.mockResolvedValue({
       items: [],

@@ -7,7 +7,6 @@ import {
   type RecipeFoodMappings,
   RECIPE_IMPORT_MAPPING_PAGE_SIZE,
 } from '@workspace/shared';
-import { mealFingerprint } from '../services/recipeImportMealSnapshot.js';
 import type { MealInput } from '../types/nutrition.js';
 export type MappingWrite = Pick<
   RecipeFoodMappings,
@@ -19,7 +18,7 @@ export type MappingWrite = Pick<
 >;
 export type SourceWrite = Omit<
   RecipeImportStoredSource,
-  'mealId' | 'mealFingerprint' | 'lastSyncedAt'
+  'mealId' | 'lastSyncedAt'
 >;
 async function getMappings(
   userId: string,
@@ -130,15 +129,9 @@ async function save(
       { ...meal, user_id: userId },
       client
     );
-    const savedMeal = await mealRepository.getMealById(
-      created.id,
-      userId,
-      client
-    );
     const provenance: RecipeImportStoredSource = {
       ...source,
       mealId: created.id,
-      mealFingerprint: mealFingerprint(savedMeal),
       lastSyncedAt: null,
     };
     await client.query(

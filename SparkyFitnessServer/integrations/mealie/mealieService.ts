@@ -78,6 +78,14 @@ export const mealieRecipeSchema = z
 export const mealieIngredientRecipeSchema = mealieRecipeSchema.extend({
   recipeIngredient: z.array(mealieIngredientSchema).max(100),
 });
+export class MealieRecipeTooLargeError extends Error {
+  constructor() {
+    super(
+      'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+    );
+    this.name = 'MealieRecipeTooLargeError';
+  }
+}
 export type MealieRecipe = z.infer<typeof mealieRecipeSchema>;
 export type MealieIngredientRecipe = z.infer<
   typeof mealieIngredientRecipeSchema
@@ -117,32 +125,39 @@ class MealieService {
       hasMore: boolean;
     };
   }> {
-    if (!this.accessToken) {
-      throw new Error('Mealie API key not provided.');
-    }
     const perPage = 10;
-    const url = new URL(`${this.baseUrl}/api/recipes`);
-    url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
-    url.searchParams.append('perPage', String(perPage));
-    url.searchParams.append('page', String(page));
-    const data = await this.request(
-      url,
-      'recipe search',
-      z.object({
-        items: z.array(mealieRecipeSchema),
-        total: z.number().int().nonnegative(),
-      }),
-      { headers: options.headers }
-    );
-    return {
-      items: data.items,
-      pagination: {
-        page,
-        pageSize: perPage,
-        totalCount: data.total,
-        hasMore: page * perPage < data.total,
-      },
-    };
+    try {
+      const url = new URL(`${this.baseUrl}/api/recipes`);
+      url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
+      url.searchParams.append('perPage', String(perPage));
+      url.searchParams.append('page', String(page));
+      const data = await this.request(
+        url,
+        'recipe search',
+        z.object({
+          items: z.array(z.unknown()),
+          total: z.number().int().nonnegative(),
+        }),
+        { headers: options.headers }
+      );
+      return {
+        items: data.items.flatMap((item) => {
+          const parsed = mealieRecipeSchema.safeParse(item);
+          return parsed.success ? [parsed.data] : [];
+        }),
+        pagination: {
+          page,
+          pageSize: perPage,
+          totalCount: data.total,
+          hasMore: page * perPage < data.total,
+        },
+      };
+    } catch {
+      return {
+        items: [],
+        pagination: { page, pageSize: perPage, totalCount: 0, hasMore: false },
+      };
+    }
   }
   getRecipeDetails(
     slug: string,
@@ -181,7 +196,8 @@ class MealieService {
     init: RequestInit = {}
   ): Promise<T> {
     let status: number | null = null;
-    let failure: 'credentials' | 'transport' | 'http' | 'schema' =
+    let failure:
+      'credentials' | 'transport' | 'http' | 'schema' | 'ingredient_limit' =
       'credentials';
     try {
       if (!this.accessToken) throw new Error('Missing credentials');
@@ -200,7 +216,20 @@ class MealieService {
       failure = 'http';
       if (!response.ok) throw new Error('Upstream rejected request');
       failure = 'schema';
-      return schema.parse(await response.json());
+      const parsed = schema.safeParse(await response.json());
+      if (parsed.success) return parsed.data;
+      if (
+        operation === 'recipe read' &&
+        parsed.error.issues.some(
+          (issue) =>
+            issue.code === 'too_big' &&
+            issue.origin === 'array' &&
+            issue.path.length === 1 &&
+            issue.path[0] === 'recipeIngredient'
+        )
+      )
+        failure = 'ingredient_limit';
+      throw new Error('Invalid Mealie response');
     } catch {
       // Never log arbitrary transport/schema errors, URLs, credentials or bodies.
       log('error', 'Mealie ingredient request failed', {
@@ -208,6 +237,7 @@ class MealieService {
         status,
         failure,
       });
+      if (failure === 'ingredient_limit') throw new MealieRecipeTooLargeError();
       throw new Error(
         'Mealie ' +
           operation +

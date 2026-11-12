@@ -10061,6 +10061,8 @@
     "emptySubtitle": "Drinks you log with the water buttons, a drink preset, the watch or a synced app show up here."
   },
   "recipeImport": {
+    "inactive": "Inactive",
+    "inactiveManagement": "Activate this provider in Settings to import recipes. Saved choices can still be managed here.",
     "syncEnergy": "Energy",
     "syncProtein": "Protein",
     "syncCarbs": "Carbohydrates",

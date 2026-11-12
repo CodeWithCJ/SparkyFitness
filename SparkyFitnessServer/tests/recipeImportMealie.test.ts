@@ -100,13 +100,23 @@ describe('sanitized ingredient operation failures', () => {
             )
           );
         vi.stubGlobal('fetch', fetcher);
-        await expect(
-          operation.call(
-            new MealieService('https://private.example', 'private-token')
-          )
-        ).rejects.toMatchObject({
-          message: `Mealie ${operation.operation} failed${failure === 'http' ? ' (403)' : ''}`,
-        });
+        const result = operation.call(
+          new MealieService('https://private.example', 'private-token')
+        );
+        if (operation.operation === 'recipe search')
+          await expect(result).resolves.toEqual({
+            items: [],
+            pagination: {
+              page: 1,
+              pageSize: 10,
+              totalCount: 0,
+              hasMore: false,
+            },
+          });
+        else
+          await expect(result).rejects.toMatchObject({
+            message: `Mealie ${operation.operation} failed${failure === 'http' ? ' (403)' : ''}`,
+          });
         expect(log).toHaveBeenCalledExactlyOnceWith(
           'error',
           'Mealie ingredient request failed',

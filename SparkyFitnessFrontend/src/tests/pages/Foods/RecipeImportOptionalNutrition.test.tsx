@@ -65,7 +65,6 @@ const saved: RecipeImportSaveResponse = {
     ...preview,
     mealId: 'meal',
     mappings: [],
-    mealFingerprint: 'base',
     syncEligible: false,
     lastSyncedAt: null,
   },

@@ -100,16 +100,19 @@ function RecipeImportBrowser({
   const mealieProviders = (providers.data ?? []).filter(
     (provider) =>
       provider.provider_type === 'mealie' &&
-      provider.is_active &&
       'user_id' in provider &&
       provider.user_id === ownerId
   );
+  const selectedProvider = mealieProviders.find(
+    (provider) => provider.id === providerId
+  );
   const busy = manualBusy || initialPreview.isFetching;
-  const activePreview =
-    preview ??
-    (!initialDismissed && !initialPreview.isFetching
-      ? initialPreview.data
-      : null);
+  const activePreview = selectedProvider?.is_active
+    ? (preview ??
+      (!initialDismissed && !initialPreview.isFetching
+        ? initialPreview.data
+        : null))
+    : null;
 
   async function choose(recipeSlug: string) {
     setInitialDismissed(true);
@@ -173,6 +176,8 @@ function RecipeImportBrowser({
           {mealieProviders.map((provider) => (
             <option key={provider.id} value={provider.id}>
               {provider.provider_name}
+              {!provider.is_active &&
+                ` (${t('recipeImport.inactive', 'Inactive')})`}
             </option>
           ))}
         </select>
@@ -191,86 +196,102 @@ function RecipeImportBrowser({
           )}
         </p>
       )}
-      {providerId && (
+      {selectedProvider && (
         <>
           <RecipeImportSavedMappings
             key={providerId}
             providerId={providerId}
             ownerId={ownerId}
           />
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSubmittedSearch(search.trim());
-              setPage(1);
-            }}
-          >
-            <Input
-              aria-label={t(
-                'recipeImport.searchRecipes',
-                'Search Mealie recipes'
+          {!selectedProvider.is_active && (
+            <p>
+              {t(
+                'recipeImport.inactiveManagement',
+                'Activate this provider in Settings to import recipes. Saved choices can still be managed here.'
               )}
-              maxLength={200}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <Button type="submit">{t('recipeImport.search', 'Search')}</Button>
-          </form>
-          {(recipes.isPending || busy) && (
-            <p role="status">
-              {t('recipeImport.loadingRecipes', 'Loading recipes…')}
             </p>
           )}
-          {recipes.error && <p role="alert">{recipes.error.message}</p>}
-          {failure && <p role="alert">{failure.message}</p>}
-          {!initialDismissed && initialPreview.error && (
-            <p role="alert">{initialPreview.error.message}</p>
+          {selectedProvider.is_active && (
+            <>
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setSubmittedSearch(search.trim());
+                  setPage(1);
+                }}
+              >
+                <Input
+                  aria-label={t(
+                    'recipeImport.searchRecipes',
+                    'Search Mealie recipes'
+                  )}
+                  maxLength={200}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                <Button type="submit">
+                  {t('recipeImport.search', 'Search')}
+                </Button>
+              </form>
+              {(recipes.isPending || busy) && (
+                <p role="status">
+                  {t('recipeImport.loadingRecipes', 'Loading recipes…')}
+                </p>
+              )}
+              {recipes.error && <p role="alert">{recipes.error.message}</p>}
+              {failure && <p role="alert">{failure.message}</p>}
+              {!initialDismissed && initialPreview.error && (
+                <p role="alert">{initialPreview.error.message}</p>
+              )}
+              <ul className="space-y-2">
+                {recipes.data?.items.map((recipe) => (
+                  <li key={recipe.slug}>
+                    {recipe.food ? (
+                      <RecipeImportSearchResult
+                        recipe={recipe}
+                        disabled={busy}
+                        onChoose={() => void choose(recipe.slug)}
+                      />
+                    ) : (
+                      <Button
+                        className="w-full justify-start"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void choose(recipe.slug)}
+                      >
+                        {recipe.name}
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {recipes.isSuccess && recipes.data.items.length === 0 && (
+                <p>{t('recipeImport.noRecipes', 'No recipes found.')}</p>
+              )}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  disabled={page === 1 || busy || recipes.isFetching}
+                  onClick={() => setPage((previous) => previous - 1)}
+                >
+                  {t('common.previous', 'Previous')}
+                </Button>
+                <span>{t('recipeImport.page', 'Page {{page}}', { page })}</span>
+                <Button
+                  variant="outline"
+                  disabled={
+                    !recipes.data?.pagination.hasMore ||
+                    busy ||
+                    recipes.isFetching
+                  }
+                  onClick={() => setPage((previous) => previous + 1)}
+                >
+                  {t('common.next', 'Next')}
+                </Button>
+              </div>
+            </>
           )}
-          <ul className="space-y-2">
-            {recipes.data?.items.map((recipe) => (
-              <li key={recipe.slug}>
-                {recipe.food ? (
-                  <RecipeImportSearchResult
-                    recipe={recipe}
-                    disabled={busy}
-                    onChoose={() => void choose(recipe.slug)}
-                  />
-                ) : (
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void choose(recipe.slug)}
-                  >
-                    {recipe.name}
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-          {recipes.isSuccess && recipes.data.items.length === 0 && (
-            <p>{t('recipeImport.noRecipes', 'No recipes found.')}</p>
-          )}
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              disabled={page === 1 || busy || recipes.isFetching}
-              onClick={() => setPage((previous) => previous - 1)}
-            >
-              {t('common.previous', 'Previous')}
-            </Button>
-            <span>{t('recipeImport.page', 'Page {{page}}', { page })}</span>
-            <Button
-              variant="outline"
-              disabled={
-                !recipes.data?.pagination.hasMore || busy || recipes.isFetching
-              }
-              onClick={() => setPage((previous) => previous + 1)}
-            >
-              {t('common.next', 'Next')}
-            </Button>
-          </div>
         </>
       )}
     </div>
