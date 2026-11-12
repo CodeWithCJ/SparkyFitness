@@ -346,7 +346,7 @@ private struct ActiveWorkoutView: View {
     @EnvironmentObject private var checkIn: CheckInStore
 
     @State private var showingExercises = false
-    @State private var moreHeight: CGFloat = 0
+    @State private var moreTop: CGFloat = 0
     /// Nil until the view appears: set to `.set` then, so the scroll moves
     /// to the set screen even with the metrics page above it. Starting at
     /// `.set` asked for nothing and left the scroll at the top page.
@@ -370,14 +370,24 @@ private struct ActiveWorkoutView: View {
     }
 
     var body: some View {
-        // From the top: the More list (taller than the screen, scrolled freely),
-        // then the set screen and the metrics, one screen tall each and snapped
-        // to. The crown scrolls only while no value box has claimed it for
-        // adjusting a number.
+        // From the top: the metrics, the set screen, then the More list (taller
+        // than the screen, scrolled freely). The metrics and the set are one
+        // screen tall each and snapped to. The crown scrolls only while no
+        // value box has claimed it for adjusting a number.
         GeometryReader { geo in
             let pageHeight = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             ScrollView {
                 VStack(spacing: 0) {
+                    WorkoutMetricsPage()
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .id(WorkoutPageID.metrics)
+                    setScreen
+                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .id(WorkoutPageID.set)
+                        // Where the pages end and the More list starts.
+                        .background(GeometryReader { proxy in
+                            Color.clear.preference(key: MoreTopKey.self, value: proxy.frame(in: .named("workoutScroll")).maxY)
+                        })
                     VStack(spacing: WatchStyle.m(6)) {
                         WorkoutMoreUpNextPage(onOpenList: { showingExercises = true })
                             .id(WorkoutPageID.moreUpNext)
@@ -392,22 +402,14 @@ private struct ActiveWorkoutView: View {
                     .padding(.top, WatchStyle.top)
                     // Room under the last button and the page dots.
                     .padding(.bottom, WatchStyle.m(30))
-                    .background(GeometryReader { proxy in
-                        Color.clear.preference(key: MoreHeightKey.self, value: proxy.size.height)
-                    })
-                    setScreen
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
-                        .id(WorkoutPageID.set)
-                    WorkoutMetricsPage()
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
-                        .id(WorkoutPageID.metrics)
                 }
                 .scrollTargetLayout()
+                .coordinateSpace(name: "workoutScroll")
             }
-            .scrollPosition(id: $page)
-            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, setTop: moreHeight))
+            .scrollPosition(id: $page, anchor: .top)
+            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, moreTop: moreTop))
             .scrollIndicators(.hidden)
-            .onPreferenceChange(MoreHeightKey.self) { moreHeight = $0 }
+            .onPreferenceChange(MoreTopKey.self) { moreTop = $0 }
             // Pages are laid out against the whole screen, so each snaps to
             // exactly one screen; `workoutPage` puts the content back inside
             // the area the clock and page dots leave free.
@@ -548,39 +550,28 @@ private struct ActiveWorkoutView: View {
     }
 }
 
-/// Free scrolling through the More list, and a snap to a whole page from the
-/// set screen on: the set and the metrics are the last two pages, one screen
-/// tall each, and everything above them is the list.
+/// A snap to a whole page for the metrics and the set screen, and free
+/// scrolling through the More list below them.
 private struct WorkoutScrollBehavior: ScrollTargetBehavior {
     let pageHeight: CGFloat
-    /// Where the set screen starts: the measured height of the More list above
-    /// it. Not derived from the content size, which can include the scroll
-    /// view's insets and then lands every page that much off its boundary.
-    let setTop: CGFloat
+    /// Where the More list starts: measured, not derived from the content size,
+    /// which can include the scroll view's insets and then lands every page
+    /// that much off its boundary.
+    let moreTop: CGFloat
 
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        target.rect.origin.y = Self.snapped(target.rect.minY, setTop: setTop, pageHeight: pageHeight)
+        target.rect.origin.y = Self.snapped(target.rect.minY, moreTop: moreTop, pageHeight: pageHeight)
     }
 
-    /// Offsets in the More list stay where they are; from half a page above the
-    /// set screen on, the nearest of the set and metrics screens, so a swipe or
-    /// the crown can never rest between pages.
-    static func snapped(_ y: CGFloat, setTop: CGFloat, pageHeight: CGFloat) -> CGFloat {
-        guard pageHeight > 0, setTop > 0 else { return y }
-        guard y > setTop - pageHeight / 2 else { return Swift.max(0, y) }
-        let pages = ((y - setTop) / pageHeight).rounded().clamped(to: 0...1)
-        return setTop + pages * pageHeight
+    static func snapped(_ y: CGFloat, moreTop: CGFloat, pageHeight: CGFloat) -> CGFloat {
+        WorkoutPageSnap.snapped(y, moreTop: moreTop, pageHeight: pageHeight)
     }
 }
 
-/// The height of the More list, reported up to the scroll's snapping.
-private struct MoreHeightKey: PreferenceKey {
+/// The y of the end of the set screen, reported up to the scroll's snapping.
+private struct MoreTopKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-private extension CGFloat {
-    func clamped(to range: ClosedRange<CGFloat>) -> CGFloat { Swift.min(range.upperBound, Swift.max(range.lowerBound, self)) }
 }
 
 private enum WorkoutPageID: Hashable {
@@ -873,7 +864,7 @@ private struct SquircleLabel: View {
     }
 }
 
-/// The next exercise, one swipe up from the set screen, so what comes after
+/// The next exercise, in More, one swipe up from the set screen, so what comes after
 /// this one can be checked without opening the list: its name, how many sets
 /// and the first set's target, and the exercise after it. A tap opens the list.
 struct UpNextPage: View {
@@ -998,7 +989,7 @@ struct SwapExerciseSheet: View {
 }
 
 /// Time, heart rate and calories, one big reading per line as on Apple's
-/// Workout app. A swipe up from the set screen, so the set screen can stay
+/// Workout app. A swipe down from the set screen, so the set screen can stay
 /// about the set.
 struct WorkoutMetricsPage: View {
     @EnvironmentObject private var store: WorkoutSessionStore
