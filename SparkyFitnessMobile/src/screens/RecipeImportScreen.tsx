@@ -59,6 +59,14 @@ function RecipeImportWorkspace({
   const selectedProvider = available.find(
     (provider) => provider.id === providerId
   );
+  const providerAvailable = !!selectedProvider?.is_active;
+  useEffect(() => {
+    if (!providers.isSuccess || providerAvailable) return;
+    generation.current += 1;
+    setPreview(null);
+    setBusy(false);
+    setInitialDismissed(true);
+  }, [providerId, providerAvailable, providers.isSuccess]);
   const recipes = useQuery({
     queryKey: ['recipeImportBrowse', scope, providerId, debouncedSearch, page],
     queryFn: () => browseRecipes(providerId, debouncedSearch, page),
@@ -82,13 +90,20 @@ function RecipeImportWorkspace({
       ),
     retry: false,
   });
-  const busy = manualBusy || initialPreview.isFetching || searching;
-  const activePreview = selectedProvider?.is_active
-    ? (preview ??
-      (!initialDismissed && !initialPreview.isFetching
-        ? initialPreview.data
-        : null))
-    : null;
+  const busy =
+    providerAvailable &&
+    (manualBusy ||
+      searching ||
+      (initialRecipe?.providerId === providerId && initialPreview.isFetching));
+  const retainedPreview =
+    preview ??
+    (!initialDismissed && !initialPreview.isFetching
+      ? initialPreview.data
+      : null);
+  const activePreview =
+    providerAvailable && retainedPreview?.providerId === providerId
+      ? retainedPreview
+      : null;
   async function openRecipe(slug: string) {
     setInitialDismissed(true);
     const request = ++generation.current;
@@ -162,6 +177,7 @@ function RecipeImportWorkspace({
             generation.current += 1;
             setInitialDismissed(true);
             setProviderId(provider.id);
+            setPreview(null);
             setPage(1);
             setError(null);
           }}

@@ -1123,6 +1123,64 @@ it('keeps inactive personal Mealie providers available for forgetting saved choi
   expect(service.browseRecipes).not.toHaveBeenCalled();
   expect(service.previewRecipe).not.toHaveBeenCalled();
 });
+it.each([false, true])(
+  'discards a provider preview after deactivation (response still pending: %s)',
+  async (pending) => {
+    const a = {
+      id: 'provider',
+      name: 'Mealie',
+      app_key: '',
+      provider_type: 'mealie',
+      provider_name: 'My Mealie',
+      user_id: 'owner',
+      is_active: true,
+    };
+    const b = { ...a, id: 'provider-b', provider_name: 'Other Mealie' };
+    jest.mocked(getExternalDataProviders).mockResolvedValueOnce([a, b]);
+    let finish!: (value: RecipeImportPreview) => void;
+    if (pending)
+      api.previewRecipe.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+      );
+    const { client } = setup();
+    await screen.findByRole('option', { name: 'My Mealie' });
+    fireEvent.change(screen.getByLabelText('Mealie provider'), {
+      target: { value: 'provider' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Rice batch' }));
+    await waitFor(() => expect(api.previewRecipe).toHaveBeenCalledTimes(1));
+    if (!pending) await screen.findByRole('button', { name: 'Save meal' });
+    act(() => {
+      client.setQueryData(
+        ['recipe-import-providers', 'owner'],
+        [{ ...a, is_active: false }, b]
+      );
+    });
+    await screen.findByRole('option', { name: 'My Mealie (Inactive)' });
+    if (pending) {
+      await act(async () => {
+        finish(preview);
+      });
+      act(() => {
+        client.setQueryData(['recipe-import-providers', 'owner'], [a, b]);
+      });
+      await screen.findByRole('option', { name: 'My Mealie' });
+    } else {
+      fireEvent.change(screen.getByLabelText('Mealie provider'), {
+        target: { value: 'provider-b' },
+      });
+    }
+    expect(
+      await screen.findByRole('button', { name: 'Manage saved choices' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Save meal' })
+    ).not.toBeInTheDocument();
+    expect(api.saveRecipe).not.toHaveBeenCalled();
+  }
+);
 it('shows the actionable ingredient-limit API message without suggesting a provider connection problem', async () => {
   api.previewRecipe.mockRejectedValueOnce(
     new HttpApiError(

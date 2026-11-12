@@ -69,19 +69,86 @@ function renderBrowser() {
   client.setQueryData(profileQueryKey, { id: 'owner' });
   client.setQueryData(serverConfigsQueryKey, { activeConfig: config });
   mockScope = `${config.id}:${config.url}:owner`;
-  return render(
-    <QueryClientProvider client={client}>
-      <SafeAreaProvider
-        initialMetrics={{
-          insets: { top: 0, bottom: 0, left: 0, right: 0 },
-          frame: { x: 0, y: 0, width: 390, height: 844 },
-        }}
-      >
-        <RecipeImportScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>
-    </QueryClientProvider>
-  );
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider
+          initialMetrics={{
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            frame: { x: 0, y: 0, width: 390, height: 844 },
+          }}
+        >
+          <RecipeImportScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    ),
+  };
 }
+it.each([false, true])(
+  'discards a deactivated provider preview (response still pending: %s)',
+  async (pending) => {
+    jest.clearAllMocks();
+    const a = {
+      id: 'provider',
+      provider_name: 'Private Mealie',
+      provider_type: 'mealie',
+      is_active: true,
+    };
+    const b = { ...a, id: 'provider-b', provider_name: 'Other Mealie' };
+    jest.mocked(fetchExternalProviders).mockResolvedValue([a, b]);
+    jest.mocked(browseRecipes).mockResolvedValue({
+      items: [
+        { id: 'recipe', slug: 'rice', name: 'A recipe', recipeServings: 4 },
+      ],
+      pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+    });
+    const selected = {
+      providerId: 'provider',
+      recipeSlug: 'rice',
+      recipeId: 'recipe',
+      name: 'Chosen A recipe',
+      recipeServings: 4,
+      sourceFingerprint: 'a'.repeat(64),
+      ingredients: [],
+      syncWarnings: [],
+    };
+    let finish!: (value: typeof selected) => void;
+    jest.mocked(previewRecipe).mockReset();
+    if (pending)
+      jest.mocked(previewRecipe).mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+      );
+    else jest.mocked(previewRecipe).mockResolvedValueOnce(selected);
+    const view = renderBrowser();
+    fireEvent.press(await view.findByText('Private Mealie'));
+    fireEvent.press(await view.findByText('A recipe'));
+    await waitFor(() => expect(previewRecipe).toHaveBeenCalledTimes(1));
+    if (!pending) await view.findByText('Chosen A recipe');
+    act(() => {
+      view.client.setQueryData(
+        ['recipeImportProviders', mockScope],
+        [{ ...a, is_active: false }, b]
+      );
+    });
+    await view.findByText('Private Mealie (Inactive)');
+    if (pending) {
+      await act(async () => {
+        finish(selected);
+      });
+      act(() => {
+        view.client.setQueryData(['recipeImportProviders', mockScope], [a, b]);
+      });
+      await view.findByText('Private Mealie');
+    } else {
+      fireEvent.press(view.getByText('Other Mealie'));
+    }
+    expect(await view.findByText('Manage saved choices')).toBeTruthy();
+    expect(view.queryByText('Chosen A recipe')).toBeNull();
+  }
+);
 it('keeps inactive Mealie choices manageable without browsing or importing', async () => {
   jest.clearAllMocks();
   mockScope = 'server-owner';

@@ -106,13 +106,27 @@ function RecipeImportBrowser({
   const selectedProvider = mealieProviders.find(
     (provider) => provider.id === providerId
   );
-  const busy = manualBusy || initialPreview.isFetching;
-  const activePreview = selectedProvider?.is_active
-    ? (preview ??
-      (!initialDismissed && !initialPreview.isFetching
-        ? initialPreview.data
-        : null))
-    : null;
+  const providerAvailable = !!selectedProvider?.is_active;
+  useEffect(() => {
+    if (!providers.isSuccess || providerAvailable) return;
+    generation.current += 1;
+    setPreview(null);
+    setBusy(false);
+    setInitialDismissed(true);
+  }, [providerId, providerAvailable, providers.isSuccess]);
+  const busy =
+    providerAvailable &&
+    (manualBusy ||
+      (initialRecipe?.providerId === providerId && initialPreview.isFetching));
+  const retainedPreview =
+    preview ??
+    (!initialDismissed && !initialPreview.isFetching
+      ? initialPreview.data
+      : null);
+  const activePreview =
+    providerAvailable && retainedPreview?.providerId === providerId
+      ? retainedPreview
+      : null;
 
   async function choose(recipeSlug: string) {
     setInitialDismissed(true);
@@ -165,6 +179,7 @@ function RecipeImportBrowser({
             setInitialDismissed(true);
             generation.current += 1;
             setProviderId(event.target.value);
+            setPreview(null);
             setPage(1);
             setBusy(false);
             setFailure(null);
