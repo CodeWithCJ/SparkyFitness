@@ -181,5 +181,10 @@
     <string name="run_alert_pace_above">Pace above target</string>
     <string name="run_cue_checkin_km">%1$d minutes. Distance %2$.2f kilometers.</string>
 
+    <!-- Workout Foreground Service Notification -->
+    <string name="notification_channel_workout_tracking">Workout Tracking</string>
+    <string name="notification_recording_run_hr">Recording run &amp; heart rate</string>
+    <string name="notification_recording_workout">Recording workout</string>
+
     <color name="iconBackground">#FFFFFF</color>
 </resources>
