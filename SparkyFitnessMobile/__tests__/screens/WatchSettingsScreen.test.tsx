@@ -122,6 +122,19 @@ describe('WatchSettingsScreen', () => {
     expect(prefs().watchNewWorkout).toBe(true);
   });
 
+  test('the original workout layout rows hide while the new workout view is on', () => {
+    renderScreen();
+    expect(screen.getByTestId('watch-set-screen-metrics-switch')).toBeTruthy();
+    expect(screen.getByTestId('watch-up-next-switch')).toBeTruthy();
+    fireEvent(
+      screen.getByTestId('watch-new-workout-switch'),
+      'valueChange',
+      true
+    );
+    expect(screen.queryByTestId('watch-set-screen-metrics-switch')).toBeNull();
+    expect(screen.queryByTestId('watch-up-next-switch')).toBeNull();
+  });
+
   test('the top line and countdown choices only show while the new workout view is on', () => {
     renderScreen();
     const prefs = () => useAppPreferencesStore.getState();

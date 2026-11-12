@@ -232,40 +232,45 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
               {t('watchSettings.layoutTitle', { defaultValue: 'Layout' })}
             </Text>
-            <SettingsRow
-              title={t('watchSettings.setScreenMetricsTitle', {
-                defaultValue: 'Metrics on the set screen',
-              })}
-              subtitle={t('watchSettings.setScreenMetricsSubtitle', {
-                defaultValue:
-                  'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
-              })}
-              subtitleNumberOfLines={0}
-              rightAccessory={
-                <Switch
-                  testID="watch-set-screen-metrics-switch"
-                  value={watchSetScreenMetrics}
-                  onValueChange={setWatchSetScreenMetrics}
+            {/* The original workout screen's layout choices; the new view has its own. */}
+            {!watchNewWorkout && (
+              <>
+                <SettingsRow
+                  title={t('watchSettings.setScreenMetricsTitle', {
+                    defaultValue: 'Metrics on the set screen',
+                  })}
+                  subtitle={t('watchSettings.setScreenMetricsSubtitle', {
+                    defaultValue:
+                      'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
+                  })}
+                  subtitleNumberOfLines={0}
+                  rightAccessory={
+                    <Switch
+                      testID="watch-set-screen-metrics-switch"
+                      value={watchSetScreenMetrics}
+                      onValueChange={setWatchSetScreenMetrics}
+                    />
+                  }
                 />
-              }
-            />
-            <SettingsRow
-              title={t('watchSettings.upNextTitle', {
-                defaultValue: 'Up Next page',
-              })}
-              subtitle={t('watchSettings.upNextSubtitle', {
-                defaultValue:
-                  'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
-              })}
-              subtitleNumberOfLines={0}
-              rightAccessory={
-                <Switch
-                  testID="watch-up-next-switch"
-                  value={watchUpNextPage}
-                  onValueChange={setWatchUpNextPage}
+                <SettingsRow
+                  title={t('watchSettings.upNextTitle', {
+                    defaultValue: 'Up Next page',
+                  })}
+                  subtitle={t('watchSettings.upNextSubtitle', {
+                    defaultValue:
+                      'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
+                  })}
+                  subtitleNumberOfLines={0}
+                  rightAccessory={
+                    <Switch
+                      testID="watch-up-next-switch"
+                      value={watchUpNextPage}
+                      onValueChange={setWatchUpNextPage}
+                    />
+                  }
                 />
-              }
-            />
+              </>
+            )}
             <SettingsRow
               title={t('watchSettings.newWorkoutTitle', {
                 defaultValue: 'New workout view',
