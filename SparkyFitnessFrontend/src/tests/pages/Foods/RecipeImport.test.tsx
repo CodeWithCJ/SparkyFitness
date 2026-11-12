@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import {
   act,
   fireEvent,
@@ -238,6 +238,13 @@ async function mapRice() {
   fireEvent.click(screen.getByText('Choose dry rice'));
   fireEvent.click(await screen.findByText('Confirm 600 g'));
   await screen.findByText(/Dry rice/);
+}
+async function confirmSavedChoice() {
+  const button = await screen.findByRole('button', {
+    name: 'Confirm saved choice for Rice',
+  });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
 }
 async function confirmNutritionSync() {
   fireEvent.click(
@@ -479,6 +486,7 @@ it('previews whole-recipe nutrients when a confirmed mapping uses kg with a gram
   });
   setup();
   await selectRecipe();
+  await confirmSavedChoice();
   expect(
     await screen.findByText(
       `${(2400).toLocaleString()} kcal · P 60 g · C 360 g · F 60 g`
@@ -839,6 +847,160 @@ const reviewedMapping = {
   unit: 'g',
   confirmed: true as const,
 };
+it('does not count a legacy saved match as confirmed until the person confirms it again', () => {
+  const client = new QueryClient();
+  const legacy: RecipeImportPreview = {
+    ...preview,
+    ingredients: [
+      {
+        ...preview.ingredients[0]!,
+        mapping: reviewedMapping,
+        mappingOrigin: 'saved',
+      },
+    ],
+  };
+  const { result } = renderHook(() => useRecipeImport(legacy), {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+  expect(result.current.mappings).toEqual({});
+  act(() => result.current.confirm(reviewedMapping));
+  expect(result.current.mappings['rice']).toEqual(reviewedMapping);
+});
+it('removes current confirmation as soon as forgetting starts so a pending deletion cannot be saved', async () => {
+  let finish!: (value: { deleted: true }) => void;
+  jest.mocked(service.forgetRecipeMapping).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const client = new QueryClient();
+  const { result } = renderHook(() => useRecipeImport(preview), {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+  act(() => result.current.confirm(reviewedMapping));
+  let pending!: Promise<boolean>;
+  await act(async () => {
+    pending = result.current.forgetSavedMapping('rice', 'mapping');
+    await Promise.resolve();
+  });
+  const whileDeleting = result.current.mappings;
+  await act(async () => {
+    finish({ deleted: true });
+    await pending;
+  });
+  expect(whileDeleting).toEqual({});
+  expect(service.saveRecipe).not.toHaveBeenCalled();
+});
+it('shows a saved choice as a suggestion, requires confirmation and can forget it', async () => {
+  const client = new QueryClient();
+  const confirm = jest.fn();
+  const forget = jest.fn(async () => true);
+  render(
+    <QueryClientProvider client={client}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          mapping: reviewedMapping,
+          mappingOrigin: 'saved',
+          savedMappingId: '00000000-0000-4000-a000-000000000005',
+        }}
+        onConfirm={confirm}
+        onForgetSavedMapping={forget}
+      />
+    </QueryClientProvider>
+  );
+  expect(
+    await screen.findByText('Suggested from a previous import')
+  ).toBeInTheDocument();
+  expect(await screen.findByText(/Dry rice/)).toBeInTheDocument();
+  expect(confirm).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Confirm saved choice for Rice' })
+  );
+  expect(confirm).toHaveBeenCalledWith(reviewedMapping);
+  fireEvent.click(screen.getByRole('button', { name: 'Forget saved choice' }));
+  await waitFor(() =>
+    expect(forget).toHaveBeenCalledWith('00000000-0000-4000-a000-000000000005')
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByText('Suggested from a previous import')
+    ).not.toBeInTheDocument()
+  );
+  expect(service.saveRecipe).not.toHaveBeenCalled();
+});
+it('lets the owner inspect and forget saved choices without importing a recipe again', async () => {
+  const id = '00000000-0000-4000-a000-000000000005';
+  const empty = {
+    items: [],
+    pagination: { page: 1, pageSize: 25, totalCount: 0, hasMore: false },
+  };
+  jest
+    .mocked(service.listRecipeMappings)
+    .mockResolvedValueOnce({
+      ...empty,
+      items: [
+        {
+          id,
+          foodId: '00000000-0000-4000-a000-000000000002',
+          variantId: '00000000-0000-4000-a000-000000000003',
+          foodName: 'Almonds',
+          ingredientName: 'Anchovies',
+          sourceUnit: 'lb',
+          quantityPerSourceUnit: 0.05,
+          unit: 'serving',
+          updatedAt: '2026-11-12T00:00:00Z',
+        },
+      ],
+      pagination: { ...empty.pagination, totalCount: 1 },
+    })
+    .mockResolvedValue(empty);
+  jest.mocked(service.forgetRecipeMapping).mockResolvedValue({ deleted: true });
+  setup();
+  await screen.findByRole('option', { name: 'My Mealie' });
+  fireEvent.change(screen.getByLabelText('Mealie provider'), {
+    target: { value: 'provider' },
+  });
+  expect(service.listRecipeMappings).not.toHaveBeenCalled();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Manage saved choices' })
+  );
+  expect(await screen.findByText('Anchovies → Almonds')).toBeInTheDocument();
+  expect(screen.getByText('0.05 serving / 1 lb')).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Forget saved choice for Anchovies' })
+  );
+  await waitFor(() =>
+    expect(service.forgetRecipeMapping).toHaveBeenCalledWith('provider', id)
+  );
+  expect(
+    await screen.findByText('No saved choices for this provider.')
+  ).toBeInTheDocument();
+  expect(service.previewRecipe).not.toHaveBeenCalled();
+  expect(service.saveRecipe).not.toHaveBeenCalled();
+});
+it('highlights an amount-like note as a possible separate ingredient', () => {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          note: '1 Cup Flour',
+          noteNeedsReview: true,
+        }}
+        onConfirm={jest.fn()}
+      />
+    </QueryClientProvider>
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'This note starts with an amount and may describe another ingredient. Review it separately before saving.'
+  );
+});
 it.each([null, Number.NaN, Number.POSITIVE_INFINITY])(
   'keeps a nullable/nonfinite selected nutrient editable and recovers after replacement (%s)',
   async (protein) => {
@@ -925,12 +1087,14 @@ it('loads a saved non-default mapping from the variant endpoint and shares it be
   setup();
   await selectRecipe();
   expect(await screen.findByText('600 g · Named portion')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save meal' })).toBeDisabled();
+  await confirmSavedChoice();
   expect(
     await screen.findByText(
       `${(1200).toLocaleString()} kcal · P 30 g · C 180 g · F 30 g`
     )
   ).toBeInTheDocument();
-  expect(getFoodById).toHaveBeenCalledTimes(1);
+  expect(getFoodById).toHaveBeenCalledTimes(2);
 });
 
 it('describes known optional gaps without claiming the selected core nutrition is incomplete', async () => {
@@ -949,6 +1113,7 @@ it('describes known optional gaps without claiming the selected core nutrition i
   });
   setup();
   await selectRecipe();
+  await confirmSavedChoice();
   expect(
     await screen.findByText(
       'Some optional nutrients are unknown. Known nutrition can still be used.'

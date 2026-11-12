@@ -1,12 +1,49 @@
 import type {
   RecipeImportSuggestionResponse,
   RecipeImportSyncPreview,
+  RecipeImportIngredient,
+  RecipeImportMapping,
+  RecipeImportSuggestedMapping,
 } from '../schemas/api/RecipeImport.api.zod.ts';
 import { getConversionFactor } from './servingSizeConversions.ts';
 
 type Suggestions = RecipeImportSuggestionResponse['ingredients'];
 
 const CORE_NUTRIENTS = ['calories', 'protein', 'carbs', 'fat'] as const;
+
+/** Remembered choices never count as this preparation's explicit confirmations. */
+export function recipeImportInitialMappings(
+  ingredients: readonly RecipeImportIngredient[]
+): Record<string, RecipeImportMapping> {
+  return Object.fromEntries<RecipeImportMapping>(
+    ingredients.flatMap((row) =>
+      row.mapping && row.mappingOrigin !== 'saved'
+        ? [[row.ingredientId, row.mapping] as const]
+        : []
+    )
+  );
+}
+/** Older servers returned remembered choices in mapping with confirmed:true. */
+export function recipeImportSavedSuggestion(
+  ingredient: RecipeImportIngredient
+): RecipeImportSuggestedMapping | null {
+  const saved =
+    ingredient.suggestedMapping ??
+    (ingredient.mappingOrigin === 'saved' ? ingredient.mapping : null);
+  return saved ? { ...saved, confirmed: false } : null;
+}
+/** Flag possible extra ingredients without inventing a food or treating preparation dimensions as ingredients. */
+export function recipeImportNoteNeedsReview(note: string): boolean {
+  const match = note.match(
+    /^\s*(?:\d+(?:[.,]\d+)?(?:\s+\d+\s*\/\s*\d+|\s*\/\s*\d+)?|[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])\s*(?:[-–]\s*\d+\s*)?([\p{L}]+)/u
+  );
+  return (
+    !!match &&
+    !/^(?:cm|mm|inch|inches|min|mins|minute|minutes|hour|hours|hr|hrs)$/i.test(
+      match[1]!
+    )
+  );
+}
 
 /** Mealie's writable nutrition fields; apps own the translated labels. */
 export const MEALIE_NUTRITION_FIELDS = [

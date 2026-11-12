@@ -257,6 +257,9 @@ export default function RecipeImportReview({
             (row) => row.ingredientId === ingredient.ingredientId
           )}
           onConfirm={flow.confirm}
+          onForgetSavedMapping={(mappingId) =>
+            flow.forgetSavedMapping(ingredient.ingredientId, mappingId)
+          }
           disabled={flow.save.isPending || uncertain}
         />
       ))}

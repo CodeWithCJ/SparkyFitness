@@ -20,6 +20,8 @@ import {
   previewRecipe,
   syncRecipeNutrition,
   previewRecipeNutritionSync,
+  listRecipeMappings,
+  forgetRecipeMapping,
 } from '@/api/Foods/recipeImportService';
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
@@ -64,6 +66,43 @@ export function useRecipeImportBrowserQueries(
     retry: false,
   });
   return { providers, recipes, previewRecipe };
+}
+
+export function useRecipeImportSavedMappings(
+  ownerId: string,
+  providerId: string,
+  page: number,
+  enabled: boolean
+) {
+  const { activeUserId, isActingOnBehalf } = useActiveUser();
+  const client = useQueryClient();
+  const allowed = !!ownerId && ownerId === activeUserId && !isActingOnBehalf;
+  const current = useRef<string | null>(allowed ? ownerId : null);
+  useEffect(() => {
+    current.current = allowed ? ownerId : null;
+    return () => {
+      current.current = null;
+    };
+  }, [allowed, ownerId]);
+  const choices = useQuery({
+    queryKey: ['recipe-import-mappings', ownerId, providerId, page],
+    queryFn: () => listRecipeMappings(providerId, page),
+    enabled: enabled && allowed && !!providerId,
+    retry: false,
+  });
+  const forget = useMutation({
+    mutationFn: async (mappingId: string) => {
+      if (!allowed || current.current !== ownerId)
+        throw new Error('OWNER_REQUIRED');
+      await forgetRecipeMapping(providerId, mappingId);
+      if (current.current !== ownerId) return false;
+      await client.invalidateQueries({
+        queryKey: ['recipe-import-mappings', ownerId, providerId],
+      });
+      return true;
+    },
+  });
+  return { choices, forget };
 }
 
 export function useRecipeImportFoodAccess(foodId?: string) {

@@ -360,6 +360,10 @@ export default function RecipeImportReview({
           )}
           scope={scope}
           onReadinessChange={onReadinessChange}
+          onConfirm={draft.confirm}
+          onForgetSavedMapping={(mappingId) =>
+            draft.forgetSavedMapping(row.ingredientId, mappingId)
+          }
           disabled={draft.saving || busy}
           onChoose={() => {
             generation.current += 1;

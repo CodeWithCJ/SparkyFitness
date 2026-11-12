@@ -4,12 +4,50 @@ import {
   browseRecipes,
   fetchRecipeSource,
   syncRecipeNutrition,
+  listRecipeMappings,
+  forgetRecipeMapping,
 } from '../../../src/services/api/recipeImportApi';
 jest.mock('../../../src/services/api/apiClient', () => ({
   apiFetch: jest.fn(),
 }));
 const request = jest.mocked(apiFetch);
 beforeEach(() => jest.resetAllMocks());
+it('lists private saved mappings using the pinned owner connection', async () => {
+  const config = {
+    id: 'owner',
+    url: 'https://example.test',
+    apiKey: 'synthetic-test-key',
+  };
+  request.mockResolvedValue({
+    items: [],
+    pagination: { page: 2, pageSize: 25, totalCount: 0, hasMore: false },
+  });
+  await listRecipeMappings('provider /', 2, config);
+  expect(request).toHaveBeenCalledWith(
+    expect.objectContaining({
+      endpoint: '/api/v2/recipe-imports/mealie/provider%20%2F/mappings?page=2',
+      serverConfig: config,
+    })
+  );
+});
+it('forgets only the saved mapping using DELETE on the pinned owner connection', async () => {
+  const config = {
+    id: 'owner',
+    url: 'https://example.test',
+    apiKey: 'synthetic-test-key',
+  };
+  request.mockResolvedValue({ deleted: true });
+  await forgetRecipeMapping('provider /', 'mapping /', config);
+  expect(request).toHaveBeenCalledWith(
+    expect.objectContaining({
+      endpoint:
+        '/api/v2/recipe-imports/mealie/provider%20%2F/mappings/mapping%20%2F',
+      method: 'DELETE',
+      serverConfig: config,
+    })
+  );
+  expect(request).toHaveBeenCalledTimes(1);
+});
 it('browses encoded recipe search using the authenticated API transport', async () => {
   request.mockResolvedValue({
     items: [],

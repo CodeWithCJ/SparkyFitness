@@ -13,6 +13,7 @@ import {
   recipeImportSuggestionRequestSchema,
   recipeImportSyncPreviewSchema,
   recipeImportSyncRequestSchema,
+  recipeImportSavedMappingsResponseSchema,
   MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
 } from '@workspace/shared';
 
@@ -61,6 +62,10 @@ const options = {
         },
       },
       schemas: {
+        RecipeImportSavedMappingsResponse: z.toJSONSchema(
+          recipeImportSavedMappingsResponseSchema,
+          { target: 'openapi-3.0', io: 'output' }
+        ),
         RecipeImportSyncPreview: z.toJSONSchema(recipeImportSyncPreviewSchema, {
           target: 'openapi-3.0',
           io: 'output',

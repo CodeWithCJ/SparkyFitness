@@ -139,6 +139,23 @@ INSERT INTO recipe_food_mappings (id,user_id,provider_id,source_food_key,food_id
   });
   for (const table of tables) {
     it.each(actors)(
+      table.name + ' DELETE as $name',
+      async ({ id, allowed }) => {
+        const client: PoolClient = await getClient(owner, id);
+        try {
+          await client.query('BEGIN');
+          const result = await client.query(
+            'DELETE FROM ' + table.name + ' WHERE id=$1 RETURNING id',
+            [table.id]
+          );
+          expect(result.rowCount).toBe(allowed ? 1 : 0);
+        } finally {
+          await client.query('ROLLBACK');
+          client.release();
+        }
+      }
+    );
+    it.each(actors)(
       table.name + ' SELECT as $name',
       async ({ id, allowed }) => {
         const client: PoolClient = await getClient(owner, id);

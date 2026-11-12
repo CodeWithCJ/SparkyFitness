@@ -12,6 +12,7 @@ import {
   mergeRecipeImportSuggestions,
   unresolvedRecipeIngredientBatches,
   recipeImportSaveRequestSchema,
+  recipeImportInitialMappings,
   type RecipeImportMapping,
   type RecipeImportPreview,
   type RecipeImportSaveRequest,
@@ -25,6 +26,8 @@ import {
   fetchRecipeSource,
   syncRecipeNutrition,
   previewRecipeNutritionSync,
+  forgetRecipeMapping,
+  listRecipeMappings,
 } from '../services/api/recipeImportApi';
 import { ApiError } from '../services/api/errors';
 import type { ServerConfig } from '../services/storage';
@@ -79,6 +82,76 @@ export function useRecipeImportAccess() {
     ? `${activeConfig.id}:${activeConfig.url}:${profile.id}`
     : null;
 }
+function recipeImportConnection(
+  client: QueryClient,
+  scope: string | null
+): ServerConfig | null {
+  const config = client.getQueryData<{ activeConfig: ServerConfig | null }>(
+    serverConfigsQueryKey
+  )?.activeConfig;
+  const profile = client.getQueryData<{ id: string }>(profileQueryKey);
+  return config &&
+    profile &&
+    scope === `${config.id}:${config.url}:${profile.id}`
+    ? {
+        ...config,
+        proxyHeaders: config.proxyHeaders?.map((header) => ({ ...header })),
+      }
+    : null;
+}
+async function forgetOwnedRecipeMapping(
+  client: QueryClient,
+  scope: string | null,
+  providerId: string,
+  mappingId: string,
+  valid: () => boolean
+): Promise<boolean> {
+  const config = recipeImportConnection(client, scope);
+  const owner = observeRecipeImportOwner(client);
+  try {
+    if (!config || !valid() || !owner.isCurrent())
+      throw new Error('OWNER_REQUIRED');
+    await forgetRecipeMapping(providerId, mappingId, config);
+    if (!valid() || !owner.isCurrent()) return false;
+    await client.invalidateQueries({
+      queryKey: ['recipeImportSavedMappings', scope, providerId],
+    });
+    return true;
+  } finally {
+    owner.unsubscribe();
+  }
+}
+export function useRecipeImportSavedMappings(
+  providerId: string,
+  scope: string | null,
+  page: number,
+  enabled: boolean
+) {
+  const client = useQueryClient();
+  const current = useRef(scope);
+  useEffect(() => {
+    current.current = scope;
+    return () => {
+      current.current = null;
+    };
+  }, [scope]);
+  const valid = () => !!scope && current.current === scope;
+  const choices = useQuery({
+    queryKey: ['recipeImportSavedMappings', scope, providerId, page],
+    enabled: enabled && !!providerId && !!scope,
+    retry: false,
+    queryFn: () => {
+      const config = recipeImportConnection(client, scope);
+      if (!config || !valid()) throw new Error('OWNER_REQUIRED');
+      return listRecipeMappings(providerId, page, config);
+    },
+  });
+  const forget = useMutation({
+    mutationFn: (mappingId: string) =>
+      forgetOwnedRecipeMapping(client, scope, providerId, mappingId, valid),
+  });
+  return { choices, forget };
+}
 const sourceKey = (scope: string | null, mealId: string) => [
   'meals',
   'recipeImportSource',
@@ -110,20 +183,7 @@ export function useRecipeSource(mealId: string, scope: string | null) {
   });
   function beginSync(confirmationFingerprint?: string) {
     release.current?.();
-    const activeConfig = client.getQueryData<{
-      activeConfig: ServerConfig | null;
-    }>(serverConfigsQueryKey)?.activeConfig;
-    const config = activeConfig
-      ? {
-          ...activeConfig,
-          proxyHeaders: activeConfig.proxyHeaders?.map((header) => ({
-            ...header,
-          })),
-        }
-      : null;
-    const profile = client.getQueryData<{ id: string }>(profileQueryKey);
-    const ownerScope =
-      config && profile ? `${config.id}:${config.url}:${profile.id}` : null;
+    const config = recipeImportConnection(client, scope);
     let retained = true;
     const owner = observeRecipeImportOwner(client, () => {
       retained = false;
@@ -137,8 +197,8 @@ export function useRecipeSource(mealId: string, scope: string | null) {
     const isCurrent = () =>
       retained &&
       owner.isCurrent() &&
+      !!config &&
       !!scope &&
-      scope === ownerScope &&
       current.current === scope;
     return {
       isCurrent,
@@ -239,13 +299,7 @@ export function useRecipeImport(
   function initial() {
     return {
       key,
-      mappings: scope
-        ? (Object.fromEntries(
-            preview.ingredients.flatMap((row) =>
-              row.mapping ? [[row.ingredientId, row.mapping]] : []
-            )
-          ) as Record<string, RecipeImportMapping>)
-        : {},
+      mappings: scope ? recipeImportInitialMappings(preview.ingredients) : {},
       suggestions: [] as RecipeImportSuggestionResponse['ingredients'],
       warnings: [] as string[],
       progress: null as { done: number; total: number } | null,
@@ -294,6 +348,23 @@ export function useRecipeImport(
       ),
       error: null,
     });
+  }
+  async function forgetSavedMapping(
+    ingredientId: string,
+    mappingId: string
+  ): Promise<boolean> {
+    if (!valid() || stateRef.current.saving || stateRef.current.saved)
+      return false;
+    const mappings = { ...stateRef.current.mappings };
+    delete mappings[ingredientId];
+    update({ mappings });
+    return forgetOwnedRecipeMapping(
+      client,
+      scope,
+      preview.providerId,
+      mappingId,
+      valid
+    );
   }
   async function suggest(useAi: boolean) {
     if (!valid() || stateRef.current.suggesting || stateRef.current.saved)
@@ -436,5 +507,5 @@ export function useRecipeImport(
       });
     }
   }
-  return { ...stateRef.current, confirm, suggest, save };
+  return { ...stateRef.current, confirm, forgetSavedMapping, suggest, save };
 }

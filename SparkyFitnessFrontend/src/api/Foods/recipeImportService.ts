@@ -7,6 +7,8 @@ import {
   recipeImportSuggestionResponseSchema,
   recipeImportSyncResponseSchema,
   recipeImportSyncPreviewSchema,
+  recipeImportSavedMappingsResponseSchema,
+  recipeImportForgetMappingResponseSchema,
   type RecipeImportPreviewRequest,
   type RecipeImportSaveRequest,
   type RecipeImportSuggestionRequest,
@@ -14,6 +16,23 @@ import {
 
 const root = '/v2/recipe-imports';
 const quiet = { suppressErrorToast: true };
+export const listRecipeMappings = async (providerId: string, page = 1) =>
+  recipeImportSavedMappingsResponseSchema.parse(
+    await apiCall(`${root}/mealie/${encodeURIComponent(providerId)}/mappings`, {
+      ...quiet,
+      params: { page },
+    })
+  );
+export const forgetRecipeMapping = async (
+  providerId: string,
+  mappingId: string
+) =>
+  recipeImportForgetMappingResponseSchema.parse(
+    await apiCall(
+      `${root}/mealie/${encodeURIComponent(providerId)}/mappings/${encodeURIComponent(mappingId)}`,
+      { ...quiet, method: 'DELETE' }
+    )
+  );
 
 export const browseRecipes = async (
   providerId: string,

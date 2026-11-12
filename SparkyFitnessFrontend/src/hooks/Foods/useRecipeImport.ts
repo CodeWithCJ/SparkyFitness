@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import {
   mergeRecipeImportSuggestions,
   unresolvedRecipeIngredientBatches,
+  recipeImportInitialMappings,
 } from '@workspace/shared';
 import type {
   RecipeImportMapping,
@@ -15,7 +16,11 @@ import type {
   RecipeImportSaveRequest,
   RecipeImportSuggestionResponse,
 } from '@workspace/shared';
-import { saveRecipe, suggestRecipe } from '@/api/Foods/recipeImportService';
+import {
+  saveRecipe,
+  suggestRecipe,
+  forgetRecipeMapping,
+} from '@/api/Foods/recipeImportService';
 import { HttpApiError } from '@/api/api';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
@@ -34,12 +39,7 @@ export function useRecipeImport(preview: RecipeImportPreview) {
   const { t } = useTranslation();
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   const [mappings, setMappings] = useState<Record<string, RecipeImportMapping>>(
-    () =>
-      Object.fromEntries(
-        preview.ingredients.flatMap((row) =>
-          row.mapping ? [[row.ingredientId, row.mapping]] : []
-        )
-      )
+    () => recipeImportInitialMappings(preview.ingredients)
   );
   const mappingsRef = useRef(mappings);
   const identity = JSON.stringify([
@@ -101,6 +101,33 @@ export function useRecipeImport(preview: RecipeImportPreview) {
       previous.filter((row) => row.ingredientId !== mapping.ingredientId)
     );
     invalidateFoods();
+  }
+  async function forgetSavedMapping(
+    ingredientId: string,
+    mappingId: string
+  ): Promise<boolean> {
+    if (
+      !alive.current ||
+      !allowed.current ||
+      currentIdentity.current !== identity ||
+      save.isPending
+    )
+      return false;
+    const next = { ...mappingsRef.current };
+    delete next[ingredientId];
+    mappingsRef.current = next;
+    setMappings(next);
+    await forgetRecipeMapping(preview.providerId, mappingId);
+    if (
+      !alive.current ||
+      !allowed.current ||
+      currentIdentity.current !== identity
+    )
+      return false;
+    await client.invalidateQueries({
+      queryKey: ['recipe-import-mappings', activeUserId, preview.providerId],
+    });
+    return true;
   }
 
   async function suggest(useAi: boolean) {
@@ -231,6 +258,7 @@ export function useRecipeImport(preview: RecipeImportPreview) {
   return {
     mappings,
     confirm,
+    forgetSavedMapping,
     suggestions,
     suggest,
     suggesting,

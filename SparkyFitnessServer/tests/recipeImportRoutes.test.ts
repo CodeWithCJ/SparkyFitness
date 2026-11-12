@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   actor: 'owner',
   preview: vi.fn(),
   browse: vi.fn(),
+  listMappings: vi.fn(),
+  forgetMapping: vi.fn(),
   save: vi.fn(),
   suggest: vi.fn(),
   getSource: vi.fn(),
@@ -32,11 +34,47 @@ beforeEach(() => {
   state.preview.mockResolvedValue({ ingredients: [] });
 });
 describe('recipe import route boundary', () => {
+  it('lists the current owner saved choices with bounded pagination', async () => {
+    state.listMappings.mockResolvedValue({
+      items: [],
+      pagination: { page: 2, pageSize: 25, totalCount: 0, hasMore: false },
+    });
+    const response = await request(app).get(
+      '/api/v2/recipe-imports/mealie/00000000-0000-4000-a000-000000000001/mappings?page=2'
+    );
+    expect(response.status).toBe(200);
+    expect(state.listMappings).toHaveBeenCalledWith(
+      'owner',
+      'owner',
+      '00000000-0000-4000-a000-000000000001',
+      2
+    );
+  });
+  it('forgets an exact saved choice without invoking meal save or source nutrition sync', async () => {
+    state.forgetMapping.mockResolvedValue({ deleted: true });
+    const response = await request(app).delete(
+      '/api/v2/recipe-imports/mealie/00000000-0000-4000-a000-000000000001/mappings/00000000-0000-4000-a000-000000000002'
+    );
+    expect(response.status).toBe(200);
+    expect(state.forgetMapping).toHaveBeenCalledWith(
+      'owner',
+      'owner',
+      '00000000-0000-4000-a000-000000000001',
+      '00000000-0000-4000-a000-000000000002'
+    );
+    expect(state.save).not.toHaveBeenCalled();
+    expect(state.syncNutrition).not.toHaveBeenCalled();
+  });
   it('rejects delegates for read and write surfaces', async () => {
     state.actor = 'delegate';
     for (const [method, url] of [
       ['get', '/00000000-0000-4000-a000-000000000001/source'],
       ['get', '/00000000-0000-4000-a000-000000000001/sync-preview'],
+      ['get', '/mealie/00000000-0000-4000-a000-000000000001/mappings'],
+      [
+        'delete',
+        '/mealie/00000000-0000-4000-a000-000000000001/mappings/00000000-0000-4000-a000-000000000002',
+      ],
       ['post', '/mealie/preview'],
       ['post', '/00000000-0000-4000-a000-000000000001/sync-nutrition'],
     ] as const) {

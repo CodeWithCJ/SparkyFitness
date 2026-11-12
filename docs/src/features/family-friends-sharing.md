@@ -8,6 +8,8 @@ AI service model and reasoning settings remain private to their owner. An admini
 
 Mealie ingredient imports and nutrition sync are available only for your own account. Family delegates can use the resulting reusable meals and diary snapshots through the normal meal-library and diary permissions. Recipe-provider credentials, saved source-food mappings and integration provenance are private, even when a meal is shared. Editing or logging a meal never changes the original Mealie recipe or an earlier diary entry.
 
+Saved Mealie matches are suggestions for each new preparation and require confirmation again. The provider owner can inspect and forget saved choices in the ingredient-import browser or forget an individual suggestion while reviewing a recipe. Forgetting a choice does not change an existing meal or diary entry; delegates cannot view or remove these private choices.
+
 ---
 
 ## How to Set Up Sharing

@@ -10,6 +10,10 @@ import type {
   RecipeImportSyncResponse,
   RecipeImportSyncPreview,
 } from '@workspace/shared';
+import {
+  recipeImportSavedMappingsResponseSchema,
+  recipeImportForgetMappingResponseSchema,
+} from '@workspace/shared';
 import { apiFetch } from './apiClient';
 import { ApiError, getApiErrorMessage } from './errors';
 import type { FoodItem } from '../../types/foods';
@@ -19,7 +23,8 @@ const root = '/api/v2/recipe-imports';
 async function request<T>(
   endpoint: string,
   body?: unknown,
-  serverConfig?: ServerConfig
+  serverConfig?: ServerConfig,
+  method?: 'DELETE'
 ): Promise<T> {
   try {
     return await apiFetch<T>({
@@ -28,6 +33,7 @@ async function request<T>(
       operation: 'access recipe import',
       ...(serverConfig ? { serverConfig } : {}),
       ...(body === undefined ? {} : { method: 'POST', body }),
+      ...(method ? { method } : {}),
     });
   } catch (error) {
     const message = getApiErrorMessage(error);
@@ -36,6 +42,31 @@ async function request<T>(
     throw error;
   }
 }
+export const listRecipeMappings = async (
+  providerId: string,
+  page = 1,
+  serverConfig?: ServerConfig
+) =>
+  recipeImportSavedMappingsResponseSchema.parse(
+    await request(
+      `/mealie/${encodeURIComponent(providerId)}/mappings?${new URLSearchParams({ page: String(page) })}`,
+      undefined,
+      serverConfig
+    )
+  );
+export const forgetRecipeMapping = async (
+  providerId: string,
+  mappingId: string,
+  serverConfig?: ServerConfig
+) =>
+  recipeImportForgetMappingResponseSchema.parse(
+    await request(
+      `/mealie/${encodeURIComponent(providerId)}/mappings/${encodeURIComponent(mappingId)}`,
+      undefined,
+      serverConfig,
+      'DELETE'
+    )
+  );
 export const browseRecipes = (
   providerId: string,
   search: string,

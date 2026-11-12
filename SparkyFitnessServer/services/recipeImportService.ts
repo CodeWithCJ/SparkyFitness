@@ -1,5 +1,7 @@
 import {
   getConversionFactor,
+  recipeImportNoteNeedsReview,
+  RECIPE_IMPORT_MAPPING_PAGE_SIZE,
   type RecipeImportPreview,
   type RecipeImportPreviewRequest,
   type RecipeImportSaveRequest,
@@ -15,6 +17,7 @@ import {
   type RecipeImportSyncResponse,
   type RecipeImportSyncRequest,
   type RecipeImportSyncPreview,
+  type RecipeImportSavedMappingsResponse,
 } from '@workspace/shared';
 import externalProviderService from './externalProviderService.js';
 import MealieService, {
@@ -230,6 +233,7 @@ function ingredientRows(
       name,
       originalText: row.originalText || row.display || row.note || name,
       note: row.note || '',
+      noteNeedsReview: recipeImportNoteNeedsReview(row.note || ''),
       originalQuantity,
       quantity,
       unit,
@@ -311,7 +315,8 @@ async function buildPreview(
       ingredient.missingNutrients = missingNutrients(variant);
       if (ingredient.missingNutrients.length)
         ingredient.issues.push('incomplete_nutrition');
-      ingredient.mapping = mapping;
+      ingredient.suggestedMapping = { ...mapping, confirmed: false };
+      ingredient.savedMappingId = saved.id ?? null;
       ingredient.mappingOrigin = 'saved';
     } catch {
       ingredient.issues.push('mapping_unavailable');
@@ -363,6 +368,51 @@ async function browse(
       'Unable to browse Mealie recipes. Check the provider connection.'
     );
   }
+}
+async function listMappings(
+  userId: string,
+  actorId: string,
+  providerId: string,
+  page: number
+): Promise<RecipeImportSavedMappingsResponse> {
+  requireOwner(userId, actorId);
+  await adapter(userId, providerId);
+  const result = await repository.listMappings(userId, providerId, page);
+  return {
+    items: result.rows.map((row) => ({
+      id: row.id,
+      foodId: row.food_id,
+      variantId: row.variant_id,
+      foodName: row.food_name,
+      ingredientName: row.ingredient_name,
+      sourceUnit: row.source_unit,
+      quantityPerSourceUnit: Number(row.quantity_per_source_unit),
+      unit: row.unit,
+      updatedAt: row.updated_at.toISOString(),
+    })),
+    pagination: {
+      page,
+      pageSize: RECIPE_IMPORT_MAPPING_PAGE_SIZE,
+      totalCount: result.total,
+      hasMore: page * RECIPE_IMPORT_MAPPING_PAGE_SIZE < result.total,
+    },
+  };
+}
+async function forgetMapping(
+  userId: string,
+  actorId: string,
+  providerId: string,
+  mappingId: string
+): Promise<{ deleted: true }> {
+  requireOwner(userId, actorId);
+  await adapter(userId, providerId);
+  if (!(await repository.deleteMapping(userId, providerId, mappingId)))
+    throw new RecipeImportError(
+      404,
+      'MAPPING_NOT_FOUND',
+      'This saved mapping is no longer available. Refresh the saved choices.'
+    );
+  return { deleted: true };
 }
 function checkFingerprint(actual: string, expected: string): void {
   if (actual !== expected)
@@ -440,6 +490,8 @@ async function save(
       );
     const variant = await accessibleVariant(userId, mapping);
     ingredient.mapping = mapping;
+    delete ingredient.suggestedMapping;
+    delete ingredient.savedMappingId;
     ingredient.mappingOrigin = null;
     ingredient.missingNutrients = missingNutrients(variant);
     ingredient.issues = ingredient.issues.filter(
@@ -1016,6 +1068,8 @@ async function suggest(
   return { ingredients, aiUsed, warnings: [...new Set(warnings)] };
 }
 export default {
+  listMappings,
+  forgetMapping,
   browse,
   preview,
   suggest,

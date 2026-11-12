@@ -39,6 +39,39 @@ beforeEach(() => {
   m.getMealById.mockResolvedValue({ id: 'meal', foods: [] });
 });
 describe('recipe import persistence', () => {
+  it('lists a bounded provider page in the owner RLS context', async () => {
+    m.query
+      .mockResolvedValueOnce({ rows: [{ count: '26' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'mapping' }] });
+    expect(await repository.listMappings('owner', 'provider', 2)).toEqual({
+      rows: [{ id: 'mapping' }],
+      total: 26,
+    });
+    expect(m.getClient).toHaveBeenCalledWith('owner', 'owner');
+    const [sql, values] = m.query.mock.calls[1];
+    expect(sql).toContain('m.user_id = $1');
+    expect(sql).toContain('m.provider_id = $2');
+    expect(sql).toMatch(/LIMIT \$3 OFFSET \$4/);
+    expect(values).toEqual(['owner', 'provider', 25, 25]);
+    expect(m.release).toHaveBeenCalledOnce();
+  });
+  it.each([0, 1])(
+    'forgets exactly the owner/provider/mapping match with affected count %s',
+    async (rowCount) => {
+      m.query.mockResolvedValue({ rows: [], rowCount });
+      expect(
+        await repository.deleteMapping('owner', 'provider', 'mapping')
+      ).toBe(rowCount === 1);
+      expect(m.getClient).toHaveBeenCalledWith('owner', 'owner');
+      const [sql, values] = m.query.mock.calls[0];
+      expect(sql).toMatch(/DELETE FROM recipe_food_mappings/);
+      expect(sql).toContain('user_id = $1 AND provider_id = $2 AND id = $3');
+      expect(sql).not.toContain('recipe_imports');
+      expect(sql).not.toContain('meal_foods');
+      expect(values).toEqual(['owner', 'provider', 'mapping']);
+      expect(m.release).toHaveBeenCalledOnce();
+    }
+  );
   it.each([0, null])(
     'rejects a sync receipt when the provenance update affects %s rows',
     async (rowCount) => {

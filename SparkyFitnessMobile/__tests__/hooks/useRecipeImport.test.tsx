@@ -13,6 +13,10 @@ import type {
 } from '@workspace/shared';
 import * as storage from '../../src/services/storage';
 import {
+  profileQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
+import {
   useRecipeImport,
   useRecipeSource,
 } from '../../src/hooks/useRecipeImport';
@@ -21,6 +25,7 @@ import {
   suggestRecipe,
   fetchRecipeSource,
   syncRecipeNutrition,
+  forgetRecipeMapping,
 } from '../../src/services/api/recipeImportApi';
 
 jest.mock('../../src/services/api/recipeImportApi', () => ({
@@ -28,6 +33,7 @@ jest.mock('../../src/services/api/recipeImportApi', () => ({
   suggestRecipe: jest.fn(),
   fetchRecipeSource: jest.fn(),
   syncRecipeNutrition: jest.fn(),
+  forgetRecipeMapping: jest.fn(),
 }));
 const suggest = jest.mocked(suggestRecipe);
 const save = jest.mocked(saveRecipe);
@@ -82,6 +88,63 @@ beforeEach(() => {
   jest.mocked(syncRecipeNutrition).mockReset();
 });
 afterEach(() => jest.restoreAllMocks());
+
+it('clears native confirmation before the forget request settles using the pinned owner connection', async () => {
+  let finish!: (value: { deleted: true }) => void;
+  jest.mocked(forgetRecipeMapping).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const client = new QueryClient();
+  const config = {
+    id: 'server',
+    url: 'https://example.test',
+    apiKey: 'synthetic-test-key',
+  };
+  client.setQueryData(profileQueryKey, { id: 'owner' });
+  client.setQueryData(serverConfigsQueryKey, { activeConfig: config });
+  const scope = `${config.id}:${config.url}:owner`;
+  const { result } = renderHook(() => useRecipeImport(preview, scope), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+  act(() => result.current.confirm(mapping));
+  let pending!: Promise<boolean>;
+  await act(async () => {
+    pending = result.current.forgetSavedMapping('rice-0', 'mapping');
+    await Promise.resolve();
+  });
+  const whileDeleting = result.current.mappings;
+  await act(async () => {
+    finish({ deleted: true });
+    await pending;
+  });
+  expect(whileDeleting).toEqual({});
+  expect(forgetRecipeMapping).toHaveBeenCalledWith(
+    preview.providerId,
+    'mapping',
+    expect.objectContaining(config)
+  );
+  expect(saveRecipe).not.toHaveBeenCalled();
+});
+
+it('requires a fresh confirmation for a legacy saved mapping before it counts toward saving', () => {
+  const legacy: RecipeImportPreview = {
+    ...preview,
+    ingredients: [
+      { ...preview.ingredients[0]!, mapping, mappingOrigin: 'saved' },
+    ],
+  };
+  const { result } = renderHook(() => useRecipeImport(legacy, 'owner-server'), {
+    wrapper: Wrapper,
+  });
+  expect(result.current.mappings).toEqual({});
+  act(() => result.current.confirm(mapping));
+  expect(result.current.mappings['rice-0']).toEqual(mapping);
+});
 
 describe('source sync transport ownership', () => {
   const initialFetch = global.fetch;

@@ -5,6 +5,7 @@ import {
   recipeImportStoredSourceSchema,
   type RecipeImportStoredSource,
   type RecipeFoodMappings,
+  RECIPE_IMPORT_MAPPING_PAGE_SIZE,
 } from '@workspace/shared';
 import { mealFingerprint } from '../services/recipeImportMealSnapshot.js';
 import type { MealInput } from '../types/nutrition.js';
@@ -31,6 +32,70 @@ async function getMappings(
       [userId, providerId]
     );
     return r.rows;
+  } finally {
+    client.release();
+  }
+}
+type SavedMappingRow = RecipeFoodMappings & {
+  food_name: string | null;
+  ingredient_name: string | null;
+  source_unit: string | null;
+};
+async function listMappings(
+  userId: string,
+  providerId: string,
+  page: number
+): Promise<{ rows: SavedMappingRow[]; total: number }> {
+  const client: PoolClient = await getClient(userId, userId);
+  try {
+    const count = await client.query<{ count: string }>(
+      'SELECT count(*) AS count FROM recipe_food_mappings WHERE user_id = $1 AND provider_id = $2',
+      [userId, providerId]
+    );
+    const result = await client.query<SavedMappingRow>(
+      `
+      SELECT m.*, f.name AS food_name, context.ingredient_name, context.source_unit
+      FROM recipe_food_mappings m
+      LEFT JOIN foods f ON f.id = m.food_id
+      LEFT JOIN LATERAL (
+        SELECT ingredient->>'name' AS ingredient_name,
+               COALESCE(ingredient->>'unit', ingredient->>'originalUnit') AS source_unit
+        FROM recipe_imports ri
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE WHEN jsonb_typeof(ri.source->'ingredients') = 'array'
+               THEN ri.source->'ingredients' ELSE '[]'::jsonb END
+        ) ingredient
+        WHERE ri.user_id = m.user_id AND ri.provider_id = m.provider_id
+          AND ingredient->>'sourceFoodKey' = m.source_food_key
+        ORDER BY ri.updated_at DESC LIMIT 1
+      ) context ON true
+      WHERE m.user_id = $1 AND m.provider_id = $2
+      ORDER BY m.updated_at DESC, m.id
+      LIMIT $3 OFFSET $4`,
+      [
+        userId,
+        providerId,
+        RECIPE_IMPORT_MAPPING_PAGE_SIZE,
+        (page - 1) * RECIPE_IMPORT_MAPPING_PAGE_SIZE,
+      ]
+    );
+    return { rows: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  } finally {
+    client.release();
+  }
+}
+async function deleteMapping(
+  userId: string,
+  providerId: string,
+  mappingId: string
+): Promise<boolean> {
+  const client: PoolClient = await getClient(userId, userId);
+  try {
+    const result = await client.query(
+      'DELETE FROM recipe_food_mappings WHERE user_id = $1 AND provider_id = $2 AND id = $3',
+      [userId, providerId, mappingId]
+    );
+    return result.rowCount === 1;
   } finally {
     client.release();
   }
@@ -118,4 +183,11 @@ async function markSynced(
     client.release();
   }
 }
-export default { getMappings, getSource, save, markSynced };
+export default {
+  getMappings,
+  listMappings,
+  deleteMapping,
+  getSource,
+  save,
+  markSynced,
+};

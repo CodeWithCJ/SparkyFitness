@@ -13,12 +13,18 @@ export const recipeImportMappingSchema = z
   })
   .strict();
 export type RecipeImportMapping = z.infer<typeof recipeImportMappingSchema>;
+export const recipeImportSuggestedMappingSchema =
+  recipeImportMappingSchema.extend({ confirmed: z.literal(false) });
+export type RecipeImportSuggestedMapping = z.infer<
+  typeof recipeImportSuggestedMappingSchema
+>;
 export const recipeImportIngredientSchema = z.object({
   ingredientId: identifier,
   sourceFoodKey: z.string(),
   name: z.string(),
   originalText: z.string(),
   note: z.string(),
+  noteNeedsReview: z.boolean().optional(),
   originalQuantity: positive.nullable().optional(),
   quantity: positive.nullable(),
   unit: z.string().nullable(),
@@ -36,6 +42,8 @@ export const recipeImportIngredientSchema = z.object({
   ),
   missingNutrients: z.array(z.string()),
   mapping: recipeImportMappingSchema.nullable(),
+  suggestedMapping: recipeImportSuggestedMappingSchema.nullish(),
+  savedMappingId: z.uuid().nullish(),
   mappingOrigin: z.enum(['saved']).nullable(),
 });
 export type RecipeImportIngredient = z.infer<
@@ -160,6 +168,43 @@ export const recipeImportBrowseResponseSchema = z.object({
 export type RecipeImportBrowseResponse = z.infer<
   typeof recipeImportBrowseResponseSchema
 >;
+export const RECIPE_IMPORT_MAPPING_PAGE_SIZE = 25;
+export const recipeImportSavedMappingsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).max(10000).default(1),
+  })
+  .strict();
+export const recipeImportSavedMappingSchema = z.object({
+  id: z.uuid(),
+  foodId: z.uuid(),
+  variantId: z.uuid(),
+  foodName: z.string().nullable(),
+  ingredientName: z.string().nullable(),
+  sourceUnit: z.string().nullable(),
+  quantityPerSourceUnit: z.number().finite().positive(),
+  unit: z.string(),
+  updatedAt: z.iso.datetime(),
+});
+export type RecipeImportSavedMapping = z.infer<
+  typeof recipeImportSavedMappingSchema
+>;
+export const recipeImportSavedMappingsResponseSchema = z.object({
+  items: z
+    .array(recipeImportSavedMappingSchema)
+    .max(RECIPE_IMPORT_MAPPING_PAGE_SIZE),
+  pagination: z.object({
+    page: z.number().int(),
+    pageSize: z.number().int(),
+    totalCount: z.number().int(),
+    hasMore: z.boolean(),
+  }),
+});
+export type RecipeImportSavedMappingsResponse = z.infer<
+  typeof recipeImportSavedMappingsResponseSchema
+>;
+export const recipeImportForgetMappingResponseSchema = z.object({
+  deleted: z.literal(true),
+});
 export const recipeImportSyncResponseSchema = z.object({
   status: z.literal('synced'),
   source: recipeImportSourceSchema,

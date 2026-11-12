@@ -1,8 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { recipeImportNutritionGaps } from '@workspace/shared';
+import {
+  recipeImportNutritionGaps,
+  recipeImportSavedSuggestion,
+  recipeImportNoteNeedsReview,
+  getConversionFactor,
+} from '@workspace/shared';
 import type {
   RecipeImportIngredient,
   RecipeImportMapping,
@@ -31,6 +36,8 @@ interface Props {
   onReadinessChange?: (ingredientId: string, selection: string | null) => void;
   onChoose: () => void;
   onCandidate: (candidate: RecipeImportCandidate) => void;
+  onConfirm?: (mapping: RecipeImportMapping) => void;
+  onForgetSavedMapping?: (mappingId: string) => Promise<boolean>;
 }
 export default function RecipeImportIngredientRow({
   ingredient,
@@ -42,8 +49,26 @@ export default function RecipeImportIngredientRow({
   onReadinessChange,
   onChoose,
   onCandidate,
+  onConfirm,
+  onForgetSavedMapping,
 }: Props) {
   const { t } = useTranslation();
+  const [forgotten, setForgotten] = useState(false);
+  const [forgetting, setForgetting] = useState(false);
+  const [forgetError, setForgetError] = useState<Error | null>(null);
+  const generation = useRef(0);
+  useEffect(
+    () => () => {
+      generation.current += 1;
+    },
+    [scope, ingredient.ingredientId, ingredient.sourceFoodKey]
+  );
+  const savedChoice = forgotten
+    ? null
+    : recipeImportSavedSuggestion(ingredient);
+  const choice = mapping ?? savedChoice;
+  const noteNeedsReview =
+    ingredient.noteNeedsReview ?? recipeImportNoteNeedsReview(ingredient.note);
   const originalQuantity =
     ingredient.originalQuantity === undefined
       ? ingredient.quantity
@@ -58,21 +83,21 @@ export default function RecipeImportIngredientRow({
       'foods',
       'recipeImportFood',
       scope,
-      mapping?.foodId,
-      mapping?.variantId,
+      choice?.foodId,
+      choice?.variantId,
     ],
     queryFn: async () => {
-      if (!mapping) throw new Error('MAPPING_REQUIRED');
+      if (!choice) throw new Error('MAPPING_REQUIRED');
       const [item, variants] = await Promise.all([
-        fetchRecipeFood(mapping.foodId),
-        fetchFoodVariants(mapping.foodId),
+        fetchRecipeFood(choice.foodId),
+        fetchFoodVariants(choice.foodId),
       ]);
       return {
         item,
-        variant: variants.find((value) => value.id === mapping.variantId),
+        variant: variants.find((value) => value.id === choice.variantId),
       };
     },
-    enabled: !!mapping,
+    enabled: !!choice,
     retry: false,
   });
   const { missingCore, missingNutrients } = recipeImportNutritionGaps(
@@ -86,6 +111,36 @@ export default function RecipeImportIngredientRow({
   useEffect(() => {
     onReadinessChange?.(ingredient.ingredientId, readySelection);
   }, [ingredient.ingredientId, readySelection, onReadinessChange]);
+  async function forgetSavedChoice() {
+    if (
+      !ingredient.savedMappingId ||
+      !onForgetSavedMapping ||
+      disabled ||
+      forgetting
+    )
+      return;
+    const request = ++generation.current;
+    setForgetting(true);
+    setForgetError(null);
+    try {
+      const removed = await onForgetSavedMapping(ingredient.savedMappingId);
+      if (removed && generation.current === request) setForgotten(true);
+    } catch (error) {
+      if (generation.current === request)
+        setForgetError(
+          error instanceof Error
+            ? error
+            : new Error(
+                t('recipeImport.forgetFailed', {
+                  defaultValue:
+                    'The saved choice could not be forgotten. Try again.',
+                })
+              )
+        );
+    } finally {
+      if (generation.current === request) setForgetting(false);
+    }
+  }
   return (
     <View
       className="border-b border-border-subtle py-4 gap-2"
@@ -125,13 +180,26 @@ export default function RecipeImportIngredientRow({
       )}
       <Text className="text-text-primary">
         {mapping
-          ? ingredient.mappingOrigin === 'saved'
-            ? t('recipeImport.savedChoice', { defaultValue: 'Saved choice' })
-            : t('recipeImport.confirmed', { defaultValue: 'Confirmed' })
-          : t('recipeImport.unresolved', {
-              defaultValue: 'Needs confirmation',
-            })}
+          ? t('recipeImport.confirmed', { defaultValue: 'Confirmed' })
+          : savedChoice
+            ? t('recipeImport.savedSuggestion', {
+                defaultValue: 'Suggested from a previous import',
+              })
+            : t('recipeImport.unresolved', {
+                defaultValue: 'Needs confirmation',
+              })}
       </Text>
+      {noteNeedsReview && (
+        <Text
+          accessibilityRole="alert"
+          className="text-text-primary font-medium"
+        >
+          {t('recipeImport.noteNeedsReview', {
+            defaultValue:
+              'This note starts with an amount and may describe another ingredient. Review it separately before saving.',
+          })}
+        </Text>
+      )}
       {ingredient.issues
         .filter((issue) => issue !== 'incomplete_nutrition')
         .map((issue) => (
@@ -163,14 +231,14 @@ export default function RecipeImportIngredientRow({
           })}
         </Text>
       )}
-      {mapping && (
+      {choice && (
         <>
           <Text className="text-text-primary font-semibold">
             {t('recipeImport.selectedFoodAmount', {
               defaultValue: 'Selected food and amount',
             })}
           </Text>
-          {ingredient.mappingOrigin === 'saved' && (
+          {!mapping && savedChoice && (
             <Text className="text-text-secondary">
               {t('recipeImport.savedChoiceHelp', {
                 defaultValue:
@@ -186,7 +254,7 @@ export default function RecipeImportIngredientRow({
                 })}
           </Text>
           <Text className="text-text-secondary">
-            {number(mapping.quantity)} {mapping.unit}
+            {number(choice.quantity)} {choice.unit}
           </Text>
           {food.data?.variant && (
             <Text className="text-text-secondary">
@@ -201,6 +269,42 @@ export default function RecipeImportIngredientRow({
                 carbs: number(food.data.variant.carbs),
                 fat: number(food.data.variant.fat),
               })}
+            </Text>
+          )}
+          {!mapping && savedChoice && onConfirm && (
+            <Button
+              variant="secondary"
+              disabled={
+                disabled ||
+                forgetting ||
+                !food.data?.variant ||
+                missingCore ||
+                getConversionFactor(
+                  food.data.variant.serving_unit,
+                  savedChoice.unit
+                ) === null
+              }
+              onPress={() => onConfirm({ ...savedChoice, confirmed: true })}
+            >
+              {t('recipeImport.confirmSavedChoice', {
+                defaultValue: 'Confirm saved choice',
+              })}
+            </Button>
+          )}
+          {savedChoice && ingredient.savedMappingId && onForgetSavedMapping && (
+            <Button
+              variant="ghost"
+              disabled={disabled || forgetting}
+              onPress={() => void forgetSavedChoice()}
+            >
+              {t('recipeImport.forgetSavedChoice', {
+                defaultValue: 'Forget saved choice',
+              })}
+            </Button>
+          )}
+          {forgetError && (
+            <Text accessibilityRole="alert" className="text-danger">
+              {forgetError.message}
             </Text>
           )}
           {food.error && (
@@ -221,7 +325,7 @@ export default function RecipeImportIngredientRow({
           )}
         </>
       )}
-      {!mapping && (
+      {!choice && (
         <Text className="text-text-primary font-semibold">
           {t('recipeImport.selectedFoodAmount', {
             defaultValue: 'Selected food and amount',
@@ -230,7 +334,9 @@ export default function RecipeImportIngredientRow({
       )}
       <Button
         variant="secondary"
-        disabled={disabled || ingredient.issues.includes('linked_recipe')}
+        disabled={
+          disabled || forgetting || ingredient.issues.includes('linked_recipe')
+        }
         accessibilityLabel={t('recipeImport.chooseFoodFor', {
           defaultValue: 'Choose food for {{name}}',
           name: ingredient.name,
@@ -241,7 +347,7 @@ export default function RecipeImportIngredientRow({
           defaultValue: 'Choose food or amount',
         })}
       </Button>
-      {!mapping && suggestion && (
+      {!mapping && !forgetting && suggestion && (
         <>
           <Text className="text-text-secondary">
             {t('recipeImport.matchesFor', {

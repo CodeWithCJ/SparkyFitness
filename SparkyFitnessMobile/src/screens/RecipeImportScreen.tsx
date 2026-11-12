@@ -11,6 +11,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import RecipeImportReview from '../components/recipeImport/RecipeImportReview';
+import RecipeImportSavedMappings from '../components/recipeImport/RecipeImportSavedMappings';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -130,6 +131,11 @@ function RecipeImportWorkspace({
       ))}
       {!!providerId && (
         <>
+          <RecipeImportSavedMappings
+            key={providerId}
+            providerId={providerId}
+            scope={scope}
+          />
           <FormInput
             accessibilityLabel={t('recipeImport.search', {
               defaultValue: 'Search Mealie recipes',

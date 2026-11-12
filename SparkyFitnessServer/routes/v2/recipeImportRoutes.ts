@@ -16,6 +16,8 @@ import {
   recipeImportProviderParamsSchema,
   recipeImportMealParamsSchema,
   recipeImportSyncBodySchema,
+  recipeImportSavedMappingsQuerySchema,
+  recipeImportMappingParamsSchema,
 } from '../../schemas/recipeImportSchemas.js';
 const router = express.Router();
 router.use(authenticate);
@@ -130,6 +132,67 @@ const actor = (req: Request) =>
  *       422: {description: Incomplete saved nutrition or invalid current Mealie servings}
  *       502: {description: Mealie did not confirm the update}
  */
+/**
+ * @swagger
+ * /v2/recipe-imports/mealie/{providerId}/mappings:
+ *   get:
+ *     summary: List private saved Mealie suggestions without changing meals
+ *     tags: [Foods & Nutrition]
+ *     security: [{cookieAuth: []}]
+ *     parameters:
+ *       - {in: path, name: providerId, required: true, schema: {type: string, format: uuid}}
+ *       - {in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000}}
+ *     responses:
+ *       200:
+ *         description: A page of up to 25 saved choices and pagination
+ *         content:
+ *           application/json:
+ *             schema: {$ref: '#/components/schemas/RecipeImportSavedMappingsResponse'}
+ *       403: {description: Owner-only personal Mealie provider access required}
+ * /v2/recipe-imports/mealie/{providerId}/mappings/{mappingId}:
+ *   delete:
+ *     summary: Forget one private saved suggestion while preserving all meals and diary entries
+ *     tags: [Foods & Nutrition]
+ *     security: [{cookieAuth: []}]
+ *     parameters:
+ *       - {in: path, name: providerId, required: true, schema: {type: string, format: uuid}}
+ *       - {in: path, name: mappingId, required: true, schema: {type: string, format: uuid}}
+ *     responses:
+ *       200: {description: Saved choice forgotten}
+ *       403: {description: Owner-only}
+ *       404: {description: No matching saved choice for this owner and provider}
+ */
+router.get('/mealie/:providerId/mappings', async (req, res, next) => {
+  try {
+    const { providerId } = recipeImportProviderParamsSchema.parse(req.params);
+    const { page } = recipeImportSavedMappingsQuerySchema.parse(req.query);
+    res.json(
+      await service.listMappings(req.userId, actor(req), providerId, page)
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.delete(
+  '/mealie/:providerId/mappings/:mappingId',
+  async (req, res, next) => {
+    try {
+      const { providerId, mappingId } = recipeImportMappingParamsSchema.parse(
+        req.params
+      );
+      res.json(
+        await service.forgetMapping(
+          req.userId,
+          actor(req),
+          providerId,
+          mappingId
+        )
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 router.get('/mealie/:providerId/recipes', async (req, res, next) => {
   try {
     const { providerId } = recipeImportProviderParamsSchema.parse(req.params);

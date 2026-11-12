@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RecipeImportReview from './RecipeImportReview';
+import RecipeImportSavedMappings from './RecipeImportSavedMappings';
 
 interface Props {
   open: boolean;
@@ -169,6 +170,11 @@ function RecipeImportBrowser({
       )}
       {providerId && (
         <>
+          <RecipeImportSavedMappings
+            key={providerId}
+            providerId={providerId}
+            ownerId={ownerId}
+          />
           <form
             className="flex gap-2"
             onSubmit={(event) => {

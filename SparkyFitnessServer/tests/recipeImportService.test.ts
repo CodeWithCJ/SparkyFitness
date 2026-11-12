@@ -4,6 +4,8 @@ const m = vi.hoisted(() => ({
   recipe: vi.fn(),
   patch: vi.fn(),
   mappings: vi.fn(),
+  listMappings: vi.fn(),
+  deleteMapping: vi.fn(),
   source: vi.fn(),
   save: vi.fn(),
   meal: vi.fn(),
@@ -30,6 +32,8 @@ vi.mock('../integrations/mealie/mealieService.js', () => ({
 vi.mock('../models/recipeImportRepository.js', () => ({
   default: {
     getMappings: m.mappings,
+    listMappings: m.listMappings,
+    deleteMapping: m.deleteMapping,
     getSource: m.source,
     save: m.save,
     markSynced: m.markSynced,
@@ -126,6 +130,44 @@ beforeEach(() => {
   m.markSynced.mockResolvedValue(undefined);
 });
 describe('ordinary Mealie units and remembered food choices', () => {
+  it.each(['1 Cup Flour', '1/2 cup flour', '½ cup flour', '2 eggs'])(
+    'flags a possible second ingredient in an amount-like note: %s',
+    async (note) => {
+      m.recipe.mockResolvedValue({
+        ...recipe,
+        recipeIngredient: [{ ...recipe.recipeIngredient[0], note }],
+      });
+      const result = await service.preview('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'rice',
+      });
+      expect(result.ingredients[0]).toHaveProperty('noteNeedsReview', true);
+      expect(result.ingredients[0].note).toBe(note);
+      expect(result.ingredients[0].quantity).toBe(600);
+      expect(m.save).not.toHaveBeenCalled();
+    }
+  );
+  it.each([
+    'finely chopped',
+    'for serving',
+    '2% milk',
+    '1 cm thick',
+    'cook for 5 minutes',
+    '',
+  ])(
+    'keeps an ordinary preparation note without the second-ingredient warning: %s',
+    async (note) => {
+      m.recipe.mockResolvedValue({
+        ...recipe,
+        recipeIngredient: [{ ...recipe.recipeIngredient[0], note }],
+      });
+      const result = await service.preview('u', 'u', {
+        providerId: 'p',
+        recipeSlug: 'rice',
+      });
+      expect(result.ingredients[0]).toHaveProperty('noteNeedsReview', false);
+    }
+  );
   it.each([
     {
       name: 'teaspoon',
@@ -261,13 +303,13 @@ describe('ordinary Mealie units and remembered food choices', () => {
       providerId: 'p',
       recipeSlug: 'another-recipe',
     });
-    expect(result.ingredients[0].mapping).toMatchObject({
+    expect(result.ingredients[0].suggestedMapping).toMatchObject({
       ingredientId: 'another-row',
       foodId: 'food',
       variantId: 'variant',
       quantity: 200,
       unit: 'g',
-      confirmed: true,
+      confirmed: false,
     });
     expect(result.ingredients[0].mappingOrigin).toBe('saved');
   });
@@ -344,10 +386,10 @@ describe('ordinary Mealie units and remembered food choices', () => {
         expect(result.ingredients[0].mapping).toBeNull();
         expect(result.ingredients[0].mappingOrigin).toBeNull();
       } else
-        expect(result.ingredients[0].mapping).toMatchObject({
+        expect(result.ingredients[0].suggestedMapping).toMatchObject({
           quantity: expected,
           unit: 'g',
-          confirmed: true,
+          confirmed: false,
         });
     }
   );
@@ -406,7 +448,7 @@ describe('ordinary Mealie units and remembered food choices', () => {
       providerId: 'p',
       recipeSlug: 'rice',
     });
-    expect(next.ingredients[0].mapping).toMatchObject({
+    expect(next.ingredients[0].suggestedMapping).toMatchObject({
       foodId: 'food',
       quantity: 600,
       unit: 'g',
@@ -434,7 +476,7 @@ describe('ordinary Mealie units and remembered food choices', () => {
       providerId: 'p',
       recipeSlug: 'rice',
     });
-    expect(next.ingredients[0].mapping).toMatchObject({
+    expect(next.ingredients[0].suggestedMapping).toMatchObject({
       foodId: 'food',
       quantity: 600,
       unit: 'g',
@@ -724,7 +766,7 @@ describe('source row identity and safe mapping reuse', () => {
     });
     expect(
       (await service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' }))
-        .ingredients[0].mapping?.quantity
+        .ingredients[0].suggestedMapping?.quantity
     ).toBe(900);
     m.recipe.mockResolvedValue({
       ...cooked,
@@ -734,7 +776,7 @@ describe('source row identity and safe mapping reuse', () => {
     });
     expect(
       (await service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' }))
-        .ingredients[0].mapping
+        .ingredients[0].suggestedMapping
     ).toMatchObject({ foodId: 'food', quantity: 600 });
     m.recipe.mockResolvedValue(recipe);
     m.mappings.mockResolvedValue([
@@ -801,13 +843,14 @@ describe('owner-only ingredient imports', () => {
       service.preview('u', 'u', { providerId: 'p', recipeSlug: 'rice' })
     ).rejects.toMatchObject({ status: 403 });
   });
-  it('reuses a saved mapping scaled to the source quantity', async () => {
+  it('offers a scaled saved mapping as an unconfirmed suggestion instead of silently confirming it', async () => {
     const originalPreview = await service.preview('u', 'u', {
       providerId: 'p',
       recipeSlug: 'rice',
     });
     m.mappings.mockResolvedValue([
       {
+        id: '00000000-0000-4000-a000-000000000005',
         source_food_key: originalPreview.ingredients[0].sourceFoodKey,
         food_id: 'food',
         variant_id: 'variant',
@@ -819,10 +862,10 @@ describe('owner-only ingredient imports', () => {
       providerId: 'p',
       recipeSlug: 'rice',
     });
-    expect(preview.ingredients[0].mapping).toMatchObject({
-      foodId: 'food',
-      quantity: 600,
-      confirmed: true,
+    expect(preview.ingredients[0]).toMatchObject({
+      mapping: null,
+      suggestedMapping: { foodId: 'food', quantity: 600, confirmed: false },
+      savedMappingId: '00000000-0000-4000-a000-000000000005',
     });
     expect(m.save).not.toHaveBeenCalled();
   });
@@ -1028,7 +1071,7 @@ describe('confirmed ingredient mapping context', () => {
       providerId: 'p',
       recipeSlug: 'rice',
     });
-    expect(current.ingredients[0].mapping).toMatchObject({
+    expect(current.ingredients[0].suggestedMapping).toMatchObject({
       foodId: 'food',
       quantity: 600,
     });
@@ -1052,12 +1095,13 @@ describe('confirmed ingredient mapping context', () => {
     });
     expect(current.ingredients[0]).toMatchObject({
       mappingOrigin: 'saved',
-      mapping: {
+      mapping: null,
+      suggestedMapping: {
         foodId: 'food',
         variantId: 'variant',
         quantity: 900,
         unit: 'g',
-        confirmed: true,
+        confirmed: false,
       },
     });
   });

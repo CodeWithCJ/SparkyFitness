@@ -124,6 +124,11 @@ async function confirmNutritionSync(screen: ReturnType<typeof render>) {
   );
   fireEvent.press(screen.getByText('Confirm nutrition sync'));
 }
+async function confirmSavedChoice(screen: ReturnType<typeof render>) {
+  const button = await screen.findByText('Confirm saved choice');
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.press(button);
+}
 
 it('shows partial optional writes, skipped reasons and the saved-meal date in native confirmation', () => {
   const screen = render(
@@ -162,6 +167,67 @@ it('shows partial optional writes, skipped reasons and the saved-meal date in na
   ).toBeTruthy();
 });
 
+it('shows an unconfirmed saved suggestion with confirm and forget actions on native', async () => {
+  const confirm = jest.fn();
+  const forget = jest.fn(async () => true);
+  const screen = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          mapping,
+          mappingOrigin: 'saved',
+          savedMappingId: '00000000-0000-4000-a000-000000000005',
+        }}
+        scope={ownerScope}
+        disabled={false}
+        onChoose={jest.fn()}
+        onCandidate={jest.fn()}
+        onConfirm={confirm}
+        onForgetSavedMapping={forget}
+      />
+    </QueryClientProvider>
+  );
+  expect(
+    await screen.findByText('Suggested from a previous import')
+  ).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByText('Confirm saved choice')).toBeEnabled()
+  );
+  expect(confirm).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Confirm saved choice'));
+  expect(confirm).toHaveBeenCalledWith(mapping);
+  fireEvent.press(screen.getByText('Forget saved choice'));
+  await waitFor(() =>
+    expect(forget).toHaveBeenCalledWith('00000000-0000-4000-a000-000000000005')
+  );
+  await waitFor(() =>
+    expect(screen.queryByText('Suggested from a previous import')).toBeNull()
+  );
+  expect(saveRecipe).not.toHaveBeenCalled();
+});
+it('warns that an amount-like note may need its own ingredient mapping on native', () => {
+  const screen = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RecipeImportIngredientRow
+        ingredient={{
+          ...preview.ingredients[0]!,
+          note: '1 Cup Flour',
+          noteNeedsReview: true,
+        }}
+        scope={ownerScope}
+        disabled={false}
+        onChoose={jest.fn()}
+        onCandidate={jest.fn()}
+      />
+    </QueryClientProvider>
+  );
+  expect(
+    screen.getByText(
+      'This note starts with an amount and may describe another ingredient. Review it separately before saving.'
+    )
+  ).toBeTruthy();
+});
 it('keeps the original spoon amount readable beside the selected food amount', () => {
   const client = new QueryClient();
   const screen = render(
@@ -392,6 +458,7 @@ it('retries failed details for the unchanged food and keeps saving disabled unti
     })
   );
   expect(await screen.findByText('Recovered rice')).toBeTruthy();
+  await confirmSavedChoice(screen);
   fireEvent.press(screen.getByText('Save reusable meal'));
   await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
   expect(saveRecipe).toHaveBeenCalledWith(
@@ -498,6 +565,7 @@ it('preserves a successful saved meal and shows sync conflicts without a duplica
       { ...preview.ingredients[0], mapping, mappingOrigin: 'saved' },
     ],
   });
+  await confirmSavedChoice(screen);
   jest
     .mocked(syncRecipeNutrition)
     .mockRejectedValue(
@@ -696,6 +764,7 @@ it('requires explicit recipe servings when the source yield is missing instead o
   fireEvent.press(screen.getByText('Save reusable meal'));
   expect(saveRecipe).not.toHaveBeenCalled();
   fireEvent.changeText(screen.getByLabelText('Recipe servings'), '4');
+  await confirmSavedChoice(screen);
   await waitFor(() =>
     expect(screen.getByText('Save reusable meal')).toBeEnabled()
   );
@@ -798,6 +867,7 @@ it('allows measured zero and unknown optional nutrients after raw nutrition load
   });
   expect(screen.getByText('Save reusable meal')).toBeDisabled();
   expect(await screen.findByText(/P 0 g/)).toBeTruthy();
+  await confirmSavedChoice(screen);
   expect(screen.getByText('Save reusable meal')).toBeEnabled();
 });
 it('shows mapped and candidate energy in kJ while keeping raw kcal unchanged', async () => {
