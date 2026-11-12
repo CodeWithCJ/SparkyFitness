@@ -31,7 +31,8 @@ struct WorkoutEffortPicker: View {
         String(localized: "watch.effort.title", defaultValue: "How hard was that?")
     }
 
-        private var band: EffortBand { EffortBand(score: Double(rating)) }
+    /// Apple Health's four bands: 1-3, 4-6, 7-8 and 9-10.
+    private var band: EffortBand { EffortBand(score: Double(rating)) }
 
     var body: some View {
         if trackStyle { trackBody } else { cardBody }

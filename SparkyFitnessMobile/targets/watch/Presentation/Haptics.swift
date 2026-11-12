@@ -22,10 +22,16 @@ enum Haptics {
         play(.success)
     }
 
-    /// One of the last seconds of a rest or hold countdown. The cue at zero is
-    /// the rest-finished buzz, which plays a different haptic.
+    /// One of the last seconds of a rest or hold countdown: a haptic that
+    /// carries a tone, so it can be heard without looking. Gated on the rest
+    /// alerts setting, like the buzz at zero, and not on the general haptics
+    /// switch (the countdown has its own setting). The cue at zero is the
+    /// rest-finished buzz, which plays a different haptic.
     static func countdownTick() {
-        play(.click)
+        MainActor.assumeIsolated {
+            guard CheckInStore.shared.context.effectiveRestBuzzEnabled else { return }
+            WKInterfaceDevice.current().play(.directionUp)
+        }
     }
 
     /// A check-in was saved and sent.

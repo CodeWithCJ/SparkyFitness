@@ -1,30 +1,30 @@
 import SwiftUI
 
-/// Edit a set already logged: the same weight and reps boxes as the set screen
-/// (tap one to type the number) and a `‹ Save ›` row. `‹` and `›` step through
-/// the logged sets in workout order, so on an exercise's first set `‹` goes to
-/// the last set of the one before. Save sends what changed to the phone and
-/// returns to the current set.
+/// Edit a set already logged: the boxes that fit the kind of set, as on the set
+/// screen (weight and reps; distance for a carry; the hold's time, shown only,
+/// for a timed set), tap one to type the number, and a `‹ Save ›` row. `‹` and
+/// `›` step through the logged sets in workout order, so on an exercise's first
+/// set `‹` goes to the last set of the one before. An edit reaches the phone
+/// through the store's value-edit hook, as one made on the set screen does;
+/// Save returns to the current set.
 struct EditPreviousSetView: View {
     @EnvironmentObject private var store: WorkoutSessionStore
-    @EnvironmentObject private var session: WatchSessionManager
     @EnvironmentObject private var checkIn: CheckInStore
     @Environment(\.dismiss) private var dismiss
 
     private enum Field: Identifiable {
-        case weight, reps
-        var id: Int { self == .weight ? 0 : 1 }
+        case weight, reps, distance
+        var id: Int { self == .weight ? 0 : (self == .reps ? 1 : 2) }
     }
 
     /// Position in the logged sets, starting at the one logged last before the
     /// cursor.
     @State private var index: Int
-    /// Sets edited here, sent on Save or when stepping away from them.
-    @State private var edited: Set<String> = []
     @State private var editing: Field?
 
     private var logged: [WorkoutStep] { store.steps.filter(store.isCompleted) }
     private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
+    private var carryUnit: CarryUnit { checkIn.context.effectiveCarryUnit }
 
     init(startingAt index: Int) {
         _index = State(initialValue: index)
@@ -62,12 +62,28 @@ struct EditPreviousSetView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            let holdSeconds = store.targetDurationSec(for: step)
+            let timed = store.isTimed(step)
             HStack(spacing: 4) {
-                ValueBox(value: SetValueText.format(values.weightKg.map(unit.fromKg)), unit: unit == .lbs ? "LB" : "KG") {
-                    editing = .weight
+                if !timed || values.weightKg != nil || store.isWeightedHold(step) {
+                    ValueBox(value: SetValueText.format(values.weightKg.map(unit.fromKg)), unit: title(for: .weight)) {
+                        editing = .weight
+                    }
                 }
-                ValueBox(value: SetValueText.format(values.reps), unit: "REPS") {
-                    editing = .reps
+                if let holdSeconds {
+                    // The hold's time is logged by the timer, not typed.
+                    ValueBox(value: SetValueText.short(holdSeconds), unit: String(localized: "watch.workout.holdTime", defaultValue: "TIME")) {}
+                        .disabled(true)
+                } else if timed {
+                    EmptyView()
+                } else if store.isCarry(step) {
+                    ValueBox(value: SetValueText.format(values.distanceKm.map { (carryUnit.fromKm($0) * 10).rounded() / 10 }), unit: title(for: .distance)) {
+                        editing = .distance
+                    }
+                } else {
+                    ValueBox(value: SetValueText.format(values.reps), unit: title(for: .reps)) {
+                        editing = .reps
+                    }
                 }
             }
             HStack(spacing: 6) {
@@ -89,22 +105,36 @@ struct EditPreviousSetView: View {
                     .disabled(index >= count - 1)
             }
         }
-        .onDisappear(perform: sendEdited)
         .sheet(item: $editing) { field in
             NumericKeypadView(
-                title: field == .weight ? (unit == .lbs ? "LB" : "KG") : "REPS",
-                initial: field == .weight ? values.weightKg.map(unit.fromKg) : values.reps,
-                allowsDecimal: field == .weight,
+                title: title(for: field),
+                initial: initial(for: field, values: values),
+                allowsDecimal: field != .reps,
                 allowsNegative: field == .weight && store.isBodyweight(step)
             ) { entered in
-                if field == .weight {
-                    store.setValue(for: step.plannedSet.setId, weightKg: unit.toKg(entered))
-                } else {
-                    store.setValue(for: step.plannedSet.setId, reps: entered)
+                switch field {
+                case .weight: store.setValue(for: step.plannedSet.setId, weightKg: unit.toKg(entered))
+                case .reps: store.setValue(for: step.plannedSet.setId, reps: entered)
+                case .distance: store.setValue(for: step.plannedSet.setId, distanceKm: carryUnit.toKm(entered))
                 }
-                edited.insert(step.plannedSet.setId)
                 editing = nil
             }
+        }
+    }
+
+    private func title(for field: Field) -> String {
+        switch field {
+        case .weight: return unit == .lbs ? "LB" : "KG"
+        case .reps: return "REPS"
+        case .distance: return carryUnit.title
+        }
+    }
+
+    private func initial(for field: Field, values: SetValues) -> Double? {
+        switch field {
+        case .weight: return values.weightKg.map(unit.fromKg)
+        case .reps: return values.reps
+        case .distance: return values.distanceKm.map { (carryUnit.fromKm($0) * 10).rounded() / 10 }
         }
     }
 
@@ -113,13 +143,4 @@ struct EditPreviousSetView: View {
     }
 
     private func save() { dismiss() }
-
-    /// Re-sends each edited set, however the screen closes: the phone patches
-    /// the values of a set it already has logged, and logging it again
-    /// changes nothing else.
-    private func sendEdited() {
-        for step in logged where edited.contains(step.plannedSet.setId) {
-            session.sendSetCompleted(step, values: store.values(for: step))
-        }
-    }
 }

@@ -54,10 +54,13 @@ struct WorkoutTopLine: View {
         // Up into the clock's row instead of pushing the set down.
         .padding(.top, -WatchStyle.s(20))
         .onChange(of: dimmed) { frozen = dimmed ? liveReadings : nil }
+        .onAppear { if dimmed, frozen == nil { frozen = liveReadings } }
     }
 
     private var metricsLine: some View {
         let stale = dimmed
+        // Captured the first time it is drawn dimmed, so a reading that lands
+        // after the wrist went down never refreshes it.
         let readings = dimmed ? (frozen ?? liveReadings) : liveReadings
         let heart = stale ? Color.gray : Color.red
         let flame = stale ? Color.gray : Color.orange

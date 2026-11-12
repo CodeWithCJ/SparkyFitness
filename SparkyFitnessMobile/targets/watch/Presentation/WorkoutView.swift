@@ -382,6 +382,11 @@ private struct ActiveWorkoutView: View {
             // exactly one screen; `workoutPage` puts the content back inside
             // the area the clock and page dots leave free.
             .ignoresSafeArea(edges: .vertical)
+            // The effort prompt and the record screen sit over these pages, so
+            // only they own the double tap while they are up.
+            .transformEnvironment(\.workoutPageActive) { active in
+                active = active && pendingRpe == nil && store.prBannerExercise == nil
+            }
         }
         // A set logged here or on the phone, an edit, or a jump from the
         // list moves the cursor: back to the set screen.
@@ -1074,7 +1079,7 @@ private struct CurrentSetView: View {
                 .accessibilityLabel(String(localized: "watch.workout.editPreviousSet", defaultValue: "Edit previous set"))
                 LogSetButton(
                     isCompleted: store.isCompleted(step),
-                    restSeconds: store.restAfter(step)
+                    restSeconds: store.restAfterCurrentSet()
                 ) {
                     endCrownEditing()
                     if store.uncompleteStep(step) {
@@ -1410,6 +1415,17 @@ enum SetValueText {
             : String(format: "%.1f", value)
     }
 
+    /// `30s`, `1m`, `1h`; with a remainder, `1:30` or `1:01:30`.
+    nonisolated static func short(_ seconds: Int) -> String {
+        let s = max(0, seconds)
+        if s < 60 { return "\(s)s" }
+        if s % 3600 == 0 { return "\(s / 3600)h" }
+        if s % 60 == 0 && s < 3600 { return "\(s / 60)m" }
+        return s >= 3600
+            ? String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+            : String(format: "%d:%02d", s / 60, s % 60)
+    }
+
     /// "40kg × 10" alone; nil when the set has no values yet.
     static func target(for step: WorkoutStep, store: WorkoutSessionStore, unit: WeightUnit, carry: CarryUnit) -> String? {
         let values = store.values(for: step)
@@ -1496,7 +1512,7 @@ private struct HoldCountdown: View {
                         .stroke(tint, style: StrokeStyle(lineWidth: WatchStyle.s(6), lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
-                        Text(started ? Self.short(remaining) : String(localized: "watch.workout.holdStart", defaultValue: "Start"))
+                        Text(started ? SetValueText.short(remaining) : String(localized: "watch.workout.holdStart", defaultValue: "Start"))
                             .font(.system(size: WatchStyle.s(24), weight: .bold, design: .rounded))
                             .foregroundStyle(tint)
                             .monospacedDigit()
@@ -1520,17 +1536,6 @@ private struct HoldCountdown: View {
                 ? String(localized: "watch.workout.holdEndHint", defaultValue: "Ends the hold and logs the set")
                 : "")
         }
-    }
-
-    /// `30s`, `1m`, `1h`; with a remainder, `1:30` or `1:01:30`.
-    static func short(_ seconds: Int) -> String {
-        let s = max(0, seconds)
-        if s < 60 { return "\(s)s" }
-        if s % 3600 == 0 { return "\(s / 3600)h" }
-        if s % 60 == 0 && s < 3600 { return "\(s / 60)m" }
-        return s >= 3600
-            ? String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
-            : String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 

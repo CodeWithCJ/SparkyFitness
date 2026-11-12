@@ -133,13 +133,15 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Seconds of audible countdown to play before a rest or hold ends, read
     /// each time one starts so a change on the phone applies to the next one.
-    /// `onCountdownTick` plays one cue; the cue at zero is `onRestFinished`.
+    /// `onCountdownTick` plays one tick; the cue at zero is `onRestFinished`,
+    /// played by the countdown itself (not the poll) while it is on.
     var countdownSeconds: () -> Int = { 0 }
     var onCountdownTick: (() -> Void)?
 
-    /// Whether Finish skips the "Update Workout?" question because the summary
-    /// asks it afterwards (the new workout view).
-    var defersPresetUpdate: () -> Bool = { false }
+    /// Whether the new workout view is on. Its Finish skips the "Update
+    /// Workout?" question because the summary asks it afterwards, and its New PR
+    /// screen stays up 5 seconds instead of the classic banner's 4.
+    var usesNewWorkoutView: () -> Bool = { false }
 
     /// Called when the phone confirms a set logged on this watch is a
     /// personal record. Once per set.
@@ -161,6 +163,10 @@ final class WorkoutSessionStore: ObservableObject {
     private var holdTimer: Timer?
     private let restCues = CountdownCues()
     private let holdCues = CountdownCues()
+    /// Whether the countdown plays this rest's or hold's end cue, so the poll
+    /// that notices the deadline does not buzz a second time.
+    private var restCuesOwnEnd = false
+    private var holdCuesOwnEnd = false
     private var holdBuzzed = false
     /// The running timer was started on the phone. If the phone stops it
     /// without logging the set, this one stops too.
@@ -346,7 +352,7 @@ final class WorkoutSessionStore: ObservableObject {
         onPersonalRecord?()
         prBannerTask?.cancel()
         prBannerTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? await Task.sleep(nanoseconds: (self?.usesNewWorkoutView() ?? false) ? 5_000_000_000 : 4_000_000_000)
             guard !Task.isCancelled else { return }
             self?.dismissPrBanner()
         }
@@ -387,6 +393,7 @@ final class WorkoutSessionStore: ObservableObject {
             restTimer?.invalidate()
             restTimer = nil
             restCues.cancel()
+            restCuesOwnEnd = false
         case .ready:
             stopRestTimer()
         }
@@ -437,11 +444,10 @@ final class WorkoutSessionStore: ObservableObject {
         return (index + 1, exercises.count)
     }
 
-    /// The rest logging `step` starts: the next set's, as `completeCurrentSet`
-    /// uses. Zero when no set follows.
-    func restAfter(_ step: WorkoutStep) -> Int {
-        guard let index = steps.firstIndex(of: step), steps.indices.contains(index + 1) else { return 0 }
-        return steps[index + 1].plannedSet.restSeconds
+    /// The rest that logging the current set starts: the set `completeCurrentSet`
+    /// moves on to, and its rest. Zero when none is left.
+    func restAfterCurrentSet() -> Int {
+        nextIncompleteIndex().map { steps[$0].plannedSet.restSeconds } ?? 0
     }
 
     /// The plan's sets in the order the phone walks them (`setOrder`,
@@ -703,7 +709,7 @@ final class WorkoutSessionStore: ObservableObject {
             maxBpm: heartRateMax,
             activeEnergyKcal: activeEnergyKcal,
             sessionId: plan?.sessionId,
-            changedPresetName: defersPresetUpdate() && changedFromPreset ? plan?.workoutName : nil
+            changedPresetName: usesNewWorkoutView() && changedFromPreset ? plan?.workoutName : nil
         )
     }
 
@@ -738,7 +744,7 @@ final class WorkoutSessionStore: ObservableObject {
     /// and returns true when the workout changed from its saved one; the
     /// caller then waits for the answer instead of ending the workout.
     func askPresetUpdateBeforeFinish() -> Bool {
-        guard changedFromPreset, !defersPresetUpdate() else { return false }
+        guard changedFromPreset, !usesNewWorkoutView() else { return false }
         // Raised a moment later: the Finish confirmation or the exercise sheet
         // is still closing, and SwiftUI drops an alert presented over a
         // dismissal in progress, which left Finish doing nothing at all.
@@ -1531,8 +1537,9 @@ final class WorkoutSessionStore: ObservableObject {
             Task { @MainActor in
                 guard let self, let endsAt = self.restEndsAt else { return }
                 if Date() >= endsAt {
-                    self.stopRestTimer()
-                    self.onRestFinished?()
+                    // The countdown's own zero cue may still be about to fire.
+                    self.stopRestTimer(cancelCues: !self.restCuesOwnEnd)
+                    if !self.restCuesOwnEnd { self.onRestFinished?() }
                 }
             }
         }
@@ -1542,15 +1549,20 @@ final class WorkoutSessionStore: ObservableObject {
     }
 
     private func scheduleRestCues(endsAt: Date) {
-        restCues.schedule(endsAt: endsAt, seconds: countdownSeconds()) { [weak self] in
-            self?.onCountdownTick?()
-        }
+        let seconds = countdownSeconds()
+        restCuesOwnEnd = seconds > 0 && endsAt > Date()
+        restCues.schedule(
+            endsAt: endsAt,
+            seconds: seconds,
+            tick: { [weak self] in self?.onCountdownTick?() },
+            end: { [weak self] in self?.onRestFinished?() }
+        )
     }
 
-    private func stopRestTimer() {
+    private func stopRestTimer(cancelCues: Bool = true) {
         restTimer?.invalidate()
         restTimer = nil
-        restCues.cancel()
+        if cancelCues { restCues.cancel() }
         restEndsAt = nil
         restDurationSeconds = 0
         restPausedRemaining = nil
@@ -1559,19 +1571,24 @@ final class WorkoutSessionStore: ObservableObject {
     private func startHoldTimer() {
         holdTimer?.invalidate()
         if let endsAt = holdEndsAt {
-            holdCues.schedule(endsAt: endsAt, seconds: countdownSeconds()) { [weak self] in
-                self?.onCountdownTick?()
-            }
+            let seconds = countdownSeconds()
+            holdCuesOwnEnd = seconds > 0 && endsAt > Date()
+            holdCues.schedule(
+                endsAt: endsAt,
+                seconds: seconds,
+                tick: { [weak self] in self?.onCountdownTick?() },
+                end: { [weak self] in self?.onRestFinished?() }
+            )
         }
         holdTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let endsAt = self.holdEndsAt else { return }
                 guard Date() >= endsAt else { return }
-                self.stopHoldTimer()
+                self.stopHoldTimer(cancelCues: !self.holdCuesOwnEnd)
                 guard !self.holdBuzzed else { return }
                 self.holdBuzzed = true
                 self.holdFinishedSetId = self.holdSetId
-                self.onRestFinished?()
+                if !self.holdCuesOwnEnd { self.onRestFinished?() }
             }
         }
         if let holdTimer {
@@ -1581,10 +1598,10 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Invalidates the timer without forgetting the deadline. `clearHold`
     /// is what drops the deadline, at the start and end of a workout.
-    private func stopHoldTimer() {
+    private func stopHoldTimer(cancelCues: Bool = true) {
         holdTimer?.invalidate()
         holdTimer = nil
-        holdCues.cancel()
+        if cancelCues { holdCues.cancel() }
     }
 
     private func clearHold() {

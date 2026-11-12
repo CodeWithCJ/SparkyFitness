@@ -44,6 +44,9 @@ struct EffortTrack: View {
     /// The crown's position, a Double because that is what it binds to.
     @State private var position: Double = 0
     @FocusState private var focused: Bool
+    /// True once the track has been touched. Until then the crown scrolls the
+    /// page, so reading down a screen never moves the value.
+    @State private var engaged = false
 
     var body: some View {
         GeometryReader { geo in
@@ -59,6 +62,8 @@ struct EffortTrack: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0).onChanged { drag in
+                    engaged = true
+                    focused = true
                     let fraction = min(max(drag.location.x / max(geo.size.width, 1), 0), 0.999)
                     let next = Int(fraction * Double(values.count))
                     guard next != index else { return }
@@ -68,7 +73,7 @@ struct EffortTrack: View {
             )
         }
         .frame(height: WatchStyle.s(26))
-        .focusable()
+        .focusable(engaged)
         .focused($focused)
         .digitalCrownRotation(
             $position,
@@ -79,15 +84,12 @@ struct EffortTrack: View {
             isContinuous: false,
             isHapticFeedbackEnabled: hapticsEnabled
         )
-        .onAppear {
-            position = Double(index)
-            focused = true
-        }
+        .onAppear { position = Double(index) }
         .onChange(of: position) { index = min(max(Int(position.rounded()), 0), values.count - 1) }
         .onChange(of: index) { if Int(position.rounded()) != index { position = Double(index) } }
         .accessibilityElement()
         .accessibilityLabel(String(localized: "watch.effort.label", defaultValue: "Effort"))
-        .accessibilityValue("\(values[index])")
+        .accessibilityValue("\(Int(values[index]))")
         .accessibilityAdjustableAction { direction in
             index = min(max(index + (direction == .increment ? 1 : -1), 0), values.count - 1)
         }
