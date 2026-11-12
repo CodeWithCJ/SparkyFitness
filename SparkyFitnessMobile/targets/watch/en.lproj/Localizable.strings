@@ -363,6 +363,7 @@
 "watch.workout.getReadySkip" = "Tap to skip";
 "watch.workout.getReadyA11y" = "Get ready, %lld";
 "watch.workout.getReadySkipHint" = "Skips the countdown and starts the hold";
+"watch.workout.closeList" = "Close exercise list";
 "watch.workout.morePlates" = "Plates";
 "watch.workout.platesBarOnly" = "Bar only";
 "watch.workout.platesNotExact" = "Not exact";

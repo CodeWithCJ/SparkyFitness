@@ -369,23 +369,28 @@ private struct ActiveWorkoutView: View {
     }
 
     var body: some View {
-        // From the top: the two More stops, the set screen, then the metrics.
-        // Each is one screen tall and the scroll snaps to it. The crown scrolls
-        // only while no value box has claimed it for adjusting a number.
+        // From the top: the More list (taller than the screen, scrolled freely),
+        // then the set screen and the metrics, one screen tall each and snapped
+        // to. The crown scrolls only while no value box has claimed it for
+        // adjusting a number.
         GeometryReader { geo in
+            let pageHeight = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             ScrollView {
                 VStack(spacing: 0) {
-                    WorkoutMoreUpNextPage(onOpenList: { showingExercises = true })
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
-                        .id(WorkoutPageID.moreUpNext)
-                    if let step = store.currentStep {
-                        WorkoutMoreExercisePage(step: step, onOpenList: { showingExercises = true })
-                            .workoutPage(geo, alignment: .top, fromScreenTop: true)
-                            .id(WorkoutPageID.moreExercise)
+                    VStack(spacing: WatchStyle.m(6)) {
+                        WorkoutMoreUpNextPage(onOpenList: { showingExercises = true })
+                            .id(WorkoutPageID.moreUpNext)
+                        if let step = store.currentStep {
+                            WorkoutMoreExercisePage(step: step, onOpenList: { showingExercises = true })
+                                .id(WorkoutPageID.moreExercise)
+                        }
+                        WorkoutMoreWorkoutPage()
+                            .id(WorkoutPageID.moreWorkout)
                     }
-                    WorkoutMoreWorkoutPage()
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
-                        .id(WorkoutPageID.moreWorkout)
+                    .scrollTargetLayout()
+                    .padding(.top, WatchStyle.top)
+                    // Room under the last button and the page dots.
+                    .padding(.bottom, WatchStyle.m(30))
                     setScreen
                         .workoutPage(geo, alignment: .top, fromScreenTop: true)
                         .id(WorkoutPageID.set)
@@ -396,7 +401,7 @@ private struct ActiveWorkoutView: View {
                 .scrollTargetLayout()
             }
             .scrollPosition(id: $page)
-            .scrollTargetBehavior(.viewAligned)
+            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight))
             .scrollIndicators(.hidden)
             // Pages are laid out against the whole screen, so each snaps to
             // exactly one screen; `workoutPage` puts the content back inside
@@ -413,9 +418,10 @@ private struct ActiveWorkoutView: View {
         .onChange(of: store.currentStep?.plannedSet.setId) { page = .set }
         .onAppear { page = .set }
         .padding(.horizontal, 4)
-        .sheet(isPresented: $showingExercises) {
-            ExerciseListView { exerciseEntryId in
-                store.jumpToExercise(exerciseEntryId)
+        .overlay {
+            if showingExercises {
+                ExerciseListView(onSelect: { store.jumpToExercise($0) }, onClose: { showingExercises = false })
+                    .background(Color.black.ignoresSafeArea())
             }
         }
         // Over the whole page rather than a sheet: a sheet brings the system's
@@ -536,6 +542,30 @@ private struct ActiveWorkoutView: View {
     }
 }
 
+/// Free scrolling through the More list, and a snap to a whole page from the
+/// set screen on: the set and the metrics are the last two pages, one screen
+/// tall each, and everything above them is the list.
+private struct WorkoutScrollBehavior: ScrollTargetBehavior {
+    let pageHeight: CGFloat
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        guard pageHeight > 0 else { return }
+        let setTop = context.contentSize.height - 2 * pageHeight
+        let y = target.rect.minY
+        // Half a page above the set screen the list hands over to paging.
+        guard y > setTop - pageHeight / 2 else {
+            target.rect.origin.y = max(0, y)
+            return
+        }
+        let pages = ((y - setTop) / pageHeight).rounded().clamped(to: 0...1)
+        target.rect.origin.y = setTop + pages * pageHeight
+    }
+}
+
+private extension CGFloat {
+    func clamped(to range: ClosedRange<CGFloat>) -> CGFloat { Swift.min(range.upperBound, Swift.max(range.lowerBound, self)) }
+}
+
 private enum WorkoutPageID: Hashable {
     case moreUpNext, moreExercise, moreWorkout, set, metrics
 }
@@ -562,14 +592,6 @@ private struct WorkoutCompleteView: View {
     }
 }
 
-/// Consecutive members of one superset, or a run of exercises that are not.
-private struct ExerciseBlock: Identifiable {
-    let id: String
-    let header: String?
-    let supersetRun: Int?
-    var exercises: [PlannedExercise]
-}
-
 /// Every exercise in the preset, so the wearer can work out of order — skip
 /// ahead when a machine is taken, or come back to something left half done.
 /// Selecting one resumes it at its first unlogged set rather than restarting.
@@ -579,158 +601,92 @@ private struct ExerciseBlock: Identifiable {
 /// credentials of its own to fetch them with.
 private struct ExerciseListView: View {
     let onSelect: (String) -> Void
+    let onClose: () -> Void
 
     @EnvironmentObject private var store: WorkoutSessionStore
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var confirmingFinish = false
-    @State private var confirmingDiscard = false
-    @State private var addingExercise = false
 
     private var exercises: [PlannedExercise] { store.plan?.exercises ?? [] }
 
-    /// Consecutive members of one superset stay together under one header.
-    /// Solos stay in the plain list.
-    private var blocks: [ExerciseBlock] {
-        var blocks: [ExerciseBlock] = []
-        for exercise in exercises {
-            if let run = exercise.supersetRun,
-               let index = blocks.indices.last,
-               blocks[index].id == "superset-\(run)" {
-                blocks[index].exercises.append(exercise)
-                continue
-            }
-            if exercise.supersetRun == nil,
-               let index = blocks.indices.last,
-               blocks[index].header == nil {
-                blocks[index].exercises.append(exercise)
-                continue
-            }
-            let run = exercise.supersetRun
-            if let run {
-                blocks.append(
-                    ExerciseBlock(
-                        id: "superset-\(run)",
-                        header: String(localized: "watch.workout.supersetHeader", defaultValue: "Superset"),
-                        supersetRun: run,
-                        exercises: [exercise]
-                    )
-                )
-            } else {
-                blocks.append(
-                    ExerciseBlock(
-                        id: exercise.exerciseEntryId,
-                        header: nil,
-                        supersetRun: nil,
-                        exercises: [exercise]
-                    )
-                )
-            }
-        }
-        return blocks
-    }
-
     var body: some View {
-        // A stack only to give the sheet a title: watchOS puts it, small and
-        // grey, under the clock, which names the workout without a row.
-        NavigationStack {
-            List {
-                ForEach(blocks) { block in
-                    Section {
-                        ForEach(block.exercises) { exercise in
-                            Button {
-                                Haptics.tap()
-                                onSelect(exercise.exerciseEntryId)
-                                dismiss()
-                            } label: {
-                                ExerciseRow(exercise: exercise)
-                            }
-                            .buttonStyle(.plain)
-                            .listRowBackground(WatchStyle.shape.fill(WatchStyle.fill))
-                        }
-                    } header: {
-                        if let header = block.header, let run = block.supersetRun {
-                            Text(header)
-                                .foregroundStyle(SetSupersetPalette.color(for: run))
-                        }
-                    }
-                }
-
-                Section {
-                    Button {
-                        Haptics.tap()
-                        addingExercise = true
-                    } label: {
-                        Label(String(localized: "watch.workout.addExercise", defaultValue: "Add Exercise"), systemImage: "plus")
-                    }
-                    .listRowBackground(WatchStyle.shape.fill(WatchStyle.fill))
-                }
-
-                // Finishing lives here rather than on the set screen: this is
-                // the workout's overview, and an end-everything button one tap
-                // from the tick that logs a set is a mis-tap waiting to happen.
-                Section {
-                    Button(role: .destructive) {
-                        Haptics.tap()
-                        confirmingFinish = true
-                    } label: {
-                        Label(String(localized: "watch.workout.finishWorkout", defaultValue: "Finish Workout"), systemImage: "flag.checkered")
-                    }
-                    .listRowBackground(WatchStyle.shape.fill(WatchStyle.fill))
-                    Button(role: .destructive) {
-                        Haptics.tap()
-                        confirmingDiscard = true
-                    } label: {
-                        Label(String(localized: "watch.workout.discardWorkout", defaultValue: "Discard Workout"), systemImage: "trash")
-                    }
-                    .listRowBackground(WatchStyle.shape.fill(WatchStyle.fill))
-                }
+        // Drawn over the whole page, as the mockup shows it: the workout's name
+        // in the tint where a sheet would put its close button (a tap on it
+        // closes the list), then one tall row per exercise. Finish, Discard and
+        // Add Exercise are on More.
+        let current = store.currentStep?.exerciseEntryId
+        VStack(spacing: 0) {
+            Button(action: Haptics.tapping(onClose)) {
+                Text(store.plan?.workoutName ?? String(localized: "watch.workout.title", defaultValue: "Workout"))
+                    .font(.system(size: WatchStyle.m(18), weight: .semibold))
+                    .foregroundStyle(SetTint.blue.color)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, WatchStyle.m(7))
+                    .frame(height: WatchStyle.m(42))
+                    .contentShape(Rectangle())
             }
-            .navigationTitle(store.plan?.workoutName ?? String(localized: "watch.workout.title", defaultValue: "Workout"))
-            .navigationBarTitleDisplayMode(.inline)
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "watch.workout.closeList", defaultValue: "Close exercise list"))
+            ScrollView {
+                VStack(spacing: WatchStyle.m(6)) {
+                    ForEach(exercises) { exercise in
+                        Button {
+                            Haptics.tap()
+                            onSelect(exercise.exerciseEntryId)
+                            onClose()
+                        } label: {
+                            ExerciseRow(exercise: exercise, isCurrent: exercise.exerciseEntryId == current)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.bottom, WatchStyle.bottom)
+            }
+            .scrollIndicators(.hidden)
         }
-        .sheet(isPresented: $addingExercise) { AddExerciseSheet() }
-        .endWorkoutDialogs(
-            confirmingFinish: $confirmingFinish,
-            confirmingDiscard: $confirmingDiscard,
-            beforeEnding: { dismiss() }
-        )
+        .padding(.horizontal, WatchStyle.overlaySide)
+        .padding(.top, WatchStyle.top)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .vertical)
     }
 }
 
 private struct ExerciseRow: View {
     let exercise: PlannedExercise
+    let isCurrent: Bool
 
     @EnvironmentObject private var store: WorkoutSessionStore
 
     var body: some View {
         let done = store.completedSetCount(for: exercise)
         let isDone = store.isComplete(exercise)
-        HStack(spacing: 6) {
+        let tint = SetTint.blue
+        let shape = RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous)
+        HStack(spacing: WatchStyle.m(8)) {
             Text(exercise.name)
-                .font(.body.weight(.medium))
-                .lineLimit(2)
-            Spacer(minLength: 0)
-            // Sets logged over sets planned: the logged count is the number
-            // that changes, so it carries the weight; green once all are in.
-            HStack(spacing: 0) {
-                Text("\(done)")
-                    .fontWeight(.bold)
-                    .foregroundStyle(isDone ? Color.green : Color.white)
-                Text("/\(exercise.sets.count)")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.body)
-            .monospacedDigit()
-            .fixedSize()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // Sets logged over sets planned; green once all are in.
+            Text("\(done)/\(exercise.sets.count)")
+                .monospacedDigit()
+                .foregroundStyle(isDone ? Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255) : (isCurrent ? tint.color : Color.white))
+                .fixedSize()
         }
-        .padding(.leading, exercise.supersetRun == nil ? 0 : 8)
-        .background(alignment: .leading) {
+        .font(.system(size: WatchStyle.m(16), weight: .medium))
+        .foregroundStyle(isCurrent ? tint.color : Color.white)
+        .padding(.horizontal, WatchStyle.m(12))
+        .frame(maxWidth: .infinity)
+        .frame(height: WatchStyle.m(54))
+        .background(isCurrent ? tint.mixed(0.26) : WatchStyle.surface, in: shape)
+        // A superset's members carry its colour as a bar down the left edge.
+        .overlay(alignment: .leading) {
             if let run = exercise.supersetRun {
-                SetSupersetPalette.color(for: run)
-                    .frame(width: 3)
+                SetSupersetPalette.color(for: run).frame(width: WatchStyle.m(3))
             }
         }
+        .clipShape(shape)
+        .contentShape(shape)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -3021,7 +2977,7 @@ private func previewStore(
 
 /// The picker reached from the back chevron, one exercise part way done.
 #Preview("Exercise picker") {
-    ExerciseListView { _ in }
+    ExerciseListView(onSelect: { _ in }, onClose: {})
         .environmentObject(previewStore(completedSets: 1))
         .environmentObject(WatchSessionManager.shared)
 }

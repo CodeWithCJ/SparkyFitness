@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// What the set screen's "More" holds, in three one-screen stops above the set
-/// (a stop taller than the screen would need a scroll inside the vertical
-/// paging, which fights it): the next exercise, then this set's and this
-/// exercise's actions, then the workout's. Every change is a request to the
-/// phone, as on the original pages. Drawn as the mockups' list: a blue Up Next
-/// card and two-column tiles under small capitals headings.
+/// What the set screen's "More" holds, as one list above the set: the next
+/// exercise, then this set's and this exercise's actions, then the workout's.
+/// The three parts are stacked in the workout's own scroll (see
+/// `ActiveWorkoutView`), which scrolls them freely with the crown or a swipe
+/// and snaps to a page again once it reaches the set. Every change is a request
+/// to the phone, as on the original pages. Drawn as the mockups' list: a blue
+/// Up Next card and two-column tiles under small capitals headings.
 
 /// Up Next with Do first and List.
 struct WorkoutMoreUpNextPage: View {
@@ -25,7 +26,6 @@ struct WorkoutMoreUpNextPage: View {
                 .frame(height: WatchStyle.m(42), alignment: .leading)
                 .padding(.leading, WatchStyle.m(7))
             card(next)
-            Spacer(minLength: 0)
         }
         .padding(.horizontal, MorePageInsets.horizontal)
     }
@@ -113,8 +113,6 @@ struct WorkoutMoreExercisePage: View {
         let upcoming = store.upcomingExercises
         let plates = platesTile
         VStack(spacing: WatchStyle.m(6)) {
-            // Under the system clock at the top right.
-            Color.clear.frame(height: WatchStyle.m(18))
             MoreSection(String(localized: "watch.workout.moreThisSet", defaultValue: "This set"))
             MoreRow {
                 MoreTile(
@@ -152,7 +150,6 @@ struct WorkoutMoreExercisePage: View {
             MoreRow(lone: true) {
                 MoreTile(String(localized: "watch.workout.moreDeleteExercise", defaultValue: "Delete Exercise"), destructive: true) { confirmingDeleteExercise = true }
             }
-            Spacer(minLength: 0)
         }
         .modifier(MorePageInsets())
         .sheet(isPresented: $choosingType) {
@@ -251,7 +248,6 @@ struct WorkoutMoreWorkoutPage: View {
 
     var body: some View {
         VStack(spacing: WatchStyle.m(6)) {
-            Color.clear.frame(height: WatchStyle.m(18))
             MoreSection(String(localized: "watch.workout.title", defaultValue: "Workout"))
             MoreRow {
                 MoreTile(String(localized: "watch.workout.moreWater", defaultValue: "Water")) { logWater = true }
@@ -280,7 +276,6 @@ struct WorkoutMoreWorkoutPage: View {
             }
             .buttonStyle(.plain)
             .padding(.top, WatchStyle.m(2))
-            Spacer(minLength: 0)
         }
         .modifier(MorePageInsets())
         .sheet(isPresented: $addingExercise) { AddExerciseSheet() }

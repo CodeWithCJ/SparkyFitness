@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type {
+  GetPlateInventoryResponse,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
   WorkoutFormat,
@@ -36,10 +37,7 @@ import {
 } from '../services/notifications';
 import { getActiveServerConfig } from '../services/storage';
 import { getTodayDate } from '../utils/dateUtils';
-import {
-  isBodyweightModality,
-  type GetPlateInventoryResponse,
-} from '@workspace/shared';
+import { isBodyweightModality } from '@workspace/shared';
 import {
   extractPlannedSetValues,
   isDurationModality,
