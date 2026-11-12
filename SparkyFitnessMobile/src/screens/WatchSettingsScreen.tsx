@@ -73,6 +73,12 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const watchWorkoutCountdown = useAppPreferencesStore(
     (s) => s.watchWorkoutCountdown
   );
+  const watchHoldCountdown = useAppPreferencesStore(
+    (s) => s.watchHoldCountdown
+  );
+  const setWatchHoldCountdown = useAppPreferencesStore(
+    (s) => s.setWatchHoldCountdown
+  );
   const setWatchWorkoutCountdown = useAppPreferencesStore(
     (s) => s.setWatchWorkoutCountdown
   );
@@ -348,6 +354,23 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
                     setWatchWorkoutCountdown(
                       Number(key) as WatchWorkoutCountdown
                     )
+                  }
+                />
+                <SettingsRow
+                  title={t('watchSettings.holdCountdownTitle', {
+                    defaultValue: 'Countdown before holds',
+                  })}
+                  subtitle={t('watchSettings.holdCountdownSubtitle', {
+                    defaultValue:
+                      'A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip.',
+                  })}
+                  subtitleNumberOfLines={0}
+                  rightAccessory={
+                    <Switch
+                      testID="watch-hold-countdown-switch"
+                      value={watchHoldCountdown}
+                      onValueChange={setWatchHoldCountdown}
+                    />
                   }
                 />
               </>

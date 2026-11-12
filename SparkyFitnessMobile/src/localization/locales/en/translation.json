@@ -6986,7 +6986,9 @@
     "countdownTitle": "Countdown sound & haptic",
     "countdownDescription": "Sound and tap for each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking. With the watch on silent only the tap plays.",
     "countdownOff": "Off",
-    "countdownSeconds": "{{seconds}} s"
+    "countdownSeconds": "{{seconds}} s",
+    "holdCountdownTitle": "Countdown before holds",
+    "holdCountdownSubtitle": "A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip."
   },
   "progressPhotos": {
     "card": {

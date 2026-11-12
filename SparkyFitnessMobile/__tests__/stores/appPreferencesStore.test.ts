@@ -360,6 +360,24 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('the countdown before holds setting', () => {
+    it('defaults to on, including for a blob saved before it existed', async () => {
+      const { watchHoldCountdown: _omit, ...withoutKey } = PREFERENCE_DEFAULTS;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({ state: withoutKey, version: 2 })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().watchHoldCountdown).toBe(true);
+    });
+
+    it('persists when turned off', async () => {
+      useAppPreferencesStore.getState().setWatchHoldCountdown(false);
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      expect(JSON.parse(raw!).state.watchHoldCountdown).toBe(false);
+    });
+  });
+
   describe('the retired guided check-in setting', () => {
     // Quick Actions shows or hides Check-In like any other item now.
     it('keeps the rest of an older blob and drops the setting on the next write', async () => {

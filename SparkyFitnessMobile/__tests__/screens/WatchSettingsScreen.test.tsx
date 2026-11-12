@@ -158,6 +158,23 @@ describe('WatchSettingsScreen', () => {
     expect(prefs().watchWorkoutCountdown).toBe(0);
   });
 
+  test('the countdown before holds switch is on by default, flips, and hides with the new view', () => {
+    renderScreen();
+    const prefs = () => useAppPreferencesStore.getState();
+    expect(prefs().watchHoldCountdown).toBe(true);
+    expect(screen.queryByTestId('watch-hold-countdown-switch')).toBeNull();
+
+    fireEvent(
+      screen.getByTestId('watch-new-workout-switch'),
+      'valueChange',
+      true
+    );
+    const toggle = screen.getByTestId('watch-hold-countdown-switch');
+    expect(screen.getByText('Countdown before holds')).toBeTruthy();
+    fireEvent(toggle, 'valueChange', false);
+    expect(prefs().watchHoldCountdown).toBe(false);
+  });
+
   test('toggling a page hides and shows it', () => {
     renderScreen();
 
