@@ -1610,6 +1610,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Ends the workout. The stop signal waits until HealthKit has finished
     /// the workout and the tail has been queued. See `finishCollection`.
     func endWorkout() {
+        // The summary will ask whether to update the saved workout: tell the
+        // phone first so it holds its own prompt for the answer.
+        if workoutStore.usesNewWorkoutView(), workoutStore.changedFromPreset,
+           let sessionId = workoutStore.plan?.sessionId, WCSession.isSupported() {
+            transfer(OutboundPayloads.presetUpdateAnswer(sessionId: sessionId, update: false, waiting: true))
+        }
         requestFinish(sendStop: true)
     }
 

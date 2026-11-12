@@ -522,6 +522,7 @@ public class WatchConnectivityModule: Module {
                 self?.sendEvent("onPresetUpdateAnswer", [
                     "sessionId": payload["sessionId"] as? String ?? "",
                     "update": payload["update"] as? Bool ?? false,
+                    "waiting": payload["waiting"] as? Bool ?? false,
                 ])
             }
             self.delegateHandler.onRecordingControl = { [weak self] payload in

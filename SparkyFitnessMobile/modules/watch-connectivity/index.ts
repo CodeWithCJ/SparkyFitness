@@ -782,6 +782,11 @@ export interface WatchPresetUpdateAnswerPayload {
   sessionId: string;
   /** True to write the workout's changes into the saved workout. */
   update: boolean;
+  /**
+   * True when this is no answer yet: the watch's summary has the question open,
+   * so the phone holds its own prompt for a while.
+   */
+  waiting?: boolean;
 }
 
 export interface WatchWorkoutStartRequestedPayload {

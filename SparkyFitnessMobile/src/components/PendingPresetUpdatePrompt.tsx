@@ -5,6 +5,7 @@ import {
   type PresetUpdateOffer,
 } from '../hooks/useWorkoutCompletePresetSync';
 import {
+  WATCH_PRESET_ANSWER_TIMEOUT_MS,
   usePendingPresetUpdateStore,
   type PendingPresetUpdate,
 } from '../stores/pendingPresetUpdateStore';
@@ -29,9 +30,9 @@ export default function PendingPresetUpdatePrompt() {
     const sub = WatchConnectivity.addListener(
       'onPresetUpdateAnswer',
       (answer) => {
-        usePendingPresetUpdateStore
-          .getState()
-          .setAnswer(answer.sessionId, answer.update);
+        const store = usePendingPresetUpdateStore.getState();
+        if (answer.waiting) store.setWaiting(answer.sessionId);
+        else store.setAnswer(answer.sessionId, answer.update);
       }
     );
     return () => sub.remove();
@@ -82,6 +83,8 @@ function PendingPrompt({
   );
 
   const answer = usePendingPresetUpdateStore((s) => s.answers[sessionId]);
+  const waitingSince = usePendingPresetUpdateStore((s) => s.waiting[sessionId]);
+  const clearWaiting = usePendingPresetUpdateStore((s) => s.clearWaiting);
   const clearAnswer = usePendingPresetUpdateStore((s) => s.clearAnswer);
   const [offer, setOffer] = useState<PresetUpdateOffer | null>(null);
   const handledRef = useRef(false);
@@ -116,6 +119,17 @@ function PendingPrompt({
     })();
   }, [answer, offer, settle, clearAnswer, sessionId]);
 
+  // The watch's summary has the question open: the phone's own prompt waits
+  // for the answer, and takes over if none comes in time.
+  useEffect(() => {
+    if (waitingSince == null) return;
+    const timer = setTimeout(
+      () => clearWaiting(sessionId),
+      Math.max(0, waitingSince + WATCH_PRESET_ANSWER_TIMEOUT_MS - Date.now())
+    );
+    return () => clearTimeout(timer);
+  }, [waitingSince, clearWaiting, sessionId]);
+
   const handleNeedsUpdate = useCallback((needed: PresetUpdateOffer) => {
     setOffer(needed);
   }, []);
@@ -129,7 +143,7 @@ function PendingPrompt({
     assumeSources,
     onSettled: settle,
     onNeedsUpdate: handleNeedsUpdate,
-    skipPrompt: answer !== undefined,
+    skipPrompt: answer !== undefined || waitingSince != null,
   });
   return null;
 }
