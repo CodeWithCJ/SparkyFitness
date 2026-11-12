@@ -159,6 +159,7 @@ final class WorkoutSessionStore: ObservableObject {
     private var prBannerTask: Task<Void, Never>?
 
     private var elapsedTimer: Timer?
+    private var elapsedSuspended = false
     private var restTimer: Timer?
     private var holdTimer: Timer?
     private let restCues = CountdownCues()
@@ -504,6 +505,7 @@ final class WorkoutSessionStore: ObservableObject {
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
+        elapsedSuspended = false
         lastSummary = nil
         askingPresetUpdate = false
         baselineStructure = Self.structure(of: plan)
@@ -640,6 +642,7 @@ final class WorkoutSessionStore: ObservableObject {
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
+        elapsedSuspended = false
         resetHeartRateStats()
         wristLoggedSetIds = []
         celebratedPrSetIds = []
@@ -707,7 +710,7 @@ final class WorkoutSessionStore: ObservableObject {
             }
         }
         return WorkoutSummary(
-            durationSeconds: elapsedSeconds,
+            durationSeconds: startedAt.map { Int(Date().timeIntervalSince($0)) } ?? elapsedSeconds,
             setsCompleted: completed,
             volumeKg: volumeKg,
             averageBpm: heartRateCount > 0 ? heartRateSum / Double(heartRateCount) : nil,
@@ -764,10 +767,22 @@ final class WorkoutSessionStore: ObservableObject {
         return true
     }
 
-    /// Seconds since the workout started, from its start time, for a display
-    /// that redraws on its own schedule.
-    func elapsed(at now: Date) -> TimeInterval {
-        startedAt.map { max(0, now.timeIntervalSince($0)) } ?? TimeInterval(elapsedSeconds)
+    /// When the workout started, for a display that works out the elapsed time
+    /// itself on its own schedule.
+    var workoutStartedAt: Date? { startedAt }
+
+    /// Stops or restarts the once-a-second `elapsedSeconds` publish. The new
+    /// workout view suspends it while the wrist is down: its time is drawn
+    /// from `workoutStartedAt`, and each publish would wake the screen. Rest
+    /// and hold timers and countdown cues are deadline-scheduled and unaffected.
+    func setElapsedPublishing(suspended: Bool) {
+        elapsedSuspended = suspended
+        if suspended {
+            stopElapsedTimer()
+        } else if let startedAt {
+            elapsedSeconds = Int(Date().timeIntervalSince(startedAt))
+            startElapsedTimer()
+        }
     }
 
     func recordActiveEnergy(kcal: Double) {
@@ -1508,6 +1523,7 @@ final class WorkoutSessionStore: ObservableObject {
     // MARK: - Timers
 
     private func startElapsedTimer() {
+        guard !elapsedSuspended else { return }
         elapsedTimer?.invalidate()
         elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
