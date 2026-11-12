@@ -641,8 +641,22 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         return originalQuantity;
       }
     }
+    if (
+      pickerMode === 'log-entry' &&
+      activeItem.source === 'local' &&
+      'last_logged_quantity' in activeItem.originalItem
+    ) {
+      const previous = activeItem.originalItem.last_logged_quantity;
+      if (
+        typeof previous === 'number' &&
+        Number.isFinite(previous) &&
+        previous > 0
+      ) {
+        return previous;
+      }
+    }
     return activeVariant.servingSize;
-  }, [activeItem, activeVariant.servingSize]);
+  }, [activeItem, activeVariant.servingSize, pickerMode]);
 
   const [quantityText, setQuantityText] = useState(String(initialQuantity));
   const quantity = parseDecimalInput(quantityText) || 0;

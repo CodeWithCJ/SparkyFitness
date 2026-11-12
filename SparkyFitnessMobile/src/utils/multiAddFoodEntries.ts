@@ -50,6 +50,14 @@ export function multiAddKeyForFood(food: FoodItem): string {
 export function initialDraftQuantityText(food: FoodItem): string {
   // Typed required on FoodDefaultVariant, but these objects arrive as raw
   // API JSON — guard the boundary rather than trust it.
+  const previous = food.last_logged_quantity;
+  if (
+    typeof previous === 'number' &&
+    Number.isFinite(previous) &&
+    previous > 0
+  ) {
+    return String(previous);
+  }
   const servingSize = food.default_variant?.serving_size;
   return servingSize != null && Number.isFinite(servingSize)
     ? String(servingSize)

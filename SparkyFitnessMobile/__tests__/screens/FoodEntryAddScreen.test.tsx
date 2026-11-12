@@ -1057,6 +1057,21 @@ describe('FoodEntryAddScreen', () => {
     expect(screen.queryByText('Meal')).toBeNull();
   });
 
+  it('starts a repeat diary entry at the last amount and lets the user edit it', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseLocalItem,
+        originalItem: {
+          ...baseLocalItem.originalItem,
+          last_logged_quantity: 137.5,
+        },
+      },
+    });
+    const field = screen.getByDisplayValue('137.5');
+    fireEvent.changeText(field, '90');
+    expect(screen.getByDisplayValue('90')).toBeTruthy();
+  });
+
   it('preserves the saved quantity when editing a meal ingredient draft', () => {
     const screen = renderScreen({
       item: {

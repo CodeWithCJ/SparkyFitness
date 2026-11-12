@@ -3,6 +3,7 @@ import {
   MULTI_ADD_MAX_ITEMS,
   convertDraftToPayload,
   multiAddKeyForFood,
+  initialDraftQuantityText,
   partitionDrafts,
 } from '../../src/utils/multiAddFoodEntries';
 
@@ -209,4 +210,27 @@ describe('MULTI_ADD_MAX_ITEMS', () => {
   test('caps batches at the documented limit', () => {
     expect(MULTI_ADD_MAX_ITEMS).toBe(50);
   });
+});
+
+describe('remembered portions', () => {
+  test('seeds an editable gram amount, not a count of servings', () => {
+    const food = makeFood({ last_logged_quantity: 137.5 });
+    const draft = makeDraft({
+      food,
+      quantityText: initialDraftQuantityText(food),
+    });
+    expect(convertDraftToPayload(draft)).toMatchObject({
+      payload: { quantity: 137.5, unit: 'g' },
+    });
+  });
+
+  test.each([undefined, null, 0, -1, NaN, Infinity])(
+    'falls back for %s',
+    (previous) => {
+      const food = makeFood({ last_logged_quantity: previous });
+      expect(initialDraftQuantityText(food)).toBe(
+        String(food.default_variant.serving_size)
+      );
+    }
+  );
 });
