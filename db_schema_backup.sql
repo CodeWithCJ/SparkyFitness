@@ -2387,7 +2387,8 @@ CREATE TABLE public.exercise_entry_sets (
     completed_at timestamp with time zone,
     is_pr boolean DEFAULT false NOT NULL,
     distance numeric,
-    rir numeric(3,1)
+    rir numeric(3,1),
+    started_at timestamp with time zone
 );
 
 
@@ -2417,6 +2418,13 @@ COMMENT ON COLUMN public.exercise_entry_sets.is_pr IS 'Whether this set was a pe
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.rir IS 'Reps In Reserve (0-10 scale)';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.started_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.started_at IS 'Client-recorded moment the set was started during a live workout. NULL = no start recorded. An update that omits the field keeps the stored value.';
 
 
 --
