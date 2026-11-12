@@ -1555,7 +1555,8 @@ fun RoundStepperButton(label: String, onClick: () -> Unit) {
 @Composable
 fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
   val sleep by store.sleep.collectAsState()
-  val model = remember(sleep) { TileModels.buildSleepTileModel(sleep) }
+  val context = LocalContext.current
+  val model = remember(sleep, context) { TileModels.buildSleepTileModel(context, sleep) }
   val listState = rememberScalingLazyListState()
 
   ScalingLazyColumn(
