@@ -40,7 +40,10 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate, UNUserNotificatio
                 // phone has haptics or its rest-complete alert switched off.
                 MainActor.assumeIsolated {
                     guard CheckInStore.shared.context.effectiveRestBuzzEnabled else { return }
-                    WKInterfaceDevice.current().play(.notification)
+                    // The same cue for a rest ending, a hold ending and the
+                    // hold starting after Get ready: `.success`, a rising
+                    // chime, unlike the single short `.start` beep of each tick.
+                    WKInterfaceDevice.current().play(.success)
                 }
             }
         }
