@@ -39,7 +39,8 @@ export interface WorkoutPlaybackRestTimer {
   target_set_index?: number;
 }
 export interface WorkoutPlaybackExerciseDraft {
-  exercise_id: string;
+  /** Library exercise id; null when the exercise was deleted from the library. */
+  exercise_id: string | null;
   exercise_name: string;
   /**
    * The persisted exercise_entry id when this draft resumes a saved session
@@ -1434,7 +1435,7 @@ export function createWorkoutPlaybackDraftFromSession(
     session.exercises ?? []
   ).map((exercise, exerciseIndex) => ({
     entry_id: exercise.id,
-    exercise_id: exercise.exercise_id ?? exercise.id,
+    exercise_id: exercise.exercise_id ?? null,
     exercise_name:
       exercise.exercise_snapshot?.name ??
       (exercise as { name?: string | null }).name ??

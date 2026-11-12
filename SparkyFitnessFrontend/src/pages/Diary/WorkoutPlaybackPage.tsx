@@ -232,7 +232,7 @@ const WorkoutPlaybackPage = () => {
       const signalsResponse = isStandard
         ? await fetchWorkoutCoachingSignals(
             [...new Set(draft.exercises.map((e) => e.exercise_id))].filter(
-              Boolean
+              (id): id is string => id != null
             )
           ).catch(() => null)
         : null;
@@ -248,6 +248,8 @@ const WorkoutPlaybackPage = () => {
       ): Promise<WorkoutPlaybackExerciseDraft> => {
         {
           if (exercise.sets.some((s) => s.completed)) return exercise;
+          // A deleted library exercise has no progression history to fetch.
+          if (!exercise.exercise_id) return exercise;
 
           try {
             const stats = await fetchExerciseProgressionStats(
@@ -407,7 +409,10 @@ const WorkoutPlaybackPage = () => {
         const usual = ramp(engineResult);
         const original = draft.exercises[index];
         if (!original) return usual;
-        const signal = signalById.get(original.exercise_id);
+        const signal =
+          original.exercise_id != null
+            ? signalById.get(original.exercise_id)
+            : undefined;
         const suggestVariation = shouldSuggestVariation(
           signal,
           original.mechanic

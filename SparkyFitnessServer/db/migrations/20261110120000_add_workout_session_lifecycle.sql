@@ -39,3 +39,20 @@ WHERE pe.finished_at IS NULL
       WHERE ee.exercise_preset_entry_id = pe.id
         AND ees.completed_at IS NOT NULL
   );
+
+-- Backfill (continued): legacy live sessions ("sparky") with no checked sets
+-- were never finished by builds in the field (they predate finished_at), so
+-- they would surface as in_progress forever. Stamp them finished at their
+-- last update so history reads as completed. Untouched plan-generated rows
+-- are deliberately left NULL to stay "planned" until they are started.
+UPDATE public.exercise_preset_entries AS pe
+SET finished_at = pe.updated_at
+WHERE pe.finished_at IS NULL
+  AND pe.source ILIKE 'sparky'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.exercise_entry_sets AS ees
+      JOIN public.exercise_entries AS ee ON ee.id = ees.exercise_entry_id
+      WHERE ee.exercise_preset_entry_id = pe.id
+        AND ees.completed_at IS NOT NULL
+  );

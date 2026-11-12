@@ -200,7 +200,7 @@ export function isLiveWorkoutSource(
  * feed preset-session children, diary rows or live snapshots alike.
  */
 export interface WorkoutSessionStatusSet {
-  completed_at?: string | null;
+  completed_at?: string | Date | null;
 }
 
 export interface WorkoutSessionStatusInput {
@@ -224,9 +224,13 @@ export interface WorkoutSessionStatusInput {
  * - finished + at least one set missing -> partial
  * - unfinished + at least one checked-off set -> in_progress
  * - plan-generated or plan-linked, untouched -> planned
- * - live-started (source 'sparky'), untouched -> in_progress
- * - everything else (form logs, imports, provider syncs) -> completed; those
- *   rows are done by definition and mostly predate per-set completed_at
+ * - live-started (source 'sparky'), untouched -> in_progress; manual
+ *   form logs now stamp finished_at at creation, so an unfinished sparky
+ *   session is a live workout that was started and not yet ended
+ * - finished + no set checked off -> completed: form logs, imports and
+ *   provider syncs record what was done without per-set timestamps
+ * - everything else (imports, provider syncs, legacy manual entries) ->
+ *   completed; those rows are done by definition
  */
 export function deriveWorkoutSessionStatus(
   input: WorkoutSessionStatusInput
@@ -234,9 +238,13 @@ export function deriveWorkoutSessionStatus(
   const { source, finishedAt, hasPlanAssignment, sets } = input;
   const completedSets = sets.filter((set) => set.completed_at != null).length;
   if (finishedAt != null) {
-    return completedSets === sets.length && sets.length > 0
-      ? 'completed'
-      : 'partial';
+    if (completedSets === 0) {
+      // Finished with nothing checked off: a manual form log, import or
+      // provider sync recorded what was done without per-set timestamps, so
+      // it is completed rather than a half-done live workout (#1995).
+      return 'completed';
+    }
+    return completedSets === sets.length ? 'completed' : 'partial';
   }
   if (completedSets > 0) {
     return 'in_progress';

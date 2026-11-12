@@ -332,6 +332,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 name: submission.name,
                 entry_date: submission.entryDate,
                 source: 'sparky',
+                // Manual form logs are done by definition; stamp them
+                // finished so they derive as completed, not in progress.
+                finished_at: new Date().toISOString(),
                 exercises: submission.payloadExercises,
               };
               await createSession(payload);

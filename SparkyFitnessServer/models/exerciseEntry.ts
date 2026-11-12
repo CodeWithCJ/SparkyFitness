@@ -3,6 +3,8 @@ import {
   deriveWorkoutSessionStatus,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
+  type ExercisePresetEntries,
+  type WorkoutSessionStatusSet,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
@@ -1705,6 +1707,37 @@ async function deleteExerciseEntry(id: any, userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Row shape of the preset SELECT in the V1 diary path, taken from the shared
+ * database schema so the columns stay in sync with it (#1995 phase 1). The
+ * lifecycle columns must ride along so the status can be derived from the
+ * same rows that define it.
+ */
+type DiaryPresetEntryRow = Pick<
+  ExercisePresetEntries,
+  | 'id'
+  | 'workout_preset_id'
+  | 'name'
+  | 'description'
+  | 'notes'
+  | 'location'
+  | 'created_at'
+  | 'entry_date'
+  | 'source'
+  | 'finished_at'
+  | 'revision'
+>;
+
+/**
+ * Session child fields the status derivation reads on the V1 diary path. The
+ * children are loosely shaped legacy rows; only the fields the derivation
+ * touches are declared.
+ */
+interface DiaryPresetChildExercise {
+  workout_plan_assignment_id?: string | null;
+  sets?: WorkoutSessionStatusSet[] | null;
+}
+
 async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   const client = await getClient(userId);
   try {
@@ -1742,8 +1775,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Map to store grouped exercises
     const groupedEntries = new Map();
     // Initialize grouped entries with preset entries
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    presetEntries.forEach((preset: any) => {
+    presetEntries.forEach((preset: DiaryPresetEntryRow) => {
       groupedEntries.set(preset.id, {
         type: 'preset',
         id: preset.id,
@@ -1755,6 +1787,8 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         created_at: preset.created_at,
         entry_date: preset.entry_date,
         source: preset.source,
+        finished_at: preset.finished_at,
+        revision: preset.revision,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
@@ -1869,13 +1903,11 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         source: preset.source,
         finishedAt,
         hasPlanAssignment: (preset.exercises || []).some(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (exercise: any) =>
+          (exercise: DiaryPresetChildExercise) =>
             (exercise.workout_plan_assignment_id ?? null) !== null
         ),
         sets: (preset.exercises || []).flatMap(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (exercise: any) => exercise.sets || []
+          (exercise: DiaryPresetChildExercise) => exercise.sets || []
         ),
       });
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)

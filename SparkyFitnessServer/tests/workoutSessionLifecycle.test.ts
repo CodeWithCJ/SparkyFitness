@@ -173,6 +173,25 @@ describe('deriveWorkoutSessionStatus', () => {
     ).toBe('partial');
   });
 
+  it('derives completed when finished with no set checked off (manual log)', () => {
+    expect(
+      deriveWorkoutSessionStatus({
+        source: 'sparky',
+        finishedAt: FINISHED,
+        hasPlanAssignment: false,
+        sets: [set(false), set(false)],
+      })
+    ).toBe('completed');
+    expect(
+      deriveWorkoutSessionStatus({
+        source: 'sparky',
+        finishedAt: FINISHED,
+        hasPlanAssignment: false,
+        sets: [],
+      })
+    ).toBe('completed');
+  });
+
   it('derives completed for manually logged sessions by definition', () => {
     expect(
       deriveWorkoutSessionStatus({
