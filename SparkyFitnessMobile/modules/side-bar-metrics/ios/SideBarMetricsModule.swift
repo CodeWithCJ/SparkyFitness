@@ -15,26 +15,28 @@ public class SideBarMetricsModule: Module {
         }.runOnQueue(.main)
 
         // Which edge the system puts its vertical bar on right now: "leading",
-        // "trailing" or "none"; "unknown" when the trait cannot be read, so the
-        // caller can fall back. Side safe-area insets alone are not an answer: a
-        // notched iPhone in landscape has them too and keeps horizontal bars.
+        // "trailing" or "none"; "unsupported" on an OS without vertical bars and
+        // "unknown" when the trait cannot be read yet. Side safe-area insets alone
+        // are not an answer: a notched iPhone in landscape has them too.
         AsyncFunction("verticalBarEdge") { () -> String in
             return SideBarMetricsModule.verticalBarEdgeNow()
         }.runOnQueue(.main)
     }
 
     /// `UITraitCollection.verticalBarEdge` (iOS 27.1). Read through key-value
-    /// coding so this compiles against any SDK; on a system without the
-    /// property the answer is "unknown", not "none": a wrong "none" would show
-    /// the Add tab beside the native Add button on a Duo.
+    /// coding so this compiles against any SDK. A system without the trait
+    /// answers "unsupported": it has no vertical bars, so the layout stays
+    /// horizontal. "unknown" means the trait exists but could not be read yet.
     static func verticalBarEdgeNow() -> String {
         let windows = visibleWindows()
         guard let window = windows.first(where: { $0.isKeyWindow }) ?? windows.first else {
             return "unknown"
         }
         let traits = window.traitCollection
-        guard traits.responds(to: NSSelectorFromString("verticalBarEdge")),
-              let raw = traits.value(forKey: "verticalBarEdge") as? Int else {
+        guard traits.responds(to: NSSelectorFromString("verticalBarEdge")) else {
+            return "unsupported"
+        }
+        guard let raw = traits.value(forKey: "verticalBarEdge") as? Int else {
             return "unknown"
         }
         // UIVerticalBarEdge: unspecified = 0, leading = 1, trailing = 2.

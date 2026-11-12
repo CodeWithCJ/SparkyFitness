@@ -25,10 +25,17 @@ const flush = async () => {
 
 describe('useVerticalBar', () => {
   const originalOS = Platform.OS;
+  const originalVersion = Object.getOwnPropertyDescriptor(Platform, 'Version');
+  const setVersion = (version: string) =>
+    Object.defineProperty(Platform, 'Version', {
+      configurable: true,
+      get: () => version,
+    });
 
   beforeEach(() => {
     jest.useFakeTimers();
     Platform.OS = 'ios';
+    setVersion('27.2');
     mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
     mockNative = null;
   });
@@ -36,6 +43,46 @@ describe('useVerticalBar', () => {
   afterEach(() => {
     jest.useRealTimers();
     Platform.OS = originalOS;
+    if (originalVersion)
+      Object.defineProperty(Platform, 'Version', originalVersion);
+  });
+
+  it('is false on iOS before 27.1 even with side insets and no trait', async () => {
+    setVersion('26.4');
+    mockInsets = { top: 0, bottom: 21, left: 59, right: 59 };
+    mockNative = {
+      verticalBarEdge: jest.fn().mockResolvedValue('unsupported'),
+    };
+    const { result } = renderHook(() => useVerticalBar());
+    expect(result.current).toBe(false);
+    await flush();
+    expect(result.current).toBe(false);
+  });
+
+  it('is false on iOS before 27.1 when the native module is missing', () => {
+    setVersion('27.0');
+    mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+    mockNative = null;
+    const { result } = renderHook(() => useVerticalBar());
+    expect(result.current).toBe(false);
+  });
+
+  it('corrects the inset guess when the system reports no trait', async () => {
+    mockInsets = { top: 0, bottom: 21, left: 59, right: 59 };
+    mockNative = {
+      verticalBarEdge: jest.fn().mockResolvedValue('unsupported'),
+    };
+    const { result } = renderHook(() => useVerticalBar());
+    expect(result.current).toBe(true);
+    await flush();
+    expect(result.current).toBe(false);
+  });
+
+  it('treats 27.1 as supported', () => {
+    setVersion('27.1');
+    mockInsets = { top: 0, bottom: 0, left: 0, right: 84 };
+    const { result } = renderHook(() => useVerticalBar());
+    expect(result.current).toBe(true);
   });
 
   it('is false for a notched iPhone in landscape: side insets, horizontal bar', async () => {
