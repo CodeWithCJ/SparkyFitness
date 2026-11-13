@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Info, Clipboard } from 'lucide-react';
 import {
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { GlobalSettings } from '@/types/admin';
 
@@ -46,11 +48,13 @@ const AuthenticationSettings: React.FC = () => {
   const { data: settings, isLoading: loading } = useSettings();
 
   const { mutate: updateSettings } = useUpdateSettings();
+  const mcpRedirectUrisRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSwitchChange = (id: keyof GlobalSettings, checked: boolean) => {
     if (!settings) return;
 
     const newSettings = { ...settings, [id]: checked };
+    const isVersionCheck = id === 'enable_version_check';
 
     updateSettings(newSettings, {
       onSuccess: () => {
@@ -59,23 +63,68 @@ const AuthenticationSettings: React.FC = () => {
             'admin.authenticationSettings.settingsSaved',
             'Settings Saved'
           ),
-          description: t(
-            'admin.authenticationSettings.loginSettingUpdated',
-            'Login setting updated successfully.'
-          ),
+          description: isVersionCheck
+            ? t(
+                'admin.authenticationSettings.versionCheckUpdated',
+                'Release check setting updated successfully.'
+              )
+            : t(
+                'admin.authenticationSettings.loginSettingUpdated',
+                'Login setting updated successfully.'
+              ),
         });
       },
       onError: () => {
         toast({
           title: t('admin.authenticationSettings.error', 'Error'),
-          description: t(
-            'admin.authenticationSettings.failedToSaveLoginSettings',
-            'Failed to save login settings.'
-          ),
+          description: isVersionCheck
+            ? t(
+                'admin.authenticationSettings.failedToSaveVersionCheck',
+                'Failed to save the release check setting.'
+              )
+            : t(
+                'admin.authenticationSettings.failedToSaveLoginSettings',
+                'Failed to save login settings.'
+              ),
           variant: 'destructive',
         });
       },
     });
+  };
+
+  const saveMcpRedirectUris = () => {
+    if (!settings) return;
+    const redirectUris = (mcpRedirectUrisRef.current?.value ?? '')
+      .split(/\r?\n/)
+      .map((uri) => uri.trim())
+      .filter(Boolean);
+    updateSettings(
+      { ...settings, mcp_oauth_allowed_redirect_uris: redirectUris },
+      {
+        onSuccess: () => {
+          toast({
+            title: t(
+              'admin.authenticationSettings.settingsSaved',
+              'Settings Saved'
+            ),
+            description: t(
+              'admin.authenticationSettings.mcpOAuthRedirectsUpdated',
+              'OAuth redirect allowlist updated successfully.'
+            ),
+          });
+        },
+        onError: () => {
+          toast({
+            title: t('admin.authenticationSettings.error', 'Error'),
+            description: t(
+              'admin.authenticationSettings.mcpOAuthRedirectsFailed',
+              'Failed to save the OAuth redirect allowlist.'
+            ),
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   if (loading) {
@@ -169,6 +218,35 @@ const AuthenticationSettings: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <div className="flex flex-col">
+                  <Label
+                    htmlFor="enable_magic_link_login"
+                    className="font-medium"
+                  >
+                    {t(
+                      'admin.authenticationSettings.loginManagement.enableMagicLinkLogin',
+                      'Enable Magic Link Login'
+                    )}
+                  </Label>
+                  {settings.is_magic_link_login_env_configured && (
+                    <Badge
+                      variant="outline"
+                      className="mt-1 w-fit bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      {t('admin.oidcSettings.envConfigured', 'Managed by Env')}
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="enable_magic_link_login"
+                  checked={settings.enable_magic_link_login ?? true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('enable_magic_link_login', checked)
+                  }
+                  disabled={settings.is_magic_link_login_env_configured}
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
                   <Label htmlFor="is_oidc_active" className="font-medium">
                     {t(
                       'admin.authenticationSettings.loginManagement.enableOidcLoginGlobal',
@@ -231,6 +309,80 @@ const AuthenticationSettings: React.FC = () => {
                   }
                 />
               </div>
+              <div className="p-4 border rounded-md space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <Label htmlFor="mcp_oauth_enabled" className="font-medium">
+                      {t(
+                        'admin.authenticationSettings.mcpOAuth',
+                        'Remote MCP OAuth'
+                      )}
+                    </Label>
+                    <span className="text-sm text-muted-foreground mt-1">
+                      {t(
+                        'admin.authenticationSettings.mcpOAuthDescription',
+                        'Allow remote MCP clients such as Claude to connect through OAuth 2.1. Existing API keys continue to work.'
+                      )}
+                    </span>
+                    <span className="text-sm text-amber-700 dark:text-amber-400 mt-2">
+                      {t(
+                        'admin.authenticationSettings.mcpOAuthAccessWarning',
+                        'Approving an application gives it full MCP access, including tools that can write or delete data. Only approve applications you trust.'
+                      )}
+                    </span>
+                    {settings.mcp_oauth_available === false && (
+                      <span className="text-sm text-destructive mt-2">
+                        {settings.mcp_oauth_unavailable_reason ||
+                          t(
+                            'admin.authenticationSettings.mcpOAuthHttpsRequired',
+                            'Remote MCP OAuth requires public HTTPS. Plain HTTP is supported only for loopback development.'
+                          )}
+                      </span>
+                    )}
+                  </div>
+                  <Switch
+                    id="mcp_oauth_enabled"
+                    checked={settings.mcp_oauth_enabled === true}
+                    onCheckedChange={(checked) =>
+                      handleSwitchChange('mcp_oauth_enabled', checked)
+                    }
+                    disabled={settings.mcp_oauth_available === false}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mcp_oauth_allowed_redirect_uris">
+                    {t(
+                      'admin.authenticationSettings.mcpOAuthRedirectAllowlist',
+                      'Allowed OAuth redirect URIs'
+                    )}
+                  </Label>
+                  <Textarea
+                    id="mcp_oauth_allowed_redirect_uris"
+                    ref={mcpRedirectUrisRef}
+                    defaultValue={settings.mcp_oauth_allowed_redirect_uris?.join(
+                      '\n'
+                    )}
+                    rows={6}
+                    placeholder="https://claude.ai/api/mcp/auth_callback"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {t(
+                      'admin.authenticationSettings.mcpOAuthRedirectAllowlistDescription',
+                      'Enter one exact URI or loopback pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port.'
+                    )}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={saveMcpRedirectUris}
+                  >
+                    {t(
+                      'admin.authenticationSettings.saveMcpOAuthRedirects',
+                      'Save OAuth redirect allowlist'
+                    )}
+                  </Button>
+                </div>
+              </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <div className="flex flex-col">
                   <Label htmlFor="dev_tools_enabled" className="font-medium">
@@ -254,6 +406,29 @@ const AuthenticationSettings: React.FC = () => {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
+                  <Label htmlFor="enable_version_check" className="font-medium">
+                    {t(
+                      'admin.authenticationSettings.versionCheck',
+                      'Check for New Releases'
+                    )}
+                  </Label>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {t(
+                      'admin.authenticationSettings.versionCheckDescription',
+                      'Ask GitHub (api.github.com) for the latest release and tell users when a newer version is available. Turn this off if updates are managed outside the app or the server should not contact GitHub.'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  id="enable_version_check"
+                  checked={settings.enable_version_check ?? true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('enable_version_check', checked)
+                  }
+                />
+              </div>
             </>
           )}
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">
@@ -274,6 +449,13 @@ const AuthenticationSettings: React.FC = () => {
                 )}
               </p>
               <CopyableEnvVar value="SPARKY_FITNESS_FORCE_PASSKEY_LOGIN=true" />
+              <p className="mt-2">
+                {t(
+                  'admin.authenticationSettings.loginManagement.emergencyFailSafeMagicLinkDescription',
+                  'If magic link login was turned off and you can no longer sign in, force it back on with:'
+                )}
+              </p>
+              <CopyableEnvVar value="SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN=true" />
             </div>
           </div>
         </AccordionContent>

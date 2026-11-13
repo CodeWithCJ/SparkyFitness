@@ -239,6 +239,23 @@ const getCustomMetricsHistorySchema = z
       .optional()
       .describe('Start date for the history range'),
     end_date: dateSchema.optional().describe('End date for the history range'),
+    category_name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('Only this custom metric (name or display name)'),
+  })
+  .strict();
+
+const getOralCareSummarySchema = z
+  .object({
+    action: z.literal('get_oral_care_summary'),
+    start_date: dateSchema
+      .optional()
+      .describe('First day (defaults to 6 days before end_date)'),
+    end_date: dateSchema.optional().describe('Last day (defaults to today)'),
   })
   .strict();
 
@@ -254,6 +271,7 @@ export const manageCheckinSchema = z.discriminatedUnion('action', [
   getFastingStatusSchema,
   getBiometricsHistorySchema,
   getCustomMetricsHistorySchema,
+  getOralCareSummarySchema,
 ]);
 
 export type ManageCheckinInput = z.infer<typeof manageCheckinSchema>;
@@ -275,6 +293,7 @@ export const manageCheckinInput = z.object({
       'get_fasting_status',
       'get_biometrics_history',
       'get_custom_metrics_history',
+      'get_oral_care_summary',
     ])
     .optional()
     .describe('Action to perform; see tool description for per-action fields.'),

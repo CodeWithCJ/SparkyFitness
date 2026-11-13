@@ -108,6 +108,7 @@ const logEntrySchema = z
     symptom_id: z
       .string()
       .uuid()
+      .meta({ pattern: undefined })
       .optional()
       .describe('Optional custom symptom ID'),
     severity: z.number().min(0).max(10).optional().describe('Severity rating'),
@@ -167,6 +168,7 @@ const startEpisodeSchema = z
     symptom_id: z
       .string()
       .uuid()
+      .meta({ pattern: undefined })
       .optional()
       .describe('Custom symptom definition ID if known'),
     severity: z.number().min(0).max(10).optional().describe('Initial severity'),

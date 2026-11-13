@@ -47,6 +47,8 @@ interface WidgetGridProps {
   widgets: Widget[];
   /** Builds the default layout for the current widget set (page-specific sizing). */
   generateDefaultLayouts: (widgetKeys: string[]) => DashboardLayouts;
+  /** Widget keys to treat as hidden when no saved layout row exists yet. */
+  defaultHidden?: string[];
   /** Optional container to render the toolbar controls inside via portal */
   toolbarContainer?: HTMLElement | null;
 }
@@ -86,6 +88,7 @@ const WidgetGridInner = ({
   pageKey,
   widgets,
   generateDefaultLayouts,
+  defaultHidden,
   toolbarContainer,
 }: WidgetGridProps) => {
   const { t } = useTranslation();
@@ -118,7 +121,10 @@ const WidgetGridInner = ({
     [widgetKeys, generateDefaultLayouts]
   );
 
-  const hidden = useMemo(() => saved?.hidden ?? EMPTY_HIDDEN, [saved]);
+  const hidden = useMemo(
+    () => saved?.hidden ?? defaultHidden ?? EMPTY_HIDDEN,
+    [saved, defaultHidden]
+  );
 
   const [layouts, setLayouts] = useState<DashboardLayouts>(() =>
     reconcileLayouts(saved?.layout, widgetKeys, defaults)
@@ -375,13 +381,18 @@ const WidgetGridInner = ({
   );
 };
 
+/**
+ * Customizable dashboard widget grid with responsive layouts, show/hide toggles,
+ * fullscreen maximizing, and persisted layout configuration per pageKey.
+ */
 export default function WidgetGrid({
   pageKey,
   widgets,
   generateDefaultLayouts,
+  defaultHidden,
   toolbarContainer,
 }: WidgetGridProps) {
-  const { reset } = useDashboardLayout(pageKey);
+  const { saved, reset } = useDashboardLayout(pageKey);
   const { t } = useTranslation();
   const [resetKey, setResetKey] = useState(0);
 
@@ -393,6 +404,15 @@ export default function WidgetGrid({
   const handleResetLayout = () => {
     reset({ onSuccess: () => setResetKey((prev) => prev + 1) });
   };
+
+  const fallbackHiddenSet = useMemo(
+    () => new Set(saved?.hidden ?? defaultHidden ?? []),
+    [saved?.hidden, defaultHidden]
+  );
+  const fallbackWidgets = useMemo(
+    () => widgets.filter((w) => !fallbackHiddenSet.has(w.key)),
+    [widgets, fallbackHiddenSet]
+  );
 
   return (
     <GridErrorBoundary
@@ -414,7 +434,7 @@ export default function WidgetGrid({
               {t('diary.widgets.resetLayout', 'Reset layout')}
             </Button>
           </div>
-          {widgets.map((w) => (
+          {fallbackWidgets.map((w) => (
             <div key={w.key}>{w.render()}</div>
           ))}
         </div>
@@ -424,6 +444,7 @@ export default function WidgetGrid({
         pageKey={pageKey}
         widgets={widgets}
         generateDefaultLayouts={generateDefaultLayouts}
+        defaultHidden={defaultHidden}
         toolbarContainer={toolbarContainer}
       />
     </GridErrorBoundary>

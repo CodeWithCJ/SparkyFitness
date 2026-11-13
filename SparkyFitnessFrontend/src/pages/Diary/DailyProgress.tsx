@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -49,8 +50,10 @@ import {
   withCalorieRuleDefaults,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { getTargetFallbackNotice } from '@/components/CalorieTargetBreakdown/targetFallbackNotice';
 import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
 import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
@@ -65,6 +68,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   } = usePreferences();
 
   const { data: goalTypePreferences } = useNutrientGoalPreferences();
+  const { hidden: hiddenWebTabs } = useHiddenWebTabs();
 
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
@@ -311,33 +315,30 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const daysOfCalorieLogs = adaptiveTdeeData?.daysOfData ?? 0;
 
-  const getTargetFallbackNotice = () => {
-    const fallbackVal = Math.round(
+  // "High day +250" / "Low day −180" when calorie cycling moved this day (#2327).
+  const cycling = summaryData?.calorieCycling;
+  const cyclingAmount =
+    cycling?.status === 'active' && cycling.delta !== 0
+      ? Math.round(convertEnergy(Math.abs(cycling.delta), 'kcal', energyUnit))
+      : 0;
+  const cyclingLabel = !cyclingAmount
+    ? null
+    : cycling?.dayType === 'high'
+      ? t('diary.calorieCycling.highDay', 'High day +{{amount}}', {
+          amount: cyclingAmount,
+        })
+      : t('diary.calorieCycling.lowDay', 'Low day −{{amount}}', {
+          amount: cyclingAmount,
+        });
+
+  const targetFallbackNotice = getTargetFallbackNotice(t, {
+    adaptiveTdeeData,
+    fallbackVal: Math.round(
       convertEnergy(bmr * activityMultiplier, 'kcal', energyUnit)
-    );
-    const unitStr = getEnergyUnitString(energyUnit);
-
-    if (!adaptiveTdeeData) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to insufficient data.`;
-    }
-
-    if (adaptiveTdeeData.isFallback) {
-      const reason = adaptiveTdeeData.fallbackReason?.toLowerCase() || '';
-      if (reason.includes('weight')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because weight logs are missing (requires at least 2 weight logs spanning 7+ days).`;
-      }
-      if (reason.includes('calorie')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because calorie logs are missing (requires at least 7 days with ≥200 kcal).`;
-      }
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
-    }
-
-    if (daysOfCalorieLogs < ADAPTIVE_TDEE_GOAL_MIN_DAYS) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until ${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days of calorie logs are reached (currently ${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged).`;
-    }
-
-    return '';
-  };
+    ),
+    unitStr: getEnergyUnitString(energyUnit),
+    daysOfCalorieLogs,
+  });
 
   return (
     <Card className="h-full">
@@ -517,6 +518,15 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   { energyUnitString: getEnergyUnitString(energyUnit) }
                 )}
               </div>
+              {cyclingLabel && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 whitespace-nowrap"
+                  data-testid="calorie-cycling-badge"
+                >
+                  {cyclingLabel}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -612,26 +622,29 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                         'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
                       )}
                 </span>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
-                  onClick={() =>
-                    isLeanMassBmr
-                      ? navigate('/checkin')
-                      : navigate('/settings?section=profile-information')
-                  }
-                >
-                  {isLeanMassBmr
-                    ? t(
-                        'exercise.dailyProgress.enterMeasurements',
-                        'Enter Measurements'
-                      )
-                    : t(
-                        'exercise.dailyProgress.updateProfile',
-                        'Update Profile'
-                      )}
-                </Button>
+                {/* Check-In is where measurements go; no link once it is hidden. */}
+                {!(isLeanMassBmr && hiddenWebTabs.has('checkin')) && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
+                    onClick={() =>
+                      isLeanMassBmr
+                        ? navigate('/checkin')
+                        : navigate('/settings?section=profile-information')
+                    }
+                  >
+                    {isLeanMassBmr
+                      ? t(
+                          'exercise.dailyProgress.enterMeasurements',
+                          'Enter Measurements'
+                        )
+                      : t(
+                          'exercise.dailyProgress.updateProfile',
+                          'Update Profile'
+                        )}
+                  </Button>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -716,7 +729,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   <div className="flex items-start gap-1 mt-1 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
                     <Info className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                     <span className="text-[10px] text-blue-700 dark:text-blue-300">
-                      {getTargetFallbackNotice()}
+                      {targetFallbackNotice}
                     </span>
                   </div>
                 )}
@@ -756,7 +769,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 {tdeeProjection.source === 'health_connect_total'
                   ? t(
                       'exercise.dailyProgress.healthConnectProjectionSource',
-                      'Health Connect total calories'
+                      'Device total calories'
                     )
                   : tdeeProjection.source === 'active_plus_bmr'
                     ? t(
@@ -833,6 +846,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               adjustedManualGoal={adjustedManualGoal}
               activityMultiplier={activityMultiplier}
               bmrSource={bmrSource}
+              calorieCycling={summaryData?.calorieCycling}
             />
           </div>
         </div>

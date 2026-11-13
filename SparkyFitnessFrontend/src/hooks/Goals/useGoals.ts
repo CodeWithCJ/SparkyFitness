@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { goalKeys } from '@/api/keys/goals';
+import { dailyProgressKeys, waterIntakeKeys } from '@/api/keys/diary';
+import { reportKeys } from '@/api/keys/reports';
+import type { QueryClient } from '@tanstack/react-query';
 
 import { loadGoals, saveGoals } from '@/api/Goals/goals';
 import {
@@ -127,11 +130,8 @@ export const useUpdatePresetMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: GoalPreset }) =>
       updateGoalPreset(id, data),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: goalKeys.presets.all(),
-      });
-    },
+    onSuccess: () =>
+      invalidateResolvedGoals(queryClient, goalKeys.presets.all()),
     meta: {
       successMessage: t(
         'goals.goalsSettings.presetUpdatedSuccess',
@@ -151,11 +151,8 @@ export const useDeletePresetMutation = () => {
 
   return useMutation({
     mutationFn: (id: string) => deleteGoalPreset(id),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: goalKeys.presets.all(),
-      });
-    },
+    onSuccess: () =>
+      invalidateResolvedGoals(queryClient, goalKeys.presets.all()),
     meta: {
       successMessage: t(
         'goals.goalsSettings.presetDeletedSuccess',
@@ -168,6 +165,24 @@ export const useDeletePresetMutation = () => {
     },
   });
 };
+
+/**
+ * A preset or weekly plan decides which goal a day uses, so changing one also
+ * changes the day's resolved goal, the Diary summary and report goal lines.
+ */
+const invalidateResolvedGoals = (
+  queryClient: QueryClient,
+  ownKey: readonly unknown[]
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ownKey }),
+    queryClient.invalidateQueries({ queryKey: goalKeys.daily.all() }),
+    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all }),
+    queryClient.invalidateQueries({ queryKey: reportKeys.all }),
+    queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all }),
+    // The resolved water goal sits outside waterIntakeKeys.all.
+    queryClient.invalidateQueries({ queryKey: ['goals', 'water'] }),
+  ]);
 
 // --- WEEKLY GOAL PLANS ---
 
@@ -189,11 +204,7 @@ export const useCreateWeeklyPlanMutation = () => {
 
   return useMutation({
     mutationFn: (planData: WeeklyGoalPlan) => createWeeklyGoalPlan(planData),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: goalKeys.plans.all(),
-      });
-    },
+    onSuccess: () => invalidateResolvedGoals(queryClient, goalKeys.plans.all()),
     meta: {
       successMessage: t(
         'goals.goalsSettings.weeklyPlanCreatedSuccess',
@@ -214,11 +225,7 @@ export const useUpdateWeeklyPlanMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: WeeklyGoalPlan }) =>
       updateWeeklyGoalPlan(id, data),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: goalKeys.plans.all(),
-      });
-    },
+    onSuccess: () => invalidateResolvedGoals(queryClient, goalKeys.plans.all()),
     meta: {
       successMessage: t(
         'goals.goalsSettings.weeklyPlanUpdatedSuccess',
@@ -238,11 +245,7 @@ export const useDeleteWeeklyPlanMutation = () => {
 
   return useMutation({
     mutationFn: (id: string) => deleteWeeklyGoalPlan(id),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: goalKeys.plans.all(),
-      });
-    },
+    onSuccess: () => invalidateResolvedGoals(queryClient, goalKeys.plans.all()),
     meta: {
       successMessage: t(
         'goals.goalsSettings.weeklyPlanDeletedSuccess',

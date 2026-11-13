@@ -180,7 +180,10 @@
       "beforeMeal": "До приёма пищи",
       "withMeal": "Во время приёма пищи",
       "afterMeal": "После приёма пищи",
-      "awayFromMeals": "До следующего приёма пищи"
+      "awayFromMeals": "До следующего приёма пищи",
+      "softgel": "Мягкая капсула",
+      "gummy": "Жевательный",
+      "powder": "Порошок"
     },
     "weekdays": {
       "title": "Дни недели",
@@ -223,22 +226,134 @@
     "inactiveA11y_many": "Неактивных лекарств ({{count}})",
     "inactiveCount_one": "Неактивно ({{count}})",
     "inactiveCount_few": "Неактивно ({{count}})",
-    "inactiveCount_many": "Неактивно ({{count}})"
+    "inactiveCount_many": "Неактивно ({{count}})",
+    "filter": {
+      "all": "Все",
+      "meds": "Лекарства",
+      "supplements": "Добавки"
+    },
+    "supplement": {
+      "form": "Форма",
+      "nutritionTitle": "Питательная ценность на порцию",
+      "addNutrient": "Добавить питательное вещество",
+      "multivitaminPanel": "Комплекс витаминов",
+      "removeNutrient": "Удалить {{name}}",
+      "nutrientCount_one": "{{count}} питательное вещество",
+      "nutrientCount_few": "{{count}} питательных вещества",
+      "nutrientCount_many": "{{count}} питательных веществ",
+      "takePhoto": "Сделать фото",
+      "choosePhoto": "Выбрать из библиотеки"
+    },
+    "glp1": {
+      "inventory": {
+        "add": "Добавить"
+      },
+      "checkIn": {
+        "save": "Сохранить отметку",
+        "metric": {
+          "hunger": "Голод",
+          "food_noise": "Навязчивые мысли о еде",
+          "fullness": "Насыщенность",
+          "energy": "Энергия"
+        }
+      },
+      "log": {
+        "dontDeduct": "Не вычитать",
+        "siteTitle": "Место инъекции",
+        "dose": "Доза (мг)",
+        "notes": "Заметки"
+      },
+      "recent": {
+        "title": "Недавние инъекции",
+        "empty": "Пока не зарегистрировано ни одной инъекции."
+      },
+      "titration": {
+        "title": "План подбора дозы",
+        "add": "Добавить шаг",
+        "status": {
+          "active": "Текущий",
+          "planned": "Запланировано"
+        },
+        "taper": "Постепенное снижение дозы",
+        "dose": "Доза",
+        "startDate": "Дата начала",
+        "statusLabel": "Статус"
+      },
+      "form": {
+        "notSet": "Не задано",
+        "clear": "Очистить",
+        "kind": "Тип",
+        "isGlp1": "Препарат GLP-1"
+      },
+      "sites": {
+        "unknown": "Неизвестно"
+      }
+    },
+    "adherence": {
+      "title": "Общая информация о соблюдении режима",
+      "dosesToday": "Дозы сегодня",
+      "doses": "Дозы"
+    },
+    "checklist": {
+      "titleToday": "Чеклист на сегодня",
+      "title": "Чеклист медикаментов",
+      "noneToday": "Сегодня запланированных доз нет.",
+      "noneDay": "Для этого дня запланированные приемы отсутствуют."
+    },
+    "today": {
+      "dueToday": "Срок сегодня",
+      "asNeeded": "По мере необходимости",
+      "medicationsTitle": "Сегодняшние лекарства",
+      "medicationsTitleDay": "Лекарства",
+      "supplementsTitle": "Сегодняшние добавки",
+      "supplementsTitleDay": "Добавки",
+      "noPrnMedications": "Не настроены лекарства, принимаемые по мере необходимости или не по расписанию.",
+      "loggedActivity": "Записано на сегодня",
+      "loggedActivityDescription": "Всё, что вы приняли или пропустили в этот день.",
+      "loadingHistory": "Загрузка истории…",
+      "prnTaken": "По мере необходимости"
+    },
+    "calendar": {
+      "title": "Календарь учета приема лекарств",
+      "titleSupplements": "Календарь для отслеживания приёма добавок",
+      "empty": "Добавьте лекарство, чтобы увидеть его журнал в календаре здесь.",
+      "allEntries": "Все",
+      "allMedications": "Все лекарства",
+      "allSupplements": "Все добавки",
+      "previousMonth": "Предыдущий месяц",
+      "nextMonth": "Следующий месяц",
+      "partialTaken": "Частично выполнено",
+      "mostlySkipped": "В основном пропущено",
+      "allSkipped": "Все дозы пропущены",
+      "generalSymptom": "Общий симптом",
+      "tooltipSymptoms": "Симптомы: {{names}}"
+    },
+    "dayLog": {
+      "unknownMedication": "Лекарство",
+      "deleteA11y": "Удалить {{name}}"
+    },
+    "entryEdit": {
+      "title": "Редактировать записанную дозу",
+      "takenAt": "Принято в",
+      "setTime": "Установите время",
+      "status": "Статус",
+      "site": "Место инъекции"
+    }
   },
   "common": {
     "add": "Добавить",
-    "cancel": "Отменить",
+    "cancel": "Отмена",
     "no": "Нет",
     "back": "Назад",
     "date": "Дата",
     "delete": "Удалить",
-    "edit": "Редактировать",
+    "edit": "Изменить",
     "error": "Ошибка",
     "save": "Сохранить",
     "saving": "Сохранение…",
     "showLess": "Показать меньше",
     "learnMore": "Узнать больше",
-    "next": "Следующее",
+    "next": "Далее",
     "later": "Позже",
     "close": "Закрыть",
     "continue": "Продолжить",
@@ -288,7 +403,11 @@
     "selectOption": "Выбрать вариант",
     "requestTimedOut": "Время ожидания запроса истекло. Проверьте подключение к серверу.",
     "nextStep": "Следующий шаг",
-    "notNow": "Не сейчас"
+    "notNow": "Не сейчас",
+    "undo": "Отменить",
+    "all": "Все",
+    "more": "ещё",
+    "builtIn": "Встроенный"
   },
   "mealBuilder": {
     "mealName": "Название приёма пищи",
@@ -556,7 +675,6 @@
     "forceStatic": "Статика",
     "mechanicCompound": "Базовые",
     "mechanicIsolation": "Изоляция",
-    "caloriesPerHour": "Калории в час",
     "muscles": "Мышцы",
     "classification": "Классификация",
     "selectValue": "Выберите…",
@@ -638,7 +756,6 @@
     "setCount_few": "{{formattedCount}} подхода",
     "setCount_many": "{{formattedCount}} подходов",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "unknownExercise": "Неизвестное упражнение",
     "addNotePlaceholder": "Добавить примечание…",
     "setOf_one": "Подход {{number}} из {{count}}",
@@ -646,7 +763,28 @@
     "setOf_many": "Подхода {{number}} из {{count}}",
     "repCount_one": "{{formattedCount}} повторение",
     "repCount_few": "{{formattedCount}} повторения",
-    "repCount_many": "{{formattedCount}} повторений"
+    "repCount_many": "{{formattedCount}} повторений",
+    "addDropSets": "Добавить дроп-сеты: {{sets}} (-{{percent}}%)",
+    "dismissLocation": "Закрыть поле места",
+    "gymLocation": "Зал / место",
+    "gymLocationDesc": "Укажите текущий зал или спортивный комплекс для этой тренировки",
+    "locationPlaceholder": "Например, Planet Fitness — центр",
+    "metricRir": "RIR",
+    "recentLocations": "Недавние места",
+    "tagPlaceholder": "Введите название для добавления или поиска…",
+    "addCustomTag": "Добавить «{{tag}}»",
+    "modalityBodyweight": "Собственный вес (+/− отягощение)",
+    "bodyweightBanner": "Упражнение с собственным весом: учитывается ваш вес ({{bodyWeight}} {{unit}}) плюс введённый вес. Для помощи укажите отрицательное значение.",
+    "bodyweightBannerNoWeight": "Упражнение с собственным весом: учитывается ваш вес плюс введённый вес. Для помощи укажите отрицательное значение. Запишите вес тела, чтобы рассчитать объём.",
+    "modalityWeightDistance": "Вес и расстояние (переноска тяжестей)",
+    "modalityWeightDuration": "Вес и длительность (удержание отягощения)",
+    "addWarmups": "Добавить разминку",
+    "replaceWithOther": "Заменить другим упражнением…",
+    "doAnotherFirst": "Сначала выполнить другое упражнение…",
+    "swapTitle": "Сменить {{name}}",
+    "doNowSets_one": "Выполнить сейчас · {{count}} подход",
+    "doNowSets_few": "Выполнить сейчас · {{count}} подхода",
+    "doNowSets_many": "Выполнить сейчас · {{count}} подходов"
   },
   "settings": {
     "app": "Настройки приложения",
@@ -685,7 +823,12 @@
       "whatsNew": "Что нового",
       "logs": "Просмотреть журналы",
       "about": "О программе",
-      "shareReport": "Поделиться отчетом о диагностике"
+      "shareReport": "Поделиться отчетом о диагностике",
+      "watch": "Apple Watch",
+      "customMeasurements": "Пользовательские измерения",
+      "goals": "Цели",
+      "reports": "Отчёты",
+      "heartRateZones": "Пульсовые зоны"
     },
     "theme": {
       "title": "Тема",
@@ -743,7 +886,6 @@
     "emptyForDate": "Для этой даты нет данных о продуктах питания",
     "diaryForDate": "Семейный дневник · {{date}}",
     "openMeal": "Открыть {{meal}}",
-    "mealCalories": "{{calories}} ккал",
     "unnamedFood": "Продукт без названия",
     "selectAll": "Выберите все",
     "deselectAll": "Снять выделение со всего",
@@ -751,15 +893,12 @@
     "selectFood": "Выберите {{food}}",
     "deselectFood": "Снимите выделение с {{food}}",
     "continue": "Продолжить",
-    "nutritionSummary": "{{calories}} ккал · Б {{protein}} г · У {{carbs}} г · Ж {{fat}} г",
-    "selectedNutrition": "Выбрано: {{calories}} ккал · Б {{protein}} г · У {{carbs}} г · Ж {{fat}} г",
     "copyReview": "Тестовая копия",
     "copyFrom": "Копирование из {{name}}",
     "copyMealTitle": "{{meal}} приём пищи",
     "quantityForFood": "Количество {{food}}",
     "quantityMustBePositive": "Введите количество, превышающее ноль.",
     "copyNutrition": "Скопировать данные о питании",
-    "copyCalories": "{{calories}} ккал",
     "copyProtein": "{{protein}} г протеина",
     "copyCarbs": "{{carbs}} г углеводов",
     "copyFat": "{{fat}} г жира",
@@ -785,19 +924,39 @@
     "chooseDate": "Выберите дату",
     "chooseDateHint": "Открывает календарь для выбора даты",
     "goToToday": "Перейти на сегодня",
-    "goToTodayHint": "Возвращает к сегодняшнему дню"
+    "goToTodayHint": "Возвращает к сегодняшнему дню",
+    "copyTo": "Копирование для {{name}}",
+    "copyToFamily": "Скопировать члену семьи",
+    "copyMealOptions": "Скопировать приём пищи",
+    "chooseCopyRecipient": "Выберите получателя",
+    "noCopyRecipients": "Нет членов семьи, которым можно копировать записи",
+    "copySourceFailed": "Не удалось загрузить исходный приём пищи",
+    "copySourceEmpty": "В этом приёме пищи нет продуктов",
+    "copyToMember": "Скопировать для {{name}}",
+    "copyToFamilySuccess": "Скопировано в семейный дневник",
+    "copyOwnStale": "Исходный приём пищи изменился",
+    "copyOwnStaleGuidance": "Открываем актуальную версию приёма пищи для проверки.",
+    "copyServerUpdateRequired": "Требуется обновление сервера",
+    "copyServerUpdateGuidance": "Обновите сервер SparkyFitness, чтобы копировать продукты в дневники членов семьи.",
+    "copyMealTypesFailed": "Не удалось загрузить приёмы пищи получателя. Повторите попытку."
   },
   "notifications": {
     "title": "Уведомления",
     "channels": {
       "medicationReminders": "Напоминания о приеме лекарств",
       "workoutTimer": "Таймер тренировки",
-      "fasting": "Голодание"
+      "fasting": "Голодание",
+      "ongoingWorkout": "Текущая тренировка",
+      "hydration": "Напоминания о воде",
+      "moodCheckin": "Отметки настроения"
     },
     "actions": {
       "completeSet": "Завершить подход",
       "logAsTaken": "Записать как выполненное",
-      "skip": "Пропустить"
+      "skip": "Пропустить",
+      "logAllAsTaken": "Отметить все как принятые",
+      "skipAll": "Пропустить всё",
+      "remindInMinutes": "Напомнить через {{minutes}} мин"
     },
     "permission": {
       "notificationsOff": "Уведомления отключены",
@@ -821,6 +980,18 @@
     "fasting": {
       "title": "Цель по времени голодания достигнута",
       "body": "Вы достигли своей цели по времени голодания. Отличная работа!"
+    },
+    "moodCheckin": {
+      "title": "Как вы себя чувствуете?",
+      "body": "Отметьте настроение, уровень энергии и концентрацию."
+    },
+    "fastingPreEnd": {
+      "title": "Цель голодания почти достигнута",
+      "body": "До цели голодания: {{minutes}} мин."
+    },
+    "hydration": {
+      "title": "Пора выпить воды 💧",
+      "body": "Вы давно не записывали воду."
     }
   },
   "activeWorkout": {
@@ -836,7 +1007,17 @@
       "workout": "Тренировка",
       "exercise": "Упражнение",
       "set": "Подход",
-      "setOf": "из"
+      "setOf": "из",
+      "skip": "Пропустить",
+      "subtractFifteenSeconds": "Убрать 15 секунд",
+      "subtractFifteenSecondsShort": "-15 с",
+      "next": "Далее",
+      "setProgress": "Подход {{number}} из {{total}}",
+      "nextSet": "Далее: {{set}}",
+      "nextSetWithTarget": "Далее: {{set}} ({{target}})",
+      "repCount_one": "{{count}} повторение",
+      "repCount_few": "{{count}} повторения",
+      "repCount_many": "{{count}} повторений"
     },
     "bar": {
       "clearWorkout": "Удалить тренировку",
@@ -875,7 +1056,9 @@
       "renameWorkout": "Переименовать тренировку",
       "reorderExercises": "Изменить порядок упражнений",
       "menu": "Меню тренировок",
-      "settings": "Настройки тренировки"
+      "settings": "Настройки тренировки",
+      "gymLocation": "Зал / место",
+      "gymLocationSet": "Зал: {{location}}"
     },
     "exerciseCard": {
       "addNote": "Добавить примечание к этому упражнению…",
@@ -936,7 +1119,12 @@
       "incomplete": "Неполный подход {{setNumber}}",
       "weight": "Вес",
       "rpe": "Оценка воспринимаемой нагрузки",
-      "fillFromPrevious": "Заполните подход {{setNumber}} из предыдущего"
+      "fillFromPrevious": "Заполните подход {{setNumber}} из предыдущего",
+      "distance": "Расстояние",
+      "rir": "RIR",
+      "startTimer": "Запустить секундомер",
+      "stopTimer": "Остановить секундомер",
+      "inputToolbar": "Действия при вводе подхода"
     },
     "columns": {
       "set": "Подход",
@@ -956,10 +1144,48 @@
       "changeMetric": "Изменить столбец метрик",
       "notesForSet": "Заметки для подхода {{number}}",
       "addSet": "Добавить подход к {{name}}",
-      "caloriesUnit": "ккал",
-      "addSetLabel": "Добавить подход"
+      "addSetLabel": "Добавить подход",
+      "viewImages": "Посмотреть изображения {{name}}",
+      "heartRateFor": "Средний пульс: {{name}}",
+      "liveHeartRateFor": "Текущий пульс: {{name}}",
+      "heartRateUnit": "уд/мин"
     },
-    "nextSet": "Следующий подход"
+    "nextSet": "Следующий подход",
+    "progression": {
+      "modeOff": "Выкл",
+      "toggleSettings": "Показать / скрыть настройки прогрессии",
+      "title": "Прогрессия",
+      "manualOff": "Вручную (выключено)",
+      "fixedSummary": "Фиксированная цель · +{{value}} {{unit}}",
+      "stepLoadSummary": "Ступенчатая нагрузка · {{reps}} повт. · +{{value}} повт.",
+      "repGoalSummary": "Цель повторений · {{reps}} повт. · +{{value}} {{unit}}",
+      "overloadMode": "Режим прогрессии нагрузки",
+      "modeRepGoal": "Цель повторений",
+      "modeFixed": "Фиксированный",
+      "modeStepLoad": "Ступенчатая нагрузка",
+      "targetRepsPerSet": "Целевые повторения на подход",
+      "targetRepsTotal": "Целевые повторения (всего)",
+      "incrementReps": "Прибавка (повторения)",
+      "incrementWeight": "Прибавка ({{unit}})",
+      "equipmentBrand": "Оборудование / марка тренажёра",
+      "equipmentBrandPlaceholder": "Например, Hammer Strength, блочный тренажёр",
+      "rampTitle": "Прибавка на подход (эта тренировка)",
+      "rampUp": "Увеличивать",
+      "rampDown": "Уменьшать",
+      "rampAmountLabel": "Изменение веса на подход ({{unit}})",
+      "rampPlaceholder": "Выключено ({{unit}})",
+      "rampHint": "В каждом рабочем подходе после первого автоматически подставляется вес на эту величину больше или меньше в рамках той же тренировки. Разминочные подходы и дроп-сеты пропускаются."
+    },
+    "now": {
+      "label": "Сейчас",
+      "upNext": "Далее",
+      "swap": "Сменить",
+      "swapLabel": "Сменить {{name}}",
+      "setOf": "Подход {{number}} из {{total}}",
+      "warmupOf": "Разминка {{number}} из {{total}}",
+      "then": "Затем {{name}}"
+    },
+    "failedToDeleteWorkout": "Не удалось удалить отменённую тренировку из дневника."
   },
   "addSheet": {
     "food": "Продукт",
@@ -977,7 +1203,23 @@
     "syncHealth": "Синхронизировать данные о состоянии здоровья",
     "logPregnancyEntry": "Добавить запись о беременности",
     "logCycle": "Записать цикл",
-    "progressPhotos": "Фото прогресса"
+    "progressPhotos": "Фото прогресса",
+    "symptoms": "Симптомы",
+    "mood": "Настроение",
+    "scanShort": "Сканировать",
+    "checkIn": "Ежедневная отметка",
+    "mindfulness": "Осознанность",
+    "title": "Быстрые действия",
+    "measureShort": "Замеры",
+    "symptomsHealth": "Симптомы и здоровье",
+    "syncHealthShort": "Синхр. данных здоровья",
+    "photosHint": "Наглядно",
+    "symptomsHint": "Записать",
+    "moodHint": "Следить за состоянием",
+    "mindfulnessHint": "Дыхание, спокойствие",
+    "recordActivity": "Записать активность",
+    "recordActivityHint": "Отслеживайте ходьбу, бег или велопоездку с GPS",
+    "checkInHint": "Привычки"
   },
   "screens": {
     "foods": "Продукты",
@@ -1032,9 +1274,6 @@
     "medications": "Лекарства",
     "medication": "Лекарство",
     "library": {
-      "noServerConfigured": "Сервер не настроен",
-      "configureServer": "Настройте подключение к серверу в настройках, чтобы просмотреть свою библиотеку.",
-      "goToSettings": "Перейдите в настройки",
       "loading": "Загрузка библиотеки…",
       "title": "Библиотека",
       "create": "Создать",
@@ -1059,13 +1298,74 @@
       "mealPlans": "Планы питания",
       "mealPlansSubtitle": "Повторять приёмы пищи в выбранные дни",
       "waterContainers": "Емкости для воды",
-      "waterContainersSubtitle": "Бутылки, стаканы и напитки, связанные с продуктами"
+      "waterContainersSubtitle": "Бутылки, стаканы и напитки, связанные с продуктами",
+      "reports": "Отчёты",
+      "workoutPlans": "Планы тренировок",
+      "workoutPlansSubtitle": "Планируйте тренировки по дням недели",
+      "reportsSubtitle": "Динамика питания, сна, настроения и тренировок",
+      "runPrograms": "Программы тренировок",
+      "runProgramsSubtitle": "Планы бега и ходьбы: от 5 км для начинающих до марафона",
+      "runProgramsActive": "{{name}} · {{progress}}",
+      "personalRecords": "Личные рекорды",
+      "personalRecordsSubtitle": "Ваши лучшие результаты на 1, 5, 10 км и других дистанциях",
+      "routes": "Маршруты",
+      "routesSubtitle": "Рисуйте, импортируйте и сохраняйте маршруты для навигации",
+      "equipment": "Оборудование",
+      "equipmentSubtitle": "Обувь и другая экипировка"
     },
     "sleep": "Сон",
     "healthTrendsSettings": "Тенденции состояния здоровья",
     "progressPhotos": "Фото прогресса",
     "progressPhotoCompare": "Сравнить",
-    "progressPhotoTimelapse": "Ускоренная съемка"
+    "progressPhotoTimelapse": "Ускоренная съемка",
+    "symptomLog": "Записать симптом",
+    "moodLog": "Настроение",
+    "watchSettings": "Apple Watch",
+    "reports": "Отчёты",
+    "nutritionReport": "Питание",
+    "moodReport": "Настроение",
+    "hydrationReport": "Уровень гидратации",
+    "measurementsReport": "Измерения",
+    "runProgramWorkout": "Тренировка",
+    "heartRateZonesSettings": "Пульсовые зоны",
+    "compareReport": "Сравнить",
+    "duplicateExercise": "Дублировать упражнение",
+    "symptomHistory": "История симптомов",
+    "manageSymptoms": "Настройка симптомов",
+    "symptomDefinition": "Сведения о симптоме",
+    "exerciseStatistics": "Статистика упражнения",
+    "cardioSession": "Кардиотренировка",
+    "activityShare": "Поделиться активностью",
+    "addMenuSettings": "Быстрые действия",
+    "wearOsSettings": "Wear OS",
+    "aiSettings": "ИИ",
+    "fastingSettings": "Настройки голодания",
+    "fasting": "Голодание",
+    "warmupSettings": "Калькулятор разминки",
+    "symptomEpisodeDetail": "Сведения об эпизоде",
+    "recordActivity": "Записать активность",
+    "sleepAnalytics": "Аналитика сна",
+    "reportsSettings": "Настроить отчёты",
+    "substancesReport": "Кофеин и алкоголь",
+    "heartRateReport": "Пульс",
+    "runSummary": "Активность сохранена",
+    "runPrograms": "Программы тренировок",
+    "personalRecords": "Личные рекорды",
+    "watchRunLive": "На часах",
+    "watchRunLiveRun": "Бег на часах",
+    "watchRunLiveJumpRope": "Прыжки со скакалкой на часах",
+    "watchWalkLive": "Ходьба на часах",
+    "allergenSettings": "Аллергены",
+    "runProgramCalendar": "Календарь программы",
+    "runProgramEdit": "Изменить план",
+    "runProgramNew": "Новый план",
+    "runProgramRace": "Запланировать забег",
+    "fitnessTest": "Фитнес-тесты",
+    "fitnessTestResult": "Фитнес-тест",
+    "routes": "Маршруты",
+    "routeDraw": "Нарисовать маршрут",
+    "routeEdit": "Изменить маршрут",
+    "routeGenerate": "Создать маршрут"
   },
   "healthMetrics": {
     "steps": "Шаги",
@@ -1127,7 +1427,9 @@
     "appleMoveTime": "Время активности (Apple)",
     "appleExerciseTime": "Время тренировки в Apple",
     "appleStandTime": "Время стояния (Apple)",
-    "unknown": "Показатель здоровья"
+    "unknown": "Показатель здоровья",
+    "mindfulness": "Осознанность",
+    "bodyWaterMass": "Масса воды в организме"
   },
   "healthCategories": {
     "Common": "Общие",
@@ -1259,9 +1561,6 @@
   },
   "dashboard": {
     "chooseDate": "Выберите дату для панели управления",
-    "noServerConfigured": "Сервер не настроен",
-    "configureServer": "Настройте подключение к серверу в разделе «Настройки», чтобы просматривать ежедневную сводку.",
-    "goToSettings": "Перейдите в настройки",
     "loadingSummary": "Загрузка сводной информации…",
     "loadFailed": "Не удалось загрузить сводку",
     "checkConnection": "Пожалуйста, проверьте подключение и повторите попытку.",
@@ -1272,7 +1571,6 @@
     "healthTrends": "Тенденции в состоянии здоровья",
     "consumed": "Потреблено",
     "remaining": "осталось",
-    "ofCalories": "из {{value}} ккал",
     "burned": "Сожжено",
     "hydration": "Уровень гидратации",
     "ofVolume": "из {{value}} {{unit}}",
@@ -1290,7 +1588,9 @@
     "quickAddDrinks": "Быстрое добавление",
     "logDrink": "Записать {{drink}}",
     "perPress": "{{value}} {{unit}}",
-    "logDrinkFailed": "Не удалось записать данные об этом напитке"
+    "logDrinkFailed": "Не удалось записать данные об этом напитке",
+    "reportsLink": "Отчёты",
+    "exerciseStatistics": "Статистика"
   },
   "syncScreen": {
     "healthConnectSettings": "Настройки Health Connect",
@@ -1401,7 +1701,6 @@
     "exerciseCaloriesDescription": "Какая часть калорий, потраченных во время упражнения, добавляется к вашей ежедневной цели.",
     "activityLevel": "Уровень активности",
     "activityBaseline": "Используется в качестве базового значения для расчета суточной потребности в энергии (TDEE).",
-    "adaptiveFallback": "Это предварительная оценка, которая используется до тех пор, пока не будет собрано достаточно данных для отслеживания, и она продолжает использоваться для определения пределов достоверности. Ваше измеренное значение TDEE ограничено диапазоном ±500 ккал от значения BMR, умноженного на этот множитель.",
     "allowNegative": "Разрешить использование более низкой альтернативной проекции",
     "negativeDescription": "Когда общая информация об устройстве недоступна, пусть значения BMR и активных калорий, используемые в качестве резервных, снизят вашу целевую величину.",
     "includeResting": "Учитывать расход калорий в состоянии покоя",
@@ -1463,7 +1762,8 @@
       "customPercentageDescription": "Положительное значение увеличивает количество калорий, отрицательное — создает дефицит. Максимальное значение: ±40%.",
       "calculationMethod": "Метод расчета",
       "methodAdaptive": "Адаптивный",
-      "methodManual": "Вручную"
+      "methodManual": "Вручную",
+      "weekly": "Изменение веса за неделю"
     },
     "safetyFloor": {
       "title": "Минимальный порог безопасности",
@@ -1477,7 +1777,18 @@
     },
     "useExternalBmr": "Используйте измеренное значение BMR, полученное из данных \"Отметок\" и синхронизированных устройств",
     "useExternalBmrHint": "По умолчанию отключено — выбранная вами формула всегда используется, пока вы не включите эту функцию. При включении, значение BMR, записанное при отметке или синхронизированное со смарт-весов или приложения для отслеживания здоровья, заменяет формулу на этот день, при условии, что оно физиологически правдоподобно для вас.",
-    "useExternalBmrIosNote": "В показателе «Базальный уровень метаболизма» в Apple Health уже учитывается лёгкая повседневная активность, поэтому, чтобы избежать двойного подсчёта, установите уровень активности на «Отсутствует» (×1.0)."
+    "useExternalBmrIosNote": "В показателе «Базальный уровень метаболизма» в Apple Health уже учитывается лёгкая повседневная активность, поэтому, чтобы избежать двойного подсчёта, установите уровень активности на «Отсутствует» (×1.0).",
+    "adaptiveEarnBack": "Адаптивные цели уже учитывают активность. Остаток калорий равен цели минус потреблённые калории. Компенсация расхода на упражнения применяется только к целям, заданным вручную.",
+    "adaptiveActivitySeparate": "Учитывать калории активности отдельно",
+    "weeklyGoal": {
+      "direction": "Цель по весу",
+      "lose": "Снизить вес",
+      "gain": "Набрать вес",
+      "kilograms": "кг",
+      "grams": "г",
+      "pounds": "фунт",
+      "stones": "ст"
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Не удалось обновить настройку.",
@@ -1500,7 +1811,16 @@
     "progressPhotos": "Фото прогресса",
     "progressPhotosSubtitle": "Отображать карточку с фотографиями прогресса на панели управления",
     "caffeine": "Кофеин",
-    "caffeineSubtitle": "Отображать активную карточку с информацией о кофеине на панели управления"
+    "caffeineSubtitle": "Отображать активную карточку с информацией о кофеине на панели управления",
+    "macros": "Питательные вещества",
+    "exercise": "Прогресс упражнения",
+    "symptoms": "Симптомы",
+    "mood": "Настроение",
+    "reorder": "Изменить порядок {{name}}",
+    "moveUp": "Переместить вверх",
+    "moveDown": "Переместить вниз",
+    "stateShown": "Отображено",
+    "stateHidden": "Скрыто"
   },
   "diarySettings": {
     "updateFailed": "Не удалось обновить настройку.",
@@ -1552,7 +1872,11 @@
     "openSettings": "Открыть настройки",
     "permissionTitle": "Предоставить разрешение",
     "permissionBody": "Уведомления SparkyFitness (таймеры отдыха, цели по интервальному голоданию, напоминания о приеме лекарств) не будут срабатывать.",
-    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}.",
+    "snoozeMinutesOption": "{{minutes}} мин",
+    "hydration": "Уровень гидратации",
+    "waterReminderStart": "Время начала",
+    "waterReminderEnd": "Время окончания"
   },
   "workoutSettings": {
     "title": "Настройки тренировки",
@@ -1564,7 +1888,21 @@
     "keepAwake": "Поддерживайте экран включенным",
     "keepAwakeSubtitle": "Предотвращайте переход экрана в спящий режим во время активной тренировки.",
     "restSoundAccessibility": "Звук таймера отдыха",
-    "keepAwakeAccessibility": "Поддерживайте экран включенным"
+    "keepAwakeAccessibility": "Поддерживайте экран включенным",
+    "restSoundSilent": "Звук в беззвучном режиме",
+    "restSoundSilentSubtitleIos": "Подавать звуковой сигнал окончания отдыха даже в беззвучном режиме, в том числе когда приложение в фоне или экран заблокирован.",
+    "restSoundSilentSubtitle": "Подавать звуковой сигнал окончания отдыха даже в беззвучном режиме или режиме вибрации.",
+    "restSoundSilentAccessibility": "Звук таймера отдыха в беззвучном режиме",
+    "adaptiveCoaching": "Адаптивные рекомендации",
+    "adaptiveCoachingSubtitle": "Корректирует предстоящие подходы и рекомендации упражнений по вашим отзывам о тренировках.",
+    "adaptiveCoachingAccessibility": "Адаптивные рекомендации",
+    "duckMusic": "Приглушать музыку во время подсказок",
+    "duckMusicSubtitle": "Ненадолго снижать громкость музыки из других приложений при звуковом сигнале или голосовой подсказке тренировки.",
+    "duckMusicAccessibility": "Приглушать музыку во время подсказок",
+    "warmupCalculator": "Калькулятор разминки",
+    "warmupCalculatorSubtitle": "Схема увеличения веса и его округление для разминочных подходов, добавляемых к упражнению.",
+    "nowCard": "Карточка текущего подхода",
+    "nowCardSubtitle": "Закрепляет текущий подход над списком упражнений: крупная цель, фото упражнения, следующий шаг и кнопка «Сменить», чтобы сначала выполнить другое упражнение."
   },
   "restPeriod": {
     "title": "Период отдыха",
@@ -1577,9 +1915,6 @@
   },
   "diary": {
     "chooseDate": "Выберите дату в дневнике",
-    "noServer": "Сервер не настроен",
-    "configureServer": "Настройте подключение к серверу в разделе «Настройки», чтобы просматривать свой дневник.",
-    "goToSettings": "Перейдите в настройки",
     "loading": "Загрузка дневника…",
     "loadFailed": "Не удалось загрузить дневник",
     "checkConnection": "Пожалуйста, проверьте подключение и повторите попытку.",
@@ -1714,7 +2049,8 @@
       "notPaired": "Часы не подключены",
       "unsupported": "Не поддерживается на этой платформе",
       "reachable": "Приложение для часов теперь доступно",
-      "notReachable": "Приложение для часов не находится на переднем плане"
+      "notReachable": "Приложение для часов не находится на переднем плане",
+      "wearOsTitle": "Wear OS"
     }
   },
   "cycleCard": {
@@ -1797,7 +2133,14 @@
     "lastFast": "Последнее голодание {{duration}}",
     "lastFastWithDate": "Последнее голодание {{duration}} · {{date}}",
     "today": "сегодня",
-    "yesterday": "вчера"
+    "yesterday": "вчера",
+    "details": "Подробности",
+    "auto": "Авто",
+    "autoFromMeal": "Авто · {{meal}}",
+    "eatingWindow": "Окно питания",
+    "eatingWindowOpen": "Окно питания",
+    "eatingWindowMeal": "Окно · {{meal}}",
+    "eatingWindowProgress": "До закрытия окна питания: {{remaining}}"
   },
   "fastingProtocol": {
     "fastStarted": "Голодание началось",
@@ -1902,8 +2245,6 @@
     "protein": "белок",
     "carbs": "углеводы",
     "fat": "жиры",
-    "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "proteinAmount": "белок",
     "carbsAmount": "углеводы",
     "fatAmount": "жиры",
@@ -1917,19 +2258,25 @@
   "foodSummary": {
     "tapToAddFood": "Нажмите, чтобы добавить продукт",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "nutritionBreakdown": "Подробная информация о питательных веществах {{label}}"
   },
   "exerciseSummary": {
     "tapToAdd": "Нажмите, чтобы добавить упражнение",
     "addExercise": "Добавить упражнение",
-    "title": "Упражнение"
+    "title": "Упражнение",
+    "planUpNext": "Следующая по плану",
+    "sessionNumber": "Занятие {{current}} из {{total}}",
+    "sessionNumberIndex": "Занятие {{current}}",
+    "startWorkout": "Начать",
+    "switchSession": "Переключить",
+    "suggestedPlanSession": "Рекомендуемая",
+    "scheduledToday": "Запланировано на сегодня",
+    "selectSession": "Выбрать занятие"
   },
   "foodRow": {
     "unknownFood": "Неизвестный продукт",
     "adjustServing": "Настроить порцию",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "deleteFood": "Удалить продукт"
   },
   "exerciseRow": {
@@ -2043,7 +2390,6 @@
       "weightWithUnit": "Вес ({{unit}})",
       "muscleMassWithUnit": "Масса мышц ({{unit}})",
       "boneMassWithUnit": "Костная масса ({{unit}})",
-      "bmrWithUnit": "BMR (ккал)",
       "weightStones": "Вес в стоунах",
       "weightPounds": "Вес в фунтах",
       "heightFeet": "Рост в футах",
@@ -2061,8 +2407,7 @@
       "invalidHeight": "Недопустимое значение роста",
       "feetInchesNumber": "Введите число для футов и дюймов.",
       "bodyFatRange": "Процент жира в организме должен быть в диапазоне от 0 до 100.",
-      "bodyWaterRange": "Процентное содержание воды в организме должно быть в диапазоне от 0 до 100.",
-      "bmrRange": "BMR должен быть в диапазоне от 600 до 6000 ккал."
+      "bodyWaterRange": "Процентное содержание воды в организме должно быть в диапазоне от 0 до 100."
     },
     "nothingToSave": "Нечего сохранять",
     "enterValue": "Введите или удалите хотя бы одно значение.",
@@ -2124,7 +2469,9 @@
       "analyzeLabel": "Не удалось проанализировать информацию о пищевой ценности. Пожалуйста, повторите попытку.",
       "loadPhoto": "Не удалось загрузить фотографию.",
       "lookupBarcode": "Не удалось распознать этот штрих-код. Пожалуйста, попробуйте еще раз.",
-      "timeout": "Время ожидания запроса истекло. Проверьте подключение к серверу."
+      "timeout": "Время ожидания запроса истекло. Проверьте подключение к серверу.",
+      "restartApp": "Не удалось открыть галерею. Перезапустите приложение.",
+      "retryOnDevice": "Не удалось распознать этикетку на этом iPhone."
     },
     "permission": {
       "camera": "Нам требуется ваше разрешение для доступа к камере",
@@ -2167,7 +2514,11 @@
       "retakePhoto": "Сделать повторное фото",
       "takeLabelPhoto": "Сделайте фотографию этикетки с информацией о питательной ценности",
       "takeMealPhoto": "Сделать фото приёма пищи"
-    }
+    },
+    "labelReadOnDevice": "Этикетка распознана на этом iPhone",
+    "labelReadByServer": "Этикетка распознана серверным ИИ",
+    "retryWithServer": "Распознать снова серверным ИИ",
+    "retryOnDevice": "Распознать снова на этом iPhone"
   },
   "cycleToday": {
     "menstrualFlow": "Менструальные выделения",
@@ -2418,8 +2769,6 @@
     "remaining": "осталось",
     "over": "выше",
     "title": "Сводка",
-    "projectedTdee": "Прогнозируемая суточная потребность в энергии: {{value}} ккал",
-    "goalModeTarget": "Целевое значение в режиме цели: {{value}} ккал",
     "healthConnectProjectionSource": "Общее количество калорий в Health Connect",
     "fallbackProjectionSource": "Резервный расчёт: базовый метаболизм + активные калории",
     "legacyProjectionSource": "Проецирование данных с устройства",
@@ -2454,7 +2803,6 @@
     "servingSize": "Размер порции",
     "servingUnit": "Единица измерения порции",
     "autoScaleNutrition": "Автоматическое масштабирование данных о питании",
-    "caloriesRequired": "Калории (ккал) *",
     "ai": {
       "couldNotEstimate": "Не удалось оценить",
       "noTrustedDefault": "Для данного продукта не заданы надежные значения по умолчанию, на основе которых можно рассчитать его параметры.",
@@ -2491,12 +2839,43 @@
     "equivalentUnitsUpdated_few": "Сохранено · Обновлены {{formattedCount}} единицы",
     "equivalentUnitsUpdated_many": "Сохранено · Обновлено {{formattedCount}} единиц",
     "notes": "Заметки",
-    "notesPlaceholder": "Например: белый рис, двойная порция курицы, без фасоли (поддерживается синтаксис Markdown)"
+    "notesPlaceholder": "Например: белый рис, двойная порция курицы, без фасоли (поддерживается синтаксис Markdown)",
+    "sodiumOption": "Натрий (мг)",
+    "portions": {
+      "title": "Порции с названиями",
+      "help": "Используйте для продукта граммы или миллилитры и добавьте порции, например пакет или бутылку.",
+      "remove": "Удалить порцию {{name}}",
+      "metricReference": "Выберите порцию в граммах или миллилитрах, чтобы задать размеры порций.",
+      "metricReferenceRequired": "Выберите порцию в граммах или миллилитрах, соответствующую вашим новым порциям.",
+      "name": "Название порции",
+      "namePlaceholder": "Например, пакет",
+      "equals": "1 порция =",
+      "amount": "Количество в порции",
+      "confirm": "Добавить порцию",
+      "add": "+ Добавить порцию",
+      "saveFailed": "Не удалось сохранить все порции. Попробуйте сохранить снова."
+    },
+    "scanNutritionLabel": "Сканировать данные о пищевой ценности",
+    "saltG": "Соль (г)",
+    "sodiumEntryUnit": "Форма ввода натрия",
+    "sodiumShort": "натрий",
+    "saltShort": "соль",
+    "saltOption": "Соль (г)"
   },
   "exerciseHistory": {
     "noSetData": "Нет данных по подходам",
     "loadError": "Не удалось загрузить историю.",
-    "empty": "Пока нет ни одной записанной тренировки."
+    "empty": "Пока нет ни одной записанной тренировки.",
+    "columns": {
+      "time": "Время",
+      "set": "Подход",
+      "weightReps": "Вес и повторения",
+      "timeDistance": "Время и расстояние",
+      "weightDistance": "Вес и расстояние",
+      "weightTime": "Вес и время",
+      "reps": "Повторения",
+      "rpe": "RPE"
+    }
   },
   "foodFormPersistence": {
     "discardTitle": "Отменить несохраненные эквиваленты?",
@@ -2664,7 +3043,10 @@
       "caloriesInValue": "1 540",
       "caloriesOutValue": "255",
       "eightAm": "8:00",
-      "eyebrow": "iOS 26"
+      "eyebrow": "iOS 26",
+      "checkIn": "Отметки",
+      "checkInStepName": "Измерения",
+      "compare": "Сравнить"
     },
     "features": {
       "medications": {
@@ -2874,7 +3256,41 @@
         "name": "Глубокий кетоз",
         "description": "Эта фаза часто связана с усилением аутофагии"
       }
-    }
+    },
+    "tabs": {
+      "history": "История",
+      "fasting": "Голодание",
+      "report": "Отчёт"
+    },
+    "startedAt": "Начало: {{time}}",
+    "targetAt": "Цель: {{time}}",
+    "closesAt": "Закрытие: {{time}}",
+    "eatingBands": {
+      "open": {
+        "name": "Окно открыто",
+        "shortName": "Открыто"
+      },
+      "fuel": {
+        "name": "Оптимальное питание",
+        "shortName": "Энергия"
+      },
+      "sustain": {
+        "name": "Середина окна",
+        "shortName": "Поддержание"
+      },
+      "closing": {
+        "name": "Окно закрывается",
+        "shortName": "Закрытие"
+      }
+    },
+    "metabolicState": "Метаболическое состояние",
+    "eatingWindowOpen": "Окно питания открыто",
+    "remainingInEatingWindow": "До закрытия окна питания",
+    "eatingWindowHint": "Голодание автоматически возобновится после закрытия окна питания.",
+    "startFastEarly": "Начать голодание сейчас",
+    "eatingWindowOpened": "Окно питания открылось",
+    "eatingWindowCloses": "Окно питания закроется",
+    "settings": "Настройки голодания"
   },
   "exerciseDetail": {
     "sharedPublicly": "Упражнение опубликовано в открытом доступе",
@@ -2894,7 +3310,6 @@
     "showMore": "Показать больше",
     "best": "Лучший результат ({{unit}})",
     "last": "Последний ({{unit}})",
-    "caloriesPerHour": "Кал/час",
     "equipment": "Оборудование",
     "primaryMuscles": "Основные мышцы",
     "secondaryMuscles": "Вторичные мышцы",
@@ -2911,7 +3326,10 @@
     "deleteExercise": "Удалить упражнение",
     "makePrivate": "Сделать частным",
     "shareWithPublic": "Сделать общедоступным",
-    "deleteSheetTitle": "Удалить упражнение"
+    "deleteSheetTitle": "Удалить упражнение",
+    "duplicate": "Дублировать упражнение",
+    "viewImages": "Открыть изображения на весь экран",
+    "duplicateName": "{{name}} (копия)"
   },
   "mealTypeSettings": {
     "reorder": "Изменить порядок {{name}}",
@@ -2947,8 +3365,6 @@
     "makePrivate": "Сделать частным",
     "shareWithPublic": "Сделать публичным",
     "editMeal": "Редактировать приём пищи",
-    "noServer": "Сервер не настроен",
-    "configureServer": "Настройте подключение к серверу в настройках, чтобы просмотреть информацию о приёме пищи.",
     "loading": "Загрузка данных о приёме пищи…",
     "loadFailed": "Не удалось загрузить данные о приёме пищи",
     "perServing": "На порцию",
@@ -2964,7 +3380,6 @@
     "protein": "белок",
     "carbs": "углеводы",
     "fat": "жиры",
-    "calories": "кал",
     "viewLinkedMeal": "Просмотреть связанный приём пищи {{name}}",
     "logMeal": "Записать приём пищи",
     "deleting": "Удаление…",
@@ -3045,7 +3460,8 @@
     "title": "Упражнения",
     "tabs": {
       "search": "Поиск",
-      "online": "Онлайн"
+      "online": "Онлайн",
+      "suggested": "Рекомендуемые"
     },
     "sections": {
       "recent": "Недавние",
@@ -3090,6 +3506,30 @@
     "accessibility": {
       "provider": "Источник данных для упражнений: {{provider}}",
       "loadingMore": "Загрузка дополнительных упражнений"
+    },
+    "replaceTitle": "Заменить упражнение",
+    "alternatives": {
+      "heading": "Вместо {{name}}",
+      "modes": {
+        "similar": "Похожие",
+        "differentEquipment": "Другое оборудование"
+      },
+      "reasons": {
+        "sameMuscles": "Те же мышцы",
+        "sharesMuscle": "Похожие группы мышц",
+        "sameEquipment": "То же оборудование",
+        "differentEquipment": "Другое оборудование",
+        "sameMovement": "То же движение",
+        "recent": "Недавно выполнялось",
+        "inLibrary": "В вашей библиотеке"
+      },
+      "newBadge": "Новое",
+      "searchAll": "Искать среди всех упражнений",
+      "failed": "Не удалось загрузить варианты замены",
+      "noMuscles": "Для {{name}} не указаны мышцы",
+      "noMusclesHint": "Укажите основные мышцы в библиотеке упражнений, чтобы получать рекомендации.",
+      "empty": "Варианты замены не найдены",
+      "catalogUnavailable": "Free Exercise DB недоступна, поэтому показаны только упражнения из вашей библиотеки."
     }
   },
   "foodSearch": {
@@ -3167,13 +3607,24 @@
     },
     "labels": {
       "caloriesShort": "ккал",
-      "caloriesUnit": "кал",
       "foods": "продукты",
       "meals": "приёмы пищи",
       "meal": "Приём пищи",
       "itemCount_one": "{{count}} элемент",
       "itemCount_few": "{{count}} элемента",
       "itemCount_many": "{{count}} элементов"
+    },
+    "multiSelect": {
+      "clear": "Очистить",
+      "select": "Выбрать",
+      "cancel": "Отмена",
+      "review": "Проверить",
+      "selectAll": "Выбрать всё",
+      "selected_one": "Выбрано: {{count}}",
+      "selected_few": "Выбрано: {{count}}",
+      "selected_many": "Выбрано: {{count}}",
+      "limitReached": "Можно выбрать до {{limit}} продуктов",
+      "foodCheckbox": "Выбрать {{name}}"
     }
   },
   "editBarcode": {
@@ -3217,7 +3668,10 @@
       "exercise_many": "Упражнений",
       "sets": "Подходы",
       "volume": "Объём",
-      "calories": "Калории"
+      "calories": "Калории",
+      "avgHeartRate": "Средний пульс",
+      "maxHeartRate": "Макс. ЧСС",
+      "effort": "Усилие"
     },
     "errors": {
       "needsExercise": "Для тренировки необходимо добавить упражнение",
@@ -3227,7 +3681,8 @@
     "labels": {
       "details": "Подробности",
       "name": "Название",
-      "notes": "Заметки"
+      "notes": "Заметки",
+      "location": "Зал / место"
     },
     "placeholders": {
       "workoutName": "Название тренировки",
@@ -3307,6 +3762,17 @@
     "openFacts": {
       "title": "Настроить значения Open Food Facts",
       "description": "Open Food Facts использует значения на 100 г. Это позволяет преобразовать их в размер порции продукта."
+    },
+    "nutrients": {
+      "title": "Питательные вещества",
+      "custom": "Пользовательские питательные вещества",
+      "display": "Отображение информации о питательных веществах",
+      "customSubtitle": "Создавайте и изменяйте свои нутриенты",
+      "displaySubtitle": "Выберите нутриенты и их порядок для каждого вида отображения"
+    },
+    "allergens": {
+      "title": "Аллергены",
+      "subtitle": "Получайте предупреждения о выбранных аллергенах в продуктах и результатах сканирования"
     }
   },
   "workoutComplete": {
@@ -3317,7 +3783,9 @@
       "sets": "Подходы",
       "calories": "Калории",
       "distance": "Расстояние",
-      "averageRpe": "Среднее значение воспринимаемой нагрузки"
+      "averageRpe": "Среднее значение воспринимаемой нагрузки",
+      "avgHeartRate": "Средний пульс",
+      "maxHeartRate": "Макс. ЧСС"
     },
     "labels": {
       "todayAt": " · Сегодня в ",
@@ -3364,6 +3832,9 @@
     "sections": {
       "exercises": "Упражнения",
       "volume": "Объём"
+    },
+    "units": {
+      "bpm": "уд/мин"
     }
   },
   "createFood": {
@@ -3403,8 +3874,6 @@
     "makePrivate": "Сделать частным",
     "sharePublic": "Сделать публичным",
     "editFood": "Редактировать продукт",
-    "noServer": "Сервер не настроен",
-    "configureServer": "Настройте подключение к серверу в разделе «Настройки», чтобы просматривать подробную информацию о продуктах.",
     "serving": "Порция",
     "selectServing": "Выберите порцию",
     "servingOptions": "Варианты порций",
@@ -3487,7 +3956,16 @@
       "nameRequired": "Пожалуйста, введите название для этого пресета.",
       "addExercise": "Добавить упражнение",
       "addExerciseSet": "Добавьте как минимум одно упражнение с указанием количества подходов перед сохранением."
-    }
+    },
+    "formatAmrap": "AMRAP",
+    "formatStandard": "Стандартный",
+    "formatInterval": "Интервальная / HIIT",
+    "formatTabata": "Табата",
+    "formatEmom": "EMOM",
+    "formatForTime": "На время",
+    "format": "Формат",
+    "timeCapMinutes": "Лимит времени (минуты)",
+    "timeCapPlaceholder": "Например, 20"
   },
   "logScreen": {
     "title": "Журналы",
@@ -3578,9 +4056,33 @@
       "exercise": "Упражнение",
       "checkin": "Отметки",
       "goals": "Цели",
-      "lookedUp": "Просмотрен {{name}}"
+      "lookedUp": "Просмотрен {{name}}",
+      "runProgram": "Беговая программа"
     },
-    "typing": "Sparky печатает"
+    "typing": "Sparky печатает",
+    "attachments": {
+      "addPhoto": "Добавить фото",
+      "takePhoto": "Сделать фото",
+      "removePhoto": "Удалить фото",
+      "cameraPermissionBody": "Разрешите доступ к камере, чтобы добавить фотографию.",
+      "addFailed": "Не удалось добавить фотографию",
+      "chooseFromLibrary": "Выбрать из галереи",
+      "previewPhoto": "Предпросмотр фото",
+      "cameraPermission": "Нужен доступ к камере"
+    },
+    "voice": {
+      "stop": "Остановить диктовку",
+      "label": "Продиктовать сообщение",
+      "aiLabel": "Диктовать с ИИ",
+      "listening": "Слушаю",
+      "permissionTitle": "Для голосового ввода нужен микрофон",
+      "permissionMessage": "Разрешите доступ к микрофону и распознаванию речи в системных настройках, чтобы диктовать сообщения.",
+      "errorTitle": "Ошибка голосового ввода",
+      "aiErrorTitle": "Ошибка распознавания речи с ИИ",
+      "aiErrorMessage": "Проверьте выбранный сервис голосового ввода и повторите попытку.",
+      "noSpeechTitle": "Речь не обнаружена",
+      "noSpeechMessage": "Попробуйте ещё раз, приблизившись к микрофону."
+    }
   },
   "foodImagePicker": {
     "photos": "Фотографии",
@@ -3723,11 +4225,8 @@
       "count_few": "{{count}} ингредиента",
       "count_many": "{{count}} ингредиентов",
       "totals": "Всего",
-      "rowSummary": "{{grams}} г · {{calories}} ккал",
-      "macroSummary": "{{calories}} ккал · {{protein}}Б · {{carbs}}У · {{fat}}Ж",
       "addFood": "Добавить продукт",
       "addedFood": "Продукт",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} ккал",
       "pickedFoodNote": "Добавлено из списка ваших продуктов. Чтобы изменить количество, удалите его и добавьте снова."
     },
     "match": {
@@ -3791,7 +4290,6 @@
       "activity": "Активность",
       "duration": "Продолжительность (мин.)",
       "distance": "Расстояние ({{unit}})",
-      "calories": "Калории",
       "avgHeartRate": "Средняя частота сердечных сокращений (ударов в минуту)",
       "notes": "Заметки",
       "notesPlaceholder": "Необязательные заметки…"
@@ -3823,8 +4321,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Сервер не настроен",
-      "noServerHint": "Настройте подключение к серверу в разделе «Настройки», чтобы просматривать информацию о питательной ценности приёмов пищи.",
       "loading": "Загрузка данных о приёме пищи…",
       "loadFailed": "Не удалось загрузить данные о приёме пищи",
       "noFoods": "Нет {{meal}} продуктов",
@@ -3836,8 +4332,7 @@
     "accessibility": {
       "addFood": "Добавить продукт",
       "copyMeal": "Скопировать приём пищи в другой день"
-    },
-    "targetCalories": "Цель: {{calories}} ккал"
+    }
   },
   "nutrientTrends": {
     "title": "Тенденции для {{nutrient}}",
@@ -3851,6 +4346,15 @@
       "targetGoal": "Целевое ежедневное значение",
       "averageVsTarget": "Среднее значение по сравнению с целевым",
       "percentOfGoal": "{{percent}}% от цели"
+    },
+    "topSources": {
+      "share": "{{percent}}%",
+      "title": "Основные источники",
+      "allMeals": "Все приёмы пищи",
+      "clearDay": "Показать весь период",
+      "empty": "Нет записей по текущему выбору: {{nutrient}}",
+      "loadFailed": "Не удалось загрузить источники нутриента",
+      "servingAmount": "{{quantity}} {{unit}}"
     }
   },
   "workoutPresetDetail": {
@@ -4113,7 +4617,13 @@
     "weight": {
       "title": "Вес",
       "loadFailed": "Не удалось загрузить данные о весе",
-      "empty": "Нет данных о весе за этот период"
+      "empty": "Нет данных о весе за этот период",
+      "trend": "Тенденция",
+      "perWeek": "В неделю",
+      "goalDate": "Дата достижения цели",
+      "steady": "Без изменений",
+      "awayFromGoal": "Вес удаляется от цели",
+      "tooFar": "Более 2 лет"
     },
     "steps": {
       "title": "Шаги",
@@ -4144,7 +4654,8 @@
       "loadFailed": "Не удалось загрузить данные о сне",
       "empty": "Нет данных о сне за этот период",
       "avgTimeInBed": "Среднее время, проведенное в постели",
-      "avgTimeAsleep": "Средняя продолжительность сна"
+      "avgTimeAsleep": "Средняя продолжительность сна",
+      "tooltip": "{{timeInBed}} в постели · {{timeAsleep}} во сне"
     },
     "allTrendsHidden": "Все графики скрыты. Выберите, какие из них отображать в настройках панели управления.",
     "hydration": {
@@ -4152,14 +4663,35 @@
       "loadFailed": "Не удалось загрузить данные об уровне гидратации",
       "empty": "Нет данных об уровне гидратации за этот период",
       "tooltip": "{{formattedVolume}} {{unit}} · {{date}}"
+    },
+    "calories": {
+      "title": "Калории",
+      "avgCalories": "Среднее",
+      "noAverage": "—",
+      "loadFailed": "Не удалось загрузить данные о калориях",
+      "empty": "Нет данных о калориях за этот период",
+      "tooltipMacro": "{{percent}}% {{macroLabel}}",
+      "otherMacro": "Другое"
+    },
+    "heartRate": {
+      "title": "Пульс в состоянии покоя",
+      "avgLabel": "СРЕДНЕЕ",
+      "rangeLabel": "ДИАПАЗОН",
+      "loadFailed": "Не удалось загрузить данные о пульсе",
+      "empty": "Нет данных о пульсе за этот период"
+    },
+    "noTrendData": "Пока нет данных для графика.",
+    "vo2max": {
+      "title": "VO2 max",
+      "estimateTitle": "VO2 max (оценка)",
+      "estimateNote": "Оценка по записанным пробежкам. Это не измерение; синхронизированное значение заменит её.",
+      "loadFailed": "Не удалось загрузить данные VO2 max",
+      "empty": "Нет данных VO2 max за этот период"
     }
   },
   "exerciseLibrary": {
     "title": "Упражнения",
     "search": "Поиск упражнений…",
-    "noServer": "Сервер не настроен",
-    "configure": "Настройте подключение к серверу в разделе «Настройки», чтобы просмотреть свою библиотеку упражнений.",
-    "go": "Перейдите в настройки",
     "loading": "Загрузка упражнений…",
     "failed": "Не удалось загрузить упражнения",
     "retry": "Повторить",
@@ -4175,9 +4707,6 @@
   "foodLibrary": {
     "title": "Продукты",
     "search": "Поиск продуктов…",
-    "noServer": "Сервер не настроен",
-    "configure": "Настройте подключение к серверу в настройках, чтобы просмотреть свою базу данных продуктов.",
-    "go": "Перейти в настройки",
     "loading": "Загрузка продуктов…",
     "failed": "Не удалось загрузить продукты",
     "retry": "Повторить",
@@ -4192,9 +4721,6 @@
   "mealLibrary": {
     "title": "Приёмы пищи",
     "search": "Поиск приёмов пищи…",
-    "noServer": "Сервер не настроен",
-    "configure": "Настройте подключение к серверу в разделе «Настройки», чтобы просмотреть свою библиотеку приёмов пищи.",
-    "go": "Перейти в настройки",
     "loading": "Загрузка данных о приёмах пищи…",
     "failed": "Не удалось загрузить приёмы пищи",
     "searchFailed": "Не удалось выполнить поиск приёмов пищи",
@@ -4209,9 +4735,7 @@
   "presetLibrary": {
     "title": "Шаблоны тренировок",
     "search": "Поиск шаблонов тренировок…",
-    "noServer": "Сервер не настроен",
     "configure": "Настройте подключение к серверу в настройках, чтобы просматривать шаблоны тренировок.",
-    "go": "Перейти в настройки",
     "loading": "Загрузка шаблонов тренировок…",
     "failed": "Не удалось загрузить шаблоны тренировок",
     "retry": "Повторить",
@@ -4396,7 +4920,10 @@
   "ranges": {
     "7d": "7 дней",
     "30d": "30 дн",
-    "90d": "90 дней"
+    "90d": "90 дней",
+    "custom": "Свой",
+    "customTitle": "Выберите период",
+    "customConfirm": "Показать период"
   },
   "foodEntryMeal": {
     "failed": "Не удалось добавить приём пищи"
@@ -4413,7 +4940,73 @@
   },
   "symptoms": {
     "saveFailed": "Не удалось сохранить данные о симптоме",
-    "removeFailed": "Не удалось удалить симптом"
+    "removeFailed": "Не удалось удалить симптом",
+    "calendar": {
+      "previous": "Предыдущий месяц",
+      "next": "Следующий месяц"
+    },
+    "categories": {
+      "general": "Общее"
+    },
+    "builtIn": {
+      "head": "Голова",
+      "neck": "Шея",
+      "shoulders": "Плечи",
+      "chest": "Грудь",
+      "abdomen": "Живот",
+      "legs": "Ноги",
+      "nausea": "Тошнота",
+      "vomiting": "Рвота",
+      "dizziness": "Головокружение",
+      "fatigue": "Усталость",
+      "irritability": "Раздражительность",
+      "caffeine": "Кофеин",
+      "alcohol": "Алкоголь",
+      "stress": "Стресс",
+      "rest": "Отдых",
+      "stretching": "Растяжка",
+      "hydration": "Уровень гидратации",
+      "sleep": "Сон",
+      "stiffNeck": "Скованность шеи",
+      "environment": "Окружение",
+      "headache": "Головная боль",
+      "constipation": "Запор",
+      "diarrhea": "Диарея",
+      "acidRefluxGERD": "Гастроэзофагеальная рефлюксная болезнь (ГЭРБ) / изжога",
+      "stomachPainCramping": "Боль в животе / спазмы",
+      "migraine": "Мигрень",
+      "jointPain": "Боль в суставах",
+      "bloating": "Вздутие живота",
+      "anxiety": "Тревожность",
+      "brainFog": "Туман в голове"
+    },
+    "title": "Симптомы",
+    "history": "История",
+    "logTitle": "Записать симптом",
+    "symptom": "Симптом",
+    "startDate": "Дата",
+    "startTime": "Время",
+    "severityTitle": "Степень",
+    "location": "Местоположение",
+    "logSymptom": "Записать симптом",
+    "impacts": {
+      "none": "Нет"
+    },
+    "timing": {
+      "now": "Сейчас",
+      "started": "Начато"
+    },
+    "category": "Категория",
+    "views": {
+      "front": "Передняя часть"
+    },
+    "severity": {
+      "unset": "Не задано",
+      "none": "Нет"
+    },
+    "kinds": {
+      "medication": "Лекарство"
+    }
   },
   "waterIntake": {
     "updateFailed": "Ошибка",
@@ -4824,9 +5417,6 @@
       "dayCycle_many": "{{count}}-дневных циклов"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Настройте подключение к серверу в настройках, чтобы просмотреть свои шаблоны тренировок."
-  },
   "time": {
     "hoursShort": "ч",
     "minutesShort": "Пн"
@@ -4852,7 +5442,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} км",
-    "kcal": "{{value}} ккал",
     "bpm": "{{value}} уд./мин",
     "kg": "{{value}} кг",
     "percent": "{{value}}%",
@@ -4903,9 +5492,6 @@
     "deleteMessage": "Удалить {{name}}? Все последующие записи в дневнике, созданные на основе этого плана, будут удалены.",
     "deleteFailed": "Не удалось удалить план питания",
     "deleteSuccess": "План питания удалён",
-    "noServer": "Сервер не настроен",
-    "noServerSubtitle": "Настройте подключение к серверу для управления планами питания.",
-    "goToSettings": "Перейдите в настройки",
     "loading": "Загрузка планов питания...",
     "loadFailed": "Не удалось загрузить планы питания",
     "loadFailedSubtitle": "Проверьте подключение и повторите попытку.",
@@ -4964,11 +5550,8 @@
     "proteinLabel": "Белок",
     "carbsLabel": "Углеводы",
     "fatLabel": "Жиры",
-    "nutritionLine": "{{calories}} ккал · {{protein}} г Б · {{carbs}} г У · {{fat}} г Ж",
     "dailyNutritionAccessibility": "Ежедневное потребление {{nutrient}}: {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "Всего для {{mealType}}: {{calories}} ккал, {{protein}} г протеина, {{carbs}} г углеводов, {{fat}} г жира",
     "mealTypeMacros": "{{protein}} г Б · {{carbs}} г У · {{fat}} г Ж",
-    "caloriesValue": "{{value}} ккал",
     "nutritionLoading": "Загружаются недостающие данные о питании. Итоговые значения могут быть неполными.",
     "nutritionLoadFailed": "Не удалось загрузить некоторые данные о питании. Итоговые значения могут быть неполными.",
     "assignmentRequired": "Добавьте как минимум один полный приём пищи.",
@@ -5136,7 +5719,8 @@
     "rangeSection": "Воспроизвести",
     "rangeA11y": "Выберите, насколько далеко в прошлое нужно прокрутить",
     "deltaBadge": "Δ {{value}}",
-    "frameCountRanged": "{{current}} из {{total}} · {{range}}"
+    "frameCountRanged": "{{current}} из {{total}} · {{range}}",
+    "historyDescriptionCappedCheckIn": "Последние фото: {{limit}}, начиная с самых новых."
   },
   "waterContainers": {
     "title": "Емкости для воды",
@@ -5144,9 +5728,6 @@
     "loading": "Загрузка данных о контейнерах для воды...",
     "loadFailed": "Не удалось загрузить данные о ёмкостях для воды",
     "loadFailedSubtitle": "Проверьте подключение и повторите попытку.",
-    "noServer": "Сервер не настроен",
-    "noServerSubtitle": "Настройте подключение к серверу для управления контейнерами с водой.",
-    "goToSettings": "Перейти в настройки",
     "emptyTitle": "Пока нет ни одного контейнера для воды",
     "emptySubtitle": "Добавьте бутылку или стакан, чтобы отслеживать уровень гидратации — при желании можно связать с продуктом, чтобы при нажатии записывались данные об обоих.",
     "linkedTo": "Связано с {{food}}",
@@ -5161,7 +5742,18 @@
     "moveDown": "Переместить {{name}} вниз",
     "reorderFailed": "Не удалось изменить порядок контейнеров",
     "presets": "Быстрое добавление шаблонов",
-    "addPresetFailed": "Не удалось добавить предустановку для напитков"
+    "addPresetFailed": "Не удалось добавить предустановку для напитков",
+    "settings": {
+      "unitMl": "Миллилитры (мл)",
+      "unitLiter": "Литры",
+      "addExerciseWater": "Добавьте потерю жидкости во время упражнений к ежедневной цели",
+      "addExerciseWaterHint": "Увеличивает вашу ежедневную норму потребления воды на величину предполагаемой потери жидкости во время физических упражнений.",
+      "addFoodWater": "Учитывайте потребление воды из продуктов питания в общем объеме потребляемой жидкости",
+      "addFoodWaterHint": "Добавляет содержание воды в зарегистрированном продукте к вашему ежедневному потреблению воды, если это еще не учтено в связанном контейнере.",
+      "updateFailed": "Не удалось обновить настройку.",
+      "displayUnit": "Единица измерения воды",
+      "unitOz": "Жидкие унции (oz)"
+    }
   },
   "waterContainerEdit": {
     "createTitle": "Добавить контейнер",
@@ -5216,6 +5808,2002 @@
     "estimatedTimes": "Некоторые временные интервалы приема дозы были рассчитаны приблизительно",
     "legendCurve": "Активный кофеин",
     "legendThreshold": "Порог {{threshold}} мг",
-    "unitMg": "мг"
+    "unitMg": "мг",
+    "tomorrow": "Завтра"
+  },
+  "guidedWorkout": {
+    "settings": {
+      "section": "Сопровождение тренировок",
+      "enabled": "Режим сопровождения",
+      "voice": "Голос",
+      "rate": "Скорость речи",
+      "rateValue": "{{rate}}×",
+      "countdown": "Обратный отсчёт перед началом",
+      "countdownSubtitle": "Перед первым упражнением и каждым подходом по таймеру.",
+      "countdownValue_one": "{{count}} с",
+      "countdownValue_few": "{{count}} с",
+      "countdownValue_many": "{{count}} с",
+      "sample": "Так будут звучать подсказки во время тренировок.",
+      "test": "Проверить голос",
+      "enabledSubtitle": "Озвучивает упражнения и цели, даёт обратный отсчёт, автоматически ведёт подходы на время и переходит к следующему подходу. Подсказки звучат и в беззвучном режиме, экран остаётся включённым во время тренировки."
+    },
+    "card": {
+      "rest": "Отдых",
+      "paused": "Приостановлено",
+      "pause": "Пауза",
+      "resume": "Продолжить",
+      "badge": "С СОПРОВОЖДЕНИЕМ",
+      "getReady": "Приготовьтесь",
+      "setOfTotal": "Подход {{current}} из {{total}}",
+      "nextUp": "Далее",
+      "targetReps_one": "{{count}} повторение",
+      "targetReps_few": "{{count}} повторения",
+      "targetReps_many": "{{count}} повторений",
+      "targetSeconds_one": "{{count}} секунда",
+      "targetSeconds_few": "{{count}} секунды",
+      "targetSeconds_many": "{{count}} секунд",
+      "mute": "Выключить голос",
+      "unmute": "Включить голос",
+      "replay": "Повторить инструкции",
+      "doneNext": "ГОТОВО — ДАЛЕЕ",
+      "doneHintReps_one": "Нажмите, когда выполните {{count}} повторение",
+      "doneHintReps_few": "Нажмите, когда выполните {{count}} повторения",
+      "doneHintReps_many": "Нажмите, когда выполните {{count}} повторений",
+      "doneHint": "Нажмите, когда закончите",
+      "done": "Все подходы выполнены. Завершите тренировку, чтобы сохранить её."
+    },
+    "cue": {
+      "getReady": "Приготовьтесь. Начинаем: {{name}}.",
+      "setStartReps_one": "{{name}}. {{count}} повторение.",
+      "setStartReps_few": "{{name}}. {{count}} повторения.",
+      "setStartReps_many": "{{name}}. {{count}} повторений.",
+      "setStartSeconds_one": "{{name}}. {{count}} секунда.",
+      "setStartSeconds_few": "{{name}}. {{count}} секунды.",
+      "setStartSeconds_many": "{{name}}. {{count}} секунд.",
+      "setStartOpen": "{{name}}.",
+      "halfway": "Половина пройдена.",
+      "rest_one": "Отдых. {{count}} секунда.",
+      "rest_few": "Отдых. {{count}} секунды.",
+      "rest_many": "Отдых. {{count}} секунд.",
+      "intervalRest": "Отдых.",
+      "nextUp": "Далее: {{name}}.",
+      "workoutComplete": "Тренировка завершена."
+    }
+  },
+  "voiceSettings": {
+    "title": "Голосовой ввод",
+    "open": "Настройки голосового ввода",
+    "recognition": "Распознавание",
+    "system": "Системное (по умолчанию)",
+    "ai": "Расшифровка с помощью ИИ",
+    "model": "Голосовая модель",
+    "chooseModel": "Выберите модель",
+    "chatModel": "Используется для чата",
+    "syncHint": "Эти настройки действуют в веб-версии и мобильном приложении. Отключение голосового ввода скрывает микрофон, сохраняя выбранную модель.",
+    "systemHint": "Использует распознавание речи устройства или браузера без платы за расшифровку ИИ Sparky. Доступность и обработка через интернет зависят от устройства или браузера.",
+    "aiHint": "Аудио отправляется выбранному ИИ-сервису через ваш сервер. Сервис может взимать плату. Выберите модель, чтобы включить расшифровку с помощью ИИ.",
+    "noModels": "Совместимые голосовые модели не включены. Настройте модель с поддержкой аудио в разделе «Настройки ИИ-сервиса» веб-приложения, затем обновите страницу.",
+    "unavailable": "Выбранная голосовая модель недоступна. Выберите другую модель или переключитесь на системное распознавание.",
+    "manualSend": "Распознанный текст появится в черновике. Проверьте или отредактируйте его, затем отправьте самостоятельно."
+  },
+  "mindfulness": {
+    "timer": {
+      "resume": "Продолжить",
+      "pause": "Пауза",
+      "title": "Таймер медитации",
+      "countdownSubtitle": "Медитация с заданной длительностью",
+      "stopwatchSubtitle": "Созерцание без ограничения времени",
+      "countdown": "Обратный отсчёт",
+      "openStopwatch": "Секундомер",
+      "meditating": "Медитация…",
+      "peaceful": "Сядьте удобно",
+      "start": "Начать медитацию",
+      "finishAndSave": "Завершить и сохранить"
+    },
+    "types": {
+      "yoga": "Йога",
+      "meditation": "Медитация",
+      "breathwork": "Дыхательная практика",
+      "reflection": "Рефлексия",
+      "walking": "Осознанная ходьба",
+      "other": "Другое",
+      "guided": "С сопровождением",
+      "unguided": "Самостоятельно"
+    },
+    "card": {
+      "todayTotal": "сегодня",
+      "details": "Подробности",
+      "title": "Осознанность",
+      "sessionCount_one": "{{count}} практика",
+      "sessionCount_few": "{{count}} практики",
+      "sessionCount_many": "{{count}} практик",
+      "minuteUnit": "мин",
+      "bpmUnit": "уд/мин",
+      "msUnit": "мс",
+      "openDetails": "Открыть сведения о практиках осознанности",
+      "noSessions": "Сегодня практик нет",
+      "readyPrompt": "Всё готово для практики",
+      "latestAt": "Последняя практика в",
+      "latestSession": "Последняя практика",
+      "tapToPractice": "Сделайте перерыв для практики · Дыхание и таймер в разделе подробностей"
+    },
+    "detail": {
+      "historyTab": "История",
+      "title": "Осознанность",
+      "practiceTab": "Практика и запись",
+      "historyHint": "Изменяйте и удаляйте практики с помощью соответствующих кнопок",
+      "noHistory": "Практик осознанности пока нет",
+      "noHistorySubtitle": "Завершите дыхательную практику или медитацию, чтобы начать отслеживание",
+      "logTitle": "Записать практику осознанности",
+      "saveSession": "Сохранить практику осознанности",
+      "updateSession": "Обновить практику осознанности",
+      "sessionSaved": "Практика сохранена",
+      "sessionDeleted": "Практика удалена",
+      "deletePrompt": "Удалить практику осознанности",
+      "deleteConfirm": "Удалить эту практику?"
+    },
+    "modal": {
+      "durationMinutes": "Продолжительность (минуты)",
+      "durationMinutesAccessibility": "Продолжительность в минутах",
+      "seconds": "Секунды",
+      "avgHr": "Средний пульс (уд./мин.)",
+      "notes": "Заметки (необязательно)",
+      "notesAccessibility": "Заметки",
+      "addTitle": "Записать практику осознанности",
+      "editTitle": "Изменить практику осознанности",
+      "type": "Тип практики",
+      "minutes": "Минуты",
+      "durationSecondsAccessibility": "Длительность в секундах",
+      "vitalsHeader": "Пульс и его вариабельность (необязательно)",
+      "avgHrAccessibility": "Средний пульс",
+      "hrv": "Вариабельность пульса (мс)",
+      "hrvAccessibility": "Вариабельность пульса RMSSD",
+      "startHr": "Пульс в начале",
+      "startHrAccessibility": "Пульс в начале",
+      "endHr": "Пульс в конце",
+      "endHrAccessibility": "Пульс в конце",
+      "notesPlaceholder": "Как прошла практика?"
+    },
+    "fields": {
+      "durationMinutes": "Продолжительность (мин.)",
+      "sessionType": "Тип",
+      "notes": "Заметки",
+      "heartRateAvg": "Средняя частота сердечных сокращений (ударов в минуту)",
+      "heartRateStart": "Пульс в начале (уд/мин)",
+      "heartRateEnd": "Пульс в конце (уд/мин)",
+      "hrvRmssd": "Вариабельность пульса RMSSD (мс)"
+    },
+    "breathwork": {
+      "time": "Время",
+      "pause": "Пауза",
+      "resume": "Продолжить",
+      "title": "Дыхательная практика",
+      "boxDescription": "4–4–4–4 • Концентрация и спокойствие",
+      "relaxDescription": "Глубокое расслабление и подготовка ко сну",
+      "coherenceDescription": "5-5 • Баланс и снижение пульса",
+      "ready": "Готово",
+      "inhale": "Вдох",
+      "hold": "Задержка",
+      "exhale": "Выдох",
+      "cycles": "Циклы",
+      "start": "Начать дыхательную практику",
+      "finishAndSave": "Завершить и сохранить"
+    },
+    "actions": {
+      "breathe": "Дыхание",
+      "timer": "Таймер",
+      "log": "Записать"
+    },
+    "tools": {
+      "title": "Интерактивная практика",
+      "breatheTitle": "Ритмичное дыхание",
+      "breatheSubtitle": "Дыхание по квадрату, 4–7–8, резонансное дыхание",
+      "timerTitle": "Таймер медитации",
+      "timerSubtitle": "Обратный отсчёт и секундомер",
+      "startAction": "Запустить"
+    }
+  },
+  "muscles": {
+    "biceps": "Бицепс",
+    "calves": "Икры",
+    "chest": "Грудь",
+    "forearms": "Предплечья",
+    "neck": "Шея",
+    "shoulders": "Плечи",
+    "triceps": "Трицепс",
+    "abdominals": "Мышцы пресса",
+    "abductors": "Отводящие мышцы",
+    "adductors": "Приводящие мышцы",
+    "glutes": "Ягодицы",
+    "hamstrings": "Задняя поверхность бедра",
+    "lats": "Широчайшие мышцы спины",
+    "lower back": "Поясница",
+    "middle back": "Средняя часть спины",
+    "quadriceps": "Квадрицепсы",
+    "traps": "Трапециевидные мышцы"
+  },
+  "interval": {
+    "pause": "Пауза",
+    "rest": "Отдых",
+    "resume": "Продолжить",
+    "finished": "Завершено",
+    "completed": "Завершено",
+    "countdown": "Приготовьтесь",
+    "extraReps": "Дополнительные повторения",
+    "ready": "Готово",
+    "round": "Раунд {{current}}",
+    "roundOfTotal": "Раунд {{current}} из {{total}}",
+    "rx": "Rx",
+    "scaled": "С адаптацией",
+    "timeCapLabel": "Лимит: {{cap}}",
+    "wodScoring": "Подсчёт результата WOD",
+    "work": "Работа",
+    "roundPlusOne": "+1 раунд ({{current}})",
+    "timeCap": "Лимит времени",
+    "wodScore": "Результат WOD",
+    "amrapScore": "Раундов: {{rounds}} + повторений: {{reps}}",
+    "roundsCompleted": "Завершено раундов: {{rounds}}"
+  },
+  "workoutFeedback": {
+    "saving": "Сохранение…",
+    "saved": "Сохранено",
+    "title": "Как прошла тренировка?",
+    "subtitle": "Следующие рекомендации будут учитывать ваш ответ.",
+    "difficulty": {
+      "tooEasy": "Слишком легко",
+      "justRight": "В самый раз",
+      "tooHard": "Слишком тяжело"
+    },
+    "painQuestion": "Была боль или дискомфорт?",
+    "painWhere": "В каких упражнениях? (необязательно)",
+    "painNotePlaceholder": "Что болело? (необязательно)",
+    "painPrivacy": "Рекомендуемая нагрузка для этих упражнений будет только снижаться, но не повышаться.",
+    "rateExercises": "Оценить каждое упражнение",
+    "saveFailed": "Не удалось сохранить отзыв. Нажмите, чтобы повторить.",
+    "loadFailed": "Не удалось загрузить отзыв. Нажмите, чтобы повторить."
+  },
+  "shoes": {
+    "name": "Название",
+    "brand": "Бренд",
+    "model": "Модель",
+    "runCount_one": "{{count}} пробежка",
+    "runCount_few": "{{count}} пробежки",
+    "runCount_many": "{{count}} пробежек",
+    "add": "Добавить"
+  },
+  "compareReport": {
+    "screen": {
+      "retry": "Повторить",
+      "tooOld": "Для сравнения нужна более новая версия сервера SparkyFitness. Обновите сервер.",
+      "loadFailed": "Не удалось загрузить это сравнение."
+    },
+    "groups": {
+      "sleep": "Сон",
+      "feelings": "Самочувствие",
+      "meditation": "Медитация",
+      "food": "Питание",
+      "training": "Тренировки",
+      "body": "Тело"
+    },
+    "metrics": {
+      "mood": "Настроение",
+      "energy": "Энергия",
+      "timeAsleep": "Продолжительность сна",
+      "restingHeartRate": "Пульс в состоянии покоя",
+      "bedtime": "Время отхода ко сну",
+      "calories": "Калории",
+      "protein": "Белок",
+      "carbs": "Углеводы",
+      "caffeine": "Кофеин",
+      "alcohol": "Алкоголь",
+      "steps": "Шаги",
+      "focus": "Концентрация",
+      "sleepScore": "Оценка сна",
+      "overnightHrv": "ВСР во сне",
+      "bedtimeConsistency": "Регулярность времени отхода ко сну",
+      "meditationMinutes": "Минуты медитации",
+      "meditationSessions7d": "Сеансы медитации за 7 дней",
+      "meditated": "Медитировали",
+      "fat": "Жиры",
+      "workoutMinutes": "Минуты тренировок",
+      "cardioMinutes": "Минуты кардио",
+      "strengthVolume": "Объём силовых тренировок",
+      "trainingLoad": "Тренировочная нагрузка",
+      "weightTrend": "Динамика веса"
+    },
+    "verdict": {
+      "days_one": "{{count}} день",
+      "days_few": "{{count}} дня",
+      "days_many": "{{count}} дней",
+      "strength": {
+        "weak": "слабый",
+        "moderate": "умеренный",
+        "strong": "сильный"
+      },
+      "question": "Связаны ли показатели «{{a}}» и «{{b}}» {{timing}}?",
+      "weeks_one": "{{count}} неделя",
+      "weeks_few": "{{count}} недели",
+      "weeks_many": "{{count}} недель",
+      "linkedHeadline": "Да. Уровень связи: {{strength}}",
+      "linkedPositive": "Когда показатель «{{a}}» был {{aDirection}}, показатель «{{b}}» {{timing}} тоже был {{bDirection}}.",
+      "linkedNegative": "Когда показатель «{{a}}» был {{aDirection}}, показатель «{{b}}» {{timing}} был {{bDirection}}.",
+      "noLinkHeadline": "Явной связи нет",
+      "noLinkDetail": "За этот период ({{n}}) совместные изменения можно объяснить случайностью.",
+      "longerSpan": "На более долгом периоде слабую связь легче заметить.",
+      "differenceHeadline": "Да, разница есть",
+      "differenceHigher": "{{when}}, показатель «{{outcome}}» был выше, чем в группе «{{others}}».",
+      "differenceLower": "{{when}}, показатель «{{outcome}}» был ниже, чем в группе «{{others}}».",
+      "differenceLater": "{{when}}, время «{{outcome}}» было позже, чем в группе «{{others}}».",
+      "differenceEarlier": "{{when}}, время «{{outcome}}» было раньше, чем в группе «{{others}}».",
+      "noDifferenceHeadline": "Явной разницы нет",
+      "noDifferenceDetail": "За этот период ({{n}}) разницы показателя «{{outcome}}» между двумя группами дней недостаточно, чтобы исключить случайность.",
+      "tooFewHeadline": "Пока недостаточно дней",
+      "tooFewHeadlineWeeks": "Пока недостаточно недель",
+      "tooFewDetail": "Доступно: {{n}}. Для ответа нужно: {{needed}}.",
+      "logDays_one": "Ведите записи по показателю «{{weaker}}» ещё {{count}} день или выберите более долгий период.",
+      "logDays_few": "Ведите записи по показателю «{{weaker}}» ещё {{count}} дня или выберите более долгий период.",
+      "logDays_many": "Ведите записи по показателю «{{weaker}}» ещё {{count}} дней или выберите более долгий период.",
+      "logWeeks_one": "Ведите записи по показателю «{{weaker}}» ещё {{count}} неделю или выберите более долгий период.",
+      "logWeeks_few": "Ведите записи по показателю «{{weaker}}» ещё {{count}} недели или выберите более долгий период.",
+      "logWeeks_many": "Ведите записи по показателю «{{weaker}}» ещё {{count}} недель или выберите более долгий период.",
+      "needsHistory": "Каждый день сравнивается с предыдущими двумя неделями. Для этого нужна история хотя бы за неделю.",
+      "fewYesHeadline": "Пока недостаточно дней, когда вы {{yes}}",
+      "fewYesDetail": "Доступно: {{n}}. Для ответа нужно: {{needed}}. Выберите более долгий период.",
+      "fewNoHeadline": "Пока мало дней в группе «без {{yesNoun}}»",
+      "fewNoDetail": "В этот период вы {{yes}} почти каждый день, поэтому сравнивать не с чем. Выберите более долгий период.",
+      "noVariationHeadline": "Пока нечего сравнивать",
+      "noVariationDetail": "Показатель «{{metric}}» не менялся за этот период, поэтому сравнивать не с чем.",
+      "noVariationGeneric": "Один из показателей не менялся за этот период.",
+      "longerSpanDifference": "На более долгом периоде небольшую разницу легче заметить."
+    },
+    "since": {
+      "startTitle": "Дата начала",
+      "pickDate": "Выберите дату",
+      "chartBefore": "До",
+      "question": "Изменился ли показатель «{{outcome}}» с началом регулярной привычки «{{habit}}»?",
+      "changedHeadline": "Да, показатель изменился",
+      "changedDetail": "С {{start}} среднее значение показателя «{{outcome}}» — {{since}}, до этого — {{before}} ({{diff}}).",
+      "changedDetailLastYear": "За последний год среднее значение показателя «{{outcome}}» — {{since}}, за год до начала — {{before}} ({{diff}}).",
+      "noChangeHeadline": "Явного изменения нет",
+      "noChangeDetail": "С {{start}} среднее значение показателя «{{outcome}}» — {{since}}, до этого — {{before}}. Разницы недостаточно, чтобы исключить случайность.",
+      "noChangeDetailLastYear": "За последний год среднее значение показателя «{{outcome}}» — {{since}}, за год до начала — {{before}}. Разницы недостаточно, чтобы исключить случайность.",
+      "minutesLater": "На {{minutes}} мин позже",
+      "minutesEarlier": "На {{minutes}} мин раньше",
+      "fewBeforeHeadline": "Пока недостаточно данных до {{start}}",
+      "fewSinceHeadline": "Пока недостаточно данных с {{start}}",
+      "fewValuesDetail": "Записей показателя «{{outcome}}»: {{n}}. Для ответа нужно: {{needed}}.",
+      "shortSinceDetail": "С начала прошло: {{days}}. Для ответа нужно: {{needed}}.",
+      "shortBeforeDetail": "История показателя «{{outcome}}» до начала: {{days}}. Для ответа нужно: {{needed}}.",
+      "noStartHeadline": "Выберите день начала",
+      "noStartDetail": "Затем можно сравнить показатель «{{outcome}}» до этой даты и после неё.",
+      "regularity_one": "С начала привычки недель с её соблюдением: {{weeksKept}} из {{count}}.",
+      "regularity_few": "С начала привычки недель с её соблюдением: {{weeksKept}} из {{count}}.",
+      "regularity_many": "С начала привычки недель с её соблюдением: {{weeksKept}} из {{count}}.",
+      "alreadyRising": "⚠ Показатель «{{metric}}» рос ещё до начала.",
+      "alreadyFalling": "⚠ Показатель «{{metric}}» снижался ещё до начала.",
+      "alreadyLater": "⚠ Показатель «{{metric}}» сдвигался на более позднее время ещё до начала.",
+      "alreadyEarlier": "⚠ Показатель «{{metric}}» сдвигался на более раннее время ещё до начала.",
+      "caveat": "За месяцы многое меняется. Это сравнение показывает изменение после начала привычки «{{habit}}», но не доказывает, что она его вызвала.",
+      "startLabel": "С",
+      "suggested": "(предложено)",
+      "lineLabel": "Граница: {{metric}} ≥",
+      "lineTitle": "{{metric}} не ниже",
+      "chartSince": "После",
+      "chartLine": "Граница {{line}}",
+      "chartLabel": "Динамика показателя «{{metric}}» до {{start}} и после",
+      "typicalRange": "Обычно от {{low}} до {{high}} (до начала: {{beforeLow}}–{{beforeHigh}}).",
+      "aboveLine": "Доля дней со значением не ниже {{line}}: {{since}} (до начала: {{before}})."
+    },
+    "logged": {
+      "weight": "вес",
+      "sleep": "сон",
+      "workouts": "тренировки",
+      "meditation": "медитация"
+    },
+    "title": "Сравнить",
+    "metricNouns": {
+      "meditated": "медитации"
+    },
+    "phrase": {
+      "lastNights": "{{metric}} за прошлую ночь",
+      "daysYou": "число дней, когда вы {{verb}}",
+      "your": "{{metric}}",
+      "yourWhen": "{{metric}} {{timing}}"
+    },
+    "timing": {
+      "sameDay": "в тот же день",
+      "thatDay": "в тот день",
+      "nextDay": "на следующий день",
+      "dayAfterYouWoke": "на следующий день после пробуждения",
+      "thatNight": "в ту ночь",
+      "dayBefore": "за день до этого",
+      "nightBefore": "предыдущей ночью",
+      "twoNightsBefore": "за две ночи до этого",
+      "sameNight": "в ту же ночь",
+      "nextNight": "на следующую ночь",
+      "sameWeek": "на той же неделе",
+      "nextWeek": "на следующей неделе"
+    },
+    "yesNo": {
+      "onDays": "В дни, когда вы {{yes}}",
+      "dayAfter": "На следующий день после того, как вы {{yes}}",
+      "dayBefore": "За день до того, как вы {{yes}}",
+      "nightAfter": "В ночь после того, как вы {{yes}}",
+      "nightBefore": "В ночь перед тем, как вы {{yes}}",
+      "twoNightsBefore": "За две ночи до того, как вы {{yes}}"
+    },
+    "howSure": {
+      "differenceHigher": "На {{diff}} выше, чем в группе «{{others}}» (значения относительно вашей нормы)",
+      "differenceLower": "На {{diff}} ниже, чем в группе «{{others}}» (значения относительно вашей нормы)",
+      "differenceLater": "На {{diff}} мин позже, чем в группе «{{others}}» (значения относительно вашей нормы)",
+      "differenceEarlier": "На {{diff}} мин раньше, чем в группе «{{others}}» (значения относительно вашей нормы)",
+      "differenceSame": "Примерно как в группе «{{others}}» (значения относительно вашей нормы)"
+    },
+    "stats": {
+      "pTiny": "p < 0.001",
+      "p": "p {{p}}",
+      "correlation": "r {{r}} · 95%-й интервал от {{low}} до {{high}} · {{p}} · {{n}}",
+      "difference": "разница {{diff}} · 95%-й интервал от {{low}} до {{high}} · {{p}} · {{n}}",
+      "differenceMinutes": "разница {{diff}} мин · 95%-й интервал от {{low}} до {{high}} мин · {{p}} · {{n}}"
+    },
+    "direction": {
+      "higher": "выше обычного",
+      "lower": "ниже обычного",
+      "later": "позже обычного",
+      "earlier": "раньше обычного"
+    },
+    "answer": {
+      "throughYesterday": "По вчерашний день",
+      "throughLastWeek": "По прошлую неделю",
+      "throughDate": "По {{date}}"
+    },
+    "chart": {
+      "eachDay": "Каждая точка — день",
+      "eachWeek": "Каждая точка — неделя",
+      "overTime": "Динамика",
+      "axis": "{{metric}} относительно вашей нормы",
+      "axisYesNo": "{{metric}} (да или нет)",
+      "axisDaysYou": "Число дней, когда вы {{verb}}, относительно вашей нормы",
+      "range": "{{metric}} {{min}}–{{max}}",
+      "noDots": "Пока нет дней с обоими показателями",
+      "noDotsWeeks": "Пока нет недель с обоими показателями",
+      "noOverTime": "За этот период нет записей",
+      "dotsLabel": "Каждая точка — пара значений «{{a}}» и «{{b}}»",
+      "overTimeLabel": "Динамика «{{a}}» и «{{b}}», каждый показатель в своём масштабе"
+    },
+    "bars": {
+      "yesDays": "Дни, когда вы {{yes}}",
+      "noDays": "Дни без {{yesNoun}}",
+      "otherDays": "Другие дни",
+      "otherNights": "Другие ночи",
+      "meanAndDays_one": "{{mean}} · {{count}} день",
+      "meanAndDays_few": "{{mean}} · {{count}} дня",
+      "meanAndDays_many": "{{mean}} · {{count}} дней",
+      "meanAndNights_one": "{{mean}} · {{count}} ночь",
+      "meanAndNights_few": "{{mean}} · {{count}} ночи",
+      "meanAndNights_many": "{{mean}} · {{count}} ночей"
+    },
+    "checks": {
+      "ownNormal": "✓ Сравнение с вашей нормой",
+      "notProof": "Связь не доказывает причинность",
+      "seemsFirst": "Показатель «{{metric}}», вероятно, предшествует другому",
+      "comesFirst": "Показатель «{{metric}}» предшествует другому",
+      "otherWay": "В обратном направлении связь сильнее",
+      "cantTell": "Нельзя определить, что происходит раньше",
+      "weekendHolds": "Связь сохраняется с учётом выходных",
+      "weekendMay": "Возможно, это различие между буднями и выходными"
+    },
+    "sentence": {
+      "something": "показатель",
+      "sometime": "время",
+      "does": "Связаны ли показатели",
+      "goWith": "и",
+      "questionMark": "?",
+      "firstTitle": "Первый показатель",
+      "secondTitle": "Второй показатель",
+      "timingTitle": "Когда",
+      "dayByDay": "По дням",
+      "weekByWeek": "По неделям",
+      "sameDay": "В тот же день",
+      "nextDay": "На следующий день",
+      "dayBefore": "За день до этого",
+      "sameWeek": "На той же неделе",
+      "nextWeek": "На следующей неделе",
+      "since": "С",
+      "iStarted": "начала регулярной привычки «",
+      "regularlyHas": "» изменился ли показатель «",
+      "changed": "»?",
+      "sinceHabit": "С начала привычки",
+      "beforeVsSince": "До и после"
+    },
+    "span": {
+      "30d": "30 дней",
+      "60d": "60 дней",
+      "90d": "90 дней",
+      "6m": "6 месяцев",
+      "1y": "1 год"
+    },
+    "start": {
+      "suggestions": "Попробуйте один из вариантов",
+      "recent": "Ваши недавние вопросы"
+    }
+  },
+  "plates": {
+    "plateWeight": "Вес",
+    "barName": "Название",
+    "manage": "Управление",
+    "removeBarShort": "Удалить",
+    "barWeightUnit": "Вес ({{unit}})",
+    "title": "Диски и грифы",
+    "calculatorTitle": "Калькулятор дисков",
+    "enterWeight": "Сначала укажите вес для подхода.",
+    "collarsWeight": "замки {{weight}} {{unit}}",
+    "loadSummary": "{{perSide}} {{unit}} с каждой стороны · всего {{total}} {{unit}}",
+    "cannotLoad": "Из ваших дисков нельзя собрать ровно {{weight}} {{unit}}.",
+    "nearestBelow": "Ближайший меньший вес: {{weight}} {{unit}}",
+    "nearestAbove": "Ближайший больший вес: {{weight}} {{unit}}",
+    "shortBy": "До цели не хватает {{diff}} {{unit}}",
+    "overBy": "Выше цели на {{diff}} {{unit}}",
+    "nothingBelow": "Целевой вес меньше веса пустого грифа с замками.",
+    "nothingAbove": "Целевой вес превышает вес, который можно собрать из ваших дисков.",
+    "tooLarge": "Слишком большой набор для поиска. Удалите часть дисков или пар.",
+    "barKind": {
+      "barbell": "Штанга",
+      "womens": "Женский гриф",
+      "ez": "EZ-гриф",
+      "trap": "Трэп-гриф",
+      "other": "Другой гриф"
+    },
+    "useKgPlates": "Использовать диски в кг",
+    "useLbPlates": "Использовать диски в фунтах",
+    "presetHint": "Начальный стандартный набор можно изменить ниже.",
+    "platesHeading": "Диски ({{unit}})",
+    "barsHeading": "Грифы ({{unit}})",
+    "addPlate": "Добавить диск",
+    "removePlate": "Удалить диск {{weight}}",
+    "addBar": "Добавить гриф",
+    "removeBar": "Удалить гриф {{name}}",
+    "collarsCount": "Учитывать замки",
+    "collarWeight": "Вес одного замка ({{unit}})",
+    "resetToStandard": "Восстановить стандартный набор",
+    "invalid": "Проверьте вес и пары: в весе не более 3 знаков после запятой, каждый вес диска указан один раз, число пар — целое до 20.",
+    "dismiss": "Закрыть калькулятор дисков",
+    "startFrom": "Начать с",
+    "fewerPairs": "Меньше пар по {{weight}}",
+    "morePairs": "Больше пар по {{weight}}",
+    "pairsCount_one": "{{count}} пара",
+    "pairsCount_few": "{{count}} пары",
+    "pairsCount_many": "{{count}} пар",
+    "pairsShort_one": "{{count}} пара",
+    "pairsShort_few": "{{count}} пары",
+    "pairsShort_many": "{{count}} пар",
+    "barWeightLabel": "Вес грифа",
+    "collarsHint": "Добавлять вес замков к каждому расчёту.",
+    "saveFailed": "Не удалось сохранить диски и грифы",
+    "resetTitle": "Восстановить стандартный набор?",
+    "resetDescription": "Сохранённые диски и грифы будут удалены, снова будет использоваться стандартный набор.",
+    "resetFailed": "Не удалось сбросить диски и грифы",
+    "loadFailed": "Не удалось загрузить ваши диски и грифы.",
+    "graphicLabel": "По {{perSide}} {{unit}} с каждой стороны грифа весом {{bar}} {{unit}}",
+    "graphicNotExact": "Из ваших дисков нельзя собрать ровно {{weight}} {{unit}}.",
+    "graphicNearest": "Диски: ближайший вес {{weight}} {{unit}}",
+    "graphicBelowBar": "Диски: целевой вес меньше веса грифа",
+    "targetWeight": "Целевой вес: {{weight}} {{unit}}",
+    "availableEquipment": "Доступное оборудование",
+    "platesUnit": "Диски ({{unit}})",
+    "barUnit": "Гриф ({{unit}})",
+    "calculatorShort": "Калькулятор",
+    "barCard": "Гриф {{number}}: {{name}}"
+  },
+  "barcodeSources": {
+    "external": "Онлайн-провайдер",
+    "unknown": "—",
+    "currentSource": "Источник: {{name}}",
+    "local": "Ваши продукты",
+    "fallback": "Резервный источник Open Food Facts",
+    "otherSources": "Другие источники",
+    "empty": "Других источников нет",
+    "error": "Не удалось загрузить источники поиска по штрихкоду. Повторите попытку.",
+    "comparison": "Сравните количество, указанное для каждого результата. Значения на граммы и на миллилитры рассчитываются по-разному.",
+    "retry": "Не удалось загрузить источники. Нажмите, чтобы повторить.",
+    "providerError": "Источник недоступен",
+    "noMatch": "Совпадений нет",
+    "basis": "На {{size}} {{unit}}"
+  },
+  "activityShare": {
+    "takePhoto": "Сделать фото",
+    "removePhoto": "Удалить"
+  },
+  "workoutPlans": {
+    "changeScheduleConfirm": "Изменить",
+    "loadFailedSubtitle": "Проверьте подключение и повторите попытку.",
+    "unnamedWorkout": "Тренировка",
+    "removeNamed": "Удалить {{name}}",
+    "noEndDate": "Дата окончания не указана",
+    "clearEndDate": "Очистить дату окончания",
+    "name": "Название плана",
+    "nameRequired": "Название плана обязательно.",
+    "description": "Описание",
+    "descriptionPlaceholder": "Дополнительные заметки об этом плане",
+    "startDate": "Дата начала",
+    "activePlan": "Активный план",
+    "scheduleType": "Расписание",
+    "weekly": "Еженедельно",
+    "weeklyPlan": "Еженедельный план",
+    "inactive": "Неактивен",
+    "dateRange": "{{start}} – {{end}}",
+    "starting": "Начало {{date}}",
+    "deleteNamed": "Удалить {{name}}",
+    "moreAssignments_one": "+{{count}}",
+    "moreAssignments_few": "+{{count}}",
+    "moreAssignments_many": "+{{count}}",
+    "changeScheduleTitle": "Изменить тип расписания?",
+    "changeScheduleMessage": "Недельные и последовательные планы устроены по-разному, поэтому добавленные тренировки будут удалены из плана.",
+    "updateSuccess": "План тренировок обновлён",
+    "createSuccess": "План тренировок создан",
+    "updateFailed": "Не удалось обновить план тренировок",
+    "createFailed": "Не удалось создать план тренировок",
+    "editTitle": "Изменить план тренировок",
+    "createTitle": "Создать план тренировок",
+    "loadingWorkouts": "Загрузка ваших тренировок…",
+    "workoutsLoadFailed": "Не удалось загрузить ваши тренировки",
+    "singleExercise": "Одно упражнение",
+    "chooseWorkout": "Выберите тренировку",
+    "addWorkout": "Добавить тренировку",
+    "namePlaceholder": "Название плана тренировок",
+    "endDate": "Дата окончания (необязательно)",
+    "endBeforeStart": "Дата окончания не может быть раньше даты начала.",
+    "activePlanHint": "Активный план добавляет тренировки в выбранные дни и в расписание часов.",
+    "sequential": "По порядку",
+    "weeklyHint": "Тренировки повторяются в одни и те же дни каждую неделю.",
+    "sequentialHint": "Тренировки образуют цикл. Каждый раз, когда вы тренируетесь, выполняется следующее занятие по порядку.",
+    "prefillDiary": "Заполнять дневник",
+    "prefillDiaryHint": "Заранее добавлять тренировки каждого дня в дневник. Если отключено, приложение предложит добавить тренировку при её начале.",
+    "restDay": "Ничего не запланировано. День отдыха.",
+    "sessions": "Тренировки",
+    "sessionNumber": "Занятие {{number}}",
+    "removeSessionNumber": "Удалить занятие {{number}}",
+    "sessionNamePlaceholder": "Название занятия (необязательно)",
+    "addSession": "Добавить занятие",
+    "assignmentRequired": "Добавьте в план хотя бы одну тренировку.",
+    "presetNotice": "Можно добавлять тренировки из вашей библиотеки. Чтобы запланировать отдельное упражнение, используйте веб-приложение.",
+    "deleteTitle": "Удалить план тренировок",
+    "deleteMessage": "Удалить {{name}}? Будущие тренировки, добавленные этим планом в дневник, будут удалены.",
+    "deleteSuccess": "План тренировок удалён",
+    "deleteFailed": "Не удалось удалить план тренировок",
+    "title": "Планы тренировок",
+    "create": "Создать план тренировок",
+    "active": "Активен",
+    "loading": "Загрузка планов тренировок…",
+    "loadFailed": "Не удалось загрузить планы тренировок",
+    "emptyTitle": "Планов тренировок пока нет",
+    "emptySubtitle": "Планируйте сохранённые тренировки на определённые дни или в виде последовательного цикла."
+  },
+  "addMenuSettings": {
+    "reorder": "Изменить порядок {{name}}",
+    "previewTitle": "Предварительный просмотр"
+  },
+  "foodEntryMultiAdd": {
+    "pickers": {
+      "selectMeal": "Выберите приём пищи",
+      "selectServing": "Выберите порцию"
+    },
+    "actions": {
+      "remove": "Удалить {{name}}",
+      "addAll_one": "Добавить всё ({{count}})",
+      "addAll_few": "Добавить всё ({{count}})",
+      "addAll_many": "Добавить всё ({{count}})",
+      "addAnyway": "Всё равно добавить",
+      "addAnywayFor": "Всё равно добавить {{name}}"
+    },
+    "errors": {
+      "invalidQuantity": "Введите количество, превышающее ноль.",
+      "rowRejected": "Не удалось добавить этот продукт. Проверьте его и повторите попытку."
+    },
+    "title": "Проверка",
+    "addingToDate": "Добавление за {{date}}",
+    "labels": {
+      "meal": "Приём пищи",
+      "chooseMeal": "Выберите приём пищи"
+    },
+    "accessibility": {
+      "mealForAll": "Приём пищи для всех продуктов: {{meal}}",
+      "mealForRow": "Приём пищи для {{food}}: {{meal}}",
+      "increaseQuantity": "Увеличить количество",
+      "decreaseQuantity": "Уменьшить количество",
+      "changeServing": "Изменить порцию для {{name}}"
+    },
+    "banners": {
+      "unknownOutcome": "Не удалось подтвердить добавление некоторых продуктов; возможно, они уже есть в дневнике"
+    },
+    "states": {
+      "empty": "Продукты не выбраны"
+    },
+    "toasts": {
+      "added_one": "Добавлен {{count}} продукт",
+      "added_few": "Добавлено {{count}} продукта",
+      "added_many": "Добавлено {{count}} продуктов"
+    }
+  },
+  "calorieLink": {
+    "workoutFallback": "Тренировка",
+    "unlink": "Отключить"
+  },
+  "guidedCheckIn": {
+    "skip": "Пропустить",
+    "stepOfTotal": "Пошаговая запись: шаг {{step}} из {{total}}",
+    "skipA11y": "Пропустить этот шаг",
+    "saveAndContinue": "Сохранить и продолжить",
+    "finish": "Завершить",
+    "done": "Запись за день завершена",
+    "skipUnsavedTitle": "Пропустить этот шаг?",
+    "skipUnsavedMessage": "Изменения на этом шаге не сохранятся.",
+    "backA11y": "Вернуться к предыдущему шагу",
+    "backUnsavedTitle": "Вернуться на шаг назад?",
+    "resumeTitle": "Продолжить пошаговую запись?",
+    "resumeMessage": "Вы остановились на шаге {{step}} из {{total}}.",
+    "startOver": "Начать сначала"
+  },
+  "mood": {
+    "logTitle": "Настроение",
+    "overall": "Общее настроение",
+    "tags": "Настроения",
+    "energy": "Энергия",
+    "journalPlaceholder": "Хотите что-нибудь добавить, поделиться своими мыслями или чувствами?",
+    "mostCommon": "Наиболее часто встречающиеся настроения",
+    "time": "Время",
+    "dayTitle": "Настроение",
+    "names": {
+      "angry": "Раздражённый",
+      "anxious": "Тревожный",
+      "calm": "Спокойствие",
+      "confident": "Уверенный",
+      "energetic": "Энергичный",
+      "excited": "В восторге",
+      "happy": "Счастливый",
+      "irritable": "Раздражительный",
+      "low": "Низкий уровень энергии",
+      "neutral": "Нейтрально",
+      "sad": "Грустно",
+      "sensitive": "Чувствительный",
+      "thoughtful": "Вдумчивый",
+      "tired": "Усталость",
+      "worried": "Беспокойство"
+    },
+    "energyLow": "Упадок сил",
+    "energyHigh": "Прилив сил",
+    "focus": "Концентрация",
+    "focusLow": "Рассеянность",
+    "focusHigh": "Полная сосредоточенность",
+    "journalOptional": "Дневник (необязательно)",
+    "reminderOfferTitle": "Напоминать каждый день?",
+    "reminderOfferBody": "Получайте вечернее напоминание записать самочувствие. Время можно изменить, а новые напоминания добавить в разделе «Настройки → Настройки приложения → Уведомления».",
+    "reminderOfferAccept": "Напоминать",
+    "ratingsUnsupported": "Ваш сервер пока не сохраняет энергию и концентрацию. Обновите SparkyFitness, чтобы сохранять их.",
+    "loggingForDate": "Запись за {{date}}",
+    "chartTitle": "Динамика настроения",
+    "chartEmpty": "За этот период настроение не записано",
+    "chartLoadFailed": "Не удалось загрузить данные о настроении",
+    "loadFailed": "Не удалось загрузить настроение за этот день",
+    "serverCheckFailed": "Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.",
+    "saveFailed": "Не удалось сохранить настроение",
+    "newCheckinTitle": "Новая запись о самочувствии",
+    "editCheckinTitle": "Изменить запись о самочувствии",
+    "timeA11y": "Время: {{time}}",
+    "deleteCheckin": "Удалить запись о самочувствии",
+    "deleteCheckinConfirm": "Удалить эту запись о самочувствии?",
+    "deleteCheckinMessage": "Запись о самочувствии и связанная запись дневника будут удалены.",
+    "deleteFailed": "Не удалось удалить запись о самочувствии",
+    "checkinNeedsContent": "Для сохранения укажите настроение, энергию, концентрацию, метку или текст записи.",
+    "checkinMissing": "Эта запись о самочувствии больше не существует.",
+    "dayAverage": "Среднее за день",
+    "checkinCount_one": "{{count}} запись о самочувствии",
+    "checkinCount_few": "{{count}} записи о самочувствии",
+    "checkinCount_many": "{{count}} записей о самочувствии",
+    "noCheckins": "За этот день записей о самочувствии пока нет.",
+    "addCheckin": "Добавить запись о самочувствии",
+    "checkinRowA11y": "{{summary}}. Изменить запись о самочувствии.",
+    "checkinAtTime": "запись о самочувствии в {{time}}",
+    "a11yListSeparator": ", ",
+    "energyA11y": "энергия {{value}} из 5",
+    "focusA11y": "концентрация {{value}} из 5",
+    "energyOutOfFive": "Энергия {{value}}/5",
+    "focusOutOfFive": "Концентрация {{value}}/5",
+    "card": {
+      "notLogged": "Настроение за этот день не записано",
+      "emptyA11y": "Настроение за {{date}}: не записано",
+      "loggedA11y": "Настроение за {{date}}: {{mood}}",
+      "log": "+ Записать",
+      "trend7d": "Динамика за 7 дней"
+    }
+  },
+  "quickActions": {
+    "scanFood": "Сканировать продукт",
+    "searchFood": "Добавить продукт",
+    "logWater": "Записать потребление воды",
+    "logWaterInBackground": "Записать воду, не открывая приложение",
+    "fasting": "Голодание",
+    "waterLogged": "Вода записана",
+    "waterFailed": "Не удалось записать воду"
+  },
+  "watchSettings": {
+    "reorder": "Изменить порядок {{name}}",
+    "pages": {
+      "goals": "Цели",
+      "water": "Вода",
+      "medications": "Лекарства",
+      "workout": "Тренировка",
+      "steps": "Шаги"
+    }
+  },
+  "exerciseStatistics": {
+    "sets_one": "{{formattedCount}} подход",
+    "sets_few": "{{formattedCount}} подхода",
+    "sets_many": "{{formattedCount}} подходов",
+    "stats": {
+      "volume": "Объём",
+      "workouts": "Тренировки",
+      "reps": "Повторения"
+    },
+    "heatMap": {
+      "male": "Мужской",
+      "female": "Женский",
+      "title": "Тепловая карта мышц",
+      "subtitle": "Вид спереди и сзади, окраска по рабочим подходам",
+      "a11y": "Фигура тела с окраской по рабочим подходам. Те же значения приведены в разделе «Подходы по мышцам»: выбор мышцы подсвечивает её здесь.",
+      "tap": "Нажмите на мышцу",
+      "fewer": "Меньше",
+      "more": "Больше",
+      "notOnFigure": "Не показаны на фигуре"
+    },
+    "analysis": {
+      "exerciseCount_one": "{{count}} упражнение",
+      "exerciseCount_few": "{{count}} упражнения",
+      "exerciseCount_many": "{{count}} упражнений",
+      "title": "Дополнительный анализ",
+      "recovery": "Последняя тренировка",
+      "variety": "Разнообразие упражнений",
+      "volume": "Объём по мышцам"
+    },
+    "recovery": {
+      "today": "Сегодня",
+      "yesterday": "Вчера",
+      "daysAgo_one": "{{count}} день назад",
+      "daysAgo_few": "{{count}} дня назад",
+      "daysAgo_many": "{{count}} дней назад"
+    },
+    "views": {
+      "cardio": "Кардио",
+      "strength": "Силовые"
+    },
+    "cardio": {
+      "unitKm": "км",
+      "unitMi": "мили",
+      "meters": "{{value}} м",
+      "weather": "Погода",
+      "degreesC": "{{value}}°C",
+      "minutes_one": "{{formattedCount}} мин.",
+      "minutes_few": "{{formattedCount}} мин.",
+      "minutes_many": "{{formattedCount}} мин.",
+      "bpm": "{{value}} уд./мин",
+      "distance": "Расстояние",
+      "duration": "Продолжительность",
+      "pace": "Темп",
+      "caloriesLabel": "Калории",
+      "zones": "Пульсовые зоны",
+      "zone": "Зона {{zone}}",
+      "trends": {
+        "efficiency": "Эффективность",
+        "title": "Бег за последние 12 недель",
+        "thisWeek": "Эта неделя",
+        "thisWeekAbove": "На этой неделе на {{percent}}% выше среднего за последнее время",
+        "thisWeekBelow": "На этой неделе на {{percent}}% ниже среднего за последнее время",
+        "chartA11y": "Беговая дистанция по неделям за последние 12 недель",
+        "longestRun": "Самая длинная пробежка",
+        "raceTimes": "Прогноз времени забега",
+        "race5k": "5 км",
+        "race10k": "10 км",
+        "raceHalf": "Полумарафон",
+        "raceMarathon": "Марафон",
+        "basis1k": "1 км",
+        "basis1mi": "миля",
+        "basis15k": "15 км",
+        "yourRecord": "ваш рекорд",
+        "fromBest": "по вашему результату на {{distance}}",
+        "raceTimesHint": "Прогноз пересчитывает ваши лучшие результаты для каждой дистанции. Для дистанций, к которым вы не готовились, он может быть слишком оптимистичным.",
+        "efficiencyHint": "Эффективность — расстояние на один удар сердца на пробежках от 20 минут. Сравниваются ранние и последние недели. Чем выше значение, тем лучше форма при тех же усилиях."
+      },
+      "bestPace": "Лучший результат: {{value}}",
+      "hint": "Нажмите на тренировку, чтобы посмотреть маршрут и пульс.",
+      "empty": "За этот период кардиотренировок нет",
+      "loadFailed": "Не удалось загрузить кардиотренировки",
+      "olderSessions": "Более ранние тренировки",
+      "feet": "{{value}} фут",
+      "degreesF": "{{value}}°F",
+      "floors": "Поднято этажей",
+      "floorsCount_one": "{{formattedCount}} этаж",
+      "floorsCount_few": "{{formattedCount}} этажа",
+      "floorsCount_many": "{{formattedCount}} этажей",
+      "elevationGain": "Набор высоты",
+      "cadence": "Средний каденс",
+      "spm": "{{value}} шаг/мин",
+      "strideLength": "Длина шага",
+      "avgHeartRate": "Средняя ЧСС",
+      "route": "Маршрут",
+      "routeA11y": "Маршрут этой тренировки от зелёной точки до красного кольца",
+      "noRoute": "GPS-маршрут не сохранён. У тренировок в помещении его нет. Для прогулки на улице маршрут доступен, только если Apple Health передал его при синхронизации тренировки.",
+      "heartRate": "Пульс",
+      "average": "Среднее {{value}}",
+      "peak": "Максимум {{value}}",
+      "onlyAverage": "Средняя ЧСС — {{value}}. Подробные измерения пульса не сохранены.",
+      "noHeartRate": "Для этой тренировки нет данных о пульсе.",
+      "zoneFrom": "от {{bpm}} уд/мин",
+      "minutesAxis": "Минуты от начала",
+      "kilometersAxis": "Километры от старта",
+      "milesAxis": "Мили от старта",
+      "splits": "Отрезки",
+      "perKm": "/км",
+      "perMile": "/милю",
+      "underOneMinute": "<1 мин",
+      "exportGpx": "Экспортировать GPX",
+      "exportGpxFailed": "Не удалось экспортировать маршрут",
+      "shareImage": "Поделиться изображением",
+      "effort": "Усилие"
+    },
+    "fitness": {
+      "factor": {
+        "sleep": "Сон",
+        "restingHeartRate": "Пульс в состоянии покоя",
+        "form": "Тренировочная форма",
+        "hrv": "Вариабельность пульса"
+      },
+      "fatigue": "Усталость",
+      "formLabel": "Форма",
+      "level": {
+        "high": "Вы готовы к тяжёлой тренировке.",
+        "moderate": "Можно провести обычную тренировку, но не самую тяжёлую.",
+        "low": "Восстановление не завершено. Лучше выбрать лёгкую нагрузку или отдых.",
+        "noData": "Пока недостаточно данных. Записывайте тренировки и сон, чтобы увидеть готовность."
+      },
+      "form": {
+        "fresh": "Свежесть: недавняя нагрузка невелика относительно накопленной тренированности.",
+        "tired": "Усталость: недавняя нагрузка высока относительно накопленной тренированности.",
+        "neutral": "Баланс: недавняя нагрузка соответствует накопленной тренированности.",
+        "learning": "Ещё изучаем вашу норму. Продолжайте вести записи."
+      },
+      "vital": {
+        "hrv": "{{current}} мс при обычных {{baseline}} мс",
+        "hrvNights": "{{current}} мс при обычных {{baseline}} мс (медиана; ночей: {{count}})",
+        "restingHeartRate": "{{current}} уд/мин при обычных {{baseline}} уд/мин",
+        "restingHeartRateNights": "{{current}} уд/мин при обычных {{baseline}} уд/мин (медиана; ночей: {{count}})"
+      },
+      "loadFailed": "Не удалось загрузить данные о готовности.",
+      "outOf": "готовность из 100",
+      "fitness": "Тренированность",
+      "title": "Готовность и форма",
+      "subtitle": "Ваша готовность сегодня на основе тренировочной формы, сна и пульса в покое."
+    },
+    "paceZones": {
+      "interval": "Интервал",
+      "title": "Темповые зоны",
+      "perKm": "/км",
+      "perMile": "/милю",
+      "easy": "Лёгкий",
+      "steady": "Равномерный",
+      "threshold": "Пороговый",
+      "repetition": "Повторный",
+      "range": "{{fast}} – {{slow}} {{unit}}",
+      "fromEffort": "Рассчитаны по вашей лучшей недавней пробежке. Пороговый темп — около {{pace}} {{unit}}.",
+      "fromTypical_one": "Оценка по последней {{formattedCount}} пробежке, поэтому менее точная. Интенсивная пробежка на 3 км или больше уточнит её.",
+      "fromTypical_few": "Оценка по последним {{formattedCount}} пробежкам, поэтому менее точная. Интенсивная пробежка на 3 км или больше уточнит её.",
+      "fromTypical_many": "Оценка по последним {{formattedCount}} пробежкам, поэтому менее точная. Интенсивная пробежка на 3 км или больше уточнит её.",
+      "fromTest": "Определены по последнему тесту физической формы. Пороговый темп — около {{pace}} {{unit}}."
+    },
+    "title": "Статистика упражнений",
+    "setsPerMuscle": {
+      "title": "Подходы по мышцам",
+      "subtitle": "Рабочие подходы на основные мышцы за этот период",
+      "none": "Пока нет рабочих подходов с указанной основной мышцей."
+    },
+    "states": {
+      "loadFailed": "Не удалось загрузить статистику упражнений",
+      "empty": "За этот период тренировок нет",
+      "emptyHint": "Запишите тренировку, и здесь появятся её подходы с группировкой по мышцам."
+    },
+    "runningForm": {
+      "title": "Техника бега",
+      "subtitle": "Шаги в минуту и длина шага на ваших пробежках",
+      "average": "Среднее {{value}}",
+      "change": "{{value}} по сравнению с прошлыми пробежками",
+      "hint": "Пробежка на дорожке учитывается, если измерены шаги."
+    },
+    "load": {
+      "title": "Тренировочная нагрузка",
+      "subtitle": "Минуты тренировок с учётом пульса: эта неделя в сравнении с предыдущими четырьмя.",
+      "thisWeek": "эта неделя · обычно {{average}}",
+      "weekA11y": "Нагрузка за неделю {{load}}",
+      "fourWeeksAgo": "4 недели назад",
+      "last7": "Последние 7 дней",
+      "loadFailed": "Не удалось загрузить тренировочную нагрузку.",
+      "takeRest": "Перед следующей тяжёлой тренировкой отдохните день или проведите лёгкую тренировку.",
+      "ready": "Вы отдохнули и готовы к хорошей тренировке.",
+      "status": {
+        "noData": "За последние четыре недели тренировки не записаны.",
+        "learning": "Ещё изучаем вашу норму. Продолжайте вести записи, чтобы сравнивать недели.",
+        "low": "Нагрузка ниже обычной. Хороший момент, чтобы немного прибавить или насладиться отдыхом.",
+        "steady": "Соответствует вашей обычной нагрузке. Равномерное развитие.",
+        "high": "Нагрузка выше обычной. Для одной недели это допустимо, но в следующие несколько недель снизьте нагрузку.",
+        "spike": "Резкий рост относительно обычной нагрузки. Такое быстрое увеличение повышает риск травмы — снизьте нагрузку."
+      }
+    },
+    "runEstimates": {
+      "title": "Расчётные показатели бега",
+      "subtitle": "Рассчитываются по темпу, пульсу, весу и набору высоты. Это оценка, поэтому возможна погрешность в несколько процентов.",
+      "loadFailed": "Не удалось загрузить расчётные беговые показатели.",
+      "about": "≈ {{value}}",
+      "vo2Unit": "VO₂ max (мл/кг/мин)",
+      "vo2Basis_one": "По {{count}} пробежке за последние 6 недель",
+      "vo2Basis_few": "По {{count}} пробежкам за последние 6 недель",
+      "vo2Basis_many": "По {{count}} пробежкам за последние 6 недель",
+      "watts": "≈ {{value}} Вт",
+      "powerUnit": "Мощность бега ({{perKg}} Вт/кг)",
+      "powerBasis_one": "Среднее по {{count}} пробежке за последние 4 недели",
+      "powerBasis_few": "Среднее по {{count}} пробежкам за последние 4 недели",
+      "powerBasis_many": "Среднее по {{count}} пробежкам за последние 4 недели"
+    },
+    "consistency": {
+      "title": "Регулярность тренировок",
+      "subtitle_one": "Последняя {{formattedCount}} неделя, с {{first}} по {{last}}",
+      "subtitle_few": "Последние {{formattedCount}} недели, с {{first}} по {{last}}",
+      "subtitle_many": "Последние {{formattedCount}} недель, с {{first}} по {{last}}",
+      "legendTrained": "День тренировки",
+      "legendRest": "Без тренировки",
+      "legendHelp": "Каждый квадрат — день, каждый столбец — неделя.",
+      "streak": "Серия недель",
+      "longest": "Самая длинная",
+      "thisWeek": "Эта неделя",
+      "lastWeek": "Прошлая неделя",
+      "weeks_one": "{{formattedCount}} неделя",
+      "weeks_few": "{{formattedCount}} недели",
+      "weeks_many": "{{formattedCount}} недель",
+      "days_one": "{{formattedCount}} день",
+      "days_few": "{{formattedCount}} дня",
+      "days_many": "{{formattedCount}} дней",
+      "calendarA11y_one": "Календарь тренировок: {{count}} тренировочный день за последние {{weeks}} нед.",
+      "calendarA11y_few": "Календарь тренировок: {{count}} тренировочных дня за последние {{weeks}} нед.",
+      "calendarA11y_many": "Календарь тренировок: {{count}} тренировочных дней за последние {{weeks}} нед.",
+      "setsTitle": "Подходы по мышцам",
+      "noSets": "За эту и прошлую неделю подходы не записаны.",
+      "loadFailed": "Не удалось загрузить данные о регулярности тренировок."
+    }
+  },
+  "customCategories": {
+    "loadFailedSubtitle": "Проверьте подключение и повторите попытку.",
+    "deleteNamed": "Удалить {{name}}",
+    "title": "Свои замеры",
+    "add": "Добавить категорию",
+    "loading": "Загрузка своих замеров…",
+    "loadFailed": "Не удалось загрузить свои замеры",
+    "emptyTitle": "Своих категорий пока нет",
+    "emptySubtitle": "Добавьте категорию, например сахар в крови, для отслеживания своих показателей.",
+    "editNamed": "Изменить {{name}}",
+    "deleteTitle": "Удалить категорию",
+    "deleteMessage": "Удалить {{name}}? Записанные в этой категории замеры станут недоступны.",
+    "deleteSuccess": "Категория удалена",
+    "deleteFailed": "Не удалось удалить категорию"
+  },
+  "customCategoryEdit": {
+    "name": "Название",
+    "nameHelp": "Внутренний идентификатор, используемый для синхронизации",
+    "displayNameHelp": "Необязательное пользовательское название, отображаемое в приложении",
+    "dataTypeNumeric": "Числовое",
+    "dataTypeText": "Текст",
+    "frequency": "Частота",
+    "frequencyAll": "Все (неограниченное количество записей)",
+    "frequencyDaily": "Ежедневно (один раз в день)",
+    "frequencyHourly": "Каждый час (одно измерение в час)",
+    "frequencyDailyShort": "Ежедневно",
+    "frequencyHourlyShort": "Каждый час",
+    "errors": {
+      "title": "Проверьте форму",
+      "required": "Укажите название и единицу измерения."
+    },
+    "createTitle": "Добавить категорию",
+    "editTitle": "Изменить категорию",
+    "loading": "Загрузка категории…",
+    "namePlaceholder": "Например, сахар в крови",
+    "displayName": "Отображаемое название (необязательно)",
+    "displayNamePlaceholder": "Например, утренний уровень сахара в крови",
+    "measurementType": "Единица измерения",
+    "measurementTypePlaceholder": "Например, mg/dL",
+    "unitPrecisionNote": "Стандартные единицы (например, kcal, mmHg, bpm) автоматически настраивают точность значений на графике.",
+    "dataType": "Тип данных",
+    "frequencyAllShort": "Без ограничений",
+    "saveSuccess": "Категория сохранена",
+    "saveFailed": "Не удалось сохранить категорию"
+  },
+  "customNutrients": {
+    "title": "Пользовательские питательные вещества",
+    "createTitle": "Добавить питательное вещество",
+    "required": "Необходимо указать название и единицу измерения питательного вещества.",
+    "add": "Добавить свой нутриент",
+    "loading": "Загрузка своих нутриентов…",
+    "loadFailed": "Не удалось загрузить свои нутриенты",
+    "empty": "Своих нутриентов пока нет",
+    "emptyHint": "Отслеживайте то, чего нет среди встроенных нутриентов, например магний или омега-3.",
+    "description": "Нажмите на нутриент, чтобы изменить название, единицу измерения или псевдонимы в источниках данных.",
+    "editTitle": "Изменить нутриент",
+    "notFound": "Свой нутриент не найден",
+    "name": "Название нутриента",
+    "namePlaceholder": "Например, магний",
+    "unit": "Единица измерения",
+    "unitPlaceholder": "Например, мг, мкг, МЕ",
+    "aliases": "Псевдонимы в источниках данных",
+    "aliasPlaceholder": "Введите название и нажмите Enter",
+    "aliasesHelp": "Названия этого нутриента в онлайн-базах продуктов. При импорте продукта значения совпадающих полей источника будут записаны в этот нутриент.",
+    "saveFailed": "Не удалось сохранить свой нутриент",
+    "deleteFailed": "Не удалось удалить свой нутриент",
+    "delete": "Удалить нутриент",
+    "deleteTitle": "Удалить свой нутриент",
+    "deleteMessage": "Удалить {{name}}? Можно также удалить его из прошлых целей и записей дневника.",
+    "deleteKeepHistory": "Удалить, сохранив историю",
+    "deleteAllHistory": "Удалить вместе с историей"
+  },
+  "nutrientDisplay": {
+    "title": "Отображение информации о питательных веществах",
+    "moveUp": "Переместить {{name}} вверх",
+    "moveDown": "Переместить {{name}} вниз",
+    "groups": {
+      "foodDatabase": "База данных продуктов",
+      "reportTabular": "Отчёт (в табличном виде)"
+    }
+  },
+  "fastingReport": {
+    "less": "Меньше",
+    "range": {
+      "7d": "7 дней",
+      "30d": "30 дней",
+      "90d": "90 дней"
+    },
+    "loadFailed": "Не удалось загрузить отчёт о голодании.",
+    "totalFasts": "Всего голоданий",
+    "totalHours": "Всего часов",
+    "avgDuration": "Средняя длительность",
+    "longestFast": "Самое долгое",
+    "dailyDuration": "Длительность голодания по дням",
+    "dailyDurationA11y": "Столбчатый график длительности голодания по дням",
+    "peakHours": "Максимум {{hours}} ч",
+    "zoneDistribution": "Достигнутые стадии голодания",
+    "heatmap": "Регулярность (последние 90 дней)",
+    "heatmapA11y": "Тепловая карта дней с голоданием",
+    "more": "Больше"
+  },
+  "warmupSettings": {
+    "addSet": "Добавить подход",
+    "title": "Калькулятор разминки",
+    "description": "Калькулятор разминки позволяет быстро добавлять разминочные подходы с весом в процентах от рабочего.",
+    "enabled": "Калькулятор разминки",
+    "enabledSubtitle": "Когда включено, нажмите на три точки рядом с упражнением, чтобы добавить разминочные подходы.",
+    "enabledAccessibility": "Калькулятор разминки",
+    "method": "Метод разминки",
+    "methodSubtitle": "Для каждого разминочного подхода задаётся процент веса первого рабочего подхода и число повторений.",
+    "setLetter": "Р",
+    "percentLabel": "Разминка {{number}}: процент",
+    "repsLabel": "Разминка {{number}}: повторения",
+    "removeSet": "Удалить подход",
+    "reset": "Восстановить настройки по умолчанию",
+    "plateRounding": "Округление под диски",
+    "plateRoundingSubtitle": "Задайте шаг веса дисков для расчёта разминки.",
+    "dumbbellRounding": "Округление под гантели",
+    "dumbbellRoundingSubtitle": "Задайте шаг веса гантелей для расчёта разминки."
+  },
+  "recordActivity": {
+    "checkIn": {
+      "off": "Выкл"
+    },
+    "unitMi": "мили",
+    "unitKm": "км",
+    "indoorDistance": {
+      "title": "Расстояние"
+    },
+    "discard": {
+      "confirm": "Отменить",
+      "action": "Отменить"
+    },
+    "activity": {
+      "walk": "Прогулка",
+      "run": "Бег",
+      "ride": "Поездка"
+    },
+    "permission": {
+      "openSettings": "Открыть настройки"
+    },
+    "unitFt": "фут",
+    "countdown": {
+      "off": "Выкл"
+    },
+    "cues": {
+      "paused": "Приостановлено"
+    },
+    "status": {
+      "paused": "Приостановлено"
+    },
+    "time": "Время",
+    "distance": "Расстояние",
+    "currentPace": "Темп",
+    "splitsTable": {
+      "pace": "Темп"
+    },
+    "laps": "Круги",
+    "lap": "Круг",
+    "pause": "Пауза",
+    "resume": "Продолжить",
+    "intervals": {
+      "off": "Выкл",
+      "run": "Бег",
+      "walk": "Прогулка",
+      "fast": "Быстрый"
+    },
+    "program": {
+      "skip": "Пропустить",
+      "goalClear": "Очистить",
+      "weekTitle": "Неделя {{week}}",
+      "scheduleTitle": "Расписание",
+      "manageTitle": "Управление"
+    },
+    "warmRanges": {
+      "off": "Выкл"
+    },
+    "heartRateBand": {
+      "highest": "Максимальное",
+      "value": "{{value}} уд./мин"
+    }
+  },
+  "goals": {
+    "title": "Цели",
+    "directions": {
+      "minimum": "Мин",
+      "maximum": "Макс",
+      "range": "Диапазон",
+      "guide": {
+        "title": "Не знаете, что выбрать? Это зависит от вашей цели",
+        "loseWeight": {
+          "title": "Похудение",
+          "body": "Установите максимальное количество калорий (верхний предел) или целевой диапазон."
+        },
+        "gainWeight": {
+          "title": "Набор веса или наращивание мышечной массы",
+          "body": "Установите минимальное количество калорий и белка (минимальный целевой показатель)."
+        },
+        "maintain": {
+          "title": "Поддержание веса",
+          "body": "Установите целевой диапазон калорий, близкий к вашему уровню поддержания веса."
+        },
+        "diabetes": {
+          "title": "Контроль уровня сахара в крови (диабет)",
+          "body": "Установите максимальное значение для углеводов и сахара."
+        },
+        "heart": {
+          "body": "Оставьте значения для холестерина, насыщенных жиров и натрия максимальными (используйте значения по умолчанию).",
+          "title": "Высокий холестерин или здоровье сердца"
+        },
+        "lowCarb": {
+          "title": "Низкоуглеводная или кетогенная диета",
+          "body": "Установите максимальное значение для углеводов, а жиров и белков – минимальное."
+        },
+        "intro": "Эти параметры влияют только на отображение и оценку прогресса, а не на числовые цели. Выберите подходящий вариант или нажмите «Применить», чтобы задать параметры автоматически:",
+        "apply": "Применить к моим целям",
+        "applied": "Параметры обновлены. Нажмите «Сохранить», чтобы оставить изменения."
+      },
+      "legend": {
+        "minimum": {
+          "label": "Мин",
+          "body": "Чем больше, тем лучше – прогресс приближает к цели"
+        },
+        "maximum": {
+          "label": "Макс",
+          "body": "Лучше меньше, чем больше – старайтесь не превышать целевое значение"
+        },
+        "target": {
+          "label": "Диапазон",
+          "body": "Оставайтесь в диапазоне между минимумом и максимумом"
+        }
+      },
+      "rangeMin": "Нижняя граница",
+      "rangeMax": "Верхняя граница",
+      "invalidRange": "Для диапазона нужны минимум и максимум; минимум не должен превышать максимум.",
+      "note": "«Мин.» означает «больше — лучше», «Макс.» — «не превышать», «Диапазон» — «оставаться между двумя значениями». Это меняет оценку прогресса, но не числовые цели."
+    },
+    "calculator": {
+      "calculate": "Рассчитать",
+      "calculateField": "Рассчитать: {{nutrient}}",
+      "calculateAll": "Рассчитать всё по моему профилю",
+      "needsProfile": "Укажите пол в профиле веб-версии для расчёта рекомендуемых целей по нутриентам."
+    },
+    "presets": {
+      "description": "Шаблон — сохранённый набор целей. «Применить» заполняет им форму выше. Нажмите «Сохранить», чтобы сохранить эти цели. «Изменить» меняет сам шаблон.",
+      "namePlaceholder": "Название шаблона",
+      "empty": "Шаблонов целей пока нет.",
+      "apply": "Применить",
+      "deleteTitle": "Удалить шаблон?",
+      "deleteMessage": "Удалить «{{name}}»? Дни недельного плана с этим шаблоном останутся без шаблона.",
+      "applied": "Шаблон применён. Нажмите «Сохранить», чтобы оставить изменения.",
+      "failed": "Не удалось обновить шаблоны целей.",
+      "edit": "Изменить",
+      "create": "Новый шаблон",
+      "editTitle": "Изменить шаблон",
+      "newTitle": "Новый шаблон",
+      "nameLabel": "Название шаблона",
+      "nameRequired": "Укажите название шаблона.",
+      "editDescription": "Шаблон — сохранённый набор целей. Примените его к своим целям или назначьте дням недели в недельном плане.",
+      "notFound": "Не удалось найти этот шаблон."
+    },
+    "weekly": {
+      "deleteMessage": "Удалить \"{{name}}\"?",
+      "editTitle": "Еженедельный план",
+      "planName": "Название плана",
+      "startDate": "Дата начала",
+      "noEndDate": "Дата окончания не указана",
+      "clearEndDate": "Очистить дату окончания",
+      "active": "Активный план",
+      "goBack": "Назад",
+      "days": {
+        "tuesday": "Вторник",
+        "wednesday": "Среда",
+        "thursday": "Четверг",
+        "friday": "Пятница",
+        "saturday": "Суббота",
+        "sunday": "Воскресенье",
+        "monday": "Понедельник"
+      },
+      "sectionDescription": "Назначайте разные шаблоны целей на каждый день недели, например больше калорий в дни тренировок.",
+      "empty": "Недельных планов пока нет.",
+      "create": "Новый недельный план",
+      "activeBadge": "Активен",
+      "range": "С {{start}} по {{end}}",
+      "rangeOpen": "С {{start}}, без даты окончания",
+      "daysAssigned_one": "Настроено {{count}} из 7 дней",
+      "daysAssigned_few": "Настроено {{count}} из 7 дней",
+      "daysAssigned_many": "Настроено {{count}} из 7 дней",
+      "deleteTitle": "Удалить недельный план?",
+      "deleteFailed": "Не удалось удалить недельный план.",
+      "newTitle": "Новый недельный план",
+      "description": "Выберите шаблон целей для каждого дня недели. С даты начала по дату окончания вместо обычных целей будут использоваться эти шаблоны. Одновременно может действовать только один план.",
+      "endDate": "Дата окончания (необязательно)",
+      "noPreset": "Без шаблона",
+      "needsPresets": "Сначала создайте шаблон целей, затем назначьте его дням недели.",
+      "nameRequired": "Укажите название плана.",
+      "endBeforeStart": "Дата окончания не может быть раньше даты начала.",
+      "saveFailed": "Не удалось сохранить недельный план.",
+      "loadFailed": "Не удалось найти этот недельный план."
+    },
+    "description": "Дневные цели с сегодняшнего дня. Для прошлых дней сохраняются прежние цели.",
+    "loading": "Загрузка целей…",
+    "loadFailed": "Не удалось загрузить ваши цели.",
+    "saveFailed": "Не удалось сохранить цели.",
+    "invalidValue": "Введите корректное число для каждой цели.",
+    "fields": {
+      "water": "Вода ({{unit}})",
+      "exerciseMinutes": "Длительность тренировок (мин)",
+      "steps": "Шаги за день"
+    },
+    "adaptiveNote": "Включён адаптивный режим, поэтому цель по калориям меняется ежедневно. Базовое значение ниже задаёт желаемый избыток или дефицит относительно расчётного уровня поддержания веса; это не фиксированная дневная цель.",
+    "customNutrients": {
+      "notSet": "Без цели"
+    },
+    "sections": {
+      "macros": "Калории и БЖУ",
+      "nutrients": "Другие нутриенты",
+      "customNutrients": "Свои нутриенты",
+      "activity": "Вода и тренировки",
+      "meals": "Распределение калорий по приёмам пищи",
+      "presets": "Шаблоны целей",
+      "weekly": "Недельные планы"
+    },
+    "meals": {
+      "mustBe100": "Сумма долей приёмов пищи должна составлять 100%.",
+      "total": "Итого: {{total}}% (для сохранения нужно 100%)",
+      "totalOk": "Итого: {{total}}%",
+      "distributeRemaining": "Распределить остаток поровну",
+      "lock": "Зафиксировать {{meal}}",
+      "unlock": "Снять фиксацию: {{meal}}",
+      "mealPercent": "{{meal}} (%)"
+    }
+  },
+  "reports": {
+    "title": "Отчёты",
+    "nutrition": "Питание",
+    "mood": "Настроение",
+    "exercise": "Упражнение",
+    "hydration": "Уровень гидратации",
+    "measurements": "Измерения",
+    "compare": "Сравнить",
+    "heartRateZones": "Пульсовые зоны",
+    "nutritionSubtitle": "Калории, белки, жиры, углеводы и среднее за день",
+    "sleepAnalytics": "Анализ сна",
+    "sleepAnalyticsSubtitle": "Стадии сна, ВСР, SpO2, дыхание, стресс и Body Battery",
+    "moodSubtitle": "История настроения и самые частые состояния",
+    "exerciseSubtitle": "Подходы по мышцам, карта нагрузки и кардиотренировки",
+    "customize": "Настроить отчёты",
+    "hydrationSubtitle": "Вода по дням, серии дней с достигнутой целью и лучшие дни",
+    "measurementsSubtitle": "Вес, состав тела, обхваты и шаги",
+    "insights": "Что выделяется",
+    "substances": "Кофеин и алкоголь",
+    "substancesSubtitle": "Кофеин за день, общее потребление алкоголя и данные по неделям",
+    "compareSubtitle": "Как два показателя меняются вместе",
+    "heartRate": "Пульс",
+    "heartRateSubtitle": "Динамика пульса в покое и распределение по зонам",
+    "details": "Подробнее об отчёте",
+    "heartRateChangeVsPrevious": "{{change}} уд/мин относительно предыдущего периода",
+    "averageRestingHr": "Средний пульс в покое",
+    "restingHrRange": "Диапазон пульса в покое",
+    "heartRateRecovery1Min": "Восстановление за 1 мин",
+    "heartRateRecoveryHint": "Снижение пульса через 1 минуту после нагрузки",
+    "recordedDays": "Дней с записями",
+    "daysRatio": "Дней: {{daysWithData}} из {{totalDays}}",
+    "heartRateLoadFailed": "Не удалось загрузить данные о пульсе",
+    "heartRateEmpty": "За этот период нет записей пульса",
+    "restingHeartRateTrend": "Динамика пульса в покое",
+    "zoneSource": "Ваши зоны: {{method}}, максимальный пульс {{max}} уд/мин ({{source}}).",
+    "zoneSourceDefault": "До загрузки ваших зон используются стандартные зоны (% от максимума 190 уд/мин).",
+    "zoneSettingsLink": "Настройки пульсовых зон",
+    "heartRateSummary": "Сводка по пульсу",
+    "heartRateInsights": "Анализ пульса в покое",
+    "insightAthletic": "Ваш средний пульс в покое — в диапазоне спортсменов (<60 уд/мин). Это отражает высокую эффективность сердечно-сосудистой системы.",
+    "insightNormal": "Обычный пульс здорового взрослого в покое — 60–100 уд/мин. Более низкий пульс обычно отражает лучшую тренированность сердечно-сосудистой системы."
+  },
+  "nutritionReport": {
+    "title": "Питание",
+    "calories": "Калории",
+    "grams": "{{value}} г",
+    "daysCount_one": "{{count}} день",
+    "daysCount_few": "{{count}} дня",
+    "daysCount_many": "{{count}} дней",
+    "daysLogged": "Дней с записями",
+    "dailyAverages": "Среднее за день",
+    "loadFailed": "Не удалось загрузить данные о питании",
+    "empty": "За этот период нет записей о питании",
+    "changeHint": "{{change}} относительно предыдущего периода ({{days}} дн.)",
+    "onTarget": "В пределах 10% от цели",
+    "daysOfLogged": "Дней: {{onTarget}} из {{total}}",
+    "overGoal": "Выше цели",
+    "underGoal": "Ниже цели",
+    "averageVsGoal": "Среднее и цель",
+    "daysOfWindow": "{{logged}} из {{total}}",
+    "macroSplit": "Источники ваших калорий",
+    "goalAdherence": "Цель по калориям",
+    "highlights": "Главное",
+    "highestDay": "Максимум калорий",
+    "lowestDay": "Минимум калорий в дни с записями",
+    "otherNutrients": "Другие средние за день",
+    "trendsByNutrient": "Динамика по нутриентам",
+    "avgCalories": "Калорий в среднем",
+    "avgProtein": "Белков в среднем",
+    "onTargetShort": "Дней в пределах цели",
+    "onTargetValue": "{{onTarget}}/{{total}}",
+    "macroGoals": "Цели по белкам, жирам и углеводам",
+    "macroGoalValue": "{{average}} из {{goal}} г",
+    "macroGoalHint": "В среднем {{pct}}% от цели",
+    "byWeekday": "Калории по дням недели",
+    "consistency": "Регулярность записей",
+    "currentStreak": "Текущая серия",
+    "longestStreak": "Самая длинная серия",
+    "nutrientGoalHint": "{{pct}}% от цели",
+    "nutrientChangeHint": "{{change}} к предыдущему периоду",
+    "fatBreakdown": "Состав жиров",
+    "micronutrients": "Витамины и минералы",
+    "yourNutrients": "Ваши нутриенты",
+    "insightProtein": "В среднем — {{pct}}% цели по белкам.",
+    "insightOnTarget": "В пределах 10% от цели по калориям: {{onTarget}} из {{total}} дней с записями.",
+    "insightUp": "Среднее потребление калорий выросло на {{pct}}% по сравнению с предыдущим периодом.",
+    "insightDown": "Среднее потребление калорий снизилось на {{pct}}% по сравнению с предыдущим периодом.",
+    "insightWeekday": "{{weekday}} — самый калорийный день, в среднем {{kcal}}.",
+    "insightStreak_one": "Самая длинная серия записей — {{count}} день.",
+    "insightStreak_few": "Самая длинная серия записей — {{count}} дня.",
+    "insightStreak_many": "Самая длинная серия записей — {{count}} дней."
+  },
+  "moodReport": {
+    "title": "Настроение",
+    "summary": "Сводка",
+    "tooltip": "{{mood}} · {{date}}",
+    "averageMood": "Среднее настроение",
+    "daysLogged": "Дней с записями",
+    "chartTitle": "Настроение по дням",
+    "loadFailed": "Не удалось загрузить записи настроения",
+    "empty": "За этот период нет записей о настроении",
+    "topMoods": "Самые частые настроения",
+    "changeHint": "{{change}} относительно предыдущего периода ({{days}} дн.)",
+    "highlights": "Главное",
+    "bestDay": "Лучший день",
+    "lowestDay": "Худший день",
+    "byWeekday": "Среднее по дням недели",
+    "daysOfWindow": "{{logged}} из {{total}}",
+    "mostLogged": "Самое частое настроение",
+    "insightBestWeekday": "{{weekday}} — ваш лучший день недели{{mood}}.",
+    "insightTopMood_one": "Чаще всего вы записывали настроение «{{mood}}» — {{count}} раз.",
+    "insightTopMood_few": "Чаще всего вы записывали настроение «{{mood}}» — {{count}} раза.",
+    "insightTopMood_many": "Чаще всего вы записывали настроение «{{mood}}» — {{count}} раз.",
+    "insightUp": "Настроение в среднем улучшилось по сравнению с предыдущим периодом.",
+    "insightDown": "Настроение в среднем ухудшилось по сравнению с предыдущим периодом."
+  },
+  "sleepAnalytics": {
+    "duration": "{{hours}} ч. {{minutes}} мин",
+    "metrics": {
+      "restingHeartRate": "Пульс в состоянии покоя",
+      "respiration": "Дыхание",
+      "duration": "Продолжительность сна",
+      "sleepScore": "Оценка сна",
+      "hrv": "Ночная вариабельность пульса",
+      "spo2": "Кислород в крови (SpO2)",
+      "stress": "Стресс во сне",
+      "bodyBattery": "Прирост Body Battery"
+    },
+    "loadFailed": "Не удалось загрузить данные о сне",
+    "stageDeep": "Глубокий",
+    "stageRem": "Быстрый сон",
+    "stageAwake": "В состоянии бодрствования",
+    "title": "Аналитика сна",
+    "empty": "Нет данных о сне за этот период",
+    "emptyHint": "Синхронизируйте данные о здоровье, чтобы увидеть динамику сна.",
+    "stages": "В среднем за ночь",
+    "stageLight": "Лёгкий",
+    "tooltip": "{{value}} · {{date}}",
+    "averages": "Средние за период",
+    "noChange": "Без изменений относительно предыдущих {{days}} дн.",
+    "changeHint": "{{change}} относительно предыдущих {{days}} дн.",
+    "routine": "Режим",
+    "efficiency": "Эффективность сна",
+    "efficiencyHint": "Доля времени сна во времени, проведённом в постели",
+    "avgBedtime": "Среднее время отхода ко сну",
+    "avgWake": "Среднее время пробуждения",
+    "bedtimeVariability": "Регулярность отхода ко сну",
+    "variabilityValue": "±{{minutes}} мин",
+    "variabilityHint": "Чем меньше значение, тем стабильнее режим",
+    "nightsTracked": "Учтено ночей",
+    "nightsOfWindow": "{{nights}} из {{total}}",
+    "stageShare": "{{pct}}% ночи",
+    "hoursValue": "{{hours}} ч",
+    "weekdayAsleep": "Сон в будни",
+    "weekendAsleep": "Сон в выходные",
+    "weekendDiff": "{{diff}} относительно будней",
+    "weekdayBedtime": "Отход ко сну в будни",
+    "weekendBedtime": "Отход ко сну в выходные",
+    "fullNights": "Ночей со сном не менее 7 ч",
+    "fullNightsValue": "{{full}} из {{total}}",
+    "longestNight": "Самый долгий сон",
+    "shortestNight": "Самый короткий сон",
+    "wakeVariability": "Регулярность пробуждения",
+    "weekendVsWeekday": "Будни и выходные",
+    "nights": "Ночи",
+    "insightWeekendLonger": "В выходные вы спите на {{hours}} дольше, чем в будни.",
+    "insightWeekendShorter": "В выходные вы спите на {{hours}} меньше, чем в будни.",
+    "insightFullNights": "Не менее 7 часов сна: {{full}} из {{total}} ночей.",
+    "insightIrregular": "Время отхода ко сну колеблется примерно на ±{{minutes}} мин.",
+    "insightDurationChange": "Изменение длительности сна относительно прошлого периода: {{change}}."
+  },
+  "reportsSettings": {
+    "reset": "Сбросить",
+    "reportsTitle": "Отчёты",
+    "reorder": "Изменить порядок {{name}}",
+    "sections": {
+      "moodSummary": "Сводка",
+      "overview": "Основные показатели",
+      "nutritionChart": "График калорий",
+      "nutritionAverages": "Среднее за день",
+      "macroSplit": "Соотношение белков, жиров и углеводов",
+      "calorieGoal": "Цель по калориям",
+      "highestLowest": "Дни с максимумом и минимумом",
+      "otherNutrients": "Ваши нутриенты",
+      "nutrientTrends": "Динамика по нутриентам",
+      "sleepStages": "Сон в среднем за ночь",
+      "sleepRoutine": "Режим",
+      "sleepAverages": "Средние за период",
+      "moodChart": "График настроения по дням",
+      "moodHighlights": "Лучшие и худшие дни",
+      "moodByWeekday": "Среднее по дням недели",
+      "moodTopMoods": "Самые частые настроения",
+      "macroGoals": "Цели по белкам, жирам и углеводам",
+      "nutritionWeekdays": "Калории по дням недели",
+      "loggingConsistency": "Регулярность записей",
+      "hydrationChart": "График потребления воды",
+      "waterGoal": "Цель по воде",
+      "hydrationHighlights": "Дни с максимумом и минимумом воды",
+      "hydrationWeekdays": "Среднее по дням недели",
+      "weightChart": "График веса",
+      "weightSummary": "Сводка по весу",
+      "bodyComposition": "Состав тела",
+      "tape": "Обхваты тела",
+      "stepsChart": "График шагов",
+      "sleepWeekend": "Будни и выходные",
+      "sleepNights": "Ночи",
+      "fatBreakdown": "Состав жиров",
+      "micronutrients": "Витамины и минералы",
+      "insights": "Что выделяется",
+      "exerciseOverview": "Тренировки, объём и повторения",
+      "setsPerMuscle": "Подходы по мышцам",
+      "heatMap": "Карта нагрузки на мышцы",
+      "trainingConsistency": "Регулярность тренировок",
+      "trainingLoad": "Тренировочная нагрузка",
+      "moreAnalysis": "Дополнительный анализ",
+      "caffeineChart": "График кофеина",
+      "caffeineSummary": "Сводка по кофеину",
+      "alcoholChart": "График алкоголя",
+      "alcoholSummary": "Сводка по алкоголю",
+      "substancesWeekly": "По неделям",
+      "restingHrChart": "График пульса в покое",
+      "heartRateZones": "Зоны интенсивности"
+    },
+    "resetA11y": "Вернуть настройки отчётов по умолчанию",
+    "reportsDescription": "Перетаскивайте отчёты за значок, чтобы менять их порядок на странице отчётов. Отключите отчёт, чтобы скрыть его.",
+    "reorderHint": "Меняет положение отчёта на странице отчётов",
+    "rangeTitle": "Период по умолчанию",
+    "rangeDescription": "Период, с которым открывается отчёт. Его можно изменить при просмотре.",
+    "nutritionSections": "Отчёт о питании",
+    "sleepSections": "Анализ сна",
+    "moodSections": "Отчёт о настроении",
+    "hydrationSections": "Отчёт о воде",
+    "measurementsSections": "Отчёт о замерах",
+    "nutrientsTitle": "Нутриенты отчёта о питании",
+    "nutrientsDescription": "Выберите витамины, минералы и другие нутриенты для раздела «Ваши нутриенты» в отчёте о питании. В нём показаны средние значения. Перетаскивайте нутриенты, чтобы менять их порядок. Можно выбрать и свои нутриенты.",
+    "nutrientReorderHint": "Меняет положение нутриента в отчёте",
+    "substancesSections": "Отчёт о кофеине и алкоголе",
+    "exerciseSections": "Отчёт о тренировках",
+    "heartRateSections": "Отчёт о пульсе"
+  },
+  "hydrationReport": {
+    "title": "Уровень гидратации",
+    "volume": "{{value}} {{unit}}",
+    "loadFailed": "Не удалось загрузить данные об уровне гидратации",
+    "total": "Всего",
+    "daysCount_one": "{{count}} день",
+    "daysCount_few": "{{count}} дня",
+    "daysCount_many": "{{count}} дней",
+    "dailyAverage": "Среднее за день",
+    "goalsMet": "Дней с достигнутой целью",
+    "goalsMetValue": "Дней: {{met}} из {{total}}",
+    "daysLogged": "Дней с записями",
+    "daysOfWindow": "{{logged}} из {{total}}",
+    "goalTitle": "Цель по воде",
+    "averageVsGoal": "Среднее и цель",
+    "currentStreak": "Текущая серия",
+    "longestStreak": "Самая длинная серия",
+    "highlights": "Главное",
+    "bestDay": "Максимум воды",
+    "lowestDay": "Минимум воды в дни с записями",
+    "byWeekday": "Среднее по дням недели",
+    "empty": "За этот период нет записей о воде",
+    "insightGoal": "Дней с достигнутой целью по воде: {{met}} из {{total}}.",
+    "insightUp": "Вы пьёте на {{pct}}% больше, чем за предыдущий период.",
+    "insightDown": "Вы пьёте на {{pct}}% меньше, чем за предыдущий период.",
+    "insightLowDay": "Меньше всего воды — {{weekday}}: в среднем {{volume}}.",
+    "insightStreak_one": "Самая длинная серия достижения цели — {{count}} день.",
+    "insightStreak_few": "Самая длинная серия достижения цели — {{count}} дня.",
+    "insightStreak_many": "Самая длинная серия достижения цели — {{count}} дней."
+  },
+  "measurementsReport": {
+    "title": "Измерения",
+    "loadFailed": "Не удалось загрузить данные измерений",
+    "muscleMass": "Масса мышц",
+    "waist": "Обхват талии",
+    "neck": "Шея",
+    "weight": "Вес",
+    "changeOverPeriod": "{{change}} за период",
+    "bodyFat": "Доля жира",
+    "hips": "Бёдра",
+    "currentWeight": "Последнее измерение веса",
+    "weightChange": "Изменение за период",
+    "weightRange": "Минимум / максимум",
+    "toGoal": "До целевого веса",
+    "avgSteps": "Шагов в среднем",
+    "empty": "За этот период замеров нет",
+    "bodyComposition": "Состав тела",
+    "tape": "Обхваты тела",
+    "insightWeightDown": "За этот период ваш вес снизился на {{amount}}.",
+    "insightWeightUp": "За этот период ваш вес вырос на {{amount}}.",
+    "insightWaistDown": "Обхват талии уменьшился на {{amount}}.",
+    "insightWaistUp": "Обхват талии увеличился на {{amount}}.",
+    "insightToGoal": "До целевого веса осталось {{amount}}.",
+    "insightSteps": "В дни с записями среднее число шагов — {{steps}}."
+  },
+  "substancesReport": {
+    "grams": "{{value}} г",
+    "daysCount_one": "{{count}} день",
+    "daysCount_few": "{{count}} дня",
+    "daysCount_many": "{{count}} дней",
+    "caffeineChart": "Кофеин",
+    "caffeineTitle": "Кофеин",
+    "alcoholChart": "Алкоголь",
+    "alcoholTitle": "Алкоголь",
+    "title": "Кофеин и алкоголь",
+    "mg": "{{value}} мг",
+    "loadFailed": "Не удалось загрузить данные о кофеине и алкоголе",
+    "empty": "За этот период кофеин и алкоголь не записаны",
+    "avgCaffeine": "Кофеин в среднем",
+    "daysOverLimit": "Дней с превышением лимита",
+    "totalAlcohol": "Всего алкоголя",
+    "alcoholFreeDays": "Дней без алкоголя",
+    "daysOfWindow": "{{value}} из {{total}}",
+    "insightOver_one": "Лимит кофеина {{limit}} превышен в {{count}} день.",
+    "insightOver_few": "Лимит кофеина {{limit}} превышен в {{count}} дня.",
+    "insightOver_many": "Лимит кофеина {{limit}} превышен в {{count}} дней.",
+    "insightOverVaries_one": "Лимит кофеина превышен в {{count}} день.",
+    "insightOverVaries_few": "Лимит кофеина превышен в {{count}} дня.",
+    "insightOverVaries_many": "Лимит кофеина превышен в {{count}} дней.",
+    "insightUnder": "Каждый день потребление кофеина было ниже {{limit}}.",
+    "insightUnderVaries": "Каждый день потребление кофеина было ниже вашего лимита.",
+    "insightFree": "Дней без алкоголя среди дней с записями: {{free}} из {{total}}.",
+    "insightAlcoholDown": "Потребление алкоголя снизилось на {{pct}}% относительно прошлого периода.",
+    "insightAlcoholUp": "Потребление алкоголя выросло на {{pct}}% относительно прошлого периода.",
+    "avgOnCaffeineDays": "Среднее в дни с кофеином",
+    "limit": "Дневной лимит",
+    "overLimit": "Дней с превышением лимита",
+    "peakDay": "День с наибольшим потреблением",
+    "drinkingDays": "Дней с алкоголем",
+    "avgPerDrinkingDay": "Среднее за эти дни",
+    "caffeineTooltip": "{{value}} · {{date}}",
+    "alcoholTooltip": "{{value}} · {{date}}",
+    "weekly": "По неделям",
+    "weekCaffeineAlcohol": "кофеина в день · {{alcohol}} алкоголя",
+    "weekAlcohol": "алкоголя"
+  },
+  "runSummary": {
+    "saveDistance": "Обновить"
+  },
+  "runPrograms": {
+    "startPickDate": "Выберите дату",
+    "effortPrompt": {
+      "skip": "Пропустить"
+    },
+    "banner": {
+      "easeBackDismiss": "Не сейчас",
+      "scheduled": "Запланировано"
+    },
+    "calendar": {
+      "title": "Расписание",
+      "showLess": "Показать меньше"
+    },
+    "select": {
+      "manage": "Управление"
+    },
+    "goals": {
+      "none": "Нет",
+      "unit": {
+        "km": "км",
+        "miles": "мили"
+      },
+      "pickDate": "Выберите дату"
+    },
+    "monthGrid": {
+      "previous": "Предыдущий месяц",
+      "next": "Следующий месяц"
+    },
+    "calendarScreen": {
+      "today": "Сегодня"
+    },
+    "detail": {
+      "runTime": "Бег",
+      "steps": "Шаги"
+    },
+    "custom": {
+      "kind": {
+        "workRun": "Бег"
+      },
+      "nameLabel": "Название",
+      "activityRun": "Бег",
+      "activityWalk": "Прогулка"
+    },
+    "race": {
+      "replaceConfirm": "Заменить",
+      "distanceLabel": "Расстояние"
+    },
+    "realign": {
+      "notNow": "Не сейчас"
+    }
+  },
+  "speechVoice": {
+    "standard": "Стандартный",
+    "title": "Голос",
+    "test": "Проверить голос"
+  },
+  "personalRecords": {
+    "group": {
+      "run": "Бег",
+      "walk": "Ходьба",
+      "ride": "Велосипедные тренировки",
+      "swim": "Плавание",
+      "other": "Другое"
+    },
+    "standard": {
+      "5k": "5 км",
+      "10k": "10 км",
+      "15k": "15 км",
+      "1k": "1 км",
+      "1mi": "1 миля",
+      "halfMarathon": "Полумарафон",
+      "marathon": "Марафон"
+    },
+    "loadFailed": "Не удалось загрузить ваши рекорды.",
+    "empty": "Рекордов пока нет. Запишите или импортируйте пробежку, прогулку или велопоездку длиной от 1 км, и здесь появятся ваши лучшие результаты.",
+    "rowA11y": "{{distance}}, {{time}}, {{pace}}, {{date}}"
+  },
+  "watchRunLive": {
+    "calories": "Калории"
+  },
+  "trainingLoadCard": {
+    "details": "Подробности",
+    "loadFailed": "Не удалось загрузить тренировочную нагрузку.",
+    "title": "Тренировочная нагрузка",
+    "openA11y": "Открыть тренировочную нагрузку",
+    "usual": "эта неделя · обычно {{average}}",
+    "learning": "Ещё определяем вашу норму",
+    "low": "Ниже обычной",
+    "steady": "В пределах обычной",
+    "high": "Выше обычной: следующие тренировки проведите легко",
+    "spike": "Резкий скачок: снизьте нагрузку",
+    "takeRest": "Отдохните день или проведите лёгкую тренировку.",
+    "ready": "Вы отдохнули и готовы.",
+    "explain": "Учитывает длительность и интенсивность тренировок. Обычная нагрузка — среднее за 4 недели. Столбцы показывают последние 4 недели; зелёный — текущую.",
+    "readiness": "Готовность к нагрузке: {{score}}",
+    "readinessHigh": "готовы к тяжёлой тренировке",
+    "readinessModerate": "можно провести обычную тренировку",
+    "readinessLow": "сегодня снизьте нагрузку"
+  },
+  "paceReference": {
+    "hours": "ч",
+    "save": "Сохранить",
+    "clear": "Очистить"
+  },
+  "allergenSettings": {
+    "custom": "Пользовательский аллерген",
+    "customPlaceholder": "например, люпин, моллюски…",
+    "remove": "Удалить {{name}}",
+    "alreadyAdded": "Уже добавлено",
+    "alreadyAddedDescription": "{{name}} уже есть в вашем списке.",
+    "errors": {
+      "error": "Ошибка"
+    },
+    "sync": {
+      "title": "Синхронизация с OpenFoodFacts",
+      "description": "Загрузите данные об аллергенах для сохраненных вами продуктов из OpenFoodFacts. Это нужно сделать только один раз."
+    }
+  },
+  "fitnessTest": {
+    "retest": {
+      "later": "Позже"
+    },
+    "delete": {
+      "confirm": "Удалить"
+    },
+    "perMile": "мили",
+    "perKm": "км"
+  },
+  "routes": {
+    "undo": "Отменить",
+    "clear": "Очистить",
+    "distanceLabel": "Расстояние",
+    "showFewerTurns": "Показать меньше",
+    "activity": {
+      "run": "Бег",
+      "walk": "Прогулка",
+      "ride": "Поездка"
+    },
+    "goBack": "Назад"
+  },
+  "heartRateZones": {
+    "title": "Пульсовые зоны",
+    "maxHrSummary": "Максимальный пульс: {{max}} уд/мин. {{source}}.",
+    "zoneRange": "{{lower}}–{{upper}} уд/мин",
+    "zoneRangeOpen": "{{lower}}+ уд/мин",
+    "tier": {
+      "vigorous": "Интенсивная",
+      "light": "Лёгкая",
+      "moderate": "Умеренная",
+      "peak": "Пиковая"
+    },
+    "display": {
+      "five": "5 зон",
+      "four": "4 уровня",
+      "hint": "Четыре уровня нагрузки: лёгкая (зоны 1 и 2), умеренная (зона 3), интенсивная (зона 4) и пиковая (зона 5). Меняется только отображение: по-прежнему рассчитываются и сохраняются пять зон.",
+      "title": "Показывать"
+    },
+    "fellBack": "Для выбранного метода недостаточно данных, поэтому зоны показаны как % от максимального пульса.",
+    "maxHr": "Максимальный пульс (уд/мин)",
+    "maxHrHint": "Оставьте пустым для расчёта по дате рождения.",
+    "restingHr": "Пульс в покое (уд/мин)",
+    "customFloors": "Нижняя граница каждой зоны (уд/мин)",
+    "historyNote": "Изменения применяются к тренировкам, записанным или синхронизированным с этого момента. Сохранённое время в зонах прошлых тренировок не пересчитывается.",
+    "method": {
+      "title": "Способ расчёта зон",
+      "percentMax": "% от максимального пульса",
+      "heartRateReserve": "Резерв пульса",
+      "custom": "Свои зоны",
+      "percentMaxHint": "Зоны начинаются с 50, 60, 70, 80 и 90% максимального пульса.",
+      "heartRateReserveHint": "Зоны соответствуют 50, 60, 70, 80 и 90% разницы между пульсом в покое и максимальным пульсом (метод Карвонена). Нужен пульс в покое.",
+      "customHint": "Задайте пульс начала каждой зоны. Время ниже зоны 1 не учитывается."
+    },
+    "source": {
+      "user": "Задано вами",
+      "age": "По дате рождения",
+      "observed": "По наибольшему пульсу на тренировке",
+      "fallback": "Типичное значение; добавьте дату рождения или задайте своё"
+    },
+    "errors": {
+      "needsResting": "Для зон по резерву пульса нужно указать пульс в покое.",
+      "customFloors": "Нижняя граница каждой зоны должна быть выше предыдущей и находиться в пределах от 30 до 250 уд/мин.",
+      "maxRange": "Максимальный пульс должен быть от {{min}} до {{max}} уд/мин.",
+      "restingRange": "Пульс в покое должен быть от {{min}} до {{max}} уд/мин.",
+      "saveFailed": "Не удалось сохранить. Проверьте значения и попробуйте снова."
+    },
+    "description": "Ваши зоны определяют учёт времени в пульсовых зонах новых тренировок, оценку тренировочной нагрузки и рекомендуемые диапазоны для бега.",
+    "yourZones": "Ваши зоны",
+    "floorLabel": "Начало зоны {{zone}} (уд/мин)",
+    "reset": "Восстановить настройки по умолчанию",
+    "saved": "Пульсовые зоны сохранены",
+    "loadFailed": "Не удалось загрузить зоны. Нажмите, чтобы повторить.",
+    "chart": {
+      "method": "Зоны: {{method}}. Изменение настроек зон не влияет на прошлые тренировки.",
+      "mixed": "Зоны рассчитаны несколькими методами. Изменение настроек зон не влияет на прошлые тренировки.",
+      "device": "Зоны, заданные часами или устройством"
+    },
+    "appleImport": "Использовать зоны Apple Health",
+    "appleReading": "Чтение данных Apple Health…",
+    "appleImported": "Зоны из Apple Health заполнены. Сохраните их.",
+    "appleHint": "Заполняет пользовательские зоны данными Apple Health. Максимальный пульс не меняется; пульс в покое заполняется, если не указан. Сохраните значения.",
+    "appleFailed": "Apple Health не передал пять пульсовых зон. Разрешите доступ к данным здоровья и попробуйте снова."
+  },
+  "equipment": {
+    "barbell": "Штанга",
+    "dumbbell": "Гантель",
+    "kettlebells": "Гири",
+    "cable": "Блочный тренажёр",
+    "machine": "Тренажёр",
+    "bands": "Эспандеры",
+    "body only": "Собственный вес",
+    "medicine ball": "Медбол",
+    "exercise ball": "Фитбол",
+    "foam roll": "Массажный ролик",
+    "e-z curl bar": "EZ-гриф",
+    "other": "Другое"
+  },
+  "adaptiveCoaching": {
+    "reasons": {
+      "painReported": "Сегодня легче: в прошлый раз вы отметили здесь боль.",
+      "painRepeated": "Сегодня легче: вы отмечали боль на двух тренировках подряд. Попробуйте другое упражнение.",
+      "sessionPain": "Вес без изменений: на последней тренировке вы отметили дискомфорт.",
+      "tooHard": "Вес без изменений: в прошлый раз было слишком тяжело.",
+      "tooHardRepeated": "Сегодня легче: две тренировки подряд было слишком тяжело.",
+      "highEffort": "Вес без изменений: последние подходы были почти на пределе возможностей.",
+      "lowEffort": "Немного тяжелее: последние подходы отмечены как лёгкие.",
+      "tooEasyRepeated": "Немного тяжелее: две тренировки подряд было слишком легко."
+    },
+    "declined": "Используется обычная рекомендация.",
+    "variation": "Вы выполняли это упражнение на большинстве последних тренировок. Попробовать другой вариант?",
+    "useUsual": "Оставить привычную нагрузку",
+    "useAdjusted": "Использовать скорректированную рекомендацию",
+    "seeAlternatives": "Посмотреть варианты замены"
+  },
+  "exerciseEffort": {
+    "title": "Усилие",
+    "lastAvg": "Средний RPE последней тренировки",
+    "trendLabel_one": "Средний RPE за последнюю {{count}} тренировку",
+    "trendLabel_few": "Средний RPE за последние {{count}} тренировки",
+    "trendLabel_many": "Средний RPE за последние {{count}} тренировок",
+    "oneRmEffort": "Расчётный 1ПМ с учётом усилия",
+    "oneRmPlain": "Только по повторениям",
+    "oneRmNote": "Учитывает повторы в запасе: RPE 8 означает запас в два повторения. Используются только подходы с указанным RPE."
+  },
+  "equipmentHub": {
+    "title": "Оборудование",
+    "shoesSubtitle": "Беговая обувь и её пробег",
+    "platesSubtitle": "Ваши грифы и диски для калькулятора дисков"
+  },
+  "allergens": {
+    "trace": "следы: {{name}}",
+    "warningTitle": "Содержит выбранный вами аллерген",
+    "traceWarningTitle": "Может содержать выбранный вами аллерген",
+    "mayContainTraces": "Возможны следы: {{names}}"
+  },
+  "workoutEffort": {
+    "value": "{{rating}}/10"
   }
 }

@@ -9,6 +9,7 @@ import SymptomsHub from '@/pages/Symptoms/SymptomsHub';
 import {
   ID,
   ID2,
+  entryQueries,
   hookState,
   makeDefinition,
   makeEntry,
@@ -460,6 +461,115 @@ describe('SymptomCalendar', () => {
     expect(cls).not.toMatch(/bg-green-500\/15/);
   });
 
+  it('asks for the episodes that overlap the month, not only those logged in it', () => {
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    expect(entryQueries).toContainEqual({
+      fromDate: '2026-09-01',
+      toDate: '2026-09-30',
+      overlapping: true,
+    });
+  });
+
+  it('tints every day an episode covers, from its start to its end', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-09-14',
+        started_at: '2026-09-14T21:00:00.000Z',
+        ended_at: '2026-09-16T08:00:00.000Z',
+        severity: 8,
+        peak_severity: 8,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-14', '2026-09-15', '2026-09-16']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-red-500/
+      );
+    }
+    for (const day of ['2026-09-13', '2026-09-17']) {
+      expect(screen.getByRole('button', { name: day }).className).not.toMatch(
+        /bg-(red|amber)-500/
+      );
+    }
+  });
+
+  it('tints an episode still going up to today and no further', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-09-27',
+        started_at: '2026-09-27T10:00:00.000Z',
+        ended_at: null,
+        severity: 4,
+        peak_severity: 4,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-27', '2026-09-28', '2026-09-29']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-amber-500/
+      );
+    }
+    expect(
+      screen.getByRole('button', { name: '2026-09-30' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
+  });
+
+  it('ignores an episode start with a year the calendar cannot place', () => {
+    // One keystroke in the year of a date field can save year 2 or 300.
+    hookState.entries = [
+      makeEntry({
+        entry_date: '0002-09-14',
+        started_at: '0002-09-14T10:00:00.000Z',
+        ended_at: null,
+      }),
+      makeEntry({
+        id: 'c',
+        entry_date: '0300-09-14',
+        started_at: '0300-09-14T10:00:00.000Z',
+        ended_at: null,
+      }),
+      makeEntry({ id: 'b', entry_date: '2026-09-08' }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    expect(
+      screen.getByRole('button', { name: '2026-09-08' }).className
+    ).toMatch(/bg-red-500/);
+    expect(
+      screen.getByRole('button', { name: '2026-09-15' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
+  });
+
+  it('tints the days of an episode that started the month before', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-08-30',
+        started_at: '2026-08-30T20:00:00.000Z',
+        ended_at: '2026-09-02T07:00:00.000Z',
+        severity: 4,
+        peak_severity: 4,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-01', '2026-09-02']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-amber-500/
+      );
+    }
+    expect(
+      screen.getByRole('button', { name: '2026-09-03' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
+  });
+
   it('selects a day and marks the current one', () => {
     const onDateChange = jest.fn();
     render(
@@ -574,6 +684,60 @@ describe('EpisodeDetailDialog', () => {
         .getAllByRole('listitem')
         .map((li) => li.textContent)
     ).toEqual(['moderate · 09:00', 'mild · 10:30']);
+  });
+
+  it('keeps an effect changed after the last reading in view while ongoing', () => {
+    render(
+      <EpisodeDetailDialog
+        entry={{
+          ...timelineEntry,
+          ended_at: null,
+          severity_timeline: [{ at: '2026-09-29T09:00:00.000Z', severity: 5 }],
+          impact: 'severe',
+          impact_timeline: [
+            { at: '2026-09-29T09:00:00.000Z', impact: 'moderate' },
+            { at: '2026-09-29T13:00:00.000Z', impact: 'severe' },
+          ],
+        }}
+        meds={[]}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+    const band = screen.getByRole('group', { name: 'Effect on your day' });
+    const severe = within(band)
+      .getByText('Effect on your day: severe · 13:00')
+      .closest('rect') as SVGRectElement;
+    // The chart runs to 13:30, so 13:00 to 13:30 is a ninth of the plot and
+    // ends at its right edge.
+    const x = Number(severe.getAttribute('x'));
+    const width = Number(severe.getAttribute('width'));
+    expect(width).toBeCloseTo(29.33, 1);
+    expect(x + width).toBeCloseTo(290);
+  });
+
+  it('draws an effect changed after the end at the end of the chart', () => {
+    render(
+      <EpisodeDetailDialog
+        entry={{
+          ...timelineEntry,
+          impact: 'mild',
+          impact_timeline: [
+            { at: '2026-09-29T09:00:00.000Z', impact: 'moderate' },
+            { at: '2026-09-29T12:00:00.000Z', impact: 'mild' },
+          ],
+        }}
+        meds={[]}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+    const band = screen.getByRole('group', { name: 'Effect on your day' });
+    const mild = within(band)
+      .getByText('Effect on your day: mild · 12:00')
+      .closest('rect') as SVGRectElement;
+    expect(Number(mild.getAttribute('x'))).toBe(288);
+    expect(Number(mild.getAttribute('width'))).toBe(2);
   });
 
   it('shows the current effect from the start when the server sends no timeline', () => {

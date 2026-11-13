@@ -211,6 +211,7 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
   it('renders the no-server state when disconnected', () => {
     mockUseServerConnection.mockReturnValue({
+      status: 'notConfigured',
       isConnected: false,
       isLoading: false,
       isError: false,

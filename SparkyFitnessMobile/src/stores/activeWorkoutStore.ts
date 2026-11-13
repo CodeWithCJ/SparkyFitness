@@ -28,6 +28,7 @@ import type { Exercise } from '../types/exercise';
 import {
   captureResumedDurations,
   describeActiveSetAssumed,
+  effectiveSetDurationSec,
   formatDurationSeconds,
   getDefaultRestSec,
   getSupersetRuns,
@@ -47,11 +48,12 @@ import {
   ungroupSessionExercise,
 } from '../utils/workoutSession';
 import type {
-  AssumedSetValues,
   LiveExerciseConfig,
+  PlannedSetValues,
   PrBaselineEntry,
 } from '../utils/workoutSession';
 import { newUuid } from '../utils/ids';
+import { buildExerciseReorderItems } from '../utils/workoutSupersets';
 import {
   addNotificationResponseListener,
   cancelScheduledNotification,
@@ -261,9 +263,10 @@ export interface ActiveWorkoutState {
    * placeholder fallback only — never written back to sets except through
    * completion adoption. Keys are birth server ids (live starts create every
    * set server-side), so they survive autosaves. Persisted: the plan can't be
-   * recaptured after a cold start.
+   * recaptured after a cold start. Each value carries `preferOverHistory`
+   * when "Use planned values as placeholders" was on at the start.
    */
-  plannedSetValues: Record<string, AssumedSetValues>;
+  plannedSetValues: Record<string, PlannedSetValues>;
   /**
    * Each exercise's most recent prior-session sets (keyed by `exercise_id`),
    * captured once per exercise from the stats query like `prBaseline`. This is
@@ -338,7 +341,7 @@ export interface ActiveWorkoutState {
     session: PresetSessionResponse,
     opts?: {
       createdByLiveStart?: boolean;
-      plannedSetValues?: AssumedSetValues[][];
+      plannedSetValues?: PlannedSetValues[][];
       /** Positional with `session.exercises`, like `plannedSetValues`. */
       exerciseConfigs?: LiveExerciseConfig[];
       sourcePresetId?: number;
@@ -557,6 +560,16 @@ export interface ActiveWorkoutState {
    * move or a null session leaves state untouched.
    */
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
+  /**
+   * Do an upcoming exercise now: it moves to sit just before the exercise the
+   * cursor is on, and the cursor moves to its first set still to do — for a
+   * machine that is taken, or a quick change of order. The exercise that was
+   * current comes straight after. A superset moves as one block, as in
+   * `reorderExercises`. No-op for the current exercise or an earlier one.
+   * `anchorEntryId` overrides "the current exercise" (the watch sends the
+   * one it is on).
+   */
+  doExerciseNow: (entryId: string, anchorEntryId?: string) => void;
   /** Update session location */
   setSessionLocation: (location: string | null) => void;
   /**
@@ -752,53 +765,121 @@ export function buildStepsFromSession(
 }
 
 /**
- * Map local set ids → server set ids by position (exercise index, set index).
+ * Pair each local exercise with the server's copy of it, indexed by the local
+ * exercise's position (`undefined` when the server has no copy).
  *
- * Valid because the autosave payload preserves order and the server recreates
- * in order. A reorder of exercises (`supersetWith` / `ungroupExercise`), or
- * a change in set order or count while a save is in flight (warm-ups
- * prepended onto `[101, 102]`), does not. `applyServerSession` skips the
- * graft when the local entry-id prefix no longer matches, or when a captured
- * set-id snapshot differs. Callers that omit the snapshot keep grafting an
- * append or a delete, which still share a prefix of the sets that were sent.
+ * Exercises are matched by entry id first: the payload carries the entry id
+ * (a client-added exercise sends its own uuid, which the server keeps), so the
+ * pairing holds even when the reply comes back in a different order. Only an
+ * exercise whose id the server does not know falls back to the server entry at
+ * the same position, and only when that entry is not one the local session
+ * already holds under its own id. That covers a server that assigns its own id
+ * to an added exercise.
  *
- * Positions beyond the shorter side are unmapped — callers keep the local id
+ * `positionalFallbacks` counts the exercises paired that way.
+ */
+function pairExercisesWithServer(
+  local: PresetSessionResponse,
+  server: PresetSessionResponse
+): {
+  pairs: (PresetSessionResponse['exercises'][number] | undefined)[];
+  positionalFallbacks: number;
+} {
+  const serverById = new Map(server.exercises.map((e) => [String(e.id), e]));
+  const localIds = new Set(local.exercises.map((e) => String(e.id)));
+  const claimed = new Set<string>();
+  const pairs = local.exercises.map((exercise) => {
+    const match = serverById.get(String(exercise.id));
+    if (match) claimed.add(String(match.id));
+    return match;
+  });
+  let positionalFallbacks = 0;
+  for (let i = 0; i < pairs.length; i++) {
+    if (pairs[i] != null) continue;
+    const candidate = server.exercises[i];
+    if (
+      candidate != null &&
+      !claimed.has(String(candidate.id)) &&
+      !localIds.has(String(candidate.id))
+    ) {
+      pairs[i] = candidate;
+      claimed.add(String(candidate.id));
+      positionalFallbacks++;
+    }
+  }
+  return { pairs, positionalFallbacks };
+}
+
+/**
+ * Describe how a save reply differs from what was sent, or null when the reply
+ * holds the sent exercises in the sent order. A reply that reorders the
+ * exercises is what let a set id cross onto another exercise (#3295), so a
+ * mismatch is logged with the ids on both sides.
+ */
+export function describeSaveReplyMismatch(
+  local: PresetSessionResponse,
+  server: PresetSessionResponse,
+  sentEntryIds: string[]
+): string | null {
+  const serverIds = server.exercises.map((e) => String(e.id));
+  const sent = sentEntryIds.map(String);
+  const sameOrder =
+    serverIds.length === sent.length &&
+    serverIds.every((id, i) => id === sent[i]);
+  const { positionalFallbacks } = pairExercisesWithServer(local, server);
+  if (sameOrder && positionalFallbacks === 0) return null;
+  return (
+    `Active workout save reply does not match what was sent: sent exercises [${sent.join(', ')}], ` +
+    `reply [${serverIds.join(', ')}], paired by position ${positionalFallbacks}`
+  );
+}
+
+/**
+ * Map local set ids → server set ids. Exercises are paired by entry id (see
+ * `pairExercisesWithServer`); sets within a paired exercise are matched by
+ * position, which is valid because the payload preserves set order and the
+ * server reconciles in order. A change in set order or count while a save is
+ * in flight (warm-ups prepended onto `[101, 102]`) breaks that, so
+ * `applyServerSession` skips the graft when the local entry-id prefix no
+ * longer matches, or when a captured set-id snapshot differs. Callers that
+ * omit the snapshot keep grafting an append or a delete, which still share a
+ * prefix of the sets that were sent.
+ *
+ * Sets beyond the shorter side are unmapped — callers keep the local id
  * (temp ids re-save on the next autosave; id churn only, no data loss).
  */
-export function buildPositionalSetIdMap(
+export function buildSetIdMap(
   local: PresetSessionResponse,
   server: PresetSessionResponse
 ): Map<string, string> {
   const map = new Map<string, string>();
-  const exerciseCount = Math.min(
-    local.exercises.length,
-    server.exercises.length
-  );
-  for (let i = 0; i < exerciseCount; i++) {
-    const localSets = local.exercises[i].sets;
-    const serverSets = server.exercises[i].sets;
-    const setCount = Math.min(localSets.length, serverSets.length);
+  const { pairs } = pairExercisesWithServer(local, server);
+  local.exercises.forEach((exercise, i) => {
+    const serverExercise = pairs[i];
+    if (!serverExercise) return;
+    const setCount = Math.min(exercise.sets.length, serverExercise.sets.length);
     for (let j = 0; j < setCount; j++) {
-      map.set(String(localSets[j].id), String(serverSets[j].id));
+      map.set(String(exercise.sets[j].id), String(serverExercise.sets[j].id));
     }
-  }
+  });
   return map;
 }
 
 /**
  * Return a copy of `local` whose exercise and set ids are replaced by the ids
- * the server assigned at the same positions. Local values (weight/reps/etc.)
- * are kept untouched; entries beyond the server response length keep their
- * (temp) ids. See `buildPositionalSetIdMap` for why positional is safe.
+ * the server holds for the same exercises. Local values (weight/reps/etc.)
+ * are kept untouched; entries the server has no copy of keep their (temp)
+ * ids. See `buildSetIdMap` for how exercises and sets are paired.
  */
 export function graftServerSessionIds(
   local: PresetSessionResponse,
   server: PresetSessionResponse
 ): PresetSessionResponse {
+  const { pairs } = pairExercisesWithServer(local, server);
   return {
     ...local,
     exercises: local.exercises.map((exercise, i) => {
-      const serverExercise = server.exercises[i];
+      const serverExercise = pairs[i];
       if (!serverExercise) return exercise;
       return {
         ...exercise,
@@ -1321,7 +1402,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // Key the live-start plan (positional, from the stripped create
         // payload) to the created session's set ids — same exercise and set
         // order by construction.
-        const plannedSetValues: Record<string, AssumedSetValues> = {};
+        const plannedSetValues: Record<string, PlannedSetValues> = {};
         opts?.plannedSetValues?.forEach((plannedSets, exerciseIndex) => {
           session.exercises[exerciseIndex]?.sets.forEach((s, setIndex) => {
             const planned = plannedSets[setIndex];
@@ -1352,24 +1433,51 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           if (workoutFormat === 'tabata' || workoutFormat === 'emom') {
             engineSteps = session.exercises.map((ex) => {
               const firstSet = ex.sets[0];
+              // A live start strips planned values from the created session,
+              // so read them back from the planned snapshot.
+              const planned =
+                firstSet != null
+                  ? plannedSetValues[String(firstSet.id)]
+                  : undefined;
+              // Legacy `duration`-modality rows keep their seconds in reps.
+              const plannedDurationSec = effectiveSetDurationSec(
+                {
+                  duration: firstSet?.duration ?? planned?.duration,
+                  reps: firstSet?.reps ?? planned?.reps,
+                },
+                resolveSnapshotModality(ex.exercise_snapshot)
+              );
               return {
                 exerciseName: ex.exercise_snapshot?.name || 'Exercise',
                 durationSec:
-                  firstSet?.duration ??
+                  plannedDurationSec ??
                   (workoutFormat === 'tabata' ? 20 : null),
                 restSec:
                   firstSet?.rest_time ??
                   (workoutFormat === 'tabata' ? 10 : null),
-                reps: firstSet?.reps ?? null,
+                reps: firstSet?.reps ?? planned?.reps ?? null,
               };
             });
           } else {
             engineSteps = steps.map((s) => {
               const loc = locateSet(session, s.setId);
+              const planned = plannedSetValues[s.setId];
+              // Created sessions carry null durations/reps on a live start
+              // (planned values are stripped), so fall back to the plan.
+              const sessionSet = loc?.exercise.sets[loc.setIndex];
+              const reps = sessionSet?.reps ?? planned?.reps ?? null;
+              // Legacy `duration`-modality rows keep their seconds in reps.
               const durationSec =
-                loc?.exercise.sets[loc.setIndex]?.duration ?? null;
+                loc != null
+                  ? effectiveSetDurationSec(
+                      {
+                        duration: sessionSet?.duration ?? planned?.duration,
+                        reps,
+                      },
+                      resolveSnapshotModality(loc.exercise.exercise_snapshot)
+                    )
+                  : (planned?.duration ?? null);
               const restSec = s.restSec;
-              const reps = loc?.exercise.sets[loc.setIndex]?.reps ?? null;
               return {
                 exerciseName: s.exerciseName,
                 durationSec,
@@ -2683,6 +2791,38 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set(buildSessionEditState(state, { ...session, exercises: moved }));
       },
 
+      doExerciseNow: (entryId, anchorEntryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session || state.activeSetId == null) return;
+        const currentEntryId =
+          anchorEntryId ??
+          session.exercises.find((e) =>
+            e.sets.some((s) => String(s.id) === state.activeSetId)
+          )?.id;
+        if (currentEntryId == null) return;
+        const items = buildExerciseReorderItems(session.exercises);
+        const from = items.findIndex((i) => i.entryIds.includes(entryId));
+        const to = items.findIndex((i) => i.entryIds.includes(currentEntryId));
+        if (from < 0 || to < 0 || from <= to) return;
+        const edit = buildSessionEditState(state, {
+          ...session,
+          exercises: moveSessionExerciseItem(session.exercises, from, to),
+        });
+        const picked = edit.session?.exercises.find((e) => e.id === entryId);
+        const firstToDo = picked?.sets
+          .map((s) => String(s.id))
+          .find((id) => edit.completedSetIds?.[id] == null);
+        if (firstToDo != null && firstToDo !== edit.activeSetId) {
+          // The rest was the break before the set that was due; the picked
+          // exercise starts fresh.
+          cancelCurrentRestNotification(state.rest);
+          edit.activeSetId = firstToDo;
+          edit.rest = READY_REST;
+        }
+        set(edit);
+      },
+
       setSessionLocation: (location) => {
         const state = get();
         const session = state.session;
@@ -2709,7 +2849,14 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const local = state.session;
         if (!local) return;
 
-        const setIdMap = buildPositionalSetIdMap(local, serverSession);
+        const mismatch = describeSaveReplyMismatch(
+          local,
+          serverSession,
+          sentEntryIds
+        );
+        if (mismatch) addLog(mismatch, 'WARNING');
+
+        const setIdMap = buildSetIdMap(local, serverSession);
 
         if (state.sessionRevision !== sentRevision) {
           // Edits landed after the payload was built. If they reordered or

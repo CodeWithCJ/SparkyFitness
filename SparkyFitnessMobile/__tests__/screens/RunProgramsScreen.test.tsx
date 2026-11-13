@@ -218,6 +218,37 @@ describe('RunProgramsScreen', () => {
     alert.mockRestore();
   });
 
+  it('offers the Zone 2 base with a three or four run choice and starts that version', () => {
+    mockedUse.mockReturnValue({
+      status: null,
+      enabled: false,
+      lastAdjustment: null,
+      schedule: { days: [], startDay: null, endDay: null },
+      doneDay: null,
+      loaded: true,
+    });
+    renderScreen(RunProgramsProps());
+    expect(screen.queryByTestId('run-program-zone2Base4')).toBeNull();
+    const card = screen.getByTestId('run-program-zone2Base');
+    expect(within(card).getByText('Zone 2 base')).toBeTruthy();
+    expect(
+      within(card).getByText(/Zone 2 base: ten weeks, three easy runs a week/)
+    ).toBeTruthy();
+    fireEvent.press(
+      within(screen.getByTestId('run-versions-zone2Base')).getByText(
+        '4 runs a week'
+      )
+    );
+    expect(
+      within(card).getByText(/Zone 2 base: ten weeks, four easy runs a week/)
+    ).toBeTruthy();
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    fireEvent.press(within(card).getByText('Start program'));
+    alert.mock.calls[0][2]?.[2].onPress?.();
+    expect(startProgram).toHaveBeenCalledWith('zone2Base4', null);
+    alert.mockRestore();
+  });
+
   it('shows the race pace card and keeps what is saved on this device', () => {
     mockedUse.mockReturnValue({
       status: null,

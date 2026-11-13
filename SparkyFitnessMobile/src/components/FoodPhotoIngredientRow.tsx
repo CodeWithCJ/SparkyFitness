@@ -12,6 +12,9 @@ import Icon from './Icon';
 import FormInput from './FormInput';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import type { IngredientDraftRow } from '../hooks/useFoodPhotoIngredientDraft';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { energyFromKcal, energyToKcal } from '@workspace/shared';
 
 const TONE_BG_CLASS: Record<ConfidenceTone, string> = {
   success: 'bg-bg-success',
@@ -108,6 +111,7 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
   onRecalcFromGrams,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const [textPrimary, textDanger] = useCSSVariable([
     '--color-text-primary',
     '--color-text-danger-subtle',
@@ -180,16 +184,19 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
           </View>
           <Text className="text-text-secondary text-sm mt-0.5">
             {row.logAs
-              ? t('foodPhotoEstimate.ingredients.pickedRowSummary', {
-                  defaultValue: '{{quantity}} {{unit}} · {{calories}} kcal',
+              ? t('foodPhotoEstimate.ingredients.pickedRowSummaryWithUnit', {
+                  defaultValue:
+                    '{{quantity}} {{unit}} · {{calories}} {{energyUnit}}',
                   quantity: row.logAs.quantity,
                   unit: row.logAs.unit,
-                  calories: Math.round(row.macros.calories_kcal),
+                  calories: roundedEnergy(row.macros.calories_kcal, energyUnit),
+                  energyUnit: energyUnitLabel(energyUnit, t),
                 })
-              : t('foodPhotoEstimate.ingredients.rowSummary', {
-                  defaultValue: '{{grams}} g · {{calories}} kcal',
+              : t('foodPhotoEstimate.ingredients.rowSummaryWithUnit', {
+                  defaultValue: '{{grams}} g · {{calories}} {{energyUnit}}',
                   grams: Math.round(row.grams),
-                  calories: Math.round(row.macros.calories_kcal),
+                  calories: roundedEnergy(row.macros.calories_kcal, energyUnit),
+                  energyUnit: energyUnitLabel(energyUnit, t),
                 })}
           </Text>
         </TouchableOpacity>
@@ -297,13 +304,24 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
             {MACRO_FIELDS.map((field) => (
               <View key={field.key} className="w-1/2 px-1 mb-3">
                 <Text className="text-text-secondary text-xs mb-1">
-                  {field.label(t)}
+                  {field.key === 'calories_kcal'
+                    ? `${field.label(t)} (${energyUnitLabel(energyUnit, t)})`
+                    : field.label(t)}
                 </Text>
                 <FormInput
-                  value={display(row.macros[field.key])}
+                  value={display(
+                    field.key === 'calories_kcal'
+                      ? energyFromKcal(row.macros[field.key], energyUnit)
+                      : row.macros[field.key]
+                  )}
                   onChangeText={(text) =>
                     handleNumeric(text, (value) =>
-                      onChangeMacro(field.key, value)
+                      onChangeMacro(
+                        field.key,
+                        field.key === 'calories_kcal'
+                          ? energyToKcal(value, energyUnit)
+                          : value
+                      )
                     )
                   }
                   keyboardType="decimal-pad"

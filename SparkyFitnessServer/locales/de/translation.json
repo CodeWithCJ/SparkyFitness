@@ -1,0 +1,24 @@
+{
+  "email": {
+    "passwordReset": {
+      "subject": "SparkyFitness: Passwort zurücksetzen",
+      "intro": "Du hast angefordert, das Passwort für dein SparkyFitness-Konto zurückzusetzen.",
+      "actionPrompt": "Bitte klicke auf den folgenden Link, um dein Passwort zurückzusetzen:",
+      "expiry": "Dieser Link läuft in {{expiresInHours}} Stunde ab.",
+      "ignoreNotice": "Falls du das Zurücksetzen deines Passworts nicht angefordert hast, ignoriere diese E-Mail bitte."
+    },
+    "mfaCode": {
+      "subject": "Dein SparkyFitness-MFA-Code",
+      "intro": "Dein Code für die Multi-Faktor-Authentifizierung lautet:",
+      "expiry": "Dieser Code ist {{expiresInMinutes}} Minuten lang gültig.",
+      "ignoreNotice": "Falls du diesen Code nicht angefordert hast, ignoriere diese E-Mail bitte."
+    },
+    "magicLink": {
+      "subject": "Dein SparkyFitness-Link zur Anmeldung",
+      "intro": "Du hast eine passwortlose Anmeldung bei deinem SparkyFitness-Konto angefordert.",
+      "actionPrompt": "Bitte klicke auf den folgenden Link, um dich anzumelden:",
+      "expiry": "Dieser Link läuft in {{expiresInMinutes}} Minuten ab und kann nur einmal verwendet werden.",
+      "ignoreNotice": "Falls du das nicht angefordert hast, ignoriere diese E-Mail bitte."
+    }
+  }
+}

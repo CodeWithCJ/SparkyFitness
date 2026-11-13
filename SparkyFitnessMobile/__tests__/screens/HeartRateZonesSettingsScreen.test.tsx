@@ -36,6 +36,7 @@ const response = (
     resting_heart_rate: null,
     method: 'percent_max',
     custom_floors: null,
+    display_zones: 5,
     ...overrides,
   },
   resolved: {
@@ -85,6 +86,17 @@ describe('HeartRateZonesSettingsScreen', () => {
     expect(getByTestId('heart-rate-zones-max-source').props.children).toContain(
       'From your date of birth'
     );
+  });
+
+  it('shows four tiers, with zones 1 and 2 merged, when chosen', async () => {
+    loaded(response({ display_zones: 4 }));
+    const { getByTestId, getByText, queryByTestId } = renderScreen();
+    await waitFor(() => expect(getByTestId('heart-rate-zone-1')).toBeTruthy());
+    expect(getByText('Light')).toBeTruthy();
+    expect(getByText('94–131 bpm')).toBeTruthy();
+    expect(getByText('Peak')).toBeTruthy();
+    expect(getByText('169+ bpm')).toBeTruthy();
+    expect(queryByTestId('heart-rate-zone-5')).toBeNull();
   });
 
   it('says when the person set the max heart rate themselves', async () => {

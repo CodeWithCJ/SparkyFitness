@@ -16,14 +16,13 @@ import { ChartDataPoint } from '@/types/reports';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatTimeWithPreference } from '@/utils/timeFormatters';
 import { axisLabelValue } from '@/utils/chartUtils';
-import { useHeartRateZones } from '@/hooks/Settings/useHeartRateZones';
+import { useResolvedHeartRateZones } from '@/hooks/Settings/useHeartRateZones';
+import { HeartRateZoneLegend } from '@/components/HeartRateZoneLegend';
 import {
-  fallbackZoneFloors,
-  tierGradientStops,
-  tierThresholds,
+  zoneEdges,
+  zoneGradientStops,
   zoneStroke,
-} from '@/utils/heartRateZoneTiers';
-import { HEART_RATE_ZONE_COLORS } from '@workspace/shared';
+} from '@/utils/heartRateZoneBands';
 
 interface ActivityHeartRateChartProps {
   data: ChartDataPoint[];
@@ -41,27 +40,18 @@ export const ActivityHeartRateChart = ({
 }: ActivityHeartRateChartProps) => {
   const { t } = useTranslation();
   const { timeFormat } = usePreferences();
-  const { data: zoneData } = useHeartRateZones();
+  const { resolved, isDefault, displayZones, bands } =
+    useResolvedHeartRateZones();
 
-  // Tier edges follow the person's own zones, not fixed bpm values
-  const thresholds = useMemo(
-    () =>
-      tierThresholds(
-        zoneData?.resolved.zones.map((z) => z.lower_bpm) ?? fallbackZoneFloors()
-      ),
-    [zoneData]
-  );
+  // Color edges follow the person's own zones, not fixed bpm values
+  const edges = useMemo(() => zoneEdges(bands), [bands]);
   const gradientStops = useMemo(() => {
     const values = data
       .map((p) => Number(p.heartRate))
       .filter((v) => Number.isFinite(v) && v > 0);
     if (values.length === 0) return [];
-    return tierGradientStops(
-      Math.min(...values),
-      Math.max(...values),
-      thresholds
-    );
-  }, [data, thresholds]);
+    return zoneGradientStops(Math.min(...values), Math.max(...values), bands);
+  }, [data, bands]);
 
   return (
     <ZoomableChart title={t('reports.activityReport.heartRateBpm')}>
@@ -71,36 +61,11 @@ export const ActivityHeartRateChart = ({
             <CardTitle className="text-sm font-semibold">
               {t('reports.activityReport.heartRateBpm', 'Heart Rate (bpm)')}
             </CardTitle>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[0] }}
-                />
-                {t('heartRate.zoneLight', 'Light')}
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[1] }}
-                />
-                {t('heartRate.zoneModerate', 'Moderate')}
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[2] }}
-                />
-                {t('heartRate.zoneVigorous', 'Vigorous')}
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[3] }}
-                />
-                {t('heartRate.zonePeak', 'Peak')}
-              </span>
-            </div>
+            <HeartRateZoneLegend
+              resolved={resolved}
+              displayZones={displayZones}
+              isDefault={isDefault}
+            />
           </CardHeader>
           <CardContent
             className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
@@ -184,7 +149,7 @@ export const ActivityHeartRateChart = ({
                     return String(value);
                   }}
                 />
-                {thresholds.map((bpm) => (
+                {edges.map((bpm) => (
                   <ReferenceLine
                     key={bpm}
                     y={bpm}

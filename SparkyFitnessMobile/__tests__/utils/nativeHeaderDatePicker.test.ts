@@ -45,6 +45,36 @@ describe('nativeHeaderDatePicker', () => {
     expect(onNextDate).toHaveBeenCalledTimes(1);
   });
 
+  it('side bar keeps previous / calendar / next beside a plain day label', () => {
+    const items = createNativeHeaderDatePickerItems({
+      ...options,
+      compactCalendarButton: true,
+    });
+
+    expect(
+      items.map((i) => (i.type === 'custom' ? 'label' : i.identifier))
+    ).toEqual([
+      'label',
+      'date-picker-previous',
+      'date-picker-calendar',
+      'date-picker-next',
+    ]);
+  });
+
+  it('side bar collapses to the calendar icon when asked', () => {
+    const items = createNativeHeaderDatePickerItems({
+      ...options,
+      compactCalendarButton: true,
+      collapseToCalendar: true,
+    });
+
+    expect(
+      items.map((i) => (i.type === 'custom' ? 'label' : i.identifier))
+    ).toEqual(['label', 'date-picker-calendar']);
+    items[1]?.type === 'button' && items[1].onPress();
+    expect(onDatePress).toHaveBeenCalledTimes(1);
+  });
+
   it('writes handlers to screen options instead of route params', () => {
     const setOptions = jest.fn();
 

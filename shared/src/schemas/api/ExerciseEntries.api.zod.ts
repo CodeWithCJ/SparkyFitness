@@ -4,8 +4,15 @@ import { exerciseModalitySchema } from './Exercises.api.zod.ts';
 import { workoutFormatSchema } from './WorkoutPresets.api.zod.ts';
 import { gpsTrackPointSchema } from '../database/ExerciseEntryGpsPoints.zod.ts';
 import { CALORIE_LINK_RESOLUTIONS } from '../../utils/exerciseCalorieLink.ts';
+import { WORKOUT_SESSION_STATUSES } from '../../constants/exercise.ts';
 
 export const calorieLinkResolutionSchema = z.enum(CALORIE_LINK_RESOLUTIONS);
+
+/**
+ * Derived lifecycle status of a grouped workout session (#1995 phase 1).
+ * Computed server-side from set completion data + finished_at, never stored.
+ */
+export const workoutSessionStatusSchema = z.enum(WORKOUT_SESSION_STATUSES);
 
 // --- Query contracts ---
 
@@ -107,6 +114,8 @@ export const exerciseEntrySetResponseSchema = z.object({
   notes: z.string().nullable(),
   rpe: z.number().nullable(),
   completed_at: z.string().nullable(),
+  // Optional: servers before started_at omit it.
+  started_at: z.string().nullable().optional(),
   is_pr: z.boolean(),
   rir: z.number().nullable().optional(),
   // Km. Optional: pre-distance servers omit it.
@@ -162,6 +171,9 @@ export const exerciseEntrySetRequestSchema = z
     rpe: z.number().nullable().optional(),
     rir: z.number().min(RIR_MIN).max(RIR_MAX).nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
+    // When the set was started. Omitted on an update keeps the stored value,
+    // so clients that do not send it yet do not clear it; null clears it.
+    started_at: z.iso.datetime().nullable().optional(),
     is_pr: z.boolean().optional(),
     // Km; only meaningful on duration_distance sets.
     distance: z.number().nullable().optional(),
@@ -247,6 +259,10 @@ export const createPresetSessionRequestSchema = z
       .union([z.string(), z.number()])
       .nullable()
       .optional(),
+    // Stamped when the session is created already finished (web playback
+    // saves once at the end). Live starts omit it; explicit null is stored
+    // as null.
+    finished_at: z.iso.datetime().nullable().optional(),
     activity_details: z.array(activityDetailRequestItemSchema).optional(),
   })
   .strict()
@@ -288,6 +304,14 @@ export const updatePresetSessionRequestSchema = z
     entry_date: dateStringSchema.optional(),
     exercises: z.array(presetSessionExerciseRequestSchema).min(1).optional(),
     activity_details: z.array(activityDetailRequestItemSchema).optional(),
+    // Lifecycle write (#1995 phase 1), piggybacking on the existing save:
+    //   timestamp -> the client ends the session (finish)
+    //   null      -> the client reopens a partial session (resume)
+    //   omitted   -> no lifecycle change (ordinary autosave / metadata edit)
+    finished_at: z.iso.datetime().nullable().optional(),
+    // Optimistic concurrency: the revision the client last saw. A mismatch
+    // is rejected with 409 instead of silently overwriting newer edits.
+    revision: z.number().int().positive().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -298,7 +322,9 @@ export const updatePresetSessionRequestSchema = z
       data.location !== undefined ||
       data.entry_date !== undefined ||
       data.exercises !== undefined ||
-      data.activity_details !== undefined;
+      data.activity_details !== undefined ||
+      data.finished_at !== undefined ||
+      data.revision !== undefined;
 
     if (!hasAnyField) {
       ctx.addIssue({
@@ -606,6 +632,12 @@ export const presetSessionResponseSchema = z.object({
   location: z.string().nullable().optional(),
   source: z.string(),
   created_at: z.string().nullable().optional(),
+  // Derived lifecycle status (#1995 phase 1). Required on preset-session
+  // responses; derived per request from set completion + finished_at.
+  status: workoutSessionStatusSchema,
+  finished_at: z.string().nullable().optional(),
+  // Optimistic-concurrency write counter; bumped on every update.
+  revision: z.number().int().optional(),
   total_duration_minutes: z.number(),
   exercises: z.array(exerciseEntryResponseSchema),
   exercise_snapshot: exerciseSnapshotResponseSchema.nullable().optional(),

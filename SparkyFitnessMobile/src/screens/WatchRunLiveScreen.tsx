@@ -14,6 +14,7 @@ import {
   useWatchRunLiveStore,
   useWatchRunPending,
 } from '../stores/watchRunLiveStore';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { sendRunControl } from '../services/watchRunControl';
 import type { WatchRunControlAction } from '../../modules/watch-connectivity';
 import {
@@ -24,6 +25,9 @@ import {
   paceSecondsPerUnit,
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyFromKcal } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WatchRunLive'>;
 
@@ -46,7 +50,9 @@ const SWITCH_ACTIONS: Record<
 
 const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const run = useWatchRunLive();
   const pending = useWatchRunPending();
@@ -64,7 +70,11 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
       ? t('screens.watchWalkLive', { defaultValue: 'Walk on your watch' })
       : run?.kind === 'run'
         ? t('screens.watchRunLiveRun', { defaultValue: 'Run on your watch' })
-        : t('screens.watchRunLive', { defaultValue: 'On your watch' });
+        : run?.kind === 'jumpRope'
+          ? t('screens.watchRunLiveJumpRope', {
+              defaultValue: 'Jump Rope on your watch',
+            })
+          : t('screens.watchRunLive', { defaultValue: 'On your watch' });
   const header = useScreenHeader({
     title,
     nativeTitle: title,
@@ -150,7 +160,10 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
     );
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -207,9 +220,13 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                     ? t('watchRunLive.walking', {
                         defaultValue: 'Walking on your watch',
                       })
-                    : t('watchRunLive.running', {
-                        defaultValue: 'Running on your watch',
-                      })}
+                    : run.kind === 'jumpRope'
+                      ? t('watchRunLive.jumpingRope', {
+                          defaultValue: 'Jumping rope on your watch',
+                        })
+                      : t('watchRunLive.running', {
+                          defaultValue: 'Running on your watch',
+                        })}
               </Text>
               <Text
                 className="text-text-primary text-5xl font-bold mt-1"
@@ -240,28 +257,30 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             ) : null}
 
-            <View className="flex-row mb-3">
-              <Stat
-                label={t('recordActivity.distance', {
-                  defaultValue: 'Distance',
-                })}
-                value={number(run.distanceMeters / unitMeters)}
-                unit={unitLabel}
-              />
-              <Stat
-                label={t('recordActivity.avgPace', {
-                  defaultValue: 'Avg pace',
-                })}
-                value={formatPace(
-                  paceSecondsPerUnit(
-                    run.distanceMeters,
-                    run.elapsedNow,
-                    unitMeters
-                  )
-                )}
-                unit={paceUnit}
-              />
-            </View>
+            {run.kind !== 'jumpRope' ? (
+              <View className="flex-row mb-3">
+                <Stat
+                  label={t('recordActivity.distance', {
+                    defaultValue: 'Distance',
+                  })}
+                  value={number(run.distanceMeters / unitMeters)}
+                  unit={unitLabel}
+                />
+                <Stat
+                  label={t('recordActivity.avgPace', {
+                    defaultValue: 'Avg pace',
+                  })}
+                  value={formatPace(
+                    paceSecondsPerUnit(
+                      run.distanceMeters,
+                      run.elapsedNow,
+                      unitMeters
+                    )
+                  )}
+                  unit={paceUnit}
+                />
+              </View>
+            ) : null}
             <View className="flex-row mb-3">
               {run.heartRate != null ? (
                 <Stat
@@ -273,11 +292,15 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                 />
               ) : null}
               <Stat
-                label={t('watchRunLive.calories', { defaultValue: 'Calories' })}
-                value={number(run.energyKcal, 0)}
-                unit={t('watchRunLive.kcal', { defaultValue: 'kcal' })}
+                label={
+                  energyUnit === 'kJ'
+                    ? t('common.energy', { defaultValue: 'Energy' })
+                    : t('watchRunLive.calories', { defaultValue: 'Calories' })
+                }
+                value={number(energyFromKcal(run.energyKcal, energyUnit), 0)}
+                unit={energyUnitLabel(energyUnit, t)}
               />
-              {run.lapCount > 0 ? (
+              {run.lapCount > 0 && run.kind !== 'jumpRope' ? (
                 <Stat
                   label={t('recordActivity.laps', { defaultValue: 'Laps' })}
                   value={number(run.lapCount, 0)}
@@ -297,13 +320,15 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                   ? t('activeWorkout.bar.resume', { defaultValue: 'Resume' })
                   : t('activeWorkout.bar.pause', { defaultValue: 'Pause' })}
               </Button>
-              <Button
-                className="flex-1"
-                variant="outline"
-                onPress={() => control('lap')}
-              >
-                {t('recordActivity.lap', { defaultValue: 'Lap' })}
-              </Button>
+              {run.kind !== 'jumpRope' ? (
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onPress={() => control('lap')}
+                >
+                  {t('recordActivity.lap', { defaultValue: 'Lap' })}
+                </Button>
+              ) : null}
             </View>
             <View className="flex-row gap-3 mt-3 mb-4">
               <Button
@@ -341,8 +366,9 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                 onValueChange={(value) => toggle('voiceCues', value)}
               />
             ) : null}
-            {/* The range is the one chosen at the start, or the last one used. */}
-            {shownPaceAlert != null ? (
+            {/* The range is the one chosen at the start, or the last one used.
+                A jump rope has no distance, so it has no pace to alert on. */}
+            {shownPaceAlert != null && run.kind !== 'jumpRope' ? (
               <RecordingSwitchRow
                 testID="watch-pace-alert-switch"
                 title={t('watchRunLive.paceAlert', {
@@ -364,7 +390,7 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
             <View className="mb-4" />
 
-            {run.place === 'indoor' ? (
+            {run.place === 'indoor' && run.kind !== 'jumpRope' ? (
               <Text className="text-text-muted text-xs text-center">
                 {t('watchRunLive.indoorNote', {
                   defaultValue:
@@ -375,7 +401,7 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
           </>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

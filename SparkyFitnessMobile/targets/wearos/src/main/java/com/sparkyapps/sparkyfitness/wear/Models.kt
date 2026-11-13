@@ -1,21 +1,23 @@
 package com.sparkyapps.sparkyfitness.wear
 
+import androidx.annotation.StringRes
+import com.SparkyApps.SparkyFitnessMobile.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-enum class WatchPage(val key: String, val label: String) {
-  GOALS("goals", "Goals"),
-  WATER("water", "Water"),
-  MEDICATIONS("medications", "Medications"),
-  ENTRY("entry", "Weight"),
-  TREND("trend", "Trend"),
-  WORKOUT("workout", "Workout"),
-  NOW_PLAYING("nowPlaying", "Now Playing"),
-  FASTING("fasting", "Fasting"),
-  STEPS("steps", "Steps");
+enum class WatchPage(val key: String, val label: String, @StringRes val labelRes: Int) {
+  GOALS("goals", "Goals", R.string.page_goals),
+  WATER("water", "Water", R.string.page_water),
+  MEDICATIONS("medications", "Medications", R.string.page_medications),
+  ENTRY("entry", "Weight", R.string.page_weight),
+  TREND("trend", "Trend", R.string.page_trend),
+  WORKOUT("workout", "Workout", R.string.page_workout),
+  NOW_PLAYING("nowPlaying", "Now Playing", R.string.page_now_playing),
+  FASTING("fasting", "Fasting", R.string.page_fasting),
+  STEPS("steps", "Steps", R.string.page_steps);
 
   companion object {
     val defaultOrder = listOf(
@@ -233,6 +235,44 @@ data class StepsSnapshot(
   val isToday: Boolean get() = day == CheckInDate.today()
 }
 
+data class SleepSnapshot(
+  val day: String,
+  val totalSeconds: Int,
+  val timeInBedSeconds: Int,
+  val sleepScore: Int? = null,
+  val bedtime: String = "",
+  val wakeTime: String = "",
+  val deepSeconds: Int? = null,
+  val remSeconds: Int? = null,
+  val lightSeconds: Int? = null,
+  val awakeSeconds: Int? = null,
+  val restingHeartRate: Int? = null,
+  val hrvMs: Int? = null,
+  val spo2: Int? = null,
+  val napCount: Int = 0,
+  val napSeconds: Int = 0
+) {
+  val isToday: Boolean get() = day == CheckInDate.today()
+}
+
+data class ExerciseSessionItem(
+  val name: String,
+  val durationMinutes: Int,
+  val calories: Int
+)
+
+data class ExerciseSummarySnapshot(
+  val day: String,
+  val minutes: Int,
+  val minutesGoal: Int,
+  val calories: Int,
+  val caloriesGoal: Int,
+  val sessionCount: Int,
+  val sessions: List<ExerciseSessionItem> = emptyList()
+) {
+  val isToday: Boolean get() = day == CheckInDate.today()
+}
+
 data class StartableWorkout(
   val presetId: String,
   val name: String
@@ -329,6 +369,8 @@ data class WatchContext(
   val suggestedExercises: List<SuggestedExercise>? = null,
   val workoutServerId: String? = null,
   val distanceUnit: String? = null,
+  /** The phone's energy unit (`kcal` or `kJ`); energy numbers stay kcal. Null reads as kcal. */
+  val energyUnit: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
   val medications: MedicationSnapshot? = null,
@@ -336,6 +378,8 @@ data class WatchContext(
   val fastSynced: Boolean = false,
   val steps: StepsSnapshot? = null,
   val stepGoal: Int? = null,
+  val sleep: SleepSnapshot? = null,
+  val exerciseSummary: ExerciseSummarySnapshot? = null,
   val runVoiceCues: Boolean? = null,
   val runAutoPause: Boolean? = null,
   val runCheckInMinutes: Int? = null,
@@ -580,3 +624,24 @@ data class WatchRunResult(
   val distanceScale: Double = 1.0,
   val estimatedDistanceMeters: Double? = null
 )
+
+/**
+ * How to show an energy number. Everything the phone and Health Services hand
+ * the watch is kcal; [WatchContext.energyUnit] says whether to show it in kJ.
+ * A context from an older phone app has no unit and reads as kcal.
+ */
+data class EnergyDisplay(val isKj: Boolean) {
+  /** A kcal value in this unit. */
+  fun value(kcal: Double): Double = if (isKj) kcal * 4.184 else kcal
+
+  /** A kcal value in this unit, rounded to a whole number. */
+  fun whole(kcal: Double): Int = value(kcal).roundToInt()
+
+  val unit: String get() = if (isKj) "kJ" else "kcal"
+
+  companion object {
+    val KCAL = EnergyDisplay(isKj = false)
+
+    fun of(context: WatchContext?): EnergyDisplay = EnergyDisplay(isKj = context?.energyUnit == "kJ")
+  }
+}

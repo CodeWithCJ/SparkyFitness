@@ -4,6 +4,7 @@ import {
   classifyByKeywords,
   getSystemPrompt,
   hasImageParts,
+  heldBackChatTools,
 } from '../services/chatService.js';
 
 describe('classifyByKeywords', () => {
@@ -42,6 +43,41 @@ describe('classifyByKeywords', () => {
     expect(classifyByKeywords('went swimming today')).toContain('exercise');
     expect(classifyByKeywords('did a bike ride')).toContain('exercise');
     expect(classifyByKeywords('finished a yoga session')).toContain('exercise');
+  });
+
+  it('routes training-review phrasing to exercise', () => {
+    expect(classifyByKeywords('how is my training going?')).toContain(
+      'exercise'
+    );
+    expect(classifyByKeywords('my bench has plateaued')).toContain('exercise');
+    expect(classifyByKeywords('has my squat stalled?')).toContain('exercise');
+  });
+
+  it('adds the training-review guidance only when exercise is active', () => {
+    const withExercise = getSystemPrompt('UTC', '', 'full', ['exercise']);
+    expect(withExercise).toContain('training_review');
+    expect(withExercise).toContain('run_review');
+    expect(getSystemPrompt('UTC', '', 'full', ['food'])).not.toContain(
+      'training_review'
+    );
+    expect(getSystemPrompt('UTC', '', 'core', ['exercise'])).not.toContain(
+      'training_review'
+    );
+  });
+
+  it('adds the calorie-target guidance with the coaching category on the full profile', () => {
+    expect(getSystemPrompt('UTC', '', 'full', ['coaching'])).toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(getSystemPrompt('UTC', '', 'full', ['food'])).not.toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(getSystemPrompt('UTC', '', 'core', ['coaching'])).not.toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(classifyByKeywords('can you recalibrate my targets?')).toContain(
+      'coaching'
+    );
   });
 
   it('matches the new coaching keyword rule', () => {
@@ -286,5 +322,47 @@ describe('buildEscalationPrepareStep', () => {
     });
     // No valid slug requested -> no override.
     expect(result).toEqual({});
+  });
+});
+
+describe('heldBackChatTools', () => {
+  const user = (content: string) => ({ role: 'user', content });
+
+  it('holds back the on-demand tools for plain food logging', () => {
+    expect(
+      heldBackChatTools([
+        user('I eat 2 eggs, 1 spoon olive oil and 50gr bread.'),
+      ])
+    ).toEqual(['sparky_food_assistant_state', 'sparky_get_caffeine_kinetics']);
+  });
+
+  it('keeps a tool once any user message in the chat asks for it', () => {
+    expect(
+      heldBackChatTools([user('plan my meals for the week'), user('ok')])
+    ).not.toContain('sparky_food_assistant_state');
+    expect(
+      heldBackChatTools([user('how much caffeine is left before bedtime?')])
+    ).not.toContain('sparky_get_caffeine_kinetics');
+  });
+
+  it('keeps the task tool for an edit across several diary entries', () => {
+    expect(
+      heldBackChatTools([
+        user("Update yesterday's breakfast and dinner entries"),
+      ])
+    ).not.toContain('sparky_food_assistant_state');
+  });
+
+  it('keeps a tool an earlier step already called', () => {
+    expect(
+      heldBackChatTools([
+        user('yes'),
+        {
+          role: 'assistant',
+          parts: [{ type: 'tool-sparky_get_caffeine_kinetics' }],
+        },
+        user('and tomorrow?'),
+      ])
+    ).toEqual(['sparky_food_assistant_state']);
   });
 });

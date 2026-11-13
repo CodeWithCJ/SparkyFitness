@@ -29,6 +29,13 @@ import {
   FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
+import { queryClient } from '../../hooks/queryClient';
+import {
+  glucoseSamplesQueryKeyRoot,
+  glucoseContextQueryKeyRoot,
+} from '../../hooks/queryKeys';
+import { syncAllDayHeartRate, syncAllDayGlucose } from './heartRateSamplesSync';
+import { getActiveServerConfig, type ServerConfig } from '../storage';
 import {
   alignToLocalDayStart,
   buildForegroundWindows,
@@ -105,6 +112,8 @@ export interface MetricSyncOutcome {
   /** May be non-empty alongside an error (partial reads still sync). */
   data: HealthDataPayload;
   error?: string;
+  /** Set when the read hit its per-metric timeout (status 'rejected'). */
+  timedOut?: boolean;
 }
 
 interface CollectedMetric {
@@ -331,7 +340,13 @@ export const collectHealthData = async (
       result.reason instanceof Error
         ? result.reason.message
         : String(result.reason);
-    return { metric, status: 'rejected' as const, data: [], error: message };
+    return {
+      metric,
+      status: 'rejected' as const,
+      data: [],
+      error: message,
+      ...(result.reason instanceof TimeoutError ? { timedOut: true } : {}),
+    };
   });
 };
 
@@ -383,11 +398,49 @@ export interface ForegroundSyncOptions {
   forceTelemetry?: boolean;
 }
 
+/** The detached all-day heart rate phase of the last foreground sync, if still running. */
+let allDayHeartRateInFlight: Promise<void> | null = null;
+/**
+ * The phase of the latest sync that found one already running. It starts when
+ * that one settles, so a sync is never left without its upload (for example
+ * one for a newly signed-in account while the previous account's phase was
+ * stopping). Only the latest is kept: it covers the same or a newer range.
+ */
+let allDayHeartRateQueued: (() => Promise<void>) | null = null;
+
+const runAllDayHeartRatePhase = (phase: () => Promise<void>): void => {
+  if (allDayHeartRateInFlight) {
+    allDayHeartRateQueued = phase;
+    return;
+  }
+  allDayHeartRateInFlight = (async () => {
+    try {
+      await phase();
+    } finally {
+      const next = allDayHeartRateQueued;
+      allDayHeartRateQueued = null;
+      allDayHeartRateInFlight = null;
+      // Started in the same turn, so allDayHeartRateSettled() never sees a gap.
+      if (next) runAllDayHeartRatePhase(next);
+    }
+  })();
+};
+
+/**
+ * Settles once no all-day heart rate phase is running. The phase is detached
+ * from `runForegroundSync`, so anything that must see its result, or must not
+ * see one left over from an earlier sync (tests), waits on this.
+ */
+export const allDayHeartRateSettled = async (): Promise<void> => {
+  while (allDayHeartRateInFlight) await allDayHeartRateInFlight;
+};
+
 /**
  * The shared foreground sync flow: windows → collect → writeback (isolated) →
- * upload → SyncResult. The caller (useSyncHealthData) owns the sync cursor: it
- * advances lastSyncedTime only when syncErrors is empty; uploadErrors (per-record
- * server rejections) never hold the cursor.
+ * upload → SyncResult, then the all-day heart rate phase in the background.
+ * The caller (useSyncHealthData) owns the sync cursor: it advances
+ * lastSyncedTime only when syncErrors is empty; uploadErrors (per-record server
+ * rejections) never hold the cursor.
  */
 export const runForegroundSync = async (
   provider: HealthReadProvider,
@@ -396,6 +449,12 @@ export const runForegroundSync = async (
   opts: ForegroundSyncOptions
 ): Promise<SyncResult> => {
   const windows = buildForegroundWindows(syncDuration);
+  // The account this sync is for, taken before anything else runs. The
+  // detached all-day heart rate phase uploads only to it, so an account change
+  // during the sync can never send this sync's readings to the next account.
+  const account: ServerConfig | null = await getActiveServerConfig().catch(
+    () => null
+  );
 
   const enabledMetricStates =
     healthMetricStates && typeof healthMetricStates === 'object'
@@ -462,42 +521,121 @@ export const runForegroundSync = async (
     addLog(`${opts.logTag} Writeback phase failed: ${message}`, 'ERROR');
   }
 
-  if (allTransformedData.length > 0) {
-    try {
-      const apiResponse = await api.syncHealthData(allTransformedData);
+  const result = await uploadInbound();
+  // Started after the main upload and not awaited: this best-effort phase
+  // (several window reads, each with its own timeout) must neither delay the
+  // upload nor keep the sync pending past the sync-on-open watchdog.
+  startAllDaySamplesPhase();
+  return result;
 
-      // Commit the telemetry reuse cache only on a fully accepted upload; see
-      // the invariant on markEnrichedSessions. Per-record rejections carry no
-      // usable record identity (RecordSyncError.entry is an opaque echo), so
-      // there is no way to commit just the accepted subset — a partial
-      // rejection leaves the whole run's staging undrained and the next sync
-      // re-collects. Wasteful when an unrelated record is the one rejected,
-      // but the alternative silently strips telemetry from the rejected one.
-      if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
-        await markEnrichedSessions(telemetry.drainCollected());
+  async function uploadInbound(): Promise<SyncResult> {
+    if (allTransformedData.length > 0) {
+      try {
+        const apiResponse = await api.syncHealthData(allTransformedData);
+
+        // Commit the telemetry reuse cache only on a fully accepted upload; see
+        // the invariant on markEnrichedSessions. Per-record rejections carry no
+        // usable record identity (RecordSyncError.entry is an opaque echo), so
+        // there is no way to commit just the accepted subset — a partial
+        // rejection leaves the whole run's staging undrained and the next sync
+        // re-collects. Wasteful when an unrelated record is the one rejected,
+        // but the alternative silently strips telemetry from the rejected one.
+        if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
+          await markEnrichedSessions(telemetry.drainCollected());
+        }
+        return {
+          success: true,
+          apiResponse,
+          syncErrors,
+          uploadErrors: apiResponse?.recordErrors ?? [],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(
+          `${opts.logTag} Error sending data to server: ${message}`,
+          'ERROR'
+        );
+        return { success: false, error: message, syncErrors };
       }
-      return {
-        success: true,
-        apiResponse,
-        syncErrors,
-        uploadErrors: apiResponse?.recordErrors ?? [],
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(
-        `${opts.logTag} Error sending data to server: ${message}`,
-        'ERROR'
-      );
-      return { success: false, error: message, syncErrors };
     }
+
+    // A run that legitimately found no new records still commits what it read.
+    // Still gated: an empty payload is also what a timed-out session read leaves
+    // behind when it was the only metric with data, and those staged keys belong
+    // to sessions the server never saw.
+    if (telemetryUsable) {
+      await markEnrichedSessions(telemetry.drainCollected());
+    }
+    return { success: true, message: opts.emptyMessage, syncErrors };
   }
 
-  // A run that legitimately found no new records still commits what it read.
-  // Still gated: an empty payload is also what a timed-out session read leaves
-  // behind when it was the only metric with data, and those staged keys belong
-  // to sessions the server never saw.
-  if (telemetryUsable) {
-    await markEnrichedSessions(telemetry.drainCollected());
+  function startAllDaySamplesPhase(): void {
+    // Passive heart rate and glucose readings for report timelines. Each
+    // follows its existing metric toggle and is isolated like writeback:
+    // a failure is logged, never added to syncErrors, and re-sent by the next run
+    // since each upload replaces its own window. One run at a time: a sync that
+    // finds the previous phase still going queues its own to start after it.
+    const heartRateEnabled = metricsToSync.some(
+      (metric) => metric.recordType === 'HeartRate'
+    );
+    const glucoseEnabled = metricsToSync.some(
+      (metric) => metric.recordType === 'BloodGlucose'
+    );
+    if (!heartRateEnabled && !glucoseEnabled) {
+      return;
+    }
+    if (!account) return;
+    if (allDayHeartRateInFlight) {
+      addLog(
+        `${opts.logTag} All-day readings queued behind the last sync's upload`,
+        'DEBUG'
+      );
+    }
+    runAllDayHeartRatePhase(async () => {
+      try {
+        const heartRate = heartRateEnabled
+          ? await syncAllDayHeartRate(
+              provider,
+              account,
+              windows.aggregatedStart,
+              windows.end,
+              telemetry,
+              opts.logTag
+            )
+          : { samplesUploaded: 0 };
+        if (glucoseEnabled) {
+          const glucose = await syncAllDayGlucose(
+            provider,
+            account,
+            windows.aggregatedStart,
+            windows.end,
+            telemetry,
+            opts.logTag
+          );
+          if (glucose.samplesUploaded > 0) {
+            // This phase finishes after the main sync's cache refresh. Refresh
+            // again so an already-open chart does not keep an empty first read.
+            void queryClient.invalidateQueries({
+              queryKey: glucoseSamplesQueryKeyRoot,
+            });
+            void queryClient.invalidateQueries({
+              queryKey: glucoseContextQueryKeyRoot,
+            });
+          }
+        }
+        if (heartRate.samplesUploaded > 0) {
+          addLog(
+            `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
+            'INFO'
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(
+          `${opts.logTag} All-day readings phase failed: ${message}`,
+          'ERROR'
+        );
+      }
+    });
   }
-  return { success: true, message: opts.emptyMessage, syncErrors };
 };

@@ -25,6 +25,7 @@ describe('heartRateZoneRepository', () => {
       restingHeartRate: null,
       method: 'percent_max',
       customFloors: null,
+      displayZones: 5,
     });
     expect(release).toHaveBeenCalled();
   });
@@ -37,6 +38,7 @@ describe('heartRateZoneRepository', () => {
           resting_heart_rate: 52,
           hr_zone_method: 'custom',
           hr_zone_custom_floors: [100, 118, 136, 154, 172],
+          hr_zone_display_count: 4,
         },
       ],
     });
@@ -45,6 +47,7 @@ describe('heartRateZoneRepository', () => {
       restingHeartRate: 52,
       method: 'custom',
       customFloors: [100, 118, 136, 154, 172],
+      displayZones: 4,
     });
     expect(getClient).toHaveBeenCalledWith('u1', 'u1');
   });
@@ -79,10 +82,11 @@ describe('heartRateZoneRepository', () => {
       restingHeartRate: null,
       method: 'percent_max',
       customFloors: null,
+      displayZones: 4,
     });
     const [sql, params] = query.mock.calls[0];
     expect(sql).toContain('ON CONFLICT (user_id) DO UPDATE');
-    expect(params).toEqual(['u1', 185, null, 'percent_max', null]);
+    expect(params).toEqual(['u1', 185, null, 'percent_max', null, 4]);
     expect(release).toHaveBeenCalled();
   });
 });

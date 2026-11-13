@@ -20,6 +20,8 @@ import {
 } from '@/hooks/Fasting/useFasting';
 import { toast } from '@/hooks/use-toast';
 import type { UserFastingPreferences } from '@/types/fasting';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface FastingSettingsFormProps {
   preferences: UserFastingPreferences;
@@ -27,6 +29,8 @@ interface FastingSettingsFormProps {
 
 const FastingSettingsForm = ({ preferences }: FastingSettingsFormProps) => {
   const { t } = useTranslation();
+  // The threshold is stored as whole kcal (0 to 500) and shown in the account's unit.
+  const { energyUnit, getEnergyUnitString } = usePreferences();
   const updateMutation = useUpdateFastingPreferencesMutation();
 
   const [autoCalculate, setAutoCalculate] = useState(
@@ -67,7 +71,7 @@ const FastingSettingsForm = ({ preferences }: FastingSettingsFormProps) => {
         default_protocol: defaultProtocol,
         target_fasting_hours: targetFastingHours,
         target_eating_hours: targetEatingHours,
-        calorie_threshold: calorieThreshold,
+        calorie_threshold: Math.min(500, Math.round(calorieThreshold)),
         pre_end_alert_minutes: preEndAlertMinutes,
         eating_window_alert: eatingWindowAlert,
       });
@@ -208,15 +212,23 @@ const FastingSettingsForm = ({ preferences }: FastingSettingsFormProps) => {
         {/* Calorie Threshold */}
         <div className="space-y-2">
           <Label htmlFor="calorie-threshold">
-            {t('fasting.settings.calorieThreshold', 'Calorie Threshold (kcal)')}
+            {t(
+              'fasting.settings.calorieThresholdWithUnit',
+              'Calorie Threshold ({{unit}})',
+              { unit: getEnergyUnitString(energyUnit) }
+            )}
           </Label>
           <Input
             id="calorie-threshold"
             type="number"
             min={0}
-            max={500}
-            value={calorieThreshold}
-            onChange={(e) => setCalorieThreshold(Number(e.target.value))}
+            max={shownEnergyInput(500, energyUnit)}
+            value={shownEnergyInput(calorieThreshold, energyUnit)}
+            onChange={(e) =>
+              setCalorieThreshold(
+                Number(kcalFromEnergyInput(Number(e.target.value), energyUnit))
+              )
+            }
           />
           <p className="text-xs text-muted-foreground">
             {t(

@@ -4,6 +4,7 @@ import {
   getActiveServerConfig,
   ServerConfig,
 } from '../../../src/services/storage';
+import { addLog } from '../../../src/services/LogService';
 import { notifySessionExpired } from '../../../src/services/api/authService';
 import { TimeoutError, fetchWithTimeout } from '../../../src/utils/concurrency';
 
@@ -151,6 +152,63 @@ describe('apiClient', () => {
       apiKey: 'test-api-key-12345',
     };
 
+    test('a caller signal aborts a response whose body stalls', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: () =>
+            new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener('abort', () => {
+                const err = new Error('The operation was aborted');
+                err.name = 'AbortError';
+                reject(err);
+              });
+            }),
+        })
+      );
+      const controller = new AbortController();
+      const request = apiFetch({
+        endpoint: '/api/test',
+        serviceName: 'Test',
+        operation: 'test',
+        signal: controller.signal,
+      });
+      const check = expect(request).rejects.toMatchObject({
+        name: 'AbortError',
+      });
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      controller.abort();
+      await check;
+    });
+
+    test('a given serverConfig is used in place of the active one', async () => {
+      mockGetActiveServerConfig.mockResolvedValue({
+        id: 'other',
+        url: 'https://other.example',
+        apiKey: 'other-key',
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: () => Promise.resolve({}),
+      });
+      await apiFetch({
+        endpoint: '/api/test',
+        serviceName: 'Test',
+        operation: 'test',
+        serverConfig: testConfig,
+      });
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/test');
+      expect(init.headers.Authorization).toBe('Bearer test-api-key-12345');
+      expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
+    });
+
     test('returns parsed JSON on success', async () => {
       const responseData = { id: 1, name: 'Test' };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
@@ -166,6 +224,30 @@ describe('apiClient', () => {
       });
 
       expect(result).toEqual(responseData);
+    });
+
+    test('forwards caller cancellation without treating it as a timeout', async () => {
+      const controller = new AbortController();
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockImplementation((_url: string, options: RequestInit) => {
+        controller.abort();
+        if (options.signal?.aborted) {
+          return Promise.reject(
+            Object.assign(new Error('Cancelled'), { name: 'AbortError' })
+          );
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      await expect(
+        apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+          signal: controller.signal,
+        })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(addLog).not.toHaveBeenCalled();
     });
 
     test('throws error when no server config exists', async () => {
@@ -586,6 +668,43 @@ describe('apiFetch error handling', () => {
     });
     await expect(promise).rejects.toBeInstanceOf(ApiError);
     await expect(promise).rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  describe('logResponseBody', () => {
+    const failWith = (body: string) => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        text: async () => body,
+        headers: new Headers(),
+      }) as never;
+    };
+    const logged = () => JSON.stringify(jest.mocked(addLog).mock.calls);
+
+    test('logs the response body by default', async () => {
+      failWith('glucose 99 mg/dL for Jane');
+      await expect(
+        apiFetch({ endpoint: '/api/x', serviceName: 's', operation: 'get' })
+      ).rejects.toBeInstanceOf(ApiError);
+      expect(logged()).toContain('glucose 99 mg/dL');
+    });
+
+    test('keeps the body out of the log but on the ApiError when off', async () => {
+      failWith('glucose 99 mg/dL for Jane');
+      await expect(
+        apiFetch({
+          endpoint: '/api/x',
+          serviceName: 's',
+          operation: 'get',
+          logResponseBody: false,
+        })
+      ).rejects.toMatchObject({
+        statusCode: 422,
+        body: 'glucose 99 mg/dL for Jane',
+      });
+      expect(logged()).not.toContain('glucose');
+      expect(logged()).toContain('422');
+    });
   });
 
   // Regression (#1353): the native HTTP cache (iOS CFNetwork / Android OkHttp)

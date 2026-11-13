@@ -24,8 +24,10 @@ export const runProgramStepSchema = z.object({
   pace: runProgramPaceSchema.optional(),
   /** A heart-rate range to hold in this step; only the person's own programs set one. */
   heartRate: runProgramHeartRateSchema.optional(),
-  /** What the stretch is for (an easy run, a stride, a tempo or marathon-pace effort, a hill repeat); picks its pace range. */
-  effort: z.enum(['easy', 'stride', 'tempo', 'marathon', 'hill']).optional(),
+  /** What the stretch is for (an easy run, a stride, a tempo or marathon-pace effort, a hill repeat, a steady Zone 2 run); picks its pace range. */
+  effort: z
+    .enum(['easy', 'stride', 'tempo', 'marathon', 'hill', 'zone2'])
+    .optional(),
 });
 
 export const runProgramPlanSchema = z.object({
@@ -124,6 +126,13 @@ export const CUSTOM_PROGRAM_PREFIX = 'custom:';
 /** Most workouts in a person's own program: every one needs a week (0 to 51) and day (0 to 6). */
 export const MAX_CUSTOM_PROGRAM_WORKOUTS = 52 * 7;
 
+/**
+ * A program id on a request: a built-in program's id, or `custom:<uuid>`
+ * (43 characters) for one of the person's own. Every endpoint that takes one
+ * uses this, so the limit cannot drift between them.
+ */
+export const runProgramIdSchema = z.string().min(1).max(50);
+
 export const isCustomProgramId = (programId: string): boolean =>
   programId.startsWith(CUSTOM_PROGRAM_PREFIX);
 
@@ -182,7 +191,7 @@ export type GetRunProgramResponse = z.infer<typeof getRunProgramResponseSchema>;
 export const upsertRunProgramBodySchema = z
   .object({
     /** A built-in program's id, or `custom:<id>` for one of the person's own. */
-    program_id: z.string().min(1).max(50),
+    program_id: runProgramIdSchema,
     enabled: z.boolean().optional(),
     next_index: z.number().int().min(0).max(1000).optional(),
     run_days: z.array(weekday).max(7).optional(),
@@ -204,7 +213,7 @@ export type UpsertRunProgramBody = z.infer<typeof upsertRunProgramBodySchema>;
 export const completeRunProgramWorkoutBodySchema = z.object({
   index: z.number().int().min(0).max(1000),
   /** The program the workout belonged to; ignored if the person has switched since. */
-  program_id: z.string().min(1).max(40).optional(),
+  program_id: runProgramIdSchema.optional(),
   /** The person's local day, recorded as the last day a workout was done. */
   day: runDayStringSchema.optional(),
   /** The diary exercise entry the workout was done as, so it can be shown as part of the program. */
@@ -219,7 +228,7 @@ export const rateRunProgramWorkoutBodySchema = z.object({
   index: z.number().int().min(0).max(1000),
   rating: z.number().int().min(1).max(10),
   /** The program the workout belonged to; ignored if the person has switched since. */
-  program_id: z.string().min(1).max(40).optional(),
+  program_id: runProgramIdSchema.optional(),
 });
 export type RateRunProgramWorkoutBody = z.infer<
   typeof rateRunProgramWorkoutBodySchema

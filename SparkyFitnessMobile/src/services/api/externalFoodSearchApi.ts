@@ -3,6 +3,8 @@ import { AI_TIMEOUT_MS } from '../../utils/concurrency';
 import type {
   FoodPhotoEstimateErrorCode,
   FoodPhotoEstimateResponse,
+  BarcodeLookupResponse,
+  NormalizedFood,
 } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
@@ -484,25 +486,6 @@ interface NormalizedFoodVariant {
   traces?: string[] | null;
 }
 
-interface NormalizedFood {
-  id?: string;
-  name: string;
-  brand: string | null;
-  barcode?: string;
-  provider_external_id?: string;
-  provider_type?: string;
-  is_custom: boolean;
-  provider_verified?: boolean;
-  // Provider photo. The server's NormalizedFoodSchema declares these, so they
-  // arrive on the wire; they only reach the UI if this interface declares them
-  // AND transformNormalizedFood copies them across.
-  image_url?: string | null;
-  image_source_url?: string | null;
-  images?: string[];
-  default_variant: NormalizedFoodVariant;
-  variants?: NormalizedFoodVariant[];
-}
-
 export interface BarcodeFood {
   id?: string;
   name: string;
@@ -523,10 +506,12 @@ export interface BarcodeFood {
   variants?: NormalizedFoodVariant[];
 }
 
-export type BarcodeLookupResult =
+export type BarcodeLookupResult = (
   | { source: 'local'; food: BarcodeFood & { id: string } }
   | { source: string; food: BarcodeFood }
-  | { source: 'not_found'; food: null };
+  | { source: 'not_found'; food: null }
+) &
+  Pick<BarcodeLookupResponse, 'providerId' | 'providerName'>;
 
 export function _transformNormalizedFood(
   food: NormalizedFood,
@@ -578,6 +563,8 @@ export function _transformNormalizedFood(
     barcode: food.barcode,
     provider_type: food.provider_type ?? providerType,
     provider_external_id: food.provider_external_id,
+    recipe_has_nutrition: food.recipe_has_nutrition,
+    recipe_servings: food.recipe_servings,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
     allergens: displayVariant.allergens,
@@ -601,6 +588,24 @@ interface V2SearchResponse {
   pagination: ExternalFoodSearchPagination;
 }
 
+export async function searchNormalizedExternalFoods(
+  providerType: string,
+  query: string,
+  page: number,
+  providerId?: string,
+  autoScale?: boolean
+): Promise<V2SearchResponse> {
+  const params = new URLSearchParams({ query, page: String(page) });
+  if (providerId) params.set('providerId', providerId);
+  if (autoScale !== undefined) params.set('autoScale', String(autoScale));
+
+  return apiFetch<V2SearchResponse>({
+    endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,
+    serviceName: 'External Food Search',
+    operation: `search ${providerType} (v2)`,
+  });
+}
+
 export async function searchExternalFoods(
   providerType: string,
   query: string,
@@ -608,16 +613,13 @@ export async function searchExternalFoods(
   providerId?: string,
   autoScale?: boolean
 ): Promise<PaginatedExternalFoodSearchResult> {
-  const params = new URLSearchParams({ query, page: String(page) });
-  if (providerId) params.set('providerId', providerId);
-  if (autoScale !== undefined) params.set('autoScale', String(autoScale));
-
-  const response = await apiFetch<V2SearchResponse>({
-    endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,
-    serviceName: 'External Food Search',
-    operation: `search ${providerType} (v2)`,
-  });
-
+  const response = await searchNormalizedExternalFoods(
+    providerType,
+    query,
+    page,
+    providerId,
+    autoScale
+  );
   return {
     items: response.foods.map((f) => _transformNormalizedFood(f, providerType)),
     pagination: response.pagination,
@@ -650,19 +652,23 @@ interface V2BarcodeResponse {
 
 export async function lookupBarcodeV2(
   barcode: string,
-  providerId?: string
+  providerId?: string,
+  signal?: AbortSignal
 ): Promise<BarcodeLookupResult> {
   const params = new URLSearchParams();
   if (providerId) params.set('providerId', providerId);
   const qs = params.toString();
-  const response = await apiFetch<V2BarcodeResponse>({
+  const response = await apiFetch<
+    V2BarcodeResponse & Omit<BarcodeLookupResponse, 'food' | 'source'>
+  >({
     endpoint: `/api/v2/foods/barcode/${barcode}${qs ? `?${qs}` : ''}`,
     serviceName: 'External Food Search',
     operation: 'barcode lookup (v2)',
+    signal,
   });
 
   if (!response.food) {
-    return { source: 'not_found', food: null };
+    return { ...response, source: 'not_found', food: null };
   }
 
   const food = response.food;
@@ -690,11 +696,12 @@ export async function lookupBarcodeV2(
 
   if (response.source === 'local') {
     return {
+      ...response,
       source: 'local',
       food: barcodeFood as BarcodeFood & { id: string },
     };
   }
-  return { source: response.source, food: barcodeFood };
+  return { ...response, source: response.source, food: barcodeFood };
 }
 
 // --- Nutrition Label Scanning ---

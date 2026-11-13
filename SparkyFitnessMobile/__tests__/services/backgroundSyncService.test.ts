@@ -30,6 +30,7 @@ jest.mock('../../src/services/api/dailySummaryApi', () => ({
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   ensureTimezoneBootstrapped: jest.fn(),
+  fetchPreferences: jest.fn(() => Promise.resolve({ energy_unit: 'kcal' })),
 }));
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({
@@ -414,6 +415,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       ) as Record<string, number | string>;
       expect(caloriePayload).toMatchObject({
         date: '2024-01-15',
+        food: 350,
+        burned: 100,
         remaining: 1850,
         goal: 2100,
         progress: 0.16,

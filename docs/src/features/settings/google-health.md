@@ -76,6 +76,7 @@ SparkyFitness pulls the following data from Google Health:
 - **Health metrics**: Resting heart rate, Heart rate variability (HRV), Blood oxygen (SpO2), Respiratory rate, Skin temperature variation, Body fat percentage, VO2 Max, Daily calories, Weight
 - **Sleep**: Sleep sessions with stage breakdown (light, deep, REM, awake). Overnight HRV and resting heart rate also appear on each night's sleep entry.
 - **Exercise**: Workouts logged in Google Health, including duration and calories
+- **Heart rate on workouts logged in SparkyFitness**: a workout you log in SparkyFitness (the live workout tracker, the web workout player, or by hand with a start time) gets its average and max heart rate, time in each heart rate zone and a heart rate graph from the readings your tracker took during it, the same as a paired Apple Watch gives. Nothing needs to be started on the tracker. It is filled in by the first sync after the tracker has uploaded readings past the end of the workout, so usually within the hour, and only for workouts that have no heart rate yet. Calories are not changed; to count a session your tracker also recorded only once, link the two entries. A cardio exercise added inside a live workout on mobile has no start time yet, so it is skipped.
 
 ---
 

@@ -6,6 +6,7 @@ import preferenceService from '../services/preferenceService.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodService from '../services/foodService.js';
 import { log } from '../config/logging.js';
+import { trackBackgroundWork } from '../utils/shutdownHooks.js';
 import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
@@ -22,8 +23,7 @@ import {
   searchUsdaFoodsByBarcode,
 } from '../integrations/usda/usdaService.js';
 import {
-  importCnfFromZipBuffer,
-  importCnfFromUrl,
+  startCnfImport,
   getCnfImportStatus,
   deleteCnfLibraryFoods,
 } from '../services/cnfBulkImportService.js';
@@ -555,6 +555,7 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
   }
   try {
     const data = await searchNutritionixFoods(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -598,6 +599,7 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixNutrients(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -639,6 +641,7 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixBrandedNutrients(
+      req.authenticatedUserId,
       String(nix_item_id),
       String(providerId)
     );
@@ -690,7 +693,7 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
       ? // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
         Math.max(1, parseInt(req.query.page, 10) || 1)
       : undefined;
-  if (!query) {
+  if (typeof query !== 'string' || !query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
   try {
@@ -1096,6 +1099,8 @@ router.get('/usda/details', authenticate, async (req, res, next) => {
  *         description: Import completed successfully (when wait=true)
  *       202:
  *         description: Import started in background
+ *       409:
+ *         description: An import is already running for this user
  */
 const OFFICIAL_CNF_ARCHIVE_URL =
   'https://open.canada.ca/data/dataset/1b6139bd-ed7e-4043-bc28-ff00e10f3109/resource/019f2a90-e3a9-489d-b6e1-f74f4ba1d006/download/cnf_fcen_all-files-data_2026.zip';
@@ -1154,58 +1159,34 @@ router.post(
       const uploadedFile = (req as unknown as { file?: { buffer: Buffer } })
         .file;
 
-      if (uploadedFile?.buffer) {
-        const importPromise = importCnfFromZipBuffer(
-          userId,
-          uploadedFile.buffer,
-          { syncPastEntries, language, maxFoods }
-        );
-
-        if (runWait) {
-          const result = await importPromise;
-          return res.json({
-            message: 'Bulk import completed successfully',
-            ...result,
-          });
-        }
-
-        importPromise.catch((err) => {
-          log('error', `Background CNF import failed for user ${userId}:`, err);
-        });
-
-        return res.status(202).json({
-          message: 'Bulk import started',
-          status: getCnfImportStatus(userId),
+      const started = await startCnfImport(
+        userId,
+        uploadedFile?.buffer
+          ? { zip: uploadedFile.buffer }
+          : { url: archiveUrl || OFFICIAL_CNF_ARCHIVE_URL },
+        { syncPastEntries, language, maxFoods }
+      );
+      if (!started) {
+        return res.status(409).json({
+          error: 'A Canadian Nutrient File import is already running.',
         });
       }
 
-      const targetUrl = archiveUrl || OFFICIAL_CNF_ARCHIVE_URL;
-
-      const importPromise = importCnfFromUrl(userId, targetUrl, {
-        syncPastEntries,
-        language,
-        maxFoods,
-      });
-
       if (runWait) {
-        const result = await importPromise;
+        const result = await started.done;
         return res.json({
           message: 'Bulk import completed successfully',
           ...result,
         });
       }
 
-      importPromise.catch((err) => {
-        log(
-          'error',
-          `Background CNF import from URL failed for user ${userId}:`,
-          err
-        );
+      trackBackgroundWork(started.done).catch((err) => {
+        log('error', `Background CNF import failed for user ${userId}:`, err);
       });
 
       return res.status(202).json({
         message: 'Bulk import started',
-        status: getCnfImportStatus(userId),
+        status: await getCnfImportStatus(userId),
       });
     } catch (error) {
       next(error);
@@ -1229,8 +1210,8 @@ router.get(
   '/canadian-nutrient-file/status',
   authenticate,
   isAdmin,
-  (req, res) => {
-    res.json(getCnfImportStatus(req.userId));
+  async (req, res) => {
+    res.json(await getCnfImportStatus(req.userId));
   }
 );
 
@@ -1307,18 +1288,17 @@ router.post(
         });
       }
 
-      const currentStatus = getLivsmedelsverketImportStatus(req.userId);
-      if (currentStatus.isRunning) {
+      if (
+        !(await startLivsmedelsverketBulkImport(req.userId, parseResult.data))
+      ) {
         return res.status(409).json({
           error: 'A Livsmedelsverket import is already running for this user.',
         });
       }
 
-      await startLivsmedelsverketBulkImport(req.userId, parseResult.data);
-
       res.status(202).json({
         message: 'Livsmedelsverket bulk import started.',
-        status: getLivsmedelsverketImportStatus(req.userId),
+        status: await getLivsmedelsverketImportStatus(req.userId),
       });
     } catch (error) {
       next(error);
@@ -1338,9 +1318,14 @@ router.post(
  *       200:
  *         description: Current bulk import status
  */
-router.get('/livsmedelsverket/status', authenticate, isAdmin, (req, res) => {
-  res.json(getLivsmedelsverketImportStatus(req.userId));
-});
+router.get(
+  '/livsmedelsverket/status',
+  authenticate,
+  isAdmin,
+  async (req, res) => {
+    res.json(await getLivsmedelsverketImportStatus(req.userId));
+  }
+);
 
 /**
  * @swagger

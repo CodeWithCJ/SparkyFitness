@@ -21,6 +21,9 @@ import { addLog } from '../services/LogService';
 import { FASTING_PRESETS } from '../constants/fasting';
 import type { FastingPreferences } from '../types/fasting';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import EnergyFormInput from '../components/EnergyFormInput';
 
 type Props = RootStackScreenProps<'FastingSettings'>;
 
@@ -47,8 +50,14 @@ interface FormProps {
   preferences: FastingPreferences;
 }
 
+/** The server stores the threshold as whole kcal from 0 to this. */
+const MAX_CALORIE_THRESHOLD_KCAL = 500;
+
 const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
+  const energyLabel = energyUnitLabel(energyUnit, t);
+  const maxThreshold = roundedEnergy(MAX_CALORIE_THRESHOLD_KCAL, energyUnit);
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const updateMutation = useUpdateFastingPreferences();
@@ -71,6 +80,7 @@ const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
   const [eatingHours, setEatingHours] = useState(
     String(preferences.target_eating_hours ?? 8)
   );
+  // Kept in kcal, like the server; the field shows the account's unit.
   const [calorieThreshold, setCalorieThreshold] = useState(
     String(preferences.calorie_threshold ?? 50)
   );
@@ -122,11 +132,12 @@ const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
     fasting:
       parsed.fasting == null || parsed.fasting < 0.5 || parsed.fasting > 168,
     eating: parsed.eating == null || parsed.eating < 0 || parsed.eating > 24,
+    // A kJ entry lands between whole kcal, so it is rounded rather than refused.
     calories:
       parsed.calories == null ||
-      !Number.isInteger(parsed.calories) ||
+      (energyUnit === 'kcal' && !Number.isInteger(parsed.calories)) ||
       parsed.calories < 0 ||
-      parsed.calories > 500,
+      Math.round(parsed.calories) > MAX_CALORIE_THRESHOLD_KCAL,
     preEnd:
       parsed.preEnd == null ||
       !Number.isInteger(parsed.preEnd) ||
@@ -147,7 +158,10 @@ const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
         target_fasting_hours:
           parsed.fasting ?? preferences.target_fasting_hours,
         target_eating_hours: parsed.eating ?? preferences.target_eating_hours,
-        calorie_threshold: parsed.calories ?? preferences.calorie_threshold,
+        calorie_threshold:
+          parsed.calories == null
+            ? preferences.calorie_threshold
+            : Math.round(parsed.calories),
         pre_end_alert_minutes:
           parsed.preEnd ?? preferences.pre_end_alert_minutes,
         eating_window_alert: eatingWindowAlert,
@@ -282,28 +296,31 @@ const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
 
       <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
         <FieldLabel
-          title={t('fastingSettings.calorieThreshold', {
-            defaultValue: 'Calorie threshold (kcal)',
+          title={t('fastingSettings.calorieThresholdWithUnit', {
+            defaultValue: 'Calorie threshold ({{unit}})',
+            unit: energyLabel,
           })}
           hint={t('fastingSettings.calorieThresholdHint', {
             defaultValue:
               'Snacks or drinks below this value (black coffee, water, electrolytes) will not break your fast.',
           })}
         />
-        <FormInput
-          value={calorieThreshold}
-          onChangeText={setCalorieThreshold}
+        <EnergyFormInput
+          kcalValue={calorieThreshold}
+          onChangeKcal={setCalorieThreshold}
           keyboardType="number-pad"
-          maxLength={3}
+          maxLength={String(maxThreshold).length}
           returnKeyType="done"
-          accessibilityLabel={t('fastingSettings.calorieThreshold', {
-            defaultValue: 'Calorie threshold (kcal)',
+          accessibilityLabel={t('fastingSettings.calorieThresholdWithUnit', {
+            defaultValue: 'Calorie threshold ({{unit}})',
+            unit: energyLabel,
           })}
         />
         {errors.calories &&
           errorText(
-            t('fastingSettings.calorieThresholdRange', {
-              defaultValue: 'Enter a whole number from 0 to 500.',
+            t('fastingSettings.calorieThresholdRangeWithUnit', {
+              defaultValue: 'Enter a whole number from 0 to {{max}}.',
+              max: maxThreshold,
             })
           )}
 

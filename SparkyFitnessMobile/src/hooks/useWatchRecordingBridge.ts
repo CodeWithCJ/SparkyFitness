@@ -134,7 +134,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           : intervalStepName(
               translate,
               position.step.kind,
-              session.intervals.plan.style
+              session.intervals.plan.style,
+              position.step.effort
             );
         // The watch counts time down on its own between updates; a distance
         // step has nothing to count, so its metres left ride in the label
@@ -148,7 +149,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           state.intervalNext = `${intervalStepName(
             translate,
             position.next.kind,
-            session.intervals.plan.style
+            session.intervals.plan.style,
+            position.next.effort
           )} ${stepLengthText(translate, position.next)}`;
         }
       }

@@ -1,51 +1,82 @@
 {{- /*
-With server.replicas above 1, one of those replicas runs as a separate
-"-jobs" Deployment that runs the scheduled jobs, and the rest set
-SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS so each job runs once. Both render from
-this template, and both carry the sparkyfitness.io/server label that the
+Every server replica runs the same pod; the replicas share scheduled jobs
+through the database. Pods carry the sparkyfitness.io/server label that the
 Service and NetworkPolicies select on.
+
+Several pods can only share a volume that attaches on more than one node, so
+replicas above 1 require ReadWriteMany backup and uploads volumes, unless
+server.persistence.allowSingleNodeVolumes declares that every pod runs on one
+node. A single replica on a ReadWriteOnce volume keeps Recreate, because a
+surge pod on another node could never attach it.
 */}}
 {{- $replicas := int .Values.server.replicas }}
-{{- $splitJobs := gt $replicas 1 }}
-{{- $roles := list "server" }}
-{{- if $splitJobs }}{{- $roles = append $roles "jobs" }}{{- end }}
-{{- range $role := $roles }}
-{{- with $ }}
----
+{{- $shutdownTimeout := ternary "" (toString .Values.server.shutdownTimeoutSeconds) (kindIs "invalid" .Values.server.shutdownTimeoutSeconds) }}
+{{- if and $shutdownTimeout (or (not (regexMatch "^[1-9][0-9]{0,3}$" $shutdownTimeout)) (gt (atoi $shutdownTimeout) 3600)) }}
+{{- fail "server.shutdownTimeoutSeconds must be a whole number of seconds from 1 to 3600" }}
+{{- end }}
+{{- $singleNodeVolumes := list }}
+{{- range $volume := list "backup" "uploads" }}
+{{- if include "sparkyfitness.serverVolumeSingleNode" (dict "root" $ "volume" $volume) }}
+{{- $singleNodeVolumes = append $singleNodeVolumes $volume }}
+{{- end }}
+{{- end }}
+{{- /* ReadWriteOncePod never admits a second pod, even on the same node. */}}
+{{- $refusedVolumes := list }}
+{{- range $volume := $singleNodeVolumes }}
+{{- if or (not $.Values.server.persistence.allowSingleNodeVolumes) (eq (index $.Values.server.persistence $volume).accessMode "ReadWriteOncePod") }}
+{{- $refusedVolumes = append $refusedVolumes $volume }}
+{{- end }}
+{{- end }}
+{{- if and (gt $replicas 1) $refusedVolumes }}
+{{- fail (printf "server.replicas=%d needs volumes that every replica can mount, but these are not ReadWriteMany: server.persistence.%s.accessMode. Set accessMode: ReadWriteMany with a StorageClass that supports it, or set existingClaim to a ReadWriteMany claim and accessMode: ReadWriteMany to declare it. On a single-node cluster, server.persistence.allowSingleNodeVolumes: true accepts ReadWriteOnce volumes." $replicas (join ".accessMode, server.persistence." $refusedVolumes)) }}
+{{- end }}
+{{- $strategy := .Values.server.strategy }}
+{{- if not $strategy }}
+{{- if or (gt $replicas 1) (not $singleNodeVolumes) }}
+{{- $strategy = dict "type" "RollingUpdate" "rollingUpdate" (dict "maxSurge" 1 "maxUnavailable" 0) }}
+{{- else }}
+{{- $strategy = dict "type" "Recreate" }}
+{{- end }}
+{{- end }}
+{{- $rolling := or (gt $replicas 1) (ne ($strategy.type | default "RollingUpdate") "Recreate") }}
+{{- $serverSelector := printf "%s\nsparkyfitness.io/server: \"true\"" (include "sparkyfitness.selectorLabels" .) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "sparkyfitness.fullname" . }}-{{ $role }}
+  name: {{ include "sparkyfitness.fullname" . }}-server
   labels:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/component: server
 spec:
-  {{- if eq $role "jobs" }}
-  replicas: 1
+  replicas: {{ $replicas }}
   strategy:
-    type: Recreate
-  {{- else }}
-  replicas: {{ ternary (sub $replicas 1) $replicas $splitJobs }}
-  strategy:
-    {{- toYaml .Values.server.strategy | nindent 4 }}
+    {{- toYaml $strategy | nindent 4 }}
+  {{- with include "sparkyfitness.minReadySeconds" (dict "values" .Values.server "rolling" $rolling) }}
+  minReadySeconds: {{ . }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: {{ $role }}
+      app.kubernetes.io/component: server
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/server/configmap.yaml") . | sha256sum }}
       labels:
         {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: {{ $role }}
+        app.kubernetes.io/component: server
         sparkyfitness.io/server: "true"
     spec:
       {{- if and .Values.global.serviceAccount.create .Values.server.serviceAccount.create }}
       serviceAccountName: {{ include "sparkyfitness.fullname" . }}-server
       {{- end }}
       {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- /* The preStop sleep runs inside the grace period, before the server's own shutdown timeout (default 15) starts. */}}
+      {{- $grace := add (ternary (atoi $shutdownTimeout) 15 (ne $shutdownTimeout "")) (include "sparkyfitness.preStopDelay" (dict "values" .Values.server "rolling" $rolling) | int) 5 }}
+      {{- if or $shutdownTimeout (gt (int $grace) 30) }}
+      # Kubernetes kills the pod after this; the server stops itself within its timeout.
+      terminationGracePeriodSeconds: {{ $grace }}
+      {{- end }}
       {{- with .Values.server.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -86,6 +117,10 @@ spec:
             - name: http
               containerPort: {{ .Values.server.port }}
               protocol: TCP
+          {{- with .Values.server.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.server.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -168,9 +203,9 @@ spec:
                   name: {{ include "sparkyfitness.smtpSecretName" . }}
                   key: {{ .Values.config.email.secrets.existingSecretKeys.password | default "password" }}
             {{- end }}
-            {{- if and $splitJobs (eq $role "server") }}
-            - name: SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS
-              value: "true"
+            {{- if $shutdownTimeout }}
+            - name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS
+              value: {{ $shutdownTimeout | quote }}
             {{- end }}
             {{- if kindIs "slice" .Values.server.extraEnv }}
             {{- toYaml .Values.server.extraEnv | nindent 12 }}
@@ -184,6 +219,10 @@ spec:
               {{- end }}
             {{- end }}
             {{- end }}
+          {{- with include "sparkyfitness.lifecycle" (dict "values" .Values.server "rolling" $rolling) }}
+          lifecycle:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- with .Values.server.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -207,10 +246,10 @@ spec:
       volumes:
         - name: backup
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-backup
+            claimName: {{ .Values.server.persistence.backup.existingClaim | default (printf "%s-server-backup" (include "sparkyfitness.fullname" .)) | quote }}
         - name: uploads
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
+            claimName: {{ .Values.server.persistence.uploads.existingClaim | default (printf "%s-server-uploads" (include "sparkyfitness.fullname" .)) | quote }}
         - name: temp-uploads
           emptyDir: {}
         - name: tmp
@@ -230,9 +269,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.server.topologySpreadConstraints }}
+      {{- with include "sparkyfitness.topologySpread" (dict "values" .Values.server "replicas" $replicas "selector" $serverSelector) }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- . | nindent 8 }}
       {{- end }}
-{{- end }}
-{{- end }}

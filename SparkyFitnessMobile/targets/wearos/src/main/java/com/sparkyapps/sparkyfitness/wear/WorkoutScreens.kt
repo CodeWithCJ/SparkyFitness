@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +41,7 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Text
+import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.max
@@ -126,7 +129,7 @@ private fun WorkoutIdlePickerView(
   ) {
     item {
       Text(
-        text = "Workouts",
+        text = stringResource(R.string.workout_title),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Green,
@@ -170,14 +173,14 @@ private fun WorkoutIdlePickerView(
       ) {
         Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = "Cardio (Run / Walk)",
+            text = stringResource(R.string.workout_cardio_title),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = SparkyColors.Cyan,
             maxLines = 1
           )
           Text(
-            text = "Outdoor GPS or Treadmill",
+            text = stringResource(R.string.workout_cardio_subtitle),
             fontSize = 9.sp,
             color = SparkyColors.Muted,
             maxLines = 1
@@ -194,7 +197,7 @@ private fun WorkoutIdlePickerView(
 
     if (scheduled.isEmpty() && startable.isEmpty()) {
       item {
-        EmptyStateCard("Sync workout presets from your phone to start strength workouts here.")
+        EmptyStateCard(stringResource(R.string.workout_empty_state))
       }
     } else {
       items(scheduled, key = { "sched_${it.presetId}" }) { item ->
@@ -300,7 +303,7 @@ private fun CardioChoicesView(
   ) {
     item {
       Text(
-        text = "Start Cardio",
+        text = stringResource(R.string.cardio_start_title),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         color = SparkyColors.Cyan
@@ -310,13 +313,13 @@ private fun CardioChoicesView(
     item {
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         SmallPillButton(
-          label = "Run",
+          label = stringResource(R.string.cardio_kind_run),
           color = if (kind == "run") SparkyColors.Cyan else SparkyColors.CardBg,
           textColor = if (kind == "run") Color.Black else Color.White,
           onClick = { kind = "run" }
         )
         SmallPillButton(
-          label = "Walk",
+          label = stringResource(R.string.cardio_kind_walk),
           color = if (kind == "walk") SparkyColors.Cyan else SparkyColors.CardBg,
           textColor = if (kind == "walk") Color.Black else Color.White,
           onClick = { kind = "walk" }
@@ -327,13 +330,13 @@ private fun CardioChoicesView(
     item {
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         SmallPillButton(
-          label = "Outdoor",
+          label = stringResource(R.string.cardio_place_outdoor),
           color = if (place == "outdoor") SparkyColors.Green else SparkyColors.CardBg,
           textColor = if (place == "outdoor") Color.Black else Color.White,
           onClick = { place = "outdoor" }
         )
         SmallPillButton(
-          label = "Indoor",
+          label = stringResource(R.string.cardio_place_indoor),
           color = if (place == "indoor") SparkyColors.Green else SparkyColors.CardBg,
           textColor = if (place == "indoor") Color.Black else Color.White,
           onClick = { place = "indoor" }
@@ -343,7 +346,7 @@ private fun CardioChoicesView(
 
     if (runPlans.isNotEmpty()) {
       item {
-        val label = selectedPlan?.name ?: "Plan: Free"
+        val label = selectedPlan?.name ?: stringResource(R.string.cardio_plan_free)
         SmallPillButton(
           label = label,
           color = SparkyColors.CardBg,
@@ -359,13 +362,13 @@ private fun CardioChoicesView(
     item {
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         SmallPillButton(
-          label = if (paceAlert) "Pace ✓" else "Pace",
+          label = if (paceAlert) stringResource(R.string.cardio_pace_checked) else stringResource(R.string.cardio_pace),
           color = if (paceAlert) SparkyColors.Amber.copy(alpha = 0.3f) else SparkyColors.CardBg,
           textColor = if (paceAlert) SparkyColors.Amber else SparkyColors.Muted,
           onClick = { paceAlert = !paceAlert }
         )
         SmallPillButton(
-          label = if (hrAlert) "HR ✓" else "HR",
+          label = if (hrAlert) stringResource(R.string.cardio_hr_checked) else stringResource(R.string.cardio_hr),
           color = if (hrAlert) SparkyColors.Rose.copy(alpha = 0.3f) else SparkyColors.CardBg,
           textColor = if (hrAlert) SparkyColors.Rose else SparkyColors.Muted,
           onClick = { hrAlert = !hrAlert }
@@ -375,8 +378,8 @@ private fun CardioChoicesView(
 
     item {
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton("Back", SparkyColors.CardBg, SparkyColors.Muted, onCancel)
-        SmallPillButton("Start ▶", SparkyColors.Green, Color.Black) {
+        SmallPillButton(stringResource(R.string.cardio_back), SparkyColors.CardBg, SparkyColors.Muted, onCancel)
+        SmallPillButton(stringResource(R.string.cardio_start_btn), SparkyColors.Green, Color.Black) {
           onStart(kind, place, selectedPlan, paceAlert, hrAlert)
         }
       }
@@ -414,21 +417,29 @@ private fun ActiveWorkoutView(
 
   if (phase == WorkoutSessionStore.Phase.ASKING_PRESET_UPDATE) {
     PresetUpdatePromptView(
-      workoutName = plan?.workoutName ?: "Preset",
+      workoutName = plan?.workoutName ?: stringResource(R.string.workout_preset_fallback),
       onAnswer = { update -> workoutStore.answerPresetUpdate(update) }
     )
     return
   }
 
   if (phase == WorkoutSessionStore.Phase.COMPLETED && summary != null) {
-    WorkoutSummaryView(summary = summary!!, onDone = { workoutStore.dismissSummary() })
+    WorkoutSummaryView(
+      summary = summary!!,
+      onDone = { workoutStore.dismissSummary() },
+      energy = EnergyDisplay.of(watchCtx)
+    )
     return
   }
 
   if (showKeypadFor != null) {
     val mode = showKeypadFor!!
     WatchKeypadSheet(
-      title = if (mode == "reps") "Reps" else "Weight (${workoutStore.weightUnit.suffix})",
+      title = if (mode == "reps") {
+        stringResource(R.string.workout_keypad_reps)
+      } else {
+        stringResource(R.string.weight_keypad_title, workoutStore.weightUnit.suffix)
+      },
       initialValue = if (mode == "reps") draftReps.toDouble() else draftWeight,
       allowDecimal = mode == "weight",
       onConfirm = { v ->
@@ -498,7 +509,8 @@ private fun ActiveWorkoutView(
       elapsedSeconds = elapsedSec,
       heartRate = heartRate,
       calories = calories,
-      onFinish = { workoutStore.finishWorkout(notifyPhone = true) }
+      onFinish = { workoutStore.finishWorkout(notifyPhone = true) },
+      energy = EnergyDisplay.of(watchCtx)
     )
     return
   }
@@ -548,7 +560,11 @@ private fun ActiveWorkoutView(
           color = if (formatTag != null) SparkyColors.Amber else SparkyColors.Muted
         )
         Text(
-          text = if (heartRate != null) "♥ ${heartRate!!.toInt()}" else "Set ${step.setIndexInExercise}/${step.totalSetsInExercise}",
+          text = if (heartRate != null) {
+            "♥ ${heartRate!!.toInt()}"
+          } else {
+            stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise)
+          },
           fontSize = 10.sp,
           color = if (heartRate != null) SparkyColors.Rose else SparkyColors.Green
         )
@@ -570,13 +586,13 @@ private fun ActiveWorkoutView(
         verticalAlignment = Alignment.CenterVertically
       ) {
         Text(
-          text = "Set ${step.setIndexInExercise}/${step.totalSetsInExercise}",
+          text = stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise),
           fontSize = 10.sp,
           color = SparkyColors.Green
         )
         if (step.supersetRun != null) {
           Text(
-            text = "• SS#${step.supersetRun}",
+            text = stringResource(R.string.workout_superset_badge, step.supersetRun),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = SparkyColors.Purple
@@ -584,8 +600,9 @@ private fun ActiveWorkoutView(
         }
         val st = step.setType?.lowercase()
         if (st != null && st != "normal") {
+          val localizedSetType = localizedSetTypeLabel(st)
           Text(
-            text = "• ${st.uppercase()}",
+            text = "• ${localizedSetType.uppercase()}",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = SparkyColors.Amber
@@ -632,7 +649,7 @@ private fun ActiveWorkoutView(
           horizontalAlignment = Alignment.CenterHorizontally
         ) {
           Text("$draftReps", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-          Text("reps", fontSize = 8.sp, color = SparkyColors.Muted)
+          Text(stringResource(R.string.workout_reps_label), fontSize = 8.sp, color = SparkyColors.Muted)
         }
 
         if (!step.bodyweight || step.weighted) {
@@ -671,7 +688,7 @@ private fun ActiveWorkoutView(
             horizontalAlignment = Alignment.CenterHorizontally
           ) {
             Text(distDisplay, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("carry", fontSize = 8.sp, color = SparkyColors.Muted)
+            Text(stringResource(R.string.workout_carry_label), fontSize = 8.sp, color = SparkyColors.Muted)
           }
         }
 
@@ -702,7 +719,11 @@ private fun ActiveWorkoutView(
       )
       if (step.timed) {
         SmallPillButton(
-          label = if (setTimerRunning) "Stop ⏹" else "Timer ▶",
+          label = if (setTimerRunning) {
+            stringResource(R.string.workout_timer_stop)
+          } else {
+            stringResource(R.string.workout_timer_start)
+          },
           color = if (setTimerRunning) SparkyColors.Amber else SparkyColors.Cyan,
           textColor = Color.Black,
           onClick = {
@@ -711,13 +732,21 @@ private fun ActiveWorkoutView(
         )
       }
       SmallPillButton(
-        label = "Done ✓",
+        label = stringResource(R.string.workout_done_check),
         color = SparkyColors.Green,
         textColor = Color.Black,
         onClick = { workoutStore.completeCurrentSet() }
       )
     }
   }
+}
+
+@Composable
+private fun localizedSetTypeLabel(rawType: String): String = when (rawType.lowercase(Locale.US)) {
+  "warmup" -> stringResource(R.string.workout_set_type_warmup)
+  "drop" -> stringResource(R.string.workout_set_type_drop)
+  "failure" -> stringResource(R.string.workout_set_type_failure)
+  else -> stringResource(R.string.workout_set_type_normal)
 }
 
 @Composable
@@ -733,18 +762,18 @@ private fun PresetUpdatePromptView(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    Text("Update Preset?", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
+    Text(stringResource(R.string.workout_preset_update_title), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
     Spacer(Modifier.height(4.dp))
     Text(
-      text = "Save your watch changes to \"$workoutName\"?",
+      text = stringResource(R.string.workout_preset_update_desc, workoutName),
       fontSize = 10.sp,
       color = SparkyColors.Muted,
       textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(10.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      SmallPillButton("Keep Old", SparkyColors.CardBg, Color.White) { onAnswer(false) }
-      SmallPillButton("Update", SparkyColors.Green, Color.Black) { onAnswer(true) }
+      SmallPillButton(stringResource(R.string.workout_preset_keep_old), SparkyColors.CardBg, Color.White) { onAnswer(false) }
+      SmallPillButton(stringResource(R.string.workout_preset_update_btn), SparkyColors.Green, Color.Black) { onAnswer(true) }
     }
   }
 }
@@ -769,7 +798,7 @@ private fun RestTimerView(
       Text(prBanner, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
       Spacer(Modifier.height(2.dp))
     }
-    Text("Rest", fontSize = 12.sp, color = SparkyColors.Cyan, fontWeight = FontWeight.SemiBold)
+    Text(stringResource(R.string.workout_rest_title), fontSize = 12.sp, color = SparkyColors.Cyan, fontWeight = FontWeight.SemiBold)
     Text(
       text = formatDuration(remainingSeconds),
       fontSize = 28.sp,
@@ -782,7 +811,7 @@ private fun RestTimerView(
     if (nextStep != null) {
       Spacer(Modifier.height(2.dp))
       Text(
-        text = "Next: ${nextStep.exerciseName} (Set ${nextStep.setIndexInExercise})",
+        text = stringResource(R.string.workout_rest_next, nextStep.exerciseName, nextStep.setIndexInExercise),
         fontSize = 10.sp,
         color = SparkyColors.Muted,
         maxLines = 1,
@@ -791,8 +820,8 @@ private fun RestTimerView(
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      SmallPillButton("+15s", SparkyColors.CardBg, Color.White, onAdd15)
-      SmallPillButton("Skip", SparkyColors.Cyan, Color.Black, onSkip)
+      SmallPillButton(stringResource(R.string.workout_rest_add_15), SparkyColors.CardBg, Color.White, onAdd15)
+      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.Cyan, Color.Black, onSkip)
     }
   }
 }
@@ -814,7 +843,7 @@ private fun RpePromptView(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    Text("Rate Effort (RPE)", fontSize = 12.sp, color = SparkyColors.Amber)
+    Text(stringResource(R.string.workout_rpe_title), fontSize = 12.sp, color = SparkyColors.Amber)
     Spacer(Modifier.height(6.dp))
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -831,8 +860,8 @@ private fun RpePromptView(
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      SmallPillButton("Skip", SparkyColors.CardBg, SparkyColors.Muted, onSkip)
-      SmallPillButton("Save", SparkyColors.Amber, Color.Black) { onSubmit(rpe) }
+      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.CardBg, SparkyColors.Muted, onSkip)
+      SmallPillButton(stringResource(R.string.common_save), SparkyColors.Amber, Color.Black) { onSubmit(rpe) }
     }
   }
 }
@@ -843,7 +872,8 @@ private fun CardioWorkoutView(
   elapsedSeconds: Int,
   heartRate: Double?,
   calories: Double,
-  onFinish: () -> Unit
+  onFinish: () -> Unit,
+  energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
   Column(
     modifier = Modifier
@@ -863,13 +893,13 @@ private fun CardioWorkoutView(
         color = SparkyColors.Rose
       )
       Text(
-        text = "${calories.toInt()} kcal",
+        text = "${energy.value(calories).toInt()} ${energy.unit}",
         fontSize = 12.sp,
         color = SparkyColors.Amber
       )
     }
     Spacer(Modifier.height(10.dp))
-    SmallPillButton("End Workout", SparkyColors.Rose, Color.White, onFinish)
+    SmallPillButton(stringResource(R.string.workout_end_btn), SparkyColors.Rose, Color.White, onFinish)
   }
 }
 
@@ -901,16 +931,16 @@ private fun WorkoutOptionsSheet(
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
       item {
-        Text("Add Exercise", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
+        Text(stringResource(R.string.workout_add_exercise_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
       }
       item {
-        SmallPillButton("Cancel", SparkyColors.CardBg, SparkyColors.Muted) {
+        SmallPillButton(stringResource(R.string.common_cancel), SparkyColors.CardBg, SparkyColors.Muted) {
           showAddExercisePicker = false
         }
       }
       if (suggestedExercises.isEmpty()) {
         item {
-          EmptyStateCard("No recent exercises synced from phone.")
+          EmptyStateCard(stringResource(R.string.workout_no_recent_exercises))
         }
       } else {
         items(suggestedExercises, key = { it.exerciseId }) { ex ->
@@ -948,7 +978,7 @@ private fun WorkoutOptionsSheet(
   ) {
     item {
       Text(
-        "Workout Options",
+        stringResource(R.string.workout_options_title),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         color = Color.White,
@@ -956,19 +986,20 @@ private fun WorkoutOptionsSheet(
       )
     }
     item {
-      SmallPillButton("Back to Set", SparkyColors.CardBg, Color.White, onClose)
+      SmallPillButton(stringResource(R.string.workout_back_to_set), SparkyColors.CardBg, Color.White, onClose)
     }
 
     if (currentStep != null) {
       item {
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-          SmallPillButton("+ Add Set", SparkyColors.Cyan.copy(alpha = 0.25f), SparkyColors.Cyan) {
+          SmallPillButton(stringResource(R.string.workout_add_set), SparkyColors.Cyan.copy(alpha = 0.25f), SparkyColors.Cyan) {
             onEditAction(WorkoutEditAction.AddSet(currentStep.exerciseEntryId))
           }
           val setTypes = listOf("normal", "warmup", "drop", "failure")
           val curType = currentStep.setType?.lowercase() ?: "normal"
           val nextType = setTypes[(setTypes.indexOf(curType) + 1) % setTypes.size]
-          SmallPillButton("Type: ${curType.replaceFirstChar { it.uppercase() }}", SparkyColors.CardBg, SparkyColors.Amber) {
+          val localizedCurType = localizedSetTypeLabel(curType)
+          SmallPillButton(stringResource(R.string.workout_set_type_label, localizedCurType), SparkyColors.CardBg, SparkyColors.Amber) {
             onEditAction(WorkoutEditAction.SetSetType(currentStep.setId, nextType))
           }
         }
@@ -976,7 +1007,7 @@ private fun WorkoutOptionsSheet(
 
       if (currentStep.totalSetsInExercise > 1) {
         item {
-          SmallPillButton("Delete Set", SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
+          SmallPillButton(stringResource(R.string.workout_delete_set), SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
             onEditAction(WorkoutEditAction.DeleteSet(currentStep.setId))
           }
         }
@@ -985,7 +1016,7 @@ private fun WorkoutOptionsSheet(
 
     if (suggestedExercises.isNotEmpty()) {
       item {
-        SmallPillButton("+ Add Exercise", SparkyColors.CardBg, SparkyColors.Green) {
+        SmallPillButton(stringResource(R.string.workout_add_exercise_btn), SparkyColors.CardBg, SparkyColors.Green) {
           showAddExercisePicker = true
         }
       }
@@ -993,20 +1024,20 @@ private fun WorkoutOptionsSheet(
 
     if (currentStep != null && steps.map { it.exerciseEntryId }.distinct().size > 1) {
       item {
-        SmallPillButton("Delete Exercise", SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
+        SmallPillButton(stringResource(R.string.workout_delete_exercise), SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
           onEditAction(WorkoutEditAction.DeleteExercise(currentStep.exerciseEntryId))
         }
       }
     }
 
     item {
-      SmallPillButton("Skip Exercise", SparkyColors.Amber.copy(alpha = 0.25f), SparkyColors.Amber, onSkipExercise)
+      SmallPillButton(stringResource(R.string.workout_skip_exercise), SparkyColors.Amber.copy(alpha = 0.25f), SparkyColors.Amber, onSkipExercise)
     }
     item {
-      SmallPillButton("Finish Workout", SparkyColors.Green, Color.Black, onFinishWorkout)
+      SmallPillButton(stringResource(R.string.workout_finish_btn), SparkyColors.Green, Color.Black, onFinishWorkout)
     }
     item {
-      SmallPillButton("Discard", SparkyColors.Rose.copy(alpha = 0.25f), SparkyColors.Rose, onDiscardWorkout)
+      SmallPillButton(stringResource(R.string.workout_discard_btn), SparkyColors.Rose.copy(alpha = 0.25f), SparkyColors.Rose, onDiscardWorkout)
     }
     itemsIndexed(steps) { idx, st ->
       val isCur = idx == currentIndex
@@ -1037,7 +1068,8 @@ private fun WorkoutOptionsSheet(
 @Composable
 private fun WorkoutSummaryView(
   summary: WorkoutSummary,
-  onDone: () -> Unit
+  onDone: () -> Unit,
+  energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
   Column(
     modifier = Modifier
@@ -1046,23 +1078,28 @@ private fun WorkoutSummaryView(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    Text("Workout Complete!", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
+    Text(stringResource(R.string.workout_complete_title), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
     Spacer(Modifier.height(4.dp))
     Text(summary.workoutName, fontSize = 11.sp, color = Color.White, maxLines = 1)
     Spacer(Modifier.height(6.dp))
     Text(
-      text = "${summary.setsCompleted} sets • ${formatDuration(summary.durationSeconds)}",
+      text = pluralStringResource(
+        R.plurals.workout_summary_sets_duration,
+        summary.setsCompleted,
+        summary.setsCompleted,
+        formatDuration(summary.durationSeconds)
+      ),
       fontSize = 11.sp,
       color = SparkyColors.Muted
     )
     if (summary.averageBpm != null || summary.activeEnergyKcal != null) {
       val parts = mutableListOf<String>()
-      summary.averageBpm?.let { parts.add("♥ ${it.toInt()} avg") }
-      summary.activeEnergyKcal?.let { parts.add("${it.toInt()} kcal") }
+      summary.averageBpm?.let { parts.add(stringResource(R.string.workout_summary_avg_hr, it.toInt())) }
+      summary.activeEnergyKcal?.let { parts.add("${energy.value(it).toInt()} ${energy.unit}") }
       Text(parts.joinToString(" • "), fontSize = 11.sp, color = SparkyColors.Amber)
     }
     Spacer(Modifier.height(10.dp))
-    SmallPillButton("Done", SparkyColors.Green, Color.Black, onDone)
+    SmallPillButton(stringResource(R.string.common_done), SparkyColors.Green, Color.Black, onDone)
   }
 }
 
@@ -1095,6 +1132,12 @@ private fun RecordingRemoteView(
     "${formatDuration(sec.toInt())}$unitSuffix"
   }
   val isPaused = state.status == "paused"
+  val activityLabel = when (state.activity.lowercase(Locale.US)) {
+    "walk" -> stringResource(R.string.recording_activity_walk)
+    "run" -> stringResource(R.string.recording_activity_run)
+    "ride" -> stringResource(R.string.recording_activity_ride)
+    else -> state.activity.replaceFirstChar { it.uppercase() }
+  }
 
   Column(
     modifier = Modifier
@@ -1108,7 +1151,7 @@ private fun RecordingRemoteView(
       verticalAlignment = Alignment.CenterVertically
     ) {
       Text(
-        text = state.activity.replaceFirstChar { it.uppercase() },
+        text = activityLabel,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Cyan
@@ -1154,22 +1197,22 @@ private fun RecordingRemoteView(
     Spacer(Modifier.height(6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
       if (isPaused) {
-        SmallPillButton("Resume", SparkyColors.Green, Color.Black) {
+        SmallPillButton(stringResource(R.string.recording_resume), SparkyColors.Green, Color.Black) {
           recordingStore.sendAction("resume")
         }
       } else {
-        SmallPillButton("Pause", SparkyColors.Amber, Color.Black) {
+        SmallPillButton(stringResource(R.string.recording_pause), SparkyColors.Amber, Color.Black) {
           recordingStore.sendAction("pause")
         }
       }
       SmallPillButton(
-        label = if (state.lapCount > 0) "Lap (${state.lapCount})" else "Lap",
+        label = if (state.lapCount > 0) stringResource(R.string.recording_lap_count, state.lapCount) else stringResource(R.string.recording_lap),
         color = SparkyColors.CardBg,
         textColor = Color.White
       ) {
         recordingStore.sendAction("lap")
       }
-      SmallPillButton("Stop", SparkyColors.Rose, Color.White) {
+      SmallPillButton(stringResource(R.string.recording_stop), SparkyColors.Rose, Color.White) {
         recordingStore.sendAction("finish")
       }
     }
@@ -1218,7 +1261,7 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center
     ) {
-      Text("Workout Saved!", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
+      Text(stringResource(R.string.run_saved_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
       Spacer(Modifier.height(4.dp))
       Text(
         text = "$distLabel • ${formatDuration(elapsed)}",
@@ -1226,10 +1269,10 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
         color = Color.White
       )
       if (lapCount > 0) {
-        Text("$lapCount laps", fontSize = 10.sp, color = SparkyColors.Muted)
+        Text(pluralStringResource(R.plurals.run_laps_count, lapCount, lapCount), fontSize = 10.sp, color = SparkyColors.Muted)
       }
       Spacer(Modifier.height(10.dp))
-      SmallPillButton("Done", SparkyColors.Green, Color.Black) { runStore.dismiss() }
+      SmallPillButton(stringResource(R.string.common_done), SparkyColors.Green, Color.Black) { runStore.dismiss() }
     }
     return
   }
@@ -1263,6 +1306,11 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
     val secPerUnit = if (usesMiles) (secKm * 1.609344).toInt() else secKm.toInt()
     "${formatDuration(secPerUnit)}/${if (usesMiles) "mi" else "km"}"
   }
+  val fallbackKindLabel = when (req?.kind?.lowercase(Locale.US)) {
+    "walk" -> stringResource(R.string.cardio_kind_walk)
+    "run" -> stringResource(R.string.cardio_kind_run)
+    else -> req?.kind?.replaceFirstChar { it.uppercase() } ?: stringResource(R.string.cardio_kind_run)
+  }
 
   Column(
     modifier = Modifier
@@ -1292,9 +1340,9 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
       }
       Text(
         text = when {
-          autoPaused -> "AUTO-PAUSED"
+          autoPaused -> stringResource(R.string.run_auto_paused)
           alertBanner != null -> alertBanner!!
-          else -> curStep?.label ?: plan?.name ?: (req?.kind?.replaceFirstChar { it.uppercase() } ?: "Run")
+          else -> curStep?.label ?: plan?.name ?: fallbackKindLabel
         },
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
@@ -1342,7 +1390,7 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
         SmallPillButton("⏸", SparkyColors.Amber, Color.Black) { runStore.pause() }
       }
       SmallPillButton(
-        label = if (lapCount > 0) "L$lapCount" else "Lap",
+        label = if (lapCount > 0) "L$lapCount" else stringResource(R.string.recording_lap),
         color = SparkyColors.CardBg,
         textColor = Color.White
       ) {
@@ -1370,6 +1418,9 @@ private fun WatchRunSettingsSheet(
   onClose: () -> Unit
 ) {
   val listState = rememberScalingLazyListState()
+  val onStr = stringResource(R.string.run_setting_on)
+  val offStr = stringResource(R.string.run_setting_off)
+
   ScalingLazyColumn(
     state = listState,
     autoCentering = null,
@@ -1382,14 +1433,14 @@ private fun WatchRunSettingsSheet(
     horizontalAlignment = Alignment.CenterHorizontally
   ) {
     item {
-      Text("Run Settings", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
+      Text(stringResource(R.string.run_settings_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
     }
     item {
-      SmallPillButton("Done", SparkyColors.CardBg, Color.White, onClose)
+      SmallPillButton(stringResource(R.string.common_done), SparkyColors.CardBg, Color.White, onClose)
     }
     item {
       SmallPillButton(
-        label = "Auto-Pause: ${if (settings.autoPause) "ON" else "OFF"}",
+        label = stringResource(R.string.run_setting_auto_pause, if (settings.autoPause) onStr else offStr),
         color = if (settings.autoPause) SparkyColors.Green.copy(alpha = 0.25f) else SparkyColors.CardBg,
         textColor = if (settings.autoPause) SparkyColors.Green else Color.White,
         onClick = onToggleAutoPause
@@ -1397,7 +1448,7 @@ private fun WatchRunSettingsSheet(
     }
     item {
       SmallPillButton(
-        label = "Voice Cues: ${if (settings.voiceCues) "ON" else "OFF"}",
+        label = stringResource(R.string.run_setting_voice_cues, if (settings.voiceCues) onStr else offStr),
         color = if (settings.voiceCues) SparkyColors.Cyan.copy(alpha = 0.25f) else SparkyColors.CardBg,
         textColor = if (settings.voiceCues) SparkyColors.Cyan else Color.White,
         onClick = onToggleVoiceCues
@@ -1405,7 +1456,7 @@ private fun WatchRunSettingsSheet(
     }
     item {
       SmallPillButton(
-        label = "Pace Alerts: ${if (paceAlert) "ON" else "OFF"}",
+        label = stringResource(R.string.run_setting_pace_alerts, if (paceAlert) onStr else offStr),
         color = if (paceAlert) SparkyColors.Amber.copy(alpha = 0.25f) else SparkyColors.CardBg,
         textColor = if (paceAlert) SparkyColors.Amber else Color.White,
         onClick = onTogglePaceAlert
@@ -1413,14 +1464,14 @@ private fun WatchRunSettingsSheet(
     }
     item {
       SmallPillButton(
-        label = "HR Alerts: ${if (hrAlert) "ON" else "OFF"}",
+        label = stringResource(R.string.run_setting_hr_alerts, if (hrAlert) onStr else offStr),
         color = if (hrAlert) SparkyColors.Rose.copy(alpha = 0.25f) else SparkyColors.CardBg,
         textColor = if (hrAlert) SparkyColors.Rose else Color.White,
         onClick = onToggleHrAlert
       )
     }
     item {
-      SmallPillButton("🔊 Test Voice", SparkyColors.CardBg, SparkyColors.Muted, onTestVoice)
+      SmallPillButton(stringResource(R.string.run_setting_test_voice), SparkyColors.CardBg, SparkyColors.Muted, onTestVoice)
     }
   }
 }
@@ -1443,7 +1494,7 @@ private fun TreadmillDistanceView(
 
   if (showKeypad) {
     WatchKeypadSheet(
-      title = "Distance ($unitLabel)",
+      title = stringResource(R.string.run_keypad_distance, unitLabel),
       initialValue = displayVal,
       allowDecimal = true,
       onConfirm = { v ->
@@ -1467,7 +1518,7 @@ private fun TreadmillDistanceView(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    Text("Treadmill Distance", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
+    Text(stringResource(R.string.run_treadmill_distance_title), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
     Spacer(Modifier.height(4.dp))
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -1496,8 +1547,8 @@ private fun TreadmillDistanceView(
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      SmallPillButton("Skip", SparkyColors.CardBg, SparkyColors.Muted, onSkip)
-      SmallPillButton("Save", SparkyColors.Green, Color.Black) {
+      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.CardBg, SparkyColors.Muted, onSkip)
+      SmallPillButton(stringResource(R.string.common_save), SparkyColors.Green, Color.Black) {
         onConfirm(displayVal * unitFactor)
       }
     }

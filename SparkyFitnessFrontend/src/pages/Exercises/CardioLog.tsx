@@ -3,6 +3,8 @@ import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import { Timer, Flame, Route, Heart, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface CardioLogProps {
   durationMinutes: number | '';
@@ -34,6 +36,8 @@ export const CardioLog = ({
   simplified = false,
 }: CardioLogProps) => {
   const { t } = useTranslation();
+  // `caloriesBurned` is kcal; the field shows and takes the account's unit.
+  const { energyUnit, getEnergyUnitString } = usePreferences();
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 py-2">
@@ -74,16 +78,20 @@ export const CardioLog = ({
           <div className="flex flex-col gap-1.5">
             <Label className="text-[10px] text-muted-foreground uppercase font-bold flex items-center">
               <Flame className="h-3 w-3 mr-1 text-orange-500" />
-              {t('workout.calories', 'Calories')}
+              {t('workout.calories', 'Calories')} (
+              {getEnergyUnitString(energyUnit)})
             </Label>
             <Input
               className="h-8 text-sm"
               type="number"
-              value={caloriesBurned}
+              value={shownEnergyInput(caloriesBurned, energyUnit)}
               placeholder={t('workout.caloriesAuto', 'Auto')}
               onChange={(e) =>
                 onCaloriesChange(
-                  e.target.value === '' ? '' : Number(e.target.value)
+                  kcalFromEnergyInput(
+                    e.target.value === '' ? '' : Number(e.target.value),
+                    energyUnit
+                  )
                 )
               }
             />

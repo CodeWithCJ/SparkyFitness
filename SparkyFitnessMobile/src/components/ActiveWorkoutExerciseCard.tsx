@@ -21,6 +21,7 @@ import ImageLightbox from './ImageLightbox';
 import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
+import PlateBarGraphic from './PlateBarGraphic';
 import ActiveWorkoutSetRow, {
   type SetRowAccessoryHandle,
   type SetRowState,
@@ -42,51 +43,45 @@ import { formatLocalizedNumber } from '../localization';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
   CATEGORY_ICON_MAP,
-  compareSetRecords,
   effectiveSetDurationSec,
   formatDurationSeconds,
   formatVolume,
   getExerciseVolumeKg,
-  evaluateExerciseProgression,
-  liveAdaptiveAdjustment,
   alignPreviousSets,
+  buildWorkingSetNumbers,
   isDurationModality,
+  isMetricClampedToRpe,
   isWeightDistanceModality,
   isWeightDurationModality,
   setDistanceUnitLabel,
+  plateTargetKg,
   rendersCardioEffortForm,
-  resolveLiveAssumedSetValues,
   resolveSnapshotModality,
-  setTypeLetter,
-  type LiveExerciseConfig,
   type WorkoutCardExercise,
-  type WorkoutCardSet,
 } from '../utils/workoutSession';
-import {
-  NO_ADAPTIVE_ADJUSTMENT,
-  isBodyweightModality,
-  shouldSuggestVariation,
-} from '@workspace/shared';
+import { isBodyweightModality, usesBarbell } from '@workspace/shared';
 import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
+import {
+  useCaptureLiveHistory,
+  useExerciseBest,
+  useLiveAdaptive,
+  useLiveAssumedSetValues,
+  useLiveProgression,
+} from '../hooks/useLiveExerciseCoaching';
 import type { ExerciseProgressionPatch } from '../hooks/draftExercisesSlice';
 import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
+import ProgressionHintBanner from './ProgressionHintBanner';
 import type {
   ActiveSetPatch,
   CompletedSetMap,
   PrSetMap,
 } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
-
-/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
-function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {
-  let workingNumber = 0;
-  return sets.map((set) => {
-    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
-    return workingNumber;
-  });
-}
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
 interface ActiveWorkoutExerciseCardProps {
   exercise: WorkoutCardExercise;
@@ -282,15 +277,6 @@ export function ExerciseThumb({
   );
 }
 
-/** Added weight a set is ranked on. An unweighted bodyweight set is +0. */
-function rankedAddedWeight(
-  weight: number | null | undefined,
-  bodyweight: boolean
-): number | null {
-  if (weight != null) return weight;
-  return bodyweight ? 0 : null;
-}
-
 function ActiveWorkoutExerciseCard({
   exercise,
   expanded,
@@ -396,11 +382,7 @@ function ActiveWorkoutExerciseCard({
   const weightDuration = isWeightDurationModality(modality);
   const weightDistance = isWeightDistanceModality(modality);
   // Loaded holds and carries log no reps, so volume and 1RM stay empty there too.
-  const clampedToRpe =
-    durationLike ||
-    modality === 'reps_only' ||
-    weightDuration ||
-    weightDistance;
+  const clampedToRpe = isMetricClampedToRpe(modality);
   // The per-set ramp only means something where sets carry a weight.
   const weightRampApplies = !durationLike && modality !== 'reps_only';
   const effectiveMetricColumn =
@@ -425,49 +407,18 @@ function ActiveWorkoutExerciseCard({
     [exercise.sets, previousSessionSets]
   );
 
-  // Live sessions carry no progression/ramp settings on the server entry;
-  // they come from the preset, captured into the store at live start.
-  const liveConfig = useActiveWorkoutStore((s) =>
-    isLive ? s.exerciseConfigs[String(exercise.id)] : undefined
+  const progressionResult = useLiveProgression(
+    exercise,
+    previousSessionSets,
+    weightUnit,
+    isLive
   );
-
-  // Progression Engine Evaluation
-  const progressionResult = useMemo(() => {
-    const config: LiveExerciseConfig = isLive ? (liveConfig ?? {}) : exercise;
-    return evaluateExerciseProgression(
-      config,
-      exercise.sets,
-      previousSessionSets,
-      weightUnit
-    );
-  }, [isLive, liveConfig, exercise, previousSessionSets, weightUnit]);
-
-  // Adaptive coaching (#1560) for this exercise, from the store's signals.
-  const coachingSignals = useActiveWorkoutStore((s) => s.coachingSignals);
-  const declinedAdaptive = useActiveWorkoutStore((s) => s.declinedAdaptive);
-  const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
-  const adaptiveDeclined = declinedAdaptive[String(exercise.id)] === true;
-  const adaptiveAdjustment = useMemo(
-    () =>
-      isLive
-        ? liveAdaptiveAdjustment(exercise, {
-            coachingSignals,
-            workoutFormat,
-          })
-        : NO_ADAPTIVE_ADJUSTMENT,
-    [isLive, exercise, coachingSignals, workoutFormat]
-  );
-  const suggestVariation =
-    isLive &&
-    (workoutFormat ?? 'standard') === 'standard' &&
-    exercise.exercise_id != null &&
-    shouldSuggestVariation(
-      coachingSignals[exercise.exercise_id],
-      exercise.exercise_snapshot?.mechanic
-    );
-  const adaptiveOverridesProgression =
-    !adaptiveDeclined &&
-    (adaptiveAdjustment.blockIncrease || adaptiveAdjustment.addIncrement);
+  const {
+    adaptiveAdjustment,
+    adaptiveDeclined,
+    suggestVariation,
+    adaptiveOverridesProgression,
+  } = useLiveAdaptive(exercise, isLive);
 
   // Apple-style collapsible progression settings (Preset Edit Mode)
   const [progressionEditorOpen, setProgressionEditorOpen] = useState(false);
@@ -545,34 +496,12 @@ function ActiveWorkoutExerciseCard({
     [handleCommitProgression, weightUnit]
   );
 
-  // Assumed (placeholder) weight/reps per row — live only. Resolved from the
-  // same sources completion adoption uses in the store, so the gray value a
-  // row shows is exactly what logging it would record.
-  const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
-  const exerciseConfigs = useActiveWorkoutStore((s) => s.exerciseConfigs);
-  const assumedSetValues = useMemo(
-    () =>
-      isLive
-        ? resolveLiveAssumedSetValues(exercise, previousSessionSets, {
-            plannedSetValues,
-            exerciseConfigs,
-            weightUnit,
-            workoutFormat,
-            coachingSignals,
-            declinedAdaptive,
-          })
-        : null,
-    [
-      isLive,
-      exercise,
-      previousSessionSets,
-      plannedSetValues,
-      exerciseConfigs,
-      weightUnit,
-      workoutFormat,
-      coachingSignals,
-      declinedAdaptive,
-    ]
+  // Assumed (placeholder) weight/reps per row — live only.
+  const assumedSetValues = useLiveAssumedSetValues(
+    exercise,
+    previousSessionSets,
+    weightUnit,
+    isLive
   );
   // Ramp rounding for store-side resolution (lock-screen completes, the HUD)
   // follows the unit the rows render in.
@@ -581,90 +510,48 @@ function ActiveWorkoutExerciseCard({
     if (isLive) setStoreWeightUnit(weightUnit);
   }, [isLive, weightUnit, setStoreWeightUnit]);
 
-  // Capture the historical PR baseline once per exercise. The store no-ops
-  // unless a live workout is active and the key is absent, so view/edit renders
-  // can't clobber it and a re-resolved query is harmless.
-  const capturePrBaseline = useActiveWorkoutStore((s) => s.capturePrBaseline);
-  const capturePreviousSessionSets = useActiveWorkoutStore(
-    (s) => s.capturePreviousSessionSets
-  );
-  useEffect(() => {
-    // Wait for the query to resolve (data is null/undefined while loading). A
-    // resolved stats object with a null `bestSet` still captures — that's the
-    // "no history" baseline.
-    if (!isLive || stats == null || !historyScopeSettled) return;
-    capturePrBaseline(
-      exercise.exercise_id,
-      stats.bestSet
-        ? { weight: stats.bestSet.weight, reps: stats.bestSet.reps }
-        : null
-    );
-    // The store-side copy placeholder adoption resolves against on complete —
-    // captured from the same query the PREVIOUS column renders, so a
-    // lock-screen complete adopts exactly what the row shows.
-    capturePreviousSessionSets(
-      exercise.exercise_id,
-      stats.recentSessions?.[0]?.sets ?? []
-    );
-  }, [
-    isLive,
+  useCaptureLiveHistory(
+    exercise.exercise_id,
     stats,
     historyScopeSettled,
-    exercise.exercise_id,
-    capturePrBaseline,
-    capturePreviousSessionSets,
-  ]);
+    isLive
+  );
 
-  // The best set to show on the "Best" line: the historical best, or — once a
-  // set this session earns a PR — the better of that and the stamped session
-  // set. The server number stays historical (the stats query excludes this
-  // session), so the stamped set is what surfaces the new record.
-  const stampedBest = useMemo(() => {
-    if (!isLive || !prSetIds) return null;
-    const bodyweight = isBodyweightModality(modality);
-    let best: { weight: number; reps: number | null } | null = null;
-    for (const s of exercise.sets) {
-      if (prSetIds[String(s.id)] !== true) continue;
-      const weight = rankedAddedWeight(s.weight, bodyweight);
-      if (weight == null) continue;
-      const contender = { weight, reps: s.reps };
-      if (best == null || compareSetRecords(contender, best) > 0)
-        best = contender;
-    }
-    return best;
-  }, [isLive, prSetIds, exercise.sets, modality]);
+  // The set the plates graphic shows: the active one, else the first working
+  // set, using the weight it would log (typed or assumed).
+  const plateEquipment = exercise.exercise_snapshot?.equipment ?? null;
+  const showPlates =
+    mode !== 'view' && !cardioForm && usesBarbell(plateEquipment);
+  const plateTargetKgValue = useMemo(
+    () =>
+      showPlates
+        ? plateTargetKg(exercise.sets, activeSetId, assumedSetValues)
+        : null,
+    [showPlates, exercise.sets, activeSetId, assumedSetValues]
+  );
 
-  const historicalWeight =
-    bestSet == null
-      ? null
-      : rankedAddedWeight(bestSet.weight, isBodyweightModality(modality));
-  const historicalBest =
-    historicalWeight == null || bestSet == null
-      ? null
-      : { weight: historicalWeight, reps: bestSet.reps };
-  const bestDisplay =
-    historicalBest != null
-      ? stampedBest != null &&
-        compareSetRecords(stampedBest, historicalBest) > 0
-        ? stampedBest
-        : historicalBest
-      : null;
-  const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
-  const bestText =
-    bestDisplay != null
-      ? `${formatLocalizedNumber(weightFromKg(bestDisplay.weight, weightUnit), { maximumFractionDigits: 1 })}${
-          bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''
-        }`
-      : null;
+  const { bestDisplay, bestIsPr, bestText } = useExerciseBest(
+    exercise,
+    bestSet,
+    prSetIds,
+    weightUnit,
+    isLive
+  );
 
   // Chip-row calories: an editable field in edit mode (when the form wires a
   // handler), a read-only value in view mode. Live mode shows neither — the
   // value churns with every autosave recompute.
   const caloriesField = isEdit && onChangeCalories != null;
   const [caloriesEditing, setCaloriesEditing] = useState(false);
+  const energyUnit = useEnergyUnit();
+  // The draft stays in kcal; the field shows and takes the account's unit.
+  const caloriesInput = useEnergyInputText(
+    exercise.editCaloriesText ?? '',
+    (text) => onChangeCalories?.(exercise.id, text)
+  );
   const caloriesText =
     readOnly && exercise.calories_burned != null && exercise.calories_burned > 0
-      ? String(Math.round(exercise.calories_burned))
+      ? String(roundedEnergy(exercise.calories_burned, energyUnit))
       : null;
 
   // Heart rate for this exercise, read-only: there is no UI for typing one,
@@ -1319,37 +1206,10 @@ function ActiveWorkoutExerciseCard({
         {/* Live Progression Overload Banner — replaced by the adaptive one
             when feedback cancelled or changed the increase it describes */}
         {isLive && progressionResult && !adaptiveOverridesProgression && (
-          <View className="mt-2.5 mb-1 px-2.5 py-1.5 rounded-lg bg-raised flex-row items-center justify-between border border-border-subtle">
-            <View className="flex-row items-center gap-1.5 flex-1 mr-2">
-              <Icon
-                name={
-                  progressionResult.goalAchieved
-                    ? 'trophy-outline'
-                    : 'exercise-weights'
-                }
-                size={16}
-                color={
-                  progressionResult.goalAchieved ? accentPrimary : textSecondary
-                }
-              />
-              <Text
-                className="text-xs font-medium text-text-primary flex-1"
-                numberOfLines={2}
-              >
-                {progressionResult.message}
-              </Text>
-            </View>
-            {progressionResult.suggestedWeight > 0 && (
-              <View className="px-2 py-0.5 rounded bg-surface">
-                <Text
-                  className="text-xs font-bold"
-                  style={{ color: accentPrimary }}
-                >
-                  {progressionResult.suggestedWeight} {unitLabel}
-                </Text>
-              </View>
-            )}
-          </View>
+          <ProgressionHintBanner
+            result={progressionResult}
+            unitLabel={unitLabel}
+          />
         )}
 
         {!readOnly &&
@@ -1385,6 +1245,7 @@ function ActiveWorkoutExerciseCard({
         )}
 
         {((showRestChip && !cardioForm) ||
+          showPlates ||
           bestDisplay != null ||
           caloriesField ||
           caloriesText != null ||
@@ -1411,10 +1272,8 @@ function ActiveWorkoutExerciseCard({
                 <View className="flex-row items-center gap-1">
                   <Icon name="flame" size={14} color={accentPrimary} />
                   <FormInput
-                    value={exercise.editCaloriesText ?? ''}
-                    onChangeText={(text) =>
-                      onChangeCalories?.(exercise.id, text)
-                    }
+                    value={caloriesInput.text}
+                    onChangeText={caloriesInput.onChangeText}
                     onBlur={() => setCaloriesEditing(false)}
                     keyboardType="decimal-pad"
                     autoFocus
@@ -1436,9 +1295,7 @@ function ActiveWorkoutExerciseCard({
                     }}
                   />
                   <Text className="text-sm text-text-secondary">
-                    {t('activeWorkout.exercise.caloriesUnit', {
-                      defaultValue: 'kcal',
-                    })}
+                    {energyUnitLabel(energyUnit, t)}
                   </Text>
                 </View>
               ) : (
@@ -1454,12 +1311,8 @@ function ActiveWorkoutExerciseCard({
                 >
                   <Icon name="flame" size={14} color={accentPrimary} />
                   <Text className="text-sm" style={{ color: accentPrimary }}>
-                    {(exercise.editCaloriesText ?? '') !== ''
-                      ? exercise.editCaloriesText
-                      : '–'}{' '}
-                    {t('activeWorkout.exercise.caloriesUnit', {
-                      defaultValue: 'kcal',
-                    })}
+                    {caloriesInput.text !== '' ? caloriesInput.text : '–'}{' '}
+                    {energyUnitLabel(energyUnit, t)}
                   </Text>
                   <Icon name="chevron-down" size={10} color={accentPrimary} />
                 </Pressable>
@@ -1468,10 +1321,7 @@ function ActiveWorkoutExerciseCard({
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={activeEnergyColor} />
                 <Text className="text-sm text-text-secondary ml-1">
-                  {caloriesText}{' '}
-                  {t('activeWorkout.exercise.caloriesUnit', {
-                    defaultValue: 'kcal',
-                  })}
+                  {caloriesText} {energyUnitLabel(energyUnit, t)}
                 </Text>
               </View>
             )}
@@ -1501,6 +1351,16 @@ function ActiveWorkoutExerciseCard({
                   })}
                 </Text>
               </View>
+            )}
+            {showPlates && plateTargetKgValue != null && (
+              <PlateBarGraphic
+                targetWeight={storedWeightInUnit(
+                  plateTargetKgValue,
+                  weightUnit
+                )}
+                weightUnit={weightUnit}
+                equipment={plateEquipment}
+              />
             )}
             {bestDisplay != null && (
               <View

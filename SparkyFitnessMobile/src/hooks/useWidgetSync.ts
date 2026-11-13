@@ -14,9 +14,11 @@ import {
   type WaterWidgetInfo,
 } from '../services/androidWidgetSyncService';
 import BackgroundWaterModule from '../../modules/background-water';
+import { buildCalorieWidgetSnapshot } from '../services/calorieWidgetSnapshot';
 import { addLog } from '../services/LogService';
 import type { DailySummary } from '../types/dailySummary';
 import { getTodayDate } from '../utils/dateUtils';
+import { useEnergyUnit } from './useEnergyUnit';
 
 const WIDGET_KIND = 'widget';
 const CALORIE_SNAPSHOT_KEY = 'calorieSnapshot';
@@ -43,6 +45,7 @@ export function useWidgetSync(
   const canLog = water?.canLog ?? false;
   const date = summary?.date;
   const isToday = date === getTodayDate();
+  const energyUnit = useEnergyUnit();
   const lastAndroidCalorieSnapshotKeyRef = useRef<string | null>(null);
   const lastAndroidMacroSnapshotKeyRef = useRef<string | null>(null);
   const lastAndroidWaterSnapshotKeyRef = useRef<string | null>(null);
@@ -52,10 +55,10 @@ export function useWidgetSync(
       return;
     }
 
-    const balance = summary.calorieBalance;
     const lastUpdated = Math.floor(Date.now() / 1000);
 
     if (Platform.OS === 'ios') {
+      const calorieSnapshot = buildCalorieWidgetSnapshot(summary, energyUnit);
       try {
         if (!iosAppGroup) {
           addLog(
@@ -67,15 +70,9 @@ export function useWidgetSync(
 
         const storage = new ExtensionStorage(iosAppGroup);
 
-        if (balance) {
-          const { eaten, burned, goal, remaining, progress } = balance;
+        if (calorieSnapshot) {
           storage.set(CALORIE_SNAPSHOT_KEY, {
-            date,
-            food: eaten,
-            burned,
-            goal,
-            remaining,
-            progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+            ...calorieSnapshot,
             lastUpdated,
           });
         }
@@ -86,6 +83,7 @@ export function useWidgetSync(
           carbs: summary.carbs.consumed,
           fat: summary.fat.consumed,
           calories: summary.caloriesConsumed,
+          energyUnit,
           lastUpdated,
         });
 
@@ -110,7 +108,7 @@ export function useWidgetSync(
           });
         }
 
-        if (balance) {
+        if (calorieSnapshot) {
           ExtensionStorage.reloadWidget(WIDGET_KIND);
         }
         ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
@@ -127,7 +125,7 @@ export function useWidgetSync(
     }
 
     if (Platform.OS === 'android') {
-      const snapshots = buildAndroidWidgetSnapshots(summary);
+      const snapshots = buildAndroidWidgetSnapshots(summary, energyUnit);
       // An account change clears the widgets, so the same figures signed in
       // again (a session renewed by the same person) still have to be pushed.
       const generation = getAndroidWidgetGeneration();
@@ -171,7 +169,7 @@ export function useWidgetSync(
         );
       }
     }
-  }, [summary, date, isToday, drinkMl, waterUnit, canLog]);
+  }, [summary, date, isToday, drinkMl, waterUnit, canLog, energyUnit]);
 }
 
 /**

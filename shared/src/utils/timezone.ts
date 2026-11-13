@@ -502,13 +502,25 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
     return localAsUtcMs - utcMs;
   }
 
-  const offset1 = offsetAt(targetLocalUtcMs);
-  let resultMs = targetLocalUtcMs - offset1;
-
-  const offset2 = offsetAt(resultMs);
-  if (offset2 !== offset1) {
-    resultMs = targetLocalUtcMs - offset2;
-  }
+  // The offsets a day either side cover any clock change near the target.
+  // Each gives a candidate instant; a candidate is real when it reads back as
+  // the target wall-clock time. The same rule then holds east and west of UTC:
+  // - repeated hour (clocks go back): both are real, take the later one, the
+  //   second occurrence;
+  // - missing hour (clocks go forward): neither is, use the offset from before
+  //   the change, which lands the same distance after it (02:30 -> 03:30).
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const offsetBefore = offsetAt(targetLocalUtcMs - DAY_MS);
+  const offsetAfter = offsetAt(targetLocalUtcMs + DAY_MS);
+  const candidates = [
+    targetLocalUtcMs - offsetBefore,
+    targetLocalUtcMs - offsetAfter,
+  ];
+  const real = candidates.filter(
+    (ms) => ms + offsetAt(ms) === targetLocalUtcMs
+  );
+  const resultMs =
+    real.length > 0 ? Math.max(...real) : targetLocalUtcMs - offsetBefore;
 
   return new Date(resultMs);
 }

@@ -1,0 +1,240 @@
+import { z } from 'zod';
+import { LAB_MARKER_PRESETS } from '../../constants/labMarkers.ts';
+
+const BUILT_IN_MARKER_KEYS = new Set(LAB_MARKER_PRESETS.map((p) => p.key));
+
+export const labResultSourceSchema = z.enum(['manual', 'report', 'fhir']);
+export type LabResultSource = z.infer<typeof labResultSourceSchema>;
+
+/** A real calendar day: `2026-02-31` has the right shape but is not a date. */
+const isCalendarDay = (value: string): boolean => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+};
+
+const dateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD')
+  .refine(isCalendarDay, 'must be a real calendar date');
+const unitSchema = z.string().trim().max(40);
+const rangeBoundSchema = z.number().finite().nullable().optional();
+
+type RangeFields = {
+  ref_range_low?: number | null;
+  ref_range_high?: number | null;
+};
+
+const refRangeOrdered = (body: RangeFields): boolean =>
+  body.ref_range_low == null ||
+  body.ref_range_high == null ||
+  body.ref_range_low <= body.ref_range_high;
+
+const refRangeOrderedIssue = {
+  message: 'ref_range_low must not exceed ref_range_high',
+  path: ['ref_range_low'],
+};
+
+export const createLabMarkerBodySchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    unit: unitSchema.default(''),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+  })
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+export type CreateLabMarkerBody = z.infer<typeof createLabMarkerBodySchema>;
+
+export const updateLabMarkerBodySchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    unit: unitSchema.optional(),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+  })
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+export type UpdateLabMarkerBody = z.infer<typeof updateLabMarkerBodySchema>;
+
+export const labMarkerResponseSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  name: z.string(),
+  unit: z.string(),
+  ref_range_low: z.number().nullable(),
+  ref_range_high: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type LabMarkerResponse = z.infer<typeof labMarkerResponseSchema>;
+
+export const createLabResultBodySchema = z
+  .object({
+    marker_key: z
+      .string()
+      .refine((key) => BUILT_IN_MARKER_KEYS.has(key), 'unknown marker_key')
+      .nullable()
+      .optional(),
+    custom_marker_id: z.string().uuid().nullable().optional(),
+    /**
+     * One of the user's own markers by name, reused when one has that name
+     * (any case) and created with this result's unit and range otherwise, in
+     * the same transaction as the result.
+     */
+    custom_marker_name: z.string().trim().min(1).max(120).nullable().optional(),
+    entry_date: dateStringSchema,
+    value_numeric: z.number().finite().nullable().optional(),
+    value_text: z.string().trim().min(1).max(200).nullable().optional(),
+    unit: unitSchema.default(''),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+    lab_name: z.string().trim().max(200).nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+    source: labResultSourceSchema.default('manual'),
+  })
+  .refine(
+    (body) =>
+      [body.marker_key, body.custom_marker_id, body.custom_marker_name].filter(
+        (value) => value != null
+      ).length === 1,
+    {
+      message:
+        'Provide exactly one of marker_key, custom_marker_id or custom_marker_name',
+      path: ['marker_key'],
+    }
+  )
+  .refine((body) => body.value_numeric != null || body.value_text != null, {
+    message: 'Provide value_numeric or value_text',
+    path: ['value_numeric'],
+  })
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+export type CreateLabResultBody = z.infer<typeof createLabResultBodySchema>;
+
+/** The marker of a saved result cannot change; only its values can. */
+export const updateLabResultBodySchema = z
+  .object({
+    entry_date: dateStringSchema.optional(),
+    value_numeric: z.number().finite().nullable().optional(),
+    value_text: z.string().trim().min(1).max(200).nullable().optional(),
+    unit: unitSchema.optional(),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+    lab_name: z.string().trim().max(200).nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+  })
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+export type UpdateLabResultBody = z.infer<typeof updateLabResultBodySchema>;
+
+export const labResultResponseSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  marker_key: z.string().nullable(),
+  custom_marker_id: z.string().nullable(),
+  entry_date: z.string(),
+  value_numeric: z.number().nullable(),
+  value_text: z.string().nullable(),
+  unit: z.string(),
+  ref_range_low: z.number().nullable(),
+  ref_range_high: z.number().nullable(),
+  lab_name: z.string().nullable(),
+  notes: z.string().nullable(),
+  source: labResultSourceSchema,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type LabResultResponse = z.infer<typeof labResultResponseSchema>;
+
+export const labResultListQuerySchema = z
+  .object({
+    markerKey: z.string().min(1).optional(),
+    markerId: z.string().uuid().optional(),
+    startDate: dateStringSchema.optional(),
+    endDate: dateStringSchema.optional(),
+    limit: z.coerce.number().int().min(1).max(5000).default(1000),
+  })
+  .refine((q) => !(q.markerKey && q.markerId), {
+    message: 'Use markerKey or markerId, not both',
+    path: ['markerKey'],
+  });
+export type LabResultListQuery = z.infer<typeof labResultListQuerySchema>;
+
+const importResultSchema = z
+  .object({
+    /** A built-in marker, or... */
+    marker_key: z
+      .string()
+      .refine((key) => BUILT_IN_MARKER_KEYS.has(key), 'unknown marker_key')
+      .nullable()
+      .optional(),
+    /** ...the name of one of the user's own markers, created when it is new. */
+    marker_name: z.string().trim().min(1).max(120).nullable().optional(),
+    value_numeric: z.number().finite(),
+    unit: unitSchema.default(''),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+  })
+  .refine(
+    (result) => (result.marker_key != null) !== (result.marker_name != null),
+    {
+      message: 'Provide exactly one of marker_key or marker_name',
+      path: ['marker_key'],
+    }
+  )
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+
+/** POST /api/v2/lab-results/imports: the reviewed results of one lab report. */
+export const importLabReportBodySchema = z.object({
+  /**
+   * A key the client makes once per reviewed report and sends again when it
+   * retries the same save. A key already used by this user returns the report
+   * it saved instead of saving the results a second time.
+   */
+  client_request_id: z.string().uuid().nullable().optional(),
+  lab_name: z.string().trim().max(200).nullable().optional(),
+  /** The test date, `YYYY-MM-DD`; every result of the report gets it. */
+  entry_date: dateStringSchema,
+  results: z.array(importResultSchema).min(1).max(200),
+});
+export type ImportLabReportBody = z.infer<typeof importLabReportBodySchema>;
+
+export const labReportResponseSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  lab_name: z.string().nullable(),
+  collected_on: z.string().nullable(),
+  created_at: z.string(),
+});
+export type LabReportResponse = z.infer<typeof labReportResponseSchema>;
+
+export const importLabReportResponseSchema = z.object({
+  report: labReportResponseSchema,
+  results: z.array(labResultResponseSchema),
+});
+export type ImportLabReportResponse = z.infer<
+  typeof importLabReportResponseSchema
+>;
+
+/** What a delete of imports or of one built-in marker's results removed. */
+export const deleteLabImportsResponseSchema = z.object({
+  reports: z.number().int(),
+  results: z.number().int(),
+  /** The user's own markers deleted because the delete left them with no results. */
+  markers: z.number().int(),
+});
+export type DeleteLabImportsResponse = z.infer<
+  typeof deleteLabImportsResponseSchema
+>;
+
+export const deleteMarkerResultsResponseSchema = z.object({
+  results: z.number().int(),
+});
+export type DeleteMarkerResultsResponse = z.infer<
+  typeof deleteMarkerResultsResponseSchema
+>;

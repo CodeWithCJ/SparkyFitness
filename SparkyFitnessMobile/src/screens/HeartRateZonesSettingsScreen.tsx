@@ -19,7 +19,9 @@ import {
   MIN_MAX_HR,
   MIN_RESTING_HR,
   customFloorsProblem,
+  heartRateDisplayBands,
   type HeartRateZonesResponse,
+  type HrZoneDisplayCount,
   type HrZoneMethod,
 } from '@workspace/shared';
 
@@ -37,15 +39,17 @@ import {
   readAppleHeartRateZones,
 } from '../services/appleHeartZones';
 import { formatLocalizedNumber } from '../localization';
-import { maxHrSourceLabel, methodName } from '../utils/heartRateZoneLabels';
+import {
+  displayBandLabel,
+  maxHrSourceLabel,
+  methodName,
+} from '../utils/heartRateZoneLabels';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type HeartRateZonesSettingsScreenProps =
   RootStackScreenProps<'HeartRateZonesSettings'>;
 
 /** Easy to hard, zone 1 to 5; the same colors the zone charts use. */
-const ZONE_COLORS = ['#94a3b8', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
-
 const digitsOnly = (text: string): string =>
   text.replace(/[^0-9]/g, '').slice(0, 3);
 
@@ -57,12 +61,14 @@ interface Draft {
   restingHr: string;
   method: HrZoneMethod;
   floors: string[];
+  displayZones: HrZoneDisplayCount;
 }
 
 const draftFrom = (data: HeartRateZonesResponse): Draft => ({
   maxHr: data.settings.max_heart_rate?.toString() ?? '',
   restingHr: data.settings.resting_heart_rate?.toString() ?? '',
   method: data.settings.method,
+  displayZones: data.settings.display_zones,
   // Start custom zones from the zones in use, so switching to Custom edits
   // what the person already sees instead of an empty form.
   floors:
@@ -160,6 +166,7 @@ const HeartRateZonesSettingsScreen: React.FC<
         max_heart_rate: maxHeartRate,
         resting_heart_rate: restingHeartRate,
         method: draft.method,
+        display_zones: draft.displayZones,
         ...(draft.method === 'custom' ? { custom_floors: customFloors } : {}),
       },
       {
@@ -282,6 +289,16 @@ const HeartRateZonesSettingsScreen: React.FC<
   );
 
   const resolved = zones?.resolved;
+  const displaySegments = [
+    {
+      key: '5',
+      label: t('heartRateZones.display.five', { defaultValue: '5 zones' }),
+    },
+    {
+      key: '4',
+      label: t('heartRateZones.display.four', { defaultValue: '4 tiers' }),
+    },
+  ];
   const methodSegments = HR_ZONE_METHODS.map((method) => ({
     key: method,
     label: methodName(t, method),
@@ -341,10 +358,17 @@ const HeartRateZonesSettingsScreen: React.FC<
                   defaultValue: 'Max heart rate {{max}} bpm. {{source}}.',
                 })}
               </Text>
-              {resolved.zones.map((zone) => (
+              {heartRateDisplayBands(
+                resolved.zones.map((zone) => ({
+                  zone: zone.zone,
+                  lowerBpm: zone.lower_bpm,
+                  upperBpm: zone.upper_bpm,
+                })),
+                draft.displayZones
+              ).map((band) => (
                 <View
-                  key={zone.zone}
-                  testID={`heart-rate-zone-${zone.zone}`}
+                  key={band.index}
+                  testID={`heart-rate-zone-${band.index}`}
                   className="flex-row items-center justify-between py-2 border-t border-border-subtle"
                 >
                   <View className="flex-row items-center">
@@ -353,26 +377,23 @@ const HeartRateZonesSettingsScreen: React.FC<
                         width: 10,
                         height: 10,
                         borderRadius: 5,
-                        backgroundColor: ZONE_COLORS[zone.zone - 1],
+                        backgroundColor: band.color,
                         marginRight: 10,
                       }}
                     />
                     <Text className="text-text-primary text-base">
-                      {t('exerciseStatistics.cardio.zone', {
-                        defaultValue: 'Zone {{zone}}',
-                        zone: zone.zone,
-                      })}
+                      {displayBandLabel(t, band)}
                     </Text>
                   </View>
                   <Text className="text-text-secondary text-base">
-                    {zone.upper_bpm == null
+                    {band.upperBpm == null
                       ? t('heartRateZones.zoneRangeOpen', {
-                          lower: formatLocalizedNumber(zone.lower_bpm),
+                          lower: formatLocalizedNumber(band.lowerBpm),
                           defaultValue: '{{lower}}+ bpm',
                         })
                       : t('heartRateZones.zoneRange', {
-                          lower: formatLocalizedNumber(zone.lower_bpm),
-                          upper: formatLocalizedNumber(zone.upper_bpm),
+                          lower: formatLocalizedNumber(band.lowerBpm),
+                          upper: formatLocalizedNumber(band.upperBpm),
                           defaultValue: '{{lower}}–{{upper}} bpm',
                         })}
                   </Text>
@@ -417,6 +438,27 @@ const HeartRateZonesSettingsScreen: React.FC<
                         defaultValue:
                           'Zones start at 50, 60, 70, 80 and 90% of your max heart rate.',
                       })}
+              </Text>
+            </View>
+
+            <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+              <Text className="text-base font-semibold text-text-primary mb-3">
+                {t('heartRateZones.display.title', {
+                  defaultValue: 'Show',
+                })}
+              </Text>
+              <SegmentedControl
+                segments={displaySegments}
+                activeKey={String(draft.displayZones)}
+                onSelect={(key) =>
+                  setDraft({ ...draft, displayZones: key === '4' ? 4 : 5 })
+                }
+              />
+              <Text className="text-sm text-text-secondary mt-3">
+                {t('heartRateZones.display.hint', {
+                  defaultValue:
+                    'Four tiers are Light (zones 1 and 2), Moderate (zone 3), Vigorous (zone 4) and Peak (zone 5). Only what you see changes: zones are still worked out and stored as five.',
+                })}
               </Text>
             </View>
 

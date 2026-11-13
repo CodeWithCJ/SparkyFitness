@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   autocorrelation,
+  biasCorrectedEffectiveNForMean,
   cautiousEffectiveN,
   correlationTest,
   cautiousEffectiveNForMean,
@@ -13,6 +14,12 @@ import {
   tTwoSidedP,
   welch,
 } from '@workspace/shared';
+import { normal } from './helpers/seededRandom.js';
+
+const noiseAt = (i: number) => {
+  const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
+  return v - Math.floor(v) - 0.5;
+};
 
 describe('compare stats', () => {
   const x = [
@@ -180,12 +187,72 @@ describe('single-series statistics', () => {
     });
   });
 
+  describe('biasCorrectedEffectiveNForMean', () => {
+    const alternating = Array.from({ length: 40 }, (_, i) =>
+      i % 2 === 0 ? 1 : -1
+    );
+    const ramp = Array.from({ length: 40 }, (_, i) => i);
+    const white = Array.from({ length: 120 }, (_, i) => noiseAt(i * 7919));
+
+    test.each([
+      ['alternating', alternating],
+      ['a linear ramp', ramp],
+      ['white noise', white],
+    ])('is never above the cautious estimate: %s', (_name, xs) => {
+      expect(biasCorrectedEffectiveNForMean(xs, 14)).toBeLessThanOrEqual(
+        cautiousEffectiveNForMean(xs, 14)
+      );
+    });
+
+    // Calibration: over 2000 AR(0.98) series of 120 on other seeds (10001 to 12000) the corrected
+    // count was never above the cautious one, and the mean of corrected over cautious was 0.708
+    // (means of 100 series ranged 0.680 to 0.737). The bound of 0.8 sits above that range.
+    test('is smaller on average for a near-unit-root series', () => {
+      let total = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        const z = normal(seed);
+        let level = 0;
+        const ar = Array.from({ length: 120 }, () => {
+          level = 0.98 * level + z();
+          return level;
+        });
+        const cautious = cautiousEffectiveNForMean(ar, 14);
+        const corrected = biasCorrectedEffectiveNForMean(ar, 14);
+        expect(corrected).toBeLessThanOrEqual(cautious);
+        total += corrected / cautious;
+      }
+      expect(total / 100).toBeLessThan(0.8);
+    });
+
+    // By hand, for [1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7] (n = 12, mean 43/12). Times 12 the deviations
+    // are -31, -19, -31, -7, -19, 5, -7, 17, 5, 29, 17, 41: their squares sum to 5892 and their
+    // neighbouring products to 2699, so the lag-1 autocorrelation is 2699/5892 = 0.45808. The bias
+    // correction gives rho = 0.45808 + (1 + 3 x 0.45808)/12 = 0.65593, so n(1 - rho)/(1 + rho) =
+    // 12 x 0.34407/1.65593 = 2.4934, which is below both 12 and the cautious count (3.6415).
+    test('matches the closed form on a small series', () => {
+      const xs = [1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7];
+      const rhoHat = 2699 / 5892;
+      const rho = rhoHat + (1 + 3 * rhoHat) / 12;
+      const expected = (12 * (1 - rho)) / (1 + rho);
+      expect(expected).toBeCloseTo(2.4934, 4);
+      expect(biasCorrectedEffectiveNForMean(xs, 14)).toBeCloseTo(expected, 9);
+    });
+
+    test('is the series length for a single value and 2 for two values', () => {
+      expect(biasCorrectedEffectiveNForMean([5], 3)).toBe(1);
+      expect(biasCorrectedEffectiveNForMean([1, 2], 3)).toBe(2);
+    });
+
+    test('is finite for a constant series', () => {
+      const n = biasCorrectedEffectiveNForMean([4, 4, 4, 4, 4, 4], 3);
+      expect(Number.isFinite(n)).toBe(true);
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(6);
+    });
+  });
+
   describe('cautiousEffectiveNForMean', () => {
     // A seeded AR(0.7) series: x[t] = 0.7·x[t−1] + noise.
-    const noiseAt = (i: number) => {
-      const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
-      return v - Math.floor(v) - 0.5;
-    };
     const ar = Array.from({ length: 120 }, (_, i) => i).reduce<number[]>(
       (acc, i) => {
         acc.push(0.7 * (acc[i - 1] ?? 0) + noiseAt(i));

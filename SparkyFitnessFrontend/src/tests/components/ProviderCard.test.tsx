@@ -98,6 +98,62 @@ describe('ProviderCard token expiry', () => {
     expect(screen.queryByText(/Token Expires:/)).not.toBeInTheDocument();
   });
 
+  it('says a Garmin account that never synced has never synced', () => {
+    renderCard(linkedProvider('garmin', { garmin_last_status_check: null }));
+
+    expect(screen.getByText('Last Sync: never')).toBeInTheDocument();
+  });
+
+  it('shows the last Garmin sync date when there is one', () => {
+    renderCard(
+      linkedProvider('garmin', { garmin_last_status_check: lastSync })
+    );
+
+    expect(screen.getByText(/Last Sync:/)).not.toHaveTextContent('never');
+  });
+
+  it('shows a red notice when the Garmin service is unreachable', () => {
+    renderCard(
+      linkedProvider('garmin', {
+        garmin_last_status_check: lastSync,
+        garmin_service_reachable: false,
+      })
+    );
+
+    expect(
+      screen.getByText('Garmin service unreachable. Syncing is not possible.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows no unreachable notice while the Garmin service answers', () => {
+    renderCard(
+      linkedProvider('garmin', {
+        garmin_last_status_check: lastSync,
+        garmin_service_reachable: true,
+      })
+    );
+
+    expect(
+      screen.queryByText(/Garmin service unreachable/)
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([null, undefined])(
+    'shows no unreachable notice when reachability is %s',
+    (reachable) => {
+      renderCard(
+        linkedProvider('garmin', {
+          garmin_last_status_check: lastSync,
+          garmin_service_reachable: reachable,
+        })
+      );
+
+      expect(
+        screen.queryByText(/Garmin service unreachable/)
+      ).not.toBeInTheDocument();
+    }
+  );
+
   it('still shows the Polar token expiry', () => {
     renderCard(
       linkedProvider('polar', {

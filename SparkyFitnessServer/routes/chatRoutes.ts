@@ -8,6 +8,7 @@ import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import { transcribeVoiceAudio } from '../services/voiceTranscriptionService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { createResponseAbortSignal } from '../utils/responseAbortSignal.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   resolveAiNetworkPolicy,
@@ -15,6 +16,7 @@ import {
 } from '../utils/outboundUrlPolicy.js';
 import {
   testAiServiceConnectionRequestSchema,
+  listOpenCodeGoModelsRequestSchema,
   normalizeChatToolCategories,
   aiServiceSettingsMutatorSchema,
   MAX_VOICE_UPLOAD_BYTES,
@@ -118,11 +120,7 @@ router.post(
       return res.status(400).json({ error: 'Unsupported audio format.' });
     }
 
-    const controller = new AbortController();
-    const abort = () => {
-      if (!res.writableFinished) controller.abort();
-    };
-    res.once('close', abort);
+    const { signal, cleanup } = createResponseAbortSignal(res);
     try {
       const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
       const result = await transcribeVoiceAudio({
@@ -132,13 +130,13 @@ router.post(
         // AI credentials belong to the actor, never to a switched family member.
         userId: req.authenticatedUserId,
         isAdmin,
-        signal: controller.signal,
+        signal,
       });
       return res.status(200).json(result);
     } catch (error) {
       next(error);
     } finally {
-      res.removeListener('close', abort);
+      cleanup();
     }
   }
 );
@@ -283,7 +281,10 @@ router.post('/', authenticate, async (req, res, next) => {
       req.userId,
       req.authenticatedUserId,
       isAdmin,
-      toolCategories
+      toolCategories,
+      typeof req.body?.conversationId === 'string'
+        ? req.body.conversationId
+        : undefined
     );
     return res.status(200).json({ content, action: actionType, executedTools });
   } catch (error) {
@@ -345,7 +346,10 @@ router.post('/stream', authenticate, async (req, res, next) => {
       req.userId,
       req.authenticatedUserId,
       isAdmin,
-      toolCategories
+      toolCategories,
+      typeof req.body?.conversationId === 'string'
+        ? req.body.conversationId
+        : undefined
     );
 
     pipeUIMessageStreamToResponse({ response: res, stream });
@@ -369,7 +373,9 @@ router.post('/stream', authenticate, async (req, res, next) => {
  */
 router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearOldChatHistory(req.userId);
+    const result = await chatService.clearOldChatHistory(
+      req.authenticatedUserId
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -539,6 +545,69 @@ router.post(
     }
   }
 );
+
+/**
+ * @swagger
+ * /chat/ai-service-settings/opencode-go/models:
+ *   post:
+ *     summary: List models available to an OpenCode Go API key
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               api_key:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OpenCode Go model IDs.
+ *       400:
+ *         description: Invalid request or missing API key.
+ *       403:
+ *         description: Per-user AI configuration is disabled or a global key is protected.
+ *       502:
+ *         description: OpenCode Go models endpoint failed.
+ */
+router.post(
+  '/ai-service-settings/opencode-go/models',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = listOpenCodeGoModelsRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid OpenCode Go model request.' });
+    }
+    try {
+      const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
+      if (
+        !isAdmin &&
+        !(await globalSettingsRepository.isUserAiConfigAllowed())
+      ) {
+        return res.status(403).json({
+          error:
+            'Per-user AI service configuration is disabled. Please contact your administrator.',
+        });
+      }
+      const result = await chatService.listOpenCodeGoModels(
+        parsed.data,
+        req.userId,
+        isAdmin
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 /**
  * @swagger
  * /chat/ai-service-settings/{id}:
@@ -617,7 +686,7 @@ router.delete(
  * @swagger
  * /chat/sparky-chat-history:
  *   get:
- *     summary: Retrieve Sparky chat history for the authenticated user
+ *     summary: Retrieve the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -631,9 +700,9 @@ router.delete(
  */
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
+    // The signed-in person's conversation in the account they are working in.
     const history = await chatService.getSparkyChatHistory(
-      req.userId,
-
+      req.authenticatedUserId,
       req.userId
     );
     res.status(200).json(history);
@@ -684,7 +753,10 @@ router.get(
         .json({ error: 'Chat History Entry ID is required.' });
     }
     try {
-      const entry = await chatService.getSparkyChatHistoryEntry(req.userId, id);
+      const entry = await chatService.getSparkyChatHistoryEntry(
+        req.authenticatedUserId,
+        id
+      );
       res.status(200).json(entry);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -744,7 +816,7 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   }
   try {
     const updatedEntry = await chatService.updateSparkyChatHistoryEntry(
-      req.userId,
+      req.authenticatedUserId,
       id,
       updateData
     );
@@ -804,7 +876,7 @@ router.delete(
     }
     try {
       const result = await chatService.deleteSparkyChatHistoryEntry(
-        req.userId,
+        req.authenticatedUserId,
         id
       );
       res.status(200).json(result);
@@ -829,7 +901,7 @@ router.delete(
  * @swagger
  * /chat/clear-all-history:
  *   post:
- *     summary: Clear all Sparky chat history for the authenticated user
+ *     summary: Clear the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -843,7 +915,10 @@ router.delete(
  */
 router.post('/clear-all-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearAllSparkyChatHistory(req.userId);
+    const result = await chatService.clearAllSparkyChatHistory(
+      req.authenticatedUserId,
+      req.userId
+    );
     res.status(200).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -893,12 +968,16 @@ router.post('/save-history', authenticate, async (req, res, next) => {
       .json({ error: 'Content and message type are required.' });
   }
   try {
-    const result = await chatService.saveSparkyChatHistory(req.userId, {
-      user_id: req.userId,
-      content,
-      messageType,
-      metadata,
-    });
+    const result = await chatService.saveSparkyChatHistory(
+      req.authenticatedUserId,
+      {
+        user_id: req.authenticatedUserId,
+        content,
+        messageType,
+        metadata,
+      },
+      req.userId
+    );
     res.status(201).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import EnhancedFoodSearch from './FoodSearch';
+import { FOOD_SEARCH_DIALOG_CONTENT_CLASS } from './foodSearchDialogLayout';
 
 interface FoodSearchDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface FoodSearchDialogProps {
   hideDatabaseTab?: boolean;
   hideMealTab?: boolean;
   mealType?: string;
+  allowRecipeImport?: boolean;
 }
 
 const FoodSearchDialog = ({
@@ -30,11 +32,12 @@ const FoodSearchDialog = ({
   hideDatabaseTab = false,
   hideMealTab = false,
   mealType = undefined,
+  allowRecipeImport,
 }: FoodSearchDialogProps) => {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className={FOOD_SEARCH_DIALOG_CONTENT_CLASS}>
         <DialogHeader>
           <DialogTitle>{t('foodSearchDialog.title', title)}</DialogTitle>
           <DialogDescription>
@@ -46,6 +49,7 @@ const FoodSearchDialog = ({
           hideDatabaseTab={hideDatabaseTab}
           hideMealTab={hideMealTab}
           mealType={mealType}
+          allowRecipeImport={allowRecipeImport}
         />
       </DialogContent>
     </Dialog>

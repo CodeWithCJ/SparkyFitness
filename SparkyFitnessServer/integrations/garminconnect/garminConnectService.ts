@@ -675,6 +675,42 @@ async function fetchGarminNutritionDiary(
   return aggregatedResult;
 }
 
+const GARMIN_HEALTH_CHECK_TIMEOUT_MS = 3000;
+
+let healthCheckInFlight: Promise<boolean> | null = null;
+
+/**
+ * Whether the Garmin microservice answers its root route. Concurrent callers
+ * share one running check; the result is not kept once it finishes.
+ */
+function checkGarminMicroserviceHealth(): Promise<boolean> {
+  if (!healthCheckInFlight) {
+    healthCheckInFlight = requestGarminMicroserviceHealth().finally(() => {
+      healthCheckInFlight = null;
+    });
+  }
+  return healthCheckInFlight;
+}
+
+/**
+ * One request to the microservice's root route. Never throws: any failure,
+ * including a timeout, reads as unreachable.
+ */
+async function requestGarminMicroserviceHealth(): Promise<boolean> {
+  try {
+    await axios.get(`${GARMIN_MICROSERVICE_URL}/`, {
+      timeout: GARMIN_HEALTH_CHECK_TIMEOUT_MS,
+    });
+    return true;
+  } catch (error: unknown) {
+    log(
+      'warn',
+      `Garmin microservice health check failed: ${formatGarminMicroserviceError(error).detail}`
+    );
+    return false;
+  }
+}
+
 export {
   garminLogin,
   garminResumeLogin,
@@ -687,6 +723,7 @@ export {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };
 
 export default {
@@ -701,4 +738,5 @@ export default {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };

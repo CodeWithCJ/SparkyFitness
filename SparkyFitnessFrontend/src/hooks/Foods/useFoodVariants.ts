@@ -1,4 +1,14 @@
-import { foodKeys, foodVariantKeys } from '@/api/keys/meals';
+import {
+  foodKeys,
+  foodVariantKeys,
+  mealKeys,
+  mealPlanKeys,
+} from '@/api/keys/meals';
+import {
+  foodEntryKeys,
+  foodEntryMealKeys,
+  dailyProgressKeys,
+} from '@/api/keys/diary';
 import {
   createFoodVariant,
   loadFoodVariants,
@@ -85,9 +95,16 @@ export const useSaveFoodMutation = () => {
       ),
 
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: foodKeys.all,
-      });
+      for (const queryKey of [
+        foodKeys.all,
+        mealKeys.all,
+        mealPlanKeys.all,
+        foodEntryKeys.all,
+        foodEntryMealKeys.all,
+        dailyProgressKeys.all,
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
     meta: {
       errorMessage: i18n.t(

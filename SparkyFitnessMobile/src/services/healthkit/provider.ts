@@ -18,19 +18,50 @@ import {
 import { aggregateSleepSessions } from './dataAggregation';
 import { enrichSleepSessions } from './sleepBiometrics';
 import { transformHealthRecords } from './dataTransformation';
+import { fetchMoveRingActiveCaloriesSetting } from '../api/preferencesApi';
+import { addLog } from '../LogService';
 
 type CumulativeReader = (
   startDate: Date,
   endDate: Date
 ) => Promise<ReadResult<AggregatedHealthRecord>>;
 
+// Calorie readers take the account's Move ring setting. A failed settings fetch
+// fails the read like a failed query, so the sync retries it.
+const withMoveRingSetting =
+  (
+    reader: (
+      startDate: Date,
+      endDate: Date,
+      useMoveRing: boolean
+    ) => Promise<ReadResult<AggregatedHealthRecord>>
+  ): CumulativeReader =>
+  async (startDate, endDate) => {
+    let useMoveRing: boolean;
+    try {
+      useMoveRing = await fetchMoveRingActiveCaloriesSetting();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[HealthKitService] Move ring setting fetch failed: ${message}`,
+        'WARNING'
+      );
+      return { records: [], error: message };
+    }
+    return reader(startDate, endDate, useMoveRing);
+  };
+
 // HealthKit metrics with a native day-bucketed statistics read. BasalMetabolicRate
 // maps to the basal-energy aggregation: last-complete-day Resting Energy stamped with
 // the day it applies to (D+1).
 const CUMULATIVE_READERS: Record<string, CumulativeReader> = {
   Steps: getAggregatedStepsByDateDetailed,
-  ActiveCaloriesBurned: getAggregatedActiveCaloriesByDateDetailed,
-  TotalCaloriesBurned: getAggregatedTotalCaloriesByDateDetailed,
+  ActiveCaloriesBurned: withMoveRingSetting(
+    getAggregatedActiveCaloriesByDateDetailed
+  ),
+  TotalCaloriesBurned: withMoveRingSetting(
+    getAggregatedTotalCaloriesByDateDetailed
+  ),
   Distance: getAggregatedDistanceByDateDetailed,
   FloorsClimbed: getAggregatedFloorsClimbedByDateDetailed,
   BasalMetabolicRate: getAggregatedBasalEnergyByDateDetailed,

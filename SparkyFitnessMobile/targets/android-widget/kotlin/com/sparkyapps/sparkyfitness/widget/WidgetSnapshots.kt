@@ -3,6 +3,7 @@ package com.sparkyapps.sparkyfitness.widget
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.sync.Mutex
+import org.json.JSONObject
 
 /**
  * One lock for every write to the widget snapshots: the JS bridge
@@ -23,4 +24,11 @@ internal fun isSnapshotToday(date: String): Boolean {
     } catch (e: Exception) {
         false
     }
+}
+
+/** A number the snapshot may leave out: absent, JSON null and non-finite all read as none. */
+internal fun JSONObject.optionalDouble(name: String): Double? {
+    if (!has(name) || isNull(name)) return null
+    val value = optDouble(name, Double.NaN)
+    return if (value.isFinite()) value else null
 }

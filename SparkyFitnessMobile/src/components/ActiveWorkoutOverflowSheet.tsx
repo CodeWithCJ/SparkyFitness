@@ -8,12 +8,14 @@ import ActionSheet, {
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import {
   rendersCardioEffortForm,
+  upcomingExercises,
   type SupersetRun,
 } from '../utils/workoutSession';
 
 export interface OverflowMenuState {
   entryId: string;
-  mode: 'main' | 'pick';
+  /** `swap`: the current exercise's quick change — do another one now, or replace it. */
+  mode: 'main' | 'pick' | 'swap';
 }
 
 interface ActiveWorkoutOverflowSheetProps {
@@ -22,6 +24,8 @@ interface ActiveWorkoutOverflowSheetProps {
   session: PresetSessionResponse | null;
   supersetRuns: SupersetRun[];
   completedSetIds: CompletedSetMap;
+  activeSetId: string | null;
+  onDoExerciseNow: (entryId: string) => void;
   onPressThumb: (entryId: string) => void;
   onToggleExerciseNote: (entryId: string) => void;
   onReplaceExercise: (entryId: string) => void;
@@ -33,6 +37,7 @@ interface ActiveWorkoutOverflowSheetProps {
   onSelectSupersetPartner: (entryId: string, candidateId: string) => void;
   onUngroupExercise: (entryId: string) => void;
   onSwitchToPickMode: () => void;
+  onSwitchToSwapMode: () => void;
   onSwitchToMainMode: () => void;
   onDismiss: () => void;
 }
@@ -43,6 +48,8 @@ export default function ActiveWorkoutOverflowSheet({
   session,
   supersetRuns,
   completedSetIds,
+  activeSetId,
+  onDoExerciseNow,
   onPressThumb,
   onToggleExerciseNote,
   onReplaceExercise,
@@ -53,6 +60,7 @@ export default function ActiveWorkoutOverflowSheet({
   onSelectSupersetPartner,
   onUngroupExercise,
   onSwitchToPickMode,
+  onSwitchToSwapMode,
   onSwitchToMainMode,
   onDismiss,
 }: ActiveWorkoutOverflowSheetProps) {
@@ -78,6 +86,39 @@ export default function ActiveWorkoutOverflowSheet({
       }));
     }
 
+    // Only the exercise the cursor is on can hand its turn to a later one.
+    const upcoming = session.exercises
+      .find((e) => e.id === entryId)
+      ?.sets.some((s) => String(s.id) === activeSetId)
+      ? upcomingExercises(session, activeSetId, completedSetIds)
+      : [];
+
+    if (mode === 'swap') {
+      const exerciseLabel = t('workout.exercise', { defaultValue: 'Exercise' });
+      return [
+        ...upcoming.map((candidate) => ({
+          key: candidate.id,
+          group: 'now',
+          label: candidate.exercise_snapshot?.name ?? exerciseLabel,
+          description: t('workout.doNowSets', {
+            count: candidate.sets.length,
+            defaultValue: 'Do now · {{count}} sets',
+            defaultValue_one: 'Do now · {{count}} set',
+            defaultValue_other: 'Do now · {{count}} sets',
+          }),
+          onPress: () => onDoExerciseNow(candidate.id),
+        })),
+        {
+          key: 'replace',
+          group: 'replace',
+          label: t('workout.replaceWithOther', {
+            defaultValue: 'Replace with another exercise…',
+          }),
+          onPress: () => onReplaceExercise(entryId),
+        },
+      ];
+    }
+
     const entry = session.exercises.find((e) => e.id === entryId);
     const entryHasCompleted =
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
@@ -96,6 +137,16 @@ export default function ActiveWorkoutOverflowSheet({
       label: t('workout.notes', { defaultValue: 'Notes' }),
       onPress: () => onToggleExerciseNote(entryId),
     });
+    if (upcoming.length > 0) {
+      items.push({
+        key: 'do-now',
+        label: t('workout.doAnotherFirst', {
+          defaultValue: 'Do another exercise first…',
+        }),
+        dismissOnPress: false,
+        onPress: onSwitchToSwapMode,
+      });
+    }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
@@ -149,6 +200,9 @@ export default function ActiveWorkoutOverflowSheet({
     session,
     supersetRuns,
     completedSetIds,
+    activeSetId,
+    onDoExerciseNow,
+    onSwitchToSwapMode,
     onPressThumb,
     onToggleExerciseNote,
     onReplaceExercise,
@@ -162,12 +216,16 @@ export default function ActiveWorkoutOverflowSheet({
     t,
   ]);
 
+  const name =
+    session?.exercises.find((e) => e.id === overflowMenu?.entryId)
+      ?.exercise_snapshot?.name ??
+    t('workout.exercise', { defaultValue: 'Exercise' });
   const title =
     overflowMenu?.mode === 'pick'
       ? t('workout.supersetWith', { defaultValue: 'Superset with…' })
-      : (session?.exercises.find((e) => e.id === overflowMenu?.entryId)
-          ?.exercise_snapshot?.name ??
-        t('workout.exercise', { defaultValue: 'Exercise' }));
+      : overflowMenu?.mode === 'swap'
+        ? t('workout.swapTitle', { defaultValue: 'Swap {{name}}', name })
+        : name;
 
   return (
     <ActionSheet

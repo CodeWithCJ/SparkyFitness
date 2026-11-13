@@ -207,6 +207,25 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     rollingLookbackDays: 2,
   },
   {
+    // iOS only: Health Connect has no toothbrushing record. Smart brushes
+    // (Oral-B, Philips, Colgate) write HKCategoryTypeIdentifierToothbrushingEvent;
+    // each brush is sent as Toothbrushing and upserted by its uuid into
+    // oral_care_sessions (#1862).
+    id: 'toothbrushing',
+    labelKey: 'healthMetrics.toothbrushing',
+    defaultLabel: 'Toothbrushing',
+    stateKey: 'isToothbrushingSyncEnabled',
+    preferenceKey: 'syncToothbrushingEnabled',
+    recordType: 'Toothbrushing',
+    unit: 'min',
+    icon: require('../assets/icons/health-metrics/stress.png'),
+    permissions: [{ accessType: 'read', recordType: 'Toothbrushing' }],
+    type: 'toothbrushing',
+    platforms: ['ios'],
+    category: 'Hygiene',
+    rollingLookbackDays: 2,
+  },
+  {
     id: 'basalBodyTemperature',
     labelKey: 'healthMetrics.basalBodyTemperature',
     defaultLabel: 'Basal Body Temperature',
@@ -273,6 +292,44 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }],
     type: 'body_temperature',
     category: 'Vitals',
+  },
+  {
+    id: 'sleepingWristTemperature',
+    labelKey: 'healthMetrics.sleepingWristTemperature',
+    defaultLabel: 'Sleeping Wrist Temperature',
+    stateKey: 'isSleepingWristTemperatureSyncEnabled',
+    preferenceKey: 'syncSleepingWristTemperatureEnabled',
+    recordType: 'SleepingWristTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    permissions: [
+      { accessType: 'read', recordType: 'SleepingWristTemperature' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // Apple writes the night's value after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
+  },
+  {
+    id: 'overnightBodyTemperature',
+    labelKey: 'healthMetrics.overnightBodyTemperature',
+    defaultLabel: 'Overnight Body Temperature',
+    stateKey: 'isOvernightBodyTemperatureSyncEnabled',
+    preferenceKey: 'syncOvernightBodyTemperatureEnabled',
+    recordType: 'OvernightBodyTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    // Reads Body Temperature inside each sleep session, so it needs both.
+    permissions: [
+      { accessType: 'read', recordType: 'BodyTemperature' },
+      { accessType: 'read', recordType: 'SleepSession' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // The night's value is known only after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
   },
   {
     id: 'distance',
@@ -1114,6 +1171,7 @@ export const CATEGORY_ORDER = [
   'Nutrition',
   'Reproductive',
   'Mobility',
+  'Hygiene',
   'Running',
   'Cycling',
   'Environment',
@@ -1151,6 +1209,10 @@ export function getHealthMetricLabel(
       return t('healthMetrics.stress', { defaultValue: 'Stress' });
     case 'mindfulness':
       return t('healthMetrics.mindfulness', { defaultValue: 'Mindfulness' });
+    case 'toothbrushing':
+      return t('healthMetrics.toothbrushing', {
+        defaultValue: 'Toothbrushing',
+      });
     case 'basalBodyTemperature':
       return t('healthMetrics.basalBodyTemperature', {
         defaultValue: 'Basal Body Temperature',
@@ -1166,6 +1228,14 @@ export function getHealthMetricLabel(
     case 'bodyTemperature':
       return t('healthMetrics.bodyTemperature', {
         defaultValue: 'Body Temperature',
+      });
+    case 'overnightBodyTemperature':
+      return t('healthMetrics.overnightBodyTemperature', {
+        defaultValue: 'Overnight Body Temperature',
+      });
+    case 'sleepingWristTemperature':
+      return t('healthMetrics.sleepingWristTemperature', {
+        defaultValue: 'Sleeping Wrist Temperature',
       });
     case 'distance':
       return t('healthMetrics.distance', { defaultValue: 'Distance' });
@@ -1361,6 +1431,8 @@ export function getHealthCategoryLabel(
       return t('healthCategories.Environment', { defaultValue: 'Environment' });
     case 'Apple':
       return t('healthCategories.Apple', { defaultValue: 'Apple' });
+    case 'Hygiene':
+      return t('healthCategories.Hygiene', { defaultValue: 'Hygiene' });
     default:
       return t('healthCategories.unknown', { defaultValue: 'Other' });
   }

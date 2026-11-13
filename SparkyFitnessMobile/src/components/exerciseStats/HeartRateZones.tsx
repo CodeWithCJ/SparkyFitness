@@ -1,12 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
+import { HEART_RATE_ZONE_COLORS } from '@workspace/shared';
 import { formatLocalizedNumber } from '../../localization';
 import type { HeartRateZoneRow } from '../../utils/cardioSession';
 import { zoneMethodLabel } from '../../utils/heartRateZoneLabels';
-
-/** Easy to hard, zone 1 to 5; later zones reuse the last color. */
-const ZONE_COLORS = ['#94a3b8', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
 
 const HeartRateZones: React.FC<{ zones: readonly HeartRateZoneRow[] }> = ({
   zones,
@@ -26,7 +24,9 @@ const HeartRateZones: React.FC<{ zones: readonly HeartRateZoneRow[] }> = ({
       {zones.map((zone) => {
         const minutes = Math.round(zone.seconds / 60);
         const color =
-          ZONE_COLORS[Math.min(Math.max(zone.zone, 1), ZONE_COLORS.length) - 1];
+          HEART_RATE_ZONE_COLORS[
+            Math.min(Math.max(zone.zone, 1), HEART_RATE_ZONE_COLORS.length) - 1
+          ];
         return (
           <View key={zone.zone} className="mb-2.5">
             <View className="flex-row justify-between mb-1">

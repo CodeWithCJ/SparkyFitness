@@ -20,6 +20,8 @@ import {
   type WorkoutHeartRateSummary,
 } from '../utils/workoutSession';
 import { RPE_TONE_VARS } from './ActiveWorkoutSetRow';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 interface WorkoutCompleteStatTilesProps {
   durationMinutes: number;
@@ -129,6 +131,7 @@ export default function WorkoutCompleteStatTiles({
   distanceUnit,
 }: WorkoutCompleteStatTilesProps) {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const rpeTone = averageRpe != null ? getRpeTone(averageRpe) : null;
   const rpeToneColor = String(useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']));
   const [heartRateColor, activeEnergyColor] = useCSSVariable([
@@ -201,8 +204,8 @@ export default function WorkoutCompleteStatTiles({
         >
           {caloriesValue != null ? (
             <StatValue
-              value={formatLocalizedNumber(Math.round(caloriesValue))}
-              unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+              value={formatEnergyNumber(caloriesValue, energyUnit)}
+              unit={energyUnitLabel(energyUnit, t)}
             />
           ) : caloriesFailed ? (
             <StatValue value="—" />

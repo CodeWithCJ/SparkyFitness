@@ -7,6 +7,7 @@ import {
   type SharedCycleDailyLog,
   type FlowLevel,
   type ProductDef,
+  keepMostDetailedSleepEntries,
 } from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,8 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
   const waterQuery = useWaterIntakeQuery(date);
 
   const waterMl = waterQuery.data ?? 0;
-  const sleepEntries = sleepQuery.data ?? [];
+  // A night two sources recorded counts once, from the more detailed record.
+  const sleepEntries = keepMostDetailedSleepEntries(sleepQuery.data ?? []);
   const totalSleepSeconds = sleepEntries.reduce((sum, entry) => {
     return (
       sum + (entry.time_asleep_in_seconds ?? entry.duration_in_seconds ?? 0)

@@ -159,7 +159,6 @@
     "emptyForDate": "Nessuna voce alimentare per questa data",
     "diaryForDate": "Diario familiare · {{date}}",
     "openMeal": "Apri pasto {{meal}}",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Cibo senza nome",
     "selectAll": "Seleziona tutto",
     "deselectAll": "Deseleziona tutto",
@@ -167,15 +166,12 @@
     "selectFood": "Seleziona {{food}}",
     "deselectFood": "Deseleziona {{food}}",
     "continue": "Continua",
-    "nutritionSummary": "{{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
-    "selectedNutrition": "Selezionati: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
     "copyReview": "Copia revisione",
     "copyFrom": "Copia da {{name}}",
     "copyMealTitle": "Pasto {{meal}}",
     "quantityForFood": "Quantità per {{food}}",
     "quantityMustBePositive": "Inserisci una quantità maggiore di zero.",
     "copyNutrition": "Copia valori nutrizionali",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g proteine",
     "copyCarbs": "{{carbs}} g carboidrati",
     "copyFat": "{{fat}} g grassi",
@@ -372,7 +368,6 @@
       "changeMetric": "Cambia colonna metrica",
       "notesForSet": "Note per la serie {{number}}",
       "addSet": "Aggiungi serie a {{name}}",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Aggiungi serie"
     },
     "nextSet": "Prossima serie"
@@ -448,9 +443,6 @@
     "medications": "Farmaci",
     "medication": "Farmaco",
     "library": {
-      "noServerConfigured": "Nessun server configurato",
-      "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria.",
-      "goToSettings": "Vai alle Impostazioni",
       "loading": "Caricamento libreria...",
       "title": "Libreria",
       "create": "Crea",
@@ -675,9 +667,6 @@
   },
   "dashboard": {
     "chooseDate": "Scegli la data della dashboard",
-    "noServerConfigured": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare il riepilogo giornaliero.",
-    "goToSettings": "Vai alle Impostazioni",
     "loadingSummary": "Caricamento riepilogo...",
     "loadFailed": "Caricamento riepilogo non riuscito",
     "checkConnection": "Controlla la tua connessione e riprova.",
@@ -688,7 +677,6 @@
     "healthTrends": "Tendenze sulla salute",
     "consumed": "Consumato",
     "remaining": "Rimanente",
-    "ofCalories": "di {{value}} kcal",
     "burned": "Bruciato",
     "hydration": "Idratazione",
     "ofVolume": "di {{value}} {{unit}}",
@@ -817,7 +805,6 @@
     "exerciseCaloriesDescription": "Quante delle tue calorie da esercizio vengono aggiunte al tuo obiettivo giornaliero.",
     "activityLevel": "Livello di attività",
     "activityBaseline": "Utilizzato come base per il TDEE.",
-    "adaptiveFallback": "La stima di fallback fino a quando non hai abbastanza dati di tracciamento — e continua a impostare i limiti di plausibilità successivamente. Il tuo TDEE misurato è limitato a ±500 kcal del BMR × questo moltiplicatore.",
     "allowNegative": "Consenti proiezione di fallback inferiore",
     "negativeDescription": "Quando un totale del dispositivo non è disponibile, lascia che il fallback BMR + calorie attive riduca il tuo obiettivo.",
     "includeResting": "Includi calorie a riposo",
@@ -993,9 +980,6 @@
   },
   "diary": {
     "chooseDate": "Scegli la data del diario",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al tuo server nelle Impostazioni per visualizzare il tuo diario.",
-    "goToSettings": "Vai alle Impostazioni",
     "loading": "Caricamento diario...",
     "loadFailed": "Impossibile caricare il diario",
     "checkConnection": "Controlla la tua connessione e riprova.",
@@ -1117,7 +1101,7 @@
       "doseOverride": "Sovrascrittura dose ({{unit}})",
       "doseOverridePlain": "Sovrascrittura dose",
       "withMealTitle": "Con pasto",
-      "withMeal": "Con pasto",
+      "withMeal": "Durante il pasto",
       "startDate": "Data di inizio",
       "startDateRequired": "Data di inizio *",
       "setStartDate": "Imposta data di inizio",
@@ -1228,6 +1212,15 @@
     "inactiveCount_other": "Inattivi ({{count}})",
     "mealRelation": {
       "awayFromMeals": "Lontano dai pasti"
+    },
+    "today": {
+      "loggedActivity": "Registrate oggi",
+      "loggedActivityDescription": "Tutte le dosi assunte o saltate in questa data.",
+      "loadingHistory": "caricamento cronologia…"
+    },
+    "calendar": {
+      "allTaken": "Tutte le dosi assunte",
+      "sideEffect": "Sintomo da effetto-collaterale"
     }
   },
   "scheduleSummary": {
@@ -1573,7 +1566,6 @@
     "forceStatic": "Statico",
     "mechanicCompound": "Composto",
     "mechanicIsolation": "Isolamento",
-    "caloriesPerHour": "Calorie all'ora",
     "muscles": "Muscoli",
     "classification": "Classificazione",
     "selectValue": "Seleziona…",
@@ -1655,7 +1647,6 @@
     "setCount_many": "{{formattedCount}} serie",
     "setCount_other": "{{formattedCount}} serie",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "unknownExercise": "Esercizio sconosciuto",
     "addNotePlaceholder": "Aggiungi una nota…",
     "setOf_one": "Serie {{number}} di {{count}}",
@@ -1902,8 +1893,6 @@
     "protein": "proteine",
     "carbs": "carboidrati",
     "fat": "grassi",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "proteinAmount": "proteine",
     "carbsAmount": "carboidrati",
     "fatAmount": "grassi",
@@ -1917,7 +1906,6 @@
   "foodSummary": {
     "tapToAddFood": "Tocca per aggiungere cibo",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "nutritionBreakdown": "Ripartizione nutrizionale di {{label}}"
   },
   "exerciseSummary": {
@@ -1929,7 +1917,6 @@
     "unknownFood": "Cibo sconosciuto",
     "adjustServing": "Regola porzione",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "deleteFood": "Elimina cibo"
   },
   "exerciseRow": {
@@ -2043,7 +2030,6 @@
       "weightWithUnit": "Peso ({{unit}})",
       "muscleMassWithUnit": "Massa muscolare ({{unit}})",
       "boneMassWithUnit": "Massa ossea ({{unit}})",
-      "bmrWithUnit": "BMR (kcal)",
       "weightStones": "Peso in stone",
       "weightPounds": "Peso in libbre",
       "heightFeet": "Altezza in piedi",
@@ -2061,8 +2047,7 @@
       "invalidHeight": "Altezza non valida",
       "feetInchesNumber": "Inserisci un numero per piedi e pollici.",
       "bodyFatRange": "La percentuale di grasso corporeo deve essere compresa tra 0 e 100.",
-      "bodyWaterRange": "La percentuale di acqua corporea deve essere compresa tra 0 e 100.",
-      "bmrRange": "Il BMR deve essere compreso tra 600 e 6000 kcal."
+      "bodyWaterRange": "La percentuale di acqua corporea deve essere compresa tra 0 e 100."
     },
     "nothingToSave": "Niente da salvare",
     "enterValue": "Inserisci o cancella almeno un valore.",
@@ -2418,8 +2403,6 @@
     "remaining": "rimanente",
     "over": "oltre",
     "title": "Riepilogo",
-    "projectedTdee": "TDEE previsto: {{value}} kcal",
-    "goalModeTarget": "Obiettivo Modalità Obiettivo: {{value}} kcal",
     "healthConnectProjectionSource": "Calorie totali Connessione Salute",
     "fallbackProjectionSource": "BMR + calorie attive di riserva",
     "legacyProjectionSource": "Proiezione dispositivo",
@@ -2454,7 +2437,6 @@
     "servingSize": "Dimensione porzione",
     "servingUnit": "Unità porzione",
     "autoScaleNutrition": "Scala automaticamente i valori nutrizionali",
-    "caloriesRequired": "Calorie (kcal) *",
     "ai": {
       "couldNotEstimate": "Impossibile stimare",
       "noTrustedDefault": "Il cibo non ha un valore predefinito attendibile da cui scalare.",
@@ -2894,7 +2876,6 @@
     "showMore": "Mostra di più",
     "best": "Migliore ({{unit}})",
     "last": "Ultimo ({{unit}})",
-    "caloriesPerHour": "kcal/ora",
     "equipment": "Attrezzatura",
     "primaryMuscles": "Muscoli principali",
     "secondaryMuscles": "Muscoli secondari",
@@ -2957,9 +2938,6 @@
     "deleteMessage": "Elimina {{name}}? Le voci future del diario generate da questo piano saranno rimosse.",
     "deleteFailed": "Impossibile eliminare il piano pasto",
     "deleteSuccess": "Piano pasto eliminato",
-    "noServer": "Nessun server configurato",
-    "noServerSubtitle": "Configura la connessione al server per gestire i piani pasto.",
-    "goToSettings": "Vai alle impostazioni",
     "loading": "Caricamento piani pasto...",
     "loadFailed": "Impossibile caricare i piani pasto",
     "loadFailedSubtitle": "Verifica la tua connessione e riprova.",
@@ -3018,11 +2996,8 @@
     "proteinLabel": "Proteine",
     "carbsLabel": "Carboidrati",
     "fatLabel": "Grassi",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g P · {{carbs}} g C · {{fat}} g G",
     "dailyNutritionAccessibility": "Giornaliero {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} totale {{calories}} kcal, {{protein}} g proteine, {{carbs}} g carboidrati, {{fat}} g grassi",
     "mealTypeMacros": "{{protein}} g P · {{carbs}} g C · {{fat}} g F",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Caricamento dei dettagli nutrizionali mancanti. I totali potrebbero essere incompleti.",
     "nutritionLoadFailed": "Alcuni dettagli nutrizionali non possono essere caricati. I totali potrebbero essere incompleti.",
     "assignmentRequired": "Aggiungi almeno un'assegnazione pasto completa.",
@@ -3057,8 +3032,6 @@
     "makePrivate": "Rendi privato",
     "shareWithPublic": "Condividi con il pubblico",
     "editMeal": "Modifica pasto",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare i dettagli del pasto.",
     "loading": "Caricamento pasto in corso...",
     "loadFailed": "Impossibile caricare il pasto",
     "perServing": "Per porzione",
@@ -3074,7 +3047,6 @@
     "protein": "proteine",
     "carbs": "carboidrati",
     "fat": "grassi",
-    "calories": "cal",
     "viewLinkedMeal": "Visualizza pasto collegato {{name}}",
     "logMeal": "Registra pasto",
     "planMeal": "Pianifica pasto",
@@ -3277,7 +3249,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "cal",
       "foods": "alimenti",
       "meals": "pasti",
       "meal": "Pasto",
@@ -3513,8 +3484,6 @@
     "makePrivate": "Rendi privato",
     "sharePublic": "Condividi con il pubblico",
     "editFood": "Modifica alimento",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare i dettagli dell'alimento.",
     "serving": "Porzione",
     "selectServing": "Seleziona porzione",
     "servingOptions": "Opzioni porzione",
@@ -3690,7 +3659,10 @@
       "goals": "Obiettivi",
       "lookedUp": "Cercato {{name}}"
     },
-    "typing": "Sparky sta scrivendo"
+    "typing": "Sparky sta scrivendo",
+    "voice": {
+      "stop": "Interrompi la dettatura"
+    }
   },
   "foodImagePicker": {
     "photos": "Foto",
@@ -3833,11 +3805,8 @@
       "count_many": "{{count}} ingredienti",
       "count_other": "{{count}} ingredienti",
       "totals": "Totale",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}G",
       "addFood": "Aggiungi alimento",
       "addedFood": "Alimento aggiunto",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Aggiunto dai tuoi alimenti. Rimuovilo e aggiungilo di nuovo per modificare la quantità."
     },
     "match": {
@@ -3901,7 +3870,6 @@
       "activity": "Attività",
       "duration": "Durata (min)",
       "distance": "Distanza ({{unit}})",
-      "calories": "Calorie",
       "avgHeartRate": "Frequenza cardiaca media (bpm)",
       "notes": "Note",
       "notesPlaceholder": "Note opzionali..."
@@ -3933,8 +3901,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Nessun server configurato",
-      "noServerHint": "Configura la connessione al server nelle Impostazioni per visualizzare i valori nutrizionali dei pasti.",
       "loading": "Caricamento pasto…",
       "loadFailed": "Impossibile caricare il pasto",
       "noFoods": "Nessun alimento per {{meal}}",
@@ -3946,8 +3912,7 @@
     "accessibility": {
       "addFood": "Aggiungi alimento",
       "copyMeal": "Copia pasto in un altro giorno"
-    },
-    "targetCalories": "Obiettivo: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "Tendenze {{nutrient}}",
@@ -4267,9 +4232,6 @@
   "exerciseLibrary": {
     "title": "Esercizi",
     "search": "Cerca esercizi...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di esercizi.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento esercizi in corso...",
     "failed": "Impossibile caricare gli esercizi",
     "retry": "Riprova",
@@ -4285,9 +4247,6 @@
   "foodLibrary": {
     "title": "Alimenti",
     "search": "Cerca alimenti...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di alimenti.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento alimenti in corso...",
     "failed": "Impossibile caricare gli alimenti",
     "retry": "Riprova",
@@ -4302,9 +4261,6 @@
   "mealLibrary": {
     "title": "Pasti",
     "search": "Cerca pasti...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di pasti.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento pasti in corso...",
     "failed": "Impossibile caricare i pasti",
     "searchFailed": "Impossibile cercare i pasti",
@@ -4319,9 +4275,7 @@
   "presetLibrary": {
     "title": "Modelli allenamento",
     "search": "Cerca modelli di allenamento...",
-    "noServer": "Nessun server configurato",
     "configure": "Configura la connessione al server nelle Impostazioni per visualizzare i tuoi modelli di allenamento.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento modelli di allenamento in corso...",
     "failed": "Impossibile caricare i modelli di allenamento",
     "retry": "Riprova",
@@ -4542,9 +4496,6 @@
     "loading": "Caricamento contenitori d'acqua in corso...",
     "loadFailed": "Impossibile caricare i contenitori d'acqua",
     "loadFailedSubtitle": "Controlla la tua connessione e riprova.",
-    "noServer": "Nessun server configurato",
-    "noServerSubtitle": "Configura la connessione al server per gestire i contenitori d'acqua.",
-    "goToSettings": "Vai alle Impostazioni",
     "emptyTitle": "Nessun contenitore d'acqua",
     "emptySubtitle": "Aggiungi una bottiglia o un bicchiere per tracciare l'idratazione. Puoi anche collegarlo a un alimento per registrarli entrambi con un solo tocco.",
     "linkedTo": "Collegato a {{food}}",
@@ -4999,9 +4950,6 @@
       "dayCycle_other": "Ciclo di {{count}} giorni"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare i tuoi preset di allenamento."
-  },
   "time": {
     "hoursShort": "h",
     "minutesShort": "m"
@@ -5027,7 +4975,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",

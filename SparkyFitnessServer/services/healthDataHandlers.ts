@@ -14,6 +14,7 @@ import moodRepository from '../models/moodRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
+import * as oralCareRepository from '../models/oralCareRepository.js';
 import { resolveActivityMapping } from './workoutActivityMapping.js';
 import {
   computeTimeInZones,
@@ -30,7 +31,10 @@ import {
   type LapWindow,
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
-import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import {
+  type FlatHealthSample,
+  upsertSamplesByDay,
+} from './healthMetricSampleWriter.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
@@ -39,7 +43,9 @@ import {
   instantHourMinute,
   instantToDay,
   isDayString,
+  isSkinTemperatureSite,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
   todayInZone,
@@ -1912,9 +1918,32 @@ function localEntryTime(iso: string, tz: string): string | null {
   }
 }
 
+/**
+ * Shape check for a workout record, run before the pre-cleanup deletes anything
+ * (#2938) and again by the handler. Returns why the record cannot be stored, or
+ * null when it can.
+ */
+export function invalidWorkoutReason(
+  entry: Record<string, unknown>
+): string | null {
+  const { sets } = entry;
+  if (sets === undefined || sets === null) return null;
+  if (!Array.isArray(sets)) return 'Invalid workout: sets must be an array.';
+  if (
+    sets.some(
+      (set) => typeof set !== 'object' || set === null || Array.isArray(set)
+    )
+  ) {
+    return 'Invalid workout: every set must be an object.';
+  }
+  return null;
+}
+
 const workoutHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { type, source = 'manual' } = entry;
+    const invalidReason = invalidWorkoutReason(entry);
+    if (invalidReason) return { status: 'error', error: invalidReason };
     try {
       const {
         activityType,
@@ -2415,6 +2444,193 @@ const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
   decimals: 1,
 });
 
+// Apple's sleeping wrist temperature arrives as a plain record, one per night.
+// It is kept as a `skin_temperature` sample, not a custom measurement, so the
+// Sleep screen reads it from the same place as Polar's skin temperature.
+const SKIN_TEMPERATURE_BOUNDS = { min: 20, max: 45 };
+
+const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
+  const outcomes: HandlerOutcome[] = new Array(entries.length);
+  // One write per provider and site: wrist and body readings share the
+  // provider's day row, and each write replaces only its own site's samples.
+  interface SiteGroup {
+    provider: string;
+    site: SkinTemperatureSite | undefined;
+    indexes: number[];
+    samples: FlatHealthSample[];
+  }
+  const byProvider = new Map<string, SiteGroup>();
+
+  entries.forEach(({ entry, parsedDate, entryTimestamp }, i) => {
+    const celsius = parseDailySummaryReading(entry.value);
+    const timestamp = new Date(entryTimestamp);
+    if (
+      celsius === null ||
+      celsius < SKIN_TEMPERATURE_BOUNDS.min ||
+      celsius > SKIN_TEMPERATURE_BOUNDS.max ||
+      !Number.isFinite(timestamp.getTime())
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature value: ${String(entry.value)}`,
+      };
+      return;
+    }
+    // A site the server does not know is refused rather than dropped: written
+    // without one, the merge would treat it as an older reading.
+    if (
+      entry.site !== undefined &&
+      entry.site !== null &&
+      !isSkinTemperatureSite(entry.site)
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature site: ${String(entry.site)}`,
+      };
+      return;
+    }
+    const provider = normalizeHealthSourceProvider(entry.source);
+    const site = isSkinTemperatureSite(entry.site) ? entry.site : undefined;
+    const key = `${provider}|${site ?? ''}`;
+    const group: SiteGroup = byProvider.get(key) ?? {
+      provider,
+      site,
+      indexes: [],
+      samples: [],
+    };
+    group.indexes.push(i);
+    group.samples.push({
+      entry_date: parsedDate,
+      timestamp,
+      celsius: Math.round(celsius * 100) / 100,
+      // Wrist and overnight body temperature both come from one source, so the
+      // site keeps their baselines apart.
+      ...(site ? { site } : {}),
+      device_name: typeof entry.source === 'string' ? entry.source : null,
+    });
+    byProvider.set(key, group);
+  });
+
+  for (const { provider, site, ...group } of byProvider.values()) {
+    try {
+      await upsertSamplesByDay(
+        ctx.userId,
+        ctx.actingUserId,
+        'skin_temperature',
+        provider,
+        group.samples,
+        {
+          // One row per (user, metric, day, provider): replace only the span
+          // these readings cover, so a re-sync does not duplicate a night.
+          mode: 'merge',
+          window: minMax(group.samples.map((s) => s.timestamp.getTime())),
+          ...(site ? { site } : {}),
+        }
+      );
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'success',
+          data: { metric: 'skin_temperature' },
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'error',
+          error: `Failed to store skin temperature: ${message}`,
+        };
+      }
+    }
+  }
+  return outcomes;
+};
+
+const skinTemperatureHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const [outcome] = await skinTemperatureHandleBatch(
+      [
+        {
+          entry,
+          parsedDate: ctx.parsedDate,
+          entryTimestamp: ctx.entryTimestamp,
+          entryHour: ctx.entryHour,
+        },
+      ],
+      ctx
+    );
+    return outcome;
+  },
+  handleBatch: skinTemperatureHandleBatch,
+};
+
+// Toothbrushing from a health store (#1862; Apple Health's ToothbrushingEvent,
+// which smart brushes such as Oral-B write). The sample's start and end give
+// the duration. Re-sending a sample updates its row through
+// (user, provider, external_id). A brush the person also logged in Sparky is
+// kept and counted once when read (shared oralCareSessionsCoveredBySync).
+const toothbrushingHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const startTime =
+      typeof entry.startTime === 'string' && entry.startTime
+        ? entry.startTime
+        : null;
+    const endTime =
+      typeof entry.endTime === 'string' && entry.endTime ? entry.endTime : null;
+    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
+    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs < startMs) {
+      return {
+        status: 'error',
+        error: 'Invalid Toothbrushing entry: endTime is before startTime.',
+      };
+    }
+    const sentDuration = Number(entry.duration_seconds ?? entry.duration);
+    const durationSeconds =
+      Number.isFinite(sentDuration) && sentDuration > 0
+        ? Math.round(sentDuration)
+        : Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+          ? Math.round((endMs - startMs) / 1000)
+          : null;
+    const externalId = entry.source_id
+      ? String(entry.source_id)
+      : entry.id
+        ? String(entry.id)
+        : null;
+    try {
+      const result = await oralCareRepository.upsertOralCareSession(
+        ctx.userId,
+        {
+          entry_date: ctx.parsedDate,
+          start_time: startTime,
+          end_time: endTime,
+          // A brushing longer than an hour is not one brushing.
+          duration_seconds:
+            durationSeconds !== null && durationSeconds <= 3600
+              ? durationSeconds
+              : null,
+          care_type: 'brushing',
+          custom_label: null,
+          provider:
+            typeof entry.source === 'string' && entry.source
+              ? entry.source
+              : 'apple_health',
+          external_id: externalId,
+          notes: null,
+        },
+        ctx.actingUserId
+      );
+      return { status: 'success', data: result };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        status: 'error',
+        error: `Failed to process Toothbrushing entry: ${message}`,
+      };
+    }
+  },
+};
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 // Handlers keyed by canonical type name.
@@ -2441,8 +2657,10 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   sleep_entry: sleepEntryHandler,
   Mood: moodHandler,
   MindfulnessSession: mindfulnessHandler,
+  Toothbrushing: toothbrushingHandler,
   resting_heart_rate: restingHeartRateHandler,
   vo2_max: vo2MaxHandler,
+  skin_temperature: skinTemperatureHandler,
 };
 
 // Lookup-only normalization of incoming type spellings to canonical handler
@@ -2472,6 +2690,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   mindfulness_session: 'MindfulnessSession',
   mindfulness: 'MindfulnessSession',
   mindful: 'MindfulnessSession',
+  ToothbrushingEvent: 'Toothbrushing',
+  HKCategoryTypeIdentifierToothbrushingEvent: 'Toothbrushing',
+  toothbrushing: 'Toothbrushing',
   RestingHeartRate: 'resting_heart_rate',
   Vo2Max: 'vo2_max',
 };

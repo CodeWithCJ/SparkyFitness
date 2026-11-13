@@ -1,38 +1,98 @@
 name: Auto-Merge Bot PRs
 
+# Merges the translations PR that automation opens, once its checks pass. The
+# Nix hashes and schema backup PRs merge themselves in their own workflows. It merges with the SparkyFitness-Sync GitHub App token: main's ruleset
+# requires a review, and the app is on its bypass list, while GITHUB_TOKEN is not.
+# Nothing here checks out or runs code from the PR.
+
 on:
   pull_request_target:
     types: [opened, synchronize, labeled, ready_for_review]
+  # check_suite never fires for suites created by GitHub Actions, so CI finishing
+  # is caught here instead.
+  workflow_run:
+    workflows: ["CI Tests"]
+    types: [completed]
   check_suite:
     types: [completed]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-  checks: read
-  statuses: read
+# Every call goes through the app token, so GITHUB_TOKEN gets nothing.
+permissions: {}
 
+# One group per PR or commit. A single shared group keeps only one pending run,
+# so the run started by CI finishing could be replaced by another PR's run and
+# the merge never tried. Two runs for the same PR are harmless: the merge is
+# pinned to the head SHA, and the second one finds the PR closed.
 concurrency:
-  group: auto-merge-bot-prs
+  group: auto-merge-bot-prs-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.event.check_suite.head_sha || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   auto-merge:
     name: Auto-Merge Translations and Nix PRs
+    # Only create the app token for events that can concern an automation PR from
+    # this repository. The script below checks again, with the full PR data.
+    if: >-
+      github.repository == 'CodeWithCJ/SparkyFitness' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          startsWith(github.event.pull_request.head.ref, 'i18n/')) ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
+          startsWith(github.event.workflow_run.head_branch, 'i18n/')) ||
+        (github.event_name == 'check_suite' &&
+          startsWith(github.event.check_suite.head_branch, 'i18n/'))
+      )
+    # The app secrets live in this environment, which only main can use, so a
+    # workflow pushed on another branch cannot read them.
+    environment: sync-app
     runs-on: ubuntu-latest
+    # GITHUB_TOKEN only checks out the allowlist and reads workflow runs, for
+    # the CI Tests check below. The app token does the rest.
+    permissions:
+      actions: read
+      contents: read
 
     steps:
-      - name: Check and Merge Clean Automation PRs
-        uses: actions/github-script@v7
+      # The default branch's copy of the allowlist, never the PR's: on every
+      # trigger here the checkout is main, and no PR code is checked out.
+      - name: Checkout the allowlist
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Only what reading checks and merging needs.
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: read
+          permission-statuses: read
+
+      - name: Check and Merge Clean Automation PRs
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          ACTIONS_READ_TOKEN: ${{ github.token }}
+        with:
+          github-token: ${{ steps.app_token.outputs.token }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Allowed branch prefixes and labels for safe auto-merging
-            const ALLOWED_BRANCH_PREFIXES = ['i18n/', 'nix/'];
-            const ALLOWED_LABELS = ['i18n', 'translations', 'nix'];
+            // Allowed branch prefixes for safe auto-merging. Pushing one of these
+            // branches here needs write access; a label alone is not enough, because
+            // anyone with triage access can add one and this token skips review.
+            const ALLOWED_BRANCH_PREFIXES = ['i18n/'];
+
+            // Files each automation branch may change, shared with sync-translations.yml.
+            const { englishPathFor, isServerCatalogue, newLinks, outsideAllowlist, rendersMarkup, serverValuesWithTags, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -46,11 +106,9 @@ jobs:
               const isOwner = pr.user?.login === owner || pr.author_association === 'OWNER';
               if (!isBot && !isOwner) return false;
 
-              // 3. Must match allowed automation branch prefixes or labels
+              // 3. Must come from an automation branch
               const headRef = pr.head?.ref || '';
-              const matchesBranch = ALLOWED_BRANCH_PREFIXES.some(prefix => headRef.startsWith(prefix));
-              const matchesLabel = (pr.labels || []).some(l => ALLOWED_LABELS.includes(l.name));
-              return matchesBranch || matchesLabel;
+              return ALLOWED_BRANCH_PREFIXES.some(prefix => headRef.startsWith(prefix));
             }
 
             // 1. Gather candidate PRs to inspect
@@ -58,13 +116,14 @@ jobs:
 
             if (context.eventName === 'pull_request_target') {
               candidatePRs = [context.payload.pull_request];
-            } else if (context.eventName === 'check_suite') {
-              const suitePRs = context.payload.check_suite?.pull_requests || [];
+            } else if (context.eventName === 'check_suite' || context.eventName === 'workflow_run') {
+              const source = context.payload.check_suite || context.payload.workflow_run;
+              const suitePRs = source?.pull_requests || [];
               if (suitePRs.length > 0) {
                 candidatePRs = suitePRs;
               } else {
-                // If check_suite payload does not list PRs directly, search open PRs with matching head SHA
-                const headSha = context.payload.check_suite?.head_sha;
+                // If the payload does not list PRs directly, search open PRs with matching head SHA
+                const headSha = source?.head_sha;
                 if (headSha) {
                   const openPulls = await github.paginate(github.rest.pulls.list, {
                     owner,
@@ -117,7 +176,7 @@ jobs:
 
               const headRef = pr.head?.ref || '';
               if (!isEligible(pr)) {
-                core.info(`PR #${pr.number} (${headRef}) is not an eligible translation/nix automation PR.`);
+                core.info(`PR #${pr.number} (${headRef}) is not an eligible translation automation PR.`);
                 continue;
               }
 
@@ -144,8 +203,176 @@ jobs:
                 continue;
               }
 
-              // 3. Verify CI check runs and commit status
+              // 3. Check the files of this exact head, after the mergeability retry
+              // above may have fetched a newer one. The merge below is pinned to
+              // headSha, so a push after this point makes it fail, not slip through.
               const headSha = pr.head.sha;
+              // List the files of headSha itself, not the PR's current head, so a
+              // push and restore around this call cannot swap in another listing.
+              // The compare API returns at most 300 files; a larger PR no longer
+              // matches its changed_files count and is left for a maintainer.
+              const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+                owner,
+                repo,
+                basehead: `${pr.base.sha}...${headSha}`,
+              });
+              const files = comparison.files || [];
+              if (files.length !== pr.changed_files) {
+                core.warning(
+                  `PR #${pr.number} reports ${pr.changed_files} changed files but ${files.length} were listed. ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                continue;
+              }
+              const outside = outsideAllowlist(headRef, files.flatMap(f => [f.filename, f.previous_filename]));
+              if (outside.length > 0) {
+                core.warning(
+                  `PR #${pr.number} changes files outside its allowlist (${outside.slice(0, 5).join(', ')}). ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                continue;
+              }
+
+              // Paths are not enough: check that web catalogues contain no attributes in tags,
+              // and server catalogues contain no HTML tags (server email strings are 100% plain text).
+              // A file that cannot be read or parsed counts as a finding, not a pass.
+              const unsafe = [];
+              for (const f of files) {
+                if (!f.filename.endsWith('.json') || f.status === 'removed') continue;
+                if (!rendersMarkup(f.filename) && !isServerCatalogue(f.filename)) continue;
+                try {
+                  const { data } = await github.rest.repos.getContent({ owner, repo, path: f.filename, ref: headSha });
+                  const text = data.encoding === 'base64' && data.content ? Buffer.from(data.content, 'base64').toString('utf8') : null;
+                  if (text === null) {
+                    unsafe.push(f);
+                    continue;
+                  }
+                  if (rendersMarkup(f.filename) && valuesWithAttributes(text).length > 0) unsafe.push(f);
+                  if (isServerCatalogue(f.filename) && serverValuesWithTags(text).length > 0) unsafe.push(f);
+                } catch (err) {
+                  unsafe.push(f);
+                }
+              }
+              if (unsafe.length > 0) {
+                core.warning(
+                  `PR #${pr.number} has values with attributes or HTML tags, or a catalogue that could not be checked ` +
+                  `(${unsafe.slice(0, 5).map(f => f.filename).join(', ')}). Skipping auto-merge; a maintainer must review it.`
+                );
+                continue;
+              }
+
+              // Links: a translated value may repeat the links of its English text
+              // or keep the ones it has on main, but a new link, web address or
+              // email waits for a maintainer, who merges the PR by hand. Every
+              // catalogue is checked, mobile included, since a link shown as text
+              // can still send users somewhere. A file that cannot be read or
+              // parsed counts as a finding.
+              // A symlink at a catalogue path either comes back as type "symlink"
+              // or, when it points at another file here, as that file under its
+              // own path: only a regular file at exactly this path is read.
+              const readAt = async (path, ref) => {
+                try {
+                  const { data } = await github.rest.repos.getContent({ owner, repo, path, ref });
+                  if (Array.isArray(data) || data.type !== 'file' || data.path !== path) {
+                    throw new Error(`not a regular file (${Array.isArray(data) ? 'directory' : data.type})`);
+                  }
+                  return data.encoding === 'base64' && typeof data.content === 'string'
+                    ? Buffer.from(data.content, 'base64').toString('utf8')
+                    : null;
+                } catch (err) {
+                  if (err.status === 404) return null;
+                  throw err;
+                }
+              };
+              const linkFindings = [];
+              for (const f of files) {
+                if (f.status === 'removed') continue;
+                try {
+                  const head = await readAt(f.filename, headSha);
+                  if (head === null) throw new Error('unreadable at head');
+                  const base = await readAt(f.previous_filename || f.filename, pr.base.sha);
+                  const english = await readAt(englishPathFor(f.filename), headSha);
+                  for (const finding of newLinks(f.filename, head, base, english))
+                    linkFindings.push(`${f.filename} ${finding}`);
+                } catch (err) {
+                  linkFindings.push(`${f.filename}: could not be checked (${err.message})`);
+                }
+              }
+              if (linkFindings.length > 0) {
+                core.warning(
+                  `PR #${pr.number} adds ${linkFindings.length} link(s) to translations. ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                // One comment per PR, updated in place, so a held PR is not buried
+                // in repeats. Links go in code spans, without backticks or line breaks, so
+                // none of them renders as a clickable link.
+                const MARKER = '<!-- auto-merge-new-links -->';
+                const shown = linkFindings.slice(0, 50).map(x => `- \`${x.replace(/`/g, "'").replace(/[\r\n]+/g, ' ')}\``);
+                if (linkFindings.length > 50) shown.push(`- … and ${linkFindings.length - 50} more`);
+                const body = [
+                  MARKER,
+                  '### Held for review: new links in translations',
+                  '',
+                  `These values at \`${headSha.slice(0, 7)}\` add a link, web address or email that neither their English text nor the version on \`main\` has. Translations merge without review, so this PR waits for a maintainer. Check each one, then merge by hand.`,
+                  '',
+                  ...shown,
+                ].join('\n');
+                try {
+                  const comments = await github.paginate(github.rest.issues.listComments, {
+                    owner, repo, issue_number: pr.number, per_page: 100,
+                  });
+                  const mine = comments.find(c => c.user?.type === 'Bot' && (c.body || '').startsWith(MARKER));
+                  if (!mine) {
+                    await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                  } else if (mine.body !== body) {
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+                  }
+                } catch (err) {
+                  core.warning(`PR #${pr.number}: could not post the link report (${err.message}).`);
+                }
+                continue;
+              }
+
+              // 4. Require a finished, passing CI Tests run for headSha. main has
+              // no required status checks and the app skips review, so this is
+              // the CI gate. Listing check runs alone is not enough: the test jobs
+              // only appear once Detect Changes finishes, and a run in that gap
+              // would see every listed check green. Every path the i18n/ allowlist
+              // permits is in CI Tests' paths filter, so the run always exists.
+              // The app token cannot read workflow runs, so this one call uses
+              // GITHUB_TOKEN. A failed call skips the merge, never allows it.
+              let ciRuns;
+              try {
+                const res = await fetch(
+                  `${process.env.GITHUB_API_URL}/repos/${owner}/${repo}/actions/runs` +
+                    `?head_sha=${headSha}&event=pull_request&per_page=100`,
+                  {
+                    headers: {
+                      accept: 'application/vnd.github+json',
+                      authorization: `Bearer ${process.env.ACTIONS_READ_TOKEN}`,
+                      'x-github-api-version': '2022-11-28',
+                    },
+                  }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                ciRuns = await res.json();
+              } catch (err) {
+                core.warning(`PR #${pr.number}: could not list CI Tests runs (${err.message}). Skipping auto-merge.`);
+                continue;
+              }
+              const ci = (ciRuns.workflow_runs || [])
+                .filter(r => r.name === 'CI Tests' && r.path === '.github/workflows/ci-tests.yml')
+                .sort((a, b) => b.id - a.id)[0];
+              if (!ci || ci.status !== 'completed') {
+                core.info(`PR #${pr.number}: CI Tests has not finished for ${headSha}. Waiting.`);
+                continue;
+              }
+              if (ci.conclusion !== 'success') {
+                core.warning(`PR #${pr.number}: CI Tests concluded ${ci.conclusion}. Skipping auto-merge.`);
+                continue;
+              }
+
+              // 5. Verify the other check runs and commit status
 
               const checkRunsRes = await github.rest.checks.listForRef({
                 owner,
@@ -154,9 +381,17 @@ jobs:
                 per_page: 100,
               });
 
-              const checkRuns = (checkRunsRes.data?.check_runs || []).filter(
-                r => r.name !== 'Auto-Merge Translations and Nix PRs' && r.name !== context.job
-              );
+              // Keep only the newest run of each check. An update pushes and then
+              // edits the PR body, and PR Checks cancels the older run in its
+              // concurrency group, so a cancelled run with a newer one beside it
+              // is not a failure.
+              const newest = new Map();
+              for (const r of checkRunsRes.data?.check_runs || []) {
+                if (r.name === 'Auto-Merge Translations and Nix PRs' || r.name === context.job) continue;
+                const seen = newest.get(r.name);
+                if (!seen || r.id > seen.id) newest.set(r.name, r);
+              }
+              const checkRuns = [...newest.values()];
 
               const hasFailingCheck = checkRuns.some(
                 r => r.conclusion === 'failure' || r.conclusion === 'timed_out' || r.conclusion === 'cancelled'
@@ -198,7 +433,7 @@ jobs:
                 continue;
               }
 
-              // 4. Merge the clean PR
+              // 6. Merge the clean PR
               try {
                 core.info(`All checks passed and no conflicts found. Auto-merging PR #${pr.number} (${headRef})...`);
                 await github.rest.pulls.merge({
@@ -211,6 +446,6 @@ jobs:
                 });
                 core.info(`🎉 Successfully auto-merged PR #${pr.number}!`);
               } catch (err) {
-                core.error(`Failed to merge PR #${pr.number}: ${err.message}`);
+                core.setFailed(`Failed to merge PR #${pr.number}: ${err.message}`);
               }
             }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const runGoalsIdSchema = z.string();
 
-export const runGoalsRowSchema = z.object({
+export const runGoalsSchema = z.object({
   id: runGoalsIdSchema,
   user_id: z.string(),
   weekly_distance_km: z.number().nullable(),
@@ -35,6 +35,6 @@ export const runGoalsMutatorSchema = z.object({
   updated_at: z.coerce.date().optional(),
 });
 
-export type RunGoalsRow = z.infer<typeof runGoalsRowSchema>;
+export type RunGoalsRow = z.infer<typeof runGoalsSchema>;
 export type RunGoalsInitializer = z.infer<typeof runGoalsInitializerSchema>;
 export type RunGoalsMutator = z.infer<typeof runGoalsMutatorSchema>;

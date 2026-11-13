@@ -1,0 +1,491 @@
+import '../hooks/queryTestUtils';
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import RecipeImportScreen from '../../src/screens/RecipeImportScreen';
+import { fetchExternalProviders } from '../../src/services/api/externalProvidersApi';
+import {
+  browseRecipes,
+  previewRecipe,
+  listRecipeMappings,
+  forgetRecipeMapping,
+} from '../../src/services/api/recipeImportApi';
+import type { RootStackScreenProps } from '../../src/types/navigation';
+import {
+  profileQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
+let mockScope: string | null = 'server-owner';
+jest.mock('../../src/components/FoodImageSourceProvider', () => ({
+  useFoodImageSourceContext: () => () => undefined,
+}));
+jest.mock('../../src/components/LightboxProvider', () => ({
+  useOpenLightbox: () => jest.fn(),
+}));
+jest.mock('../../src/hooks/useEnergyUnit', () => ({
+  useEnergyUnit: () => 'kcal',
+}));
+jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual('../../src/hooks/useRecipeImport'),
+  useRecipeImportAccess: () => mockScope,
+}));
+jest.mock('../../src/hooks/useScreenHeader', () => ({
+  useScreenHeader: () => null,
+}));
+jest.mock('../../src/components/ActiveWorkoutBar', () => ({
+  useActiveWorkoutBarPadding: () => 0,
+}));
+jest.mock('../../src/services/api/externalProvidersApi', () => ({
+  fetchExternalProviders: jest.fn(),
+}));
+jest.mock('../../src/services/api/recipeImportApi', () => ({
+  browseRecipes: jest.fn(),
+  previewRecipe: jest.fn(),
+  listRecipeMappings: jest.fn(),
+  forgetRecipeMapping: jest.fn(),
+}));
+jest.mock('../../src/components/recipeImport/RecipeImportReview', () => {
+  const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return (props: { preview: { name: string } }) =>
+    React.createElement(Text, null, props.preview.name);
+});
+const navigation = {} as RootStackScreenProps<'RecipeImport'>['navigation'];
+const route = {
+  key: 'import',
+  name: 'RecipeImport' as const,
+  params: undefined,
+};
+function renderBrowser() {
+  const config = {
+    id: 'test-server',
+    url: 'https://example.test',
+    apiKey: 'synthetic-test-key',
+  };
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  client.setQueryData(profileQueryKey, { id: 'owner' });
+  client.setQueryData(serverConfigsQueryKey, { activeConfig: config });
+  mockScope = `${config.id}:${config.url}:owner`;
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider
+          initialMetrics={{
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            frame: { x: 0, y: 0, width: 390, height: 844 },
+          }}
+        >
+          <RecipeImportScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    ),
+  };
+}
+it.each([false, true])(
+  'discards a deactivated provider preview (response still pending: %s)',
+  async (pending) => {
+    jest.clearAllMocks();
+    const a = {
+      id: 'provider',
+      provider_name: 'Private Mealie',
+      provider_type: 'mealie',
+      is_active: true,
+    };
+    const b = { ...a, id: 'provider-b', provider_name: 'Other Mealie' };
+    jest.mocked(fetchExternalProviders).mockResolvedValue([a, b]);
+    jest.mocked(browseRecipes).mockResolvedValue({
+      items: [
+        { id: 'recipe', slug: 'rice', name: 'A recipe', recipeServings: 4 },
+      ],
+      pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+    });
+    const selected = {
+      providerId: 'provider',
+      recipeSlug: 'rice',
+      recipeId: 'recipe',
+      name: 'Chosen A recipe',
+      recipeServings: 4,
+      sourceFingerprint: 'a'.repeat(64),
+      ingredients: [],
+      syncWarnings: [],
+    };
+    let finish!: (value: typeof selected) => void;
+    jest.mocked(previewRecipe).mockReset();
+    if (pending)
+      jest.mocked(previewRecipe).mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+      );
+    else jest.mocked(previewRecipe).mockResolvedValueOnce(selected);
+    const view = renderBrowser();
+    fireEvent.press(await view.findByText('Private Mealie'));
+    fireEvent.press(await view.findByText('A recipe'));
+    await waitFor(() => expect(previewRecipe).toHaveBeenCalledTimes(1));
+    if (!pending) await view.findByText('Chosen A recipe');
+    act(() => {
+      view.client.setQueryData(
+        ['recipeImportProviders', mockScope],
+        [{ ...a, is_active: false }, b]
+      );
+    });
+    await view.findByText('Private Mealie (Inactive)');
+    if (pending) {
+      await act(async () => {
+        finish(selected);
+      });
+      act(() => {
+        view.client.setQueryData(['recipeImportProviders', mockScope], [a, b]);
+      });
+      await view.findByText('Private Mealie');
+    } else {
+      fireEvent.press(view.getByText('Other Mealie'));
+    }
+    expect(await view.findByText('Manage saved choices')).toBeTruthy();
+    expect(view.queryByText('Chosen A recipe')).toBeNull();
+  }
+);
+it('keeps inactive Mealie choices manageable without browsing or importing', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_type: 'mealie',
+      provider_name: 'Inactive Mealie',
+      is_active: false,
+    },
+  ]);
+  const empty = {
+    items: [],
+    pagination: { page: 1, pageSize: 25, totalCount: 0, hasMore: false },
+  };
+  jest
+    .mocked(listRecipeMappings)
+    .mockResolvedValueOnce({
+      ...empty,
+      items: [
+        {
+          id: 'choice',
+          foodId: 'food',
+          variantId: 'variant',
+          foodName: 'Rice',
+          ingredientName: 'Rice',
+          sourceUnit: 'g',
+          quantityPerSourceUnit: 1,
+          unit: 'g',
+          updatedAt: '2026-11-12T00:00:00Z',
+        },
+      ],
+      pagination: { ...empty.pagination, totalCount: 1 },
+    })
+    .mockResolvedValue(empty);
+  jest.mocked(forgetRecipeMapping).mockResolvedValue({ deleted: true });
+  const view = renderBrowser();
+  fireEvent.press(await view.findByText(/Inactive Mealie/));
+  fireEvent.press(await view.findByText('Manage saved choices'));
+  fireEvent.press(await view.findByLabelText('Forget saved choice for Rice'));
+  await waitFor(() =>
+    expect(forgetRecipeMapping).toHaveBeenCalledWith(
+      'provider',
+      'choice',
+      expect.any(Object)
+    )
+  );
+  expect(
+    view.getByText(
+      'Activate this provider in Settings to import recipes. Saved choices can still be managed here.'
+    )
+  ).toBeTruthy();
+  expect(view.queryByPlaceholderText('Search Mealie recipes')).toBeNull();
+  expect(browseRecipes).not.toHaveBeenCalled();
+  expect(previewRecipe).not.toHaveBeenCalled();
+});
+it('shows an actionable recipe-size API message without creating a meal', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_type: 'mealie',
+      provider_name: 'Private Mealie',
+      is_active: true,
+    },
+  ]);
+  jest.mocked(browseRecipes).mockResolvedValue({
+    items: [
+      { id: 'large', slug: 'large', name: 'Large recipe', recipeServings: 4 },
+    ],
+    pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+  });
+  jest
+    .mocked(previewRecipe)
+    .mockRejectedValueOnce(
+      new Error(
+        'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+      )
+    );
+  const view = renderBrowser();
+  fireEvent.press(await view.findByText('Private Mealie'));
+  fireEvent.press(await view.findByText('Large recipe'));
+  expect(await view.findByText(/more than 100 ingredients/)).toBeTruthy();
+});
+it.each(['server-owner', 'stale-owner'])(
+  'loads a direct import only for the retained owner (%s)',
+  async (requestScope) => {
+    jest.clearAllMocks();
+    mockScope = 'server-owner';
+    jest.mocked(fetchExternalProviders).mockResolvedValue([
+      {
+        id: 'provider',
+        provider_name: 'Private Mealie',
+        provider_type: 'mealie',
+        is_active: true,
+      },
+    ]);
+    jest.mocked(browseRecipes).mockResolvedValue({
+      items: [],
+      pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
+    });
+    jest.mocked(previewRecipe).mockResolvedValue({
+      providerId: 'provider',
+      recipeSlug: 'selected-rice',
+      recipeId: 'recipe',
+      name: 'Chosen recipe',
+      recipeServings: 4,
+      sourceFingerprint: 'a'.repeat(64),
+      ingredients: [],
+      syncWarnings: [],
+    });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const screen = render(
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider
+          initialMetrics={{
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            frame: { x: 0, y: 0, width: 390, height: 844 },
+          }}
+        >
+          <RecipeImportScreen
+            navigation={navigation}
+            route={{
+              ...route,
+              params: {
+                providerId: 'provider',
+                recipeSlug: 'selected-rice',
+                scope: requestScope,
+              },
+            }}
+          />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    );
+    if (requestScope === mockScope) {
+      expect(await screen.findByText('Chosen recipe')).toBeTruthy();
+      expect(previewRecipe).toHaveBeenCalledWith({
+        providerId: 'provider',
+        recipeSlug: 'selected-rice',
+      });
+    } else {
+      expect(await screen.findByText('Private Mealie')).toBeTruthy();
+      expect(previewRecipe).not.toHaveBeenCalled();
+    }
+  }
+);
+it('shows the existing food-search nutrition row before ingredient selection', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_name: 'Private Mealie',
+      provider_type: 'mealie',
+      is_active: true,
+    },
+  ]);
+  jest.mocked(browseRecipes).mockResolvedValue({
+    items: [
+      {
+        id: null,
+        slug: 'rice',
+        name: 'Rice batch',
+        recipeServings: 4,
+        food: {
+          name: 'Rice batch',
+          brand: null,
+          is_custom: true,
+          provider_type: 'mealie',
+          provider_external_id: 'rice',
+          recipe_has_nutrition: true,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'serving',
+            is_default: true,
+            calories: 125,
+            protein: 4,
+            carbs: 20,
+            fat: 3,
+          },
+        },
+      },
+    ],
+    pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const screen = render(
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider
+        initialMetrics={{
+          insets: { top: 0, bottom: 0, left: 0, right: 0 },
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+        }}
+      >
+        <RecipeImportScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+  fireEvent.press(await screen.findByText('Private Mealie'));
+  expect(await screen.findByText('125 kcal')).toBeTruthy();
+  expect(screen.getByText('Protein 4 g · Carbs 20 g · Fat 3 g')).toBeTruthy();
+  expect(screen.getByText('Recipe makes 4 servings')).toBeTruthy();
+});
+it('debounces a typed recipe name instead of searching each keystroke', async () => {
+  jest.clearAllMocks();
+  mockScope = 'server-owner';
+  jest.mocked(fetchExternalProviders).mockResolvedValue([
+    {
+      id: 'provider',
+      provider_name: 'Private Mealie',
+      provider_type: 'mealie',
+      is_active: true,
+    },
+  ]);
+  jest.mocked(browseRecipes).mockResolvedValue({
+    items: [],
+    pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider
+        initialMetrics={{
+          insets: { top: 0, bottom: 0, left: 0, right: 0 },
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+        }}
+      >
+        <RecipeImportScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+  fireEvent.press(await view.findByText('Private Mealie'));
+  await waitFor(() => expect(browseRecipes).toHaveBeenCalledTimes(1));
+  for (const value of ['c', 'ch', 'chi', 'chic', 'chick', 'chicke', 'chicken'])
+    fireEvent.changeText(
+      view.getByPlaceholderText('Search Mealie recipes'),
+      value
+    );
+  expect(browseRecipes).toHaveBeenCalledTimes(1);
+  await waitFor(() =>
+    expect(browseRecipes).toHaveBeenLastCalledWith('provider', 'chicken', 1)
+  );
+  expect(browseRecipes).toHaveBeenCalledTimes(2);
+});
+it.each([null, 'other-server-owner'])(
+  'unmounts private source data and ignores a late preview when scope changes to %s',
+  async (nextScope) => {
+    jest.clearAllMocks();
+    mockScope = 'server-owner';
+    jest.mocked(fetchExternalProviders).mockResolvedValue([
+      {
+        id: 'provider',
+        provider_name: 'Private Mealie',
+        provider_type: 'mealie',
+        is_active: true,
+      },
+    ]);
+    jest.mocked(browseRecipes).mockResolvedValue({
+      items: [
+        {
+          id: 'recipe',
+          slug: 'private-rice',
+          name: 'Private rice',
+          recipeServings: 4,
+        },
+      ],
+      pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+    });
+    let finish: (
+      value: Awaited<ReturnType<typeof previewRecipe>>
+    ) => void = () => {};
+    jest.mocked(previewRecipe).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = () => (
+      <QueryClientProvider client={client}>
+        <SafeAreaProvider
+          initialMetrics={{
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            frame: { x: 0, y: 0, width: 390, height: 844 },
+          }}
+        >
+          <RecipeImportScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    );
+    const screen = render(view());
+    await waitFor(() =>
+      expect(screen.getByText('Private Mealie')).toBeTruthy()
+    );
+    fireEvent.press(screen.getByText('Private Mealie'));
+    await waitFor(() => expect(screen.getByText('Private rice')).toBeTruthy());
+    fireEvent.press(screen.getByText('Private rice'));
+    mockScope = nextScope;
+    screen.rerender(view());
+    await act(async () =>
+      finish({
+        providerId: 'provider',
+        recipeSlug: 'private-rice',
+        recipeId: 'recipe',
+        name: 'Private rice',
+        recipeServings: 4,
+        sourceFingerprint: 'a'.repeat(64),
+        ingredients: [],
+        syncWarnings: [],
+      })
+    );
+    expect(screen.queryByText('Private rice')).toBeNull();
+    if (nextScope) {
+      expect(
+        await screen.findByRole('button', {
+          name: 'Private Mealie',
+          selected: false,
+        })
+      ).toBeTruthy();
+      expect(screen.queryByPlaceholderText('Search Mealie recipes')).toBeNull();
+      expect(browseRecipes).toHaveBeenCalledTimes(1);
+    } else expect(screen.queryByText('Private Mealie')).toBeNull();
+    if (!nextScope)
+      expect(
+        screen.getByText(
+          'Switch to your own profile to import or sync recipes.'
+        )
+      ).toBeTruthy();
+    expect(fetchExternalProviders).toHaveBeenCalledTimes(nextScope ? 2 : 1);
+  }
+);

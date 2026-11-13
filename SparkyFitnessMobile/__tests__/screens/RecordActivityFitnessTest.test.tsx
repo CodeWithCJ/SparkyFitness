@@ -100,6 +100,9 @@ jest.mock('../../src/hooks/useIndoorDistanceEstimate', () => ({
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
 }));
+jest.mock('../../src/hooks/useHeartRateZones', () => ({
+  useHeartRateZones: () => ({ zones: undefined }),
+}));
 jest.mock('../../src/hooks/useSuggestedRanges', () => ({
   useSuggestedRanges: () => ({ pace: null, heartRate: null, byEffort: null }),
 }));

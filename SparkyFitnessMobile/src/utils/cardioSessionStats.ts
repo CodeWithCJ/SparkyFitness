@@ -1,6 +1,12 @@
 import type { TFunction } from 'i18next';
-import type { ExerciseActivityQueryItem } from '@workspace/shared';
+import {
+  convertTemperature,
+  type ExerciseActivityQueryItem,
+  type TemperatureUnit,
+  EnergyUnit,
+} from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
+import { energyUnitLabel, formatEnergyNumber } from './energyUnit';
 
 const FEET_PER_METER = 3.28084;
 
@@ -31,6 +37,43 @@ export const spmText = (t: TFunction, cadence: number) =>
     value: formatLocalizedNumber(Math.round(cadence)),
   });
 
+/**
+ * "9° · Light rain" for the air temperature and conditions at the start. The
+ * temperature is stored in °C and shown in the account's temperature unit;
+ * 0° is a real reading, so only null is skipped.
+ */
+function weatherText(
+  t: TFunction,
+  session: Pick<
+    ExerciseActivityQueryItem,
+    'weatherTempCelsius' | 'weatherCondition'
+  >,
+  temperatureUnit: TemperatureUnit
+): string | null {
+  const parts: string[] = [];
+  if (session.weatherTempCelsius != null) {
+    const fahrenheit = temperatureUnit === 'fahrenheit';
+    const degrees = convertTemperature(
+      session.weatherTempCelsius,
+      temperatureUnit
+    );
+    const value = formatLocalizedNumber(Math.round(degrees));
+    parts.push(
+      fahrenheit
+        ? t('exerciseStatistics.cardio.degreesF', {
+            defaultValue: '{{value}}°F',
+            value,
+          })
+        : t('exerciseStatistics.cardio.degreesC', {
+            defaultValue: '{{value}}°C',
+            value,
+          })
+    );
+  }
+  if (session.weatherCondition) parts.push(session.weatherCondition);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 /** A stride stored in centimetres, shown in feet with the miles setting. */
 export function strideText(
   t: TFunction,
@@ -58,7 +101,9 @@ export function strideText(
 export function sessionStats(
   t: TFunction,
   session: ExerciseActivityQueryItem,
-  distanceUnit: 'km' | 'miles'
+  distanceUnit: 'km' | 'miles',
+  temperatureUnit: TemperatureUnit,
+  energyUnit: EnergyUnit = 'kcal'
 ): Stat[] {
   const stats: Stat[] = [];
   if (session.distanceFormatted != null && session.distanceFormatted > 0) {
@@ -149,6 +194,16 @@ export function sessionStats(
       value: strideText(t, session.strideLengthCm, distanceUnit),
     });
   }
+  const weather = weatherText(t, session, temperatureUnit);
+  if (weather) {
+    stats.push({
+      key: 'weather',
+      label: t('exerciseStatistics.cardio.weather', {
+        defaultValue: 'Weather',
+      }),
+      value: weather,
+    });
+  }
   if (session.avgHeartRate != null && session.avgHeartRate > 0) {
     stats.push({
       key: 'hr',
@@ -171,12 +226,16 @@ export function sessionStats(
   if (session.caloriesBurned > 0) {
     stats.push({
       key: 'calories',
-      label: t('exerciseStatistics.cardio.caloriesLabel', {
-        defaultValue: 'Calories',
-      }),
-      value: t('exerciseStatistics.cardio.calories', {
-        defaultValue: '{{value}} Cal',
-        value: formatLocalizedNumber(Math.round(session.caloriesBurned)),
+      label:
+        energyUnit === 'kJ'
+          ? t('common.energy', { defaultValue: 'Energy' })
+          : t('exerciseStatistics.cardio.caloriesLabel', {
+              defaultValue: 'Calories',
+            }),
+      value: t('exerciseStatistics.cardio.caloriesWithUnit', {
+        defaultValue: '{{value}} {{unit}}',
+        value: formatEnergyNumber(session.caloriesBurned, energyUnit),
+        unit: energyUnitLabel(energyUnit, t),
       }),
     });
   }

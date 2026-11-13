@@ -75,12 +75,12 @@ internal object WaterWidgetStore {
             val obj = JSONObject(json)
             if (!isSnapshotToday(obj.optString("date", ""))) return null
             WaterSnapshot(
-                consumedMl = obj.finiteDouble("consumedMl") ?: 0.0,
-                goalMl = obj.finiteDouble("goalMl") ?: 0.0,
-                drinkMl = obj.finiteDouble("drinkMl")?.takeIf { it > 0.0 },
+                consumedMl = obj.optionalDouble("consumedMl") ?: 0.0,
+                goalMl = obj.optionalDouble("goalMl") ?: 0.0,
+                drinkMl = obj.optionalDouble("drinkMl")?.takeIf { it > 0.0 },
                 unit = obj.optString("unit", "ml"),
                 canLog = obj.optBoolean("canLog", false),
-                manualMl = obj.finiteDouble("manualMl"),
+                manualMl = obj.optionalDouble("manualMl"),
                 pendingDrinks = obj.optInt(KEY_PENDING, 0),
                 sendingDrinks = obj.optInt(KEY_SENDING, 0),
                 status = obj.optString(KEY_STATUS, "").ifEmpty { null },
@@ -172,8 +172,8 @@ internal object WaterWidgetStore {
         if (accountEpoch(context) != batch.accountEpoch) return
         val obj = storedObject(context) ?: return
         if (obj.optString("date", "") != batch.date) return
-        val before = obj.finiteDouble("consumedMl") ?: 0.0
-        val drinkMl = obj.finiteDouble("drinkMl") ?: 0.0
+        val before = obj.optionalDouble("consumedMl") ?: 0.0
+        val drinkMl = obj.optionalDouble("drinkMl") ?: 0.0
         obj.put(KEY_SENDING, obj.optInt(KEY_SENDING, 0) - batch.drinks)
         when (outcome) {
             is WaterChangeOutcome.Changed -> {
@@ -272,11 +272,5 @@ internal object WaterWidgetStore {
                 // reaches it.
             }
         }
-    }
-
-    private fun JSONObject.finiteDouble(name: String): Double? {
-        if (!has(name) || isNull(name)) return null
-        val value = optDouble(name, Double.NaN)
-        return if (value.isFinite()) value else null
     }
 }

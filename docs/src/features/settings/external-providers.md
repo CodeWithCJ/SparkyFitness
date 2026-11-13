@@ -17,6 +17,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Polar Flow (partially tested)
 - Hevy (not tested)
 - [Liftosaur](/features/settings/liftosaur)
+- [Intervals.icu](/features/settings/intervals)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
 - [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
 - Swiss Food Composition Database
@@ -26,10 +27,66 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Nutritionix
 - Mealie
 - [Valhalla routing](/features/exercises/route-generation) (route generation and Follow roads; a base URL and an optional API key)
+- [Weather (Open-Meteo compatible)](/features/exercises/gps-activity-recording#weather) (adds the temperature and conditions to GPS-recorded activities; a base URL and an optional API key; nothing is looked up until you add one)
 - Tandoor
 - Strava (partially tested)
 - [COROS](/features/settings/coros)
 - NIH Dietary Supplement Label Database (fills in a supplement from its barcode; public, no key, active by default — deactivate it to turn it off). Open Food Facts is the fallback for supplement barcodes the NIH database does not have, mostly outside the US; with both off the supplement barcode scan is hidden
+
+## Mealie ingredient meals
+
+Mealie recipes can be imported as editable meals with separate ingredients. The existing option to import a recipe as a single food remains available.
+
+1. Add an active Mealie provider under **Settings → Food & Exercise Data Providers**, using your Mealie instance URL and API token.
+2. Open your meals library and choose **Import Mealie ingredients**. Select the provider and recipe. Results use the food search and show declared nutrition per Mealie serving. For a recipe with no declared nutrition, its food details also offer **Import ingredients as a meal**.
+3. Match each ingredient to a food with nutrition data. You can search manually or request suggestions. Optional AI matching uses your configured AI service to choose from retrieved foods; review each selection before saving. The numbered rows distinguish the Mealie ingredient from its selected food and amount. Saved choices are suggestions for the same Mealie food and unit across recipes and require confirmation for this import. Use **Forget saved choice** on a row or **Manage saved choices** in the recipe browser to remove a remembered match; this does not change saved meals or diary entries. You can still select a deactivated provider to manage saved choices; activate it in Settings before searching or importing recipes.
+4. Check the quantities and units for the whole recipe. For weighed portions, enter the finished weight of the entire cooked dish in grams, without the pot. Save the meal, then log the amount you ate through the normal meal diary.
+
+Missing amounts, incompatible units and linked sub-recipes are shown for review. An amount-like note such as **1 Cup Flour** is flagged as a possible additional ingredient; review the note separately rather than assuming it is already included in the selected food. SparkyFitness does not guess a volume-to-weight conversion. Recipes containing a linked sub-recipe require its ingredients to be listed explicitly in Mealie before import. Known optional nutrient values are summed even when other ingredients leave that nutrient blank; entirely unknown totals remain unknown.
+
+Ingredient imports support up to **100 ingredients** per recipe. Larger recipes show an import-limit message; split them into smaller recipes in Mealie before importing.
+
+Every selected food variant needs known **calories, protein, carbohydrates and fat** before saving; a measured zero is valid. Incomplete mappings stay editable: choose a complete variant or correct the food's nutrition, then review it again. Unknown optional nutrients do not prevent import or sync and are not written as zero.
+
+Mealie's explicit standard-unit factors are respected, including teaspoons, tablespoons and custom cups; the original amount remains visible. A reviewed conversion such as **1 cup pearl onion = 100 g** can be remembered and scaled to **2 cups = 200 g** in another recipe, even if its display text differs. No density is guessed. Changing a cooking quantity within compatible units does not teach a new unit conversion. Repeated rows with the same food/unit key require individual confirmation because they may select different variants; ambiguous keys are not learned. Existing exact-context choices remain usable, while older context-free choices need fresh review.
+
+If saving times out or returns an uncertain server error, check the meals library before starting again. Retry is blocked within that review, but reopening starts a new import and can create another meal. Deliberate repeated imports remain supported; imports do not have an exactly-once guarantee across reopened reviews.
+
+### Updating nutrition in Mealie
+
+Saving or editing a meal does not write to Mealie. Use **Sync nutrition to Mealie** to preview the current saved meal's nutrition against the current Mealie recipe and its serving count. The preview lists every supported nutrient, marks partial ingredient coverage, and explains fields that will be skipped. It identifies the saved meal and its save time: correcting a food in your library does not silently replace these saved ingredient values. To include a correction, replace the affected ingredient using the corrected food variant (remove and add it again), check the resulting values, then save the meal. Review the current and proposed values, then choose **Confirm nutrition sync**, or cancel without writing. Your Mealie token must permit recipe updates.
+
+Reviewed cross-unit mappings and later edits to the saved meal do not permanently block sync. If the recipe changed in Mealie, the preview explains that change and lets you confirm its current values without importing again. If either the saved meal or the source changes while confirmation is open, refresh the preview and confirm again. Known calories, protein, carbohydrates and fat, individual saved food ingredients and a positive current Mealie serving count are required. Older clients can still explicitly sync an unchanged source; changed sources require the preview-capable client.
+
+SparkyFitness updates only supported, known nutrition fields, calculated per current Mealie serving, and includes existing optional nutrient values to preserve them. **Avoid editing the recipe in Mealie while syncing.** Mealie's nutrition update replaces the nested nutrition object and provides no verified atomic conflict check in this integration: another client's edit between the read and write can be overwritten despite the before/after checks. Ingredient amounts and other recipe content are not sent in the update. If Mealie confirms the write but recording the receipt fails locally, check the recipe and review a fresh preview before retrying.
+
+For a change to one cooking session, edit that diary preparation; the reusable meal and earlier diary snapshots stay separate. To change a reusable base, edit the saved meal and explicitly review any nutrition writeback. To change Mealie's ingredients as well, edit or duplicate that recipe in Mealie. Import and sync use your own provider connection and are unavailable while managing another person's profile.
+
+If the remote result cannot be confirmed, inspect the recipe in Mealie before trying again: a timed-out update may already have reached it. Refresh the preview of the existing saved meal and explicitly confirm only if another update is needed. A confirmed remote update followed by a failed local receipt reports that partial outcome rather than success; it does not require another import. The saved SparkyFitness meal remains available even when sync fails.
+
+::: details Android example with a test recipe
+
+The ingredient import is available from the meals library or a Mealie food without declared nutrition. This synthetic recipe includes a blank fiber value and an ingredient with **12.5 g** of fiber; the sync preview marks that total as partial. The saved whole dish weighs **1,800 g** and contains **700 kcal**. Logging **450 g** through the normal meal flow records **175 kcal**.
+
+![Mealie ingredients before confirming their food matches](/integrations/mealie/ingredients-before.png)
+
+![Partial nutrient totals in the Android nutrition sync preview](/integrations/mealie/ingredients-after.png)
+
+![A 450 g portion calculated as 175 kcal](/integrations/mealie/weighed-portion.png)
+
+:::
+
+## Hevy automatic sync
+
+When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
+
+**Daily at 21:00** uses the timezone saved in your SparkyFitness preferences. The server checks hourly and runs the sync at or after 21:00, once per local evening. If an evening attempt fails, a later hourly check can retry before midnight. Only a successful live sync at or after 21:00 whose date range includes the current local day, including a manual sync, counts for that evening. A sync earlier in the day or limited to other dates does not replace the evening run, so today's workouts can still be imported. The server must be running during the evening; missed days are not automatically caught up after midnight.
+
+**Hourly** keeps the existing hourly schedule. You can still use **Sync** manually with any frequency.
+
+Hevy exercise templates also supply the primary and secondary muscle groups used in exercise reports. The importer matches templates by their Hevy ID and fills missing muscle information on your Hevy exercises while preserving populated fields. To add muscle information to workouts imported by an older version, run a full-history sync once so their diary snapshots are rebuilt with the exercise metadata.
+
+Muscle metadata is best effort: if Hevy's template catalogue or a muscle update is unavailable, the workouts still import. Later syncs can fill missing muscles. The catalogue is skipped when all referenced Hevy exercises already have primary muscles, and unchanged library rows are not rewritten. An existing exercise of your own with the same name can be reused without changing its source or muscle fields; global public exercises and other users' exercises are not reused by this importer.
 
 ## Canadian Nutrient File (Health Canada)
 
@@ -41,7 +98,7 @@ For setup instructions, import options, and licensing information, see the [Cana
 
 ## Swedish Food Agency (Livsmedelsverket)
 
-The Swedish Food Agency (*Livsmedelsverket*) publishes the authoritative Swedish Food Composition Database (*Livsmedelsdatabasen*) containing ~2,600 analyzed and calculated food items with over 50 nutritional components each. It is free open data licensed under Creative Commons Attribution 4.0 (CC BY 4.0), requires no credentials or API keys, and is enabled by default.
+The Swedish Food Agency (_Livsmedelsverket_) publishes the authoritative Swedish Food Composition Database (_Livsmedelsdatabasen_) containing ~2,600 analyzed and calculated food items with over 50 nutritional components each. It is free open data licensed under Creative Commons Attribution 4.0 (CC BY 4.0), requires no credentials or API keys, and is enabled by default.
 
 SparkyFitness supports both **live on-demand search** across the official open data API in Swedish and English, as well as **offline bulk catalog import** to cache the entire catalog locally.
 

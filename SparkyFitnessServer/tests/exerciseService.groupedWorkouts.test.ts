@@ -612,7 +612,7 @@ describe('exerciseService grouped workouts', () => {
             ],
           }
         )
-      ).rejects.toThrow('Exercise not found for snapshot.');
+      ).rejects.toMatchObject({ message: 'Exercise not found.', status: 404 });
     });
 
     it('updates values via reconcile without deleting existing rows', async () => {

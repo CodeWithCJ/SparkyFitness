@@ -4,6 +4,11 @@ import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
 import type { MealType } from '../types/mealTypes';
+import type {
+  MealFood,
+  MealFoodPayload,
+  MealIngredientDraft,
+} from '../types/meals';
 import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
 export type MealTypeKey = string;
@@ -376,4 +381,174 @@ export function getMealTargetCalories(
     allowLegacyKeys: isSystemMealType,
   });
   return Math.round((calorieGoal * percentage) / 100);
+}
+
+export type MealFoodNumericField = keyof Pick<
+  MealFood,
+  | 'calories'
+  | 'protein'
+  | 'carbs'
+  | 'fat'
+  | 'dietary_fiber'
+  | 'saturated_fat'
+  | 'sodium'
+  | 'sugars'
+  | 'trans_fat'
+  | 'potassium'
+  | 'calcium'
+  | 'iron'
+  | 'caffeine_mg'
+  | 'water_ml'
+  | 'alcohol_g'
+  | 'cholesterol'
+  | 'vitamin_a'
+  | 'vitamin_c'
+>;
+
+export const ingredientScale = (food: MealFood): number =>
+  food.serving_size > 0 ? food.quantity / food.serving_size : 0;
+
+export const sumMealFoodField = (
+  foods: MealFood[],
+  field: MealFoodNumericField
+): number =>
+  foods.reduce((sum, food) => {
+    const value = food[field];
+    return typeof value === 'number'
+      ? sum + value * ingredientScale(food)
+      : sum;
+  }, 0);
+
+export const hasMealFoodField = (
+  foods: MealFood[],
+  field: MealFoodNumericField
+): boolean => foods.some((food) => food[field] != null);
+
+const divide = (
+  value: number | undefined,
+  divisor: number
+): number | undefined => (value == null ? undefined : value / divisor);
+
+export function buildMealDisplayValuesFromFoods(
+  foods: MealFood[],
+  meta: {
+    serving_size?: number | null;
+    serving_unit?: string | null;
+    total_servings?: number | null;
+  },
+  mode: 'total' | 'perServing' = 'total'
+): FoodDisplayValues {
+  const totalServings = meta.total_servings || 1;
+  const divisor = mode === 'perServing' ? totalServings : 1;
+  const safeDivisor = divisor > 0 ? divisor : 1;
+  const optionalField = (field: MealFoodNumericField) =>
+    hasMealFoodField(foods, field)
+      ? divide(sumMealFoodField(foods, field), safeDivisor)
+      : undefined;
+
+  const servingSize = meta.serving_size || 1;
+
+  return {
+    servingSize:
+      mode === 'perServing' ? servingSize : servingSize * totalServings,
+    servingUnit: meta.serving_unit || 'serving',
+    calories: sumMealFoodField(foods, 'calories') / safeDivisor,
+    protein: sumMealFoodField(foods, 'protein') / safeDivisor,
+    carbs: sumMealFoodField(foods, 'carbs') / safeDivisor,
+    fat: sumMealFoodField(foods, 'fat') / safeDivisor,
+    fiber: optionalField('dietary_fiber'),
+    saturatedFat: optionalField('saturated_fat'),
+    sodium: optionalField('sodium'),
+    sugars: optionalField('sugars'),
+    transFat: optionalField('trans_fat'),
+    potassium: optionalField('potassium'),
+    calcium: optionalField('calcium'),
+    iron: optionalField('iron'),
+    caffeineMg: optionalField('caffeine_mg'),
+    waterMl: optionalField('water_ml'),
+    alcoholG: optionalField('alcohol_g'),
+    cholesterol: optionalField('cholesterol'),
+    vitaminA: optionalField('vitamin_a'),
+    vitaminC: optionalField('vitamin_c'),
+  };
+}
+
+export function mealFoodsToPayload(foods: MealFood[]): MealFoodPayload[] {
+  return foods.map((food) => ({
+    item_type: food.item_type,
+    food_id: food.food_id,
+    child_meal_id: food.child_meal_id,
+    variant_id: food.variant_id,
+    quantity: food.quantity,
+    unit: food.unit,
+    food_name: food.food_name,
+    calories: food.calories,
+    protein: food.protein,
+    carbs: food.carbs,
+    fat: food.fat,
+    saturated_fat: food.saturated_fat,
+    polyunsaturated_fat: food.polyunsaturated_fat,
+    monounsaturated_fat: food.monounsaturated_fat,
+    trans_fat: food.trans_fat,
+    cholesterol: food.cholesterol,
+    sodium: food.sodium,
+    potassium: food.potassium,
+    dietary_fiber: food.dietary_fiber,
+    sugars: food.sugars,
+    vitamin_a: food.vitamin_a,
+    vitamin_c: food.vitamin_c,
+    calcium: food.calcium,
+    iron: food.iron,
+    caffeine_mg: food.caffeine_mg,
+    water_ml: food.water_ml,
+    alcohol_g: food.alcohol_g,
+    glycemic_index: food.glycemic_index ?? undefined,
+    custom_nutrients: food.custom_nutrients,
+    serving_size: food.serving_size,
+    serving_unit: food.serving_unit,
+  }));
+}
+
+export function draftToMealFood(
+  draft: MealIngredientDraft,
+  existingId?: string
+): MealFood {
+  return {
+    id:
+      existingId ??
+      `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    item_type: draft.item_type ?? 'food',
+    food_id: draft.food_id,
+    child_meal_id: draft.child_meal_id,
+    child_meal_name: draft.food_name,
+    variant_id: draft.variant_id,
+    quantity: draft.quantity,
+    unit: draft.unit,
+    food_name: draft.food_name ?? '',
+    brand: draft.brand ?? null,
+    serving_size: draft.serving_size,
+    serving_unit: draft.serving_unit,
+    calories: draft.calories,
+    protein: draft.protein,
+    carbs: draft.carbs,
+    fat: draft.fat,
+    saturated_fat: draft.saturated_fat,
+    polyunsaturated_fat: draft.polyunsaturated_fat,
+    monounsaturated_fat: draft.monounsaturated_fat,
+    trans_fat: draft.trans_fat,
+    cholesterol: draft.cholesterol,
+    sodium: draft.sodium,
+    potassium: draft.potassium,
+    dietary_fiber: draft.dietary_fiber,
+    sugars: draft.sugars,
+    vitamin_a: draft.vitamin_a,
+    vitamin_c: draft.vitamin_c,
+    calcium: draft.calcium,
+    iron: draft.iron,
+    caffeine_mg: draft.caffeine_mg,
+    water_ml: draft.water_ml,
+    alcohol_g: draft.alcohol_g,
+    glycemic_index: draft.glycemic_index ?? undefined,
+    custom_nutrients: draft.custom_nutrients,
+  };
 }

@@ -1,5 +1,6 @@
 import express, { RequestHandler } from 'express';
 import openFoodFactsContributionRoutes from './openFoodFactsContributionRoutes.js';
+import barcodeRoutes from './barcodeRoutes.js';
 import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
@@ -11,6 +12,7 @@ import checkPermissionMiddleware from '../../middleware/checkPermissionMiddlewar
 import foodCoreService from '../../services/foodCoreService.js';
 import { FoodWithProviderNutrients } from '../../utils/foodUtils.js';
 import preferenceService from '../../services/preferenceService.js';
+import { createResponseAbortSignal } from '../../utils/responseAbortSignal.js';
 import {
   isValidProviderType,
   searchProviderFoods,
@@ -25,6 +27,7 @@ const router = express.Router();
 
 router.use(checkPermissionMiddleware('diary'));
 router.use(openFoodFactsContributionRoutes);
+router.use(barcodeRoutes);
 
 // --- Barcode endpoint ---
 
@@ -42,6 +45,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     return;
   }
 
+  const { signal, cleanup } = createResponseAbortSignal(res);
   try {
     const providerId = req.query.providerId as string | undefined;
     const result = await foodCoreService.lookupBarcode(
@@ -50,8 +54,10 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       req.userId,
       // Absent means "use the user's default provider", so preserve undefined.
       providerId === undefined ? undefined : String(providerId),
-      req.authenticatedUserId
+      req.authenticatedUserId,
+      { includeProviderMetadata: true, signal }
     );
+    signal.throwIfAborted();
 
     // Ensure barcode is preserved on the food when present
     if (result.food && !result.food.barcode) {
@@ -61,6 +67,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     if (result.food) {
       await enrichWithCustomNutrients(req.userId, [result.food]);
     }
+    signal.throwIfAborted();
 
     const normalizedResult = {
       ...result,
@@ -71,6 +78,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     const response = BarcodeResponseSchema.parse(normalizedResult);
     res.status(200).json(response);
   } catch (error: unknown) {
+    if (signal.aborted) return;
     if (error instanceof Error && error.name === 'ZodError') {
       log('error', 'v2 barcode response validation failed:', error);
       next(
@@ -81,6 +89,8 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       return;
     }
     next(error);
+  } finally {
+    cleanup();
   }
 };
 
@@ -98,8 +108,9 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
     return;
   }
 
-  const query = req.query.query as string | undefined;
-  if (!query) {
+  // Mealie also uses this search path to browse a selected recipe collection.
+  const query = req.query.query ?? '';
+  if (typeof query !== 'string' || (!query && providerType !== 'mealie')) {
     res.status(400).json({ error: 'Missing query parameter' });
     return;
   }

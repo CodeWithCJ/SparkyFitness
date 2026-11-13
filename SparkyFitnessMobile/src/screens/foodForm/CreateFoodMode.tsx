@@ -11,6 +11,8 @@ import {
   buildNamedFoodPortion,
   getFoodPortionUnit,
   parseNamedFoodPortion,
+  prefillEntryTime,
+  userHourMinute,
 } from '@workspace/shared';
 import Icon from '../../components/Icon';
 import StepperInput from '../../components/StepperInput';
@@ -24,6 +26,7 @@ import BottomSheetPicker from '../../components/BottomSheetPicker';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../../components/CalendarSheet';
+import TimeSheet, { type TimeSheetRef } from '../../components/TimeSheet';
 import Switch from '../../components/ui/Switch';
 import { setPendingMealIngredientSelection } from '../../services/mealBuilderSelection';
 import {
@@ -41,7 +44,9 @@ import {
   getTodayDate,
   normalizeDate,
   formatDateLabel,
+  getDeviceTimezone,
 } from '../../utils/dateUtils';
+import { formatTimeLabel } from '../../utils/entryTimeDisplay';
 import { parseOptional } from '../../types/foodInfo';
 import {
   createFoodVariant,
@@ -74,6 +79,9 @@ import {
 } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader } from '../../hooks/useScreenHeader';
+import { setPendingActionTagSelection } from '../../services/actionTagSelection';
+import { setPendingContainerLinkSelection } from '../../services/waterContainerLinkSelection';
+import { isFoodSelectionMode } from '../../utils/foodPickerMode';
 import { BarcodeField, BARCODE_REGEX } from './BarcodeField';
 import {
   FOOD_VARIANT_FIELDS,
@@ -124,16 +132,19 @@ export function CreateFoodMode({
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
-  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const isSelectionMode = isFoodSelectionMode(pickerMode);
   const isLibraryMode = pickerMode === 'library';
   const isLogEntryMode = !isSelectionMode && !isLibraryMode;
   const showBarcodeField = !isMealBuilderMode;
   const initialFood = params.initialFood;
   const hasImportedInitialFood = !!initialFood;
   const showAutoScaleNutrition = isSelectionMode || hasImportedInitialFood;
-  const { preferences } = usePreferences({ enabled: showAutoScaleNutrition });
-  const initialAutoScaleNutritionEnabled =
-    preferences?.auto_scale_online_imports ?? false;
+  const { preferences } = usePreferences({
+    enabled: showAutoScaleNutrition || isLogEntryMode,
+  });
+  const initialAutoScaleNutritionEnabled = showAutoScaleNutrition
+    ? (preferences?.auto_scale_online_imports ?? false)
+    : false;
 
   const providerType = params.providerType;
   const [barcodeInput, setBarcodeInput] = useState(params.barcode ?? '');
@@ -203,10 +214,62 @@ export function CreateFoodMode({
     params.date ?? getTodayDate()
   );
   const calendarRef = useRef<CalendarSheetRef>(null);
-  const { mealTypes, defaultMealTypeId } = useMealTypes();
-  const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
-  const effectiveMealId = selectedMealId ?? defaultMealTypeId;
+  const timeSheetRef = useRef<TimeSheetRef>(null);
+  const {
+    mealTypes,
+    defaultMealTypeId,
+    isLoading: isMealTypesLoading,
+    isError: isMealTypesError,
+  } = useMealTypes();
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
+    params.mealTypeId
+  );
+  const effectiveMealId =
+    selectedMealId &&
+    (isMealTypesLoading || mealTypes.some((mt) => mt.id === selectedMealId))
+      ? selectedMealId
+      : isMealTypesLoading
+        ? undefined
+        : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  useEffect(() => {
+    if (isMealTypesLoading || isMealTypesError || mealTypes.length === 0)
+      return;
+    if (selectedMealId && !mealTypes.some((mt) => mt.id === selectedMealId)) {
+      setSelectedMealId(defaultMealTypeId ?? undefined);
+    }
+  }, [
+    isMealTypesLoading,
+    isMealTypesError,
+    mealTypes,
+    selectedMealId,
+    defaultMealTypeId,
+  ]);
+
+  const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
+  const entryTimeTouched = useRef(params.entryTime !== undefined);
+  useEffect(() => {
+    if (entryTimeTouched.current) return;
+    setEntryTime(
+      prefillEntryTime({
+        defaultTime: selectedMealType?.default_time,
+        isToday: selectedDate === getTodayDate(),
+        tz: getDeviceTimezone(),
+      })
+    );
+  }, [selectedDate, selectedMealType?.default_time]);
+
+  const handleSelectEntryTime = (time: string) => {
+    entryTimeTouched.current = true;
+    setEntryTime(time);
+  };
+  const handleSetEntryTimeNow = () => {
+    const { hour, minute } = userHourMinute(getDeviceTimezone());
+    handleSelectEntryTime(
+      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+    );
+  };
   const mealTypeLabel = (mealType: (typeof mealTypes)[number]) =>
     mealType.user_id == null
       ? getLocalizedMealLabel(
@@ -740,7 +803,27 @@ export function CreateFoodMode({
           parseDecimalInput(data.servingSize) || 0,
           data.servingUnit || 'serving'
         );
-        if (isMealPlanMode && params.mealPlanTarget) {
+        if (pickerMode === 'action-tag') {
+          if (ingredient.food_id && ingredient.variant_id) {
+            setPendingActionTagSelection({
+              kind: 'food',
+              foodId: ingredient.food_id,
+              variantId: ingredient.variant_id,
+              name: ingredient.food_name ?? savedFood.name,
+              quantity: ingredient.quantity,
+              unit: ingredient.unit,
+            });
+          }
+        } else if (pickerMode === 'container-link') {
+          if (ingredient.food_id && ingredient.variant_id) {
+            setPendingContainerLinkSelection({
+              foodId: ingredient.food_id,
+              variantId: ingredient.variant_id,
+              foodName: ingredient.food_name ?? savedFood.name,
+              quantity: ingredient.quantity,
+            });
+          }
+        } else if (isMealPlanMode && params.mealPlanTarget) {
           setPendingMealPlanSelection({
             ...(params.mealPlanTarget.assignmentIndex === undefined
               ? {}
@@ -792,6 +875,27 @@ export function CreateFoodMode({
       });
       return;
     }
+    if (isMealTypesLoading) {
+      Toast.show({
+        type: 'info',
+        text1: t('common.loading', { defaultValue: 'Loading...' }),
+        text2: t('createFood.errors.loadingMealTypes', {
+          defaultValue:
+            'Meal types are still loading. Please try again in a moment.',
+        }),
+      });
+      return;
+    }
+    if (isMealTypesError && !effectiveMealId) {
+      Toast.show({
+        type: 'error',
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('createFood.errors.mealTypesLoadFailed', {
+          defaultValue: 'Failed to load meal types. Please try again.',
+        }),
+      });
+      return;
+    }
     if (!effectiveMealId) {
       Toast.show({
         type: 'error',
@@ -821,6 +925,7 @@ export function CreateFoodMode({
             quantity,
             unit: data.servingUnit || 'serving',
             entry_date: selectedDate,
+            entry_time: entryTime || null,
           },
         });
       } catch {
@@ -843,6 +948,7 @@ export function CreateFoodMode({
         quantity,
         unit: data.servingUnit || 'serving',
         entry_date: selectedDate,
+        entry_time: entryTime || null,
       },
     });
   };
@@ -986,6 +1092,51 @@ export function CreateFoodMode({
                 </View>
               ) : null}
             </View>
+
+            {/* Time */}
+            <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => timeSheetRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-row items-center"
+              >
+                <Text className="text-text-secondary text-base">
+                  {t('foodEntryAdd.labels.time', { defaultValue: 'Time' })}
+                </Text>
+                <Text className="text-text-primary text-base font-medium mx-1.5">
+                  {formatTimeLabel(entryTime, preferences?.time_format) ??
+                    t('foodEntryAdd.labels.none', { defaultValue: 'None' })}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textPrimary}
+                  weight="medium"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                className="flex-row items-center mx-4"
+                onPress={handleSetEntryTimeNow}
+              >
+                <Text className="text-text-link text-sm font-medium mx-1.5">
+                  {t('foodEntryAdd.actions.now', { defaultValue: 'Now' })}
+                </Text>
+              </TouchableOpacity>
+
+              {entryTime !== '' && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="flex-row items-center"
+                  onPress={() => handleSelectEntryTime('')}
+                >
+                  <Text className="text-text-link text-sm font-medium mx-1.5">
+                    {t('foodEntryAdd.actions.clear', { defaultValue: 'Clear' })}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
             {/* Amount */}
             <View>
               <View className="flex-row items-center">
@@ -1051,11 +1202,18 @@ export function CreateFoodMode({
       </FoodForm>
 
       {isLogEntryMode ? (
-        <CalendarSheet
-          ref={calendarRef}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-        />
+        <>
+          <CalendarSheet
+            ref={calendarRef}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+          <TimeSheet
+            ref={timeSheetRef}
+            value={entryTime}
+            onSelectTime={handleSelectEntryTime}
+          />
+        </>
       ) : null}
     </View>
   );

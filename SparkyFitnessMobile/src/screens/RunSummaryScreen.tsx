@@ -23,6 +23,7 @@ import {
   setExerciseEntryStrideLength,
 } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   rateProgramWorkout,
   setProgramPosition,
@@ -56,6 +57,8 @@ import {
 import { updatePendingWatchFormDistance } from '../services/pendingWatchForm';
 import { correctTreadmillDistance } from '../utils/treadmillCorrection';
 import { formatTreadmillPercent } from '../utils/treadmillCorrectionFormat';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type Props = RootStackScreenProps<'RunSummary'>;
 
@@ -68,7 +71,9 @@ const FEET_PER_METER = 3.28084;
  */
 const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const summary = route.params;
   const miles = summary.distanceUnit === 'miles';
   const unitMeters = miles ? METERS_PER_MILE : METERS_PER_KM;
@@ -279,7 +284,9 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       ? t('runSummary.walkSaved', { defaultValue: 'Walk saved' })
       : summary.activity === 'ride'
         ? t('runSummary.rideSaved', { defaultValue: 'Ride saved' })
-        : t('runSummary.runSaved', { defaultValue: 'Run saved' });
+        : summary.activity === 'jumpRope'
+          ? t('runSummary.jumpRopeSaved', { defaultValue: 'Jump Rope saved' })
+          : t('runSummary.runSaved', { defaultValue: 'Run saved' });
 
   const avgPace = paceSecondsPerUnit(
     distanceMeters,
@@ -307,7 +314,10 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const fastestLabel = t('recordActivity.fastest', { defaultValue: 'Fastest' });
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -329,20 +339,39 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <View className="flex-row mb-3">
-          <Stat
-            label={t('recordActivity.distance', { defaultValue: 'Distance' })}
-            value={number(distanceMeters / unitMeters)}
-            unit={unitLabel}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.distance', { defaultValue: 'Distance' })}
+              value={number(distanceMeters / unitMeters)}
+              unit={unitLabel}
+            />
+          ) : null}
           <Stat
             label={t('recordActivity.time', { defaultValue: 'Time' })}
             value={formatClock(summary.activeSeconds)}
           />
-          <Stat
-            label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
-            value={formatPace(avgPace)}
-            unit={paceUnit}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
+              value={formatPace(avgPace)}
+              unit={paceUnit}
+            />
+          ) : null}
+          {summary.activity === 'jumpRope' &&
+          summary.activeEnergyKcal != null &&
+          summary.activeEnergyKcal > 0 ? (
+            <Stat
+              label={
+                energyUnit === 'kJ'
+                  ? t('common.energy', { defaultValue: 'Energy' })
+                  : t('watchRunLive.calories', { defaultValue: 'Calories' })
+              }
+              value={String(
+                roundedEnergy(summary.activeEnergyKcal, energyUnit)
+              )}
+              unit={energyUnitLabel(energyUnit, t)}
+            />
+          ) : null}
         </View>
         {summary.elevationGainMeters >= 1 || summary.avgHeartRate != null ? (
           <View className="flex-row mb-3">
@@ -667,7 +696,7 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           {t('runSummary.done', { defaultValue: 'Done' })}
         </Button>
       </ScrollView>
-    </>
+    </View>
   );
 };
 

@@ -1,5 +1,3 @@
-import { Asset } from 'expo-asset';
-import { File, Paths } from 'expo-file-system';
 import { addUserInteractionListener } from 'expo-widgets';
 import type { LiveActivity, UserInteractionEvent } from 'expo-widgets';
 import type { TFunction } from 'i18next';
@@ -16,6 +14,7 @@ import {
 } from './gpsRecordingService';
 import { sendRunControl } from './watchRunControl';
 import { addLog } from './LogService';
+import { copyLiveActivityIcon } from './liveActivityAppIcon';
 import { useLiveHeartRateStore } from '../stores/liveHeartRateStore';
 import {
   useWatchRunLiveStore,
@@ -30,7 +29,7 @@ import {
   METERS_PER_MILE,
   paceSecondsPerUnit,
   summarizeRecording,
-  type RecordingActivity,
+  type DiaryActivity,
 } from '../utils/gpsRecording';
 import { intervalStepName } from '../utils/recordingCues';
 import { notificationText } from '../utils/recordingNotification';
@@ -87,7 +86,7 @@ function logError(what: string, error: unknown): void {
 /** The translated pieces of the activity, built where the language is known. */
 function title(
   t: TFunction,
-  activityKind: RecordingActivity,
+  activityKind: DiaryActivity,
   indoor: boolean
 ): string {
   switch (activityKind) {
@@ -103,6 +102,8 @@ function title(
         : t('recordActivity.title.outdoorRide', {
             defaultValue: 'Outdoor ride',
           });
+    case 'jumpRope':
+      return t('recordActivity.title.jumpRope', { defaultValue: 'Jump Rope' });
     default:
       return indoor
         ? t('recordActivity.title.indoorRun', { defaultValue: 'Indoor run' })
@@ -185,7 +186,8 @@ export function computeRecordingProps(
           name: intervalStepName(
             ctx.t,
             position.step.kind,
-            session.intervals!.plan.style
+            session.intervals!.plan.style,
+            position.step.effort
           ),
           current: position.index + 1,
           total: session.intervals!.plan.steps.length,
@@ -235,7 +237,9 @@ export function computeWatchRunProps(
   const { unitMeters } = unitLabels(ctx);
   const running = run.status === 'running';
   const active = run.elapsed + (running ? age / 1000 : 0);
-  const hasDistance = run.distanceMeters > 0 || run.place === 'outdoor';
+  const hasDistance =
+    run.kind !== 'jumpRope' &&
+    (run.distanceMeters > 0 || run.place === 'outdoor');
   const stepRemaining =
     run.stepRemaining != null
       ? Math.max(0, run.stepRemaining - (running ? age / 1000 : 0))
@@ -322,17 +326,7 @@ function propsEqual(a: RunLiveActivityProps, b: RunLiveActivityProps): boolean {
 
 async function resolveAppIcon(): Promise<void> {
   try {
-    const container = Object.values(Paths.appleSharedContainers)[0];
-    if (container == null) return;
-    const asset = Asset.fromModule(
-      require('../../assets/icons/live-activity-icon.png')
-    );
-    await asset.downloadAsync();
-    if (asset.localUri == null) return;
-    const destination = new File(container, 'run-live-activity-icon.png');
-    if (destination.exists) destination.delete();
-    new File(asset.localUri).copy(destination);
-    appIconUri = destination.uri;
+    appIconUri = await copyLiveActivityIcon('run-live-activity-icon.png');
   } catch (error) {
     logError('app icon resolve failed', error);
   }

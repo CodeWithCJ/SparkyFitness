@@ -1,9 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import userRepository from '../models/userRepository.js';
+import rateLimitWindowRepository from '../models/rateLimitWindowRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { canActForUser } from '../utils/actForUser.js';
 import adminActivityLogRepository from '../models/adminActivityLogRepository.js';
 /**
  * Gets consistent user data by ID.
@@ -150,25 +152,7 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
       'info',
       `Attempting context switch: User ${authenticatedUserId} -> User ${targetUserId}`
     );
-    // Verify access (allow switch if user has reports, diary, checkin, or
-    // medications access). Each maps to a distinct family_access permission, so
-    // a delegate granted only one of them must still be able to switch context.
-    const [
-      hasReportsAccess,
-      hasDiaryAccess,
-      hasCheckinAccess,
-      hasMedicationsAccess,
-    ] = await Promise.all([
-      canAccessUserData(targetUserId, 'reports', authenticatedUserId),
-      canAccessUserData(targetUserId, 'diary', authenticatedUserId),
-      canAccessUserData(targetUserId, 'checkin', authenticatedUserId),
-      canAccessUserData(targetUserId, 'medications', authenticatedUserId),
-    ]);
-    const hasAccess =
-      hasReportsAccess ||
-      hasDiaryAccess ||
-      hasCheckinAccess ||
-      hasMedicationsAccess;
+    const hasAccess = await canActForUser(targetUserId, authenticatedUserId);
     if (!hasAccess) {
       throw new Error(
         'Forbidden: You do not have permission to switch to this user context.'
@@ -184,22 +168,42 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserPassword(authenticatedUserId: any, newPassword: any) {
-  try {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    const success = await userRepository.updateUserPassword(
-      authenticatedUserId,
-      hashedPassword
+// Password checks per account across every route that uses
+// verifyCurrentPassword, so switching routes does not reset the budget.
+const PASSWORD_CHECK_MAX_ATTEMPTS = 5;
+const PASSWORD_CHECK_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * Re-verify the account password before an identity or sign-in setting
+ * changes. SSO-only accounts have no local password and pass on their
+ * authenticated session alone. Throws a 401 error when the password is wrong
+ * or missing, and a 429 error after too many checks for the account.
+ */
+async function verifyCurrentPassword(
+  authenticatedUserId: string,
+  currentPassword: unknown
+): Promise<void> {
+  const passwordHash =
+    await userRepository.getCredentialPasswordHash(authenticatedUserId);
+  if (!passwordHash) return;
+  const attempt = await rateLimitWindowRepository.hit(
+    `password-check|${authenticatedUserId}`,
+    PASSWORD_CHECK_WINDOW_MS
+  );
+  if (attempt.count > PASSWORD_CHECK_MAX_ATTEMPTS) {
+    throw Object.assign(
+      new Error('Too many password attempts. Please try again later.'),
+      { statusCode: 429 }
     );
-    if (!success) {
-      throw new Error('User not found.');
-    }
-    return true;
-  } catch (error) {
-    log('error', 'Error updating password in authService:', error);
-    throw error;
+  }
+  const verified =
+    typeof currentPassword === 'string' &&
+    currentPassword.length > 0 &&
+    (await bcrypt.compare(currentPassword, passwordHash));
+  if (!verified) {
+    throw Object.assign(new Error('Current password is incorrect.'), {
+      statusCode: 401,
+    });
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -220,22 +224,7 @@ async function updateUserEmail(
         statusCode: 400,
       });
     }
-    // Step-up: re-verify the current password before changing this identity
-    // field. SSO-only accounts have no local password and change email on their
-    // authenticated session alone.
-    const passwordHash =
-      await userRepository.getCredentialPasswordHash(authenticatedUserId);
-    if (passwordHash) {
-      const verified =
-        typeof currentPassword === 'string' &&
-        currentPassword.length > 0 &&
-        (await bcrypt.compare(currentPassword, passwordHash));
-      if (!verified) {
-        throw Object.assign(new Error('Current password is incorrect.'), {
-          statusCode: 401,
-        });
-      }
-    }
+    await verifyCurrentPassword(authenticatedUserId, currentPassword);
     const existingUser = await userRepository.findUserByEmail(newEmail);
     if (existingUser && existingUser.id !== authenticatedUserId) {
       throw new Error('Email already in use by another account.');
@@ -448,7 +437,7 @@ export { getUserProfile };
 export { updateUserProfile };
 export { getUserApiKeys };
 export { switchUserContext };
-export { updateUserPassword };
+export { verifyCurrentPassword };
 export { updateUserEmail };
 export { canAccessUserData };
 export { checkFamilyAccess };
@@ -470,7 +459,7 @@ export default {
   updateUserProfile,
   getUserApiKeys,
   switchUserContext,
-  updateUserPassword,
+  verifyCurrentPassword,
   updateUserEmail,
   canAccessUserData,
   checkFamilyAccess,

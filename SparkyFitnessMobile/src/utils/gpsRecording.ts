@@ -8,6 +8,8 @@ import type { WorkoutLapWindow } from '../types/healthRecords';
  */
 
 export type RecordingActivity = 'walk' | 'run' | 'ride';
+/** A recording activity, or jump rope (recorded on the watch, no GPS). */
+export type DiaryActivity = RecordingActivity | 'jumpRope';
 
 /** One accepted location fix. Times are epoch milliseconds. */
 export interface RecordedPoint {

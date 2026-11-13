@@ -10,12 +10,14 @@ import SleepStagesBreakdown from '../components/SleepStagesBreakdown';
 import StatusView from '../components/StatusView';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useSkinTemperature } from '../hooks/useSkinTemperature';
 import { useSleepDetail } from '../hooks/useSleepDetail';
 import { getAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { formatDateLabel } from '../utils/dateUtils';
+import { temperatureUnitFor } from '../utils/temperatureUnit';
 import {
   formatClockTime,
   formatSleepDuration,
@@ -127,11 +129,14 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { entry, stages, isLoading, isError, refetch } = useSleepDetail(
-    entryId,
-    day
-  );
+  const { entry, isMainSleep, stages, isLoading, isError, refetch } =
+    useSleepDetail(entryId, day);
   const { preferences } = usePreferences();
+  // Skin temperature and the 30-night trends are the night's, so a nap on the
+  // same day shows neither.
+  const skinTemperature = useSkinTemperature(
+    isMainSleep ? entry?.entry_date : undefined
+  );
 
   // Resolved once for the whole screen so the header's bedtime-to-wake range and the
   // hypnogram's axis labels can never disagree about which clock they are on.
@@ -200,7 +205,12 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         <SleepDetailHeader entry={entry} zone={zone} />
         <Hypnogram stages={stages} zone={zone} />
         <SleepStagesBreakdown entry={entry} />
-        <SleepBiometrics entry={entry} />
+        <SleepBiometrics
+          entry={entry}
+          skinTemperature={skinTemperature}
+          showTrends={isMainSleep}
+          temperatureUnit={temperatureUnitFor(preferences)}
+        />
       </ScrollView>
     );
   };

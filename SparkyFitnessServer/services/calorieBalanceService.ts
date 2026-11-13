@@ -95,7 +95,7 @@ export interface CalorieBalanceInputs {
   userPreferences: CalorieBalanceUserPreferences | null;
   /** Latest measurement on or before the day. Drives the BMR formula. */
   measurements: CalorieBalanceMeasurements | null;
-  /** Health Connect total (resting + active) calories accumulated for this day. */
+  /** Device total (resting + active) calories accumulated for this day, from one source (see `pickDeviceTotalPerDay`). */
   deviceTotalCalories?: number | null;
   /** Fraction of the day elapsed when the cumulative device total was captured. */
   deviceTotalDayFraction?: number | null;
@@ -424,6 +424,8 @@ export function computeCalorieBalance({
       baselineBurn: sparkyfitnessBurned,
       adjustment: tdeeAdjustment,
       targetCalories: goalCalories,
+      // 'health_connect_total' means any device total now (Garmin and Polar
+      // too); the value stays because older apps check for it.
       source: validDeviceTotal ? 'health_connect_total' : 'active_plus_bmr',
     };
   }
@@ -482,4 +484,39 @@ export function computeCalorieBalance({
     exerciseSource: resolved.source,
     tdeeProjection,
   };
+}
+
+/** Positive budget earned from activity, excluding resting-only projection changes. */
+export function computeExerciseMacroCredit(
+  inputs: CalorieBalanceInputs
+): number {
+  const activity = resolveExerciseCalories(
+    inputs.exercise.otherCalories,
+    inputs.exercise.activeCalories,
+    inputs.backgroundStepCalories
+  ).calories;
+  if (activity <= 0) return 0;
+  const macroInputs: CalorieBalanceInputs = {
+    ...inputs,
+    eatenCalories: 0,
+    userPreferences: {
+      ...inputs.userPreferences,
+      include_bmr_in_net_calories: false,
+    },
+  };
+  const actual = computeCalorieBalance(macroInputs);
+  const withoutActivity = computeCalorieBalance({
+    ...macroInputs,
+    exercise: { activeCalories: 0, otherCalories: 0, activitySteps: 0 },
+    backgroundStepCalories: 0,
+    deviceTotalCalories:
+      typeof inputs.deviceTotalCalories === 'number'
+        ? Math.max(0, inputs.deviceTotalCalories - activity)
+        : inputs.deviceTotalCalories,
+  });
+  return Math.max(
+    0,
+    actual.remaining -
+      Math.max(inputs.adjustedGoalCalories, withoutActivity.remaining)
+  );
 }

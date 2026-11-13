@@ -19,6 +19,7 @@ import type {
   CustomCategory,
   CustomMeasurementEntry,
   LatestManualCustomEntry,
+  SaveCustomCategoryPayload,
   SaveCustomMeasurementPayload,
 } from '../../types/customMeasurements';
 import { reduceLatestManualEntries } from '../../utils/measurementHistory';
@@ -368,19 +369,37 @@ export const fetchCustomCategories = async (): Promise<CustomCategory[]> => {
   });
 };
 
-export const createCustomCategory = async (body: {
-  name: string;
-  display_name: string;
-  measurement_type: string;
-  frequency: string;
-  data_type: string;
-}): Promise<CustomCategory> => {
+export const createCustomCategory = async (
+  payload: SaveCustomCategoryPayload
+): Promise<CustomCategory> => {
   return apiFetch<CustomCategory>({
     endpoint: '/api/measurements/custom-categories',
     serviceName: 'Measurements API',
     operation: 'create custom category',
     method: 'POST',
-    body,
+    body: payload,
+  });
+};
+
+export const updateCustomCategory = async (
+  id: string,
+  payload: SaveCustomCategoryPayload
+): Promise<CustomCategory> => {
+  return apiFetch<CustomCategory>({
+    endpoint: `/api/measurements/custom-categories/${id}`,
+    serviceName: 'Measurements API',
+    operation: 'update custom category',
+    method: 'PUT',
+    body: payload,
+  });
+};
+
+export const deleteCustomCategory = async (id: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/measurements/custom-categories/${id}`,
+    serviceName: 'Measurements API',
+    operation: 'delete custom category',
+    method: 'DELETE',
   });
 };
 
@@ -447,10 +466,11 @@ export const fetchDailyHeartRateMetrics = async (
 };
 
 export const fetchCustomMeasurementsByDate = async (
-  date: string
+  date: string,
+  byTimestamp = false
 ): Promise<CustomMeasurementEntry[]> => {
   return apiFetch<CustomMeasurementEntry[]>({
-    endpoint: `/api/measurements/custom-entries/${date}`,
+    endpoint: `/api/measurements/custom-entries/${date}${byTimestamp ? '?byTimestamp=true' : ''}`,
     serviceName: 'Measurements API',
     operation: 'fetch custom measurements by date',
   });

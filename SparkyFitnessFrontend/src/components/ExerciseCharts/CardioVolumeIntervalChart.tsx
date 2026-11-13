@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import type { ExerciseStatsSummaryResponse } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface CardioVolumeIntervalChartProps {
   summaryData?: ExerciseStatsSummaryResponse;
@@ -23,6 +24,8 @@ export const CardioVolumeIntervalChart = ({
   onIntervalChange,
 }: CardioVolumeIntervalChartProps) => {
   const { t } = useTranslation();
+  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
+  const energyLabel = getEnergyUnitString(energyUnit);
   const [metric, setMetric] = useState<'distance' | 'duration' | 'calories'>(
     'distance'
   );
@@ -60,7 +63,7 @@ export const CardioVolumeIntervalChart = ({
     label: pt.label,
     distance: Number(pt.distanceFormatted.toFixed(2)),
     duration: Math.round(pt.durationMinutes),
-    calories: Math.round(pt.caloriesBurned),
+    calories: Math.round(convertEnergy(pt.caloriesBurned, 'kcal', energyUnit)),
     workouts: pt.workoutCount,
   }));
 
@@ -75,7 +78,7 @@ export const CardioVolumeIntervalChart = ({
       ? `${t('exerciseAnalytics.volume.distance', 'Distance')} (${unitLabel})`
       : metric === 'duration'
         ? `${t('exerciseAnalytics.volume.duration', 'Duration')} (${t('common.min', 'min')})`
-        : `${t('exerciseAnalytics.volume.calories', 'Calories')} (kcal)`;
+        : `${t('exerciseAnalytics.volume.calories', 'Calories')} (${energyLabel})`;
   const barColor =
     metric === 'distance'
       ? '#3b82f6'
@@ -211,7 +214,7 @@ export const CardioVolumeIntervalChart = ({
                     ? unitLabel
                     : metric === 'duration'
                       ? t('common.min', 'min')
-                      : 'kcal';
+                      : energyLabel;
                 return [`${shown} ${suffix}`, metricLabel];
               }}
               contentStyle={{ borderRadius: '8px', fontSize: '12px' }}

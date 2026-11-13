@@ -1,9 +1,12 @@
 import {
   compareByEntryTime,
+  deriveWorkoutSessionStatus,
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
+  type ExercisePresetEntries,
+  type WorkoutSessionStatusSet,
 } from '@workspace/shared';
-import { getClient } from '../db/poolManager.js';
+import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -191,7 +194,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
              COALESCE(
                (SELECT json_agg(set_data ORDER BY set_data.set_number)
                 FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
                   FROM exercise_entry_sets ees
                   WHERE ees.exercise_entry_id = ee.id
                 ) AS set_data
@@ -328,12 +331,50 @@ export const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
   'calories_applied',
 ] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function telemetryValuesFrom(source: any): unknown[] {
-  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) => {
-    const value = source?.[column];
-    return value === undefined ? null : value;
-  });
+const INT4_MAX = 2147483647;
+
+// The telemetry columns that are integer or smallint in exercise_entries, with
+// the range Postgres accepts for each. Health platforms report counts and
+// durations as doubles (HealthKit sums swimming stroke samples to values like
+// 120.99894867182387), and Postgres rejects a fractional or out-of-range value,
+// which fails the whole sync batch.
+export const EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES: ReadonlyMap<
+  string,
+  readonly [number, number]
+> = new Map([
+  ['heart_rate_recovery_1min', [-INT4_MAX - 1, INT4_MAX]],
+  ['stroke_count', [-INT4_MAX - 1, INT4_MAX]],
+  ['moving_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['elapsed_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['work_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  // chk_exercise_entries_workout_effort
+  ['workout_effort', [1, 10]],
+]);
+
+/**
+ * Returns the value to bind for one telemetry column. Integer columns get the
+ * value rounded, and a value the column can't hold becomes null: telemetry is
+ * optional, and one bad reading shouldn't cost the whole sync batch. Other
+ * columns pass through unchanged, and undefined becomes null.
+ */
+export function telemetryValueFor(column: string, value: unknown): unknown {
+  if (value === undefined) return null;
+  const range = EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES.get(column);
+  if (!range) return value;
+  // pg hands numeric columns back as strings, so a merged update can carry one.
+  const numeric =
+    typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  if (typeof numeric !== 'number' || !Number.isFinite(numeric)) return value;
+  const rounded = Math.round(numeric);
+  return rounded >= range[0] && rounded <= range[1] ? rounded : null;
+}
+
+function telemetryValuesFrom(
+  source: Record<string, unknown> | null | undefined
+): unknown[] {
+  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) =>
+    telemetryValueFor(column, source?.[column])
+  );
 }
 
 /**
@@ -375,7 +416,13 @@ async function _updateExerciseEntryTelemetryOnlyWithClient(
   await client.query(
     `UPDATE exercise_entries SET ${setClause}, updated_at = now()
      WHERE id = $${columns.length + 1} AND user_id = $${columns.length + 2}`,
-    [...columns.map((column) => telemetryFields[column]), id, userId]
+    [
+      ...columns.map((column) =>
+        telemetryValueFor(column, telemetryFields[column])
+      ),
+      id,
+      userId,
+    ]
   );
 }
 
@@ -691,17 +738,48 @@ async function applyWatchTelemetryAtomically(
   }
 }
 
+/**
+ * Builds an edit from the entry as stored once the edit holds the entry's
+ * lock, for a caller that fills in the fields the request left out. Filled in
+ * from a read taken before the lock, they would write back values another
+ * writer (a watch upload, another edit) has changed since.
+ */
+type ResolveExerciseEntryUpdate = (currentEntry: Record<string, unknown>) => {
+  updateData: Record<string, unknown>;
+  markManualFields: readonly string[];
+};
+
+// A set's started_at is optional for clients (#2840): an update that omits it
+// keeps the stored value, an explicit null clears it. Clients that do not know
+// the field yet must not wipe a start recorded by a newer one.
+interface SetStartedAtInput {
+  id?: string | number | null;
+  started_at?: string | null;
+}
+
+function toStoredSetId(id: SetStartedAtInput['id']): number | null {
+  if (id === undefined || id === null) return null;
+  const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+  return Number.isFinite(numericId) ? numericId : null;
+}
+
+// Value to write when the sets of an entry are replaced (delete + insert): an
+// omitted started_at is taken from the stored set with the same id.
+function resolveReplacedSetStartedAt(
+  set: SetStartedAtInput,
+  storedStartedAt: ReadonlyMap<number, Date | string | null>
+): Date | string | null {
+  if (set.started_at !== undefined) return set.started_at;
+  const storedId = toStoredSetId(set.id);
+  return storedId === null ? null : (storedStartedAt.get(storedId) ?? null);
+}
+
 async function _updateExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any,
+  client: PoolClient,
+  id: string,
+  userId: string,
+  updateData: Record<string, unknown>,
+  updatedByUserId: string,
   entrySource: string | undefined,
   // A caller that can recover from a vanished row (the sync path, which just
   // inserts a replacement) passes returnNullIfMissing and gets null instead of
@@ -715,15 +793,19 @@ async function _updateExerciseEntryWithClient(
     returnNullIfMissing?: boolean;
     preserveManualFields?: boolean;
     markManualFields?: readonly string[];
+    resolveUpdate?: ResolveExerciseEntryUpdate;
   } = {}
 ) {
   // A link created after an unlocked read would be ignored, and locking one
   // side before the other deadlocks. Take the entry and its link first, then
   // reread.
   await lockCalorieLinkParticipantsWithClient(client, userId, [id]);
-  // Fetch existing entry to get current snapshot values if not provided in updateData
+  // Fetch existing entry to get current snapshot values if not provided in
+  // updateData. The update below writes every column back, and some writers
+  // (the distance correction) skip the locks above, so the row lock makes
+  // this read wait for them instead of restoring what they replaced.
   const existingEntryResult = await client.query(
-    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2',
+    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
     [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {
@@ -733,14 +815,15 @@ async function _updateExerciseEntryWithClient(
     throw new Error('Exercise entry not found for update.');
   }
   const currentEntry = existingEntryResult.rows[0];
+  let markManualFields = options.markManualFields ?? [];
+  if (options.resolveUpdate) {
+    ({ updateData, markManualFields } = options.resolveUpdate(currentEntry));
+  }
   const currentManualFields = storedManualFields(currentEntry.manual_fields);
   if (options.preserveManualFields) {
     updateData = withoutManualFields(updateData, currentManualFields);
   }
-  const manualFields = mergeManualFields(
-    currentManualFields,
-    options.markManualFields ?? []
-  );
+  const manualFields = mergeManualFields(currentManualFields, markManualFields);
   // Merge updateData with currentEntry to ensure all fields are present for the update statement
   // Prioritize updateData, then currentEntry, then defaults
   const mergedData = {
@@ -831,7 +914,7 @@ async function _updateExerciseEntryWithClient(
       userId
     );
     if (!exercise) {
-      throw new Error('Exercise not found for snapshot update.');
+      throw Object.assign(new Error('Exercise not found.'), { status: 404 });
     }
     mergedData.exercise_name = exercise.name;
     mergedData.calories_per_hour = exercise.calories_per_hour;
@@ -965,7 +1048,20 @@ async function _updateExerciseEntryWithClient(
   }
   // Handle sets update
   if (updateData.sets !== undefined) {
-    // Only modify sets if they are explicitly provided
+    // Only modify sets if they are explicitly provided. The rows are replaced,
+    // so read the stored started_at first to keep it for sets sent back by id.
+    const storedStartedAtResult = await client.query(
+      'SELECT id, started_at FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+      [id]
+    );
+    const storedStartedAt = new Map<number, Date | string | null>(
+      (
+        storedStartedAtResult.rows as {
+          id: number;
+          started_at: Date | string | null;
+        }[]
+      ).map((row) => [row.id, row.started_at])
+    );
     await client.query(
       'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
       [id]
@@ -987,9 +1083,10 @@ async function _updateExerciseEntryWithClient(
         set.completed_at ?? null,
         set.is_pr ?? false,
         set.distance ?? null,
+        resolveReplacedSetStartedAt(set, storedStartedAt),
       ]);
       const setsQuery = format(
-        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -1163,7 +1260,9 @@ async function _createExerciseEntryWithClient(
         [entryData.exercise_id]
       );
       if (exerciseSnapshotQuery.rows.length === 0) {
-        throw new Error('Exercise not found for snapshotting.');
+        throw Object.assign(new Error('Exercise not found.'), {
+          status: 404,
+        });
       }
       const snapshot = exerciseSnapshotQuery.rows[0];
       // 2. Insert the exercise entry with the snapshot data. A client-provided
@@ -1244,9 +1343,10 @@ async function _createExerciseEntryWithClient(
           set.completed_at ?? null,
           set.is_pr ?? false,
           set.distance ?? null,
+          set.started_at ?? null,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -1356,17 +1456,47 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
   }
 }
 
+/**
+ * Whether any diary entry or workout preset exercise, of any user, still
+ * points at this image. Read without row-level security so a file only
+ * another user's row references is never taken for unused. A failed check
+ * counts as referenced: a stray file on disk is better than a lost photo.
+ */
+async function isExerciseImageReferenced(imageUrl: string): Promise<boolean> {
+  try {
+    const client = await getSystemClient();
+    try {
+      const result = await client.query(
+        // Case-insensitive, so a differently cased spelling of the same file
+        // on a case-insensitive filesystem still counts as a reference.
+        `SELECT 1 FROM exercise_entries WHERE lower(image_url) = lower($1)
+         UNION ALL
+         SELECT 1 FROM workout_preset_exercises WHERE lower(image_url) = lower($1)
+         LIMIT 1`,
+        [imageUrl]
+      );
+      return result.rows.length > 0;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    log(
+      'warn',
+      'Could not check references to an exercise image; keeping it',
+      error
+    );
+    return true;
+  }
+}
+
 async function updateExerciseEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
+  id: string,
+  userId: string,
+  actingUserId: string,
+  updateData: Record<string, unknown>,
   // Fields this edit changed on a synced entry, kept on the next re-sync.
-  markManualFields: readonly string[] = []
+  markManualFields: readonly string[] = [],
+  resolveUpdate?: ResolveExerciseEntryUpdate
 ) {
   const client = await getClient(userId);
   try {
@@ -1382,8 +1512,8 @@ async function updateExerciseEntry(
       userId,
       updateData,
       actingUserId,
-      updateData.source,
-      { markManualFields }
+      typeof updateData.source === 'string' ? updateData.source : undefined,
+      { markManualFields, resolveUpdate }
     );
     await client.query('COMMIT');
     return updatedEntry;
@@ -1552,7 +1682,8 @@ async function _reconcileExerciseEntrySetsWithClient(
            completed_at = $9,
            is_pr = $10,
            distance = $11,
-           rir = $12
+           rir = $12,
+           started_at = CASE WHEN $15::boolean THEN $16::timestamptz ELSE started_at END
        WHERE id = $13 AND exercise_entry_id = $14`,
       [
         set.set_number,
@@ -1569,6 +1700,9 @@ async function _reconcileExerciseEntrySetsWithClient(
         set.rir ?? null,
         set.id,
         exerciseEntryId,
+        // Omitted keeps the stored start; null clears it (#2840).
+        set.started_at !== undefined,
+        set.started_at ?? null,
       ]
     );
   }
@@ -1589,9 +1723,10 @@ async function _reconcileExerciseEntrySetsWithClient(
       set.completed_at ?? null,
       set.is_pr ?? false,
       set.distance ?? null,
+      set.started_at ?? null,
     ]);
     const setsQuery = format(
-      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
       setsValues
     );
     await client.query(setsQuery);
@@ -1619,12 +1754,44 @@ async function deleteExerciseEntry(id: any, userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Row shape of the preset SELECT in the V1 diary path, taken from the shared
+ * database schema so the columns stay in sync with it (#1995 phase 1). The
+ * lifecycle columns must ride along so the status can be derived from the
+ * same rows that define it.
+ */
+type DiaryPresetEntryRow = Pick<
+  ExercisePresetEntries,
+  | 'id'
+  | 'workout_preset_id'
+  | 'name'
+  | 'description'
+  | 'notes'
+  | 'location'
+  | 'created_at'
+  | 'entry_date'
+  | 'source'
+  | 'finished_at'
+  | 'revision'
+>;
+
+/**
+ * Session child fields the status derivation reads on the V1 diary path. The
+ * children are loosely shaped legacy rows; only the fields the derivation
+ * touches are declared.
+ */
+interface DiaryPresetChildExercise {
+  workout_plan_assignment_id?: string | null;
+  sets?: WorkoutSessionStatusSet[] | null;
+}
+
 async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   const client = await getClient(userId);
   try {
     // 1. Fetch all exercise preset entries for the given date and user
     const presetEntriesResult = await client.query(
-      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location
+      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location,
+              entry_date, finished_at, revision
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -1638,7 +1805,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1655,8 +1822,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Map to store grouped exercises
     const groupedEntries = new Map();
     // Initialize grouped entries with preset entries
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    presetEntries.forEach((preset: any) => {
+    presetEntries.forEach((preset: DiaryPresetEntryRow) => {
       groupedEntries.set(preset.id, {
         type: 'preset',
         id: preset.id,
@@ -1666,7 +1832,10 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         notes: preset.notes,
         location: preset.location ?? null,
         created_at: preset.created_at,
+        entry_date: preset.entry_date,
         source: preset.source,
+        finished_at: preset.finished_at,
+        revision: preset.revision,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
@@ -1767,6 +1936,27 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Now add the preset entries (which now contain their associated exercises) to the final list
     for (const preset of groupedEntries.values()) {
       preset.activity_details = activityDetailsByPresetId.get(preset.id) || [];
+      // #1995 phase 1 lifecycle: derive the session status from the same rows
+      // that define it. Never stored, so it can never drift from the data.
+      const finishedAt =
+        preset.finished_at instanceof Date
+          ? preset.finished_at.toISOString()
+          : preset.finished_at
+            ? String(preset.finished_at)
+            : null;
+      preset.finished_at = finishedAt;
+      preset.revision = Number(preset.revision ?? 1);
+      preset.status = deriveWorkoutSessionStatus({
+        source: preset.source,
+        finishedAt,
+        hasPlanAssignment: (preset.exercises || []).some(
+          (exercise: DiaryPresetChildExercise) =>
+            (exercise.workout_plan_assignment_id ?? null) !== null
+        ),
+        sets: (preset.exercises || []).flatMap(
+          (exercise: DiaryPresetChildExercise) => exercise.sets || []
+        ),
+      });
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
@@ -1856,7 +2046,7 @@ async function getExerciseProgressData(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1893,7 +2083,7 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -2003,8 +2193,40 @@ async function getRecentSessionsForExercise(
 ): Promise<RecentSessionRow[]> {
   const client = await getClient(userId);
   try {
+    // Preset scoping must not leave a brand-new preset with an empty history
+    // card: when the preset itself has no qualifying sessions yet, fall back to
+    // the exercise's global recent sessions so the in-progress view still has
+    // something to compare against (issue: presetId-scoped stats returned []
+    // for a fresh preset while lastSet/global stats were populated).
+    //
+    // The scope decision runs in the SAME statement as the select (via a CTE)
+    // so a preset session committing concurrently cannot race the probe: the
+    // probe and the main query read a single snapshot. The probe applies the
+    // same excludePresetEntryId exclusion as the main query, so today's
+    // in-progress session cannot keep preset scoping active when it is the
+    // preset's only qualifying history.
     const result = await client.query(
-      `SELECT
+      `WITH scoped_preset AS (
+         SELECT CASE
+           WHEN $5::integer IS NULL THEN NULL
+           WHEN EXISTS (
+             SELECT 1
+               FROM exercise_entries ee
+               JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
+              WHERE ee.user_id = $1
+                AND ee.exercise_id = $2
+                AND epe.workout_preset_id = $5::integer
+                AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
+                AND EXISTS (
+                  SELECT 1 FROM exercise_entry_sets ees
+                   WHERE ees.exercise_entry_id = ee.id
+                     AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
+                )
+           ) THEN $5::integer
+           ELSE NULL
+         END AS preset_id
+       )
+       SELECT
          ee.entry_date::TEXT AS entry_date,
          (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
             FROM (
@@ -2015,15 +2237,17 @@ async function getRecentSessionsForExercise(
             ) AS set_data
          ) AS sets
        FROM exercise_entries ee
+       CROSS JOIN scoped_preset sp
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
-         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
          AND (
            $5::integer IS NULL
+           OR sp.preset_id IS NULL
            OR EXISTS (
              SELECT 1 FROM exercise_preset_entries epe
               WHERE epe.id = ee.exercise_preset_entry_id
-                AND epe.workout_preset_id = $5
+                AND epe.workout_preset_id = sp.preset_id
            )
          )
          AND EXISTS (
@@ -2448,6 +2672,7 @@ export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
+export { isExerciseImageReferenced };
 export { updateExerciseEntryTelemetryOnly };
 export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
@@ -2482,6 +2707,7 @@ export default {
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  isExerciseImageReferenced,
   updateExerciseEntryTelemetryOnly,
   _updateExerciseEntryTelemetryOnlyWithClient,
   applyWatchTelemetryAtomically,

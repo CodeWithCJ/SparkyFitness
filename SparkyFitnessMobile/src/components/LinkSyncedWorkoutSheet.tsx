@@ -19,17 +19,20 @@ import {
   CALORIE_LINK_RESOLUTIONS,
   type CalorieLinkCandidate,
   type CalorieLinkResolution,
+  energyToKcal,
+  type EnergyUnit,
 } from '@workspace/shared';
 import Button from './ui/Button';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
-import { formatLocalizedNumber } from '../localization';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
   useCalorieLinkSuggestions,
   useClearCalorieLink,
   useSetCalorieLink,
 } from '../hooks/useCalorieLink';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
 export interface LinkSyncedWorkoutSheetRef {
   present: () => void;
@@ -51,8 +54,8 @@ interface LinkSyncedWorkoutSheetProps {
   ) => void;
 }
 
-const formatCalories = (value: number) =>
-  formatLocalizedNumber(Math.round(value));
+const formatCalories = (value: number, energyUnit: EnergyUnit) =>
+  formatEnergyNumber(value, energyUnit);
 
 /**
  * Links a workout logged in the app to the same session synced from a watch or
@@ -65,6 +68,7 @@ const LinkSyncedWorkoutSheet = forwardRef<
   LinkSyncedWorkoutSheetProps
 >(({ entryId, entryDate, onLinkChange }, ref) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [accentPrimary, surfaceBg, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -105,16 +109,17 @@ const LinkSyncedWorkoutSheet = forwardRef<
   const synced = selected?.calories_burned ?? 0;
   const preview = useMemo<Record<CalorieLinkResolution, string>>(
     () => ({
-      sparkyfitness: formatCalories(manual),
-      synced: formatCalories(synced),
-      higher: formatCalories(Math.max(manual, synced)),
-      lower: formatCalories(Math.min(manual, synced)),
-      average: formatCalories((manual + synced) / 2),
+      sparkyfitness: formatCalories(manual, energyUnit),
+      synced: formatCalories(synced, energyUnit),
+      higher: formatCalories(Math.max(manual, synced), energyUnit),
+      lower: formatCalories(Math.min(manual, synced), energyUnit),
+      average: formatCalories((manual + synced) / 2, energyUnit),
       custom: '',
     }),
-    [manual, synced]
+    [manual, synced, energyUnit]
   );
-  const customValue = parseDecimalInput(customText);
+  // Typed in the account's unit; the server takes kcal.
+  const customValue = energyToKcal(parseDecimalInput(customText), energyUnit);
   const canLink =
     !!selected &&
     (resolution !== 'custom' || (!isNaN(customValue) && customValue >= 0));
@@ -204,9 +209,10 @@ const LinkSyncedWorkoutSheet = forwardRef<
         defaultValue: '{{value}} min',
         value: Math.round(candidate.duration_minutes),
       }),
-      t('calorieLink.calories', {
-        defaultValue: '{{value}} cal',
-        value: formatCalories(candidate.calories_burned),
+      t('calorieLink.caloriesWithUnit', {
+        defaultValue: '{{value}} {{unit}}',
+        value: formatCalories(candidate.calories_burned, energyUnit),
+        unit: energyUnitLabel(energyUnit, t),
       }),
     ]
       .filter(Boolean)
@@ -337,8 +343,9 @@ const LinkSyncedWorkoutSheet = forwardRef<
             {resolution === 'custom' && (
               <View className="py-3">
                 <Text className="text-xs text-text-muted mb-1">
-                  {t('calorieLink.customLabel', {
-                    defaultValue: 'Total for the session (cal)',
+                  {t('calorieLink.customLabelWithUnit', {
+                    defaultValue: 'Total for the session ({{unit}})',
+                    unit: energyUnitLabel(energyUnit, t),
                   })}
                 </Text>
                 <BottomSheetTextInput
@@ -346,8 +353,9 @@ const LinkSyncedWorkoutSheet = forwardRef<
                   onChangeText={setCustomText}
                   keyboardType="decimal-pad"
                   className="border border-border-subtle rounded-lg px-3 py-2.5 text-base text-text-primary"
-                  accessibilityLabel={t('calorieLink.customLabel', {
-                    defaultValue: 'Total for the session (cal)',
+                  accessibilityLabel={t('calorieLink.customLabelWithUnit', {
+                    defaultValue: 'Total for the session ({{unit}})',
+                    unit: energyUnitLabel(energyUnit, t),
                   })}
                   testID="link-custom-calories"
                 />

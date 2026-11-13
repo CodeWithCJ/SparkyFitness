@@ -1,4 +1,5 @@
 import {
+  plateTargetKg,
   summarizeWorkoutEffort,
   summarizeWorkoutHeartRate,
   CATEGORY_ICON_MAP,
@@ -69,6 +70,7 @@ import {
   hasBodyweightExercise,
   isPrSet,
   setLoadKg,
+  upcomingExercises,
 } from '../../src/utils/workoutSession';
 import { wodScoreFormat } from '../../src/utils/wodScore';
 import type {
@@ -198,6 +200,29 @@ describe('workoutSession', () => {
         },
       });
       expect(getWorkoutIcon(session)).toBe('exercise-swimming');
+    });
+
+    it('gives the jump rope icon only to rope skipping, not to jump squats or battle ropes', () => {
+      const named = (name: string) =>
+        makeIndividual({
+          name,
+          exercise_snapshot: {
+            id: 'ex-1',
+            name,
+            category: 'Cardio',
+            calories_per_hour: 500,
+            source: 'system',
+          },
+        });
+      expect(getWorkoutIcon(named('Jump Rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Skipping rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jump Squat'))).not.toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jumping Jacks'))).not.toBe(
+        'exercise-jumprope'
+      );
+      expect(getWorkoutIcon(named('Battle Ropes'))).not.toBe(
+        'exercise-jumprope'
+      );
     });
 
     it('uses category match for non-Cardio categories', () => {
@@ -369,6 +394,37 @@ describe('workoutSession', () => {
 
     it('returns the trimmed source string as-is for unknown sources', () => {
       expect(getSourceLabel('MyFitnessPal')).toBe('MyFitnessPal');
+    });
+  });
+
+  describe('plateTargetKg', () => {
+    const sets = (types: (string | null)[]) =>
+      types.map((set_type, i) => ({
+        id: i + 1,
+        set_type,
+        weight: 20 * (i + 1),
+      }));
+
+    it('prefers the active set', () => {
+      expect(plateTargetKg(sets(['warmup', 'normal']), '2', null)).toBe(40);
+    });
+
+    it.each(['warmup', 'Warm-up', 'Warmup', 'WARM UP'])(
+      'skips a %s set when falling back to the first working set',
+      (type) => {
+        expect(plateTargetKg(sets([type, 'normal']), null, null)).toBe(40);
+      }
+    );
+
+    it('uses the assumed weight and ignores empty or non-positive weights', () => {
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: null }], null, [
+          { weight: 55 },
+        ])
+      ).toBe(55);
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: 0 }], null, null)
+      ).toBeNull();
     });
   });
 
@@ -634,7 +690,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '2 exercises · 3 sets · 300 Cal'
+          '2 exercises · 3 sets · 300 kcal'
         );
       });
 
@@ -685,7 +741,7 @@ describe('workoutSession', () => {
         });
         // 500 + 640 = 1140 kg
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          `1 exercise · 2 sets · ${fmt(1140)} kg · 300 Cal`
+          `1 exercise · 2 sets · ${fmt(1140)} kg · 300 kcal`
         );
       });
 
@@ -723,7 +779,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '1 exercise · 2 sets · 300 Cal'
+          '1 exercise · 2 sets · 300 kcal'
         );
       });
 
@@ -748,7 +804,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 40, 300)).toBe(
-          '2 exercises · 1 set · 500 kg · 5.2 km · 300 Cal'
+          '2 exercises · 1 set · 500 kg · 5.2 km · 300 kcal'
         );
       });
 
@@ -766,7 +822,7 @@ describe('workoutSession', () => {
           exercises: [cardio('ex-1', 5, 1500), cardio('ex-2', 10, 1800)],
         });
         expect(buildSessionSubtitle(session, 55, 500)).toBe(
-          '2 exercises · 15.0 km · 500 Cal'
+          '2 exercises · 15.0 km · 500 kcal'
         );
       });
 
@@ -783,7 +839,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '1 exercise · 300 Cal'
+          '1 exercise · 300 kcal'
         );
       });
     });
@@ -812,7 +868,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 45, 200)).toBe(
-          '3 sets · 45 min · 200 Cal'
+          '3 sets · 45 min · 200 kcal'
         );
       });
 
@@ -867,7 +923,7 @@ describe('workoutSession', () => {
         });
         // 1080 kg total
         expect(buildSessionSubtitle(session, 30, 150)).toBe(
-          `2 sets · ${fmt(1080)} kg · 30 min · 150 Cal`
+          `2 sets · ${fmt(1080)} kg · 30 min · 150 kcal`
         );
       });
 
@@ -880,7 +936,7 @@ describe('workoutSession', () => {
         });
         const result = buildSessionSubtitle(session, 20, 100, 'lbs');
         // 1000 kg * 2.20462 ≈ 2205 lbs
-        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 Cal`);
+        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 kcal`);
       });
 
       it('omits volume when weights are zero', () => {
@@ -891,7 +947,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 30, 200)).toBe(
-          '2 sets · 30 min · 200 Cal'
+          '2 sets · 30 min · 200 kcal'
         );
       });
 
@@ -904,7 +960,7 @@ describe('workoutSession', () => {
         });
         // 800 kg volume
         expect(buildSessionSubtitle(session, 0, 150)).toBe(
-          '2 sets · 800 kg · 150 Cal'
+          '2 sets · 800 kg · 150 kcal'
         );
       });
 
@@ -936,7 +992,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 30, 300)).toBe(
-          '30 min · 5.2 km · 300 Cal'
+          '30 min · 5.2 km · 300 kcal'
         );
       });
 
@@ -949,7 +1005,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 20, 200)).toBe(
-          '20 min · 4.0 km · 200 Cal'
+          '20 min · 4.0 km · 200 kcal'
         );
       });
     });
@@ -957,13 +1013,15 @@ describe('workoutSession', () => {
     describe('individual activity (single or no sets)', () => {
       it('shows duration and calories', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 Cal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe(
+          '30 min · 300 kcal'
+        );
       });
 
       it('includes distance in km', () => {
         const session = makeIndividual({ distance: 5.5 });
         expect(buildSessionSubtitle(session, 30, 300)).toBe(
-          '30 min · 5.5 km · 300 Cal'
+          '30 min · 5.5 km · 300 kcal'
         );
       });
 
@@ -971,22 +1029,26 @@ describe('workoutSession', () => {
         const session = makeIndividual({ distance: 10 }); // 10 km
         const result = buildSessionSubtitle(session, 60, 500, 'kg', 'miles');
         // 10 km * 0.621371 ≈ 6.2 mi
-        expect(result).toBe('1h · 6.2 mi · 500 Cal');
+        expect(result).toBe('1h · 6.2 mi · 500 kcal');
       });
 
       it('omits distance when null', () => {
         const session = makeIndividual({ distance: null });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe(
+          '45 min · 250 kcal'
+        );
       });
 
       it('omits distance when zero', () => {
         const session = makeIndividual({ distance: 0 });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe(
+          '45 min · 250 kcal'
+        );
       });
 
       it('omits duration when zero', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 Cal');
+        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 kcal');
       });
 
       it('omits calories when zero', () => {
@@ -1011,7 +1073,7 @@ describe('workoutSession', () => {
         });
         // Single set still enters the sets branch — weight 100 * reps 10 = 1000 kg volume
         expect(buildSessionSubtitle(session, 30, 200)).toBe(
-          `1 set · ${fmt(1000)} kg · 30 min · 200 Cal`
+          `1 set · ${fmt(1000)} kg · 30 min · 200 kcal`
         );
       });
     });
@@ -2727,6 +2789,125 @@ describe('workoutSession', () => {
         expect(payload[0].duration_minutes).toBe(25);
       });
 
+      describe('cardio entry_time', () => {
+        const localStart = new Date(2026, 2, 20, 10, 0, 0).getTime();
+        const at = (n: number) => localStart + n * 60_000;
+        const cardioSet = (id: number, duration: number | null) =>
+          makeSet({
+            id,
+            reps: null,
+            weight: null,
+            duration,
+            rest_time: 0,
+          });
+        const walk = (sets: ReturnType<typeof makeSet>[]) =>
+          makeExercise({
+            id: ENTRY_B,
+            exercise_id: EX_2,
+            exercise_snapshot: cardioSnapshot,
+            sets,
+          });
+
+        it("starts a cardio entry at its first completed set less that set's duration", () => {
+          const session = makePreset({
+            exercises: [
+              makeExercise({ sets: [makeSet({ id: 101 })] }),
+              walk([cardioSet(201, 1800)]),
+            ],
+          });
+          // A 30 min walk ticked off 45 min in began 15 min in.
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '101': at(10), '201': at(45) },
+            {},
+            localStart
+          );
+          expect(payload[0].entry_time).toBe('10:00');
+          expect(payload[1].entry_time).toBe('10:15');
+          expect(payload[1].duration_minutes).toBe(30);
+          // The strength span is unchanged by the cardio start time.
+          expect(payload[0].duration_minutes).toBe(10);
+        });
+
+        it('stamps a cardio-only session', () => {
+          const session = makePreset({
+            exercises: [walk([cardioSet(201, 1500)])],
+          });
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '201': at(27) },
+            {},
+            localStart
+          );
+          expect(payload[0].entry_time).toBe('10:02');
+        });
+
+        it('uses the earliest completed set of a multi-set cardio entry', () => {
+          const session = makePreset({
+            exercises: [
+              walk([
+                cardioSet(201, 600),
+                makeSet({ ...cardioSet(202, 900), set_number: 2 }),
+              ]),
+            ],
+          });
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '202': at(40), '201': at(20) },
+            {},
+            localStart
+          );
+          expect(payload[0].entry_time).toBe('10:10'); // 20 min less 600 s
+        });
+
+        it('omits entry_time for a cardio set with no duration', () => {
+          const session = makePreset({
+            exercises: [walk([cardioSet(201, null)])],
+          });
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '201': at(20) },
+            {},
+            localStart
+          );
+          expect('entry_time' in payload[0]).toBe(false);
+        });
+
+        it('omits entry_time while no cardio set is completed', () => {
+          const session = makePreset({
+            exercises: [
+              makeExercise({ sets: [makeSet({ id: 101 })] }),
+              walk([cardioSet(201, 1800)]),
+            ],
+          });
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '101': at(10) },
+            {},
+            localStart
+          );
+          expect('entry_time' in payload[1]).toBe(false);
+        });
+
+        it('keeps the stored time of a cardio entry begun before a resumed run', () => {
+          const session = makePreset({
+            exercises: [
+              walk([
+                cardioSet(201, 600),
+                makeSet({ ...cardioSet(202, 600), set_number: 2 }),
+              ]),
+            ],
+          });
+          const payload = buildSessionExercisesPayload(
+            session,
+            { '201': localStart - 5 * 60_000, '202': at(15) },
+            {},
+            localStart
+          );
+          expect('entry_time' in payload[0]).toBe(false);
+        });
+      });
+
       it('zeroes a stale strength duration when only cardio completed (regression: 25+5 showing as 58)', () => {
         const session = makePreset({
           exercises: [
@@ -3480,6 +3661,35 @@ describe('workoutSession', () => {
             ],
           },
         ]);
+      });
+
+      it('keeps configured cardio rest for interval presets but zeroes it elsewhere', () => {
+        const cardio = makePresetExercise({
+          category: 'Cardio',
+          sets: [makePresetSet({ duration: 45, rest_time: 10 })],
+        });
+
+        const interval = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({ workout_format: 'interval', exercises: [cardio] })
+        );
+        const standard = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({ workout_format: 'standard', exercises: [cardio] })
+        );
+        const intervalMissingRest = buildPresetStartExercisesPayload(
+          makeWorkoutPreset({
+            workout_format: 'interval',
+            exercises: [
+              makePresetExercise({
+                category: 'Cardio',
+                sets: [makePresetSet({ duration: 45, rest_time: null })],
+              }),
+            ],
+          })
+        );
+
+        expect(interval[0]!.sets[0]!.rest_time).toBe(10);
+        expect(standard[0]!.sets[0]!.rest_time).toBe(0);
+        expect(intervalMissingRest[0]!.sets[0]!.rest_time).toBe(0);
       });
 
       it('threads superset_group from the preset into the live-start payload', () => {
@@ -4451,6 +4661,125 @@ describe('workoutSession', () => {
         });
       });
 
+      describe('planned values as placeholders (#3417)', () => {
+        // The plan was changed to 110 x 5 after last session's 100 x 8.
+        const lastSession = [prev(100, 8), prev(100, 8)];
+        const changedPlan = (preferOverHistory?: boolean) => {
+          const set = {
+            weight: 110,
+            reps: 5,
+            ...(preferOverHistory ? { preferOverHistory } : {}),
+          };
+          return { '1': set, '2': set };
+        };
+
+        it('shows a changed plan before last session when the plan is preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(true)
+          );
+          expect(result).toEqual([
+            { weight: 110, reps: 5, duration: null, distance: null },
+            { weight: 110, reps: 5, duration: null, distance: null },
+          ]);
+        });
+
+        it('keeps last session first when the plan is not preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan()
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [100, 8],
+            [100, 8],
+          ]);
+        });
+
+        it('keeps active auto-progression on last session when the plan is not preferred', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(),
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [102.5, 9],
+            [102.5, 9],
+          ]);
+        });
+
+        it('puts a preferred plan before active auto-progression', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            changedPlan(true),
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [110, 5],
+            [110, 5],
+          ]);
+        });
+
+        it('keeps progression and history for a field the preferred plan leaves empty', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            {
+              '1': { weight: 110, reps: null, preferOverHistory: true },
+              '2': { weight: null, reps: 5, preferOverHistory: true },
+            },
+            { progressionIncrementKg: 2.5, progressionRepTargets: [9, 9] }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [110, 9],
+            [102.5, 5],
+          ]);
+        });
+
+        it('leaves a set without a planned value on its history', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1), makeSet(2)],
+            lastSession,
+            { '2': { weight: 110, reps: 5, preferOverHistory: true } }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [100, 8],
+            [110, 5],
+          ]);
+        });
+
+        it('still lightens a preferred plan on an adaptive lighter day', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1)],
+            [prev(100, 8)],
+            { '1': { weight: 100, reps: 5, preferOverHistory: true } },
+            { adaptiveLoadFactor: 0.9, weightUnit: 'kg' }
+          );
+          expect(result[0].weight).toBe(90);
+          expect(result[0].reps).toBe(5);
+        });
+
+        it('prefers planned duration and distance too', () => {
+          const result = resolveAssumedSetValues(
+            [makeSet(1)],
+            [{ ...prev(null, null), duration: 600, distance: 2 }],
+            {
+              '1': {
+                weight: null,
+                reps: null,
+                duration: 900,
+                distance: 3,
+                preferOverHistory: true,
+              },
+            }
+          );
+          expect(result[0]).toMatchObject({ duration: 900, distance: 3 });
+        });
+      });
+
       it('keeps warmup and working mirrors separate', () => {
         // A typed warmup must not become the assumption for working sets that
         // have nothing of their own.
@@ -4666,6 +4995,44 @@ describe('workoutSession', () => {
             }
           );
           expect(result.map((r) => r.weight)).toEqual([102.5, 102.5]);
+        });
+
+        it('shows a preferred plan instead of the progression bump (#3417)', () => {
+          const sources = {
+            exerciseConfigs: {
+              'ex-1': {
+                progression_mode: 'rep_goal' as const,
+                rep_goal: 16,
+                increment_type: 'weight' as const,
+                increment_value: 2.5,
+              },
+            },
+            weightUnit: 'lbs' as const,
+          };
+          const history = [prev(100, 8), prev(100, 8)];
+          const plan = (preferOverHistory?: boolean) => {
+            const set = {
+              weight: 110,
+              reps: 5,
+              ...(preferOverHistory ? { preferOverHistory } : {}),
+            };
+            return { '1': set, '2': set };
+          };
+          expect(
+            resolveLiveAssumedSetValues(exercise, history, {
+              ...sources,
+              plannedSetValues: plan(),
+            }).map((r) => r.weight)
+          ).toEqual([102.5, 102.5]);
+          expect(
+            resolveLiveAssumedSetValues(exercise, history, {
+              ...sources,
+              plannedSetValues: plan(true),
+            }).map((r) => [r.weight, r.reps])
+          ).toEqual([
+            [110, 5],
+            [110, 5],
+          ]);
         });
 
         it('raises working-set reps when progression adds reps, warm-ups untouched', () => {
@@ -5059,6 +5426,32 @@ describe('workoutSession', () => {
           },
         ],
       } as unknown as WorkoutPreset);
+
+      it('marks every planned set when the plan is preferred (#3417)', () => {
+        expect(
+          extractPlannedSetValues(exercises, { preferOverHistory: true })
+        ).toEqual([
+          [
+            {
+              weight: 80,
+              reps: 5,
+              duration: null,
+              distance: null,
+              preferOverHistory: true,
+            },
+            {
+              weight: 80,
+              reps: 5,
+              duration: null,
+              distance: null,
+              preferOverHistory: true,
+            },
+          ],
+        ]);
+        expect(extractPlannedSetValues(exercises)[0][0]).not.toHaveProperty(
+          'preferOverHistory'
+        );
+      });
 
       it('captures the plan positionally and strips it from the create payload', () => {
         expect(extractPlannedSetValues(exercises)).toEqual([
@@ -6814,5 +7207,42 @@ describe('summarizeWorkoutEffort', () => {
         { workout_effort: 14 },
       ])
     ).toBe(9);
+  });
+});
+
+describe('upcomingExercises', () => {
+  const entry = (
+    id: string,
+    setIds: number[],
+    group: number | null = null
+  ) => ({
+    id,
+    superset_group: group,
+    sets: setIds.map((setId) => ({ id: setId })),
+  });
+  const session = {
+    exercises: [
+      entry('a', [1, 2], 1),
+      entry('b', [3, 4], 1),
+      entry('c', [5]),
+      entry('d', [6]),
+    ],
+  } as unknown as PresetSessionResponse;
+
+  it('lists the later exercises with a set to do, leaving out superset partners', () => {
+    expect(upcomingExercises(session, '1', {}).map((e) => e.id)).toEqual([
+      'c',
+      'd',
+    ]);
+  });
+
+  it('leaves out exercises that are already done', () => {
+    expect(upcomingExercises(session, '3', { 5: 1 }).map((e) => e.id)).toEqual([
+      'd',
+    ]);
+  });
+
+  it('is empty without an active set', () => {
+    expect(upcomingExercises(session, null, {})).toEqual([]);
   });
 });

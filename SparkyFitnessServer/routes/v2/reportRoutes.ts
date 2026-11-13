@@ -278,7 +278,7 @@ router.get('/workout-days', getWorkoutDaysHandler);
  *       200:
  *         description: The comparison result, or a not-enough-data answer. `through` (YYYY-MM-DD) is the last day included; today, or the current week in week mode, is left out until it is over. In since mode the answer has `mode` 'since', the habit and outcome raw values over the before and since stretches, and the result - suggested start, before and since stretches, the difference with its 95% range and p, typical range, share at or above the line, regularity, and an already-changing warning.
  *       400:
- *         description: Validation error (unknown metric, same metric twice, span over 180 days or 366 in week mode, metric not offered weekly; in since mode, habitStart not before today or more than 730 days ago).
+ *         description: Validation error (unknown metric, same metric twice, span over 180 days or 366 in week mode, metric not offered weekly; in since mode, a metric not offered in since mode (weight trend), habitStart not before today or more than 730 days ago).
  *       403:
  *         description: Called on behalf of another account.
  */

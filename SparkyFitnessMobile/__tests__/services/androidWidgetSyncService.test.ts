@@ -33,7 +33,16 @@ jest.mock('../../src/services/dailySummaryService', () => ({
 
 const summary = {
   date: '2026-10-19',
-  calorieBalance: { remaining: 460, goal: 2000, progress: 77 },
+  // Differs from the balance's eaten only so the tests can tell which one
+  // the macro snapshot reads.
+  caloriesConsumed: 1500,
+  calorieBalance: {
+    eaten: 1540,
+    burned: 200,
+    remaining: 460,
+    goal: 2000,
+    progress: 77,
+  },
   protein: { consumed: 92, goal: 150 },
   carbs: { consumed: 180, goal: 200 },
   fat: { consumed: 55, goal: 65 },
@@ -66,6 +75,22 @@ describe('androidWidgetSyncService', () => {
     expect(CalorieWidgetBridge.setCalorieSnapshot).toHaveBeenCalledTimes(1);
     expect(CalorieWidgetBridge.setMacroSnapshot).toHaveBeenCalledTimes(1);
     expect(CalorieWidgetBridge.setWaterSnapshot).toHaveBeenCalledTimes(1);
+    const calorie = JSON.parse(
+      (CalorieWidgetBridge.setCalorieSnapshot as jest.Mock).mock.calls[0][0]
+    );
+    expect(calorie).toMatchObject({
+      date: '2026-10-19',
+      food: 1540,
+      burned: 200,
+      goal: 2000,
+      remaining: 460,
+      progress: 0.77,
+    });
+    const macro = JSON.parse(
+      (CalorieWidgetBridge.setMacroSnapshot as jest.Mock).mock.calls[0][0]
+    );
+    // The kcal eaten the large macro widget shows are the Dashboard's.
+    expect(macro).toMatchObject({ calories: 1540, remaining: 460 });
     const water = JSON.parse(
       (CalorieWidgetBridge.setWaterSnapshot as jest.Mock).mock.calls[0][0]
     );

@@ -684,7 +684,6 @@
     "forceStatic": "靜態",
     "mechanicCompound": "複合",
     "mechanicIsolation": "孤立",
-    "caloriesPerHour": "每小時卡路里",
     "muscles": "肌肉",
     "classification": "分類",
     "selectValue": "揀…",
@@ -759,7 +758,6 @@
     "km": "公里",
     "setCount_other": "{{formattedCount}} 組",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡路里",
     "unknownExercise": "未知動作",
     "addNotePlaceholder": "加個備註…",
     "setOf_other": "第 {{number}} / {{count}} 組",
@@ -956,7 +954,6 @@
     "emptyForDate": "呢一日冇食材紀錄",
     "diaryForDate": "家庭日記 · {{date}}",
     "openMeal": "開啟 {{meal}} 餐",
-    "mealCalories": "{{calories}} 千卡",
     "unnamedFood": "未命名食材",
     "selectAll": "全選",
     "deselectAll": "取消全選",
@@ -964,15 +961,12 @@
     "selectFood": "揀 {{food}}",
     "deselectFood": "取消揀 {{food}}",
     "continue": "繼續",
-    "nutritionSummary": "{{calories}} 千卡 · 蛋白質 {{protein}} 克 · 碳水 {{carbs}} 克 · 脂肪 {{fat}} 克",
-    "selectedNutrition": "已揀： {{calories}} 千卡 · 蛋白質 {{protein}} 克 · 碳水 {{carbs}} 克 · 脂肪 {{fat}} 克",
     "copyReview": "核對要複製嘅內容",
     "copyFrom": "由 {{name}} 複製",
     "copyMealTitle": "{{meal}} 餐",
     "quantityForFood": "{{food}} 嘅份量",
     "quantityMustBePositive": "輸入一個大過零嘅份量.",
     "copyNutrition": "複製營養",
-    "copyCalories": "{{calories}} 千卡",
     "copyProtein": "{{protein}} 克蛋白質",
     "copyCarbs": "{{carbs}} 克碳水",
     "copyFat": "{{fat}} 克脂肪",
@@ -1191,7 +1185,6 @@
       "changeMetric": "更改數據欄位",
       "notesForSet": "第 {{number}} 組嘅備註",
       "addSet": "加組到 {{name}}",
-      "caloriesUnit": "千卡",
       "addSetLabel": "加組",
       "viewImages": "檢視 {{name}} 嘅圖片",
       "heartRateFor": "{{name}} 嘅平均心率",
@@ -1302,9 +1295,6 @@
     "medications": "藥物",
     "medication": "藥物",
     "library": {
-      "noServerConfigured": "未設定伺服器",
-      "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅資料庫.",
-      "goToSettings": "去設定",
       "loading": "載入資料庫中…",
       "title": "資料庫",
       "create": "建立",
@@ -1518,9 +1508,6 @@
   },
   "dashboard": {
     "chooseDate": "揀儀表板日期",
-    "noServerConfigured": "未設定伺服器",
-    "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅每日摘要.",
-    "goToSettings": "去設定",
     "loadingSummary": "載入摘要中…",
     "loadFailed": "載入摘要失敗",
     "checkConnection": "請檢查您嘅網絡連線，然後再試一次.",
@@ -1531,7 +1518,6 @@
     "healthTrends": "健康趨勢",
     "consumed": "已攝取",
     "remaining": "剩返",
-    "ofCalories": "/ {{value}} 千卡",
     "burned": "已消耗",
     "hydration": "水分",
     "ofVolume": "/ {{value}} {{unit}}",
@@ -1666,7 +1652,6 @@
     "exerciseCaloriesDescription": "您嘅運動卡路里有幾多會加返入每日目標.",
     "activityLevel": "活動水平",
     "activityBaseline": "用嚟做 TDEE每日總能量消耗 嘅基準.",
-    "adaptiveFallback": "喺您有足夠追蹤資料之前嘅後備估算，之後仲會繼續用嚟設定合理性上限，您量度到嘅 TDEE每日總能量消耗 會限制喺 BMR基礎代謝率 × 呢個倍數嘅 ±500 kcal 範圍內.",
     "allowNegative": "容許較低嘅後備推算",
     "negativeDescription": "冇裝置總數嗰陣，容許 BMR基礎代謝率 + 活動卡路里後備推低您嘅目標.",
     "includeResting": "包括靜止卡路里",
@@ -1889,9 +1874,6 @@
   },
   "diary": {
     "chooseDate": "揀日記日期",
-    "noServer": "未設定伺服器",
-    "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅日記.",
-    "goToSettings": "去設定",
     "loading": "載入日記中…",
     "loadFailed": "載入日記失敗",
     "checkConnection": "請檢查您嘅網絡連線，然後再試一次.",
@@ -2255,8 +2237,6 @@
     "protein": "蛋白質",
     "carbs": "碳水",
     "fat": "脂肪",
-    "caloriesShort": "千卡",
-    "caloriesUnit": "卡路里",
     "proteinAmount": "蛋白質",
     "carbsAmount": "碳水",
     "fatAmount": "脂肪",
@@ -2270,7 +2250,6 @@
   "foodSummary": {
     "tapToAddFood": "撳一下加食材",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡路里",
     "nutritionBreakdown": "{{label}} 營養分析"
   },
   "exerciseSummary": {
@@ -2290,7 +2269,6 @@
     "unknownFood": "未知食材",
     "adjustServing": "調整份量",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡路里",
     "deleteFood": "刪除食材"
   },
   "exerciseRow": {
@@ -2404,7 +2382,6 @@
       "weightWithUnit": "體重（{{unit}}）",
       "muscleMassWithUnit": "肌肉量（{{unit}}）",
       "boneMassWithUnit": "骨量（{{unit}}）",
-      "bmrWithUnit": "基礎代謝率BMR（千卡）",
       "weightStones": "以石計體重",
       "weightPounds": "以磅計體重",
       "heightFeet": "以呎計身高",
@@ -2422,8 +2399,7 @@
       "invalidHeight": "無效身高",
       "feetInchesNumber": "為呎同吋輸入數字.",
       "bodyFatRange": "體脂 % 必須喺 0 至 100 之間.",
-      "bodyWaterRange": "身體水分 % 必須喺 0 至 100 之間.",
-      "bmrRange": "基礎代謝率BMR 必須喺 3600 至 6000 千卡之間."
+      "bodyWaterRange": "身體水分 % 必須喺 0 至 100 之間."
     },
     "nothingToSave": "冇嘢要儲存",
     "enterValue": "輸入或者清除至少一個數值.",
@@ -2769,8 +2745,6 @@
     "remaining": "剩返",
     "over": "超咗",
     "title": "摘要",
-    "projectedTdee": "推算 TDEE每日總能量消耗： {{value}} 千卡",
-    "goalModeTarget": "目標模式目標： {{value}} 千卡",
     "healthConnectProjectionSource": "Health Connect 總卡路里",
     "fallbackProjectionSource": "基礎代謝率(BMR) + 活動卡路里後備",
     "legacyProjectionSource": "裝置推算",
@@ -2805,7 +2779,6 @@
     "servingSize": "每份分量",
     "servingUnit": "份量單位",
     "autoScaleNutrition": "自動換算營養",
-    "caloriesRequired": "卡路里（千卡）*",
     "ai": {
       "couldNotEstimate": "估算唔到",
       "noTrustedDefault": "呢種食材冇可信嘅預設可以換算.",
@@ -3295,7 +3268,6 @@
     "showMore": "顯示更多",
     "best": "最佳（{{unit}}）",
     "last": "最近（{{unit}}）",
-    "caloriesPerHour": "卡路里 / 小時",
     "equipment": "器材",
     "primaryMuscles": "主要肌群",
     "secondaryMuscles": "輔助肌群",
@@ -3359,9 +3331,6 @@
     "deleteMessage": "刪除 {{name}}？呢個計劃生成嘅未來日記紀錄都會被移除.",
     "deleteFailed": "刪除餐膳計劃失敗",
     "deleteSuccess": "餐膳計劃已刪除",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線先可以管理餐膳計劃.",
-    "goToSettings": "去設定",
     "loading": "載入餐膳計劃中…",
     "loadFailed": "載入餐膳計劃失敗",
     "loadFailedSubtitle": "檢查您嘅連線再試一次.",
@@ -3420,11 +3389,8 @@
     "proteinLabel": "蛋白質",
     "carbsLabel": "碳水",
     "fatLabel": "脂肪",
-    "nutritionLine": "{{calories}} 千卡 · {{protein}} 克蛋白質 · {{carbs}} 克碳水 · {{fat}} 克脂肪",
     "dailyNutritionAccessibility": "每日 {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} 總計 {{calories}} 千卡、{{protein}} 克蛋白質、{{carbs}} 克碳水、{{fat}} 克脂肪",
     "mealTypeMacros": "{{protein}} 克蛋白質 · {{carbs}} 克碳水 · {{fat}} 克脂肪",
-    "caloriesValue": "{{value}} kcal 千卡",
     "nutritionLoading": "載入緊未齊嘅營養詳情，總計可能唔完整.",
     "nutritionLoadFailed": "有啲營養詳情載入唔到，總計可能唔完整.",
     "assignmentRequired": "至少加一個完整嘅餐膳分配.",
@@ -3459,8 +3425,6 @@
     "makePrivate": "設為私人",
     "shareWithPublic": "公開分享",
     "editMeal": "編輯餐膳",
-    "noServer": "未設定伺服器",
-    "configureServer": "喺設定度設定您嘅伺服器連線，先睇到餐膳詳情.",
     "loading": "載入餐膳中…",
     "loadFailed": "載入餐膳失敗",
     "perServing": "每份",
@@ -3472,7 +3436,6 @@
     "protein": "蛋白質",
     "carbs": "碳水",
     "fat": "脂肪",
-    "calories": "卡路里",
     "viewLinkedMeal": "睇連結餐膳 {{name}}",
     "logMeal": "記錄餐膳",
     "planMeal": "計劃餐膳",
@@ -3686,7 +3649,6 @@
     },
     "labels": {
       "caloriesShort": "千卡",
-      "caloriesUnit": "卡路里",
       "foods": "食材",
       "meals": "餐膳",
       "meal": "餐膳",
@@ -3941,8 +3903,6 @@
     "makePrivate": "設為私人",
     "sharePublic": "公開分享",
     "editFood": "編輯食材",
-    "noServer": "未設定伺服器",
-    "configureServer": "喺設定度設定您嘅伺服器連線，先睇到食材詳情.",
     "serving": "份量",
     "selectServing": "揀份量",
     "servingOptions": "份量選項",
@@ -4278,11 +4238,8 @@
       "empty": "所有食材都俾人移走咗，加返一個，或者轉做單一食材.",
       "count_other": "{{count}} 種食材",
       "totals": "總計",
-      "rowSummary": "{{grams}} 克 · {{calories}} 千卡",
-      "macroSummary": "{{calories}} 千卡，蛋白{{protein}} g、碳水{{carbs}} g、脂肪{{fat}} g",
       "addFood": "新增食材",
       "addedFood": "食材",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} 千卡",
       "pickedFoodNote": "由您嘅食材加入，移除佢再加過，先可以改數量."
     },
     "match": {
@@ -4342,7 +4299,6 @@
       "activity": "活動",
       "duration": "時長（分鐘）",
       "distance": "距離（{{unit}}）",
-      "calories": "卡路里",
       "avgHeartRate": "平均心率（bpm）",
       "notes": "備註",
       "notesPlaceholder": "備註（選填）…"
@@ -4374,8 +4330,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "未設定伺服器",
-      "noServerHint": "喺設定度設定您嘅伺服器連線，先睇到餐膳營養.",
       "loading": "載入餐膳中…",
       "loadFailed": "載入餐膳失敗",
       "noFoods": "冇 {{meal}} 嘅食材",
@@ -4387,8 +4341,7 @@
     "accessibility": {
       "addFood": "新增食材",
       "copyMeal": "複製餐膳去另一日"
-    },
-    "targetCalories": "目標： {{calories}} 千卡"
+    }
   },
   "nutrientTrends": {
     "title": "{{nutrient}} 趨勢",
@@ -4680,11 +4633,9 @@
       "title": "熱量",
       "loadFailed": "無法載入熱量數據",
       "empty": "呢段期間冇熱量數據",
-      "tooltip": "已攝取 {{formattedCount}} 千卡",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "其他",
       "avgCalories": "平均",
-      "avgCaloriesValue": "{{formattedCount}} 千卡",
       "noAverage": "—"
     },
     "noTrendData": "冇足夠數據顯示趨勢.",
@@ -4697,9 +4648,6 @@
   "exerciseLibrary": {
     "title": "動作",
     "search": "搜尋動作…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅動作庫.",
-    "go": "去設定",
     "loading": "載入動作中…",
     "failed": "載入動作失敗",
     "retry": "重試",
@@ -4715,9 +4663,6 @@
   "foodLibrary": {
     "title": "食材",
     "search": "搜尋食材…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅食材庫.",
-    "go": "去設定",
     "loading": "載入食材中…",
     "failed": "載入食材失敗",
     "retry": "重試",
@@ -4732,9 +4677,6 @@
   "mealLibrary": {
     "title": "餐膳",
     "search": "搜尋餐膳…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅餐膳庫.",
-    "go": "去設定",
     "loading": "載入餐膳中…",
     "failed": "載入餐膳失敗",
     "searchFailed": "搜尋餐膳失敗",
@@ -4749,9 +4691,7 @@
   "presetLibrary": {
     "title": "訓練預設",
     "search": "搜尋訓練預設…",
-    "noServer": "未設定伺服器",
     "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅訓練預設.",
-    "go": "去設定",
     "loading": "載入訓練預設中…",
     "failed": "載入訓練預設失敗",
     "retry": "重試",
@@ -5660,9 +5600,6 @@
       "dayCycle_other": "{{count}} 日週期"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅訓練預設."
-  },
   "time": {
     "hoursShort": "小時",
     "minutesShort": "分鐘"
@@ -5688,7 +5625,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km 公里",
-    "kcal": "{{value}} kcal 千卡",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg 公斤",
     "percent": "{{value}}%",
@@ -5862,9 +5798,6 @@
     "loading": "載入緊水容器…",
     "loadFailed": "載入唔到水容器",
     "loadFailedSubtitle": "檢查吓您個連線，再試多次.",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線，先可以管理水容器.",
-    "goToSettings": "去設定",
     "emptyTitle": "仲未有水容器",
     "emptySubtitle": "加水樽或者水杯嚟追蹤水份——可以揀連結食材，咁撳一下兩樣都記錄到.",
     "linkedTo": "已連結 {{food}}",
@@ -6209,7 +6142,6 @@
       "olderSessions": "較早嘅時段",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} 卡路里",
       "minutes_other": "{{formattedCount}} 分鐘",
       "bpm": "{{value}} 次(bpm)/分鐘",
       "distance": "距離",
@@ -6571,9 +6503,6 @@
     "dateRange": "{{start}} – {{end}}",
     "starting": "{{date}} 開始",
     "deleteNamed": "刪除 {{name}}",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線嚟管理訓練計劃.",
-    "goToSettings": "去設定",
     "loading": "載入緊訓練計劃…",
     "loadFailed": "載入唔到訓練計劃",
     "emptyTitle": "未有訓練計劃",
@@ -6708,9 +6637,7 @@
     "targetEatingHours": "目標進食鐘數",
     "fastingHoursRange": "輸入 0.5 至 168 個鐘.",
     "eatingHoursRange": "輸入 0 至 24 個鐘.",
-    "calorieThreshold": "熱量閾值（kcal）",
     "calorieThresholdHint": "低過呢個值嘅小食或者飲品（齋啡、水、電解質）唔會打斷您嘅斷食.",
-    "calorieThresholdRange": "輸入 0 至 500 嘅整數.",
     "preEndAlert": "目標前提醒（分鐘）",
     "preEndAlertHint": "喺斷食目標前幾耐發提醒。輸入 0 嚟閂咗佢.",
     "preEndAlertRange": "輸入 0 至 180 嘅整數.",
@@ -7137,12 +7064,9 @@
     "invalidValue": "為每個目標輸入有效數字.",
     "fields": {
       "water": "水分（{{unit}}）",
-      "exerciseCalories": "運動熱量（kcal）",
       "exerciseMinutes": "運動時長（分鐘）",
-      "steps": "每日步數",
-      "baselineCalories": "基準熱量（kcal）"
+      "steps": "每日步數"
     },
-    "adaptiveNoteToday": "自適應模式開咗，所以您嘅熱量目標每日都會變。今日係 {{calories}} kcal。下面嘅基準設定您目標同估算維持熱量相差幾遠；佢唔係固定嘅每日目標.",
     "adaptiveNote": "自適應模式開咗，所以您嘅熱量目標每日都會變。下面嘅基準設定您目標同估算維持熱量相差幾遠；佢唔係固定嘅每日目標.",
     "customNutrients": {
       "notSet": "冇目標"
@@ -7160,7 +7084,6 @@
       "mustBe100": "餐膳百分比加埋一定要係 100%.",
       "total": "總計：{{total}}%（一定要係 100% 先儲存到）",
       "totalOk": "總計：{{total}}%",
-      "mealCalories": "{{meal}}（{{calories}} kcal）",
       "distributeRemaining": "平均分配剩餘",
       "lock": "鎖定 {{meal}}",
       "unlock": "解鎖 {{meal}}",
@@ -7229,7 +7152,6 @@
       "description": "預設係一組儲存咗嘅目標。套用會將上面嘅表單填滿嗰組目標（撳「儲存」令佢成為您嘅目標）；編輯就改預設本身.",
       "namePlaceholder": "預設名稱",
       "empty": "未有目標預設.",
-      "summary": "{{calories}} kcal、蛋白質 {{protein}}g、碳水 {{carbs}}g、脂肪 {{fat}}g",
       "apply": "套用",
       "deleteTitle": "刪除預設？",
       "deleteMessage": "刪除「{{name}}」？用緊佢嘅每週計劃日子會冇咗預設.",
@@ -7308,7 +7230,6 @@
     "dailyAverages": "每日平均",
     "loadFailed": "載入唔到營養數據",
     "empty": "呢段時間冇記錄食材",
-    "kcal": "{{value}} kcal 千卡",
     "grams": "{{value}} g",
     "changeHint": "{{change}}，比起前 {{days}} 日",
     "onTarget": "喺目標嘅 10% 以內",
@@ -7917,7 +7838,6 @@
     "running": "喺您隻手錶度跑緊",
     "next": "下一個：{{step}}",
     "calories": "熱量",
-    "kcal": "kcal千卡",
     "ended": "您手錶上嘅訓練已經結束或者超出範圍。完成咗嘅訓練會加入您嘅日記.",
     "indoorNote": "室內距離係手錶嘅估算。您可以喺結束嗰陣更正做跑步機嘅數字.",
     "starting": "喺您隻手錶度開始緊…",

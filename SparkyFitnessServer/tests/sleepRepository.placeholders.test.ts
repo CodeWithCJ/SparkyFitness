@@ -54,21 +54,26 @@ const maxPlaceholder = (sql: string): number => {
 const distinctPlaceholders = (sql: string): number =>
   new Set(sql.match(/\$(\d+)/g) || []).size;
 
-// Returns the param bound to `column = $N` (or `column = COALESCE($N, ...)`)
-// in an UPDATE without building a dynamic RegExp
-// (security/detect-non-literal-regexp).
+// Returns the param bound to `column = $N`, `column = COALESCE($N, ...)` or
+// the THEN branch of `column = CASE WHEN ... THEN $N ...` in an UPDATE
+// without building a dynamic RegExp (security/detect-non-literal-regexp).
 const boundValueFor = (
   sql: string,
   values: unknown[],
   column: string
 ): unknown => {
-  for (const marker of [`${column} = $`, `${column} = COALESCE($`]) {
-    const at = sql.indexOf(marker);
-    if (at !== -1) {
-      const digits = sql.slice(at + marker.length).match(/^\d+/);
-      expect(digits).toBeTruthy();
-      return values[Number(digits![0]) - 1];
-    }
+  let rest: string | undefined;
+  const conditional = sql.indexOf(`${column} = CASE WHEN `);
+  if (conditional !== -1) {
+    rest = sql.slice(sql.indexOf(' THEN ', conditional) + ' THEN '.length);
+  } else {
+    const at = sql.indexOf(`${column} = `);
+    if (at !== -1) rest = sql.slice(at + `${column} = `.length);
+  }
+  if (rest !== undefined) {
+    const digits = rest.replace(/^COALESCE\(/, '').match(/^\$(\d+)/);
+    expect(digits).toBeTruthy();
+    return values[Number(digits![1]) - 1];
   }
   throw new Error(`expected "${column} = $N" in the UPDATE`);
 };
@@ -155,6 +160,31 @@ describe('sleepRepository placeholder integrity', () => {
     ).toBe(54);
   });
 
+  it('upsertSleepEntry UPDATE keeps an omitted measurement and clears an explicit null', async () => {
+    mockClient.query.mockImplementation(async (text: string) => {
+      if (text.includes('UPDATE sleep_entries')) {
+        return { rows: [{ id: 'sleep-1' }] };
+      }
+      return { rows: [] };
+    });
+
+    const { average_spo2_value: _spo2, ...withoutSpo2 } = FULL_ENTRY;
+    await sleepRepository.upsertSleepEntry('user-1', 'user-1', {
+      ...withoutSpo2,
+      id: 'sleep-1',
+      avg_overnight_hrv: null,
+    });
+
+    const update = findCall('UPDATE sleep_entries');
+    expect(update.text).toContain(
+      "average_spo2_value = CASE WHEN 'average_spo2_value' = ANY($28::text[]) THEN $14 ELSE sleep_entries.average_spo2_value END"
+    );
+    const sent = update.values![27] as string[];
+    expect(sent).not.toContain('average_spo2_value');
+    expect(sent).toContain('avg_overnight_hrv');
+    expect(sent).toContain('resting_heart_rate');
+  });
+
   it('upsertSleepEntry UPDATE by id preserves stored zone metadata when the payload omits it', async () => {
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('UPDATE sleep_entries')) {
@@ -187,29 +217,70 @@ describe('sleepRepository placeholder integrity', () => {
     ).toBeUndefined();
   });
 
-  it('upsertSleepEntry re-sync of a night updates it and keeps stored zone metadata', async () => {
+  it('upsertSleepEntry re-sync of a stored session updates it and keeps stored zone metadata', async () => {
     mockClient.query.mockImplementation(async (text: string) => {
-      if (text.includes('INSERT INTO sleep_entries')) {
+      if (text.includes('FOR UPDATE')) {
+        return { rows: [{ id: 'sleep-1' }] };
+      }
+      if (text.includes('UPDATE sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
       }
       return { rows: [] };
     });
 
-    await sleepRepository.upsertSleepEntry('user-1', 'user-1', FULL_ENTRY);
+    const result = await sleepRepository.upsertSleepEntry(
+      'user-1',
+      'user-1',
+      FULL_ENTRY
+    );
 
-    const insert = findCall('INSERT INTO sleep_entries');
-    expect(insert.text).toContain(
-      'ON CONFLICT (user_id, entry_date, source) DO UPDATE SET'
+    expect(result).toMatchObject({ id: 'sleep-1', created: false });
+    expect(
+      queryCalls().some((c) => c.text.includes('INSERT INTO sleep_entries'))
+    ).toBe(false);
+    const update = findCall('UPDATE sleep_entries');
+    expect(update.values![0]).toBe('sleep-1');
+    expect(update.text).toContain(
+      'record_timezone = COALESCE($26, record_timezone)'
     );
-    expect(insert.text).toContain(
-      'record_timezone = COALESCE(EXCLUDED.record_timezone, sleep_entries.record_timezone)'
+  });
+
+  it('upsertSleepEntry looks the session up under a per-night lock', async () => {
+    mockClient.query.mockImplementation(async (text: string) => {
+      if (text.includes('INSERT INTO sleep_entries')) {
+        return { rows: [{ id: 'sleep-2' }] };
+      }
+      return { rows: [] };
+    });
+
+    const result = await sleepRepository.upsertSleepEntry(
+      'user-1',
+      'user-1',
+      FULL_ENTRY
     );
-    expect(insert.text).toContain(
-      'record_utc_offset_minutes = COALESCE(EXCLUDED.record_utc_offset_minutes, sleep_entries.record_utc_offset_minutes)'
+
+    const lock = findCall('pg_advisory_xact_lock');
+    expect(lock.values).toEqual(['user-1', '2026-08-01', 'Health Connect']);
+    const lookup = findCall('FOR UPDATE');
+    expect(lookup.values).toEqual([
+      'user-1',
+      '2026-08-01',
+      'Health Connect',
+      FULL_ENTRY.bedtime,
+      FULL_ENTRY.wake_time,
+      4 * 60 * 60,
+    ]);
+    const texts = queryCalls().map((c) => c.text);
+    const lockAt = texts.findIndex((t) => t.includes('pg_advisory_xact_lock'));
+    const lookupAt = texts.findIndex((t) => t.includes('FOR UPDATE'));
+    const insertAt = texts.findIndex((t) =>
+      t.includes('INSERT INTO sleep_entries')
     );
-    expect(insert.text).toContain(
-      'resting_heart_rate = EXCLUDED.resting_heart_rate'
-    );
+    expect(lockAt).toBeLessThan(lookupAt);
+    expect(lookupAt).toBeLessThan(insertAt);
+    // A separate session (a nap) gets its own entry.
+    expect(texts[insertAt]).not.toContain('ON CONFLICT');
+    expect(result).toMatchObject({ id: 'sleep-2', created: true });
   });
 
   it('updateSleepEntry dynamic builder: zone fields update when present', async () => {

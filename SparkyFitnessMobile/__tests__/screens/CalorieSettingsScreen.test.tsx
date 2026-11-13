@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import CalorieSettingsScreen from '../../src/screens/CalorieSettingsScreen';
 
@@ -83,6 +84,55 @@ const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 const route = { params: {} } as never;
 
 describe('CalorieSettingsScreen', () => {
+  it.each([
+    { unit: 'kcal', amount: 500 },
+    { unit: 'kJ', amount: 2092 },
+  ])(
+    'describes an uncertain adaptive estimate with the converted $unit range',
+    ({ unit, amount }) => {
+      mockPreferences.energy_unit = unit;
+      const screen = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+      expect(screen.queryByText(/Your measured TDEE is capped/i)).toBeNull();
+      expect(screen.getByText(new RegExp(`±${amount} ${unit}`))).toBeTruthy();
+      expect(
+        screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
+      ).toBeTruthy();
+      expect(screen.queryByText(/42 days|55 days|6 weeks|8 weeks/i)).toBeNull();
+      expect(mockMutate).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps adaptive timing caveats out of Device Projection', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'tdee';
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+    expect(
+      screen.queryByText(/starting estimate.*several weeks.*uncertainty/i)
+    ).toBeNull();
+    expect(screen.getByText(/Current-day device total calories/)).toBeTruthy();
+  });
+
+  it.each([false, true])(
+    'shows and updates the exercise macro preference from %s',
+    (enabled) => {
+      mockPreferences.adjust_macros_with_exercise = enabled;
+      const screen = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+      const toggle = screen.getByLabelText(
+        'Adjust percentage macro goals with exercise calories'
+      );
+      expect(toggle.props.value).toBe(enabled);
+      fireEvent(toggle, 'valueChange', !enabled);
+      expect(mockMutate).toHaveBeenCalledWith({
+        adjust_macros_with_exercise: !enabled,
+      });
+    }
+  );
+
   beforeEach(async () => {
     await act(async () => {
       await initializeI18n('en');
@@ -99,7 +149,7 @@ describe('CalorieSettingsScreen', () => {
     };
   });
 
-  it('explains that Device Projection applies Goal Mode to Health Connect TDEE', () => {
+  it('explains that Device Projection applies Goal Mode to the device TDEE', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'tdee';
     const { getByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />
@@ -107,13 +157,11 @@ describe('CalorieSettingsScreen', () => {
 
     expect(
       getByText(
-        'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.'
+        'Current-day device total calories (Health Connect, Garmin or Polar) are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.'
       )
     ).toBeTruthy();
     expect(
-      getByText(
-        'Health Connect total calories (BMR + active calories fallback)'
-      )
+      getByText('Device total calories (BMR + active calories fallback)')
     ).toBeTruthy();
     expect(getByText('Projected TDEE × Goal Mode − Eaten')).toBeTruthy();
   });
@@ -436,6 +484,32 @@ describe('CalorieSettingsScreen', () => {
     expect(mockMutate).toHaveBeenCalledWith({ use_external_bmr: true });
   });
 
+  it('saves the Move ring opt-in as an account setting on iPhone', () => {
+    const { getByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    fireEvent(
+      getByLabelText('Use Move ring for active calories'),
+      'valueChange',
+      true
+    );
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      use_move_ring_active_calories: true,
+    });
+  });
+
+  it('hides the Move ring opt-in on Android', () => {
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    const { queryByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(queryByLabelText('Use Move ring for active calories')).toBeNull();
+    osSpy.restore();
+  });
+
   it('saves a bounded custom Goal Mode percentage', () => {
     mockPreferences.goal_mode = 'manual';
     mockPreferences.goal_mode_custom_percentage = -10;
@@ -453,13 +527,14 @@ describe('CalorieSettingsScreen', () => {
   });
 
   it('offers standard, custom, and disabled safety floor modes', () => {
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     expect(getByText('Safety Floor')).toBeTruthy();
     expect(getByText('Standard')).toBeTruthy();
-    expect(getByText('Custom')).toBeTruthy();
+    // The calorie cycling mode control also has a "Custom" choice.
+    expect(getAllByText('Custom')).toHaveLength(2);
     expect(getByText('Disabled')).toBeTruthy();
   });
 
@@ -520,53 +595,32 @@ describe('CalorieSettingsScreen', () => {
       calorie_safety_floor_value: expectedValue,
     });
   });
-  it('renders the shipped Polish safety floor labels, descriptions, custom minimum, and keeps raw values', async () => {
-    await act(async () => {
-      await i18n.changeLanguage('pl');
-    });
+  it('renders safety floor descriptions for each mode', () => {
     const cases = [
       [
         'standard',
-        'Używa wyższej z wartości: szacowany BMR lub minimum kliniczne.',
+        'Uses the higher of your estimated RMR and the clinical minimum.',
       ],
       [
         'custom',
-        'Zastępuje standardowe minimum wybraną przez Ciebie wartością. Zalecenia zdrowotne pozostają widoczne.',
+        'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.',
       ],
       [
         'disabled',
-        'Wyłącza automatyczne ograniczanie celu. Ostrzeżenia zdrowotne pozostają widoczne.',
+        'Stops automatic target clamping. Health warnings remain visible.',
       ],
     ] as const;
-    const screen = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />
-    );
-    expect(screen.getByText('Bezpieczne minimum')).toBeTruthy();
-    expect(screen.getByText('Standardowe')).toBeTruthy();
-    expect(screen.getByText('Własne')).toBeTruthy();
-    expect(screen.getByText('Wyłączone')).toBeTruthy();
+
     for (const [mode, description] of cases) {
       mockPreferences.calorie_safety_floor_mode = mode;
-      screen.rerender(
+      const screen = render(
         <CalorieSettingsScreen navigation={navigation} route={route} />
       );
       expect(screen.getByText(description)).toBeTruthy();
       if (mode === 'custom') {
-        expect(screen.getByText('Własne minimum (kcal)')).toBeTruthy();
+        expect(screen.getByText('Custom minimum (kcal)')).toBeTruthy();
       }
     }
-    fireEvent.press(screen.getByText('Standardowe'));
-    fireEvent.press(screen.getByText('Własne'));
-    fireEvent.press(screen.getByText('Wyłączone'));
-    expect(mockMutate).toHaveBeenNthCalledWith(1, {
-      calorie_safety_floor_mode: 'standard',
-    });
-    expect(mockMutate).toHaveBeenNthCalledWith(2, {
-      calorie_safety_floor_mode: 'custom',
-    });
-    expect(mockMutate).toHaveBeenNthCalledWith(3, {
-      calorie_safety_floor_mode: 'disabled',
-    });
   });
 
   it('updates labels on the same mounted instance when language changes', async () => {

@@ -39,6 +39,7 @@ const response = (
     resting_heart_rate: null,
     method: 'percent_max',
     custom_floors: null,
+    display_zones: 5,
     ...settings,
   },
   resolved: {
@@ -83,6 +84,20 @@ describe('HeartRateZoneSettings', () => {
     expect(screen.getByTestId('hr-zone-5')).toHaveTextContent('169+ bpm');
   });
 
+  it('shows four tiers when the person chose them, with zones 1 and 2 merged', () => {
+    mockUseHeartRateZones.mockReturnValue({
+      data: response({ display_zones: 4 }),
+    });
+    renderSection();
+
+    expect(screen.getByTestId('hr-zone-1')).toHaveTextContent('Light');
+    expect(screen.getByTestId('hr-zone-1')).toHaveTextContent('94–131 bpm');
+    expect(screen.getByTestId('hr-zone-2')).toHaveTextContent('Moderate');
+    expect(screen.getByTestId('hr-zone-4')).toHaveTextContent('Peak');
+    expect(screen.getByTestId('hr-zone-4')).toHaveTextContent('169+ bpm');
+    expect(screen.queryByTestId('hr-zone-5')).toBeNull();
+  });
+
   it('says when the person set the max heart rate', () => {
     mockUseHeartRateZones.mockReturnValue({
       data: response(
@@ -112,6 +127,7 @@ describe('HeartRateZoneSettings', () => {
         max_heart_rate: 182,
         resting_heart_rate: null,
         method: 'percent_max',
+        display_zones: 5,
       },
       expect.any(Object)
     );

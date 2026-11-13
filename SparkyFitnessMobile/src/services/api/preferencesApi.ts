@@ -79,6 +79,15 @@ export const fetchPreferences = async (): Promise<UserPreferences> => {
 };
 
 /**
+ * Whether the account reads iPhone active calories from the Move ring. Read on each
+ * sync so a change on another device applies. A failed fetch throws, so the calorie
+ * read fails and is retried rather than sending the other figure; an older server
+ * without the field reads as off.
+ */
+export const fetchMoveRingActiveCaloriesSetting = async (): Promise<boolean> =>
+  (await fetchPreferences()).use_move_ring_active_calories === true;
+
+/**
  * Updates user preferences (partial — only provided fields are changed).
  * Uses PUT to update an existing row; omitted fields keep their current values
  * via server-side COALESCE. POST would be an upsert that resets omitted fields

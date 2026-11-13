@@ -2,10 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { log } from '../config/logging.js';
 import {
+  ProviderSyncStoppedError,
   SYNC_CLAIM_EXPIRY_MINUTES,
   SYNC_CLAIM_RENEW_MINUTES,
+  SYNC_STALL_MINUTES,
+  releaseRunningProviderSyncs,
+  runningProviderSyncCount,
   startProviderSync,
+  waitForProviderSyncs,
 } from '../services/providerSyncClaim.js';
+import { noteWorkActivity, throwIfWorkAborted } from '../utils/abortScope.js';
 
 vi.mock('../models/externalProviderRepository.js', () => ({
   default: {
@@ -233,20 +239,210 @@ describe('startProviderSync', () => {
       ).toHaveBeenCalledWith(['p1'], renewedAt);
     });
 
-    it('warns when the claim was lost', async () => {
+    it('stops the sync when a renewal finds the claim lost', async () => {
       vi.mocked(
         externalProviderRepository.renewProviderSyncRows
       ).mockResolvedValue([]);
       const started = await startProviderSync(target, longSync);
+      const outcome = started!.running.catch((error: unknown) => error);
 
       await vi.advanceTimersByTimeAsync(renewEvery);
 
       expect(log).toHaveBeenCalledWith(
         'warn',
-        '[SYNC] A running sync lost its provider sync claim.'
+        '[SYNC] A running sync lost its provider sync claim; stopping it.'
       );
+      const error = await outcome;
+      expect(error).toBeInstanceOf(ProviderSyncStoppedError);
+      expect((error as ProviderSyncStoppedError).reason).toBe('claim-lost');
+      // No further renewal of a claim that belongs to someone else.
+      await vi.advanceTimersByTimeAsync(renewEvery * 2);
+      expect(
+        externalProviderRepository.renewProviderSyncRows
+      ).toHaveBeenCalledOnce();
       finish('synced');
-      await started!.running;
+      await waitForProviderSyncs();
     });
+
+    it('keeps the sync running when a renewal fails', async () => {
+      vi.mocked(
+        externalProviderRepository.renewProviderSyncRows
+      ).mockRejectedValueOnce(new Error('db blip'));
+      const started = await startProviderSync(target, longSync);
+
+      await vi.advanceTimersByTimeAsync(renewEvery);
+      finish('synced');
+
+      expect(await started!.running).toBe('synced');
+    });
+
+    it('stops a sync that makes no progress past the stall limit and stops renewing it', async () => {
+      const started = await startProviderSync(target, longSync);
+      const outcome = started!.running.catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(SYNC_STALL_MINUTES * 60 * 1000);
+
+      const error = await outcome;
+      expect(error).toBeInstanceOf(ProviderSyncStoppedError);
+      expect((error as ProviderSyncStoppedError).reason).toBe('timeout');
+      const renewals = vi.mocked(
+        externalProviderRepository.renewProviderSyncRows
+      ).mock.calls.length;
+      expect(renewals).toBe(
+        Math.floor(SYNC_STALL_MINUTES / SYNC_CLAIM_RENEW_MINUTES) - 1
+      );
+      await vi.advanceTimersByTimeAsync(renewEvery * 3);
+      expect(
+        externalProviderRepository.renewProviderSyncRows
+      ).toHaveBeenCalledTimes(renewals);
+      // The wedged sync keeps its claim (which now expires on its own) until
+      // it actually settles; then the claim is released.
+      expect(
+        externalProviderRepository.releaseProviderSyncRows
+      ).not.toHaveBeenCalled();
+      expect(runningProviderSyncCount()).toBe(1);
+      finish('late');
+      await waitForProviderSyncs();
+      expect(
+        externalProviderRepository.releaseProviderSyncRows
+      ).toHaveBeenCalledOnce();
+      expect(runningProviderSyncCount()).toBe(0);
+    });
+
+    it('keeps a sync running past the stall limit while it takes connections', async () => {
+      const stallMs = SYNC_STALL_MINUTES * 60 * 1000;
+      let progressing = true;
+      const started = await startProviderSync(target, async () => {
+        while (progressing) {
+          noteWorkActivity();
+          await new Promise((resolve) => setTimeout(resolve, 60_000));
+        }
+        return 'backfilled';
+      });
+      const outcome = started!.running.catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(stallMs * 3);
+      expect(runningProviderSyncCount()).toBe(1);
+      progressing = false;
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(await outcome).toBe('backfilled');
+    });
+
+    it('stops a sync the stall limit after its last progress', async () => {
+      const stallMs = SYNC_STALL_MINUTES * 60 * 1000;
+      const started = await startProviderSync(target, async () => {
+        await new Promise((resolve) => setTimeout(resolve, stallMs / 2));
+        noteWorkActivity();
+        return longSync();
+      });
+      let settled: unknown;
+      void started!.running.catch((error: unknown) => {
+        settled = error;
+      });
+
+      await vi.advanceTimersByTimeAsync(stallMs);
+      expect(settled).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(stallMs / 2);
+      expect(settled).toBeInstanceOf(ProviderSyncStoppedError);
+      expect((settled as ProviderSyncStoppedError).reason).toBe('timeout');
+      finish('late');
+      await waitForProviderSyncs();
+    });
+
+    it('refuses database work inside a stopped sync', async () => {
+      let refusal: unknown;
+      const started = await startProviderSync(target, async () => {
+        expect(() => throwIfWorkAborted()).not.toThrow();
+        await longSync();
+        try {
+          throwIfWorkAborted();
+        } catch (error) {
+          refusal = error;
+        }
+      });
+      const outcome = started!.running.catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(SYNC_STALL_MINUTES * 60 * 1000);
+      await outcome;
+      finish('resumed');
+      await waitForProviderSyncs();
+
+      expect(refusal).toBeInstanceOf(ProviderSyncStoppedError);
+      // Outside the sync's own call chain nothing is refused.
+      expect(() => throwIfWorkAborted()).not.toThrow();
+    });
+
+    it('gives up a wedged sync well before its claim would expire', () => {
+      // Renewal stops when the stall stop fires, at most one renewal period
+      // after the last renewal, so the claim of a sync stopped for a stall
+      // still expires on its own.
+      expect(SYNC_STALL_MINUTES + SYNC_CLAIM_RENEW_MINUTES).toBeLessThan(
+        SYNC_CLAIM_EXPIRY_MINUTES
+      );
+    });
+  });
+});
+
+describe('shutdown', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(
+      externalProviderRepository.releaseProviderSyncRows
+    ).mockResolvedValue();
+    vi.mocked(
+      externalProviderRepository.claimProviderSyncRows
+    ).mockResolvedValue({ matched: 1, claimedIds: ['p1'] });
+  });
+
+  it('waits for running syncs to finish and release', async () => {
+    let finish = () => {};
+    const started = await startProviderSync(
+      target,
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    let waited = false;
+    const wait = waitForProviderSyncs().then(() => {
+      waited = true;
+    });
+
+    await Promise.resolve();
+    expect(waited).toBe(false);
+    expect(runningProviderSyncCount()).toBe(1);
+    finish();
+    await wait;
+    await started!.running;
+    expect(runningProviderSyncCount()).toBe(0);
+    expect(
+      externalProviderRepository.releaseProviderSyncRows
+    ).toHaveBeenCalledOnce();
+  });
+
+  it('releases the claims of syncs still running, once each', async () => {
+    let finish = () => {};
+    const started = await startProviderSync(
+      target,
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const [, claimedAt] = vi.mocked(
+      externalProviderRepository.claimProviderSyncRows
+    ).mock.calls[0]!;
+
+    await releaseRunningProviderSyncs();
+
+    expect(
+      externalProviderRepository.releaseProviderSyncRows
+    ).toHaveBeenCalledExactlyOnceWith(['p1'], claimedAt);
+    finish();
+    await started!.running;
+    expect(
+      externalProviderRepository.releaseProviderSyncRows
+    ).toHaveBeenCalledOnce();
   });
 });

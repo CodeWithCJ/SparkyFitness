@@ -17,4 +17,17 @@
     <string name="widget_preview_grams_protein">51 g</string>
     <string name="widget_preview_grams_carbs">136 g</string>
     <string name="widget_preview_grams_fat">32 g</string>
+    <string name="tile_log_water">Water vastleggen</string>
+    <string name="tile_calories_left">Calorieën over</string>
+    <string name="sparky_water_widget_name">Water</string>
+    <string name="widget_water_title">Water</string>
+    <string name="widget_water_amount">%1$s / %2$s %3$s</string>
+    <string name="widget_water_amount_no_goal">%1$s %2$s</string>
+    <string name="widget_water_amount_empty">- %1$s</string>
+    <string name="widget_water_unit_ml">ml</string>
+    <string name="widget_water_unit_liter">L</string>
+    <string name="widget_water_remove">Verwijder waterinname</string>
+    <string name="widget_water_status_sign_in">Open SparkyFitness en log in</string>
+    <string name="widget_water_status_failed">Water kon niet worden geregistreerd</string>
+    <string name="widget_preview_water_amount">1.250 / 2.000 ml</string>
 </resources>

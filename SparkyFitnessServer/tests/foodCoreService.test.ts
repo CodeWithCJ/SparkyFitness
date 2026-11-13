@@ -141,7 +141,11 @@ describe('foodCoreService.createFood', () => {
 
     const result = await foodCoreService.createFood(
       TEST_USER_ID,
-      makeFoodData({ provider_type: 'yazio', provider_verified: true })
+      makeFoodData({
+        provider_type: undefined,
+        provider_external_id: undefined,
+        provider_verified: true,
+      })
     );
 
     expect(foodRepository.findFoodByProviderExternalId).not.toHaveBeenCalled();
@@ -519,5 +523,43 @@ describe('foodCoreService.deleteFoodVariant', () => {
     ).rejects.toThrow(
       'Forbidden: You do not have permission to delete this food variant.'
     );
+  });
+});
+
+describe('updateFoodVariant custom_nutrients', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: 'variant-1',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+    } as never);
+    vi.mocked(foodRepository.getFoodOwnerId).mockResolvedValue(
+      'user-1' as never
+    );
+    vi.mocked(foodRepository.updateFoodVariant).mockResolvedValue({
+      id: 'variant-1',
+    } as never);
+  });
+
+  it('leaves stored custom nutrients alone when the update omits them', async () => {
+    await foodCoreService.updateFoodVariant('user-1', 'variant-1', {
+      food_id: 'food-1',
+      calories: 100,
+    } as never);
+
+    const sent = vi.mocked(foodRepository.updateFoodVariant).mock.calls[0][1];
+    expect(sent.custom_nutrients).toBeUndefined();
+  });
+
+  it('saves custom nutrients when the update includes them', async () => {
+    await foodCoreService.updateFoodVariant('user-1', 'variant-1', {
+      food_id: 'food-1',
+      custom_nutrients: { Zinc: 3, Iron: '' },
+    } as never);
+
+    const sent = vi.mocked(foodRepository.updateFoodVariant).mock.calls[0][1];
+    expect(sent.custom_nutrients).toEqual({ Zinc: 3 });
   });
 });

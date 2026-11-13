@@ -70,6 +70,7 @@ const PE_OTHER = '00000000-0000-4000-b000-0000000000c2';
 const PE_PRESET_A_OLD = '00000000-0000-4000-b000-0000000000c3';
 const PE_PRESET_A_NEW = '00000000-0000-4000-b000-0000000000c4';
 const PE_INDIVIDUAL_E6 = '00000000-0000-4000-b000-0000000000c5';
+const PE_PRESET_C = '00000000-0000-4000-b000-0000000000c6';
 
 const EN1 = '00000000-0000-4000-b000-000000000101';
 const EN2_INDIV = '00000000-0000-4000-b000-000000000201';
@@ -91,6 +92,7 @@ const EN7_WOD = '00000000-0000-4000-b000-000000000703';
 const ALL_EXERCISES = [E1, E2, E3, E4, E5, E6, E7];
 let presetAId: number;
 let presetBId: number;
+let presetCId: number;
 let presetWodId: number;
 let wodSessionId: string;
 
@@ -156,6 +158,13 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
         [U, 'Stats Test Preset B']
       );
       presetBId = presetBResult.rows[0].id;
+      // Preset C gets exactly ONE E6 session so the exclusion edge case can be
+      // tested: excluding that session must remove it from the scope probe too.
+      const presetCResult = await sys.query(
+        'INSERT INTO public.workout_presets (user_id, name) VALUES ($1, $2) RETURNING id',
+        [U, 'Stats Test Preset C']
+      );
+      presetCId = presetCResult.rows[0].id;
 
       const insertEntry = async (
         id: string,
@@ -289,6 +298,24 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
       await insertSet(EN6_PRESET_NEW, 1, 'Working Set', 120, 6);
       await insertEntry(EN6_INDIVIDUAL, E6, PE_INDIVIDUAL_E6, '2026-07-07');
       await insertSet(EN6_INDIVIDUAL, 1, 'Working Set', 200, 4);
+
+      // Preset C — exactly one E6 session, so the scope probe can be forced
+      // to see zero qualifying sessions once that session is excluded.
+      await sys.query(
+        `INSERT INTO public.exercise_preset_entries (id, user_id, workout_preset_id, name, entry_date, source)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          PE_PRESET_C,
+          U,
+          presetCId,
+          'Preset C Session (only)',
+          '2026-07-06',
+          'manual',
+        ]
+      );
+      const EN6_PRESET_C = '00000000-0000-4000-b000-000000000604';
+      await insertEntry(EN6_PRESET_C, E6, PE_PRESET_C, '2026-07-06');
+      await insertSet(EN6_PRESET_C, 1, 'Working Set', 150, 5);
 
       // E7 — a heavy set inside an AMRAP is newest but must not become Best.
       // The WOD session goes through the repository so its format snapshot
@@ -490,7 +517,10 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
     expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([120, 100]);
   });
 
-  it('returns no recent sessions for a preset that was never performed', async () => {
+  it('falls back to global recent sessions for a preset that was never performed', async () => {
+    // Preset B has no history at all — without the fallback this returned []
+    // and left the in-progress card with no baseline. Now it degrades to the
+    // exercise's global recent sessions, identical to omitting presetId.
     const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
       U,
       E6,
@@ -498,14 +528,56 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
       undefined,
       presetBId
     );
-    expect(scoped).toEqual([]);
+    expect(scoped.map((s) => s.entry_date)).toEqual([
+      '2026-07-07',
+      '2026-07-06',
+      '2026-07-05',
+    ]);
+    expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([
+      200, 150, 120,
+    ]);
+  });
+
+  it('falls back to global sessions when the preset is scoped but its only session is excluded', async () => {
+    // Preset C has exactly one E6 session; excluding it must remove it from
+    // the scope probe as well — otherwise scoping would stay active on a
+    // session that the main query then excludes, leaving "Previous" empty.
+    const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
+      U,
+      E6,
+      PE_PRESET_C,
+      undefined,
+      presetCId
+    );
+    expect(scoped.map((s) => s.entry_date)).toEqual([
+      '2026-07-07',
+      '2026-07-05',
+      '2026-07-01',
+    ]);
+    expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([
+      200, 120, 100,
+    ]);
+  });
+
+  it('keeps preset scoping when another preset session survives the exclusion', async () => {
+    // Excluding Preset A's newer session: the probe still sees the older
+    // one, so scoping stays active and only the older session is returned.
+    const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
+      U,
+      E6,
+      PE_PRESET_A_NEW,
+      undefined,
+      presetAId
+    );
+    expect(scoped.map((s) => s.entry_date)).toEqual(['2026-07-01']);
+    expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([100]);
   });
 
   it('is unaffected by presetId scoping when presetId is omitted', async () => {
     const all = await exerciseEntryDb.getRecentSessionsForExercise(U, E6);
     expect(
       all.map((s) => Number(s.sets?.[0]?.weight)).sort((a, b) => a - b)
-    ).toEqual([100, 120, 200]);
+    ).toEqual([120, 150, 200]);
   });
 
   it('omits both-null sets and skips entries with no qualifying sets', async () => {

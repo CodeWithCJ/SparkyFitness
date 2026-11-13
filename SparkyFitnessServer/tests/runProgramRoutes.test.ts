@@ -102,6 +102,22 @@ describe('run program routes', () => {
     );
   });
 
+  it('starts the Zone 2 program in either version', async () => {
+    vi.mocked(upsertRunProgram).mockResolvedValue({
+      ...program,
+      program_id: 'zone2Base4',
+    });
+    const res = await request(app)
+      .put('/api/v2/run-program')
+      .send({ program_id: 'zone2Base4' });
+    expect(res.status).toBe(200);
+    expect(upsertRunProgram).toHaveBeenCalledWith(
+      'test-user-id',
+      { program_id: 'zone2Base4' },
+      'test-user-id'
+    );
+  });
+
   it('rejects a bad body and an unknown program', async () => {
     const bad = await request(app)
       .put('/api/v2/run-program')
@@ -144,6 +160,39 @@ describe('run program routes', () => {
       2,
       'test-user-id',
       { programId: 'beginner5k', day: undefined, entryId: undefined }
+    );
+  });
+
+  it('completes a workout of a custom program, whose id is custom:<uuid>', async () => {
+    const customId = 'custom:764a3bd5-2a01-4e0b-af30-6ecf44e48715';
+    vi.mocked(completeRunProgramWorkout).mockResolvedValue(program);
+    vi.mocked(getRunProgram).mockResolvedValue(program);
+    const res = await request(app)
+      .post('/api/v2/run-program/complete')
+      .send({ index: 1, program_id: customId, day: '2026-11-06' });
+    expect(res.status).toBe(200);
+    expect(completeRunProgramWorkout).toHaveBeenLastCalledWith(
+      'test-user-id',
+      1,
+      'test-user-id',
+      { programId: customId, day: '2026-11-06', entryId: undefined }
+    );
+  });
+
+  it('rates a workout of a custom program, whose id is custom:<uuid>', async () => {
+    const customId = 'custom:764a3bd5-2a01-4e0b-af30-6ecf44e48715';
+    vi.mocked(rateRunProgramWorkout).mockResolvedValue(program);
+    vi.mocked(getRunProgram).mockResolvedValue(program);
+    const res = await request(app)
+      .post('/api/v2/run-program/effort')
+      .send({ index: 1, rating: 7, program_id: customId });
+    expect(res.status).toBe(200);
+    expect(rateRunProgramWorkout).toHaveBeenLastCalledWith(
+      'test-user-id',
+      1,
+      7,
+      'test-user-id',
+      customId
     );
   });
 

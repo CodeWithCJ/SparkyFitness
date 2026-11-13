@@ -8,7 +8,8 @@ import {
   useWorkoutHrZones,
 } from '@/hooks/useGenericHealth';
 import { DailyExerciseEntry } from '@/types/reports';
-import { zoneStroke } from '@/utils/heartRateZoneTiers';
+import { HeartRateZoneLegend } from '@/components/HeartRateZoneLegend';
+import { zoneStroke } from '@/utils/heartRateZoneBands';
 import { extractWorkoutHeartRateSeries } from '@/utils/workoutTelemetryExtractor';
 import { CheckCircle2, Flame, Heart, Info, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -89,14 +90,16 @@ const WorkoutHeartRateItem: React.FC<{
         ? `${workout['entry_time']} (${durMinutes} min)`
         : `${durMinutes} min`;
 
-  const { zones, thresholds, pointsGradientStops } = useWorkoutZoneBreakdown({
-    workoutHrZones,
-    activityDetails,
-    points,
-  });
+  const { zones, minutesByZone, edges, resolvedZones, pointsGradientStops } =
+    useWorkoutZoneBreakdown({
+      workoutHrZones,
+      activityDetails,
+      points,
+    });
 
-  const moderateMins = zones[1]?.mins ?? 0;
-  const vigorousMins = (zones[2]?.mins ?? 0) + (zones[3]?.mins ?? 0);
+  // Zone 3 counts once, zones 4 and 5 count twice
+  const moderateMins = minutesByZone[2] ?? 0;
+  const vigorousMins = (minutesByZone[3] ?? 0) + (minutesByZone[4] ?? 0);
   const activeZoneMinutes = moderateMins + vigorousMins * 2;
 
   if (!hasHeartRate) {
@@ -161,7 +164,7 @@ const WorkoutHeartRateItem: React.FC<{
           <span>
             {t(
               'heartRate.zonesSpentInsight',
-              'You spent {{moderate}} minutes in the moderate zone, and {{vigorous}} minutes in vigorous and peak zones.',
+              'You spent {{moderate}} minutes in zone 3, and {{vigorous}} minutes in zones 4 and 5.',
               {
                 moderate: moderateMins,
                 vigorous: vigorousMins,
@@ -238,7 +241,7 @@ const WorkoutHeartRateItem: React.FC<{
                     })
                   }
                 />
-                {thresholds.map((bpm) => (
+                {edges.map((bpm) => (
                   <ReferenceLine
                     key={bpm}
                     y={bpm}
@@ -267,24 +270,11 @@ const WorkoutHeartRateItem: React.FC<{
           </div>
 
           {/* Zone Legend */}
-          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground font-medium">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#06b6d4]" />
-              {t('heartRate.zoneLight', 'Light')}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
-              {t('heartRate.zoneModerate', 'Moderate')}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#eab308]" />
-              {t('heartRate.zoneVigorous', 'Vigorous')}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" />
-              {t('heartRate.zonePeak', 'Peak')}
-            </div>
-          </div>
+          <HeartRateZoneLegend
+            resolved={resolvedZones.resolved}
+            displayZones={resolvedZones.displayZones}
+            isDefault={resolvedZones.isDefault}
+          />
         </div>
       ) : hasHeartRate ? (
         /* Notice when summary numbers exist but per-second continuous curve is missing */

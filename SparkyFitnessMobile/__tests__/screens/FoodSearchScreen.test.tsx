@@ -1,5 +1,20 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { ActivityIndicator } from 'react-native';
+import { QueryClient } from '@tanstack/react-query';
+const mockIdentityClient = new QueryClient();
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual<typeof import('@tanstack/react-query')>(
+    '@tanstack/react-query'
+  ),
+  useQueryClient: () => mockIdentityClient,
+}));
+jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual<typeof import('../../src/hooks/useRecipeImport')>(
+    '../../src/hooks/useRecipeImport'
+  ),
+  useRecipeImportAccess: () => 'owner-server',
+}));
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodSearchScreen from '../../src/screens/FoodSearchScreen';
@@ -19,6 +34,8 @@ import {
   useServerConnection,
   useTopMeals,
 } from '../../src/hooks';
+import { useNativeIOSHeadersActive } from '../../src/services/nativeTabBarPreference';
+import type { RootStackScreenProps } from '../../src/types/navigation';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
 import {
@@ -30,6 +47,13 @@ import {
   findHeaderMenuAction,
   pressHeaderMenuAction,
 } from './helpers/nativeHeaderTestUtils';
+
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  ...jest.requireActual<
+    typeof import('../../src/services/nativeTabBarPreference')
+  >('../../src/services/nativeTabBarPreference'),
+  useNativeIOSHeadersActive: jest.fn(() => true),
+}));
 
 jest.mock('../../src/hooks', () => ({
   useExternalFoodSearch: jest.fn(),
@@ -199,6 +223,8 @@ function activeExternalSearch(overrides: Record<string, unknown> = {}) {
 describe('FoodSearchScreen', () => {
   const navigation = {
     setOptions: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
+    isFocused: jest.fn(() => true),
     goBack: jest.fn(),
     navigate: jest.fn(),
   } as any;
@@ -210,6 +236,12 @@ describe('FoodSearchScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIdentityClient.clear();
+    mockIdentityClient.setQueryData(['userProfile'], { id: 'user-1' });
+    mockIdentityClient.setQueryData(['serverConfigs'], {
+      activeConfig: { id: 'server-1', url: 'https://example.test' },
+    });
+    jest.mocked(useNativeIOSHeadersActive).mockReturnValue(true);
     __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({ isConnected: true } as any);
     mockUsePreferences.mockReturnValue({ preferences: {} } as any);
@@ -274,7 +306,7 @@ describe('FoodSearchScreen', () => {
 
   // Type a query so the screen enters search mode and renders the result sections.
   function renderSearching(
-    routeOverride: typeof route = route,
+    routeOverride: RootStackScreenProps<'FoodSearch'>['route'] = route,
     term = 'chicken'
   ) {
     const screen = render(
@@ -644,6 +676,423 @@ describe('FoodSearchScreen', () => {
     expect(screen.queryByText('Lunch Bowl')).toBeNull();
   });
 
+  it.each([
+    'blur-success',
+    'blur-failure',
+    'unmount',
+    'query-replacement',
+    'close',
+  ] as const)('ignores abandoned external detail %s', async (departure) => {
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] })
+    );
+    let finish: (value: typeof externalItem) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    mockFetchExternalFoodDetails.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        })
+    );
+    const screen = renderSearching();
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+    expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+    if (departure.startsWith('blur'))
+      act(() => {
+        for (const [event, listener] of navigation.addListener.mock.calls)
+          if (event === 'blur') listener();
+      });
+    else if (departure === 'unmount') screen.unmount();
+    else if (departure === 'close')
+      act(() =>
+        findHeaderItemByAccessibilityLabel(navigation, 'Close')?.onPress?.()
+      );
+    else
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search foods...'),
+        'new search'
+      );
+    await act(async () => {
+      if (departure === 'blur-failure') fail(new Error('obsolete'));
+      else finish(externalItem);
+    });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(mockToastShow).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    ['clear', 'profile', 'server'].flatMap((change) =>
+      [false, true].flatMap((recipe) =>
+        ['success', 'error'].map((outcome) => ({ change, recipe, outcome }))
+      )
+    )
+  )(
+    'discards $outcome details after identity $change before owner rerender (recipe=$recipe)',
+    async ({ change, recipe, outcome }) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+      let finish: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let fail: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve;
+            fail = reject;
+          })
+      );
+      const target = {
+        draftKey: 'recipe-draft',
+        ingredientId: 'cheese',
+        quantity: 600,
+        unit: 'g',
+      };
+      const screen = renderSearching(
+        recipe
+          ? {
+              ...route,
+              params: {
+                pickerMode: 'meal-builder',
+                recipeImportTarget: target,
+              },
+            }
+          : route
+      );
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      // Real native identity-cache events; the mocked owner props deliberately stay A.
+      act(() => {
+        if (change === 'clear') mockIdentityClient.clear();
+        else if (change === 'profile')
+          mockIdentityClient.setQueryData(['userProfile'], { id: 'user-2' });
+        else
+          mockIdentityClient.setQueryData(['serverConfigs'], {
+            activeConfig: { id: 'server-2', url: 'https://other.example.test' },
+          });
+      });
+      expect(navigation.isFocused()).toBe(true);
+      await act(async () => {
+        if (outcome === 'success') finish(externalItem);
+        else fail(new Error('obsolete owner response'));
+      });
+      expect(navigation.navigate).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
+  it.each(
+    [false, true].flatMap((recipe) =>
+      ['success', 'error'].map((outcome) => ({ recipe, outcome }))
+    )
+  )(
+    'retains current $outcome details after same-owner refetch (recipe=$recipe)',
+    async ({ recipe, outcome }) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({
+          searchResults: [
+            { ...externalItem, image_url: 'https://example.test/cheddar.jpg' },
+          ],
+        })
+      );
+      let finish: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let fail: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve;
+            fail = reject;
+          })
+      );
+      const target = {
+        draftKey: 'recipe-draft',
+        ingredientId: 'cheese',
+        quantity: 600,
+        unit: 'g',
+      };
+      const screen = renderSearching(
+        recipe
+          ? {
+              ...route,
+              params: {
+                pickerMode: 'meal-builder',
+                recipeImportTarget: target,
+              },
+            }
+          : route
+      );
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      act(() => {
+        mockIdentityClient.setQueryData(['userProfile'], {
+          id: 'user-1',
+          name: 'Updated profile',
+        });
+        mockIdentityClient.setQueryData(['serverConfigs'], {
+          activeConfig: {
+            id: 'server-1',
+            url: 'https://example.test',
+            name: 'Updated server label',
+          },
+        });
+      });
+      await act(async () => {
+        if (outcome === 'success') finish(externalItem);
+        else fail(new Error('current provider failure'));
+      });
+      if (outcome === 'success') {
+        expect(mockToastShow).not.toHaveBeenCalled();
+        expect(navigation.navigate).toHaveBeenCalledWith(
+          'FoodEntryAdd',
+          expect.objectContaining({
+            item: expect.objectContaining({
+              servingSize: 100,
+              servingUnit: 'g',
+              image_url: 'https://example.test/cheddar.jpg',
+            }),
+            ...(recipe ? { recipeImportTarget: target } : {}),
+          })
+        );
+      } else {
+        expect(mockToastShow).toHaveBeenCalledTimes(1);
+        expect(navigation.navigate).toHaveBeenCalledTimes(recipe ? 0 : 1);
+      }
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
+  it.each(['success', 'error'])(
+    'releases same-scope detail loading after reauthentication and ignores old %s',
+    async (outcome) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+      let finishOld: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let failOld: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve, reject) => {
+              finishOld = resolve;
+              failOld = reject;
+            })
+        )
+        .mockResolvedValueOnce(externalItem);
+      const screen = renderSearching();
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      act(() => {
+        mockIdentityClient.clear();
+        mockIdentityClient.setQueryData(['userProfile'], { id: 'user-1' });
+        mockIdentityClient.setQueryData(['serverConfigs'], {
+          activeConfig: { id: 'server-1', url: 'https://example.test' },
+        });
+      });
+      // No blur/prop change; the textual owner/request scope remains exactly A.
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      await waitFor(() =>
+        expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(2)
+      );
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalledTimes(1));
+      await act(async () => {
+        if (outcome === 'success') finishOld(externalItem);
+        else failOld(new Error('obsolete previous session'));
+      });
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).not.toHaveBeenCalled();
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
+  it('releases detail loading on a search-scope change and accepts only the new request', async () => {
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] })
+    );
+    let finishOld: (value: typeof externalItem) => void = () => {};
+    mockFetchExternalFoodDetails
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOld = resolve;
+          })
+      )
+      .mockResolvedValueOnce(externalItem);
+    const screen = renderSearching();
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+    expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Search foods...'),
+      'new search'
+    );
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+    await waitFor(() =>
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(2)
+    );
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalledTimes(1));
+    await act(async () => finishOld(externalItem));
+    expect(navigation.navigate).toHaveBeenCalledTimes(1);
+  });
+  it.each(
+    ['before-return', 'after-return'].flatMap((completion) =>
+      ['original', 'other'].flatMap((nextRow) =>
+        ['success', 'error'].map((outcome) => ({
+          completion,
+          nextRow,
+          outcome,
+        }))
+      )
+    )
+  )(
+    'clears stale detail loading on A→B→A and enables the $nextRow row ($completion, $outcome)',
+    async ({ completion, nextRow, outcome }) => {
+      const otherItem = { ...externalItem, id: 'ext-2', name: 'Other cheese' };
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem, otherItem] })
+      );
+      let finishOld!: (
+        food: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void;
+      let failOld!: (error: Error) => void;
+      mockFetchExternalFoodDetails
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve, reject) => {
+              finishOld = resolve;
+              failOld = reject;
+            })
+        )
+        .mockResolvedValueOnce(
+          nextRow === 'original' ? externalItem : otherItem
+        );
+      const completeOld = () =>
+        act(async () => {
+          if (outcome === 'success') finishOld(externalItem);
+          else failOld(new Error('obsolete detail failure'));
+        });
+      const screen = renderSearching(route, 'chicken');
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(1);
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search foods...'),
+        'new search'
+      );
+      if (completion === 'before-return') await completeOld();
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search foods...'),
+        'chicken'
+      );
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+      expect(navigation.navigate).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
+      fireEvent.press(
+        screen.getByText(
+          nextRow === 'original' ? 'Cheddar Cheese' : 'Other cheese'
+        )
+      );
+      await waitFor(() =>
+        expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(2)
+      );
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalledTimes(1));
+      if (completion === 'after-return') await completeOld();
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).not.toHaveBeenCalled();
+      expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+    }
+  );
+  it('passes a local food without a default serving to the recipe picker without inventing a unit', () => {
+    const food = buildFood({ name: 'Rice without a default serving' });
+    const projection = {
+      ...food,
+      default_variant: {
+        id: null,
+        serving_size: null,
+        serving_unit: null,
+        calories: null,
+        protein: null,
+        carbs: null,
+        fat: null,
+      },
+    } as unknown as FoodItem;
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [projection],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    const target = {
+      draftKey: 'recipe-draft',
+      ingredientId: 'rice',
+      quantity: 0.6,
+      unit: 'kg',
+    };
+    const screen = renderSearching({
+      ...route,
+      params: { pickerMode: 'meal-builder', recipeImportTarget: target },
+    });
+    fireEvent.press(screen.getByText('Rice without a default serving'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        item: expect.objectContaining({
+          id: food.id,
+          source: 'local',
+          servingUnit: null,
+          variantId: null,
+        }),
+        recipeImportTarget: target,
+      })
+    );
+  });
+
+  it('opens a current recipe detail with the chosen serving and retained provider photo and target', async () => {
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({
+        searchResults: [
+          { ...externalItem, image_url: 'https://example.test/cheddar.jpg' },
+        ],
+      })
+    );
+    mockFetchExternalFoodDetails.mockResolvedValue(externalItem);
+    const target = {
+      draftKey: 'recipe-draft',
+      ingredientId: 'cheese',
+      quantity: 600,
+      unit: 'g',
+    };
+    const screen = renderSearching({
+      ...route,
+      params: { pickerMode: 'meal-builder', recipeImportTarget: target },
+    });
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+    await waitFor(() =>
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        'FoodEntryAdd',
+        expect.objectContaining({
+          item: expect.objectContaining({
+            servingSize: 100,
+            servingUnit: 'g',
+            image_url: 'https://example.test/cheddar.jpg',
+          }),
+          recipeImportTarget: target,
+        })
+      )
+    );
+  });
   it('forwards the tapped row serving to the detail fetch so the preview keeps it', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
@@ -664,6 +1113,89 @@ describe('FoodSearchScreen', () => {
       );
     });
   });
+
+  describe.each([true, false])(
+    'selection actions with native header %s',
+    (nativeHeader) => {
+      it.each([
+        { pickerMode: undefined, recipe: false, newFood: true, newMeal: true },
+        {
+          pickerMode: 'meal-builder',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'meal-plan',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'container-link',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'action-tag',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'meal-builder',
+          recipe: true,
+          newFood: false,
+          newMeal: false,
+        },
+        { pickerMode: undefined, recipe: true, newFood: false, newMeal: false },
+      ] as const)(
+        'offers only actions that return to the caller: %j',
+        ({ pickerMode, recipe, newFood, newMeal }) => {
+          jest.mocked(useNativeIOSHeadersActive).mockReturnValue(nativeHeader);
+          const target = {
+            draftKey: 'recipe-draft',
+            ingredientId: 'chicken',
+            quantity: 200,
+            unit: 'g',
+          };
+          mockUseFoodSearch.mockReturnValue({
+            searchResults: [buildFood()],
+            isSearching: false,
+            isSearchActive: true,
+            isSearchError: false,
+          } as ReturnType<typeof useFoodSearch>);
+          const screen = renderSearching({
+            ...route,
+            params: {
+              pickerMode,
+              ...(recipe ? { recipeImportTarget: target } : {}),
+            },
+          });
+          if (!nativeHeader)
+            fireEvent.press(screen.getByLabelText('More options'));
+          const offered = (label: string) =>
+            nativeHeader
+              ? !!findHeaderMenuAction(navigation, label)
+              : !!screen.queryByText(label);
+          expect(offered('New Food')).toBe(newFood);
+          expect(offered('New Meal')).toBe(newMeal);
+          if (recipe) {
+            fireEvent.press(screen.getByText('Grilled Chicken'));
+            expect(navigation.navigate).toHaveBeenCalledWith(
+              'FoodEntryAdd',
+              expect.objectContaining({
+                recipeImportTarget: target,
+                pickerMode: 'meal-builder',
+                returnDepth: 2,
+              })
+            );
+          }
+        }
+      );
+    }
+  );
 
   it('persists an ownership filter chosen from the native overflow menu', () => {
     renderSearching();

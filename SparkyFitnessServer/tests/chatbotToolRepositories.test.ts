@@ -1,6 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { getClient } from '../db/poolManager.js';
 import { DAILY_MOOD_VALUE_SQL } from '../models/moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from '../models/sleepRepository.js';
 import coachRepository from '../models/coachRepository.js';
 import engagementRepository from '../models/engagementRepository.js';
 import habitRepository from '../models/habitRepository.js';
@@ -111,6 +112,22 @@ describe('coachRepository', () => {
     expect(DAILY_MOOD_VALUE_SQL).toContain('::int');
     expect(sql).not.toContain('CURRENT_DATE');
     expect(params).toEqual(['user-1', 30, '2026-06-11']);
+  });
+
+  it('getDailyCorrelationRows takes one sleep per day, so a night two sources recorded cannot multiply food rows', async () => {
+    await coachRepository.getDailyCorrelationRows('user-1', 30, '2026-06-11');
+    const [sql] = mockClient.query.mock.calls[0];
+    const start = sql.indexOf('daily_sleep AS (');
+    const cte = sql.slice(start, sql.indexOf('daily_mood AS (', start));
+    expect(cte).toContain('DISTINCT ON (entry_date)');
+    expect(cte).toContain(MAIN_SLEEP_ORDER_SQL);
+  });
+
+  it('get30DaySleepAggregates counts and averages one main sleep per day', async () => {
+    await coachRepository.get30DaySleepAggregates('user-1', '2026-06-11');
+    const [sql] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('DISTINCT ON (entry_date)');
+    expect(sql).toContain(MAIN_SLEEP_ORDER_SQL);
   });
 
   it('get30DayMoodAggregates counts days with a mood and averages the per-day values', async () => {

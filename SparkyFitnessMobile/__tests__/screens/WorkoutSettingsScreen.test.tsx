@@ -125,6 +125,17 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
+  it('toggles "Use planned values as placeholders", off by default (#3417)', () => {
+    const { getByLabelText } = renderScreen();
+    const plannedToggle = getByLabelText('Use planned values as placeholders');
+    expect(plannedToggle.props.value).toBe(false);
+
+    fireEvent(plannedToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().plannedValuesAsPlaceholders).toBe(
+      true
+    );
+  });
+
   it('saves the adaptive suggestions account setting from the switch', async () => {
     const {
       saveWorkoutCoachingSettings,
@@ -179,6 +190,53 @@ describe('WorkoutSettingsScreen', () => {
       'This is how your guided workouts will sound.',
       expect.objectContaining({ rate: 1 })
     );
+  });
+
+  it('says the focus view does not apply while guided mode is on', () => {
+    const { queryByText, getByText } = renderScreen();
+    expect(
+      queryByText(
+        'Guided workouts always use the list. Focus applies when guided mode is off.'
+      )
+    ).toBeNull();
+    expect(getByText(/^List shows every exercise/)).toBeTruthy();
+
+    act(() => {
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+    });
+    expect(
+      getByText(
+        'Guided workouts always use the list. Focus applies when guided mode is off.'
+      )
+    ).toBeTruthy();
+    expect(queryByText(/^List shows every exercise/)).toBeNull();
+  });
+
+  it('shows the focus photo row only in the focus view and the Now card only in the list view', () => {
+    const { getByText, queryByText, queryByTestId, getByTestId } =
+      renderScreen();
+    expect(getByTestId('workout-view-picker')).toBeTruthy();
+    expect(queryByTestId('focus-media-picker')).toBeNull();
+    expect(queryByText('Exercise photo')).toBeNull();
+    expect(getByTestId('workout-now-card-switch')).toBeTruthy();
+
+    fireEvent.press(getByText('Focus'));
+    expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('focus');
+    expect(getByTestId('focus-media-picker')).toBeTruthy();
+    expect(queryByTestId('workout-now-card-switch')).toBeNull();
+
+    fireEvent.press(getByText('Small'));
+    expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+      'minimized'
+    );
+    fireEvent.press(getByText('Large'));
+    expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+      'expanded'
+    );
+
+    fireEvent.press(getByText('List'));
+    expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('list');
+    expect(queryByTestId('focus-media-picker')).toBeNull();
   });
 
   it('localizes the Polish labels and rest accessibility fallback', async () => {

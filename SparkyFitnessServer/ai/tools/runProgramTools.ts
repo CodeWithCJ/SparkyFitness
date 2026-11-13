@@ -36,6 +36,7 @@ import {
   RUN_PROGRAM_ACTIONS,
   type ManageRunProgramInput,
 } from './schemas/runProgram.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 const VALID_ACTIONS = [...RUN_PROGRAM_ACTIONS];
 
@@ -249,7 +250,7 @@ To judge progress, read the user's recent runs first (sparky_get_exercise_stats 
 Actions:
 - action: 'get_run_program' — progress, the next workouts and recent changes
 - action: 'get_fitness_tests' — the user's running fitness tests (5K time trial, 30-minute all-out run, 12-minute Cooper test), the training paces the latest one gave and whether a retest is due. Use these paces rather than guessing when you talk about pace.
-- action: 'start_run_program' (fields: program_id? default beginner5k, confirmed) — starts a program from workout 1, or switches it on keeping the user's place if they already have that same program (to go back to the beginning use move_run_program with week 1). Programs: walkFit (8 weeks, three brisk walks a week building to 30 minutes, no running; for someone who does not want to run or is just starting to move), beginner5k (9 weeks, run/walk to 30 min), fiveToTenK (8 weeks, for people who can run 30 min), faster5k (6 weeks of speed work), halfMarathon (12 weeks), marathon (16 weeks, for people who already run regularly). Also: walk10k (10 weeks of brisk walking to a 10K walk, no running), returnToRunning (4 weeks to ease back in after a break; if the user is coming back from an injury, tell them to check with a physio or doctor first), gentle5k (12 weeks, a slower start than beginner5k), beginner10k (12 weeks from walking to a 10K), faster10k (8 weeks of speed work for people who run 10K), tenKToHalf (10 weeks from 10K to a half marathon), fasterHalf (10 weeks of speed work for a faster half marathon), beginnerMarathon (18 weeks, three runs a week, for people who can run 10K), advancedMarathon (16 weeks, five runs a week, for experienced runners). tenKToHalf, halfMarathon, fasterHalf and beginnerMarathon have three runs a week; add a 4 to the id (tenKToHalf4, halfMarathon4, fasterHalf4, beginnerMarathon4) for the version with a fourth run, which makes the long run a smaller share of the week. Offer it if the user can run four days a week. Starting a different program than the current one replaces it and drops their adjusted workouts, so say so before asking to confirm. Pick by what the user says they can do now; if unsure, ask.
+- action: 'start_run_program' (fields: program_id? default beginner5k, confirmed) — starts a program from workout 1, or switches it on keeping the user's place if they already have that same program (to go back to the beginning use move_run_program with week 1). Programs: walkFit (8 weeks, three brisk walks a week building to 30 minutes, no running; for someone who does not want to run or is just starting to move), beginner5k (9 weeks, run/walk to 30 min), fiveToTenK (8 weeks, for people who can run 30 min), zone2Base (10 weeks of base building: easy runs held to the user's heart rate Zone 2 range, or the talk test without a heart rate, three runs a week, a long run building to 70 minutes and a zone check in weeks 4, 8 and 10; for people who can run 30 minutes), faster5k (6 weeks of speed work), halfMarathon (12 weeks), marathon (16 weeks, for people who already run regularly). Also: walk10k (10 weeks of brisk walking to a 10K walk, no running), returnToRunning (4 weeks to ease back in after a break; if the user is coming back from an injury, tell them to check with a physio or doctor first), gentle5k (12 weeks, a slower start than beginner5k), beginner10k (12 weeks from walking to a 10K), faster10k (8 weeks of speed work for people who run 10K), tenKToHalf (10 weeks from 10K to a half marathon), fasterHalf (10 weeks of speed work for a faster half marathon), beginnerMarathon (18 weeks, three runs a week, for people who can run 10K), advancedMarathon (16 weeks, five runs a week, for experienced runners). zone2Base, tenKToHalf, halfMarathon, fasterHalf and beginnerMarathon have three runs a week; add a 4 to the id (zone2Base4, tenKToHalf4, halfMarathon4, fasterHalf4, beginnerMarathon4) for the version with a fourth run, which makes the long run a smaller share of the week. Offer it if the user can run four days a week. Starting a different program than the current one replaces it and drops their adjusted workouts, so say so before asking to confirm. Pick by what the user says they can do now; if unsure, ask.
 - action: 'set_run_program_enabled' (fields: enabled, confirmed) — switches the program on or off, keeping their place
 - action: 'repeat_run_program_week' (fields: week (1-based), confirmed) — goes back to the start of a week to do it again
 - action: 'move_run_program' (fields: week (1-based), run? (1-based, default 1), confirmed) — jumps to a workout
@@ -271,20 +272,24 @@ Every change needs confirmed=true after the user has agreed.`,
         const args: ManageRunProgramInput = parsed.data;
         try {
           if (args.action === 'get_run_program') {
-            const program = await getRunProgram(userId, userId);
+            const program = await getRunProgram(userId, actorUserIdFor(userId));
             return program
               ? `${summarise(program)}${realignHint(program, tz)}`
               : NO_PROGRAM;
           }
 
           if (args.action === 'get_fitness_tests') {
-            const tests = await listFitnessTests(userId, userId, 5);
+            const tests = await listFitnessTests(
+              userId,
+              actorUserIdFor(userId),
+              5
+            );
             return summariseFitnessTests(tests, todayInZone(tz));
           }
 
           if (args.action === 'start_run_program') {
             const programId = args.program_id ?? 'beginner5k';
-            const held = await getRunProgram(userId, userId);
+            const held = await getRunProgram(userId, actorUserIdFor(userId));
             if (args.confirmed !== true) {
               return confirmFirst(
                 held && held.program_id !== programId
@@ -305,7 +310,7 @@ Every change needs confirmed=true after the user has agreed.`,
             return `${formatConfirmation(note)}\n\n${summarise(program)}`;
           }
 
-          const existing = await getRunProgram(userId, userId);
+          const existing = await getRunProgram(userId, actorUserIdFor(userId));
           if (!existing) return NO_PROGRAM;
 
           if (args.action === 'set_run_program_enabled') {

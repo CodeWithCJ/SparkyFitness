@@ -45,6 +45,7 @@ jest.mock('@expo/vector-icons', () => {
   return {
     Ionicons: View,
     MaterialIcons: View,
+    MaterialCommunityIcons: View,
     FontAwesome: View,
     AntDesign: View,
   };
@@ -66,6 +67,8 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
   queryWorkoutSamples: jest.fn(),
   queryCorrelationSamples: jest.fn(),
+  queryActivitySummary: jest.fn().mockResolvedValue([]),
+  ActivitySummaryTypeIdentifier: 'HKActivitySummaryTypeIdentifier',
   // Writeback saves return the persisted sample (orchestrator reads .uuid off it);
   // a bare `true` would make UUID-tracking assertions silently test nothing.
   saveQuantitySample: jest.fn().mockResolvedValue({ uuid: 'hk-quantity-uuid' }),
@@ -855,6 +858,7 @@ jest.mock('expo-crypto', () => {
   return {
     __esModule: true,
     randomUUID: () => webcrypto.randomUUID(),
+    getRandomBytes: (count) => webcrypto.getRandomValues(new Uint8Array(count)),
     AESEncryptionKey: WatchTelemetryTestKey,
     AESSealedData: WatchTelemetryTestSealed,
     aesEncryptAsync: async (plaintext, key) => {
@@ -908,3 +912,63 @@ jest.mock('expo-image-manipulator', () => ({
     WEBP: 'webp',
   },
 }));
+
+// Mock react-native-nfc-manager (native module; tests drive its results).
+jest.mock('react-native-nfc-manager', () => ({
+  __esModule: true,
+  default: {
+    isSupported: jest.fn(() => Promise.resolve(true)),
+    isEnabled: jest.fn(() => Promise.resolve(true)),
+    start: jest.fn(() => Promise.resolve()),
+    requestTechnology: jest.fn(() => Promise.resolve()),
+    cancelTechnologyRequest: jest.fn(() => Promise.resolve()),
+    getTag: jest.fn(() => Promise.resolve({ ndefMessage: [] })),
+    setAlertMessageIOS: jest.fn(() => Promise.resolve()),
+    ndefHandler: { writeNdefMessage: jest.fn(() => Promise.resolve()) },
+  },
+  NfcTech: { Ndef: 'Ndef' },
+  Ndef: {
+    TNF_EMPTY: 0,
+    TNF_WELL_KNOWN: 1,
+    RTD_URI: 'U',
+    uriRecord: jest.fn((uri) => ({
+      tnf: 1,
+      type: 'U',
+      payload: [...Buffer.from(uri)],
+    })),
+    encodeMessage: jest.fn((records) => records.flatMap((r) => r.payload)),
+    isType: jest.fn(
+      (record, tnf, type) => record.tnf === tnf && record.type === type
+    ),
+    // The test payloads are plain UTF-8 URLs, so decoding is the identity.
+    uri: {
+      decodePayload: jest.fn((bytes) => Buffer.from(bytes).toString('utf8')),
+    },
+  },
+}));
+
+// Energy unit: components read the account's kcal/kJ setting through
+// `useEnergyUnit`, which needs a QueryClient. Most component tests render
+// without one, so the unit defaults to kcal here. A test that needs kJ sets
+// `jest.mocked(useEnergyUnit).mockReturnValue('kJ')`; the hook's own test uses
+// `jest.requireActual`.
+jest.mock('./src/hooks/useEnergyUnit', () => ({
+  useEnergyUnit: jest.fn(() => 'kcal'),
+}));
+
+// Components read safe-area insets (Duo vertical bars). Fall back to zero insets
+// when a test renders without a provider; a real provider still wins.
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  const zero = { top: 0, bottom: 0, left: 0, right: 0 };
+  return {
+    ...actual,
+    useSafeAreaInsets: () => {
+      try {
+        return actual.useSafeAreaInsets();
+      } catch {
+        return zero;
+      }
+    },
+  };
+});

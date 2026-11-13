@@ -1,9 +1,11 @@
 import { apiCall, HttpApiError } from '@/api/api';
 import {
   createExternalProvider,
+  updateExternalProvider,
   GOOGLE_HEALTH_SYNC_POLL_MS,
   GOOGLE_HEALTH_SYNC_TIMEOUT_MS,
   handleManualSyncGoogleHealth,
+  getEnrichedProviders,
 } from '@/api/Settings/externalProviderService';
 
 jest.mock('@/api/api', () => ({
@@ -12,6 +14,40 @@ jest.mock('@/api/api', () => ({
 }));
 
 describe('createExternalProvider', () => {
+  it.each(['manual', 'hourly', 'daily'] as const)(
+    'persists the selected Hevy frequency %s',
+    async (frequency) => {
+      jest.mocked(apiCall).mockResolvedValue({
+        id: 'hevy-1',
+        provider_type: 'hevy',
+        is_active: true,
+      });
+
+      await createExternalProvider({
+        user_id: 'user-1',
+        provider_name: 'My Hevy',
+        provider_type: 'hevy',
+        app_key: 'test-key',
+        is_active: true,
+        sync_frequency: frequency,
+      });
+
+      expect(apiCall).toHaveBeenLastCalledWith('/external-providers', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: 'user-1',
+          provider_name: 'My Hevy',
+          provider_type: 'hevy',
+          app_id: null,
+          app_key: 'test-key',
+          is_active: true,
+          base_url: null,
+          sync_frequency: frequency,
+        }),
+      });
+    }
+  );
+
   it('keeps Open Food Facts contribution consent out of provider credentials', async () => {
     jest.mocked(apiCall).mockResolvedValue({
       id: 'provider-1',
@@ -43,6 +79,26 @@ describe('createExternalProvider', () => {
       }),
     });
   });
+});
+
+describe('updateExternalProvider', () => {
+  it.each(['manual', 'hourly', 'daily'] as const)(
+    'sends the selected Hevy frequency %s when editing',
+    async (frequency) => {
+      await updateExternalProvider('hevy-1', {
+        provider_type: 'hevy',
+        sync_frequency: frequency,
+      });
+
+      expect(apiCall).toHaveBeenLastCalledWith('/external-providers/hevy-1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          provider_type: 'hevy',
+          sync_frequency: frequency,
+        }),
+      });
+    }
+  );
 });
 
 describe('handleManualSyncGoogleHealth', () => {
@@ -143,5 +199,42 @@ describe('handleManualSyncGoogleHealth', () => {
       GOOGLE_HEALTH_SYNC_TIMEOUT_MS + GOOGLE_HEALTH_SYNC_POLL_MS
     );
     await assertion;
+  });
+});
+
+describe('getEnrichedProviders Garmin last sync', () => {
+  const lastUpdated = '2026-11-01T08:00:00Z';
+
+  const enrichGarmin = async (status: Record<string, unknown>) => {
+    jest.mocked(apiCall).mockReset();
+    jest.mocked(apiCall).mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/external-providers') {
+        return [{ id: 'garmin-1', provider_type: 'garmin', is_active: true }];
+      }
+      return { isLinked: true, lastUpdated, tokenExpiresAt: null, ...status };
+    });
+    const garmin = (await getEnrichedProviders()).find(
+      (provider) => provider.provider_type === 'garmin'
+    );
+    if (!garmin) throw new Error('Expected an enriched Garmin provider.');
+    return garmin;
+  };
+
+  it('uses lastSyncAt when the server sends it', async () => {
+    const garmin = await enrichGarmin({ lastSyncAt: '2026-11-05T08:00:00Z' });
+
+    expect(garmin.garmin_last_status_check).toBe('2026-11-05T08:00:00Z');
+  });
+
+  it('keeps null so the card can say it never synced', async () => {
+    const garmin = await enrichGarmin({ lastSyncAt: null });
+
+    expect(garmin.garmin_last_status_check).toBeNull();
+  });
+
+  it('ignores lastUpdated when the server sends no lastSyncAt', async () => {
+    const garmin = await enrichGarmin({});
+
+    expect(garmin.garmin_last_status_check).toBeNull();
   });
 });

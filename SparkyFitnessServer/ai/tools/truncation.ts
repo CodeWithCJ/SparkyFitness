@@ -18,14 +18,21 @@ export function getCharacterLimit(profile: 'full' | 'core' = 'full'): number {
 export function truncateIfNeeded(
   text: string,
   hint?: string,
-  profile: 'full' | 'core' = 'full'
+  profile: 'full' | 'core' = 'full',
+  // Cut after the last whole line, for line-per-value text where a cut line
+  // (`- Weight: 7`) would read as a complete value.
+  atLineBoundary = false
 ): string {
   const limit = getCharacterLimit(profile);
   if (text.length <= limit) return text;
 
   const defaultHint =
     "Use 'limit' and 'offset' parameters to paginate results, or add filters to narrow your search.";
-  const truncated = text.slice(0, limit - 200);
+  let truncated = text.slice(0, limit - 200);
+  if (atLineBoundary) {
+    const lastNewline = truncated.lastIndexOf('\n');
+    if (lastNewline > 0) truncated = truncated.slice(0, lastNewline).trimEnd();
+  }
   return (
     truncated +
     `\n\n---\n⚠️ Response truncated (exceeded ${limit} characters). ${hint || defaultHint}`

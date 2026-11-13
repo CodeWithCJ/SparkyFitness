@@ -47,6 +47,7 @@ import type {
 import {
   buildLocalUnitVariants,
   buildCreateFoodVariantPayload,
+  customNutrientsMatch,
   diffSiblingRows,
   formatServingSizeForDisplay,
   groupEquivalentVariants,
@@ -114,6 +115,7 @@ function buildUpdatedFoodInfo(
   };
 }
 
+/** Food form mode that edits a saved food, its variants, equivalents and custom nutrients. */
 export function EditFoodMode({
   params,
   navigation,
@@ -323,6 +325,11 @@ export function EditFoodMode({
         return selection;
       }
       setPendingUnitSelection(selection);
+      // The draft carries the custom nutrients of the variant it was built
+      // from, scaled to its serving. Take them even when empty: a conversion
+      // can start from a variant with none, and keeping the previous values
+      // would save them next to nutrients scaled from another variant.
+      setCurrentCustomNutrients(selection.variant.custom_nutrients ?? {});
       return selection;
     },
     [
@@ -504,7 +511,11 @@ export function EditFoodMode({
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
             foodId,
-            buildVariantFromFormData(data, draftSelection)
+            buildVariantFromFormData(
+              data,
+              draftSelection,
+              currentCustomNutrients
+            )
           )
         );
         nextVariantId = createdVariant.id;
@@ -559,11 +570,19 @@ export function EditFoodMode({
 
         // If the active variant's nutrition changed, ask whether to overwrite
         // the existing variant or save as a new one.
-        const nutritionChanged = hasFoodFormChanges(
-          variantBaselineValues,
-          data,
-          FOOD_VARIANT_FIELDS
-        );
+        // Custom nutrients sit outside the form fields; a change to them alone
+        // still asks before overwriting the saved variant.
+        const activeStoredCustom = variants?.find(
+          (v) => v.id === currentVariantId
+        )?.custom_nutrients;
+        const nutritionChanged =
+          hasFoodFormChanges(
+            variantBaselineValues,
+            data,
+            FOOD_VARIANT_FIELDS
+          ) ||
+          (currentCustomNutrients != null &&
+            !customNutrientsMatch(currentCustomNutrients, activeStoredCustom));
         if (nutritionChanged && currentVariantId) {
           const activeVariant = variants?.find(
             (v) => v.id === currentVariantId
@@ -584,7 +603,11 @@ export function EditFoodMode({
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(
                 foodId,
-                buildVariantFromFormData(data, pendingSelection)
+                buildVariantFromFormData(
+                  data,
+                  pendingSelection,
+                  currentCustomNutrients
+                )
               )
             );
             nextVariantId = createdVariant.id;
@@ -600,6 +623,36 @@ export function EditFoodMode({
             setCurrentCustomNutrients(nextCustomNutrients);
             if (hasFoodMetadataChange) {
               await updateFood(foodId, foodPayload, imageArgs);
+            }
+            // The new variant has no saved siblings yet, so create the drafted
+            // equivalent units with its nutrition, as the overwrite path does.
+            const newSiblings = equivalentDraft.filter(
+              (eq) => !isBlankEquivalent(eq)
+            );
+            if (newSiblings.length > 0) {
+              const groupNutrition = buildGroupNutrition(
+                data,
+                variants?.find((v) => v.id === currentVariantId)
+              );
+              await Promise.all(
+                newSiblings.map((eq) =>
+                  createFoodVariant({
+                    food_id: foodId,
+                    serving_size: eq.serving_size,
+                    serving_unit: eq.serving_unit,
+                    ...groupNutrition,
+                  } as CreateFoodVariantPayload)
+                )
+              ).catch(() => {
+                // The new variant is already saved, so a failed unit must not
+                // reach the outer catch: a retry would create a second one.
+                Toast.show({
+                  type: 'error',
+                  text1: t('foodForm.equivalentUnitsFailed', {
+                    defaultValue: 'Some equivalent units could not be saved',
+                  }),
+                });
+              });
             }
             invalidateFoodCaches(queryClient, foodId);
             await persistPortions();

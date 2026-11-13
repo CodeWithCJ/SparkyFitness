@@ -3,12 +3,10 @@ import WatchKit
 
 /// The Water page
 ///
-/// A fillable bottle on the left, two-thirds of the screen's width, showing
-/// progress toward today's water goal, and a scrollable column of square
-/// containers configured on the server on the right, one per entry. Tapping a
-/// square logs that container's full serving straight to the phone — there is
+/// A fillable bottle beside today's total and goal, then one full-width row
+/// per container configured on the server. Tapping a row logs that container's full serving straight to the phone — there is
 /// no local-only increment and no selection state, unlike the phone app's
-/// single active-container model. Every square is always live.
+/// single active-container model. Every row is always live.
 struct WaterIntakeView: View {
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
@@ -22,7 +20,7 @@ struct WaterIntakeView: View {
 
     /// Containers deliberately are NOT gated on the day, unlike `water` above.
     /// They're configuration: a container is as valid this morning as it was
-    /// last night, and the wearer needs the squares most precisely when the
+    /// last night, and the wearer needs the rows most precisely when the
     /// phone is out of reach and nothing fresh has arrived.
     private var containers: [WaterContainer] { store.context.waterContainers ?? [] }
 
@@ -61,16 +59,16 @@ struct WaterIntakeView: View {
         goalMl > 0 ? max(0, min(1, ml / goalMl)) : 0
     }
 
-    /// "11% * 0.31L" — percent of goal, then the same amount in the app's
-    /// configured display unit. Both read off `effectiveMl`/`progress`, so
-    /// this tracks a tap's optimistic bump exactly as the bottle does.
-    /// Reads the confirmed level, not the queued one: the line above the fill
-    /// is what says "more is coming", and having the number jump ahead of the
-    /// fill would contradict it.
+    /// "60% of 2.5 L", under the total. Reads off `progress`, so it tracks a
+    /// tap's optimistic bump exactly as the bottle does, and the confirmed
+    /// level rather than the queued one: the line above the fill is what says
+    /// "more is coming".
     private var goalLabel: String {
-        guard goalMl > 0 else { return "Water not synced yet" }
+        guard goalMl > 0 else {
+            return String(localized: "watch.water.notSynced", defaultValue: "Water not synced yet")
+        }
         let percent = Int((progress * 100).rounded())
-        return "\(percent)% * \(store.context.formattedWater(ml: effectiveMl))"
+        return String(localized: "watch.water.ofGoal", defaultValue: "\(percent)% of \(store.context.formattedWater(ml: goalMl))")
     }
 
     var body: some View {
@@ -85,58 +83,60 @@ struct WaterIntakeView: View {
     }
 
     private var content: some View {
-        GeometryReader { geo in
-            // `.top`, not the default `.center`: the bottle doesn't fill the
-            // full column height, so centering the label+bottle group as a
-            // whole was leaving the label sitting well below the screen's
-            // actual top edge instead of flush with it.
-            HStack(alignment: .top, spacing: 8) {
-                // Fixed at 2/3 of the available width; the container column
-                // takes whatever's left rather than being given a width of
-                // its own.
-                VStack(spacing: 4) {
-                    // Same status indicator as TrendView's summary row — a
-                    // check-in's sync state, not anything about the taps
-                    // below, but it's the one "are we caught up with the
-                    // phone" signal the watch has, and every page should
-                    // read it the same way rather than the Water page being
-                    // the one place it's missing.
-                    HStack(spacing: 4) {
+        ScrollView {
+            VStack(spacing: 6) {
+                summary
+                containerList
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    /// The bottle beside today's total in large type and the goal under it.
+    /// Kept to one row so the containers, the thing to tap, start on the
+    /// first screen.
+    private var summary: some View {
+        HStack(alignment: .center, spacing: 10) {
+            bottle
+                .frame(height: WatchStyle.s(84))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    // The total stands on its own: a missing goal only blanks
+                    // the "% of goal" line under it.
+                    Text(water == nil && effectiveMl == 0 ? "–" : store.context.formattedWater(ml: effectiveMl))
+                        .font(.system(size: WatchStyle.s(28), weight: .semibold, design: .rounded))
+                        .foregroundStyle(GoalPalette.water)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    // Only while a tap is outstanding: the one "are we caught
+                    // up with the phone" signal, scoped to this page's taps.
+                    if store.waterSyncState != .saved {
                         SyncStatusIcon(
                             state: store.waterSyncState,
                             onRetry: { session.retryFailedWaterTaps() }
                         )
-                        Text(goalLabel)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
                     }
-                    // Only when there is some to show. A zero is the phone's "setting
-                    // on, nothing logged" state, and the phone's own card hides
-                    // that line.
-                    if let fromFood = water?.fromFoodMl, fromFood > 0 {
-                        Text(String(localized: "watch.water.includesFood", defaultValue: "Includes \(store.context.formattedWater(ml: fromFood)) from food"))
-                            .font(.system(size: 10, weight: .regular, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    }
-                    bottle
                 }
-                .frame(width: geo.size.width * 2 / 3)
-                containerList
+                Text(goalLabel)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(2)
+                // Only when there is some to show. A zero is the phone's
+                // "setting on, nothing logged" state, and the phone's own
+                // card hides that line.
+                if let fromFood = water?.fromFoodMl, fromFood > 0 {
+                    Text(String(localized: "watch.water.includesFood", defaultValue: "Includes \(store.context.formattedWater(ml: fromFood)) from food"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(2)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        // No `.ignoresSafeArea` here (tried it — sat above the clock and let
-        // the container list scroll its squares up underneath it). Leaving
-        // the safe area alone means both columns stop at the same boundary:
-        // `alignment: .top` above already pins the label to the top of that
-        // boundary, right under the clock, and the container list's
-        // ScrollView can't scroll content past its own top edge into the
-        // clock's space because that edge is the same boundary.
-        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Container list
@@ -144,96 +144,76 @@ struct WaterIntakeView: View {
     @ViewBuilder
     private var containerList: some View {
         if !containers.isEmpty {
-            // Measured explicitly rather than via `.aspectRatio` on each
-            // square: inside a ScrollView the vertical proposal is
-            // effectively unbounded, which is exactly the dimension
-            // `.aspectRatio(1, contentMode: .fit)` needs bounded to size off
-            // of — it was sizing to content height instead of the column's
-            // width. Reading the column's width here and handing every
-            // square that exact side length sidesteps the ambiguity.
-            GeometryReader { geo in
-                ScrollView {
-                    VStack(spacing: 6) {
-                        ForEach(containers) { container in
-                            containerSquare(container, side: geo.size.width)
-                        }
-                        logButton(side: geo.size.width)
-                    }
-                }
+            ForEach(containers) { container in
+                containerRow(container)
             }
+            logButton
         } else {
-            VStack(spacing: 4) {
-                Image(systemName: "drop")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.secondary)
-                Text(hasEverSyncedContainers
-                     ? "No containers set up on the server yet"
-                     : "Open SparkyFitness on your phone to sync your containers")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
+            Text(hasEverSyncedContainers
+                 ? String(localized: "watch.water.noContainers", defaultValue: "No containers set up on the server yet")
+                 : String(localized: "watch.water.openPhone", defaultValue: "Open SparkyFitness on your iPhone to sync your containers"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
         }
     }
 
-    /// Last square in the column: opens today's log rather than logging
-    /// anything. Deliberately the same shape and size as a container square —
-    /// it belongs to that column — but neutral-toned rather than water-blue,
-    /// so a glance doesn't mistake it for a fourth thing to drink.
-    private func logButton(side: CGFloat) -> some View {
+    /// Last row: opens today's log rather than logging anything. Neutral-toned
+    /// rather than water-blue, so a glance doesn't mistake it for another
+    /// thing to drink.
+    private var logButton: some View {
         NavigationLink {
             WaterLogView()
         } label: {
-            VStack(spacing: 2) {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
-                Text(String(localized: "watch.water.log", defaultValue: "Log"))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(width: side, height: side)
-            .background(Color.secondary.opacity(0.16), in: RoundedRectangle(cornerRadius: 16))
+            Label(String(localized: "watch.water.todayLog", defaultValue: "Today's Log"), systemImage: "list.bullet")
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.secondary.opacity(0.16), in: WatchStyle.shape)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "watch.water.loggedDrinks", defaultValue: "Today's logged drinks"))
     }
 
-    private func containerSquare(_ container: WaterContainer, side: CGFloat) -> some View {
+    /// One container, full width: its name, and its serving on the right.
+    /// A tap logs that serving.
+    private func containerRow(_ container: WaterContainer) -> some View {
         Button {
             tap(container)
         } label: {
-            VStack(spacing: 2) {
+            HStack(spacing: 8) {
                 Image(systemName: "drop.fill")
-                    .font(.system(size: 15))
+                    .font(.body)
                     .foregroundStyle(GoalPalette.water)
                 Text(container.name)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text(container.displayVolume)
-                    .font(.system(size: 9))
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .fixedSize()
             }
-            // Explicit width AND height, both equal to `side` — a true
-            // square regardless of how little space the content itself needs.
-            .frame(width: side, height: side)
-            .background(GoalPalette.water.opacity(0.16), in: RoundedRectangle(cornerRadius: 16))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(GoalPalette.water.opacity(0.16), in: WatchStyle.shape)
+            .contentShape(WatchStyle.shape)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "watch.water.logContainer", defaultValue: "Log \(container.name), \(container.displayVolume)"))
     }
 
     private func tap(_ container: WaterContainer) {
-        // `.click`, not `.success`: this fires the instant the square is
+        // `.click`, not `.success`: this fires the instant the row is
         // pressed, when all that's certain is that the tap registered. The
         // write still has to reach the phone and the server, and `.success`
         // is watchOS's "that completed" pattern — promising it here would be
         // a lie on any tap that later fails and settles back out of the
         // bottle.
-        WKInterfaceDevice.current().play(.click)
+        Haptics.tap()
 
         // No timeout to un-do this: the tap stands until the phone sends a
         // total for today that accounts for it. A ten-second expiry looked

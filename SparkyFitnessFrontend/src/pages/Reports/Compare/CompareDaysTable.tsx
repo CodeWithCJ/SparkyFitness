@@ -32,7 +32,7 @@ export const CompareDaysTable = ({
   question,
 }: CompareDaysTableProps) => {
   const { t, i18n } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'day', desc: true },
   ]);
@@ -44,7 +44,7 @@ export const CompareDaysTable = ({
     const isWeek = chosen.mode === 'week';
     const yesNo = (key: CompareMetricKey, value: number) => {
       if (COMPARE_METRICS[key].kind !== 'binary') {
-        return compareValueText(key, value, timeFormat);
+        return compareValueText(key, value, timeFormat, energyUnit);
       }
       // By week a habit's value is the count of days you did it.
       if (isWeek) {
@@ -98,10 +98,10 @@ export const CompareDaysTable = ({
       if (key === 'bedtime') {
         return t('compareReport.days.minutesDeviation', {
           defaultValue: '{{amount}} min',
-          amount: compareAmountText(key, dev, true),
+          amount: compareAmountText(key, dev, true, energyUnit),
         });
       }
-      return compareAmountText(key, dev, true);
+      return compareAmountText(key, dev, true, energyUnit);
     };
     const devSort = (dev: number | null) => dev ?? Number.NEGATIVE_INFINITY;
 
@@ -155,7 +155,14 @@ export const CompareDaysTable = ({
       });
     }
     return [dayColumn, ...aColumns, ...bColumns];
-  }, [question, t, i18n.language, formatDateInUserTimezone, timeFormat]);
+  }, [
+    question,
+    t,
+    i18n.language,
+    formatDateInUserTimezone,
+    timeFormat,
+    energyUnit,
+  ]);
 
   return (
     <Card>

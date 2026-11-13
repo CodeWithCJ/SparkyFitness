@@ -1,4 +1,7 @@
+import { queryClient } from '../../../src/hooks/queryClient';
+import { glucoseSamplesQueryKeyRoot } from '../../../src/hooks/queryKeys';
 import {
+  allDayHeartRateSettled,
   collectHealthData,
   runForegroundSync,
   type HealthReadProvider,
@@ -22,6 +25,18 @@ jest.mock('../../../src/services/writeback', () => ({
 
 jest.mock('../../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
+}));
+
+jest.mock('../../../src/services/storage', () => ({
+  ...jest.requireActual('../../../src/services/storage'),
+  getActiveServerConfig: jest.fn().mockResolvedValue({
+    id: 'server-1',
+    url: 'https://sparky.example',
+    apiKey: 'key-1',
+  }),
+}));
+jest.mock('../../../src/services/api/healthSamplesApi', () => ({
+  postHealthMetricSamples: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../src/services/api/measurementsApi', () => ({
@@ -477,6 +492,12 @@ describe('collectHealthData', () => {
         'skipped',
       ]);
       expect(outcomes[0].error).toContain('Test query for A timed out');
+      expect(outcomes.map((o) => o.timedOut)).toEqual([
+        true,
+        true,
+        true,
+        undefined,
+      ]);
       expect(outcomes[3].error).toBe(
         'Skipped because an earlier metric query timed out.'
       );
@@ -651,10 +672,95 @@ describe('runForegroundSync', () => {
     timeoutLabelPrefix: 'Test query',
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // A heart rate phase left over from an earlier test must not run into
+    // this one, or its calls would pass for this sync's.
+    await allDayHeartRateSettled();
     jest.clearAllMocks();
     writeback.runWriteback.mockResolvedValue(undefined);
   });
+
+  test.each(['ios', 'android'] as const)(
+    'uploads %s glucose samples without heart rate and refreshes an open chart afterwards',
+    async (platform) => {
+      const measuredAt = new Date();
+      measuredAt.setHours(0, 0, 0, 0);
+      const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+      const provider = fakeProvider({
+        readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: [] }),
+        readRaw: jest.fn().mockResolvedValue({
+          records: [
+            {
+              time: measuredAt.toISOString(),
+              level: { inMillimolesPerLiter: 5 },
+              ...(platform === 'android'
+                ? { metadata: { dataOrigin: 'com.dexcom.healthconnect' } }
+                : {}),
+            },
+          ],
+        }),
+      });
+      const { Platform } = jest.requireActual(
+        'react-native'
+      ) as typeof import('react-native');
+      const previous = Platform.OS;
+      Object.defineProperty(Platform, 'OS', {
+        value: platform,
+        configurable: true,
+      });
+      try {
+        await runForegroundSync(
+          provider,
+          'today',
+          { isBloodGlucoseSyncEnabled: true },
+          opts
+        );
+        await allDayHeartRateSettled();
+        expect(invalidate).toHaveBeenCalledWith({
+          queryKey: glucoseSamplesQueryKeyRoot,
+        });
+        expect(provider.readRaw).toHaveBeenCalledWith(
+          'BloodGlucose',
+          expect.any(Date),
+          expect.any(Date),
+          expect.anything()
+        );
+        const { postHealthMetricSamples } =
+          require('../../../src/services/api/healthSamplesApi') as {
+            postHealthMetricSamples: jest.Mock;
+          };
+        expect(postHealthMetricSamples).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metric: 'blood_glucose',
+            device_name: platform === 'ios' ? 'Apple Health' : 'Health Connect',
+            samples: [
+              {
+                t: measuredAt.toISOString(),
+                mmol_l: 5,
+                ...(platform === 'android'
+                  ? { source_bundle_id: 'com.dexcom.healthconnect' }
+                  : {}),
+              },
+            ],
+          }),
+          expect.anything(),
+          expect.objectContaining({ id: 'server-1' })
+        );
+        expect(provider.readRaw).not.toHaveBeenCalledWith(
+          'HeartRate',
+          expect.anything(),
+          expect.anything(),
+          expect.anything()
+        );
+      } finally {
+        invalidate.mockRestore();
+        Object.defineProperty(Platform, 'OS', {
+          value: previous,
+          configurable: true,
+        });
+      }
+    }
+  );
 
   test('returns the pinned empty message when no metrics are enabled', async () => {
     const provider = fakeProvider();
@@ -690,6 +796,159 @@ describe('runForegroundSync', () => {
     expect(result.uploadErrors).toEqual(recordErrors);
     // Upload rejections are not read errors — the cursor logic keys off syncErrors.
     expect(result.syncErrors).toEqual([]);
+  });
+
+  test('uploads all-day heart rate when Heart Rate sync is on, without touching syncErrors', async () => {
+    const healthSamples =
+      require('../../../src/services/api/healthSamplesApi') as {
+        postHealthMetricSamples: jest.Mock;
+      };
+    // A reading inside whichever window is asked for, so the test does not
+    // depend on today's date.
+    const readRaw = jest.fn(async (_type: string, start: Date) => ({
+      records: [
+        {
+          startTime: start.toISOString(),
+          samples: [{ beatsPerMinute: 64 }],
+        },
+      ],
+    }));
+    const provider = fakeProvider({
+      readRaw,
+      readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: [] }),
+    });
+    healthSamples.postHealthMetricSamples.mockRejectedValue(new Error('down'));
+
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.syncErrors).toEqual([]);
+    // The phase runs after the sync returns.
+    await allDayHeartRateSettled();
+    expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled();
+    expect(readRaw).toHaveBeenCalledWith(
+      'HeartRate',
+      expect.any(Date),
+      expect.any(Date),
+      expect.anything()
+    );
+  });
+
+  test('uploads the main payload first and returns without waiting for all-day heart rate', async () => {
+    const order: string[] = [];
+    let releaseHeartRate: () => void = () => {};
+    const heartRateRead = new Promise<{ records: [] }>((resolve) => {
+      releaseHeartRate = () => resolve({ records: [] });
+    });
+    const readRaw = jest.fn((type: string) => {
+      if (type !== 'HeartRate') return Promise.resolve({ records: [] });
+      order.push('heartRate');
+      return heartRateRead;
+    });
+    const provider = fakeProvider({
+      readRaw,
+      readMinMaxAvgByDay: jest.fn().mockResolvedValue({
+        records: [
+          {
+            value: 70,
+            type: 'heart_rate_avg',
+            date: '2026-07-01',
+            unit: 'bpm',
+            source: 'HealthKit',
+          },
+        ],
+      }),
+    });
+    api.syncHealthData.mockImplementation(async () => {
+      order.push('upload');
+      return { success: true };
+    });
+
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+
+    // Resolved while the heart rate read is still pending.
+    expect(result.success).toBe(true);
+    // The phase reaches its heart rate read after the upload, and is still
+    // waiting on it.
+    for (let i = 0; i < 50 && order.length < 2; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(order).toEqual(['upload', 'heartRate']);
+    releaseHeartRate();
+    await allDayHeartRateSettled();
+  });
+
+  test('a sync that finds a heart rate phase running queues its own after it', async () => {
+    let releaseFirst: () => void = () => {};
+    const firstRead = new Promise<{ records: [] }>((resolve) => {
+      releaseFirst = () => resolve({ records: [] });
+    });
+    const firstReadRaw = jest.fn((type: string) =>
+      type === 'HeartRate' ? firstRead : Promise.resolve({ records: [] })
+    );
+    const secondReadRaw = jest.fn().mockResolvedValue({ records: [] });
+
+    // Day statistics come from their own reader, so readRaw is only the
+    // all-day phase's.
+    const readMinMaxAvgByDay = () => Promise.resolve({ records: [] });
+    await runForegroundSync(
+      fakeProvider({ readRaw: firstReadRaw, readMinMaxAvgByDay }),
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+    for (let i = 0; i < 50 && firstReadRaw.mock.calls.length === 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    await runForegroundSync(
+      fakeProvider({ readRaw: secondReadRaw, readMinMaxAvgByDay }),
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+    // Held back while the first phase is still running...
+    expect(secondReadRaw).not.toHaveBeenCalledWith(
+      'HeartRate',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+
+    // ...and run, not dropped, once it settles.
+    releaseFirst();
+    await allDayHeartRateSettled();
+    expect(secondReadRaw).toHaveBeenCalledWith(
+      'HeartRate',
+      expect.any(Date),
+      expect.any(Date),
+      expect.anything()
+    );
+  });
+
+  test('does not read all-day heart rate when Heart Rate sync is off', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    await runForegroundSync(
+      fakeProvider({ readRaw }),
+      'today',
+      { isStepsSyncEnabled: true },
+      opts
+    );
+    expect(readRaw).not.toHaveBeenCalledWith(
+      'HeartRate',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   test('read errors land in syncErrors while other metrics still sync', async () => {

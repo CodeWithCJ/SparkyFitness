@@ -40,7 +40,7 @@ export const CompareOverTimeChart = ({
   question,
 }: CompareOverTimeChartProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const { rows, aRange, bRange } = useMemo(
     () => overTimeData(response),
     [response]
@@ -73,8 +73,18 @@ export const CompareOverTimeChart = ({
       ? t('compareReport.chart.range', {
           defaultValue: '{{metric}} {{min}}–{{max}}',
           metric: item.label,
-          min: compareValueText(item.key, item.range.min, timeFormat),
-          max: compareValueText(item.key, item.range.max, timeFormat),
+          min: compareValueText(
+            item.key,
+            item.range.min,
+            timeFormat,
+            energyUnit
+          ),
+          max: compareValueText(
+            item.key,
+            item.range.max,
+            timeFormat,
+            energyUnit
+          ),
         })
       : item.label,
   }));
@@ -96,7 +106,7 @@ export const CompareOverTimeChart = ({
             {line.name}:{' '}
             {line.raw === undefined
               ? '–'
-              : compareValueText(line.key, line.raw, timeFormat)}
+              : compareValueText(line.key, line.raw, timeFormat, energyUnit)}
           </p>
         ))}
       </div>

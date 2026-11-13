@@ -10,12 +10,15 @@ import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
+import SegmentedControl from '../components/SegmentedControl';
 import WeeklyWeightGoalFields from '../components/WeeklyWeightGoalFields';
+import CalorieCyclingCard from '../components/CalorieCyclingCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { useDailySummary } from '../hooks/useDailySummary';
 import { getTodayDate } from '../utils/dateUtils';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -23,15 +26,21 @@ import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
   MAX_GOAL_MODE_PERCENTAGE,
   MIN_CALORIE_SAFETY_FLOOR,
-  convertEnergyValue,
+  energyToKcal,
   isAdaptiveEarnBackSuppressed,
+  normalizeEnergyUnit,
   isAdaptiveActivitySeparated,
   todayInZone,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  isCalorieCyclingAvailable,
+  parseCalorieCyclingOffsets,
   type CalorieSafetyFloorMode,
+  type EnergyUnit,
   type GoalMode,
   type GoalModeCalculationMethod,
 } from '@workspace/shared';
@@ -46,24 +55,30 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     useExternalBmr: prefs?.use_external_bmr ?? false,
+    useMoveRingActiveCalories: prefs?.use_move_ring_active_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     goalMode: prefs?.goal_mode ?? 'maintain',
     goalModeCalculationMethod: prefs?.goal_mode_calculation_method ?? 'manual',
     adaptiveActivitySeparate: prefs?.adaptive_activity_separate ?? false,
+    adjustMacrosWithExercise: prefs?.adjust_macros_with_exercise ?? false,
     goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
     goalModeWeeklyChangeKg: prefs?.goal_mode_weekly_change_kg ?? 0,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
       prefs?.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
-    energyUnit: prefs?.energy_unit ?? 'kcal',
+    calorieCyclingMode: prefs?.calorie_cycling_mode ?? 'off',
+    calorieCyclingOffsets: parseCalorieCyclingOffsets(
+      prefs?.calorie_cycling_offsets
+    ) ?? [...CALORIE_CYCLING_DEFAULT_OFFSETS],
+    firstDayOfWeek: prefs?.first_day_of_week ?? 0,
+    energyUnit: normalizeEnergyUnit(prefs?.energy_unit),
   };
 }
 
-const displayEnergy = (kcal: number, unit: 'kcal' | 'kJ') =>
-  Math.round(convertEnergyValue(kcal, 'kcal', unit));
+const CALORIE_SETTINGS_MUTATION_KEY = ['calorie-settings'] as const;
 
-const toKcal = (value: number, unit: 'kcal' | 'kJ') =>
-  Math.round(convertEnergyValue(value, unit, 'kcal'));
+const toKcal = (value: number, unit: EnergyUnit) =>
+  Math.round(energyToKcal(value, unit));
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const { t } = useTranslation();
@@ -236,11 +251,21 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     normalized.goalModeCalculationMethod,
     normalized.adaptiveActivitySeparate
   );
+  const todayDay = preferences?.timezone
+    ? todayInZone(preferences.timezone)
+    : getTodayDate();
+  // A calendar day string read as local noon, so the weekday never shifts.
+  const todayWeekday = new Date(`${todayDay}T12:00:00`).getDay();
+  const calorieCyclingAvailable = isCalorieCyclingAvailable({
+    calorie_goal_adjustment_mode: normalized.mode,
+    goal_mode_calculation_method: normalized.goalModeCalculationMethod,
+    adaptive_activity_separate: normalized.adaptiveActivitySeparate,
+  });
   const { summary } = useDailySummary({
-    date: preferences?.timezone
-      ? todayInZone(preferences.timezone)
-      : getTodayDate(),
-    enabled: adaptiveEarnBackConfigured,
+    date: todayDay,
+    enabled:
+      adaptiveEarnBackConfigured ||
+      (calorieCyclingAvailable && normalized.calorieCyclingMode !== 'off'),
   });
 
   const [percentageText, setPercentageText] = useState(() =>
@@ -251,7 +276,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   );
   const [safetyFloorText, setSafetyFloorText] = useState(() =>
     String(
-      displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
+      roundedEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
     )
   );
 
@@ -280,12 +305,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     setSyncedSafetyFloor(safetyFloorSyncKey);
     setSafetyFloorText(
       String(
-        displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
+        roundedEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
       )
     );
   }
 
   const mutation = useMutation({
+    mutationKey: CALORIE_SETTINGS_MUTATION_KEY,
     scope: { id: 'calorie-settings' },
     mutationFn: (data: Partial<UserPreferences>) => updatePreferences(data),
     onMutate: async (data) => {
@@ -317,9 +343,25 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       queryClient.invalidateQueries({ queryKey: ['nutritionTrends'] });
     },
     onSettled: () => {
+      // Quick taps queue several saves; refetching after an earlier one would
+      // overwrite the later optimistic values, so refetch once the last ends.
+      if (
+        queryClient.isMutating({ mutationKey: CALORIE_SETTINGS_MUTATION_KEY }) >
+        1
+      ) {
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: preferencesQueryKey });
     },
   });
+
+  const handleEnergyUnitChange = useCallback(
+    (value: EnergyUnit) => {
+      if (value === normalized.energyUnit) return;
+      mutation.mutate({ energy_unit: value });
+    },
+    [mutation, normalized.energyUnit]
+  );
 
   const handleModeChange = useCallback(
     (value: string) => {
@@ -365,6 +407,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     [mutation]
   );
 
+  const handleMoveRingToggle = useCallback(
+    (value: boolean) => {
+      mutation.mutate({ use_move_ring_active_calories: value });
+    },
+    [mutation]
+  );
+
   const handleNegativeAdjustmentToggle = useCallback(
     (value: boolean) => {
       mutation.mutate({ tdee_allow_negative_adjustment: value });
@@ -386,7 +435,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     if (trimmedValue === '') {
       setSafetyFloorText(
         String(
-          displayEnergy(
+          roundedEnergy(
             normalized.calorieSafetyFloorValue,
             normalized.energyUnit
           )
@@ -402,7 +451,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       MIN_CALORIE_SAFETY_FLOOR,
       Math.min(MAX_CALORIE_SAFETY_FLOOR, kcal)
     );
-    setSafetyFloorText(String(displayEnergy(clamped, normalized.energyUnit)));
+    setSafetyFloorText(String(roundedEnergy(clamped, normalized.energyUnit)));
     if (clamped !== normalized.calorieSafetyFloorValue) {
       mutation.mutate({ calorie_safety_floor_value: clamped });
     }
@@ -463,7 +512,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       mode === 'tdee'
         ? t('calorieSettings.formulas.projectedTotal', {
             defaultValue:
-              'Health Connect total calories (BMR + active calories fallback)',
+              'Device total calories (BMR + active calories fallback)',
           })
         : bmr
           ? t('calorieSettings.formulas.activityWithBmr', {
@@ -575,6 +624,39 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
+        {/* Energy unit */}
+        <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
+          <Text className="text-base font-semibold text-text-primary mb-3">
+            {t('calorieSettings.energyUnitLabel', {
+              defaultValue: 'Energy Unit',
+            })}
+          </Text>
+          <SegmentedControl
+            segments={[
+              {
+                key: 'kcal',
+                label: t('calorieSettings.energyUnitKcal', {
+                  defaultValue: 'Calories (kcal)',
+                }),
+              },
+              {
+                key: 'kJ',
+                label: t('calorieSettings.energyUnitKj', {
+                  defaultValue: 'Kilojoules (kJ)',
+                }),
+              },
+            ]}
+            activeKey={normalized.energyUnit}
+            onSelect={handleEnergyUnitChange}
+          />
+          <Text className="text-text-secondary text-sm mt-3">
+            {t('calorieSettings.energyUnitDescription', {
+              defaultValue:
+                'How energy is shown and entered across the app, widgets and watch. Also changes the web app.',
+            })}
+          </Text>
+        </View>
+
         {/* Mode */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
@@ -601,7 +683,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Text className="text-text-secondary text-sm mt-3">
               {t('calorieSettings.deviceProjectionDescription', {
                 defaultValue:
-                  'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.',
+                  'Current-day device total calories (Health Connect, Garmin or Polar) are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.',
               })}
             </Text>
           )}
@@ -658,6 +740,35 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
           layout={optionsLayout}
         >
+          <View className="mb-4">
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="flex-1 text-base font-semibold text-text-primary">
+                {t('calorieSettings.adjustMacrosWithExercise', {
+                  defaultValue:
+                    'Adjust percentage macro goals with exercise calories',
+                })}
+              </Text>
+              <Switch
+                value={normalized.adjustMacrosWithExercise}
+                onValueChange={(value) =>
+                  mutation.mutate({ adjust_macros_with_exercise: value })
+                }
+                accessibilityLabel={t(
+                  'calorieSettings.adjustMacrosWithExercise',
+                  {
+                    defaultValue:
+                      'Adjust percentage macro goals with exercise calories',
+                  }
+                )}
+              />
+            </View>
+            <Text className="text-sm text-text-secondary mt-1">
+              {t('calorieSettings.adjustMacrosWithExerciseHint', {
+                defaultValue:
+                  'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.',
+              })}
+            </Text>
+          </View>
           {/* Percentage Input */}
           {showPercentage && (
             <Animated.View layout={optionsLayout}>
@@ -719,9 +830,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">
-                  {t('calorieSettings.adaptiveFallback', {
+                  {t('calorieSettings.adaptiveEstimateRangeWithUnit', {
                     defaultValue:
-                      'The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier.',
+                      'Activity Level sets the starting estimate and the ±{{amount}} {{unit}} plausibility range around BMR × this multiplier. Estimates can take several weeks to settle; weight fluctuations and incomplete food logs add uncertainty.',
+                    amount: roundedEnergy(
+                      ADAPTIVE_TDEE_CLAMP_KCAL,
+                      normalized.energyUnit
+                    ),
+                    unit: energyUnitLabel(normalized.energyUnit, t),
                   })}
                 </Text>
               )}
@@ -931,6 +1047,37 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           </Text>
         </Animated.View>
 
+        <Animated.View
+          className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
+          layout={optionsLayout}
+        >
+          <CalorieCyclingCard
+            mode={normalized.calorieCyclingMode}
+            offsets={normalized.calorieCyclingOffsets}
+            onSave={({ mode, offsets }) =>
+              mutation.mutate({
+                calorie_cycling_mode: mode,
+                calorie_cycling_offsets: offsets,
+              })
+            }
+            available={calorieCyclingAvailable}
+            pausedByWeeklyPlan={
+              summary?.calorieCycling?.status === 'paused_weekly_plan'
+            }
+            // The cycling summary carries the base and floor the server
+            // cycles from. A pattern that changes nothing has none, so the
+            // day's goal (the uncycled base then) keeps the day controls up.
+            baseTarget={
+              summary?.calorieCycling?.baseTarget ?? summary?.calorieGoal ?? 0
+            }
+            floor={summary?.calorieCycling?.floor ?? null}
+            previewReady={summary?.calorieCycling !== undefined}
+            firstDayOfWeek={normalized.firstDayOfWeek}
+            todayWeekday={todayWeekday}
+            energyUnit={normalized.energyUnit}
+          />
+        </Animated.View>
+
         {/* Calculation Pipeline */}
         <Animated.View
           className="rounded-xl p-4 mb-4"
@@ -1042,6 +1189,34 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             </Text>
           )}
         </View>
+
+        {/* An account setting so it follows the person to a new phone; only the
+            iPhone sync reads it. */}
+        {Platform.OS === 'ios' && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
+                {t('calorieSettings.useMoveRingActiveCalories', {
+                  defaultValue: 'Use Move ring for active calories',
+                })}
+              </Text>
+              <Switch
+                onValueChange={handleMoveRingToggle}
+                value={normalized.useMoveRingActiveCalories}
+                accessibilityLabel={t(
+                  'calorieSettings.useMoveRingActiveCalories',
+                  { defaultValue: 'Use Move ring for active calories' }
+                )}
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-3">
+              {t('calorieSettings.useMoveRingActiveCaloriesHint', {
+                defaultValue:
+                  'Off by default, active calories come from the Apple Health Active Energy total. When on, they come from your Move ring, so they match the Fitness app. The ring counts what your Apple Watch and iPhone measure, and workouts other apps save to Apple Health can add to it too. A day with no ring, such as when Activity access is off, uses the Active Energy total. Applies to days synced after the change.',
+              })}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

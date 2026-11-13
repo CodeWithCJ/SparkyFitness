@@ -40,6 +40,16 @@ Everything uses the Nes formula (211 − 0.64 × age). It is the formula stored 
 
 Suggested ranges for a planned run now come straight from your zones: warm-up and cool-down are zone 1, easy is zone 2 and fast is zone 4.
 
+## Showing five zones or four tiers
+
+Under **Show** in Heart Rate Zones settings you can choose **5 zones** (the default) or **4 tiers**. Four tiers are Light (zones 1 and 2 together), Moderate (zone 3), Vigorous (zone 4) and Peak (zone 5). It only changes what you see in the settings list and in the Heart Rate report. Your zones are still worked out, stored and used for training load and suggested ranges as five, and past workouts are not changed.
+
+## The Heart Rate report
+
+The Heart Rate report (web: Reports > Heart Rate; mobile: Reports > Heart Rate) shows your own zones with the bpm range of each (Zone 1 to Zone 5, or the four tiers if you chose them), the same ranges as in Settings. Lines on the heart rate charts change color at the start of each zone. Under the zone list the report says where the zones come from (your method and max heart rate, and whether that came from you, your date of birth or a typical value) and links to Heart Rate Zones in Settings. Until your zones load, or if you have set nothing and have no date of birth, it shows the typical zones (percent of a 190 bpm max) and says so.
+
+The mobile report is built from daily summaries (resting heart rate, recovery), so it lists zone ranges only and does not count time in each zone. Time in each zone is shown for each workout on the web report. It uses the zones stored with that workout; if a workout has none, it is worked out from the workout's heart rate readings with your zones as they are now.
+
 ## What changing zones does to past workouts
 
 Changing your zones does **not** rewrite past workouts. Time in zone is worked out when a workout is recorded or synced and stored with the zone boundaries and the method used, so history never shifts under you. New settings apply to:
@@ -53,5 +63,6 @@ Zone charts say which method the workout's zones were worked out with ("Zones: H
 ## For developers
 
 - Shared logic: `shared/src/utils/heartRateZones.ts`. `floorsFromAppleHeartRateZones` turns Apple's five preferred zones into custom floors (zone 1 with no lower bound starts at 30 bpm; any other count is ignored). The phone reads them with `modules/apple-heart-zones` on iOS 27. `bucketsFromAppleWorkoutZones` turns a finished workout's heart-rate zone group into stored rows (`zone_method` `device`) and keeps time below the first boundary as zone 1; the server uses that instead of `computeTimeInZones` when a sync or a watch post includes it. `resolveHeartRateZones` turns settings and date of birth into the five zones; `heartRateZoneRange(resolved, zone)` returns the bpm range of zone N (the top zone ends at max heart rate); `computeTimeInZones` buckets a heart rate series.
+- Reports: web `components/HeartRateZoneLegend.tsx`, `hooks/Settings/useHeartRateZones.ts` (`useResolvedHeartRateZones`) and `utils/heartRateZoneBands.ts`; mobile `components/reports/HeartRateZoneRanges.tsx`. All of them take zones from `resolveHeartRateZones` via the API, with `defaultHeartRateZones`, `heartRateZoneBands` and `heartRateDisplayBands` (the five zones or four tiers, with colors) from shared. The choice is `hr_zone_display_count` on `user_preferences` (4 or 5, default 5), sent as `display_zones` by the API. Do not add fixed bpm tiers.
 - API: `GET` / `PUT /api/v2/heart-rate-zones` (owner-only; contract in `shared/src/schemas/api/HeartRateZones.api.zod.ts`).
 - Storage: `max_heart_rate`, `resting_heart_rate`, `hr_zone_method`, `hr_zone_custom_floors` on `user_preferences`; `zone_method` on `exercise_entry_hr_zones`.

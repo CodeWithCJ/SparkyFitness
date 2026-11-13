@@ -8,6 +8,7 @@ import {
   sinceDetails,
   sinceVerdictCopy,
 } from '../../utils/compareSinceCopy';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareSinceCardProps {
   response: CompareSinceResponse;
@@ -20,8 +21,9 @@ interface CompareSinceCardProps {
  */
 const CompareSinceCard: React.FC<CompareSinceCardProps> = ({ response }) => {
   const { t } = useTranslation();
-  const { headline, detail } = sinceVerdictCopy(response, t);
-  const details = sinceDetails(response, t);
+  const energyUnit = useEnergyUnit();
+  const { headline, detail } = sinceVerdictCopy(response, t, energyUnit);
+  const details = sinceDetails(response, t, energyUnit);
   const lines = [
     details.typicalRange,
     details.aboveLine,

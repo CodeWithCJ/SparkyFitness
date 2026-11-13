@@ -31,47 +31,150 @@ describe('shiftMonth', () => {
 });
 
 describe('summarizeDays', () => {
+  const OCTOBER = {
+    from: '2026-10-01',
+    to: '2026-10-31',
+    today: '2026-10-31',
+    timezone: 'UTC',
+  };
+  const log = { started_at: null, ended_at: null };
+
   it('tints by the worst entry, marks free days and skips cycle entries', () => {
     const days = summarizeDays(
       [
         {
+          ...log,
           entry_date: '2026-10-01',
           severity: 3,
           peak_severity: null,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-01',
           severity: 4,
           peak_severity: 9,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-02',
           severity: 2,
           peak_severity: null,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-03',
           severity: 9,
           peak_severity: null,
           source: 'cycle',
         },
         {
+          ...log,
           entry_date: '2026-10-04',
           severity: null,
           peak_severity: null,
           source: 'manual',
         },
       ],
-      [{ entry_date: '2026-10-02' }, { entry_date: '2026-10-05' }]
+      [{ entry_date: '2026-10-02' }, { entry_date: '2026-10-05' }],
+      OCTOBER
     );
     expect(days.get('2026-10-01')).toEqual({ tone: 'severe', count: 2 });
     expect(days.get('2026-10-02')).toEqual({ tone: 'mild', count: 1 });
     expect(days.has('2026-10-03')).toBe(false);
     expect(days.get('2026-10-04')?.tone).toBe('mild');
     expect(days.get('2026-10-05')).toEqual({ tone: 'free', count: 0 });
+  });
+
+  it('marks every day an episode covers and counts it on each', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-12',
+          started_at: '2026-10-12T21:00:00.000Z',
+          ended_at: '2026-10-14T09:30:00.000Z',
+          severity: 8,
+          peak_severity: 8,
+          source: 'manual',
+        },
+        {
+          ...log,
+          entry_date: '2026-10-13',
+          severity: 2,
+          peak_severity: null,
+          source: 'manual',
+        },
+      ],
+      [{ entry_date: '2026-10-13' }],
+      OCTOBER
+    );
+    expect(days.get('2026-10-12')).toEqual({ tone: 'severe', count: 1 });
+    expect(days.get('2026-10-13')).toEqual({ tone: 'severe', count: 2 });
+    expect(days.get('2026-10-14')).toEqual({ tone: 'severe', count: 1 });
+    expect(days.has('2026-10-11')).toBe(false);
+    expect(days.has('2026-10-15')).toBe(false);
+  });
+
+  it('runs an episode still going up to today', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-18',
+          started_at: '2026-10-18T10:00:00.000Z',
+          ended_at: null,
+          severity: 3,
+          peak_severity: 3,
+          source: 'manual',
+        },
+      ],
+      [],
+      { ...OCTOBER, today: '2026-10-20' }
+    );
+    expect([...days.keys()]).toEqual([
+      '2026-10-18',
+      '2026-10-19',
+      '2026-10-20',
+    ]);
+    expect(days.get('2026-10-19')?.tone).toBe('mild');
+  });
+
+  it('marks the days of an episode that started the month before', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-09-29',
+          started_at: '2026-09-29T20:00:00.000Z',
+          ended_at: '2026-10-02T07:00:00.000Z',
+          severity: 5,
+          peak_severity: 5,
+          source: 'manual',
+        },
+      ],
+      [],
+      OCTOBER
+    );
+    expect([...days.keys()]).toEqual(['2026-10-01', '2026-10-02']);
+  });
+
+  it('reads the end day in the profile timezone', () => {
+    // 02:00 UTC on the 15th is still the evening of the 14th in New York.
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-13',
+          started_at: '2026-10-13T14:00:00.000Z',
+          ended_at: '2026-10-15T02:00:00.000Z',
+          severity: 5,
+          peak_severity: 5,
+          source: 'manual',
+        },
+      ],
+      [],
+      { ...OCTOBER, timezone: 'America/New_York' }
+    );
+    expect([...days.keys()]).toEqual(['2026-10-13', '2026-10-14']);
   });
 });
 
@@ -133,5 +236,101 @@ describe('layoutSeverityChart', () => {
       )
     ).toBeNull();
     expect(layoutSeverityChart(base, 0, box)).toBeNull();
+  });
+
+  it('draws one band section per recorded effect, in time order', () => {
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        impact: 'mild',
+        // An effect changed through an edit is appended with the time of the
+        // edit, so the stored order is not always the time order.
+        impact_timeline: [
+          { at: '2026-10-01T11:00:00.000Z', impact: 'mild' },
+          { at: '2026-10-01T10:00:00.000Z', impact: 'severe' },
+        ],
+      },
+      10,
+      box
+    )!;
+    expect(layout.band.map((s) => s.impact)).toEqual(['severe', 'mild']);
+    expect(layout.band[0].x).toBe(26);
+    expect(layout.band[0].width).toBeCloseTo(132);
+    expect(layout.band[1].x).toBeCloseTo(158);
+    expect(layout.band[1].x + layout.band[1].width).toBeCloseTo(290);
+  });
+
+  it('shows the current effect from the start without a timeline', () => {
+    const layout = layoutSeverityChart(
+      { ...base, impact: 'moderate' },
+      10,
+      box
+    )!;
+    expect(layout.band).toEqual([
+      {
+        x: 26,
+        width: 264,
+        at: '2026-10-01T10:00:00.000Z',
+        impact: 'moderate',
+      },
+    ]);
+  });
+
+  it('keeps an effect changed after the last reading in view while ongoing', () => {
+    // Logged at 9:00 as Moderate; only the effect changes, to Severe at 13:00.
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        started_at: '2026-10-01T09:00:00.000Z',
+        logged_at: '2026-10-01T09:00:00.000Z',
+        ended_at: null,
+        severity_timeline: [{ at: '2026-10-01T09:00:00.000Z', severity: 5 }],
+        impact: 'severe',
+        impact_timeline: [
+          { at: '2026-10-01T09:00:00.000Z', impact: 'moderate' },
+          { at: '2026-10-01T13:00:00.000Z', impact: 'severe' },
+        ],
+        treatments: [],
+      },
+      10,
+      box
+    )!;
+    expect(layout.endIso).toBe('2026-10-01T13:30:00.000Z');
+    expect(layout.band.map((s) => s.impact)).toEqual(['moderate', 'severe']);
+    const last = layout.band[1];
+    expect(last.x).toBeGreaterThan(26);
+    expect(last.x + last.width).toBeCloseTo(290);
+    expect(last.width).toBeGreaterThan(2);
+  });
+
+  it('draws an effect changed after the end at the end of the chart', () => {
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        impact: 'mild',
+        impact_timeline: [
+          { at: '2026-10-01T10:00:00.000Z', impact: 'severe' },
+          { at: '2026-10-01T15:00:00.000Z', impact: 'mild' },
+        ],
+      },
+      10,
+      box
+    )!;
+    expect(layout.endIso).toBe('2026-10-01T12:00:00.000Z');
+    expect(layout.band.map((s) => s.impact)).toEqual(['severe', 'mild']);
+    expect(layout.band[0].x + layout.band[0].width).toBeCloseTo(290);
+    expect(layout.band[1].x).toBe(288);
+    expect(layout.band[1].width).toBe(2);
+  });
+
+  it('draws no band when no effect is recorded', () => {
+    expect(layoutSeverityChart(base, 10, box)!.band).toEqual([]);
+    expect(
+      layoutSeverityChart(
+        { ...base, impact: null, impact_timeline: [] },
+        10,
+        box
+      )!.band
+    ).toEqual([]);
   });
 });

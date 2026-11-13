@@ -1,6 +1,6 @@
 import './global.css'
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StatusBar, Platform } from 'react-native';
+import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -21,6 +21,7 @@ import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
 import { useWatchWorkoutStart } from './src/hooks/useWatchWorkoutStart';
 import { useLiveWorkoutInputsCapture } from './src/hooks/useLiveWorkoutInputsCapture';
@@ -41,7 +42,12 @@ import {
   SafeOnboarding,
   SafeFoodsLibrary,
   SafeMealsLibrary,
+  SafeRecipeImport,
   SafeMealPlans,
+  SafeLabReportImport,
+  SafeLabResultAdd,
+  SafeLabResultDetail,
+  SafeLabResults,
   SafePersonalRecords,
   SafeWatchRunLive,
   SafeRunPrograms,
@@ -59,7 +65,11 @@ import {
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
   SafeWaterContainers,
+  SafeWaterLog,
   SafeWaterContainerEdit,
+  SafeActionTags,
+  SafeActionTagForm,
+  SafeActionTagScan,
   SafeExercisesLibrary,
   SafeWorkoutPresetsLibrary,
   SafeFoodDetail,
@@ -96,6 +106,8 @@ import {
   SafeImportHistory,
   SafeMeasurementsAdd,
   SafeMindfulnessLog,
+  SafeOralCare,
+  SafeOralCareLog,
   SafeProgressPhotos,
   SafeProgressPhotoCompare,
   SafeProgressPhotoTimelapse,
@@ -108,6 +120,7 @@ import {
   SafeEquipment,
   SafeShoes,
   SafeShoeForm,
+  SafePlateInventory,
   SafeAiSettings,
   SafeFoodSettings,
   SafeCustomNutrients,
@@ -117,7 +130,10 @@ import {
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
   SafeWatchSettings,
+  SafeAddMenuSettings,
   SafeDiarySettings,
+  SafeCustomCategories,
+  SafeCustomCategoryEdit,
   SafeWorkoutSettings,
   SafeWarmupSettings,
   SafeTreadmillSettings,
@@ -138,6 +154,7 @@ import {
   SafeHeartRateReport,
   SafeCompareReport,
   SafeHydrationReport,
+  SafeOralCareReport,
   SafeSubstancesReport,
   SafeMeasurementsReport,
   SafeReportsSettings,
@@ -175,7 +192,7 @@ import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { addLog } from './src/services/LogService';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { FullWindowOverlay } from 'react-native-screens';
 import type { RootStackParamList } from './src/types/navigation';
@@ -196,6 +213,7 @@ import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateSto
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
+import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -368,7 +386,9 @@ function AppContent() {
     handleAddProgressPhotos,
     handleAddSymptoms,
     handleAddMood,
+    handleStartCheckIn,
     handleAddMindfulness,
+    handleAddOralCare,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
@@ -376,12 +396,8 @@ function AppContent() {
     handleAddSheetDismissWithoutAction,
   } = useAddSheetActions({ syncMutation });
 
-  const { enabled: cycleEnabled, mode: cycleMode, discreetMode: cycleDiscreet } = useCycleMode();
-  const cycleSheetLabel = cycleDiscreet
-    ? t('addSheet.wellness', { defaultValue: 'Wellness' })
-    : cycleMode === 'pregnant' || cycleMode === 'postpartum'
-      ? t('addSheet.logPregnancyEntry', { defaultValue: 'Log Pregnancy Entry' })
-      : t('addSheet.logCycle', { defaultValue: 'Log Cycle' });
+  const { enabled: cycleEnabled } = useCycleMode();
+  const cycleSheetLabel = useCycleSheetLabel();
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -457,27 +473,35 @@ function AppContent() {
   }, [isDarkMode, primary, bgPrimary, textPrimary, chromeBorder]);
 
   const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
-    prefixes: ['sparkyfitnessmobile://'],
+    prefixes: ['sparkyfitnessmobile://', 'https://tag.sparkyfitness.com'],
     config: {
       initialRouteName: 'Tabs',
       screens: {
         Tabs: {
           screens: {
             Dashboard: '',
-            // The Android Calories left Quick Settings tile opens the diary.
+            // The Android Calories left Quick Settings tile and the wider
+            // widgets' Diary shortcut open the diary.
             Diary: 'diary',
           },
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        RecipeImport: 'meals/import-mealie',
+        // The Android calorie and macro widgets' fasting shortcut.
+        FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
         HeartRateZonesSettings: 'settings/heart-rate-zones',
         // Tapping the workout Live Activity opens its associated URL.
         ActiveWorkout: 'active-workout',
         // The run Live Activity opens the recording screen.
         RecordActivity: 'record-activity',
+        // The brushing timer's Live Activity opens the oral care screen.
+        OralCare: 'oral-care',
         // Route generation; without a routing provider the screen explains that.
         RouteGenerate: 'routes/generate',
+        // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
+        ActionTagScan: 't/:code',
       },
     },
   }), []);
@@ -512,11 +536,23 @@ function AppContent() {
         <LightboxProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
             ? ({ children, route }) => (
               <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
-                {children}
+                {/* View-level safe area: keeps pushed screens clear of the
+                    vertical bar iPhone Duo presents on one side. Not for
+                    Tabs: wrapping the tab controller narrows it and the
+                    system stops presenting its bar vertically; each tab's
+                    own stack insets its screens instead. */}
+                {route.name === 'Tabs' ? (
+                  children
+                ) : (
+                  <SafeAreaView edges={['left', 'right']} style={{ flex: 1 }}>
+                    {children}
+                  </SafeAreaView>
+                )}
               </ActiveWorkoutTransitionScreenLayout>
             )
             : undefined}
@@ -598,6 +634,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.meals', { defaultValue: 'Meals' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
+            name="RecipeImport"
+            component={SafeRecipeImport}
+            options={createStackScreenOptions(t('recipeImport.title', { defaultValue: 'Import Mealie ingredients' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
             name="MealPlans"
             component={SafeMealPlans}
             options={createStackScreenOptions(t('mealPlans.title', { defaultValue: 'Meal plans' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
@@ -663,6 +704,34 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.personalRecords', { defaultValue: 'Personal records' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
+            name="LabResults"
+            component={SafeLabResults}
+            options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="LabResultDetail"
+            component={SafeLabResultDetail}
+            options={createStackScreenOptions(t('screens.labResultDetail', { defaultValue: 'Lab result' }), { headerBackTitle: t('screens.labResults', { defaultValue: 'Lab results' }) })}
+          />
+          <Stack.Screen
+            name="LabResultAdd"
+            component={SafeLabResultAdd}
+            options={createStackScreenOptions(t('screens.labResultAdd', { defaultValue: 'Add lab result' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="LabReportImport"
+            component={SafeLabReportImport}
+            options={createStackScreenOptions(t('screens.labReportImport', { defaultValue: 'Import report' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="WatchRunLive"
             component={SafeWatchRunLive}
             options={createStackScreenOptions(t('screens.watchRunLive', { defaultValue: 'On your watch' }), { headerBackButtonDisplayMode: 'minimal' })}
@@ -688,9 +757,29 @@ function AppContent() {
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
+            name="WaterLog"
+            component={SafeWaterLog}
+            options={createStackScreenOptions(t('waterLog.title', { defaultValue: 'Drinks' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
+          />
+          <Stack.Screen
             name="WaterContainerEdit"
             component={SafeWaterContainerEdit}
             options={createStackScreenOptions(t('waterContainerEdit.editTitle', { defaultValue: 'Edit container' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTags"
+            component={SafeActionTags}
+            options={createStackScreenOptions(t('actionTags.title', { defaultValue: 'NFC tags' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagForm"
+            component={SafeActionTagForm}
+            options={createStackScreenOptions(t('actionTags.form.createTitle', { defaultValue: 'Set up NFC tag' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagScan"
+            component={SafeActionTagScan}
+            options={createStackScreenOptions(t('actionTags.scan.title', { defaultValue: 'NFC tag' }))}
           />
           <Stack.Screen
             name="ExercisesLibrary"
@@ -909,6 +998,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.hydrationReport', { defaultValue: 'Hydration' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
+            name="OralCareReport"
+            component={SafeOralCareReport}
+            options={createStackScreenOptions(t('oralCareReport.title', { defaultValue: 'Oral care' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
             name="SubstancesReport"
             component={SafeSubstancesReport}
             options={createStackScreenOptions(t('screens.substancesReport', { defaultValue: 'Caffeine and alcohol' }), { headerBackButtonDisplayMode: 'minimal' })}
@@ -1017,6 +1111,11 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="OralCare"
+            component={SafeOralCare}
+            options={createStackScreenOptions(t('oralCare.title', { defaultValue: 'Oral care' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
+          />
+          <Stack.Screen
             name="SleepDetail"
             component={SafeSleepDetail}
             options={createStackScreenOptions(t('screens.sleep', { defaultValue: 'Sleep' }), { headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }) })}
@@ -1054,9 +1153,29 @@ function AppContent() {
             })}
           />
           <Stack.Screen
+            name="OralCareLog"
+            component={SafeOralCareLog}
+            options={createStackScreenOptions(t('oralCare.log.addTitle', { defaultValue: 'Log oral care' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="ProgressPhotos"
             component={SafeProgressPhotos}
-            options={createStackScreenOptions(t('screens.progressPhotos', { defaultValue: 'Progress Photos' }), { headerBackButtonDisplayMode: 'minimal' })}
+            options={({ route }) =>
+              createStackScreenOptions(t('screens.progressPhotos', { defaultValue: 'Progress Photos' }), {
+                headerBackButtonDisplayMode: 'minimal',
+                // The guided check-in's last step is a sheet, like the two
+                // steps before it; on its own the screen is pushed.
+                ...(route.params?.guidedCheckIn
+                  ? {
+                      presentation: 'modal' as const,
+                      ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+                    }
+                  : {}),
+              })}
           />
           <Stack.Screen
             name="ProgressPhotoCompare"
@@ -1134,6 +1253,11 @@ function AppContent() {
             options={createStackScreenOptions(t('shoes.title', { defaultValue: 'Shoes' }), { headerBackTitle: t('shoes.title', { defaultValue: 'Shoes' }) })}
           />
           <Stack.Screen
+            name="PlateInventory"
+            component={SafePlateInventory}
+            options={createStackScreenOptions(t('plates.title', { defaultValue: 'Plates & bars' }), { headerBackTitle: t('equipmentHub.title', { defaultValue: 'Equipment' }) })}
+          />
+          <Stack.Screen
             name="DashboardSettings"
             component={SafeDashboardSettings}
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
@@ -1149,9 +1273,24 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.diarySettings', { defaultValue: 'Diary Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="CustomCategories"
+            component={SafeCustomCategories}
+            options={createStackScreenOptions(t('customCategories.title', { defaultValue: 'Custom measurements' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="CustomCategoryEdit"
+            component={SafeCustomCategoryEdit}
+            options={createStackScreenOptions(t('customCategoryEdit.editTitle', { defaultValue: 'Edit category' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
             name="WatchSettings"
             component={SafeWatchSettings}
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="AddMenuSettings"
+            component={SafeAddMenuSettings}
+            options={createStackScreenOptions(t('screens.addMenuSettings', { defaultValue: 'Quick Actions' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="WorkoutSettings"
@@ -1381,8 +1520,10 @@ function AppContent() {
           onAddSymptoms={handleAddSymptoms}
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
+          onAddOralCare={handleAddOralCare}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
+          onStartCheckIn={handleStartCheckIn}
           onOpenCycle={handleOpenCycle}
           showCycleCard={cycleEnabled}
           cycleLabel={cycleSheetLabel}
@@ -1419,10 +1560,12 @@ function AppContent() {
             }
           }}
         />
+        </HorizontalInsetsFrame>
         <ActiveWorkoutBar />
         <ActiveWorkoutKeepAwake />
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
+        <OralCareReminderReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>
@@ -1439,6 +1582,32 @@ function SafeAreaToast() {
   // bottom sheets escape modal contexts. Android modal layering doesn't have
   // this problem, and FullWindowOverlay is a no-op there.
   return Platform.OS === 'ios' ? <FullWindowOverlay>{toast}</FullWindowOverlay> : toast;
+}
+
+// iPhone Duo's vertical bar strip takes the leading or trailing edge and swaps
+// sides between poses, so keep every screen inside the live left/right insets.
+// Read per render, never cached. Zero on a normal iPhone in portrait.
+//
+// Skipped under native Liquid Glass navigation: there the system presents the
+// tab bar and headers vertically itself, and each tab's screens inset for that
+// bar through ScreenSideInsets (TabsLayout) instead.
+function HorizontalInsetsFrame({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const nativeNav = useNativeIOSTabsActive();
+  // One View in both modes: returning a Fragment for native tabs would change
+  // the element type when the Liquid Glass setting flips and remount the whole
+  // navigator, discarding screen state. Native tabs get zero padding.
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingLeft: nativeNav ? 0 : insets.left,
+        paddingRight: nativeNav ? 0 : insets.right,
+      }}
+    >
+      {children}
+    </View>
+  );
 }
 
 function UniwindInsetsBridge() {

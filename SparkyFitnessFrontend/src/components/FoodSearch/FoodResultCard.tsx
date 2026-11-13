@@ -53,6 +53,8 @@ interface FoodResultCardProps {
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
   onEditClick?: () => void;
+  editActionLabel?: string;
+  editDisabled?: boolean;
   // Whether this row is starred. Passed down rather than queried per-card: the
   // parent already holds the favorites Set, so one card mounting N rows is one
   // lookup, not N copies of useFavoritesQuery.
@@ -69,6 +71,8 @@ const FoodResultCard = ({
   nutrientConfig,
   onCardClick,
   onEditClick,
+  editActionLabel,
+  editDisabled = false,
   isFavorite = false,
 }: FoodResultCardProps) => {
   const { t } = useTranslation();
@@ -113,7 +117,7 @@ const FoodResultCard = ({
       onClick={onCardClick}
     >
       <CardContent className="p-4">
-        <div className="flex justify-between items-start gap-3">
+        <div className="flex flex-wrap sm:flex-nowrap justify-between items-start gap-3">
           {/* Thumbnail rail, mirroring the diary rows: image on the left with
               the name and nutrients stacked beside it, so a row with a photo
               is no taller than one without. */}
@@ -255,14 +259,23 @@ const FoodResultCard = ({
             )}
             {isFood && foodItem.default_variant && (
               <>
-                <NutrientGrid
-                  food={foodItem.default_variant}
-                  visibleNutrients={nutrientConfig.visibleNutrients}
-                  energyUnit={nutrientConfig.energyUnit}
-                  convertEnergy={nutrientConfig.convertEnergy}
-                  getEnergyUnitString={nutrientConfig.getEnergyUnitString}
-                  customNutrients={nutrientConfig.customNutrients}
-                />
+                {foodItem.recipe_has_nutrition === false ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t(
+                      'recipeImport.noDeclaredNutrition',
+                      'No declared nutrition'
+                    )}
+                  </p>
+                ) : (
+                  <NutrientGrid
+                    food={foodItem.default_variant}
+                    visibleNutrients={nutrientConfig.visibleNutrients}
+                    energyUnit={nutrientConfig.energyUnit}
+                    convertEnergy={nutrientConfig.convertEnergy}
+                    getEnergyUnitString={nutrientConfig.getEnergyUnitString}
+                    customNutrients={nutrientConfig.customNutrients}
+                  />
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   {t('enhancedFoodSearch.per', 'Per {{default_variant}}', {
                     default_variant: formatServingLabel(
@@ -277,7 +290,9 @@ const FoodResultCard = ({
               </>
             )}
           </div>
-          <div className="flex items-center space-x-2 ml-2 shrink-0">
+          <div
+            className={`flex items-center space-x-2 shrink-0 ${isOnline && onEditClick ? 'w-full sm:w-auto justify-end sm:ml-2' : 'ml-2'}`}
+          >
             {isFavorite && (
               <Star
                 className="h-4 w-4 shrink-0 fill-current text-yellow-500"
@@ -287,13 +302,15 @@ const FoodResultCard = ({
             {isOnline && onEditClick && (
               <Button
                 size="sm"
+                disabled={editDisabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   onEditClick();
                 }}
               >
                 <Edit className="w-4 h-4 mr-1" />
-                {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
+                {editActionLabel ??
+                  t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
               </Button>
             )}
           </div>

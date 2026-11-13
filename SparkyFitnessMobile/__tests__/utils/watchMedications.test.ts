@@ -1,6 +1,7 @@
 import {
   medicationsForWatch,
   watchDoseId,
+  watchMedicationWrite,
 } from '../../src/utils/watchMedications';
 import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
 
@@ -73,8 +74,28 @@ describe('medicationsForWatch', () => {
         detail: '10 mg',
         time: '08:00',
         status: 'pending',
+        supplement: false,
       },
     ]);
+  });
+
+  it('marks supplements so the watch can draw their icon', () => {
+    const doses = medicationsForWatch(
+      [
+        buildMedication(
+          'med-1',
+          'Omega-3',
+          [{ id: 'sched-1', time_of_day: '08:00' }],
+          { is_supplement: true }
+        ),
+      ],
+      [],
+      DAY,
+      'UTC',
+      'HH:mm'
+    );
+
+    expect(doses[0].supplement).toBe(true);
   });
 
   it('reads status from the same entry matching the phone rows use', () => {
@@ -183,5 +204,75 @@ describe('medicationsForWatch', () => {
         'HH:mm'
       )
     ).toEqual([]);
+  });
+});
+
+describe('watchMedicationWrite', () => {
+  const slot = { medicationId: 'med-1', scheduleId: 'sched-1' };
+
+  it('creates a taken entry for an untouched slot', () => {
+    expect(watchMedicationWrite(slot, [])).toEqual({
+      kind: 'create',
+      status: 'taken',
+    });
+  });
+
+  it('creates a skipped entry when the watch skips an untouched slot', () => {
+    expect(watchMedicationWrite({ ...slot, skipped: true }, [])).toEqual({
+      kind: 'create',
+      status: 'skipped',
+    });
+  });
+
+  it('turns a taken slot into a skipped one', () => {
+    expect(
+      watchMedicationWrite({ ...slot, taken: false, skipped: true }, [
+        buildEntry({ status: 'taken' }),
+      ])
+    ).toEqual({ kind: 'update', entryId: 'entry-1', status: 'skipped' });
+  });
+
+  it('turns a skipped slot into a taken one', () => {
+    expect(
+      watchMedicationWrite(slot, [buildEntry({ status: 'skipped' })])
+    ).toEqual({ kind: 'update', entryId: 'entry-1', status: 'taken' });
+  });
+
+  it('leaves a slot alone when it is already in the asked-for state', () => {
+    expect(watchMedicationWrite(slot, [buildEntry()])).toEqual({
+      kind: 'none',
+    });
+    expect(
+      watchMedicationWrite({ ...slot, skipped: true }, [
+        buildEntry({ status: 'skipped' }),
+      ])
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('clears a taken or skipped slot on an un-tick', () => {
+    expect(
+      watchMedicationWrite({ ...slot, taken: false }, [buildEntry()])
+    ).toEqual({ kind: 'delete', entryId: 'entry-1' });
+    expect(
+      watchMedicationWrite({ ...slot, taken: false }, [
+        buildEntry({ status: 'skipped' }),
+      ])
+    ).toEqual({ kind: 'delete', entryId: 'entry-1' });
+    expect(watchMedicationWrite({ ...slot, taken: false }, [])).toEqual({
+      kind: 'none',
+    });
+  });
+
+  it('logs an as-needed row once a day and never skips it', () => {
+    const prn = { medicationId: 'med-1', scheduleId: '' };
+    expect(watchMedicationWrite(prn, [])).toEqual({
+      kind: 'create',
+      status: 'prn_taken',
+    });
+    expect(
+      watchMedicationWrite({ ...prn, skipped: true }, [
+        buildEntry({ schedule_id: null, status: 'prn_taken' }),
+      ])
+    ).toEqual({ kind: 'none' });
   });
 });

@@ -21,12 +21,13 @@ const CELL = 'py-1.5 pr-3 align-top';
 
 const StretchTable = ({ response }: CompareSinceAnswerProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const rows = sinceStretchRows(
     response,
     t,
     (d) => formatDateInUserTimezone(d, 'PP'),
-    timeFormat
+    timeFormat,
+    energyUnit
   );
   if (rows.length === 0) return null;
 
@@ -82,7 +83,8 @@ const StretchTable = ({ response }: CompareSinceAnswerProps) => {
                     line: compareValueText(
                       response.outcome.key,
                       response.result.line,
-                      timeFormat
+                      timeFormat,
+                      energyUnit
                     ),
                   })}
                 </th>
@@ -116,12 +118,13 @@ const StretchTable = ({ response }: CompareSinceAnswerProps) => {
  */
 export const CompareSinceAnswer = ({ response }: CompareSinceAnswerProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const { headline, detail } = sinceVerdictCopy(
     response,
     t,
     (d) => formatDateInUserTimezone(d, 'PP'),
-    timeFormat
+    timeFormat,
+    energyUnit
   );
   const alreadyChanging = sinceAlreadyChangingLine(response, t);
   const caveat = sinceCaveat(
@@ -153,7 +156,7 @@ export const CompareSinceAnswer = ({ response }: CompareSinceAnswerProps) => {
           {regularity && (
             <p className="text-sm text-muted-foreground">{regularity}</p>
           )}
-          <CompareHowSure lines={sinceHowSureLines(response, t)} />
+          <CompareHowSure lines={sinceHowSureLines(response, t, energyUnit)} />
         </>
       )}
     </div>

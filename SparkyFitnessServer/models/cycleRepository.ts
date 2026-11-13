@@ -5,6 +5,7 @@ import type {
   UpsertDailyLogBody,
 } from '../schemas/cycleSchemas.js';
 import { DAILY_MOOD_VALUE_SQL } from './moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
 import { localDateToDay, addDays, daysBetween } from '@workspace/shared';
 import type { DerivedCycle } from '@workspace/shared';
 
@@ -789,8 +790,8 @@ async function getCorrelationSources(userId: string) {
         [userId]
       ),
       client.query(
-        `SELECT entry_date, ROUND(duration_in_seconds / 3600.0, 2) AS value
-         FROM sleep_entries WHERE user_id = $1 ORDER BY entry_date ASC`,
+        `SELECT DISTINCT ON (entry_date) entry_date, ROUND(duration_in_seconds / 3600.0, 2) AS value
+         FROM sleep_entries WHERE user_id = $1 ORDER BY ${MAIN_SLEEP_ORDER_SQL}`,
         [userId]
       ),
       client.query(

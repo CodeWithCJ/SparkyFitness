@@ -1,5 +1,6 @@
 import React from 'react';
-import { zoneStroke } from '@/utils/heartRateZoneTiers';
+import { HeartRateZoneLegend } from '@/components/HeartRateZoneLegend';
+import { zoneStroke } from '@/utils/heartRateZoneBands';
 import { getWorkoutEmoji } from '@workspace/shared';
 import { Activity, Dumbbell, Flame, Heart, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -321,24 +322,13 @@ const HeartRateRangeTimeline: React.FC<HeartRateRangeTimelineProps> = ({
             </div>
           )}
           {/* Zone Color Code Legend */}
-          <div className="flex items-center justify-center gap-4 text-[11px] font-medium text-muted-foreground pt-1">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#06b6d4]" />
-              {t('heartRate.zoneLight', 'Light')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#22c55e]" />
-              {t('heartRate.zoneModerate', 'Moderate')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#eab308]" />
-              {t('heartRate.zoneVigorous', 'Vigorous')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-              {t('heartRate.zonePeak', 'Peak')}
-            </span>
-          </div>
+          <HeartRateZoneLegend
+            resolved={data.zones.resolved}
+            displayZones={data.zones.displayZones}
+            isDefault={data.zones.isDefault}
+            showSource
+            className="pt-1"
+          />
         </>
       ) : (
         <div className="p-8 text-center bg-muted/20 border border-border rounded-xl space-y-3">

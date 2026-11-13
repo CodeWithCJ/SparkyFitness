@@ -7,6 +7,8 @@
 - **Exercise Logging**: Log exercises with duration, distance, and calorie estimates
 - **Measurement Logging**: Log standard and custom body measurements
 - **Water Intake Logging**: Track daily water consumption
+- **Calorie target review**: Ask whether your calorie target is right. The assistant compares the target with your estimated maintenance (the same adaptive estimate as the Goals screen) and your weight trend, and gives the calories for the weekly change you want. It never lowers a target below the safe minimum and changes your goal only after you agree.
+- **Training, run and plan reviews**: See [Adaptive coaching](/features/exercises/adaptive-coaching) for the strength and run reviews and for plan weight changes.
 
 ### Chat Interface
 - **Image Upload**: Send photos for food analysis

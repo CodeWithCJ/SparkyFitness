@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   syncHevyData,
   syncLiftosaurData,
+  syncIntervalsData,
 } from '@/api/Integrations/integrations';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -16,13 +17,18 @@ import {
   handleManualSync,
 } from '@/api/Settings/externalProviderService';
 import { DataProvider } from '@/types/settings';
-import { useDiaryInvalidation } from '../useInvalidateKeys';
+import {
+  useDiaryInvalidation,
+  useGarminStatusInvalidation,
+} from '../useInvalidateKeys';
 import { externalProviderKeys } from '@/api/keys/settings';
+import { garminSyncWarning } from '@/hooks/Integrations/garminSyncWarning';
 
 export const useSyncAllMutation = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const invalidateSyncData = useDiaryInvalidation();
+  const invalidateGarminStatus = useGarminStatusInvalidation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -35,6 +41,7 @@ export const useSyncAllMutation = () => {
           ) &&
           (p.provider_type === 'hevy' ||
             p.provider_type === 'liftosaur' ||
+            p.provider_type === 'intervals' ||
             p.provider_type === 'garmin' ||
             p.has_token)
       );
@@ -45,6 +52,9 @@ export const useSyncAllMutation = () => {
 
       let successCount = 0;
       let failCount = 0;
+      // A Garmin sync with failed phases still answers 200, so it is neither
+      // counted as a success nor as a failure; it gets its own toast.
+      let garminWarning: ReturnType<typeof garminSyncWarning> = null;
 
       for (const provider of activeSyncProviders) {
         try {
@@ -67,14 +77,32 @@ export const useSyncAllMutation = () => {
             case 'withings':
               await handleManualSync();
               break;
-            case 'garmin':
-              await handleManualSyncGarmin();
+            case 'garmin': {
+              let warning: ReturnType<typeof garminSyncWarning> = null;
+              try {
+                warning = garminSyncWarning(await handleManualSyncGarmin(), t);
+              } finally {
+                // Success, partial failure or error: the status may have moved.
+                invalidateGarminStatus();
+              }
+              // A later clean sync must not clear an earlier warning.
+              if (warning) {
+                garminWarning = warning;
+                continue;
+              }
               break;
+            }
             case 'hevy':
               await syncHevyData(false, provider.id);
               break;
             case 'liftosaur':
               await syncLiftosaurData(false, provider.id);
+              queryClient.invalidateQueries({
+                queryKey: externalProviderKeys.lists(),
+              });
+              break;
+            case 'intervals':
+              await syncIntervalsData(provider.id);
               queryClient.invalidateQueries({
                 queryKey: externalProviderKeys.lists(),
               });
@@ -87,10 +115,14 @@ export const useSyncAllMutation = () => {
         }
       }
 
-      return { successCount, failCount };
+      return { successCount, failCount, garminWarning };
     },
     onSuccess: (data) => {
       invalidateSyncData();
+
+      if (data.garminWarning) {
+        toast(data.garminWarning);
+      }
 
       if (data.successCount > 0) {
         toast({

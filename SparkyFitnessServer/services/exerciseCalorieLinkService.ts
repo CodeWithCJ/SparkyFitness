@@ -52,6 +52,17 @@ interface LinkEntryRow {
   exercise_name: string | null;
 }
 
+/** A synced entry, with the session it belongs to when it is part of one. */
+interface SyncedEntryRow extends LinkEntryRow {
+  source_id: string | null;
+  exercise_preset_entry_id: string | null;
+  preset_name?: string | null;
+}
+
+const SYNCED_EXTRA_COLUMNS = `,
+  source_id,
+  exercise_preset_entry_id`;
+
 const ENTRY_COLUMNS = `
   id,
   to_char(entry_date, 'YYYY-MM-DD') AS entry_date,
@@ -163,43 +174,67 @@ async function getCalorieLinkSuggestions(
       window: earliestWindow(workout, tz),
     };
 
-    const candidateRows = await client.query(
-      `SELECT ${ENTRY_COLUMNS}
+    const candidateRows: { rows: SyncedEntryRow[] } = await client.query(
+      `SELECT ${ENTRY_COLUMNS}${SYNCED_EXTRA_COLUMNS},
+              (SELECT p.name FROM exercise_preset_entries p
+               WHERE p.id = exercise_entries.exercise_preset_entry_id) AS preset_name
        FROM exercise_entries
        WHERE user_id = $1
          AND entry_date = $2::date
          AND source IS NOT NULL AND lower(source) NOT IN ('manual', 'sparky')
          AND source_id IS NOT NULL
-         AND exercise_preset_entry_id IS NULL
          AND exercise_name IS DISTINCT FROM 'Active Calories'
          AND id <> ALL($3::uuid[])
          AND (calorie_link_id IS NULL OR calorie_link_id = $4::uuid)
-       ORDER BY entry_time ASC NULLS LAST, created_at ASC`,
+       ORDER BY entry_time ASC NULLS LAST, sort_order ASC NULLS LAST, created_at ASC`,
       [userId, first.entry_date, workoutIds, linkId ?? null]
     );
 
-    const candidates: CalorieLinkCandidate[] = (
-      candidateRows.rows as LinkEntryRow[]
-    ).map((row) => ({
-      id: row.id,
-      name: row.exercise_name,
-      source: row.source ?? '',
-      start_time: row.entry_time ? row.entry_time.slice(0, 5) : null,
-      duration_minutes: row.duration_minutes,
-      calories_burned: row.calories_burned,
-      match: matchCalorieLink(manual, windowOf(row, tz)),
-    }));
+    // A synced strength session is several rows under one session id; offer it
+    // once, standing for all of its rows. A lone entry stands for itself.
+    const groups = new Map<string, SyncedEntryRow[]>();
+    for (const row of candidateRows.rows) {
+      const key = row.exercise_preset_entry_id ?? row.id;
+      const group = groups.get(key);
+      if (group) group.push(row);
+      else groups.set(key, [row]);
+    }
+
+    const candidates: CalorieLinkCandidate[] = [];
+    const linkedGroups: SyncedEntryRow[][] = [];
+    for (const rows of groups.values()) {
+      const head = rows[0]!;
+      const isSession = head.exercise_preset_entry_id !== null;
+      const timed = rows.find((row) => row.entry_time) ?? head;
+      const window = isSession ? earliestWindow(rows, tz) : windowOf(head, tz);
+      if (linkId && rows.some((row) => row.calorie_link_id === linkId)) {
+        linkedGroups.push(rows);
+      }
+      candidates.push({
+        id: head.id,
+        name: isSession
+          ? (head.preset_name ?? head.exercise_name)
+          : head.exercise_name,
+        source: head.source ?? '',
+        start_time: timed.entry_time ? timed.entry_time.slice(0, 5) : null,
+        duration_minutes: rows.reduce(
+          (sum, row) => sum + row.duration_minutes,
+          0
+        ),
+        calories_burned: rows.reduce(
+          (sum, row) => sum + row.calories_burned,
+          0
+        ),
+        match: matchCalorieLink(manual, window),
+      });
+    }
     candidates.sort(
       (a, b) =>
         (a.match ? MATCH_RANK[a.match] : 2) -
         (b.match ? MATCH_RANK[b.match] : 2)
     );
 
-    const linkedSynced = linkId
-      ? (candidateRows.rows as LinkEntryRow[]).find(
-          (row) => row.calorie_link_id === linkId
-        )
-      : undefined;
+    const linkedSynced = linkedGroups[0]?.[0];
     return {
       manual_total_calories: workout.reduce(
         (sum, row) => sum + row.calories_burned,
@@ -510,29 +545,49 @@ async function setCalorieLink(
     )?.calorie_link_id;
 
     const syncedResult = await client.query(
-      `SELECT ${ENTRY_COLUMNS}, source_id
+      `SELECT ${ENTRY_COLUMNS}${SYNCED_EXTRA_COLUMNS}
        FROM exercise_entries
        WHERE id = $1 AND user_id = $2 FOR UPDATE`,
       [body.synced_entry_id, userId]
     );
-    const synced = (
-      syncedResult.rows as (LinkEntryRow & { source_id: string | null })[]
-    )[0];
-    if (!synced) {
+    const picked = (syncedResult.rows as SyncedEntryRow[])[0];
+    if (!picked) {
       throw new CalorieLinkError('Synced workout not found.', 404);
     }
+    // The picked entry stands for its whole session when it has one.
+    const syncedRows: SyncedEntryRow[] = picked.exercise_preset_entry_id
+      ? ((
+          await client.query(
+            `SELECT ${ENTRY_COLUMNS}${SYNCED_EXTRA_COLUMNS}
+             FROM exercise_entries
+             WHERE user_id = $1 AND exercise_preset_entry_id = $2
+             ORDER BY sort_order ASC NULLS LAST, created_at ASC
+             FOR UPDATE`,
+            [userId, picked.exercise_preset_entry_id]
+          )
+        ).rows as SyncedEntryRow[])
+      : [picked];
+    const workoutIds = new Set(workout.map((row) => row.id));
     if (
-      isAppLoggedWorkoutSource(synced.source) ||
-      !synced.source ||
-      !synced.source_id ||
-      workout.some((row) => row.id === synced.id)
+      syncedRows.length === 0 ||
+      syncedRows.some(
+        (row) =>
+          isAppLoggedWorkoutSource(row.source) ||
+          !row.source ||
+          !row.source_id ||
+          workoutIds.has(row.id)
+      )
     ) {
       throw new CalorieLinkError(
         'That entry is not a synced workout that can be linked.',
         400
       );
     }
-    if (synced.calorie_link_id && synced.calorie_link_id !== existingLinkId) {
+    if (
+      syncedRows.some(
+        (row) => row.calorie_link_id && row.calorie_link_id !== existingLinkId
+      )
+    ) {
       throw new CalorieLinkError(
         'That synced workout is already linked to another workout.',
         409
@@ -545,7 +600,10 @@ async function setCalorieLink(
     const estimates = workout.map((row) => row.calories_burned);
     const resolved = resolveLinkedCalories({
       manualTotal: estimates.reduce((sum, value) => sum + value, 0),
-      syncedTotal: synced.calories_burned,
+      syncedTotal: syncedRows.reduce(
+        (sum, row) => sum + row.calories_burned,
+        0
+      ),
       resolution: body.resolution,
       customCalories: body.custom_calories,
     });
@@ -564,13 +622,15 @@ async function setCalorieLink(
         [row.id, userId, applied[index], linkId, body.resolution]
       );
     }
-    await client.query(
-      `UPDATE exercise_entries
-       SET calories_applied = $3, calorie_link_id = $4::uuid,
-           calorie_link_resolution = $5, updated_at = NOW()
-       WHERE id = $1 AND user_id = $2`,
-      [synced.id, userId, resolved.syncedCounted, linkId, body.resolution]
-    );
+    for (const row of syncedRows) {
+      await client.query(
+        `UPDATE exercise_entries
+         SET calories_applied = $3, calorie_link_id = $4::uuid,
+             calorie_link_resolution = $5, updated_at = NOW()
+         WHERE id = $1 AND user_id = $2`,
+        [row.id, userId, resolved.syncedCounted, linkId, body.resolution]
+      );
+    }
     await client.query('COMMIT');
     return {
       applied: workout.map((row, index) => ({

@@ -25,6 +25,8 @@ data:
   SPARKY_FITNESS_DISABLE_EMAIL_LOGIN: {{ .Values.config.disableEmailLogin | quote }}
   SPARKY_FITNESS_DISABLE_PASSKEY_LOGIN: {{ .Values.config.disablePasskeyLogin | quote }}
   SPARKY_FITNESS_FORCE_PASSKEY_LOGIN: {{ .Values.config.forcePasskeyLogin | quote }}
+  SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN: {{ .Values.config.disableMagicLinkLogin | quote }}
+  SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN: {{ .Values.config.forceMagicLinkLogin | quote }}
   {{- if .Values.config.email.enabled }}
   SPARKY_FITNESS_EMAIL_HOST: {{ .Values.config.email.host | quote }}
   SPARKY_FITNESS_EMAIL_PORT: {{ .Values.config.email.port | quote }}

@@ -1,4 +1,4 @@
-import type { RecordingActivity } from './gpsRecording';
+import type { DiaryActivity } from './gpsRecording';
 import { percentFromKnownDistance } from './treadmillCorrection';
 
 /**
@@ -12,7 +12,7 @@ import { percentFromKnownDistance } from './treadmillCorrection';
 export type StepActivity = 'walk' | 'run';
 
 export function isStepActivity(
-  activity: RecordingActivity
+  activity: DiaryActivity
 ): activity is StepActivity {
   return activity === 'walk' || activity === 'run';
 }

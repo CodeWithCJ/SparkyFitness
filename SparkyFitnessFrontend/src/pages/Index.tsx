@@ -2,6 +2,7 @@ import type React from 'react';
 import { debug } from '@/utils/logging';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 
 import OnBoarding from '@/components/Onboarding/OnBoarding';
 import MainLayout from '@/layouts/MainLayout';
@@ -21,11 +22,16 @@ const Index: React.FC<IndexProps> = ({
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const { loggingLevel } = usePreferences();
+  const { isActingOnBehalf } = useActiveUser();
   debug(loggingLevel, 'Index: Component rendered (onboarding check).');
 
-  // only fetch when auth is loaded and user exists
+  // Onboarding is the signed-in person's own: only they can answer, skip or
+  // reset it, and the server refuses it to anyone acting for them. The wizard
+  // replaces the whole layout, profile switcher included, so opening someone
+  // else's would leave no way back. While acting on behalf it never opens and
+  // Complete Setup isn't offered.
   const { data, isLoading: queryLoading } = useOnboardingStatus(
-    !authLoading && !!user
+    !authLoading && !!user && !isActingOnBehalf
   );
   // Allows the user to manually re-open the wizard from the main layout
   const [showOnboardingManually, setShowOnboardingManually] = useState(false);
@@ -37,7 +43,8 @@ const Index: React.FC<IndexProps> = ({
     !!user && data?.onboardingComplete === false && !data?.onboardingSkipped;
 
   // Also show if the user explicitly re-opened it via "Complete Setup"
-  const showWizard = autoShowWizard || showOnboardingManually;
+  const showWizard =
+    !isActingOnBehalf && (autoShowWizard || showOnboardingManually);
 
   if (isLoading) {
     return (
@@ -58,7 +65,8 @@ const Index: React.FC<IndexProps> = ({
   }
 
   // Render MainLayout; pass a callback to re-open onboarding when not yet complete
-  const onboardingIncomplete = !!user && data?.onboardingComplete === false;
+  const onboardingIncomplete =
+    !isActingOnBehalf && !!user && data?.onboardingComplete === false;
 
   return (
     <MainLayout

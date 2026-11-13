@@ -8,6 +8,7 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryCategorySamples: jest.fn(),
   queryWorkoutSamples: jest.fn(),
   queryCorrelationSamples: jest.fn(),
+  ActivitySummaryTypeIdentifier: 'HKActivitySummaryTypeIdentifier',
 }));
 jest.mock('../../../src/services/appleHeartZones', () => ({
   readAppleWorkoutZoneGroups: jest.fn(),
@@ -71,6 +72,52 @@ describe('hasUnrequestedHealthPermissions', () => {
       expected
     );
   });
+
+  // Health keeps reporting the workout effort rating as never requested, so
+  // counting it showed the sheet on every visit to the sync options.
+  it('leaves the workout effort rating out of the check but still requests it', async () => {
+    statusMock.mockResolvedValue(AuthorizationRequestStatus.unnecessary);
+    (requestAuthorization as jest.Mock).mockClear();
+    const exerciseSessions = [
+      { accessType: 'read', recordType: 'ExerciseSession' },
+    ] as Parameters<typeof hasUnrequestedHealthPermissions>[0];
+
+    await hasUnrequestedHealthPermissions(exerciseSessions);
+    await requestHealthPermissions(exerciseSessions);
+
+    const effort = 'HKQuantityTypeIdentifierWorkoutEffortScore';
+    expect(statusMock.mock.calls[0][0].toRead).not.toContain(effort);
+    expect(
+      (requestAuthorization as jest.Mock).mock.calls[0][0].toRead
+    ).toContain(effort);
+  });
+
+  // Active calories are read from the Move ring, so an install that already
+  // syncs either calorie metric has to be asked for the activity summary.
+  it.each(['ActiveCaloriesBurned', 'TotalCaloriesBurned'])(
+    'checks and requests the activity summary for %s',
+    async (recordType) => {
+      statusMock.mockResolvedValue(AuthorizationRequestStatus.unnecessary);
+      (requestAuthorization as jest.Mock).mockClear();
+      const calories = [{ accessType: 'read', recordType }] as Parameters<
+        typeof hasUnrequestedHealthPermissions
+      >[0];
+
+      await hasUnrequestedHealthPermissions(calories);
+      await requestHealthPermissions(calories);
+
+      const summary = 'HKActivitySummaryTypeIdentifier';
+      expect(statusMock.mock.calls[0][0].toRead).toContain(summary);
+      expect(
+        (requestAuthorization as jest.Mock).mock.calls[0][0].toRead
+      ).toEqual(
+        expect.arrayContaining([
+          summary,
+          'HKQuantityTypeIdentifierActiveEnergyBurned',
+        ])
+      );
+    }
+  );
 
   it('asks again when the check fails', async () => {
     statusMock.mockRejectedValue(new Error('boom'));

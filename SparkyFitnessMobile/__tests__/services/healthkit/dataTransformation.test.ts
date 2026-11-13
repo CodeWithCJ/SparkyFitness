@@ -377,6 +377,79 @@ describe('transformHealthRecords', () => {
     });
   });
 
+  describe('SleepingWristTemperature records', () => {
+    const config = {
+      recordType: 'SleepingWristTemperature',
+      unit: 'celsius',
+      type: 'skin_temperature',
+    };
+
+    test('keys the reading to the sample end, the wake day', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-14', '23:30'),
+            endTime: atLocalTime('2024-01-15', '07:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(35.2);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].type).toBe('skin_temperature');
+      expect(result[0].timestamp).toBe(
+        new Date(atLocalTime('2024-01-15', '07:00')).toISOString()
+      );
+    });
+
+    test('tags the reading as wrist and dates it on the recorded clock', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            // 05:30 UTC is still the 14th in Los Angeles.
+            time: '2024-01-14T22:00:00.000Z',
+            endTime: '2024-01-15T05:30:00.000Z',
+            temperature: { inCelsius: 35.2 },
+            metadata: { HKTimeZone: 'America/Los_Angeles' },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].site).toBe('wrist');
+      expect(result[0].date).toBe('2024-01-14');
+      expect(result[0].record_timezone).toBe('America/Los_Angeles');
+    });
+
+    test('falls back to the start time when there is no end', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-15', '03:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+    });
+
+    test('skips a record with no temperature', () => {
+      expect(
+        transformHealthRecords(
+          [{ time: atLocalTime('2024-01-15', '03:00') }],
+          config
+        )
+      ).toHaveLength(0);
+    });
+  });
+
   describe('percentage conversions (decimal to percentage)', () => {
     test('BloodAlcoholContent multiplies decimal by 100', () => {
       const records = [{ startTime: '2024-01-15T08:00:00Z', value: 0.08 }];
@@ -1593,6 +1666,64 @@ describe('MindfulnessSession records', () => {
         metric
       );
       expect(result).toHaveLength(0);
+    } finally {
+      setOwnBundleId(null);
+    }
+  });
+});
+
+describe('Toothbrushing records', () => {
+  const metric = {
+    recordType: 'Toothbrushing',
+    unit: 'min',
+    type: 'toothbrushing',
+  };
+  const base = {
+    uuid: 'hk-brush-1',
+    startTime: '2024-01-15T08:00:00Z',
+    endTime: '2024-01-15T08:02:10Z',
+    metadata: { HKTimeZone: 'America/New_York' },
+  };
+
+  test('maps a brush to Toothbrushing keyed by its uuid, with the duration from its times', () => {
+    const [brush] = transformHealthRecords([base], metric) as unknown as {
+      type: string;
+      source_id: string;
+      duration_seconds: number;
+      startTime: string;
+      endTime: string;
+    }[];
+    expect(brush).toMatchObject({
+      type: 'Toothbrushing',
+      source: 'HealthKit',
+      source_id: 'hk-brush-1',
+      startTime: '2024-01-15T08:00:00Z',
+      endTime: '2024-01-15T08:02:10Z',
+      duration_seconds: 130,
+    });
+  });
+
+  test('skips a sample with no uuid or whose end is before its start', () => {
+    expect(
+      transformHealthRecords([{ ...base, uuid: undefined }], metric)
+    ).toEqual([]);
+    expect(
+      transformHealthRecords(
+        [{ ...base, endTime: '2024-01-15T07:59:00Z' }],
+        metric
+      )
+    ).toEqual([]);
+  });
+
+  test('skips brushes this app wrote to Apple Health', () => {
+    setOwnBundleId('com.sparky.app');
+    try {
+      expect(
+        transformHealthRecords(
+          [{ ...base, sourceBundleId: 'com.sparky.app' }],
+          metric
+        )
+      ).toEqual([]);
     } finally {
       setOwnBundleId(null);
     }

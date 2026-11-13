@@ -30,6 +30,10 @@ jest.mock('@/hooks/Goals/useGoals', () => ({
   }),
 }));
 
+jest.mock('@/hooks/Diary/useDailyProgress', () => ({
+  useDailySummary: () => ({ data: undefined }),
+}));
+
 jest.mock('@/hooks/Goals/useNutrientAutoCalculate', () => ({
   useNutrientAutoCalculate: () => ({
     algorithms: {},

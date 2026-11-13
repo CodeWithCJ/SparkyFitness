@@ -87,4 +87,11 @@ describe('DiarySettingsScreen', () => {
     expect(getByText('Diary Summary')).toBeTruthy();
     expect(getByLabelText('Diary Summary')).toBeTruthy();
   });
+
+  test('has no guided check-in switch: Quick Actions shows or hides Check-In', () => {
+    const { queryByText, queryByLabelText } = renderScreen();
+
+    expect(queryByText('Guided check-in')).toBeNull();
+    expect(queryByLabelText('Guided check-in')).toBeNull();
+  });
 });

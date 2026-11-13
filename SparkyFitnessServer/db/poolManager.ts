@@ -1,11 +1,24 @@
 import pg from 'pg';
 import { log } from '../config/logging.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  isInsideWorkScope,
+  noteWorkActivity,
+  throwIfWorkAborted,
+} from '../utils/abortScope.js';
+import {
+  isWriteRequest,
+  restoreInProgress,
+  restoredSinceAdmitted,
+} from '../services/restoreLock.js';
 import { requestConnectRetry, retryOnConnectionError } from './connectRetry.js';
+import { applicationName } from './applicationName.js';
+import { trackPoolProgress } from './poolBusy.js';
 const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
   authenticatedUserId: string;
+  actorIsFixed?: boolean;
 }>();
 // Parse numeric types
 types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
@@ -33,6 +46,21 @@ function handleConnectionLoss(pool: pg.Pool, name: string): void {
     });
   });
 }
+/**
+ * Counts each query as progress of the surrounding work (utils/abortScope.ts),
+ * so a sync writing through one connection it holds, such as a long import
+ * transaction, is not taken for a stalled one. The listener is looked up per
+ * call, so queries outside such work note nothing.
+ */
+function noteQueriesAsWorkActivity(pool: pg.Pool): void {
+  pool.on('connect', (client) => {
+    const query = client.query.bind(client) as (...args: unknown[]) => unknown;
+    client.query = ((...args: unknown[]) => {
+      noteWorkActivity();
+      return query(...args);
+    }) as typeof client.query;
+  });
+}
 function createOwnerPoolInstance() {
   const newPool = new Pool({
     user: process.env.SPARKY_FITNESS_DB_USER,
@@ -44,11 +72,13 @@ function createOwnerPoolInstance() {
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    application_name: applicationName('owner'),
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle owner client', err);
   });
   handleConnectionLoss(newPool, 'owner');
+  noteQueriesAsWorkActivity(newPool);
   return newPool;
 }
 function createAppPoolInstance() {
@@ -62,11 +92,14 @@ function createAppPoolInstance() {
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    application_name: applicationName('app'),
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle app client', err);
   });
   handleConnectionLoss(newPool, 'app');
+  noteQueriesAsWorkActivity(newPool);
+  trackPoolProgress(newPool);
   return newPool;
 }
 function _getRawOwnerPool() {
@@ -85,7 +118,9 @@ function _getRawAppPool() {
  * Borrows a client with RLS context set for the target user and authenticated actor.
  * The caller must release it in a finally block; failed context setup discards it.
  * Connection errors while acquiring or setting the context are retried for a
- * few seconds; the caller's own statements are never retried.
+ * few seconds; the caller's own statements are never retried. Refuses inside
+ * work that was stopped (see utils/abortScope.ts), also when it was stopped
+ * while the acquire waited.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getClient(
@@ -97,10 +132,15 @@ async function getClient(
       'userId is required for getClient to ensure RLS is applied.'
     );
   }
+  throwIfWorkAborted();
+  await refuseWorkDuringRestore();
   const store = dbContextStorage.getStore();
   const actualAuthUserId =
-    authenticatedUserId || store?.authenticatedUserId || userId;
-  return retryOnConnectionError(async () => {
+    (store?.actorIsFixed && store.authenticatedUserId) ||
+    authenticatedUserId ||
+    store?.authenticatedUserId ||
+    userId;
+  const client = await retryOnConnectionError(async () => {
     const client = await _getRawAppPool().connect();
     try {
       await client.query('SELECT public.set_app_context($1, $2)', [
@@ -113,12 +153,72 @@ async function getClient(
       throw error;
     }
   }, requestConnectRetry);
+  return unlessWorkAborted(client);
+}
+/**
+ * Runs work whose connections all act as `actorUserId`, whatever actor the code
+ * passes to getClient. Chat tools run this way so that one naming the target as
+ * its own actor can't skip the Family Access checks in RLS.
+ */
+function withFixedActor<T>(actorUserId: string, work: () => T): T {
+  return dbContextStorage.run(
+    {
+      ...dbContextStorage.getStore(),
+      authenticatedUserId: actorUserId,
+      actorIsFixed: true,
+    },
+    work
+  );
 }
 async function getSystemClient() {
-  return retryOnConnectionError(
+  throwIfWorkAborted();
+  await refuseWorkDuringRestore();
+  const client = await retryOnConnectionError(
     async () => _getRawOwnerPool().connect(),
     requestConnectRetry
   );
+  return unlessWorkAborted(client);
+}
+/**
+ * A job, sync or write request that was already running when a restore began
+ * (new write requests are refused at the door, in
+ * middleware/restoreWriteFence.ts) gets no further connection, so it cannot
+ * write into the restored database or race the uploads swap. A write request
+ * or scheduled job still running once the restored database is in gets none
+ * either, since it may write what it read before. A connection it already
+ * holds is ended by the swap.
+ */
+async function refuseWorkDuringRestore(
+  connection?: Pick<pg.ClientBase, 'query'>
+): Promise<void> {
+  if (!isInsideWorkScope() && !isWriteRequest()) return;
+  if (await restoreInProgress(connection)) {
+    throw new Error(
+      'A backup is being restored; this work stopped so it does not write into data being replaced.'
+    );
+  }
+  if (restoredSinceAdmitted()) {
+    throw new Error(
+      'A backup was restored while this work ran; it stopped so it does not write what it read before the restore.'
+    );
+  }
+}
+// The acquire can wait (queued behind a full pool, connect retries) past the
+// moment the work was stopped or a restore began.
+async function unlessWorkAborted<
+  T extends Pick<pg.PoolClient, 'release' | 'query'>,
+>(client: T): Promise<T> {
+  try {
+    throwIfWorkAborted();
+    // On the connection already held: asking the pool for another while
+    // holding this one can starve a full pool.
+    await refuseWorkDuringRestore(client);
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+  noteWorkActivity();
+  return client;
 }
 // node-pg counters for the app pool, for the admin-only dev tools. Guards
 // against an uninitialized pool.
@@ -159,9 +259,28 @@ appPoolInstance = createAppPoolInstance();
 export { endPool };
 export { resetPool };
 export { getClient };
+/**
+ * The person doing the work: inside withFixedActor that is the fixed actor,
+ * otherwise `userId` itself. Chat tools use it for the actor argument of
+ * services that record who made an entry.
+ */
+function actorUserIdFor(userId: string): string {
+  const store = dbContextStorage.getStore();
+  return store?.actorIsFixed ? store.authenticatedUserId : userId;
+}
+/**
+ * The signed-in person behind the current request (inside withFixedActor, the
+ * fixed actor), or `userId` outside any request. For what stays with whoever is
+ * signed in after a Profile Switcher switch, such as their AI services.
+ */
+function signedInUserIdOr(userId: string): string {
+  return dbContextStorage.getStore()?.authenticatedUserId ?? userId;
+}
+export { withFixedActor, actorUserIdFor, signedInUserIdOr };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };
+export { _getRawAppPool as getRawAppPool };
 export { handleConnectionLoss };
 export default {
   endPool,

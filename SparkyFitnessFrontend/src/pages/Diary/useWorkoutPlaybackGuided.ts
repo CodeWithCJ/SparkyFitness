@@ -70,7 +70,7 @@ export function guidedExerciseImages(exercise: {
 }): string[] {
   const library = filterValidExerciseImages(exercise.images);
   if (library.length > 0) return library;
-  return exercise.image_url ? [exercise.image_url] : [];
+  return filterValidExerciseImages(exercise.image_url);
 }
 
 function pointerKey(pointer: WorkoutSetPointer): string {

@@ -131,6 +131,7 @@ describe('processFitbitSleep recording-zone stamp (issue #2033)', () => {
     vi.clearAllMocks();
     vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
       id: 'sleep-1',
+      created: true,
     });
   });
 

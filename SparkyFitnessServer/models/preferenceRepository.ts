@@ -1,7 +1,10 @@
 import { getClient } from '../db/poolManager.js';
-import type {
-  UserPreferencesInitializer,
-  UserPreferencesMutator,
+import {
+  MAX_FEATURE_CHOICES,
+  type FeatureChoices,
+  type FeatureChoicesPatch,
+  type UserPreferencesInitializer,
+  type UserPreferencesMutator,
 } from '@workspace/shared';
 
 export interface OpenFoodFactsContributionPreferences {
@@ -81,6 +84,7 @@ async function setOpenFoodFactsContributionPreferences(
   }
 }
 
+/** Applies partial account preferences; omitted units are preserved atomically by COALESCE. */
 async function updateUserPreferences(
   userId: string,
   preferenceData: UserPreferencesMutator
@@ -137,6 +141,12 @@ async function updateUserPreferences(
         active_voice_ai_service_id = CASE WHEN $55 THEN $54 ELSE active_voice_ai_service_id END,
         voice_input_enabled = COALESCE($56, voice_input_enabled),
         adaptive_activity_separate = COALESCE($57, adaptive_activity_separate),
+        use_move_ring_active_calories = COALESCE($59, use_move_ring_active_calories),
+        adjust_macros_with_exercise = COALESCE($60, adjust_macros_with_exercise),
+        default_temperature_unit = COALESCE($61, default_temperature_unit),
+        default_glucose_unit = COALESCE($62, default_glucose_unit),
+        calorie_cycling_mode = COALESCE($63, calorie_cycling_mode),
+        calorie_cycling_offsets = COALESCE($64::smallint[], calorie_cycling_offsets),
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
         calorie_safety_floor_mode = COALESCE($45, calorie_safety_floor_mode),
@@ -204,6 +214,12 @@ async function updateUserPreferences(
         preferenceData.voice_input_enabled,
         preferenceData.adaptive_activity_separate,
         preferenceData.goal_mode_weekly_change_kg,
+        preferenceData.use_move_ring_active_calories,
+        preferenceData.adjust_macros_with_exercise,
+        preferenceData.default_temperature_unit,
+        preferenceData.default_glucose_unit,
+        preferenceData.calorie_cycling_mode,
+        preferenceData.calorie_cycling_offsets,
       ]
     );
     return result.rows[0];
@@ -264,6 +280,7 @@ async function bootstrapUserTimezoneIfUnset(userId: any, timezone: any) {
     client.release();
   }
 }
+/** Creates defaults for new accounts and preserves omitted preference fields on conflict. */
 async function upsertUserPreferences(
   preferenceData: UserPreferencesInitializer
 ) {
@@ -304,6 +321,12 @@ async function upsertUserPreferences(
        target_bedtime,
        chart_scale_mode,
        adaptive_activity_separate,
+       use_move_ring_active_calories,
+       adjust_macros_with_exercise,
+       default_temperature_unit,
+       default_glucose_unit,
+       calorie_cycling_mode,
+       calorie_cycling_offsets,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -346,6 +369,12 @@ async function upsertUserPreferences(
        COALESCE($52::time without time zone, '22:30'),
        COALESCE($53, 'time'),
        COALESCE($57, FALSE),
+       COALESCE($59, FALSE),
+       COALESCE($60, FALSE),
+       COALESCE($61, 'celsius'),
+       COALESCE($62, 'mmol/L'),
+       COALESCE($63, 'off'),
+       COALESCE($64::smallint[], '{0,0,0,0,0,0,0}'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -390,6 +419,13 @@ async function upsertUserPreferences(
        active_voice_ai_service_id = CASE WHEN $55 THEN EXCLUDED.active_voice_ai_service_id ELSE user_preferences.active_voice_ai_service_id END,
        voice_input_enabled = COALESCE($56, user_preferences.voice_input_enabled),
        adaptive_activity_separate = COALESCE($57, user_preferences.adaptive_activity_separate),
+       use_move_ring_active_calories = COALESCE($59, user_preferences.use_move_ring_active_calories),
+       adjust_macros_with_exercise = COALESCE($60, user_preferences.adjust_macros_with_exercise),
+       -- Read $61 directly rather than EXCLUDED, for the same reason as $47.
+       default_temperature_unit = COALESCE($61, user_preferences.default_temperature_unit),
+       default_glucose_unit = COALESCE($62, user_preferences.default_glucose_unit),
+       calorie_cycling_mode = COALESCE($63, user_preferences.calorie_cycling_mode),
+       calorie_cycling_offsets = COALESCE($64::smallint[], user_preferences.calorie_cycling_offsets),
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
        calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode),
@@ -468,6 +504,12 @@ async function upsertUserPreferences(
         preferenceData.voice_input_enabled,
         preferenceData.adaptive_activity_separate,
         preferenceData.goal_mode_weekly_change_kg,
+        preferenceData.use_move_ring_active_calories,
+        preferenceData.adjust_macros_with_exercise,
+        preferenceData.default_temperature_unit,
+        preferenceData.default_glucose_unit,
+        preferenceData.calorie_cycling_mode,
+        preferenceData.calorie_cycling_offsets,
       ]
     );
     return result.rows[0];
@@ -475,6 +517,97 @@ async function upsertUserPreferences(
     client.release();
   }
 }
+export type FeatureChoicesMergeResult =
+  | { status: 'ok'; choices: FeatureChoices }
+  | { status: 'tooMany' }
+  | { status: 'noRow' };
+
+/**
+ * Merges a feature-switch patch into `feature_choices` in one statement, per
+ * platform: keys set to null are removed (back to their default), the others
+ * are set, and keys not in the patch are kept, so two devices changing
+ * different features, or different platforms, never overwrite each other. A
+ * platform left with more than MAX_FEATURE_CHOICES keys is refused, not just a
+ * patch that size, so repeated patches cannot grow the stored object without
+ * limit.
+ */
+async function mergeFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      // Both sides are worked out from the row being updated, not a separate
+      // read, so a concurrent change that commits first is merged into, never
+      // overwritten.
+      `UPDATE user_preferences
+          SET feature_choices = jsonb_build_object(
+                'web',
+                jsonb_strip_nulls(
+                  COALESCE(feature_choices -> 'web', '{}'::jsonb) || $2::jsonb
+                ),
+                'mobile',
+                jsonb_strip_nulls(
+                  COALESCE(feature_choices -> 'mobile', '{}'::jsonb) || $3::jsonb
+                )
+              ),
+              updated_at = now()
+        WHERE user_id = $1
+          AND (SELECT count(*)
+                 FROM jsonb_object_keys(jsonb_strip_nulls(
+                   COALESCE(feature_choices -> 'web', '{}'::jsonb) || $2::jsonb
+                 ))) <= $4
+          AND (SELECT count(*)
+                 FROM jsonb_object_keys(jsonb_strip_nulls(
+                   COALESCE(feature_choices -> 'mobile', '{}'::jsonb) || $3::jsonb
+                 ))) <= $4
+        RETURNING feature_choices`,
+      [
+        userId,
+        JSON.stringify(patch.web ?? {}),
+        JSON.stringify(patch.mobile ?? {}),
+        MAX_FEATURE_CHOICES,
+      ]
+    );
+    const row = result.rows[0] as
+      { feature_choices: FeatureChoices } | undefined;
+    if (row) {
+      return { status: 'ok', choices: row.feature_choices };
+    }
+    const existing = await client.query(
+      'SELECT 1 FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    return existing.rowCount ? { status: 'tooMany' } : { status: 'noRow' };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * The person's stored feature choices, per platform, or null when they have
+ * no preferences row. `actorUserId` is who is asking, so row-level security
+ * lets someone acting for the person read them.
+ */
+async function getFeatureChoices(
+  userId: string,
+  actorUserId: string
+): Promise<FeatureChoices | null> {
+  const client = await getClient(userId, actorUserId);
+  try {
+    const result = await client.query(
+      'SELECT feature_choices FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    const row = result.rows[0] as
+      { feature_choices: FeatureChoices } | undefined;
+    return row ? row.feature_choices : null;
+  } finally {
+    client.release();
+  }
+}
+
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
@@ -482,6 +615,8 @@ export { bootstrapUserTimezoneIfUnset };
 export { upsertUserPreferences };
 export { getOpenFoodFactsContributionPreferences };
 export { setOpenFoodFactsContributionPreferences };
+export { mergeFeatureChoices };
+export { getFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
@@ -490,4 +625,6 @@ export default {
   upsertUserPreferences,
   getOpenFoodFactsContributionPreferences,
   setOpenFoodFactsContributionPreferences,
+  mergeFeatureChoices,
+  getFeatureChoices,
 };

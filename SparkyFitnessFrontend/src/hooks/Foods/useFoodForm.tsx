@@ -1620,10 +1620,19 @@ export function useCustomFoodForm({
     }
 
     const barcode = formData.barcode ? formData.barcode.trim() : '';
-    if (barcode) {
+    // Separate provider products may intentionally share a barcode. The server
+    // deduplicates imports by their explicit source identity instead.
+    const isProviderImport =
+      !food?.id && !!food?.provider_type && !!food?.provider_external_id;
+    if (barcode && !isProviderImport) {
       try {
         const lookup = await queryClient.fetchQuery(
-          searchBarcodeV2Options(barcode)
+          searchBarcodeV2Options(
+            barcode,
+            undefined,
+            user?.id,
+            user?.activeUserId
+          )
         );
         if (
           lookup?.source === 'local' &&

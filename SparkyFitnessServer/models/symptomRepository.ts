@@ -1,3 +1,4 @@
+import { addDays, dayToUtcRange } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import type {
   CreateCustomSymptomBody,
@@ -116,6 +117,14 @@ export interface ListSymptomEntriesOptions {
   medicationId?: string;
   source?: string;
   episodesOnly?: boolean;
+  /**
+   * Also return episodes that overlap the date range without being logged in
+   * it: one that started before fromDate and was still going on it, or one
+   * logged under a later day that started by toDate.
+   */
+  overlapping?: boolean;
+  /** The timezone the range's days are read in when `overlapping` is set. */
+  timezone?: string;
 }
 
 const DEFINITION_COLS = `id, user_id, name, display_name, scale_type, unit, is_glp1_flagged, category, template,
@@ -134,6 +143,25 @@ const TREATMENT_COLS = `id, user_id, symptom_entry_id, kind, medication_id, medi
 /** `[column, value, cast?]`. A value of `undefined` means "leave the column alone". */
 type ColumnValue = [column: string, value: unknown, cast?: string];
 
+/**
+ * A severity or impact timeline as given in `param`, with every `at` read as
+ * timestamptz and the points in the order given. An appended point is stored
+ * the same way (`SEVERITY_POINT_SQL`), so a start time sent as `20260625` or
+ * without an offset reads the same in every client as the readings after it.
+ */
+function timelineSql(param: string): string {
+  return `(SELECT COALESCE(jsonb_agg(jsonb_set(p, '{at}', to_jsonb((p->>'at')::timestamptz))
+                                     ORDER BY n),
+                           '[]'::jsonb)
+             FROM jsonb_array_elements(${param}::jsonb) WITH ORDINALITY AS t(p, n))`;
+}
+
+/** The SQL for one parameter, with its cast. */
+function castParam(param: string, cast?: string): string {
+  if (cast === 'timeline') return timelineSql(param);
+  return cast ? `${param}::${cast}` : param;
+}
+
 function buildSetClause(
   fields: ColumnValue[],
   firstParamIndex: number
@@ -143,10 +171,12 @@ function buildSetClause(
   for (const [column, value, cast] of fields) {
     if (value === undefined) continue;
     params.push(
-      cast === 'jsonb' && value !== null ? JSON.stringify(value) : value
+      (cast === 'jsonb' || cast === 'timeline') && value !== null
+        ? JSON.stringify(value)
+        : value
     );
     sets.push(
-      `${column} = $${firstParamIndex + params.length - 1}${cast ? `::${cast}` : ''}`
+      `${column} = ${castParam(`$${firstParamIndex + params.length - 1}`, cast)}`
     );
   }
   return { sql: sets.join(', '), params };
@@ -345,8 +375,8 @@ function entryColumns(data: SymptomEntryWrite): ColumnValue[] {
     ['phases', data.phases, 'jsonb'],
     ['impact', data.impact],
     ['peak_severity', data.peak_severity],
-    ['severity_timeline', data.severity_timeline, 'jsonb'],
-    ['impact_timeline', data.impact_timeline, 'jsonb'],
+    ['severity_timeline', data.severity_timeline, 'timeline'],
+    ['impact_timeline', data.impact_timeline, 'timeline'],
     ['context_text', data.context_text],
     ['bristol_type', data.bristol_type],
     ['source', data.source],
@@ -435,10 +465,9 @@ async function createSymptomEntry(
       );
       const columns = ['user_id', ...provided.map(([c]) => c)];
       const { params } = buildSetClause(provided, 1);
-      const placeholders = provided.map(([, , cast], i) => {
-        const p = `$${i + 2}`;
-        return cast ? `${p}::${cast}` : p;
-      });
+      const placeholders = provided.map(([, , cast], i) =>
+        castParam(`$${i + 2}`, cast)
+      );
       const inserted = await client.query(
         `INSERT INTO symptom_entries (${columns.join(', ')})
          VALUES ($1${placeholders.length ? ', ' + placeholders.join(', ') : ''})
@@ -460,19 +489,37 @@ async function createSymptomEntry(
 
 /**
  * Applies the given fields to an entry. `treatments`, when provided, replaces the
- * entry's whole treatment list (an empty array clears it).
+ * entry's whole treatment list (an empty array clears it). `fromCurrent`, when
+ * provided, adds the fields worked out from the entry as stored, read under a
+ * row lock, so two overlapping updates both build on the other's result.
  */
 async function updateSymptomEntry(
   userId: string,
   id: string,
   data: SymptomEntryWrite,
-  treatments?: SymptomTreatmentInput[]
+  treatments?: SymptomTreatmentInput[],
+  fromCurrent?: (current: SymptomEntryRow) => SymptomEntryWrite
 ): Promise<SymptomEntryWithDetails | null> {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
     try {
-      const { sql, params } = buildSetClause(entryColumns(data), 3);
+      let write = data;
+      if (fromCurrent) {
+        const locked = await client.query(
+          `SELECT ${ENTRY_COLS} FROM symptom_entries
+            WHERE id = $1 AND user_id = $2
+            FOR UPDATE`,
+          [id, userId]
+        );
+        const current = locked.rows[0] as SymptomEntryRow | undefined;
+        if (!current) {
+          await client.query('ROLLBACK');
+          return null;
+        }
+        write = { ...data, ...fromCurrent(current) };
+      }
+      const { sql, params } = buildSetClause(entryColumns(write), 3);
       const result = await client.query(
         `UPDATE symptom_entries
             SET ${sql ? sql + ', ' : ''}updated_at = NOW()
@@ -499,6 +546,23 @@ async function updateSymptomEntry(
   }
 }
 
+/**
+ * The instant a day starts or ends in `tz`, or null when the date helpers
+ * cannot place it (such as the end of 9999-12-31, a common "no limit" value);
+ * that side of an overlapping range is then left open instead of failing.
+ */
+function dayEdge(day: string, tz: string, edge: 'start' | 'end'): Date | null {
+  try {
+    // A day starts where the one before ends, which still works on the last
+    // day the helpers can place.
+    return edge === 'start'
+      ? dayToUtcRange(addDays(day, -1), tz).end
+      : dayToUtcRange(day, tz).end;
+  } catch {
+    return null;
+  }
+}
+
 async function listSymptomEntries(
   userId: string,
   opts: ListSymptomEntriesOptions = {}
@@ -508,13 +572,35 @@ async function listSymptomEntries(
     const params: unknown[] = [userId];
     const where: string[] = ['user_id = $1'];
 
+    const dayRange: string[] = [];
     if (opts.fromDate) {
       params.push(opts.fromDate);
-      where.push(`entry_date >= $${params.length}`);
+      dayRange.push(`entry_date >= $${params.length}`);
     }
     if (opts.toDate) {
       params.push(opts.toDate);
-      where.push(`entry_date <= $${params.length}`);
+      dayRange.push(`entry_date <= $${params.length}`);
+    }
+    if (opts.overlapping && dayRange.length > 0) {
+      // An episode overlaps the range when it started before the range ends
+      // and had not ended before it began; one still going has no end.
+      const tz = opts.timezone ?? 'UTC';
+      const span: string[] = ['started_at IS NOT NULL'];
+      const rangeEnd = opts.toDate ? dayEdge(opts.toDate, tz, 'end') : null;
+      if (rangeEnd) {
+        params.push(rangeEnd);
+        span.push(`started_at < $${params.length}`);
+      }
+      const rangeStart = opts.fromDate
+        ? dayEdge(opts.fromDate, tz, 'start')
+        : null;
+      if (rangeStart) {
+        params.push(rangeStart);
+        span.push(`(ended_at IS NULL OR ended_at >= $${params.length})`);
+      }
+      where.push(`((${dayRange.join(' AND ')}) OR (${span.join(' AND ')}))`);
+    } else {
+      where.push(...dayRange);
     }
     if (opts.symptomName) {
       params.push(opts.symptomName.toLowerCase().trim());

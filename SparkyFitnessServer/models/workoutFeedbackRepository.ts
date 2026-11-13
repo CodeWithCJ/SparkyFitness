@@ -244,6 +244,8 @@ export interface RecentPerformanceRow {
  * of each exercise between `sinceDay` and `untilDay`, with the feedback that
  * applies to them. The upper bound keeps pre-created future plan entries
  * out; `excludePresetEntryId` keeps the workout in progress out.
+ * `evidenceAfter` keeps only performances logged, or whose feedback was
+ * recorded, after that instant, so feedback already acted on is not reused.
  */
 export async function getRecentPerformancesWithFeedback(
   userId: string,
@@ -252,13 +254,15 @@ export async function getRecentPerformancesWithFeedback(
   sinceDay: string,
   untilDay: string,
   perExercise: number,
-  excludePresetEntryId: string | null
+  excludePresetEntryId: string | null,
+  evidenceAfter: Date | null = null
 ): Promise<RecentPerformanceRow[]> {
   const client = await getClient(userId, authenticatedUserId);
   try {
     const result = await client.query(
       `WITH recent AS (
          SELECT ee.id, ee.exercise_id, ee.entry_date, ee.exercise_preset_entry_id,
+                ee.created_at,
                 row_number() OVER (
                   PARTITION BY ee.exercise_id
                   ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
@@ -300,6 +304,10 @@ export async function getRecentPerformancesWithFeedback(
          LEFT JOIN workout_feedback sf
                 ON sf.exercise_preset_entry_id = r.exercise_preset_entry_id
         WHERE r.rn <= $5
+          AND ($7::timestamptz IS NULL
+               OR r.created_at > $7::timestamptz
+               OR xf.updated_at > $7::timestamptz
+               OR sf.updated_at > $7::timestamptz)
         ORDER BY r.exercise_id, r.rn`,
       [
         userId,
@@ -308,6 +316,7 @@ export async function getRecentPerformancesWithFeedback(
         untilDay,
         perExercise,
         excludePresetEntryId,
+        evidenceAfter,
       ]
     );
     return result.rows as RecentPerformanceRow[];

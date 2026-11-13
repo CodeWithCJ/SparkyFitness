@@ -2,17 +2,16 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart } from 'victory-native';
-import {
-  FALLBACK_MAX_HR,
-  HEART_RATE_ZONE_COLORS,
-  percentMaxFloors,
-} from '@workspace/shared';
+import { defaultHeartRateZones } from '@workspace/shared';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useHeartRateReport } from '../hooks/useHeartRateReport';
 import { useHeartRateZones } from '../hooks/useHeartRateZones';
 import { useReportCustomization } from '../hooks/useReportCustomization';
 import { formatLocalizedNumber } from '../localization';
+import HeartRateDayTimelineCard from '../components/reports/HeartRateDayTimelineCard';
+import HeartRateRangeCard from '../components/reports/HeartRateRangeCard';
+import HeartRateZoneRanges from '../components/reports/HeartRateZoneRanges';
 import ReportScreenLayout from '../components/reports/ReportScreenLayout';
 import ReportSummaryCard, {
   type ReportSummaryRow,
@@ -43,7 +42,9 @@ const X_TICK_COUNT = {
   '90d': 5,
 };
 
-const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
+const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const {
     window: reportWindow,
@@ -56,15 +57,24 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
     left: { kind: 'back' },
   });
 
-  // Where Moderate, Vigorous and Peak begin: zones 3, 4 and 5 of the person's own zones
+  // The person's own five zones (Settings > Heart Rate Zones), or the shared
+  // defaults until they load
   const { zones } = useHeartRateZones();
-  const tierBounds = useMemo(() => {
-    const floors = zones?.resolved.zones.map((z) => z.lower_bpm);
-    const fallback = percentMaxFloors(FALLBACK_MAX_HR);
+  const resolvedZones = useMemo(() => {
+    if (!zones) return defaultHeartRateZones();
+    const r = zones.resolved;
     return {
-      moderate: floors?.[2] ?? fallback[2] ?? 0,
-      vigorous: floors?.[3] ?? fallback[3] ?? 0,
-      peak: floors?.[4] ?? fallback[4] ?? 0,
+      maxHr: r.max_hr,
+      maxHrSource: r.max_hr_source,
+      restingHr: r.resting_hr,
+      method: r.method,
+      effectiveMethod: r.effective_method,
+      floors: r.zones.map((z) => z.lower_bpm),
+      zones: r.zones.map((z) => ({
+        zone: z.zone,
+        lowerBpm: z.lower_bpm,
+        upperBpm: z.upper_bpm,
+      })),
     };
   }, [zones]);
 
@@ -75,10 +85,20 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const textMuted = '#9ca3af';
   const heartRateColor = '#f43f5e';
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT
   );
+
+  // The day shown in the timeline: one picked from the range chart or the day
+  // arrows while it lies inside the window, otherwise the window's last day
+  const timelineDay =
+    pickedDay &&
+    pickedDay >= reportWindow.startDate &&
+    pickedDay <= reportWindow.endDate
+      ? pickedDay
+      : reportWindow.endDate;
 
   const days = useMemo(
     () => (Array.isArray(report?.days) ? report.days : []),
@@ -173,6 +193,32 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
       });
     }
 
+    if (report.restingHrTrendDelta !== null) {
+      const delta = report.restingHrTrendDelta;
+      rows.push({
+        label: t('reports.restingHrTrend', {
+          defaultValue: 'Resting HR Trend',
+        }),
+        value:
+          delta < 0
+            ? t('reports.restingHrTrendImproving', {
+                defaultValue: '↓ {{bpm}} bpm (Improving)',
+                bpm: formatLocalizedNumber(Math.abs(delta)),
+              })
+            : delta > 0
+              ? t('reports.restingHrTrendElevated', {
+                  defaultValue: '↑ {{bpm}} bpm (Elevated)',
+                  bpm: formatLocalizedNumber(delta),
+                })
+              : t('reports.restingHrTrendStable', {
+                  defaultValue: 'Stable',
+                }),
+        hint: t('reports.restingHrTrendHint', {
+          defaultValue: 'Later half of the readings vs the earlier half',
+        }),
+      });
+    }
+
     if (report.avgRecovery1Min !== null) {
       rows.push({
         label: t('reports.heartRateRecovery1Min', {
@@ -217,9 +263,13 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
     );
   }
 
-  if (!report || !hasData) {
-    return (
-      <ReportScreenLayout header={header} {...rangeProps}>
+  // Without resting heart rate the resting sections give way to the empty
+  // state, while the timelines read the raw readings and still show
+  const hasRestingData = !!report && hasData;
+
+  return (
+    <ReportScreenLayout header={header} {...rangeProps}>
+      {!hasRestingData && (
         <StatusView
           icon="heart-rate"
           iconTone="muted"
@@ -228,14 +278,10 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
             defaultValue: 'No heart rate data recorded for this period',
           })}
         />
-      </ReportScreenLayout>
-    );
-  }
+      )}
 
-  return (
-    <ReportScreenLayout header={header} {...rangeProps}>
       {/* 1. Multi-Day Resting HR Trend Chart */}
-      {isSectionShown('heartRate.restingHrChart') && (
+      {hasRestingData && isSectionShown('heartRate.restingHrChart') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-1">
             {t('reports.restingHeartRateTrend', {
@@ -303,94 +349,47 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
         </View>
       )}
 
-      {/* 2. Heart Rate Zones Guide */}
+      {/* 2. Average heart rate by day across the window */}
+      {isSectionShown('heartRate.rangeTimeline') && (
+        <HeartRateRangeCard
+          startDate={reportWindow.startDate}
+          endDate={reportWindow.endDate}
+          windowDays={reportWindow.days}
+          onSelectDay={
+            isSectionShown('heartRate.dayTimeline') ? setPickedDay : undefined
+          }
+        />
+      )}
+
+      {/* 3. One day on a 24 hour axis */}
+      {isSectionShown('heartRate.dayTimeline') && (
+        <HeartRateDayTimelineCard
+          day={timelineDay}
+          minDay={reportWindow.startDate}
+          maxDay={reportWindow.endDate}
+          onChangeDay={setPickedDay}
+        />
+      )}
+
+      {/* Heart Rate Zones Guide */}
       {isSectionShown('heartRate.zones') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-3">
             {t('reports.heartRateZones', {
-              defaultValue: 'Heart Rate Intensity Zones',
+              defaultValue: 'Heart Rate Zones',
             })}
           </Text>
-          <View className="space-y-2.5">
-            <View className="flex-row items-center justify-between py-1.5 border-b border-border-subtle">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[0] }}
-                />
-                <Text className="text-text-primary text-sm font-medium">
-                  {t('reports.zoneLight', { defaultValue: 'Light' })}
-                </Text>
-              </View>
-              <Text className="text-text-secondary text-xs">
-                {t('reports.zoneLightRange', {
-                  defaultValue: '< {{max}} bpm · Warm-up & active recovery',
-                  max: tierBounds.moderate,
-                })}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between py-1.5 border-b border-border-subtle">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[1] }}
-                />
-                <Text className="text-text-primary text-sm font-medium">
-                  {t('reports.zoneModerate', { defaultValue: 'Moderate' })}
-                </Text>
-              </View>
-              <Text className="text-text-secondary text-xs">
-                {t('reports.zoneModerateRange', {
-                  defaultValue: '{{min}} - {{max}} bpm · Aerobic & fat burn',
-                  min: tierBounds.moderate,
-                  max: tierBounds.vigorous - 1,
-                })}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between py-1.5 border-b border-border-subtle">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[2] }}
-                />
-                <Text className="text-text-primary text-sm font-medium">
-                  {t('reports.zoneVigorous', { defaultValue: 'Vigorous' })}
-                </Text>
-              </View>
-              <Text className="text-text-secondary text-xs">
-                {t('reports.zoneVigorousRange', {
-                  defaultValue: '{{min}} - {{max}} bpm · Cardio endurance',
-                  min: tierBounds.vigorous,
-                  max: tierBounds.peak - 1,
-                })}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between py-1.5">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: HEART_RATE_ZONE_COLORS[3] }}
-                />
-                <Text className="text-text-primary text-sm font-medium">
-                  {t('reports.zonePeak', { defaultValue: 'Peak' })}
-                </Text>
-              </View>
-              <Text className="text-text-secondary text-xs">
-                {t('reports.zonePeakRange', {
-                  defaultValue: '{{min}}+ bpm · Maximum effort & anaerobic',
-                  min: tierBounds.peak,
-                })}
-              </Text>
-            </View>
-          </View>
+          <HeartRateZoneRanges
+            resolved={resolvedZones}
+            displayZones={zones?.settings.display_zones ?? 5}
+            isDefault={!zones}
+            onOpenSettings={() => navigation.navigate('HeartRateZonesSettings')}
+          />
         </View>
       )}
 
       {/* 3. Summary Metrics Card */}
-      {isSectionShown('heartRate.overview') && (
+      {hasRestingData && isSectionShown('heartRate.overview') && (
         <ReportSummaryCard
           title={t('reports.heartRateSummary', {
             defaultValue: 'Heart Rate Summary',
@@ -400,7 +399,7 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = () => {
       )}
 
       {/* 4. Insights & Health Guidance Card */}
-      {isSectionShown('heartRate.insights') && (
+      {report && hasRestingData && isSectionShown('heartRate.insights') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-2">
             {t('reports.heartRateInsights', {

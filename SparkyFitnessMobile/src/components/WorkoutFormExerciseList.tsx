@@ -23,6 +23,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import { MetricColumnMenu, SetTypeMenu } from './WorkoutMenus';
+import PlateCalculatorSheet from './PlateCalculatorSheet';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
@@ -43,7 +44,7 @@ import {
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { buildWarmupDrafts, hasLoggedWarmup } from '../utils/warmupDrafts';
-import { WARMUP_REST_SEC } from '@workspace/shared';
+import { WARMUP_REST_SEC, usesBarbell } from '@workspace/shared';
 import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import type {
   ActiveSetPatch,
@@ -499,8 +500,16 @@ const WorkoutFormExerciseList = forwardRef<
       ownerClientId: owner.clientId,
       setId: setTypeMenu.setId,
       currentType: set.setType ?? 'normal',
+      equipment: owner.exerciseEquipment ?? null,
+      // The draft holds the weight as typed, in the display unit.
+      weightText: set.weight,
     };
   }, [setTypeMenu, exercises]);
+  // The set the plate calculator is open for.
+  const [plateCalc, setPlateCalc] = useState<{
+    targetWeight: number | null;
+    equipment: readonly string[] | null;
+  } | null>(null);
 
   // Open the library Exercise Detail for a draft row (thumbnail tap + ⋮ menu).
   // Existing-session drafts carry a full snapshot; freshly-added ones are
@@ -918,11 +927,40 @@ const WorkoutFormExerciseList = forwardRef<
             });
           }
         }}
+        onOpenPlateCalculator={
+          setTypeTarget != null && usesBarbell(setTypeTarget.equipment)
+            ? () => {
+                const typed = Number(
+                  setTypeTarget.weightText.replace(',', '.').trim()
+                );
+                setPlateCalc({
+                  targetWeight:
+                    setTypeTarget.weightText.trim() !== '' &&
+                    Number.isFinite(typed) &&
+                    typed > 0
+                      ? typed
+                      : null,
+                  equipment: setTypeTarget.equipment,
+                });
+                setSetTypeMenu(null);
+              }
+            : undefined
+        }
         // Through handleDeleteSet so the last-set → remove-exercise guard applies.
         onDelete={() => {
           if (setTypeTarget != null) handleDeleteSet(setTypeTarget.setId);
         }}
       />
+
+      {plateCalc != null && (
+        <PlateCalculatorSheet
+          visible
+          onClose={() => setPlateCalc(null)}
+          targetWeight={plateCalc?.targetWeight ?? null}
+          weightUnit={weightUnit}
+          equipment={plateCalc?.equipment}
+        />
+      )}
 
       <WorkoutReorderList
         visible={reorderVisible}

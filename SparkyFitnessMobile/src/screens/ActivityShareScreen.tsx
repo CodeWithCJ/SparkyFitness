@@ -16,6 +16,7 @@ import { useWorkoutRoute } from '../hooks/useCardioSessionDetail';
 import { getAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { shareActivityImage } from '../services/activityShareImage';
+import { useTemperatureUnit } from '../hooks/useTemperatureUnit';
 import { pickImageFromCamera, pickImagesFromLibrary } from '../utils/pickImage';
 import { sessionStats } from '../utils/cardioSessionStats';
 import {
@@ -29,6 +30,7 @@ import ActivityShareCard, {
   type ActivityShareTemplate,
 } from '../components/activityShare/ActivityShareCard';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type ActivityShareScreenProps = RootStackScreenProps<'ActivityShare'>;
 
@@ -100,7 +102,15 @@ const ActivityShareScreen: React.FC<ActivityShareScreenProps> = ({ route }) => {
 
   const routeQuery = useWorkoutRoute(session.id);
   const points = routeQuery.data?.points ?? [];
-  const stats = sessionStats(t, session, distanceUnit);
+  const temperatureUnit = useTemperatureUnit();
+  const energyUnit = useEnergyUnit();
+  const stats = sessionStats(
+    t,
+    session,
+    distanceUnit,
+    temperatureUnit,
+    energyUnit
+  );
 
   const [year, month, day] = session.entryDate
     .slice(0, 10)

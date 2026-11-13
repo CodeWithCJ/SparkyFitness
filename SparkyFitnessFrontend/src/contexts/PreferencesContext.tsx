@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
@@ -40,7 +41,16 @@ import {
   DEFAULT_STANDARD_DRINK_GRAMS,
   DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
   DEFAULT_CHART_SCALE_MODE,
+  DEFAULT_TEMPERATURE_UNIT,
+  isTemperatureUnit,
+  isGlucoseUnit,
+  DEFAULT_GLUCOSE_UNIT,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  parseCalorieCyclingOffsets,
+  type CalorieCyclingMode,
+  type GlucoseUnit,
   type ChartScaleMode,
+  type TemperatureUnit,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -131,9 +141,16 @@ interface PreferencesContextType {
   measurementDecimalPlaces: number;
   chartScaleMode: ChartScaleMode;
   setChartScaleMode: (mode: ChartScaleMode) => void;
+  glucoseUnit: GlucoseUnit;
+  setGlucoseUnit: (unit: GlucoseUnit) => void;
+  temperatureUnit: TemperatureUnit;
+  setTemperatureUnit: (unit: TemperatureUnit) => void;
   goalMode: GoalMode;
   goalModeCalculationMethod: GoalModeCalculationMethod;
   adaptiveActivitySeparate: boolean;
+  adjustMacrosWithExercise: boolean;
+  calorieCyclingMode: CalorieCyclingMode;
+  calorieCyclingOffsets: number[];
   goalModeCustomPercentage: number;
   goalModeWeeklyChangeKg: number;
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
@@ -210,8 +227,15 @@ interface PreferencesContextType {
   ) => number;
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
-  formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
-  formatTime: (date: string | Date) => string;
+  formatDateInUserTimezone: (
+    date: string | Date,
+    formatStr?: string,
+    options?: { asInstant?: boolean }
+  ) => string;
+  formatTime: (
+    date: string | Date,
+    options?: { asInstant?: boolean }
+  ) => string;
   getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
@@ -262,9 +286,14 @@ export interface DefaultPreferences {
   first_day_of_week: number;
   measurement_decimal_places: number;
   chart_scale_mode: ChartScaleMode;
+  default_glucose_unit?: GlucoseUnit;
+  default_temperature_unit?: TemperatureUnit;
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   adaptive_activity_separate?: boolean;
+  adjust_macros_with_exercise?: boolean;
+  calorie_cycling_mode?: CalorieCyclingMode;
+  calorie_cycling_offsets?: number[];
   goal_mode_custom_percentage: number;
   goal_mode_weekly_change_kg: number;
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
@@ -382,9 +411,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [chartScaleMode, setChartScaleModeState] = useState<ChartScaleMode>(
     DEFAULT_CHART_SCALE_MODE
   );
+  const [glucoseUnit, setGlucoseUnitState] =
+    useState<GlucoseUnit>(DEFAULT_GLUCOSE_UNIT);
+  // Only explicit unit edits may overwrite a preference saved by another session.
+  const loadedGlucoseUnit = useRef<GlucoseUnit>(DEFAULT_GLUCOSE_UNIT);
+  const [temperatureUnit, setTemperatureUnitState] = useState<TemperatureUnit>(
+    DEFAULT_TEMPERATURE_UNIT
+  );
   const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
   const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
     useState<GoalModeCalculationMethod>('manual');
+  const [adjustMacrosWithExercise, setAdjustMacrosWithExerciseState] =
+    useState(false);
+  const [calorieCyclingMode, setCalorieCyclingModeState] =
+    useState<CalorieCyclingMode>('off');
+  const [calorieCyclingOffsets, setCalorieCyclingOffsetsState] = useState<
+    number[]
+  >([...CALORIE_CYCLING_DEFAULT_OFFSETS]);
   const [adaptiveActivitySeparate, setAdaptiveActivitySeparateState] =
     useState(false);
   const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
@@ -556,11 +599,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     date.getSeconds() === 0 &&
     date.getMilliseconds() === 0;
 
+  /** Sensor instants opt out of calendar-picker heuristics, including local-midnight Dates. */
   const formatDateInUserTimezone = useCallback(
-    (date: string | Date, formatStr?: string) => {
+    (
+      date: string | Date,
+      formatStr?: string,
+      options?: { asInstant?: boolean }
+    ) => {
       let dateToFormat: Date;
 
-      if (typeof date === 'string') {
+      if (options?.asInstant) {
+        dateToFormat = toUserTimezone(
+          typeof date === 'string' ? parseISO(date) : date
+        );
+      } else if (typeof date === 'string') {
         if (isLiteralDateString(date)) {
           // Literal date string — treat as a calendar date, no TZ projection
           dateToFormat = parseLiteralDate(date) ?? new Date();
@@ -602,8 +654,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const formatTime = useCallback(
-    (date: string | Date) => {
-      return formatDateInUserTimezone(date, normalizeTimeFormat(timeFormat));
+    (date: string | Date, options?: { asInstant?: boolean }) => {
+      return formatDateInUserTimezone(
+        date,
+        normalizeTimeFormat(timeFormat),
+        options
+      );
     },
     [formatDateInUserTimezone, timeFormat]
   );
@@ -802,9 +858,27 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setChartScaleModeState(
           data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
         );
+        loadedGlucoseUnit.current = isGlucoseUnit(data.default_glucose_unit)
+          ? data.default_glucose_unit
+          : DEFAULT_GLUCOSE_UNIT;
+        setGlucoseUnitState(loadedGlucoseUnit.current);
+        setTemperatureUnitState(
+          isTemperatureUnit(data.default_temperature_unit)
+            ? data.default_temperature_unit
+            : DEFAULT_TEMPERATURE_UNIT
+        );
         setGoalModeState(data.goal_mode || 'maintain');
         setGoalModeCalculationMethodState(
           data.goal_mode_calculation_method || 'manual'
+        );
+        setAdjustMacrosWithExerciseState(
+          data.adjust_macros_with_exercise ?? false
+        );
+        setCalorieCyclingModeState(data.calorie_cycling_mode ?? 'off');
+        setCalorieCyclingOffsetsState(
+          parseCalorieCyclingOffsets(data.calorie_cycling_offsets) ?? [
+            ...CALORIE_CYCLING_DEFAULT_OFFSETS,
+          ]
         );
         setAdaptiveActivitySeparateState(
           data.adaptive_activity_separate ?? false
@@ -909,6 +983,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         if (updates.chart_scale_mode)
           localStorage.setItem('chartScaleMode', updates.chart_scale_mode);
+        if (updates.default_glucose_unit)
+          localStorage.setItem('glucoseUnit', updates.default_glucose_unit);
+        if (updates.default_temperature_unit)
+          localStorage.setItem(
+            'temperatureUnit',
+            updates.default_temperature_unit
+          );
         return;
       }
 
@@ -935,6 +1016,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [user, loggingLevel, upsertUserPreferences]
   );
 
+  /** Save edited units only; unrelated form saves must not overwrite another session's unit. */
   const saveAllPreferences = useCallback(
     async (newPrefs?: Partial<PreferencesContextType>) => {
       info(
@@ -1008,11 +1090,21 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         measurement_decimal_places:
           newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
         chart_scale_mode: newPrefs?.chartScaleMode ?? chartScaleMode,
+        default_temperature_unit: newPrefs?.temperatureUnit ?? temperatureUnit,
+        ...((newPrefs?.glucoseUnit ?? glucoseUnit) !== loadedGlucoseUnit.current
+          ? { default_glucose_unit: newPrefs?.glucoseUnit ?? glucoseUnit }
+          : {}),
         goal_mode: newPrefs?.goalMode ?? goalMode,
         goal_mode_calculation_method:
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
         adaptive_activity_separate:
           newPrefs?.adaptiveActivitySeparate ?? adaptiveActivitySeparate,
+        adjust_macros_with_exercise:
+          newPrefs?.adjustMacrosWithExercise ?? adjustMacrosWithExercise,
+        calorie_cycling_mode:
+          newPrefs?.calorieCyclingMode ?? calorieCyclingMode,
+        calorie_cycling_offsets:
+          newPrefs?.calorieCyclingOffsets ?? calorieCyclingOffsets,
         goal_mode_custom_percentage:
           newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
         goal_mode_weekly_change_kg:
@@ -1093,9 +1185,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
+      adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,
@@ -1322,7 +1419,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (savedWeightUnit) setWeightUnitState(savedWeightUnit);
         if (savedMeasurementUnit) setMeasurementUnitState(savedMeasurementUnit);
-        if (savedDateFormat) setDateFormatState(savedDateFormat);
+        if (savedDateFormat)
+          setDateFormatState(
+            savedDateFormat.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
+          );
         if (savedTimeFormat) setTimeFormatState(savedTimeFormat);
         if (savedDistanceUnit) setDistanceUnitState(savedDistanceUnit);
         if (savedLanguage) setLanguageState(savedLanguage);
@@ -1344,6 +1444,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           'chartScaleMode'
         ) as ChartScaleMode | null;
         if (savedChartScaleMode) setChartScaleModeState(savedChartScaleMode);
+        const savedGlucoseUnit = localStorage.getItem('glucoseUnit');
+        if (isGlucoseUnit(savedGlucoseUnit))
+          setGlucoseUnitState(savedGlucoseUnit);
+        const savedTemperatureUnit = localStorage.getItem('temperatureUnit');
+        if (isTemperatureUnit(savedTemperatureUnit))
+          setTemperatureUnitState(savedTemperatureUnit);
       }
     }
   }, [user, loading, loadPreferences, loadNutrientDisplayPreferences]);
@@ -1392,9 +1498,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
+      adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,
@@ -1409,6 +1520,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setChartScaleMode: setChartScaleModeState,
+      setTemperatureUnit: setTemperatureUnitState,
+      setGlucoseUnit: setGlucoseUnitState,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
@@ -1504,9 +1617,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
+      adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,

@@ -49,6 +49,7 @@ function toResponse(
       resting_heart_rate: settings.restingHeartRate,
       method: settings.method,
       custom_floors: settings.customFloors,
+      display_zones: settings.displayZones,
     },
     resolved: {
       max_hr: resolved.maxHr,
@@ -118,6 +119,7 @@ async function updateHeartRateZones(
           body.custom_floors === undefined
             ? current.customFloors
             : body.custom_floors,
+        displayZones: body.display_zones ?? current.displayZones,
       };
 
   if (next.method === 'custom') {

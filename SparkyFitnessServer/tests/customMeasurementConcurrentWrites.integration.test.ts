@@ -190,4 +190,68 @@ describe.runIf(RUN)('one custom measurement reading per slot', () => {
 
     expect((await readings(mood)).map((r) => r.value)).toEqual(['3', '4']);
   });
+
+  it('reads imported CGM by actual timestamp day and preserves source without granting another actor access', async () => {
+    const category = await createCategory('Timestamp CGM', 'All');
+    const instants = [
+      '2026-11-03T04:59:00Z',
+      '2026-11-03T05:00:00Z',
+      '2026-11-04T04:59:00Z',
+      '2026-11-04T05:00:00Z',
+    ];
+    for (const [index, timestamp] of instants.entries()) {
+      await db.query(
+        `INSERT INTO custom_measurements (user_id, category_id, value, entry_date, entry_timestamp, source)
+         VALUES ($1,$2,$3,'2026-11-04',$4,'dexcom-api')`,
+        [userId, category, String(100 + index), timestamp]
+      );
+    }
+    const rows =
+      await measurementRepository.getCustomMeasurementTimelineEntries(
+        userId,
+        userId,
+        new Date(instants[1]),
+        new Date(instants[3])
+      );
+    expect(
+      rows
+        .filter((row) => row.category_id === category)
+        .map((row) => ({ value: row.value, source: row.source }))
+    ).toEqual([
+      { value: '101', source: 'dexcom-api' },
+      { value: '102', source: 'dexcom-api' },
+    ]);
+    const other = randomUUID();
+    await db.query(
+      'INSERT INTO public."user" (id,email,email_verified) VALUES ($1,$2,true)',
+      [other, `cgm-denied-${other}@example.test`]
+    );
+    try {
+      await expect(
+        measurementRepository.getCustomMeasurementTimelineEntries(
+          userId,
+          other,
+          new Date(instants[1]),
+          new Date(instants[3])
+        )
+      ).resolves.toEqual([]);
+    } finally {
+      await db.query('DELETE FROM public."user" WHERE id=$1', [other]);
+    }
+  });
+
+  it('keeps the glucose metric CHECK validated on startup and rejects invalid writes', async () => {
+    const constraint = await db.query(
+      `SELECT convalidated FROM pg_constraint
+         WHERE conname='chk_health_metric_samples_metric'`
+    );
+    expect(constraint.rows[0].convalidated).toBe(true);
+    await expect(
+      db.query(
+        `INSERT INTO health_metric_samples (user_id,metric,entry_date,source_provider,samples)
+         VALUES ($1,'invalid-metric','2026-11-03','fixture','[]'::jsonb)`,
+        [userId]
+      )
+    ).rejects.toMatchObject({ code: '23514' });
+  });
 });

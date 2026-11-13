@@ -19,6 +19,7 @@ import {
   paceSeriesFromTrack,
   splitsFromTrack,
 } from '../utils/cardioSession';
+import { useTemperatureUnit } from '../hooks/useTemperatureUnit';
 import { bpmText, sessionStats } from '../utils/cardioSessionStats';
 import Button from '../components/ui/Button';
 import { shareRouteAsGpx } from '../services/gpxExport';
@@ -32,6 +33,7 @@ import ProgramWorkoutBadge from '../components/recording/ProgramWorkoutBadge';
 import FitnessTestBadge from '../components/recording/FitnessTestBadge';
 import ShoePickerCard from '../components/ShoePickerCard';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type CardioSessionScreenProps = RootStackScreenProps<'CardioSession'>;
 
@@ -79,7 +81,15 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
   });
 
   const detail = useCardioSessionDetail(session.id, session.entryDate);
-  const stats = sessionStats(t, session, distanceUnit);
+  const temperatureUnit = useTemperatureUnit();
+  const energyUnit = useEnergyUnit();
+  const stats = sessionStats(
+    t,
+    session,
+    distanceUnit,
+    temperatureUnit,
+    energyUnit
+  );
   const exportGpx = async () => {
     try {
       await shareRouteAsGpx({
@@ -207,49 +217,52 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
         </Button>
         <ShoePickerCard exerciseEntryId={session.id} />
 
-        <Card
-          title={t('exerciseStatistics.cardio.route', {
-            defaultValue: 'Route',
-          })}
-        >
-          {detail.isRouteLoading ? (
-            <ActivityIndicator />
-          ) : detail.route.length > 1 ? (
-            <>
-              <RouteMap
-                points={detail.route}
-                accessibilityLabel={t('exerciseStatistics.cardio.routeA11y', {
+        {/* A duration-only workout (a jump rope) has no distance, so no route. */}
+        {(session.modality ?? 'duration_distance') !== 'duration' ? (
+          <Card
+            title={t('exerciseStatistics.cardio.route', {
+              defaultValue: 'Route',
+            })}
+          >
+            {detail.isRouteLoading ? (
+              <ActivityIndicator />
+            ) : detail.route.length > 1 ? (
+              <>
+                <RouteMap
+                  points={detail.route}
+                  accessibilityLabel={t('exerciseStatistics.cardio.routeA11y', {
+                    defaultValue:
+                      'Route of this workout, from the green dot to the red ring',
+                  })}
+                />
+                <Button
+                  variant="link"
+                  testID="export-gpx"
+                  onPress={() => void exportGpx()}
+                >
+                  {t('exerciseStatistics.cardio.exportGpx', {
+                    defaultValue: 'Export GPX',
+                  })}
+                </Button>
+                <Button
+                  variant="link"
+                  testID="save-as-route"
+                  loading={savingRoute}
+                  onPress={saveAsRoute}
+                >
+                  {t('routes.saveAsRoute', { defaultValue: 'Save as route' })}
+                </Button>
+              </>
+            ) : (
+              <Text className="text-text-secondary text-sm">
+                {t('exerciseStatistics.cardio.noRoute', {
                   defaultValue:
-                    'Route of this workout, from the green dot to the red ring',
+                    'No GPS route stored. Indoor workouts do not have one. An outdoor walk only has a route if Apple Health shared it when the workout synced.',
                 })}
-              />
-              <Button
-                variant="link"
-                testID="export-gpx"
-                onPress={() => void exportGpx()}
-              >
-                {t('exerciseStatistics.cardio.exportGpx', {
-                  defaultValue: 'Export GPX',
-                })}
-              </Button>
-              <Button
-                variant="link"
-                testID="save-as-route"
-                loading={savingRoute}
-                onPress={saveAsRoute}
-              >
-                {t('routes.saveAsRoute', { defaultValue: 'Save as route' })}
-              </Button>
-            </>
-          ) : (
-            <Text className="text-text-secondary text-sm">
-              {t('exerciseStatistics.cardio.noRoute', {
-                defaultValue:
-                  'No GPS route stored. Indoor workouts do not have one. An outdoor walk only has a route if Apple Health shared it when the workout synced.',
-              })}
-            </Text>
-          )}
-        </Card>
+              </Text>
+            )}
+          </Card>
+        ) : null}
 
         {paceSeries.length >= 2 ? (
           <Card

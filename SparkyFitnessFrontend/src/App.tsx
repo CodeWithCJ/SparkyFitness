@@ -47,6 +47,9 @@ import { getUserLoggingLevel } from '@/utils/userPreferences.ts';
 import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
 import { useTranslation } from 'react-i18next';
 const Auth = lazyWithChunkRecovery(() => import('@/pages/Auth/Auth'));
+const OAuthConsent = lazyWithChunkRecovery(
+  () => import('@/pages/Auth/OAuthConsent')
+);
 const ForgotPassword = lazyWithChunkRecovery(
   () => import('@/pages/Auth/ForgotPassword')
 );
@@ -60,6 +63,7 @@ const FoodDatabaseManager = lazyWithChunkRecovery(
   () => import('./pages/Foods/Foods')
 );
 const Reports = lazyWithChunkRecovery(() => import('./pages/Reports/Reports'));
+const Labs = lazyWithChunkRecovery(() => import('./pages/Labs/Labs'));
 const Symptoms = lazyWithChunkRecovery(
   () => import('./pages/Symptoms/Symptoms')
 );
@@ -127,6 +131,25 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return user ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const OAuthConsentRoute = () => {
+  const { t } = useTranslation();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        {t('common.loading', 'Loading...')}
+      </div>
+    );
+  }
+
+  return user ? (
+    <OAuthConsent />
+  ) : (
+    <Navigate to={{ pathname: '/login', search: window.location.search }} />
+  );
 };
 
 const PermissionRoute = ({
@@ -319,6 +342,11 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', Component: Auth, ErrorBoundary: RootErrorBoundary },
       {
+        path: '/oauth/consent',
+        Component: OAuthConsentRoute,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
         path: '/forgot-password',
         Component: ForgotPassword,
         ErrorBoundary: RootErrorBoundary,
@@ -426,6 +454,11 @@ const router = createBrowserRouter([
           {
             path: 'goals',
             Component: GoalsSettings,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'labs',
+            Component: Labs,
             ErrorBoundary: RouteErrorBoundary,
           },
           {

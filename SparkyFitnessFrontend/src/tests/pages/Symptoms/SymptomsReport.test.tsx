@@ -333,6 +333,61 @@ describe('SymptomsReport', () => {
     expect(bodyRows()[0]).toHaveTextContent('2026-09-28');
   });
 
+  it('shows the strongest effect on the day beside the peak', () => {
+    hookState.entries = [
+      episode('a', '2026-09-29', {
+        impact: 'mild',
+        impact_timeline: [
+          { at: '2026-09-29T09:00:00.000Z', impact: 'moderate' },
+          { at: '2026-09-29T10:00:00.000Z', impact: 'severe' },
+          { at: '2026-09-29T11:00:00.000Z', impact: 'mild' },
+        ],
+      }),
+      episode('b', '2026-09-27'),
+    ];
+    renderReport();
+    expect(
+      within(table()).getByRole('columnheader', { name: 'Effect on the day' })
+    ).toBeInTheDocument();
+    const [withImpact, without] = bodyRows();
+    expect(within(withImpact!).getByText('severe')).toBeInTheDocument();
+    expect(within(without!).getAllByText('–').length).toBeGreaterThan(0);
+    expect(within(without!).queryByText(/mild|moderate|severe/)).toBeNull();
+    // Once in the table, once in the printed report for a doctor.
+    expect(screen.getAllByText('severe')).toHaveLength(2);
+  });
+
+  it('exports the effect on the day and how it changed', () => {
+    URL.createObjectURL = jest.fn(() => 'blob:x');
+    URL.revokeObjectURL = jest.fn();
+    hookState.entries = [
+      episode('a', '2026-09-29', {
+        impact: 'mild',
+        impact_timeline: [
+          // The server returns appended points with an offset, not Z.
+          { at: '2026-09-29T11:00:00+00:00', impact: 'mild' },
+          { at: '2026-09-29T09:00:00.000Z', impact: 'severe' },
+        ],
+      }),
+      episode('b', '2026-09-27', { impact: 'moderate' }),
+      episode('c', '2026-09-25'),
+    ];
+    renderReport();
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    expect(unparse.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        peak_impact: 'severe',
+        impact_timeline:
+          '2026-09-29T09:00:00.000Z severe; 2026-09-29T11:00:00.000Z mild',
+      }),
+      expect.objectContaining({
+        peak_impact: 'moderate',
+        impact_timeline: '2026-09-27T09:00:00.000Z moderate',
+      }),
+      expect.objectContaining({ peak_impact: '', impact_timeline: '' }),
+    ]);
+  });
+
   it('exports the episodes with their context to CSV', () => {
     URL.createObjectURL = jest.fn(() => 'blob:x');
     URL.revokeObjectURL = jest.fn();

@@ -1,4 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import type { PoolClient } from 'pg';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import userRepository from '../models/userRepository.js';
 import { attachWatchTelemetryToExerciseEntry } from '../services/exerciseEntryService.js';
@@ -441,7 +442,7 @@ describe('filterStaleWatchTelemetryFields', () => {
       }),
     };
     await _updateExerciseEntryWithClient(
-      client,
+      client as unknown as PoolClient,
       entryId,
       userId,
       { duration_minutes: 4.5 },
@@ -484,6 +485,36 @@ describe('attachWatchTelemetryToExerciseEntry heart rate series', () => {
     expect(samples).toHaveLength(10);
     expect(samples[0]).toMatchObject({ ex: entryId, bpm: 150 });
     expect(options).toMatchObject({ mode: 'merge', ex: entryId });
+  });
+
+  it('keeps the series under the watch provider by default', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150)
+    );
+    expect(vi.mocked(upsertSamplesByDay).mock.calls[0][3]).toBe(
+      'SparkyFitness Watch'
+    );
+  });
+
+  it('keeps the series under the provider the caller names', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'Google Health'
+    );
+    expect(vi.mocked(upsertSamplesByDay).mock.calls[0][3]).toBe(
+      'Google Health'
+    );
   });
 
   it('writes no series when the snapshot was rejected', async () => {

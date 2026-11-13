@@ -9,6 +9,8 @@ on:
       - "pnpm-workspace.yaml"
       - ".github/scripts/pr-policy.cjs"
       - ".github/scripts/pr-validation.test.cjs"
+      - ".github/scripts/automation-allowlist.cjs"
+      - ".github/scripts/automation-allowlist.test.cjs"
       - ".github/workflows/pr-validation.yml"
       - ".github/workflows/pr-validation-tests.yml"
   push:
@@ -19,6 +21,8 @@ on:
       - "pnpm-workspace.yaml"
       - ".github/scripts/pr-policy.cjs"
       - ".github/scripts/pr-validation.test.cjs"
+      - ".github/scripts/automation-allowlist.cjs"
+      - ".github/scripts/automation-allowlist.test.cjs"
       - ".github/workflows/pr-validation.yml"
       - ".github/workflows/pr-validation-tests.yml"
 
@@ -37,4 +41,4 @@ jobs:
         with:
           node-version: "24"
       - run: pnpm install --filter . --frozen-lockfile --ignore-scripts
-      - run: node --test .github/scripts/pr-validation.test.cjs
+      - run: node --test .github/scripts/pr-validation.test.cjs .github/scripts/automation-allowlist.test.cjs

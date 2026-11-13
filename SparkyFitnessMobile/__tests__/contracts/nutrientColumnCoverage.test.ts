@@ -92,6 +92,12 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'All three fields are rendered here; the extra `iron` is a focus-chain reference naming the next input, not a nutrient list entry.',
   },
   {
+    file: /^utils\/labMarkerLabels\.ts$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'Lists lab marker keys, where `iron` is the blood iron test and the key and its translation key are the two sites; there are no nutrient columns here.',
+  },
+  {
     file: /^constants\/nutrients\.ts$/,
     columns: TRACKED_COLUMNS,
     reason:

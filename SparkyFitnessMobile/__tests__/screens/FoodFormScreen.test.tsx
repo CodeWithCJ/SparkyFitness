@@ -16,6 +16,8 @@ import {
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
+import { consumePendingActionTagSelection } from '../../src/services/actionTagSelection';
+import { consumePendingContainerLinkSelection } from '../../src/services/waterContainerLinkSelection';
 import {
   createFoodVariant,
   fetchFoodVariants,
@@ -172,6 +174,23 @@ jest.mock('../../src/components/CalendarSheet', () => {
   return {
     __esModule: true,
     default: MockCalendarSheet,
+  };
+});
+
+jest.mock('../../src/components/TimeSheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockTimeSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return <View testID="time-sheet" />;
+  });
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return {
+    __esModule: true,
+    default: MockTimeSheet,
   };
 });
 
@@ -1374,6 +1393,229 @@ describe('FoodFormScreen', () => {
     }
   );
 
+  it.each(['edit-food', 'adjust-entry-nutrition'] as const)(
+    'clears custom nutrients when a converted unit comes from a variant without them (%s)',
+    async (mode) => {
+      const cup: FoodVariantDetail = {
+        id: 'cup',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        custom_nutrients: { Zinc: 3 },
+      };
+      mockUseFoodVariants.mockReturnValue({
+        variants: [cup],
+        isLoading: false,
+        isError: false,
+      });
+      const screen = renderScreen({
+        mode,
+        foodId: 'food-1',
+        variantId: 'cup',
+        returnKey: 'FoodDetail-key',
+        initialValues: { ...mockSubmittedFoodFormData },
+        customNutrients: { Zinc: 3 },
+        availableUnitVariants: [cup],
+        selectedUnitSelection: { kind: 'existing', variant: cup },
+        item: {
+          id: 'food-1',
+          name: 'Custom Meal Food',
+          source: 'local',
+          servingSize: 1,
+          servingUnit: 'cup',
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+          originalItem: {},
+        },
+      });
+      expect(mockFoodForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ customNutrients: { Zinc: 3 } })
+      );
+      // Converted from a gram variant that has no custom nutrients.
+      mockUnitSelectionResult = {
+        kind: 'draft',
+        variant: {
+          ...cup,
+          id: undefined,
+          serving_size: 1,
+          serving_unit: 'oz',
+          custom_nutrients: {},
+        },
+      };
+      await act(async () => {
+        fireEvent.press(screen.getByText('Select Converted Unit'));
+      });
+      expect(mockFoodForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ customNutrients: {} })
+      );
+    }
+  );
+
+  it('updates equivalent units with the saved custom nutrients when overwriting in adjust mode', async () => {
+    const grams: FoodVariantDetail = {
+      id: 'grams',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+      custom_nutrients: { Zinc: 3 },
+    };
+    const slice: FoodVariantDetail = {
+      ...grams,
+      id: 'slice',
+      serving_size: 1,
+      serving_unit: 'slice',
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [grams, slice],
+      isLoading: false,
+      isError: false,
+    });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((title, _message, buttons) => {
+        const list = (buttons ?? []) as {
+          text?: string;
+          onPress?: () => void;
+        }[];
+        const label =
+          title === 'Save nutrition' ? 'Update existing' : "Don't Update";
+        list.find((b) => b.text === label)?.onPress?.();
+      });
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      foodId: 'food-1',
+      variantId: 'grams',
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      initialValues: { ...mockSubmittedFoodFormData },
+      // Only the custom nutrient differs from the stored variant.
+      customNutrients: { Zinc: 5 },
+      availableUnitVariants: [grams, slice],
+      selectedUnitSelection: { kind: 'existing', variant: grams },
+    });
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true
+    );
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(updateFoodVariant).toHaveBeenCalledWith(
+        'slice',
+        expect.objectContaining({
+          serving_size: 1,
+          serving_unit: 'slice',
+          custom_nutrients: { Zinc: 5 },
+        })
+      )
+    );
+    expect(updateFoodVariant).toHaveBeenCalledWith(
+      'grams',
+      expect.objectContaining({ custom_nutrients: { Zinc: 5 } })
+    );
+  });
+
+  it('creates draft equivalent units once, on the new variant, when saving as new', async () => {
+    const grams: FoodVariantDetail = {
+      id: 'grams',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [grams],
+      isLoading: false,
+      isError: false,
+    });
+    jest.mocked(fetchFoodVariants).mockResolvedValue([grams]);
+    mockCreateVariant.mockResolvedValue({
+      ...grams,
+      id: 'grams-new',
+      calories: 240,
+    });
+    jest
+      .mocked(createFoodVariant)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ ...grams, id: 'sibling' });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((title, _message, buttons) => {
+        const list = (buttons ?? []) as {
+          text?: string;
+          onPress?: () => void;
+        }[];
+        const label =
+          title === 'Save nutrition'
+            ? 'Save as new'
+            : title === 'Update past entries?'
+              ? "Don't Update"
+              : undefined;
+        (label
+          ? list.find((b) => b.text === label)
+          : list.find((b) => b.text && b.text !== 'Cancel')
+        )?.onPress?.();
+      });
+    const initialValues = { ...mockSubmittedFoodFormData };
+    mockSubmittedFoodFormData = { ...initialValues, calories: '240' };
+    mockEquivalentDraft = [
+      { serving_size: 1, serving_unit: 'serving' },
+      { serving_size: 2, serving_unit: 'slice' },
+    ];
+    const screen = renderScreen({
+      mode: 'edit-food',
+      foodId: 'food-1',
+      variantId: 'grams',
+      returnKey: 'FoodDetail-key',
+      initialValues,
+      customNutrients: null,
+      item: {
+        id: 'food-1',
+        name: 'Custom Meal Food',
+        source: 'local',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        originalItem: {},
+      },
+    });
+    fireEvent.press(screen.getByText('Apply Equivalent Fixture'));
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() =>
+      expect(mockToast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: 'Some equivalent units could not be saved',
+        })
+      )
+    );
+    expect(mockCreateVariant).toHaveBeenCalledTimes(1);
+    expect(createFoodVariant).toHaveBeenCalledTimes(2);
+    expect(createFoodVariant).toHaveBeenCalledWith(
+      expect.objectContaining({ food_id: 'food-1', serving_unit: 'slice' })
+    );
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Could not update food' })
+    );
+  });
+
   it('waits for named portions before leaving and retries using the same created food', async () => {
     let rows: FoodVariantDetail[] = [
       {
@@ -2006,6 +2248,83 @@ describe('FoodFormScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('hands a new food back to the NFC tag form instead of logging it', async () => {
+    consumePendingActionTagSelection();
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Custom Meal Food',
+      brand: 'Brand Co',
+      is_custom: true,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      },
+    });
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(mockNavigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'POP' })
+      )
+    );
+    expect(consumePendingActionTagSelection()).toEqual({
+      kind: 'food',
+      foodId: 'saved-food-1',
+      variantId: 'saved-variant-1',
+      name: 'Custom Meal Food',
+      quantity: 100,
+      unit: 'g',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('links a new food to the water container instead of logging it', async () => {
+    consumePendingContainerLinkSelection();
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Custom Meal Food',
+      brand: 'Brand Co',
+      is_custom: true,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      },
+    });
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'container-link',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(consumePendingContainerLinkSelection()).toEqual({
+        foodId: 'saved-food-1',
+        variantId: 'saved-variant-1',
+        foodName: 'Custom Meal Food',
+        quantity: 100,
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
   it('keeps the normal save-and-log flow outside meal-builder mode and pops to top on success', async () => {
     const screen = renderScreen({
       mode: 'create-food',
@@ -2032,6 +2351,7 @@ describe('FoodFormScreen', () => {
           quantity: 100,
           unit: 'g',
           entry_date: '2026-04-23',
+          entry_time: null,
         },
       });
     });
@@ -2063,12 +2383,262 @@ describe('FoodFormScreen', () => {
 
     expect(screen.getByText('Date')).toBeTruthy();
     expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByText('Time')).toBeTruthy();
     expect(screen.getByText('Save to Database')).toBeTruthy();
     expect(screen.getByText('Barcode')).toBeTruthy();
     expect(screen.getByText('Scan with camera')).toBeTruthy();
     expect(screen.getByDisplayValue('0123456789')).toBeTruthy();
     expect(screen.getByText(/100 g per serving/)).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
+    expect(screen.getByTestId('time-sheet')).toBeTruthy();
+  });
+
+  it('pre-fills entry time for today and passes it when logging a new food', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
+  });
+
+  it('respects mealTypeId passed in navigation params', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+        {
+          id: 'meal-2',
+          name: 'Lunch',
+          default_time: '12:30',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 2,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-2',
+            entry_time: '12:30',
+          }),
+        })
+      );
+    });
+  });
+
+  it('falls back to defaultMealTypeId if passed mealTypeId is not in visible mealTypes', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'hidden-meal',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-1',
+            entry_time: '08:00',
+          }),
+        })
+      );
+    });
+  });
+
+  it('preserves route-provided mealTypeId and notifies user while meal types are loading', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [],
+      defaultMealTypeId: null,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockToast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'info',
+        text1: 'Loading...',
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('notifies user and blocks save when meal types lookup fails', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [],
+      defaultMealTypeId: null,
+      isLoading: false,
+      isError: true,
+      error: new Error('Network error'),
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockToast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Error',
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('allows save when background meal-types refetch errors but cached meal exists', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: true,
+      error: new Error('Background refetch error'),
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-1',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-1',
+            entry_time: '08:00',
+          }),
+        })
+      );
+    });
+  });
+
+  it('clears entry time when Clear is pressed', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      entryTime: '14:30',
+      date: '2000-01-01',
+    });
+
+    expect(screen.getByText('Clear')).toBeTruthy();
+    fireEvent.press(screen.getByText('Clear'));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: null,
+          }),
+        })
+      );
+    });
+  });
+
+  it('sets entry time to now when Now is pressed', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      entryTime: '08:00',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Now'));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
   });
 
   it('renders the barcode field in library mode without the logging controls', () => {
@@ -2349,7 +2919,8 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'oz',
               }),
             },
-            adjustedCustomNutrients: null,
+            // The picked unit's variant has no custom nutrients, so none carry over.
+            adjustedCustomNutrients: {},
           },
         },
         source: 'FoodEntryAdd-key',
@@ -2553,7 +3124,7 @@ describe('FoodFormScreen', () => {
         water_ml: 0,
         alcohol_g: 0,
         glycemic_index: undefined,
-        custom_nutrients: undefined,
+        custom_nutrients: {},
         source: undefined,
         ai_confidence: undefined,
       });
@@ -2571,7 +3142,7 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'cup',
               }),
             },
-            adjustedCustomNutrients: null,
+            adjustedCustomNutrients: {},
           },
         },
         source: 'FoodEntryAdd-key',

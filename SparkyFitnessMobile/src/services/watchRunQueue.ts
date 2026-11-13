@@ -468,12 +468,14 @@ async function drainOnce(
         item.form ?? null
       );
       // The watch's steps may not have reached Apple Health yet, which leaves
-      // the entry without cadence and stride; measure it again later.
-      if (!form) {
+      // the entry without cadence and stride; measure it again later. A jump
+      // rope session has no stride, so there is nothing to wait for.
+      const stepKind = item.payload.kind;
+      if (!form && stepKind !== 'jumpRope') {
         await rememberPendingWatchForm({
           entryId,
           ownerId: item.payload.ownerId ?? activeOwnerId,
-          activity: item.payload.kind,
+          activity: stepKind,
           startedAt: item.payload.startedAt,
           endedAt: item.payload.endedAt,
           activeSeconds: item.payload.activeSeconds,

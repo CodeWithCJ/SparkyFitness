@@ -17,13 +17,13 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
-import { STANDARD_DRINK_PRESETS } from '@workspace/shared';
+import { type GlucoseUnit, STANDARD_DRINK_PRESETS } from '@workspace/shared';
 import {
   usePreferences,
   WeightUnit,
   MeasurementUnit,
 } from '@/contexts/PreferencesContext';
-import type { ChartScaleMode } from '@workspace/shared';
+import type { ChartScaleMode, TemperatureUnit } from '@workspace/shared';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -48,6 +48,10 @@ export const PreferenceSettings = () => {
     setTimeFormat,
     chartScaleMode,
     setChartScaleMode,
+    glucoseUnit,
+    setGlucoseUnit,
+    temperatureUnit,
+    setTemperatureUnit,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
@@ -99,6 +103,8 @@ export const PreferenceSettings = () => {
         firstDayOfWeek,
         measurementDecimalPlaces,
         chartScaleMode,
+        temperatureUnit,
+        glucoseUnit,
         timezone,
         loggingLevel: localLoggingLevel,
         standardDrinkGrams,
@@ -152,6 +158,12 @@ export const PreferenceSettings = () => {
                   {t(
                     'settings.preferenceSettings.ddMMYyyy2512',
                     'dd/MM/yyyy (25/12/2024)'
+                  )}
+                </SelectItem>
+                <SelectItem value="dd.MM.yyyy">
+                  {t(
+                    'settings.preferenceSettings.ddMMDotYyyy2512',
+                    'dd.MM.yyyy (25.12.2024)'
                   )}
                 </SelectItem>
                 <SelectItem value="dd-MMM-yyyy">
@@ -301,6 +313,46 @@ export const PreferenceSettings = () => {
                 </SelectItem>
                 <SelectItem value="miles">
                   {t('settings.preferences.miles', 'Miles (miles)')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="glucose_unit">
+              {t('settings.preferences.glucoseUnit', 'Glucose Unit')}
+            </Label>
+            <Select
+              value={glucoseUnit}
+              onValueChange={(value) => setGlucoseUnit(value as GlucoseUnit)}
+            >
+              <SelectTrigger id="glucose_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mmol/L">mmol/L</SelectItem>
+                <SelectItem value="mg/dL">mg/dL</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="temperature_unit">
+              {t('settings.preferences.temperatureUnit', 'Temperature Unit')}
+            </Label>
+            <Select
+              value={temperatureUnit}
+              onValueChange={(value) =>
+                setTemperatureUnit(value as TemperatureUnit)
+              }
+            >
+              <SelectTrigger id="temperature_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="celsius">
+                  {t('settings.preferences.celsius', 'Celsius (°C)')}
+                </SelectItem>
+                <SelectItem value="fahrenheit">
+                  {t('settings.preferences.fahrenheit', 'Fahrenheit (°F)')}
                 </SelectItem>
               </SelectContent>
             </Select>

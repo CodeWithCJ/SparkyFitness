@@ -601,6 +601,8 @@ export interface SetRowAccessoryHandle {
   focusField: (field: SetInputField) => void;
   /** Edit: move on to the next set — or add one when this is the last row. */
   advance: () => void;
+  /** Live: commit the row's in-progress weight draft without completing it. */
+  flushWeight?: () => void;
 }
 
 /**

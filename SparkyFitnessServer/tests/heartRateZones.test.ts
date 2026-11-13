@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   FALLBACK_MAX_HR,
+  HEART_RATE_ZONE_COLORS,
+  defaultHeartRateZones,
+  HEART_RATE_TIER_COLORS,
+  heartRateDisplayBands,
+  heartRateZoneBands,
   ageFromDateOfBirth,
   computeTimeInZones,
   customFloorsProblem,
@@ -336,5 +341,75 @@ describe('heartRateZoneRange', () => {
     expect(heartRateZoneRange(resolved, 0)).toBeNull();
     expect(heartRateZoneRange(resolved, 6)).toBeNull();
     expect(heartRateZoneRange(resolved, 2.5)).toBeNull();
+  });
+});
+
+describe('defaultHeartRateZones and heartRateZoneBands', () => {
+  it('matches what resolving with nothing set gives', () => {
+    expect(defaultHeartRateZones()).toEqual(
+      resolveHeartRateZones({ today: TODAY })
+    );
+  });
+
+  it('gives one color per zone, easy to hard, for any resolved zones', () => {
+    expect(HEART_RATE_ZONE_COLORS).toHaveLength(5);
+    const resolved = resolveHeartRateZones({
+      settings: {
+        maxHeartRate: 188,
+        restingHeartRate: 68,
+        method: 'heart_rate_reserve',
+      },
+      today: TODAY,
+    });
+    const bands = heartRateZoneBands(resolved.zones);
+    expect(bands.map((b) => b.lowerBpm)).toEqual([128, 140, 152, 164, 176]);
+    expect(bands.map((b) => b.color)).toEqual([...HEART_RATE_ZONE_COLORS]);
+    expect(bands[4]?.upperBpm).toBeNull();
+  });
+
+  it('follows custom floors', () => {
+    const resolved = resolveHeartRateZones({
+      settings: { method: 'custom', customFloors: [100, 120, 140, 160, 180] },
+      today: TODAY,
+    });
+    expect(heartRateZoneBands(resolved.zones).map((b) => b.upperBpm)).toEqual([
+      119,
+      139,
+      159,
+      179,
+      null,
+    ]);
+  });
+});
+
+describe('heartRateDisplayBands', () => {
+  const zones = resolveHeartRateZones({
+    settings: { method: 'custom', customFloors: [30, 140, 152, 164, 176] },
+    today: TODAY,
+  }).zones;
+
+  it('is the five zones when five are chosen', () => {
+    const bands = heartRateDisplayBands(zones, 5);
+    expect(bands.map((b) => b.lowerBpm)).toEqual([30, 140, 152, 164, 176]);
+    expect(bands.every((b) => b.tier === null)).toBe(true);
+    expect(bands.map((b) => b.zones)).toEqual([[1], [2], [3], [4], [5]]);
+  });
+
+  it('folds zones 1 and 2 into Light when four tiers are chosen', () => {
+    const bands = heartRateDisplayBands(zones, 4);
+    expect(bands.map((b) => b.tier)).toEqual([
+      'light',
+      'moderate',
+      'vigorous',
+      'peak',
+    ]);
+    expect(bands.map((b) => b.zones)).toEqual([[1, 2], [3], [4], [5]]);
+    expect(bands.map((b) => [b.lowerBpm, b.upperBpm])).toEqual([
+      [30, 151],
+      [152, 163],
+      [164, 175],
+      [176, null],
+    ]);
+    expect(bands.map((b) => b.color)).toEqual([...HEART_RATE_TIER_COLORS]);
   });
 });

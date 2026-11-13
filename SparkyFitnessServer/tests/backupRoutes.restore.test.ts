@@ -22,11 +22,14 @@ const env = vi.hoisted(() => {
   return { root, uploads, backups };
 });
 
-const mocks = vi.hoisted(() => ({ performRestore: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  performRestore: vi.fn(),
+}));
 
 vi.mock('../services/backupService.js', () => ({
   performBackup: vi.fn(),
   performRestore: mocks.performRestore,
+  RestoreInProgressError: class RestoreInProgressError extends Error {},
   BACKUP_DIR: env.backups,
   BACKUP_FILE_PATTERN: /^sparkyfitness_full_backup_[\w.-]+\.tar\.gz$/,
   listBackups: vi.fn(),
@@ -44,6 +47,7 @@ vi.mock('../middleware/authMiddleware', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import backupRoutes from '../routes/backupRoutes.js';
+import { RestoreInProgressError } from '../services/backupService.js';
 
 const app = express();
 app.use('/admin/backup', backupRoutes);
@@ -131,5 +135,21 @@ describe('POST /admin/backup/restore leaves no archive behind', () => {
     await postRestore().expect(200);
 
     await expectBackupFolder([path.basename(kept)]);
+  });
+});
+
+describe('POST /admin/backup/restore while another restore runs', () => {
+  it('answers 409 and removes the archive', async () => {
+    mocks.performRestore.mockRejectedValue(
+      new RestoreInProgressError('Another restore is already running.')
+    );
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      message: 'Another restore is already running.',
+    });
+    await expectBackupFolder([]);
   });
 });

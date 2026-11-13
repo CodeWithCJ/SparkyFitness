@@ -16,6 +16,7 @@ import {
   formatXLabel30d90d,
   useChartFont,
 } from '../charts/chartFormatting';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareOverTimeChartProps {
   response: CompareResponse;
@@ -29,6 +30,7 @@ const CompareOverTimeChart: React.FC<CompareOverTimeChartProps> = ({
   question,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [colorA, colorB, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -66,8 +68,8 @@ const CompareOverTimeChart: React.FC<CompareOverTimeChartProps> = ({
       ? t('compareReport.chart.range', {
           defaultValue: '{{metric}} {{min}}–{{max}}',
           metric: COMPARE_METRIC_LABELS[item.key](t),
-          min: compareValueText(item.key, item.range.min),
-          max: compareValueText(item.key, item.range.max),
+          min: compareValueText(item.key, item.range.min, energyUnit),
+          max: compareValueText(item.key, item.range.max, energyUnit),
         })
       : COMPARE_METRIC_LABELS[item.key](t),
   }));

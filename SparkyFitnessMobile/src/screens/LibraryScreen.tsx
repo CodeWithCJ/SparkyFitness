@@ -16,6 +16,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
@@ -25,6 +26,7 @@ import { programTitle } from '../components/recording/RunProgramCard';
 import { useRunProgram } from '../services/runProgramService';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
+import { ServerStatusView } from '../components/ServerGate';
 import {
   useFavorites,
   useFoods,
@@ -63,6 +65,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
+  const verticalBar = useVerticalBar();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } =
@@ -203,25 +206,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         className="flex-1 bg-background"
         style={usesNativeTabs ? undefined : { paddingTop: insets.top }}
       >
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('screens.library.noServerConfigured', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('screens.library.configureServer', {
-            defaultValue:
-              'Configure your server connection in Settings to view your library.',
-          })}
-          action={{
-            label: t('screens.library.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Settings'),
-            variant: 'primary',
-          }}
-        />
+        <ServerStatusView />
       </View>
     );
   }
@@ -252,6 +237,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       contentContainerStyle={{
         paddingHorizontal: 16,
         ...(!usesNativeTabs ? { paddingTop: 16 } : null),
+        // Room under the large title beside a vertical bar.
+        ...(usesNativeTabs && verticalBar ? { paddingTop: 12 } : null),
         paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
       }}
       scrollEventThrottle={16}
@@ -443,6 +430,25 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                     defaultValue:
                       'Run and walk plans from Beginner 5K to marathon',
                   })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('LabResults')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.labResults', {
+                defaultValue: 'Lab results',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.labResultsSubtitle', {
+                defaultValue: 'Blood tests and other markers over time',
+              })}
             </Text>
           </View>
           <Icon name="chevron-forward" size={20} color="#999" />

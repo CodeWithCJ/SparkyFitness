@@ -69,6 +69,12 @@ export interface WatchMedicationTakenPayload {
   scheduleId: string;
   /** False when the wearer un-ticked the dose; absent from older watch builds, which only ever tick. */
   taken?: boolean;
+  /**
+   * True when the wearer marked the dose skipped. Only sent once the phone
+   * has said it understands it (`medicationSkip` in the context), because an
+   * older phone would read the `taken: false` that rides with it as an un-tick.
+   */
+  skipped?: boolean;
   ownerId?: string;
 }
 
@@ -84,6 +90,8 @@ export interface WatchMedicationDosePayload {
   /** Pre-formatted time of day in the account's 12/24-hour convention, empty when untimed. */
   time: string;
   status: 'pending' | 'taken' | 'skipped';
+  /** A supplement rather than a medication, so the watch can draw its icon. */
+  supplement?: boolean;
 }
 
 /**
@@ -113,6 +121,47 @@ export interface WatchContainerPayload {
   servingVolumeMl: number;
   /** Display only — `ml` | `oz` | `liter`. `servingVolumeMl` is always ml. */
   unit: string;
+}
+
+/** Today's sleep snapshot relayed to the watch for its Sleep Health tile. */
+export interface WatchSleepSnapshotPayload {
+  day: string;
+  /** Total time asleep in seconds (main sleep + naps). */
+  totalSeconds: number;
+  /** Main sleep bedtime-to-waketime span in seconds. */
+  timeInBedSeconds: number;
+  sleepScore: number | null;
+  /** Pre-formatted bedtime in the user's time format, or empty. */
+  bedtime: string;
+  /** Pre-formatted wake time in the user's time format, or empty. */
+  wakeTime: string;
+  deepSeconds: number | null;
+  remSeconds: number | null;
+  lightSeconds: number | null;
+  awakeSeconds: number | null;
+  restingHeartRate: number | null;
+  hrvMs: number | null;
+  spo2: number | null;
+  napCount: number;
+  napSeconds: number;
+}
+
+/** One logged exercise session relayed in `WatchExerciseSummaryPayload`. */
+export interface WatchExerciseSessionPayload {
+  name: string;
+  durationMinutes: number;
+  calories: number;
+}
+
+/** Today's exercise summary relayed to the watch for its Exercise tile. */
+export interface WatchExerciseSummaryPayload {
+  day: string;
+  minutes: number;
+  minutesGoal: number;
+  calories: number;
+  caloriesGoal: number;
+  sessionCount: number;
+  sessions: WatchExerciseSessionPayload[];
 }
 
 /** Seed values, history and acknowledgements pushed to the watch. */
@@ -156,6 +205,11 @@ export interface WatchContextPayload {
    */
   distanceUnit?: 'km' | 'miles' | null;
   /**
+   * The phone's energy unit. Every energy number in the context stays in
+   * kcal; the watch shows it in kJ when this is `kJ`. Missing reads as `kcal`.
+   */
+  energyUnit?: 'kcal' | 'kJ' | null;
+  /**
    * The phone's Settings → Haptics switch. The watch plays button haptics
    * and the rest-end buzz only while this is on. Missing reads as on.
    */
@@ -178,6 +232,12 @@ export interface WatchContextPayload {
    * speaks each completed km or mile while this is on. Missing reads as off.
    */
   runVoiceCues?: boolean | null;
+  /**
+   * The app's language as a BCP 47 tag. The watch speaks cue text the phone
+   * wrote (plan step names, route wording) with a voice for it when the phone
+   * cannot relay the cue. Missing reads as unknown.
+   */
+  appLanguage?: string | null;
   /** The phone's Auto-pause switch: the default for a run begun on the wrist. */
   runAutoPause?: boolean | null;
   /** Minutes between spoken check-ins: the default for a run begun on the wrist; 0 is off. */
@@ -320,6 +380,24 @@ export interface WatchContextPayload {
    */
   medications?: WatchMedicationDosePayload[] | null;
   /**
+   * This phone handles `skipped` on a `medicationTaken` message. The watch
+   * offers Skipped only while it is true.
+   */
+  medicationSkip?: boolean;
+  /** Elapsed time, heart rate and calories on the set screen. Absent means on. */
+  setScreenMetrics?: boolean;
+  /** The Up Next page after the set screen. Absent means off. */
+  upNextPage?: boolean;
+  /** The larger-text layout of the Goals and Water pages. Absent means off. */
+  largerText?: boolean;
+  /** Keep the original workout page while larger text is on. Absent means off. */
+  classicWorkout?: boolean;
+  /**
+   * This phone handles the `doExerciseNow` workout edit. The watch offers
+   * Swap only while it is true.
+   */
+  exerciseDoNow?: boolean;
+  /**
    * Saved workouts the wearer can start from the wrist. Names and ids only;
    * the phone still builds and arms the session. Absent on an older phone.
    */
@@ -363,6 +441,10 @@ export interface WatchContextPayload {
   steps?: { day: string; count: number } | null;
   /** Daily step goal the Steps page and complication measure against. */
   stepGoal?: number | null;
+  /** Today's sleep health snapshot for the watch's Sleep Health tile. */
+  sleep?: WatchSleepSnapshotPayload | null;
+  /** Today's exercise summary for the watch's Exercise tile. */
+  exerciseSummary?: WatchExerciseSummaryPayload | null;
 }
 
 /** One target set the watch shows for a planned exercise. */
@@ -654,15 +736,42 @@ export interface WatchWorkoutEditPayload {
   sessionId: string;
   clientId: string;
   action:
-    'addSet' | 'deleteSet' | 'setSetType' | 'addExercise' | 'deleteExercise';
-  /** For `addSet` and `deleteExercise`. */
+    | 'addSet'
+    | 'deleteSet'
+    | 'setSetType'
+    | 'addExercise'
+    | 'deleteExercise'
+    | 'doExerciseNow'
+    | 'setValues';
+  /** For `addSet`, `deleteExercise` and `doExerciseNow`. */
   exerciseEntryId?: string;
+  /**
+   * For `doExerciseNow`: the exercise the watch is on, which the picked one
+   * goes in front of. Absent from an older watch: the phone's cursor is used.
+   */
+  anchorEntryId?: string;
   /** For `deleteSet` and `setSetType`. */
   setId?: string;
   /** For `addExercise`: the library exercise to add. */
   exerciseId?: string;
   /** For `setSetType`: `normal`, `warmup`, `drop` or `failure`. */
   setType?: string;
+  /**
+   * For `setValues`: what the wearer just typed on the watch for `setId`,
+   * before logging it. Only the fields that were edited are present. Weight
+   * and a carry's distance are in kg and km, as in a logged set.
+   */
+  weightKg?: number;
+  reps?: number;
+  distanceKm?: number;
+  /** For `setValues`: epoch ms of the edit, so a late copy of an older one is dropped. */
+  at?: number;
+  /**
+   * For `setValues`: epoch ms of the arm the edit was made in. A saved workout
+   * can be armed again under the same id, and an edit queued from the earlier
+   * arm is dropped. Absent from an older watch.
+   */
+  armedAt?: number;
 }
 
 /** The wearer's answer to the watch's "update this workout?" question, asked
@@ -818,6 +927,12 @@ export interface WatchRunCuePayload {
   text: string;
   /** Say it now rather than after the cue being spoken. */
   interrupt: boolean;
+  /**
+   * BCP 47 tag of the language the text is written in (the watch's). Empty
+   * when the sender does not say, as Wear OS does not; the app language then
+   * applies.
+   */
+  language?: string;
 }
 
 /** How hard the wearer rated a finished watch run, 1 to 10. Matches a run by `clientId`. */

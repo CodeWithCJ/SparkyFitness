@@ -4,11 +4,12 @@ import WatchKit
 /// — a sweaty finger, a glance away mid-set — so every button confirms it
 /// registered, and all of them feel the same because they go through here.
 ///
-/// Presses that already play something stay as they are: a container square
-/// clicks on its own, and a check-in save plays `.success` once it is sent.
-///
-/// Follows the phone's Settings → Haptics switch, which rides in the watch
-/// context (`WatchContext.effectiveHapticsEnabled`).
+/// Everything the watch plays goes through here, so the phone's Settings →
+/// Haptics switch (`WatchContext.effectiveHapticsEnabled`, which rides in the
+/// watch context) silences all of it. Two exceptions: the Digital Crown's own
+/// detent feedback is switched by the same setting where a view turns it on,
+/// and the rest-finished buzz in `WatchAppDelegate` also honors the phone's
+/// rest-alerts setting (`effectiveRestBuzzEnabled`).
 enum Haptics {
     /// An ordinary button press.
     static func tap() {
@@ -19,6 +20,21 @@ enum Haptics {
     /// differently from moving around.
     static func setLogged() {
         play(.success)
+    }
+
+    /// A check-in was saved and sent.
+    static func saved() {
+        play(.success)
+    }
+
+    /// A wrist run auto-paused because the wearer stopped moving.
+    static func autoPaused() {
+        play(.stop)
+    }
+
+    /// A wrist run resumed on its own because the wearer started moving again.
+    static func autoResumed() {
+        play(.start)
     }
 
     /// An interval plan moved to its next step. Two firm taps so it reads on

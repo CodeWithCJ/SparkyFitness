@@ -15,6 +15,7 @@ export const REPORT_KEYS = [
   'mood',
   'exercise',
   'heartRate',
+  'oralCare',
   'compare',
 ] as const;
 
@@ -42,6 +43,7 @@ export const REPORT_LABELS: Record<ReportKey, (t: Translator) => string> = {
   mood: (t) => t('reports.mood', { defaultValue: 'Mood' }),
   exercise: (t) => t('reports.exercise', { defaultValue: 'Exercise' }),
   heartRate: (t) => t('reports.heartRate', { defaultValue: 'Heart Rate' }),
+  oralCare: (t) => t('reports.oralCare', { defaultValue: 'Oral care' }),
   compare: (t) => t('reports.compare', { defaultValue: 'Compare' }),
 };
 
@@ -96,6 +98,7 @@ export const EXERCISE_SECTIONS = [
 ] as const;
 
 export const MEASUREMENTS_SECTIONS = [
+  'measurements.timeline',
   'measurements.overview',
   'measurements.insights',
   'measurements.weightChart',
@@ -129,7 +132,17 @@ export const HEART_RATE_SECTIONS = [
   'heartRate.overview',
   'heartRate.insights',
   'heartRate.restingHrChart',
+  'heartRate.rangeTimeline',
+  'heartRate.dayTimeline',
   'heartRate.zones',
+] as const;
+
+export const ORAL_CARE_SECTIONS = [
+  'oralCare.overview',
+  'oralCare.insights',
+  'oralCare.brushesChart',
+  'oralCare.minutesChart',
+  'oralCare.summary',
 ] as const;
 
 /** One chart per overnight reading on the sleep report; each can be hidden. */
@@ -145,6 +158,7 @@ export type ReportSectionKey =
   | (typeof SLEEP_SECTIONS)[number]
   | (typeof MOOD_SECTIONS)[number]
   | (typeof HEART_RATE_SECTIONS)[number]
+  | (typeof ORAL_CARE_SECTIONS)[number]
   | ReturnType<typeof sleepMetricSection>;
 
 /** What a report opens on until the wearer picks, and what `reportDefaultRange` starts as. */

@@ -10,6 +10,7 @@ export type SaveFoodImages = ImageUploadArgs;
 type SaveFoodVariables = {
   payload: SaveFoodPayload;
   images?: SaveFoodImages;
+  notificationCurrent?: () => boolean;
 };
 
 export function useSaveFood() {
@@ -25,7 +26,8 @@ export function useSaveFood() {
       // (separate query root, 5-min staleTime).
       queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
     },
-    onError: () => {
+    onError: (_error, variables) => {
+      if (variables.notificationCurrent?.() === false) return;
       Toast.show({
         type: 'error',
         text1: t('foodSave.failed', { defaultValue: 'Failed to save food' }),
@@ -39,8 +41,11 @@ export function useSaveFood() {
   return {
     saveFood: (payload: SaveFoodPayload, images?: SaveFoodImages) =>
       mutation.mutate({ payload, images }),
-    saveFoodAsync: (payload: SaveFoodPayload, images?: SaveFoodImages) =>
-      mutation.mutateAsync({ payload, images }),
+    saveFoodAsync: (
+      payload: SaveFoodPayload,
+      images?: SaveFoodImages,
+      notificationCurrent?: () => boolean
+    ) => mutation.mutateAsync({ payload, images, notificationCurrent }),
     isPending: mutation.isPending,
     isSaved: mutation.isSuccess,
   };

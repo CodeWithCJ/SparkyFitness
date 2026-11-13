@@ -64,6 +64,8 @@ const poolMocks = vi.hoisted(() => {
 vi.mock('../db/poolManager', () => ({
   getSystemClient: poolMocks.getSystemClient,
   getClient: poolMocks.getClient,
+  // MCP tools run without a fixed actor, so they act as the account itself.
+  actorUserIdFor: (userId: string) => userId,
   getPoolStats: poolMocks.getPoolStats,
   getRawOwnerPool: poolMocks.getRawOwnerPool,
   endPool: poolMocks.endPool,
@@ -161,7 +163,7 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(200);
     const tools = res.body.result.tools;
-    expect(tools).toHaveLength(55);
+    expect(tools).toHaveLength(56);
     expect(tools.map((t: { name: string }) => t.name).sort()).toEqual(
       EXPECTED_TOOL_NAMES
     );
@@ -516,7 +518,7 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(200);
     const names = res.body.result.tools.map((t: { name: string }) => t.name);
-    expect(res.body.result.tools).toHaveLength(55);
+    expect(res.body.result.tools).toHaveLength(56);
     for (const devTool of DEV_TOOL_NAMES) {
       expect(names).not.toContain(devTool);
     }
@@ -534,7 +536,7 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(200);
     const names = res.body.result.tools.map((t: { name: string }) => t.name);
-    expect(res.body.result.tools).toHaveLength(60);
+    expect(res.body.result.tools).toHaveLength(61);
     for (const devTool of DEV_TOOL_NAMES) {
       expect(names).toContain(devTool);
     }
@@ -552,7 +554,7 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(200);
     const names = res.body.result.tools.map((t: { name: string }) => t.name);
-    expect(res.body.result.tools).toHaveLength(55);
+    expect(res.body.result.tools).toHaveLength(56);
     for (const devTool of DEV_TOOL_NAMES) {
       expect(names).not.toContain(devTool);
     }

@@ -45,7 +45,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from 'lucide-react';
-import { useRef, type FC } from 'react';
+import { Fragment, useRef, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUserAIPreferences } from '@/hooks/AI/useAIServiceSettings';
 import { useVoiceInput } from '@/hooks/AI/useVoiceInput';
@@ -297,18 +297,23 @@ const MessageError: FC = () => {
   );
 };
 
-// Purely presentational muted/small token-usage line. With `label` set (the
-// session running total) it reads "label: N tokens"; otherwise it renders the
-// per-message breakdown, dropping the cached segment when 0/absent. Numbers are
-// localized so large counts read with thousands separators.
-export const TokenUsageLine: FC<{
+type TokenUsageCounts = {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
   cachedInputTokens?: number;
-  label?: string;
-  className?: string;
-}> = ({
+};
+
+// Muted/small token-usage line. Cache reads cost a fraction of fresh input, so
+// a turn that is mostly cache reads looks far costlier as one big total than it
+// is. Input is split into cached and uncached, so cached + uncached + out add
+// up to the total. Without a cached figure (provider reports none, or 0) input
+// stays a single "in" segment. Counts are compact ("66.9K") so the line fits
+// beside the action bar on phones; the title carries the exact numbers. With
+// `label` set (the session running total) the line is prefixed "label: ".
+export const TokenUsageLine: FC<
+  TokenUsageCounts & { label?: string; className?: string }
+> = ({
   inputTokens,
   outputTokens,
   totalTokens,
@@ -316,25 +321,66 @@ export const TokenUsageLine: FC<{
   label,
   className,
 }) => {
-  const text = label
-    ? `${label}: ${(totalTokens ?? 0).toLocaleString()} tokens`
-    : [
-        inputTokens !== undefined && `${inputTokens.toLocaleString()} in`,
-        outputTokens !== undefined && `${outputTokens.toLocaleString()} out`,
-        totalTokens !== undefined && `${totalTokens.toLocaleString()} total`,
-        cachedInputTokens
-          ? `${cachedInputTokens.toLocaleString()} cached`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const compact = new Intl.NumberFormat(locale, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  });
+  const exact = new Intl.NumberFormat(locale);
 
+  const total =
+    totalTokens ??
+    (inputTokens !== undefined && outputTokens !== undefined
+      ? inputTokens + outputTokens
+      : undefined);
+  const cached = cachedInputTokens || undefined;
+  const uncached =
+    cached !== undefined && inputTokens !== undefined
+      ? Math.max(inputTokens - cached, 0)
+      : undefined;
+
+  const segments = (format: (n: number) => string) =>
+    [
+      total !== undefined &&
+        t('thread.tokenUsage.total', '{{value}} total', {
+          value: format(total),
+        }),
+      cached !== undefined &&
+        t('thread.tokenUsage.cached', '{{value}} cached', {
+          value: format(cached),
+        }),
+      uncached !== undefined &&
+        t('thread.tokenUsage.uncached', '{{value}} uncached', {
+          value: format(uncached),
+        }),
+      cached === undefined &&
+        inputTokens !== undefined &&
+        t('thread.tokenUsage.input', '{{value}} in', {
+          value: format(inputTokens),
+        }),
+      outputTokens !== undefined &&
+        t('thread.tokenUsage.output', '{{value}} out', {
+          value: format(outputTokens),
+        }),
+    ].filter((s): s is string => Boolean(s));
+
+  const prefix = label ? `${label}: ` : '';
+  // Each segment stays on one line, so a narrow panel wraps between segments
+  // rather than splitting "1.3K uncached" across lines.
   return (
     <span
       data-slot="aui_token-usage-line"
+      title={prefix + segments((n) => exact.format(n)).join(' · ')}
       className={cn('text-muted-foreground text-xs', className)}
     >
-      {text}
+      {prefix}
+      {segments((n) => compact.format(n)).map((segment, i) => (
+        <Fragment key={segment}>
+          {i > 0 && ' · '}
+          <span className="whitespace-nowrap">{segment}</span>
+        </Fragment>
+      ))}
     </span>
   );
 };
@@ -359,26 +405,59 @@ export const MessageTokenUsage: FC = () => {
   );
 };
 
+// Add up the session's usage over the messages that reported a total (derived
+// from input + output when the provider sent no total). A breakdown field is
+// shown only when every counted message reported it, so the segments always
+// cover the same messages as the total. A missing cached count means none.
+const sumSessionUsage = (
+  usages: TokenUsageCounts[]
+): TokenUsageCounts | undefined => {
+  const counted = usages.flatMap((u) => {
+    const totalTokens =
+      u.totalTokens ??
+      (u.inputTokens !== undefined && u.outputTokens !== undefined
+        ? u.inputTokens + u.outputTokens
+        : undefined);
+    return totalTokens === undefined ? [] : [{ ...u, totalTokens }];
+  });
+  if (counted.length === 0) return undefined;
+  const sum = (key: keyof TokenUsageCounts) =>
+    counted.every((u) => u[key] !== undefined)
+      ? counted.reduce((total, u) => total + (u[key] ?? 0), 0)
+      : undefined;
+  const inputTokens = sum('inputTokens');
+  return {
+    totalTokens: sum('totalTokens'),
+    inputTokens,
+    outputTokens: sum('outputTokens'),
+    cachedInputTokens:
+      inputTokens === undefined
+        ? undefined
+        : counted.reduce((total, u) => total + (u.cachedInputTokens ?? 0), 0),
+  };
+};
+
 // Session running total near the composer. The adapter helpers give
-// latest-or-single, not a sum, so add up every message's total. The `?? 0`
-// matters: history messages restored without metadata return undefined usage,
-// so a bare `.totalTokens` would throw. "this session" signals the count is
-// current-session-only — it resets on reload (see known limitations).
+// latest-or-single, not a sum, so add up every message's usage. History
+// messages restored without metadata return undefined usage and are skipped.
+// "this session" signals the count is current-session-only — it resets on
+// reload (see known limitations).
 export const SessionTokenUsage: FC = () => {
   const { t } = useTranslation();
   const { showTokenStats } = useChatbotVisibility();
   const messages = useAuiState((s) => s.thread.messages);
   if (!showTokenStats) return null;
-  const total = messages.reduce(
-    (sum, m) => sum + (getThreadMessageTokenUsage(m)?.totalTokens ?? 0),
-    0
+  const usage = sumSessionUsage(
+    messages
+      .map((m) => getThreadMessageTokenUsage(m))
+      .filter((u): u is TokenUsageCounts => u !== undefined)
   );
-  if (total === 0) return null;
+  if (!usage?.totalTokens) return null;
   return (
     <TokenUsageLine
       className="px-1"
       label={t('thread.thisSession', 'this session')}
-      totalTokens={total}
+      {...usage}
     />
   );
 };

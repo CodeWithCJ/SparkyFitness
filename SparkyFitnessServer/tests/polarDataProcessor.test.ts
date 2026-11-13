@@ -122,6 +122,7 @@ describe('processPolarSleep recording-zone stamp (issue #2033)', () => {
     vi.clearAllMocks();
     vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
       id: 'sleep-1',
+      created: true,
     });
   });
 
@@ -169,6 +170,7 @@ describe('processPolarSleep hypnogram stages (issue #2431)', () => {
     vi.clearAllMocks();
     vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
       id: 'sleep-1',
+      created: true,
     });
   });
 

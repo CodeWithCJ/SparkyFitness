@@ -146,7 +146,7 @@ struct CaloriesLeftControl: ControlWidget {
             ControlWidgetButton(action: OpenDiaryControlIntent()) {
                 Label(
                     snapshot.hasData
-                        ? "\(localizedNumberString(snapshot.remaining)) \(localizedWidgetString("widget.kcal_left"))"
+                        ? "\(localizedNumberString(snapshot.remaining)) \(energyLeftLabel(snapshot.energyUnit))"
                         : localizedWidgetString("widget.calorie.name"),
                     systemImage: "flame.fill"
                 )

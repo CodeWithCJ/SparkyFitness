@@ -8,6 +8,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
 import androidx.wear.remote.interactions.RemoteActivityHelper
+import com.facebook.react.bridge.ReadableMap
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
@@ -813,6 +814,7 @@ internal object WatchConnectivityHub {
               "medicationId" to (payload["medicationId"] as? String ?: ""),
               "scheduleId" to (payload["scheduleId"] as? String ?: ""),
               "taken" to (payload["taken"] as? Boolean ?: true),
+              "skipped" to (payload["skipped"] as? Boolean ?: false),
               "ownerId" to payloadOwner
             )
           )
@@ -1062,7 +1064,8 @@ internal object WatchConnectivityHub {
           mapOf(
             "id" to (payload["id"] as? String ?: ""),
             "text" to (payload["text"] as? String ?: ""),
-            "interrupt" to (payload["interrupt"] as? Boolean ?: false)
+            "interrupt" to (payload["interrupt"] as? Boolean ?: false),
+            "language" to (payload["language"] as? String ?: "")
           )
         )
       }
@@ -1573,10 +1576,11 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.isPairedFlag.get()
     }
 
-    AsyncFunction("updateContext") { context: Map<String, Any?> ->
+    AsyncFunction("updateContext") { context: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
+      val payload = context.toHashMap()
       WatchConnectivityHub.scope.launch {
-        WatchConnectivityHub.putApplicationContext(ctx, context)
+        WatchConnectivityHub.putApplicationContext(ctx, payload)
       }
     }
 
@@ -1591,10 +1595,10 @@ class WatchConnectivityModule : Module() {
       }
     }
 
-    AsyncFunction("startWorkout") { plan: Map<String, Any?> ->
+    AsyncFunction("startWorkout") { plan: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
       WatchConnectivityHub.lastWorkoutArmedAtMs.set(System.currentTimeMillis())
-      val payload = plan.toMutableMap()
+      val payload = plan.toHashMap().toMutableMap()
       payload["type"] = "workoutStart"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
@@ -1602,18 +1606,18 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.launchWatchApp(ctx, "workout")
     }
 
-    AsyncFunction("updateWorkoutPlan") { plan: Map<String, Any?> ->
+    AsyncFunction("updateWorkoutPlan") { plan: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = plan.toMutableMap()
+      val payload = plan.toHashMap().toMutableMap()
       payload["type"] = "workoutPlanUpdate"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
       }
     }
 
-    AsyncFunction("updateRecordingState") { state: Map<String, Any?>, durable: Boolean ->
+    AsyncFunction("updateRecordingState") { state: ReadableMap, durable: Boolean ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = state.toMutableMap()
+      val payload = state.toHashMap().toMutableMap()
       payload["type"] = "recordingState"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(
@@ -1628,9 +1632,9 @@ class WatchConnectivityModule : Module() {
       }
     }
 
-    AsyncFunction("startRun") { request: Map<String, Any?> ->
+    AsyncFunction("startRun") { request: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = request.toMutableMap()
+      val payload = request.toHashMap().toMutableMap()
       payload["type"] = "runStart"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
@@ -1638,9 +1642,9 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.launchWatchApp(ctx, "workout")
     }
 
-    AsyncFunction("sendRunControl") { control: Map<String, Any?> ->
+    AsyncFunction("sendRunControl") { control: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = control.toMutableMap()
+      val payload = control.toHashMap().toMutableMap()
       payload["type"] = "runControl"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
@@ -1671,18 +1675,18 @@ class WatchConnectivityModule : Module() {
       }
     }
 
-    AsyncFunction("updateIntervalTiming") { timing: Map<String, Any?> ->
+    AsyncFunction("updateIntervalTiming") { timing: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = timing.toMutableMap()
+      val payload = timing.toHashMap().toMutableMap()
       payload["type"] = "intervalTiming"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
       }
     }
 
-    AsyncFunction("updateSetTargets") { update: Map<String, Any?> ->
+    AsyncFunction("updateSetTargets") { update: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val payload = update.toMutableMap()
+      val payload = update.toHashMap().toMutableMap()
       payload["type"] = "setTargets"
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
@@ -1694,9 +1698,9 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.setTelemetryOwner(ctx, ownerId)
     }
 
-    AsyncFunction("setServerCredentials") { baseUrl: String, headers: Map<String, Any?> ->
+    AsyncFunction("setServerCredentials") { baseUrl: String, headers: ReadableMap ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
-      val cleanHeaders = headers.entries.mapNotNull { (k, v) ->
+      val cleanHeaders = headers.toHashMap().entries.mapNotNull { (k, v) ->
         val str = v?.toString()
         if (!str.isNullOrBlank()) k to str else null
       }.toMap()

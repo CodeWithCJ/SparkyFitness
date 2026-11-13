@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.SparkyApps.SparkyFitnessMobile",
+      "sha256_cert_fingerprints": [
+        "82:8D:1D:D1:90:1D:70:26:13:D1:E7:CD:BC:2B:9D:30:EB:FE:C7:31:2A:8B:A0:74:76:24:14:35:25:0C:92:CD",
+        "50:E3:BC:6B:AA:E3:E9:86:F5:1E:1F:0B:68:0F:67:A9:00:2C:37:0B:0E:77:68:95:B7:37:09:70:54:A9:58:72"
+      ]
+    }
+  }
+]

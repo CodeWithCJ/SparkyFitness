@@ -15,13 +15,13 @@ interface CompareBarsProps {
 
 export const CompareBars = ({ response, question }: CompareBarsProps) => {
   const { t } = useTranslation();
-  const { timeFormat } = usePreferences();
+  const { timeFormat, energyUnit } = usePreferences();
   const binary = response.result.binary;
   if (!binary) return null;
 
   const outcome = binary.yesKey === question.a ? question.b : question.a;
-  const yesMean = compareDisplayValue(outcome, binary.yesMean);
-  const noMean = compareDisplayValue(outcome, binary.noMean);
+  const yesMean = compareDisplayValue(outcome, binary.yesMean, energyUnit);
+  const noMean = compareDisplayValue(outcome, binary.noMean, energyUnit);
   const largest = Math.max(Math.abs(yesMean), Math.abs(noMean));
   const widthPercent = (value: number) =>
     largest > 0 ? Math.round((Math.abs(value) / largest) * 100) : 0;
@@ -32,7 +32,7 @@ export const CompareBars = ({ response, question }: CompareBarsProps) => {
       id: 'yes',
       label: wording.yesLabel,
       mean: yesMean,
-      text: compareValueText(outcome, binary.yesMean, timeFormat),
+      text: compareValueText(outcome, binary.yesMean, timeFormat, energyUnit),
       count: binary.yesCount,
       color: 'bg-[#8884d8]',
     },
@@ -40,7 +40,7 @@ export const CompareBars = ({ response, question }: CompareBarsProps) => {
       id: 'no',
       label: wording.noLabel,
       mean: noMean,
-      text: compareValueText(outcome, binary.noMean, timeFormat),
+      text: compareValueText(outcome, binary.noMean, timeFormat, energyUnit),
       count: binary.noCount,
       color: 'bg-muted-foreground/60',
     },

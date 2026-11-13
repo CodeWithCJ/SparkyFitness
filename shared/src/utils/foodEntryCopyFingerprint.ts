@@ -1,6 +1,7 @@
 export interface FoodEntryCopyFingerprintInput {
   id?: unknown;
   food_id?: unknown;
+  meal_id?: unknown;
   meal_type_id?: unknown;
   quantity?: unknown;
   unit?: unknown;
@@ -31,12 +32,18 @@ export interface FoodEntryCopyFingerprintInput {
   iron?: unknown;
   glycemic_index?: unknown;
   custom_nutrients?: unknown;
+  notes?: unknown;
+  caffeine_mg?: unknown;
+  water_ml?: unknown;
+  alcohol_g?: unknown;
 }
 
 export interface ReviewedFoodEntryFingerprint {
   entryId: string;
   sourceFingerprint: string;
 }
+
+export type FoodEntryCopyFingerprintVersion = 'to-user' | undefined;
 
 const numericFields = [
   'quantity',
@@ -94,6 +101,27 @@ function stableValue(value: unknown): unknown {
 export function foodEntryCopyFingerprint(
   entry: FoodEntryCopyFingerprintInput
 ): string {
+  return buildFoodEntryCopyFingerprint(entry, false);
+}
+
+/** Reverse-copy reviews include fields added after the original mobile API. */
+export function foodEntryCopyToUserFingerprint(
+  entry: FoodEntryCopyFingerprintInput
+): string {
+  return buildFoodEntryCopyFingerprint(entry, true);
+}
+
+/** Undefined keeps the original copy-from contract for installed clients. */
+export function copyFingerprintFor(version: FoodEntryCopyFingerprintVersion) {
+  return version === 'to-user'
+    ? foodEntryCopyToUserFingerprint
+    : foodEntryCopyFingerprint;
+}
+
+function buildFoodEntryCopyFingerprint(
+  entry: FoodEntryCopyFingerprintInput,
+  includeSnapshotFields: boolean
+): string {
   const snapshot: Record<string, unknown> = {};
   for (const field of stringFields) snapshot[field] = entry[field] ?? null;
   for (const field of numericFields) {
@@ -101,6 +129,15 @@ export function foodEntryCopyFingerprint(
     snapshot[field] = value == null ? null : Number(value);
   }
   snapshot['custom_nutrients'] = stableValue(entry.custom_nutrients);
+  // Keep the original endpoint byte-compatible with installed older clients.
+  if (includeSnapshotFields) {
+    snapshot['meal_id'] = entry.meal_id ?? null;
+    snapshot['notes'] = entry.notes ?? null;
+    for (const field of ['caffeine_mg', 'water_ml', 'alcohol_g'] as const) {
+      const value = entry[field];
+      snapshot[field] = value == null ? null : Number(value);
+    }
+  }
   return JSON.stringify(snapshot);
 }
 
@@ -109,7 +146,8 @@ export function hasExactReviewedFoodEntrySnapshot(
   sourceEntries: ReadonlyArray<
     FoodEntryCopyFingerprintInput & { id?: unknown }
   >,
-  reviewedEntries: readonly ReviewedFoodEntryFingerprint[]
+  reviewedEntries: readonly ReviewedFoodEntryFingerprint[],
+  fingerprint = foodEntryCopyFingerprint
 ): boolean {
   if (sourceEntries.length !== reviewedEntries.length) return false;
 
@@ -131,8 +169,6 @@ export function hasExactReviewedFoodEntrySnapshot(
       return false;
     }
     sourceIds.add(entry.id);
-    return (
-      reviewedFingerprintById.get(entry.id) === foodEntryCopyFingerprint(entry)
-    );
+    return reviewedFingerprintById.get(entry.id) === fingerprint(entry);
   });
 }

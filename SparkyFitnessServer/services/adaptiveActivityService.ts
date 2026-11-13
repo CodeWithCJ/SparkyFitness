@@ -18,7 +18,8 @@ export async function getAdaptiveActivityCalories(
   userId: string,
   startDate: string,
   endDate: string,
-  measurements: readonly ActivityCheckIn[]
+  measurements: readonly ActivityCheckIn[],
+  includeCheckin = true
 ): Promise<Map<string, number>> {
   const [splits, seed, fallback] = await Promise.all([
     exerciseEntryRepository.getDailyExerciseCalorieSplitRange(
@@ -26,11 +27,15 @@ export async function getAdaptiveActivityCalories(
       startDate,
       endDate
     ),
-    measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
-      userId,
-      startDate
-    ),
-    measurementRepository.getLatestWeightHeight(userId, startDate),
+    includeCheckin
+      ? measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
+          userId,
+          startDate
+        )
+      : null,
+    includeCheckin
+      ? measurementRepository.getLatestWeightHeight(userId, startDate)
+      : { weightKg: null, heightCm: null },
   ]);
   const splitByDate = new Map(splits.map((row) => [row.entry_date, row]));
   const rows = measurements
@@ -50,12 +55,14 @@ export async function getAdaptiveActivityCalories(
       if (Number(row.height) > 0) height = Number(row.height);
     }
     const split = splitByDate.get(day);
-    const stepCalories = resolveBackgroundStepCalories({
-      totalSteps: stepsByDate.get(day) ?? 0,
-      activitySteps: Number(split?.activity_steps) || 0,
-      weightKg: weight,
-      heightCm: height,
-    });
+    const stepCalories = includeCheckin
+      ? resolveBackgroundStepCalories({
+          totalSteps: stepsByDate.get(day) ?? 0,
+          activitySteps: Number(split?.activity_steps) || 0,
+          weightKg: weight,
+          heightCm: height,
+        })
+      : 0;
     result.set(
       day,
       resolveExerciseCalories(

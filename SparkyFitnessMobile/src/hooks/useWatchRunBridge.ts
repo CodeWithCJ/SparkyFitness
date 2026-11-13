@@ -120,7 +120,7 @@ export function useWatchRunBridge(
             );
           }
         );
-        speakWatchCue(payload.text, payload.interrupt);
+        speakWatchCue(payload.text, payload.interrupt, payload.language);
       }
     );
     return () => {

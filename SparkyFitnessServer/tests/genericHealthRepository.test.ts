@@ -181,39 +181,62 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     expect(mockQuery.mock.calls[1]?.[1]?.[12]).toEqual(olderCapturedAt);
   });
 
-  it('gets Health Connect total calories for a date range', async () => {
+  it('gets one device total per day from every source', async () => {
     const capturedAt = new Date('2026-07-29T12:00:00Z');
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
           entry_date: '2026-07-29',
+          source_provider: 'garmin',
+          total_calories: 2550,
+          captured_at: capturedAt,
+        },
+        {
+          entry_date: '2026-07-29',
+          source_provider: 'health_connect',
           total_calories: 2400,
+          captured_at: capturedAt,
+        },
+        {
+          entry_date: '2026-07-30',
+          source_provider: 'garmin',
+          total_calories: 2300,
           captured_at: capturedAt,
         },
       ],
     });
 
-    const rows =
-      await genericHealthRepo.getHealthConnectTotalCaloriesByDateRange(
-        'user-1',
-        'actor-1',
-        '2026-07-29',
-        '2026-07-30'
-      );
+    const rows = await genericHealthRepo.getDeviceTotalCaloriesByDateRange(
+      'user-1',
+      'actor-1',
+      '2026-07-29',
+      '2026-07-30'
+    );
 
     expect(rows).toEqual([
       {
         entry_date: '2026-07-29',
+        source_provider: 'health_connect',
         total_calories: 2400,
         captured_at: capturedAt,
       },
+      {
+        entry_date: '2026-07-30',
+        source_provider: 'garmin',
+        total_calories: 2300,
+        captured_at: capturedAt,
+      },
     ]);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /COALESCE\(total_calories_captured_at, updated_at, created_at\) AS captured_at[\s\S]*source_provider = 'health_connect'/
-      ),
-      ['user-1', '2026-07-29', '2026-07-30']
+    const sql = mockQuery.mock.calls[0]?.[0] as string;
+    expect(sql).toMatch(
+      /COALESCE\(total_calories_captured_at, updated_at, created_at\) AS captured_at/
     );
+    expect(sql).not.toMatch(/source_provider =/);
+    expect(mockQuery.mock.calls[0]?.[1]).toEqual([
+      'user-1',
+      '2026-07-29',
+      '2026-07-30',
+    ]);
   });
 
   it('getDailyHealthMetrics selects daily health metrics with episodic metric carry-forward subqueries', async () => {

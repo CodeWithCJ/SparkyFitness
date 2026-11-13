@@ -27,6 +27,7 @@ const defaults = {
   restingHeartRate: null,
   method: 'percent_max' as const,
   customFloors: null,
+  displayZones: 5 as const,
 };
 
 beforeEach(() => {
@@ -108,12 +109,24 @@ describe('updateHeartRateZones', () => {
     );
   });
 
+  it('saves the display count without touching the zones', async () => {
+    await heartRateZoneService.updateHeartRateZones('u1', 'u1', {
+      display_zones: 4,
+    });
+    expect(saveHeartRateZoneSettings).toHaveBeenCalledWith(
+      'u1',
+      'u1',
+      expect.objectContaining({ displayZones: 4, method: 'percent_max' })
+    );
+  });
+
   it('resets everything to the defaults', async () => {
     vi.mocked(getHeartRateZoneSettings).mockResolvedValue({
       maxHeartRate: 190,
       restingHeartRate: 50,
       method: 'heart_rate_reserve',
       customFloors: null,
+      displayZones: 4,
     });
     await heartRateZoneService.updateHeartRateZones('u1', 'u1', {
       reset: true,

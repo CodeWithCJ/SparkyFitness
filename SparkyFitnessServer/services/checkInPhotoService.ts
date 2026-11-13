@@ -1,5 +1,6 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 import {
   resolveUploadPath,
   resolveUploadPathWithinRoot,
@@ -245,46 +246,67 @@ export const upsertPhoto = async (
 };
 
 /**
- * Resolves the absolute on-disk path of a photo the user is allowed to see.
- * The SELECT is RLS-scoped (has_diary_access), so a row only comes back for the
- * owner or a family member with check-in access. Returns null when the photo
- * row does not exist or is not accessible, the file is missing on disk, or its
- * stored path escapes the uploads root (defense in depth against a tampered
- * file_path).
+ * Resolves the absolute on-disk path of a photo the caller is allowed to see.
+ *
+ * The photo is looked up by id alone, so access is checked here rather than
+ * left to RLS: a deployment whose app role bypasses RLS (for example one run
+ * as the database owner) would otherwise hand any signed-in user any photo
+ * whose id they know. The caller may see the photo when it belongs to the
+ * active user (`userId`, already vetted by checkPermissionMiddleware), to the
+ * signed-in user (`authenticatedUserId`), or to someone who granted the
+ * signed-in user the same `checkin` Family Access the other photo routes
+ * require. Returns null when the photo row does not exist or is not
+ * accessible, the file is missing on disk, or its stored path escapes the
+ * uploads root (defense in depth against a tampered file_path).
  */
 export const getPhotoFileById = async (
   userId: string,
-  photoId: string
+  photoId: string,
+  authenticatedUserId: string = userId
 ): Promise<string | null> => {
   const client = await getClient(userId);
+  let row: { user_id: string; file_path: string } | undefined;
   try {
     const result = await client.query(
-      'SELECT file_path FROM check_in_photos WHERE id = $1',
+      'SELECT user_id, file_path FROM check_in_photos WHERE id = $1',
       [photoId]
     );
-    const filePath = result.rows[0]?.file_path;
-    if (!filePath) {
-      return null;
-    }
-    const absolute = resolveUploadPathWithinRoot(filePath);
-    if (!absolute) {
-      log(
-        'warn',
-        `Rejected check-in photo path outside uploads root: ${filePath}`
-      );
-      return null;
-    }
-    // Confirm the file is actually on disk so a missing file yields a clean 404
-    // at the route instead of a 500 from sendFile.
-    try {
-      await fs.promises.access(absolute);
-    } catch {
-      return null;
-    }
-    return absolute;
+    row = result.rows[0];
   } finally {
     client.release();
   }
+  if (!row?.file_path) {
+    return null;
+  }
+  const ownerId = String(row.user_id);
+  const allowed =
+    ownerId === userId ||
+    ownerId === authenticatedUserId ||
+    (await canAccessUserData(ownerId, 'checkin', authenticatedUserId));
+  if (!allowed) {
+    log(
+      'warn',
+      `Refused check-in photo ${photoId} to user ${authenticatedUserId}: not the owner and no check-in access.`
+    );
+    return null;
+  }
+  const filePath = row.file_path;
+  const absolute = resolveUploadPathWithinRoot(filePath);
+  if (!absolute) {
+    log(
+      'warn',
+      `Rejected check-in photo path outside uploads root: ${filePath}`
+    );
+    return null;
+  }
+  // Confirm the file is actually on disk so a missing file yields a clean 404
+  // at the route instead of a 500 from sendFile.
+  try {
+    await fs.promises.access(absolute);
+  } catch {
+    return null;
+  }
+  return absolute;
 };
 
 export const deletePhoto = async (

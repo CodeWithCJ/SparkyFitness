@@ -1,5 +1,7 @@
 import type { TFunction } from 'i18next';
 import type {
+  HeartRateDisplayBand,
+  HeartRateTier,
   HrZoneMethod,
   MaxHrSource,
   StoredZoneMethod,
@@ -69,4 +71,30 @@ export function maxHrSourceLabel(t: TFunction, source: MaxHrSource): string {
         defaultValue: 'A typical value; add your date of birth or set your own',
       });
   }
+}
+
+function tierName(t: TFunction, tier: HeartRateTier): string {
+  switch (tier) {
+    case 'light':
+      return t('heartRateZones.tier.light', { defaultValue: 'Light' });
+    case 'moderate':
+      return t('heartRateZones.tier.moderate', { defaultValue: 'Moderate' });
+    case 'vigorous':
+      return t('heartRateZones.tier.vigorous', { defaultValue: 'Vigorous' });
+    default:
+      return t('heartRateZones.tier.peak', { defaultValue: 'Peak' });
+  }
+}
+
+/** "Zone 3", or the tier name ("Light") when four tiers are shown. */
+export function displayBandLabel(
+  t: TFunction,
+  band: Pick<HeartRateDisplayBand, 'index' | 'tier'>
+): string {
+  return band.tier
+    ? tierName(t, band.tier)
+    : t('exerciseStatistics.cardio.zone', {
+        defaultValue: 'Zone {{zone}}',
+        zone: band.index,
+      });
 }

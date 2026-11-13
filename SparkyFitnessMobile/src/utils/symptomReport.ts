@@ -1,6 +1,10 @@
-import type {
-  SymptomEntryResponse,
-  SymptomFreeDayResponse,
+import {
+  severityChartWindow,
+  symptomEntryDays,
+  type SymptomDayWindow,
+  type SymptomEntryResponse,
+  type SymptomFreeDayResponse,
+  type SymptomImpact,
 } from '@workspace/shared';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -42,21 +46,29 @@ const CALENDAR_SCALE_MAX = 10;
 
 export interface DaySummary {
   tone: DayTone;
-  /** Entries logged that day. */
+  /** Entries that cover that day. */
   count: number;
 }
 
 /**
- * Per-day tone for the calendar. A day with an entry takes the worst entry's
- * tone, a day marked symptom-free (and with no entry) is green, and any other
- * day is absent: unknown, not symptom-free.
+ * Per-day tone for the calendar, for the days in `window`. A day an entry
+ * covers takes the worst entry's tone (an episode covers every day from its
+ * start to its end, or to today while it is still going), a day marked
+ * symptom-free (and with no entry) is green, and any other day is absent:
+ * unknown, not symptom-free.
  */
 export function summarizeDays(
   entries: readonly Pick<
     SymptomEntryResponse,
-    'entry_date' | 'severity' | 'peak_severity' | 'source'
+    | 'entry_date'
+    | 'started_at'
+    | 'ended_at'
+    | 'severity'
+    | 'peak_severity'
+    | 'source'
   >[],
-  freeDays: readonly Pick<SymptomFreeDayResponse, 'entry_date'>[]
+  freeDays: readonly Pick<SymptomFreeDayResponse, 'entry_date'>[],
+  window: SymptomDayWindow
 ): Map<string, DaySummary> {
   const worst = new Map<string, { ratio: number; count: number }>();
   for (const e of entries) {
@@ -65,11 +77,13 @@ export function summarizeDays(
       e.severity != null
         ? (e.peak_severity ?? e.severity) / CALENDAR_SCALE_MAX
         : 0.1;
-    const prev = worst.get(e.entry_date);
-    worst.set(e.entry_date, {
-      ratio: Math.max(prev?.ratio ?? 0, ratio),
-      count: (prev?.count ?? 0) + 1,
-    });
+    for (const day of symptomEntryDays(e, window)) {
+      const prev = worst.get(day);
+      worst.set(day, {
+        ratio: Math.max(prev?.ratio ?? 0, ratio),
+        count: (prev?.count ?? 0) + 1,
+      });
+    }
   }
   const days = new Map<string, DaySummary>();
   for (const [day, { ratio, count }] of worst) {
@@ -89,6 +103,9 @@ export interface SeverityChartInput {
   ended_at: string | null;
   severity: number | null;
   severity_timeline: readonly { at: string; severity: number }[];
+  impact?: SymptomImpact | null;
+  /** Missing on servers that predate it; the current impact stands in. */
+  impact_timeline?: readonly { at: string; impact: SymptomImpact }[];
   treatments: readonly {
     id: string;
     name_snapshot: string;
@@ -98,6 +115,8 @@ export interface SeverityChartInput {
 
 export interface SeverityChartLayout {
   points: { x: number; y: number; at: string; severity: number }[];
+  /** One section per recorded effect on the day, from its time to the next. */
+  band: { x: number; width: number; at: string; impact: SymptomImpact }[];
   marks: { x: number; id: string; name: string }[];
   ticks: { value: number; y: number }[];
   startIso: string;
@@ -118,30 +137,18 @@ export interface ChartBox {
 }
 
 /**
- * Where each reading, treatment marker and gridline goes. An episode still
- * running ends at its latest reading (or 30 minutes after the start when there
- * is only one), so the chart never needs the clock.
+ * Where each reading, treatment marker, gridline and section of the effect
+ * band goes. The time span comes from `severityChartWindow`, which the web
+ * chart uses too.
  */
 export function layoutSeverityChart(
   entry: SeverityChartInput,
   max: number,
   box: ChartBox
 ): SeverityChartLayout | null {
-  const startIso = entry.started_at ?? entry.logged_at;
-  const timeline =
-    entry.severity_timeline.length > 0
-      ? entry.severity_timeline
-      : entry.severity != null
-        ? [{ at: startIso, severity: entry.severity }]
-        : [];
-  if (timeline.length === 0 || max <= 0) return null;
-
-  const start = new Date(startIso).getTime();
-  const lastPoint = Math.max(...timeline.map((p) => new Date(p.at).getTime()));
-  const end = entry.ended_at
-    ? new Date(entry.ended_at).getTime()
-    : Math.max(lastPoint, start + 30 * 60_000);
-  const span = Math.max(end - start, 60_000);
+  const frame = severityChartWindow(entry);
+  if (!frame || max <= 0) return null;
+  const { start, end, span, startIso } = frame;
 
   const left = box.padLeft;
   const right = box.width - box.padRight;
@@ -158,13 +165,23 @@ export function layoutSeverityChart(
       : [];
   });
 
+  // At least 2 wide so a level recorded at the very end still shows, and kept
+  // inside the plot.
+  const band = frame.impact.map((s) => ({
+    x: Math.min(x(s.from), right - 2),
+    width: Math.max(x(s.to) - x(s.from), 2),
+    at: s.at,
+    impact: s.impact,
+  }));
+
   return {
-    points: timeline.map((p) => ({
+    points: frame.points.map((p) => ({
       x: x(new Date(p.at).getTime()),
       y: y(p.severity),
       at: p.at,
       severity: p.severity,
     })),
+    band,
     marks,
     ticks: [0, Math.round(max / 2), max].map((value) => ({
       value,
