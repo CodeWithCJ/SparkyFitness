@@ -44,9 +44,10 @@ export interface SupersetBorder {
  * `{ id: clientId, superset_group: supersetGroup }`.
  */
 export function useSupersetBorders(
-  exercises: { id: string; superset_group?: number | null }[]
+  exercises: { id: string; superset_group?: number | null }[],
+  paletteVars: readonly string[] = SUPERSET_PALETTE_VARS
 ): { runs: SupersetRun[]; borders: Map<string, SupersetBorder> } {
-  const palette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
+  const palette = useCSSVariable(paletteVars as string[]) as string[];
   const runs = useMemo(() => getSupersetRuns(exercises), [exercises]);
   const borders = useMemo(() => {
     const colorByEntryId = buildSupersetColorMap(runs, palette);

@@ -7314,3 +7314,17 @@ describe('previousSetFillPatch', () => {
     ).toEqual({ weight: 40, distance: 0.05 });
   });
 });
+
+describe('FOCUS_SUPERSET_PALETTE_VARS', () => {
+  it('leads with the lilac superset token, then the category palette from its second color', () => {
+    const { FOCUS_SUPERSET_PALETTE_VARS, SUPERSET_PALETTE_VARS } =
+      jest.requireActual('../../src/utils/workoutSupersets');
+    expect(FOCUS_SUPERSET_PALETTE_VARS[0]).toBe('--color-superset');
+    expect(FOCUS_SUPERSET_PALETTE_VARS.slice(1)).toEqual(
+      SUPERSET_PALETTE_VARS.slice(1)
+    );
+    expect(FOCUS_SUPERSET_PALETTE_VARS).toHaveLength(
+      SUPERSET_PALETTE_VARS.length
+    );
+  });
+});

@@ -135,6 +135,20 @@ interface StepperFieldOptions {
   commitKey?: string;
 }
 
+/** Previous cell width weight (the kg and reps cells weigh 82 and 68). */
+const PREV_FLEX = 74;
+
+/**
+ * Font size for the Previous cell: 15 normally, a little smaller for long
+ * values ("102.5 × 12", "BW+20 × 8"). A fixed ladder, never auto-shrink,
+ * which renders some rows tiny on iOS and never below 12.
+ */
+function prevFontSize(text: string): number {
+  if (text.length <= 7) return 15;
+  if (text.length <= 9) return 14;
+  return 12.5;
+}
+
 /**
  * Typing-friendly state for one stepper cell: keystrokes stay in a local draft
  * and commit on blur, unmount (a blur on an unmounting input is never
@@ -699,6 +713,11 @@ const FocusSetRow = React.memo(function FocusSetRow({
     </Text>
   );
 
+  const prevText =
+    previousSet != null
+      ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
+      : '-';
+
   return (
     <Pressable
       testID="focus-set-row"
@@ -747,18 +766,17 @@ const FocusSetRow = React.memo(function FocusSetRow({
               : undefined
           }
           className="h-11 items-center justify-center rounded-[14px] border border-dashed border-border-strong"
-          style={{ flex: 62 }}
+          style={{ flex: PREV_FLEX }}
         >
           <Text
             numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-            className="text-center text-sm font-semibold text-text-secondary"
-            style={{ fontVariant: ['tabular-nums'] }}
+            className="text-center font-semibold text-text-secondary"
+            style={{
+              fontVariant: ['tabular-nums'],
+              fontSize: prevFontSize(prevText),
+            }}
           >
-            {previousSet != null
-              ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
-              : '-'}
+            {prevText}
           </Text>
         </Pressable>
       )}
@@ -1014,7 +1032,7 @@ function ActiveWorkoutFocusSets({
             {t('workout.set', { defaultValue: 'Set' })}
           </Text>
           {previousSets != null && (
-            <Text className={headerClass} style={{ flex: 62 }}>
+            <Text className={headerClass} style={{ flex: PREV_FLEX }}>
               {t('workout.prev', { defaultValue: 'Prev' })}
             </Text>
           )}
