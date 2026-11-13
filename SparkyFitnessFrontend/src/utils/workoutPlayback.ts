@@ -14,6 +14,8 @@ import {
   type AdaptiveReason,
   type CreatePresetSessionRequest,
   type ExerciseModality,
+  type PresetSessionResponse,
+  type UpdatePresetSessionRequest,
   type WorkoutFormat,
 } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
@@ -37,8 +39,16 @@ export interface WorkoutPlaybackRestTimer {
   target_set_index?: number;
 }
 export interface WorkoutPlaybackExerciseDraft {
-  exercise_id: string;
+  /** Library exercise id; null when the exercise was deleted from the library. */
+  exercise_id: string | null;
   exercise_name: string;
+  /**
+   * The persisted exercise_entry id when this draft resumes a saved session
+   * (#1995 phase 1). Sent back on finish so the server reconciles the child
+   * rows in place instead of recreating them (and their telemetry). Absent
+   * on fresh drafts, whose finish creates a new session.
+   */
+  entry_id?: string;
   modality?: ExerciseModality;
   image_url?: string;
   /** All of the exercise's library images, for the full-screen viewer. */
@@ -148,6 +158,14 @@ export interface WorkoutPlaybackDraft {
    * drafts saved before it existed (they get one pass).
    */
   load_adjustments_applied?: boolean;
+  /**
+   * The server session this draft resumes (#1995 phase 1). Present only on
+   * drafts rebuilt from a saved partial session; finishing then updates that
+   * session (PUT, with optimistic concurrency) instead of creating a new one.
+   */
+  session_id?: string;
+  /** Last-seen write counter of the resumed session; sent back on finish. */
+  revision?: number;
 }
 
 export interface WorkoutSetPointer {
@@ -194,7 +212,10 @@ function isWorkoutPlaybackDraft(value: unknown): value is WorkoutPlaybackDraft {
     typeof draft.preset_id === 'string' &&
     typeof draft.entry_date === 'string' &&
     typeof draft.started_at === 'string' &&
-    Array.isArray(draft.exercises)
+    Array.isArray(draft.exercises) &&
+    // session_id, when present, must be a plausible session id; anything
+    // else means a corrupted draft and the storage entry is discarded.
+    (draft.session_id === undefined || typeof draft.session_id === 'string')
   );
 }
 
@@ -1250,10 +1271,10 @@ export function decrementRoundFromWorkoutDraft(
   return touchDraft(nextDraft);
 }
 
-export function buildPresetSessionCreateRequestFromDraft(
+function buildSessionExercisesFromDraft(
   draft: WorkoutPlaybackDraft,
   timezone: string
-): CreatePresetSessionRequest {
+): CreatePresetSessionRequest['exercises'] {
   const exercises = draft.exercises
     .map((exercise, exerciseIndex) => {
       const completedSets = exercise.sets.filter((set) => set.completed);
@@ -1273,6 +1294,9 @@ export function buildPresetSessionCreateRequestFromDraft(
       }
 
       return {
+        // Resumed drafts carry the persisted child-entry id so the finish
+        // update reconciles rows in place; fresh drafts omit it.
+        ...(exercise.entry_id ? { id: exercise.entry_id } : {}),
         exercise_id: exercise.exercise_id,
         sort_order: exerciseIndex,
         duration_minutes: deriveExerciseDurationMinutes(exercise),
@@ -1299,6 +1323,14 @@ export function buildPresetSessionCreateRequestFromDraft(
       };
     })
     .filter((exercise): exercise is NonNullable<typeof exercise> => !!exercise);
+  return exercises;
+}
+
+export function buildPresetSessionCreateRequestFromDraft(
+  draft: WorkoutPlaybackDraft,
+  timezone: string
+): CreatePresetSessionRequest {
+  const exercises = buildSessionExercisesFromDraft(draft, timezone);
 
   const primaryPlanAssignmentId =
     draft.workout_plan_assignment_id ||
@@ -1361,6 +1393,112 @@ export function buildPresetSessionCreateRequestFromDraft(
     source: draft.source,
     exercises,
     workoutPlanAssignmentId: primaryPlanAssignmentId,
+    // #1995 phase 1: the web player saves once, at the end, so the created
+    // session is born finished and derives completed/partial from its sets.
+    finished_at: nowIso(),
     activity_details: activityDetails.length > 0 ? activityDetails : undefined,
   };
+}
+
+/**
+ * The finish payload for a session resumed from the server (#1995 phase 1).
+ * Reuses the same exercise mapping as the create builder, adds the persisted
+ * child ids it carries, and presents the last-seen revision so a concurrent
+ * edit from another device is refused with 409 instead of overwritten.
+ */
+export function buildPresetSessionUpdateRequestFromDraft(
+  draft: WorkoutPlaybackDraft,
+  timezone: string
+): UpdatePresetSessionRequest {
+  const update: UpdatePresetSessionRequest = {
+    notes: draft.notes,
+    exercises: buildSessionExercisesFromDraft(draft, timezone),
+    finished_at: nowIso(),
+  };
+  if (draft.revision != null) {
+    update.revision = Number(draft.revision);
+  }
+  return update;
+}
+
+/**
+ * Rebuilds a playable draft from a saved session (#1995 phase 1), so a
+ * partial workout can be resumed in the player. Sets already checked off
+ * keep their completion timestamps; the pointer lands on the first
+ * incomplete set.
+ */
+export function createWorkoutPlaybackDraftFromSession(
+  session: PresetSessionResponse
+): WorkoutPlaybackDraft | null {
+  const createdAt = nowIso();
+  const exercises: WorkoutPlaybackExerciseDraft[] = (
+    session.exercises ?? []
+  ).map((exercise, exerciseIndex) => ({
+    entry_id: exercise.id,
+    exercise_id: exercise.exercise_id ?? null,
+    exercise_name:
+      exercise.exercise_snapshot?.name ??
+      (exercise as { name?: string | null }).name ??
+      `Exercise ${exerciseIndex + 1}`,
+    image_url: firstExerciseImage(
+      (exercise as { image_url?: string | null }).image_url
+    ),
+    notes: exercise.notes ?? null,
+    started_at: null,
+    ended_at: null,
+    workout_plan_assignment_id: exercise.workout_plan_assignment_id ?? null,
+    sets: (exercise.sets ?? []).map((set, setIndex) => ({
+      set_number: set.set_number ?? setIndex + 1,
+      set_type: set.set_type ?? 'Working Set',
+      reps: set.reps ?? null,
+      weight: set.weight ?? null,
+      duration: set.duration ?? null,
+      distance: set.distance ?? null,
+      rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
+      notes: set.notes ?? null,
+      rpe: set.rpe ?? null,
+      rir: (set as { rir?: number | null }).rir ?? null,
+      completed: set.completed_at != null,
+      completed_at: set.completed_at ?? null,
+    })),
+    round_sets_count: Math.max(1, (exercise.sets ?? []).length),
+  }));
+
+  if (exercises.length === 0) {
+    return null;
+  }
+
+  const firstCompletedAt = exercises
+    .flatMap((exercise) => exercise.sets)
+    .map((set) => set.completed_at)
+    .filter((value): value is string => value != null)
+    .sort()[0];
+
+  const draft: WorkoutPlaybackDraft = {
+    version: 1,
+    preset_id: String(session.workout_preset_id ?? ''),
+    name: session.name,
+    description: session.description ?? null,
+    entry_date: session.entry_date ?? new Date().toISOString().slice(0, 10),
+    notes: session.notes ?? null,
+    location: session.location ?? null,
+    source: 'sparky',
+    workout_format: 'standard',
+    active_exercise_index: 0,
+    active_set_index: 0,
+    rest_timer: DEFAULT_REST_TIMER,
+    exercises,
+    // The elapsed clock keeps the original start when any set was already
+    // checked off, so a resumed session doesn't look brand new.
+    started_at: firstCompletedAt ?? createdAt,
+    updated_at: createdAt,
+    session_id: session.id,
+    revision: session.revision ?? 1,
+  };
+
+  const pointer = fallbackPointer(draft);
+  draft.active_exercise_index = pointer.exerciseIndex;
+  draft.active_set_index = pointer.setIndex;
+
+  return draft;
 }

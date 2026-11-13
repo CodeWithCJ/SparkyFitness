@@ -1466,7 +1466,8 @@
       "noDraft": "No active workout draft was found for this date.",
       "setRow": "Set {{setNumber}}",
       "sets": "sets",
-      "title": "Live Workout"
+      "title": "Live Workout",
+      "sessionConflictError": "This workout was updated on another device or tab. Close the player, reload the diary, and resume it again."
     },
     "workoutPlaybackPage": {
       "addDropSets": "Add {{sets}} Drop Sets (-{{percent}}%)",
@@ -1707,7 +1708,17 @@
     "equipment2": "Equipment:",
     "effort": "Effort",
     "effortOutOf": "{{rating}}/10",
-    "effortValue": "Effort {{rating}}/10"
+    "effortValue": "Effort {{rating}}/10",
+    "sessionStatus": {
+      "planned": "Planned",
+      "in_progress": "In Progress",
+      "partial": "Partial",
+      "completed": "Completed"
+    },
+    "resumeWorkoutButton": "Resume Workout",
+    "resumeWorkoutFailed": "Failed to resume this workout. Please try again.",
+    "resumeEmptySession": "Nothing to resume in this session.",
+    "sessionUpdatedElsewhere": "This workout was updated on another device or tab. Reload the diary and try again."
   },
   "foodSearchDialog": {
     "title": "Search and Add Food",
@@ -3255,6 +3266,17 @@
       "chartHintTraining": "Tap a bar to see that day. Tap the icon under a day to switch it between training and rest.",
       "chartHintCustom": "Tap a bar to see that day, or drag it up or down. Fine-tune the selected day below.",
       "previewTargetForDay": "Daily Calorie Target ({{day}}):"
+    },
+    "webTabs": {
+      "title": "Tabs",
+      "description": "Choose which main tabs show on the website",
+      "cycleOn": "On",
+      "cycleOff": "Off",
+      "cycleHint": "{{name}} has its own on/off switch in the Wellness settings tab.",
+      "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
+      "saveError": "Could not save your tab choice. Please try again.",
+      "loadError": "Could not load your tab choices.",
+      "actingOnBehalf": "You can only change the tabs on your own account."
     }
   },
   "admin": {
@@ -3784,21 +3806,6 @@
       "restore": "Restore",
       "hide": "Hide",
       "layoutErrorNotice": "The customizable layout hit an error, so a simple view is shown. Your saved layout is kept."
-    },
-    "view": {
-      "label": "Diary view",
-      "meals": "Meals",
-      "timeline": "Timeline"
-    },
-    "timeline": {
-      "title": "Timeline",
-      "addFood": "Add food",
-      "addAt": "Add food at {{time}}",
-      "addDescription": "Pick a food or meal. For a food, you can adjust the time and meal next.",
-      "noTime": "No time",
-      "noMealTypes": "No meal types to add to",
-      "noMealTypesDescription": "Add a meal type in Settings to log food from the timeline.",
-      "macros": "P {{p}} · C {{c}} · F {{f}}"
     },
     "nutrientLabels": {
       "cal": "cal",
@@ -7335,6 +7342,15 @@
     "intervalsAthleteIdPlaceholder": "Enter Athlete ID (i12345)",
     "intervalsApiKeyPlaceholder": "Enter API Key",
     "intervalsDisconnectConfirm": "Are you sure you want to disconnect from Intervals.icu? This will deactivate the integration until you re-enable it.",
+    "intervalsPushLabel": "Push daily nutrition to Intervals.icu",
+    "intervalsPushingSince": "Pushing since {{date}}",
+    "intervalsPushedRemain": "{{count}} days of pushed data remain",
+    "intervalsRemovePushed": "Remove pushed data",
+    "intervalsRemoveConfirm": "Turn off pushing and remove the nutrition values SparkyFitness wrote to Intervals.icu? Values another app has changed since are left alone.",
+    "intervalsRemoveTitle": "Pushed nutrition data removed",
+    "intervalsRemoveDetails": "Cleared {{cleared}} days, left {{kept}} days another app had changed, {{failed}} failed.",
+    "intervalsRemoveError": "Could not remove the pushed nutrition data. Please try again.",
+    "intervalsPushToggleError": "Could not save the Intervals.icu nutrition push setting.",
     "ouraLinkError": "Failed to link Oura account.",
     "ouraLinkSuccess": "Oura account successfully linked!",
     "polarError": "Failed to link Polar account. Please try again.",

@@ -26,16 +26,6 @@ describe('dashboardLayoutService', () => {
       ).resolves.toBeNull();
     });
 
-    it('accepts the diary-timeline page key', async () => {
-      vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
-        null
-      );
-
-      await expect(
-        dashboardLayoutService.getDashboardLayout('user-1', 'diary-timeline')
-      ).resolves.toBeNull();
-    });
-
     it('accepts the reports-measurements page key', async () => {
       vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
         null
@@ -181,6 +171,106 @@ describe('dashboardLayoutService', () => {
         layout,
         hidden,
         updated_at: '2026-01-02T00:00:00.000Z',
+      });
+    });
+  });
+
+  describe('web-tabs page', () => {
+    const savedRow = (hidden: unknown) => ({
+      id: 'row-1',
+      user_id: 'user-1',
+      page_key: 'web-tabs',
+      layout: {},
+      hidden,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+    });
+
+    it('accepts the web-tabs page key', async () => {
+      vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
+        null
+      );
+
+      await expect(
+        dashboardLayoutService.getDashboardLayout('user-1', 'web-tabs')
+      ).resolves.toBeNull();
+    });
+
+    it('saves the hidden tab ids and stores an empty layout', async () => {
+      vi.mocked(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).mockResolvedValue(savedRow(['labs', 'medications']));
+
+      const result = await dashboardLayoutService.saveDashboardLayout(
+        'user-1',
+        'web-tabs',
+        { layout: { lg: [{ i: 'x' }] }, hidden: ['labs', 'medications'] }
+      );
+
+      expect(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).toHaveBeenCalledWith('user-1', 'web-tabs', {
+        layout: {},
+        hidden: ['labs', 'medications'],
+      });
+      expect(result).toEqual({
+        layout: {},
+        hidden: ['labs', 'medications'],
+        updated_at: '2026-01-02T00:00:00.000Z',
+      });
+    });
+
+    it('saves an empty list, which shows every tab', async () => {
+      vi.mocked(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).mockResolvedValue(savedRow([]));
+
+      await dashboardLayoutService.saveDashboardLayout('user-1', 'web-tabs', {
+        layout: undefined,
+        hidden: [],
+      });
+
+      expect(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).toHaveBeenCalledWith('user-1', 'web-tabs', { layout: {}, hidden: [] });
+    });
+
+    it.each([
+      ['an unknown tab', ['fasting']],
+      ['cycle, which has its own setting', ['cycle']],
+      ['the Diary, which always shows', ['diary']],
+      ['Settings, which always shows', ['settings']],
+      ['Admin, which follows the role', ['admin']],
+      ['a value that is not a string', [1]],
+      ['the same tab twice', ['labs', 'labs']],
+      ['a list that is not an array', 'labs'],
+    ])('rejects %s', async (_label, hidden) => {
+      await expect(
+        dashboardLayoutService.saveDashboardLayout('user-1', 'web-tabs', {
+          layout: {},
+          hidden,
+        })
+      ).rejects.toThrow('hidden must list each hideable tab id at most once');
+      expect(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).not.toHaveBeenCalled();
+    });
+
+    it('still leaves the widget keys of other pages unchecked', async () => {
+      vi.mocked(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).mockResolvedValue({ ...savedRow(['anything']), page_key: 'diary' });
+
+      await dashboardLayoutService.saveDashboardLayout('user-1', 'diary', {
+        layout: { lg: [] },
+        hidden: ['anything'],
+      });
+
+      expect(
+        dashboardLayoutRepository.upsertDashboardLayout
+      ).toHaveBeenCalledWith('user-1', 'diary', {
+        layout: { lg: [] },
+        hidden: ['anything'],
       });
     });
   });

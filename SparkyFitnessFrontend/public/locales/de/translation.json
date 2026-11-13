@@ -773,7 +773,17 @@
       "tdeeGoalDescription": "Verwendet die Gesamtkalorien des Geräts (Health Connect, Garmin oder Polar), sofern verfügbar, rechnet den aktuellen Verbrauch bis Mitternacht hoch und wendet den Zielmodus direkt auf diesen TDEE an. Ist kein Gesamtwert des Geräts verfügbar, werden Grundumsatz plus aktive Kalorien verwendet.",
       "title": "Tägliche Kalorienzielanpassung",
       "tdeeActivityHint": "Das Aktivitätsniveau wird nur dann vom Fallback-Mechanismus „BMR + aktive Kalorien“ verwendet, wenn keine Gesamtwerte des Geräts verfügbar sind.",
-      "adaptiveEarnBack": "Adaptive Ziele enthalten die Aktivität bereits. Verbleibende Kalorien sind Ziel minus Gegessen. Die Anrechnung von Trainingskalorien gilt nur für manuelle Ziele."
+      "adaptiveEarnBack": "Adaptive Ziele enthalten die Aktivität bereits. Verbleibende Kalorien sind Ziel minus Gegessen. Die Anrechnung von Trainingskalorien gilt nur für manuelle Ziele.",
+      "cardAdaptive": "Adaptiv",
+      "cardAdaptiveSummary": "Lernt aus deiner Zufuhr und deinem Gewichtstrend",
+      "cardDynamic": "Dynamisch",
+      "cardDynamicSummary": "Rechnet deine tägliche Aktivität auf dein Ziel an",
+      "cardFixed": "Fest",
+      "cardFixedSummary": "Dasselbe Ziel, egal was du tust",
+      "cardPercentage": "Prozentuale Anrechnung",
+      "cardPercentageSummary": "Rechnet einen Teil deiner Trainingskalorien an",
+      "cardDevice": "Geräteprognose",
+      "cardDeviceSummary": "Rechnet den Gesamtverbrauch deines Geräts bis Mitternacht hoch"
     },
     "dataImport": {
       "checkin": {
@@ -1438,6 +1448,42 @@
         "needsResting": "Zonen nach Herzfrequenzreserve brauchen eine Ruheherzfrequenz.",
         "customFloors": "Jede Zone muss über der vorherigen beginnen, zwischen 30 und 250 bpm."
       }
+    },
+    "calorieCycling": {
+      "description": "Iss an Trainingstagen mehr und an Ruhetagen weniger. Dein Wochentotal bleibt gleich: dein Tagesziel × 7.",
+      "unavailable": "Nicht verfügbar, solange Trainingskalorien auf dein Ziel angerechnet werden: Dein Ziel erhöht sich bereits an Tagen, an denen du ein Workout einträgst. Wähle „Adaptiv“ oder „Fest“ (oder nutze ganztägig adaptive Ziele), um Kalorien-Cycling zu nutzen.",
+      "pausedByWeeklyPlan": "Ein wöchentlicher Zielplan ist aktiv, daher ist das Kalorien-Cycling an den durch den Plan festgelegten Tagen pausiert.",
+      "title": "Kalorien-Cycling",
+      "modeOff": "Aus: jeden Tag dasselbe Ziel",
+      "modeTrainingRest": "Training vs. Ruhetag: mehr an Trainingstagen",
+      "modeCustom": "Benutzerdefiniert: ein Prozentsatz für jeden Tag",
+      "trainingPercent": "Zusätzlich an Trainingstagen (vor Wochenausgleich)",
+      "needTrainingDays": "Wähle zwischen 1 und 6 Trainingstagen sowie einen Prozentsatz über 0 %, sonst bleibt jeder Tag gleich.",
+      "needDifferentDays": "Vergib für mindestens zwei Tage unterschiedliche Prozentsätze, sonst bleibt jeder Tag gleich.",
+      "atFloor": "Sicherheitsuntergrenze",
+      "previewNote": "Basiert auf dem heutigen Ziel. Wenn sich dein Ziel ändert, zum Beispiel durch Anpassungen des adaptiven Gesamtumsatzes, folgt jeder Tag entsprechend. Die Differenz wird über die Kohlenhydrate ausgeglichen, das Protein bleibt gleich.",
+      "baseAtFloor": "Dein Tagesziel ({{target}} {{unit}}) liegt an oder unter deiner Sicherheitsuntergrenze ({{floor}} {{unit}}). Kein Tag kann niedriger ausfallen und jeder Tag bleibt gleich. Cycling greift erst, wenn dein Ziel über der Untergrenze liegt oder du eine niedrigere Untergrenze festlegst.",
+      "previewStep": "Kalorien-Cycling ({{day}}):",
+      "weekTotalWithBase": "Woche: {{total}} von {{budget}} {{unit}} (dein Tagesziel {{target}} × 7)",
+      "dayPercent": "{{day}}: Prozentsatz vor Wochenausgleich",
+      "decrease": "Um 1 % verringern",
+      "increase": "Um 1 % erhöhen",
+      "trainingDay": "Training",
+      "restDay": "Ruhetag",
+      "today": "Heute",
+      "vsTarget": "{{change}} {{unit}} ({{percent}}) gegenüber deinem Tagesziel",
+      "modeOffShort": "Aus",
+      "modeTrainingRestShort": "Training / Ruhetag",
+      "modeCustomShort": "Benutzerdefiniert",
+      "chartTarget": "Tagesziel {{value}}",
+      "chartFloor": "Sicherheitsuntergrenze {{value}}",
+      "atFloorShort": "Untergrenze",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "markRest": "{{day}} als Ruhetag festlegen",
+      "markTraining": "{{day}} als Trainingstag festlegen",
+      "chartHintTraining": "Tippe auf einen Balken, um den Tag anzuzeigen. Tippe auf das Symbol unter einem Tag, um zwischen Training und Ruhetag zu wechseln.",
+      "chartHintCustom": "Tippe auf einen Balken, um den Tag anzuzeigen, oder ziehe ihn nach oben bzw. unten. Nimm unten die Feinabstimmung für den ausgewählten Tag vor.",
+      "previewTargetForDay": "Tägliches Kalorienziel ({{day}}):"
     }
   },
   "aboutDialog": {
@@ -2839,7 +2885,16 @@
     "saveAndStart": "Plan speichern und starten",
     "saveAsPreset": "Vorlage speichern und kaskadierendes 6-Monats-Ziel starten",
     "savePresetDescription": "Gib deiner Zielvorgabe einen Namen. Dadurch wird deine aktuelle Konfiguration für die zukünftige Verwendung gespeichert und ab heute als dein Plan angewendet.",
-    "startCascadingPlan": "Gestaffelten 6-Monats-Plan starten"
+    "startCascadingPlan": "Gestaffelten 6-Monats-Plan starten",
+    "calorieCycling": {
+      "baseCalories": "Basis-Kalorien ({{energyUnitString}})",
+      "hintHigh": "Kalorien-Cycling ist aktiv, dies ist dein Basisziel. Dieser Tag liegt bei etwa {{amount}} {{unit}} (High-Day).",
+      "hintLow": "Kalorien-Cycling ist aktiv, dies ist dein Basisziel. Dieser Tag liegt bei etwa {{amount}} {{unit}} (Low-Day).",
+      "hintEven": "Kalorien-Cycling ist aktiv, dies ist dein Basisziel. Dieser Tag bleibt unverändert.",
+      "hintAdaptiveHigh": "Kalorien-Cycling ist aktiv. Mit deinem adaptiven Ziel liegt dieser Tag bei etwa {{amount}} {{unit}} (High-Day).",
+      "hintAdaptiveLow": "Kalorien-Cycling ist aktiv. Mit deinem adaptiven Ziel liegt dieser Tag bei etwa {{amount}} {{unit}} (Low-Day).",
+      "hintPausedBySave": "Das Speichern dieses Kalorienziels wechselt zu einem manuellen Ziel. Dabei werden Trainingskalorien wieder angerechnet und das Kalorien-Cycling pausiert."
+    }
   },
   "common": {
     "add": "Hinzufügen",
@@ -3072,7 +3127,11 @@
       "activityBaselineMath": "Roher Tages-TDEE − durchschnittliche Aktivität = roher adaptiver Basiswert: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} Tage Aktivitätsverlauf).",
       "activityBaselineCapped": "Nach der BMR-basierten Plausibilitätsgrenze liegt der adaptive Basiswert bei {{baseline}} {{unit}}. Zielmodus und dein Sicherheitsboden gelten für diesen Basiswert.",
       "activityExcludedBaselineValue": "Adaptiver Basiswert = {{energy}} {{energyUnitString}}",
-      "activitySeparatedCredit": "Die heutigen Schritte und Trainings werden einmal separat gutgeschrieben, ohne den BMR erneut hinzuzurechnen. Bis genug Verlauf vorhanden ist, nutzt der Basiswert BMR × deinen Aktivitätsfaktor ohne Training. Regelmäßig erfasste Ernährung, Gewicht und Aktivität verbessern diese Schätzung."
+      "activitySeparatedCredit": "Die heutigen Schritte und Trainings werden einmal separat gutgeschrieben, ohne den BMR erneut hinzuzurechnen. Bis genug Verlauf vorhanden ist, nutzt der Basiswert BMR × deinen Aktivitätsfaktor ohne Training. Regelmäßig erfasste Ernährung, Gewicht und Aktivität verbessern diese Schätzung.",
+      "stepBmr": "Grundumsatz (BMR)",
+      "stepBodyFat": "Körperfettanteil",
+      "stepAdaptive": "Adaptiver Gesamtumsatz (TDEE)",
+      "stepGoal": "Tägliches Kalorienziel"
     },
     "copyAllError": "Kopieren des gesamten Tages fehlgeschlagen.",
     "copyAllFromYesterday": "Alles von gestern kopieren",
@@ -3287,6 +3346,13 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "calorieCycling": {
+      "stepHigh": "Kalorien-Cycling (High-Day):",
+      "stepLow": "Kalorien-Cycling (Low-Day):",
+      "stepFloor": "Wird auf deiner Sicherheitsuntergrenze gehalten; die anderen Tage gleichen die Differenz aus.",
+      "pausedWeeklyPlan": "Kalorien-Cycling ist heute pausiert: Ein wöchentlicher Zielplan legt diesen Tag fest.",
+      "pausedEarnBack": "Kalorien-Cycling ist pausiert: Trainingskalorien werden auf dein Ziel angerechnet."
     }
   },
   "foodDiary": {

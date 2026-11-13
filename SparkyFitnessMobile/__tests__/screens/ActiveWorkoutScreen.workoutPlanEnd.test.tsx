@@ -37,6 +37,7 @@ import type { RootStackScreenProps } from '../../src/types/navigation';
 // the PUT and back. Only the network and cache side-effects are mocked.
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
+  getWorkout: jest.fn(),
   updateWorkout: jest.fn(),
   deleteWorkout: jest.fn(),
 }));
@@ -195,6 +196,7 @@ function makeSession(): PresetSessionResponse {
     description: null,
     notes: null,
     source: 'Workout Plan',
+    revision: 1,
     total_duration_minutes: 60,
     activity_details: [],
     exercises: [
@@ -345,13 +347,20 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
         const serverSession = JSON.parse(
           JSON.stringify(getStore().session)
         ) as PresetSessionResponse;
-        const sentSet = (
+        const exercises = (
           payload as {
-            exercises: {
+            exercises?: {
               sets: { id?: number; completed_at: string | null }[];
             }[];
           }
-        ).exercises[0].sets[0];
+        ).exercises;
+        // #1995 phase 1: the finish flow stamps the lifecycle end with a
+        // finished_at-only PUT after the final flush; echo the session
+        // unchanged for that call.
+        if (!exercises || exercises.length === 0) {
+          return serverSession;
+        }
+        const sentSet = exercises[0].sets[0];
         sentCompletedAt = sentSet?.completed_at;
         if (sentSet?.completed_at) {
           serverSession.exercises[0].sets[0].completed_at =

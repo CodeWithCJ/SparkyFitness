@@ -68,6 +68,9 @@ export interface ExternalDataProvider {
   liftosaur_connect_status?: 'connected' | 'disconnected';
   intervals_last_sync_at?: string | null;
   intervals_connect_status?: 'connected' | 'disconnected';
+  intervals_push_nutrition?: boolean;
+  intervals_pushed_days?: number;
+  intervals_pushed_since?: string | null;
   strava_last_sync_at?: string | null;
   strava_token_expires?: string | null;
   googlehealth_last_sync_at?: string | null;

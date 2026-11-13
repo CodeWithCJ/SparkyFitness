@@ -36,18 +36,6 @@ Prefer hiding a category (the eye icon) if you only want it out of your diary. H
 :::
 ---
 
-## Timeline View
-
-On the web Diary, the **Meals / Timeline** switch at the top of the page changes how the day's food is laid out. **Meals** shows one card per meal category. **Timeline** shows a single list ordered by time of day and grouped by hour, which makes it easy to see when you ate and to log something at a particular time.
-
-- Entries without a logged time sit at their meal category's suggested time and are marked with a hollow dot. Entries with no time at all appear under **No time** at the end.
-- **Add food** adds at the current time (or the meal's suggested time on another day). Hover an hour and press **+** to add at that hour instead. The meal category is picked from the time, and you can change both the time and the category before saving.
-- Click an entry to edit it.
-
-The switch is remembered on each device, and each view keeps its own widget layout.
-
----
-
 ## Custom Meals
 
 Custom meals can be created and consist of previously added foods. That way, you can group foods together and don't have to add them one by one. An example of how this might look like is provided below:

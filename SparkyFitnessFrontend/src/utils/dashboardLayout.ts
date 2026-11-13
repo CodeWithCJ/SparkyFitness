@@ -272,12 +272,6 @@ export const mealWidgetKey = (mealTypeId: string) =>
 export const isMealWidgetKey = (key: string) => key.startsWith(MEAL_KEY_PREFIX);
 
 /**
- * The Diary's timeline view replaces every meal card with this one tile, which
- * takes the meal cards' place in the default layout.
- */
-export const TIMELINE_WIDGET_KEY = 'timeline';
-
-/**
  * Build the ordered list of widget keys for the current user state:
  * fixed top widgets, then one per visible meal type, then exercise.
  */
@@ -364,17 +358,6 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
 
   return { lg, md, sm: stacked(GRID_COLS.sm), xs: stacked(GRID_COLS.xs) };
 }
-
-/**
- * Diary defaults: meal cards (meal view) or the timeline tile (timeline view)
- * take the stacked slots between the fixed widgets and exercise.
- */
-export const diaryDefaultLayouts = (widgetKeys: string[]): DashboardLayouts =>
-  generateDefaultLayouts(
-    widgetKeys.filter(
-      (key) => isMealWidgetKey(key) || key === TIMELINE_WIDGET_KEY
-    )
-  );
 
 /**
  * Reconcile a saved layout against the current widget set:

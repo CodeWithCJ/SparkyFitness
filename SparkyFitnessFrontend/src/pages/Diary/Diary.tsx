@@ -9,20 +9,11 @@ import DailyProgress from './DailyProgress';
 import WaterIntake from './WaterIntake';
 import CaffeineCard from './CaffeineCard';
 import MealCard from './MealCard';
-import DiaryTimeline from './DiaryTimeline';
 import ExerciseCard from './ExerciseCard';
 import DiaryWidgetGrid, { type DiaryWidget } from './DiaryWidgetGrid';
-import { mealWidgetKey, TIMELINE_WIDGET_KEY } from '@/utils/dashboardLayout';
+import { mealWidgetKey } from '@/utils/dashboardLayout';
 import {
-  readDiaryViewMode,
-  writeDiaryViewMode,
-  type DiaryViewMode,
-} from '@/utils/diaryTimeline';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Clock,
   Flame,
-  LayoutList,
   Salad,
   Droplet,
   Coffee,
@@ -65,13 +56,7 @@ import {
   useFoodEntries,
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
-import {
-  todayInZone,
-  prefillEntryTime,
-  pickMealTypeForTime,
-  toHourMinute,
-  userHourMinute,
-} from '@workspace/shared';
+import { todayInZone, prefillEntryTime } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import { getCalorieBudget } from '@/utils/calorieBudget';
@@ -118,16 +103,6 @@ const Diary = () => {
   >(null);
   const [toolbarContainer, setToolbarContainer] =
     useState<HTMLDivElement | null>(null);
-  const [viewMode, setViewMode] = useState<DiaryViewMode>(readDiaryViewMode);
-  // Time picked from the timeline (a slot or "now"), prefilled into the
-  // add dialogs in place of the meal type's default time.
-  const [timelineAddTime, setTimelineAddTime] = useState<string>('');
-
-  const handleViewModeChange = (mode: string) => {
-    const next: DiaryViewMode = mode === 'timeline' ? 'timeline' : 'meals';
-    setViewMode(next);
-    writeDiaryViewMode(next);
-  };
 
   const currentUserId = activeUserId;
   const { data: customNutrients, isLoading: customNutrientsLoading } =
@@ -201,9 +176,7 @@ const Diary = () => {
         `[Diary] Setting openFoodSearchForMealType to: ${mealType}`
       );
 
-      // Set which meal dialog should open. The request names a meal card, so
-      // show the meal cards for it (without changing the saved preference).
-      setViewMode('meals');
+      // Set which meal dialog should open
       setOpenFoodSearchForMealType(mealType);
 
       // Clear the navigation state for next render
@@ -280,53 +253,13 @@ const Diary = () => {
     }
   };
 
-  // Adding from the timeline: the meal type follows the chosen time, and the
-  // unit dialog lets the user change either before saving.
-  const handleTimelineFoodSelect = (
-    item: Food | MealType,
-    time: string | null
-  ) => {
-    const slot = toHourMinute(time);
-    const reference = slot
-      ? { hour: Number(slot.slice(0, 2)), minute: Number(slot.slice(3, 5)) }
-      : userHourMinute(timezone);
-    // Hidden meal types still accept entries, so fall back to them when the
-    // user has hidden every meal type.
-    const mealType = pickMealTypeForTime(
-      visibleMealTypes.length > 0
-        ? visibleMealTypes
-        : (availableMealTypes ?? []),
-      reference
-    );
-    if (!mealType) {
-      toast({
-        title: t('diary.timeline.noMealTypes', 'No meal types to add to'),
-        description: t(
-          'diary.timeline.noMealTypesDescription',
-          'Add a meal type in Settings to log food from the timeline.'
-        ),
-        variant: 'destructive',
-      });
-      return;
-    }
-    setTimelineAddTime(
-      slot ??
-        prefillEntryTime({
-          defaultTime: mealType.default_time,
-          isToday: selectedDate === todayInZone(timezone),
-          tz: timezone,
-        })
-    );
-    handleFoodSelect(item, mealType.name);
-  };
-
   const handleFoodUnitSelect = async (
     food: Food,
     quantity: number,
     unit: string,
     selectedVariant: FoodVariant,
     entryTime?: string | null,
-    mealTypeName?: string | null,
+    _mealType?: string | null,
     notes?: string | null
   ) => {
     if (!currentUserId) {
@@ -339,18 +272,12 @@ const Diary = () => {
       selectedVariant,
       entryTime,
     });
-    // Only the timeline shows a meal type picker in the unit dialog.
-    const pickedMealType = mealTypeName
-      ? availableMealTypes?.find(
-          (type) => type.name.toLowerCase() === mealTypeName.toLowerCase()
-        )
-      : undefined;
     try {
       await createFoodEntry({
         user_id: currentUserId,
         food_id: food.id,
-        meal_type: pickedMealType?.name ?? selectedMealType,
-        meal_type_id: pickedMealType?.id ?? selectedMealTypeId,
+        meal_type: selectedMealType,
+        meal_type_id: selectedMealTypeId,
         quantity: quantity,
         unit: unit,
         variant_id: selectedVariant.id,
@@ -495,27 +422,7 @@ const Diary = () => {
       ),
     });
 
-    if (viewMode === 'timeline') {
-      list.push({
-        key: TIMELINE_WIDGET_KEY,
-        title: t('diary.timeline.title', 'Timeline'),
-        icon: Clock,
-        render: () => (
-          <DiaryTimeline
-            selectedDate={selectedDate}
-            foodEntries={foodEntries}
-            foodEntryMeals={foodEntryMeals ?? []}
-            mealTypes={availableMealTypes ?? []}
-            onFoodSelect={handleTimelineFoodSelect}
-            onEditEntry={handleEditEntry}
-            onRemoveEntry={handleRemoveEntry}
-            getEntryNutrition={getEntryNutrition}
-          />
-        ),
-      });
-    }
-
-    for (const mealTypeObj of viewMode === 'timeline' ? [] : visibleMealTypes) {
+    for (const mealTypeObj of visibleMealTypes) {
       list.push({
         key: mealWidgetKey(mealTypeObj.id),
         title: mealTypeObj.name,
@@ -599,7 +506,6 @@ const Diary = () => {
     openFoodSearchForMealType,
     todaysHealthMetrics,
     loadingHealthMetrics,
-    viewMode,
     t,
   ]);
 
@@ -607,18 +513,7 @@ const Diary = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">
-        <Tabs value={viewMode} onValueChange={handleViewModeChange}>
-          <TabsList aria-label={t('diary.view.label', 'Diary view')}>
-            <TabsTrigger value="meals" className="gap-1.5">
-              <LayoutList className="h-4 w-4" />
-              {t('diary.view.meals', 'Meals')}
-            </TabsTrigger>
-            <TabsTrigger value="timeline" className="gap-1.5">
-              <Clock className="h-4 w-4" />
-              {t('diary.view.timeline', 'Timeline')}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div />
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto">
           <div
             ref={setToolbarContainer}
@@ -639,7 +534,6 @@ const Diary = () => {
         <DiaryWidgetGrid
           widgets={widgets}
           toolbarContainer={toolbarContainer}
-          viewMode={viewMode}
         />
       )}
 
@@ -652,25 +546,18 @@ const Diary = () => {
           onSelect={handleFoodUnitSelect}
           showUnitSelector={true}
           showTimeInput={true}
-          showMealTypeSelect={viewMode === 'timeline'}
-          availableMealTypes={visibleMealTypes}
           defaultMealTime={
             availableMealTypes?.find(
               (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
             )?.default_time
           }
-          initialTime={
-            viewMode === 'timeline'
-              ? timelineAddTime
-              : prefillEntryTime({
-                  defaultTime: availableMealTypes?.find(
-                    (t) =>
-                      t.name.toLowerCase() === selectedMealType.toLowerCase()
-                  )?.default_time,
-                  isToday: selectedDate === todayInZone(timezone),
-                  tz: timezone,
-                })
-          }
+          initialTime={prefillEntryTime({
+            defaultTime: availableMealTypes?.find(
+              (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
+            )?.default_time,
+            isToday: selectedDate === todayInZone(timezone),
+            tz: timezone,
+          })}
         />
       )}
 
@@ -710,17 +597,13 @@ const Diary = () => {
         onOpenChange={setIsLogMealDialogOpen}
         date={selectedDate}
         mealType={selectedMealType}
-        initialEntryTime={
-          viewMode === 'timeline'
-            ? timelineAddTime
-            : prefillEntryTime({
-                defaultTime: availableMealTypes?.find(
-                  (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
-                )?.default_time,
-                isToday: selectedDate === todayInZone(timezone),
-                tz: timezone,
-              })
-        }
+        initialEntryTime={prefillEntryTime({
+          defaultTime: availableMealTypes?.find(
+            (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
+          )?.default_time,
+          isToday: selectedDate === todayInZone(timezone),
+          tz: timezone,
+        })}
       />
 
       {/* Convert to Meal Dialog */}

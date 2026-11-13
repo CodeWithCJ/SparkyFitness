@@ -83,9 +83,6 @@ export type ActiveWorkoutView = 'list' | 'focus';
 export type FocusMediaDefault = 'expanded' | 'minimized';
 
 /** Which stat the active-workout log shows in its per-set metric column. */
-/** How the Diary lays out food: grouped by meal, or one list by time of day. */
-export type DiaryViewMode = 'meals' | 'timeline';
-
 export type ActiveWorkoutMetricColumn =
   'rpe' | 'rir' | 'volume' | 'e1rm' | 'tenrm';
 
@@ -144,7 +141,6 @@ export const PREFERENCE_DEFAULTS = {
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
-  diaryViewMode: 'meals' as DiaryViewMode,
   defaultRestSec: DEFAULT_REST_SEC as number,
   paceReferenceRace: null as PaceReferenceRace | null,
   paceReferenceOnWatch: false,
@@ -152,6 +148,7 @@ export const PREFERENCE_DEFAULTS = {
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
+  plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
   warmupPlateRounding: { ...DEFAULT_WARMUP_PLATE_ROUNDING },
@@ -241,7 +238,6 @@ export type AppPreferencesData = {
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
-  diaryViewMode: DiaryViewMode;
   defaultRestSec: number;
   /**
    * A recent race result the training paces are worked out from (device-local),
@@ -263,6 +259,13 @@ export type AppPreferencesData = {
    */
   duckMusicDuringCues: boolean;
   workoutKeepAwakeEnabled: boolean;
+  /**
+   * Live workouts started from a plan or saved workout show its planned
+   * values as placeholders before last session's (#3417). Read once at live
+   * start. Off by default: placeholders follow the last session and
+   * progression.
+   */
+  plannedValuesAsPlaceholders: boolean;
   /** Offer "Add warm-ups" on an exercise's menu. */
   warmupCalculatorEnabled: boolean;
   /** The warm-up ramp: percent of the working weight x reps, ascending. */
@@ -393,7 +396,6 @@ export interface AppPreferencesState extends AppPreferencesData {
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
-  setDiaryViewMode: (value: DiaryViewMode) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
   setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
@@ -402,6 +404,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
   setWarmupPlateRounding: (unit: 'kg' | 'lbs', value: number) => void;
@@ -565,7 +568,6 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setActiveWorkoutMetricColumn: (value) =>
         set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
-      setDiaryViewMode: (value) => set({ diaryViewMode: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
@@ -577,6 +579,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
+      setPlannedValuesAsPlaceholders: (value) =>
+        set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
         set({ warmupCalculatorEnabled: value }),
       setWarmupMethod: (steps) =>
@@ -782,7 +786,6 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         activeWorkoutMetricColumn: state.activeWorkoutMetricColumn,
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
-        diaryViewMode: state.diaryViewMode,
         defaultRestSec: state.defaultRestSec,
         paceReferenceRace: state.paceReferenceRace,
         paceReferenceOnWatch: state.paceReferenceOnWatch,
@@ -790,6 +793,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
         warmupMethod: state.warmupMethod,
         warmupPlateRounding: state.warmupPlateRounding,

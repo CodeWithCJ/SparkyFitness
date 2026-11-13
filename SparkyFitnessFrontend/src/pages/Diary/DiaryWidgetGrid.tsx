@@ -1,7 +1,10 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { DiaryViewMode } from '@/utils/diaryTimeline';
 import WidgetGrid from '@/components/widgets/WidgetGrid';
-import { diaryDefaultLayouts } from '@/utils/dashboardLayout';
+import {
+  generateDefaultLayouts,
+  isMealWidgetKey,
+  type DashboardLayouts,
+} from '@/utils/dashboardLayout';
 
 export interface DiaryWidget {
   key: string;
@@ -13,24 +16,19 @@ export interface DiaryWidget {
 interface DiaryWidgetGridProps {
   widgets: DiaryWidget[];
   toolbarContainer?: HTMLElement | null;
-  viewMode: DiaryViewMode;
 }
 
-// Each view keeps its own saved layout: the timeline view has no meal tiles,
-// so sharing one row would drop the user's meal arrangement on every switch.
-const PAGE_KEYS: Record<DiaryViewMode, string> = {
-  meals: 'diary',
-  timeline: 'diary-timeline',
-};
+const PAGE_KEY = 'diary';
+
+const diaryDefaultLayouts = (widgetKeys: string[]): DashboardLayouts =>
+  generateDefaultLayouts(widgetKeys.filter(isMealWidgetKey));
 
 const DiaryWidgetGrid = ({
   widgets,
   toolbarContainer,
-  viewMode,
 }: DiaryWidgetGridProps) => (
   <WidgetGrid
-    key={viewMode}
-    pageKey={PAGE_KEYS[viewMode]}
+    pageKey={PAGE_KEY}
     widgets={widgets}
     generateDefaultLayouts={diaryDefaultLayouts}
     toolbarContainer={toolbarContainer}

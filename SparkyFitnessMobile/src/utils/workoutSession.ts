@@ -1103,6 +1103,18 @@ export interface AssumedSetValues {
   distance?: number | null;
 }
 
+/**
+ * A set's planned values, captured at live start from the plan or preset.
+ * `preferOverHistory` is set when Workout Settings → "Use planned values as
+ * placeholders" was on at that start: the planned fields then come before the
+ * last session and progression (see {@link resolveAssumedSetValues}). It
+ * rides on each planned set so every placeholder consumer (row, HUD, watch,
+ * completion adoption) resolves the same way and it survives a cold start.
+ */
+export interface PlannedSetValues extends AssumedSetValues {
+  preferOverHistory?: boolean;
+}
+
 type AssumableSet = Pick<
   WorkoutCardSet,
   'id' | 'set_type' | 'weight' | 'reps' | 'duration' | 'distance'
@@ -1147,6 +1159,11 @@ export interface AssumedSetOverrides {
  *   3. The preceding row's effective value — its entered value, else its
  *      resolved placeholder.
  *
+ * A planned set marked `preferOverHistory` swaps 1 and 2 for every field the
+ * plan sets: the planned value wins over history and over the progression
+ * bump and rep targets, which build on history. A field the plan leaves empty
+ * resolves as above. Unmarked plans (the default) keep history first.
+ *
  * With a ramp, the first ramp-eligible set (working or failure — warm-ups and
  * drop sets are skipped) resolves as above and becomes the base; each later
  * eligible set's weight is base + step × increment, rounded to a loadable
@@ -1182,7 +1199,7 @@ export function alignPreviousSets<T extends { setType?: string | null }>(
 export function resolveAssumedSetValues(
   sets: readonly AssumableSet[],
   previousSets: readonly ExerciseRecentSessionSet[] | undefined,
-  plannedBySetId?: Record<string, AssumedSetValues>,
+  plannedBySetId?: Record<string, PlannedSetValues>,
   overrides?: AssumedSetOverrides
 ): AssumedSetValues[] {
   const progressionIncrementKg = overrides?.progressionIncrementKg;
@@ -1211,6 +1228,7 @@ export function resolveAssumedSetValues(
     const tier = set.set_type === 'warmup' ? 'warmup' : 'working';
     const previous = alignedPrevious[index];
     const planned = plannedBySetId?.[String(set.id)];
+    const planFirst = planned?.preferOverHistory === true;
 
     const progressedPreviousWeight =
       tier === 'working' &&
@@ -1225,7 +1243,9 @@ export function resolveAssumedSetValues(
     // history yet — but never to the carried-forward value, which already
     // holds an adapted weight.
     const adaptiveLoadFactor = overrides?.adaptiveLoadFactor;
-    const sourceWeight = progressedPreviousWeight ?? planned?.weight;
+    const sourceWeight = planFirst
+      ? (planned?.weight ?? progressedPreviousWeight)
+      : (progressedPreviousWeight ?? planned?.weight);
     const adaptedSourceWeight =
       tier === 'working' && adaptiveLoadFactor != null && sourceWeight != null
         ? applyAdaptiveLoadFactorKg(
@@ -1256,21 +1276,23 @@ export function resolveAssumedSetValues(
       tier === 'working'
         ? overrides?.progressionRepTargets?.[workingIndex++]
         : undefined;
+    const historyReps = progressionReps ?? previous?.reps;
     const assumed: AssumedSetValues = {
       weight,
       reps:
-        progressionReps ??
-        previous?.reps ??
-        planned?.reps ??
-        lastEffective[tier].reps,
+        (planFirst
+          ? (planned?.reps ?? historyReps)
+          : (historyReps ?? planned?.reps)) ?? lastEffective[tier].reps,
       duration:
-        previous?.duration ??
-        planned?.duration ??
+        (planFirst
+          ? (planned?.duration ?? previous?.duration)
+          : (previous?.duration ?? planned?.duration)) ??
         lastEffective[tier].duration ??
         null,
       distance:
-        previous?.distance ??
-        planned?.distance ??
+        (planFirst
+          ? (planned?.distance ?? previous?.distance)
+          : (previous?.distance ?? planned?.distance)) ??
         lastEffective[tier].distance ??
         null,
     };
@@ -1395,7 +1417,7 @@ export function progressionIncrementKgFor(
 
 /** The live-start settings a placeholder resolves against. */
 export interface LiveAssumeSources {
-  plannedSetValues: Record<string, AssumedSetValues>;
+  plannedSetValues: Record<string, PlannedSetValues>;
   exerciseConfigs?: Record<string, LiveExerciseConfig>;
   weightUnit?: 'kg' | 'lbs';
   workoutFormat?: WorkoutFormat;
@@ -2250,15 +2272,25 @@ export function buildPresetStartExercisesPayload(
   });
 }
 
+/**
+ * The plan's values per set, positional with `exercises`, before
+ * {@link stripPlannedSetValues} empties them for the create payload.
+ * `preferOverHistory` marks every captured set so its placeholders show the
+ * plan before the last session (Workout Settings → "Use planned values as
+ * placeholders", read once at live start).
+ */
 export function extractPlannedSetValues(
-  exercises: PresetSessionExerciseRequest[]
-): AssumedSetValues[][] {
+  exercises: PresetSessionExerciseRequest[],
+  opts?: { preferOverHistory?: boolean }
+): PlannedSetValues[][] {
+  const preferOverHistory = opts?.preferOverHistory === true;
   return exercises.map((exercise) =>
-    (exercise.sets || []).map((set: any, i: number) => ({
+    (exercise.sets || []).map((set) => ({
       weight: set.weight ?? null,
       reps: set.reps ?? null,
       duration: set.duration ?? null,
       distance: set.distance ?? null,
+      ...(preferOverHistory ? { preferOverHistory: true } : {}),
     }))
   );
 }
@@ -2729,7 +2761,7 @@ export function buildPresetUpdateExercises(
   preset: WorkoutPreset,
   opts: {
     completedSetIds: CompletedSetMap;
-    plannedSetValues: Record<string, AssumedSetValues>;
+    plannedSetValues: Record<string, PlannedSetValues>;
     /**
      * The live placeholder inputs, so values the ramp or progression filled
      * in can be told apart from the lifter's own changes. Omitted: every
@@ -3002,3 +3034,29 @@ export function plateTargetKg(
   const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
   return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
 }
+
+/**
+ * Localized label for a derived workout session status (#1995 phase 1).
+ * The keys are static per branch so the i18n audit can verify them.
+ */
+export const getWorkoutSessionStatusLabel = (
+  t: (key: string, options?: Record<string, unknown>) => string,
+  status: string
+): string => {
+  switch (status) {
+    case 'planned':
+      return t('workout.sessionStatus.planned', { defaultValue: 'Planned' });
+    case 'in_progress':
+      return t('workout.sessionStatus.in_progress', {
+        defaultValue: 'In Progress',
+      });
+    case 'partial':
+      return t('workout.sessionStatus.partial', { defaultValue: 'Partial' });
+    case 'completed':
+      return t('workout.sessionStatus.completed', {
+        defaultValue: 'Completed',
+      });
+    default:
+      return status;
+  }
+};

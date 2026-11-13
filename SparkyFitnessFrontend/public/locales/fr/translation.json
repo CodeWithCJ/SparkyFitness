@@ -13,7 +13,8 @@
     "wellness": "Bien-être",
     "foodLog": "Journal alimentaire",
     "symptoms": "Symptômes",
-    "sparkyFitnessV": "SparkyFitness v{{version}}"
+    "sparkyFitnessV": "SparkyFitness v{{version}}",
+    "labs": "Résultats d'analyses"
   },
   "settings": {
     "profileInformation": {
@@ -103,7 +104,11 @@
       "wednesday": "Mercredi",
       "thursday": "Jeudi",
       "friday": "Vendredi",
-      "saturday": "Samedi"
+      "saturday": "Samedi",
+      "glucoseUnit": "Unité de glycémie",
+      "temperatureUnit": "Unité de température",
+      "celsius": "Celsius (°C)",
+      "fahrenheit": "Fahrenheit (°F)"
     },
     "waterTracking": {
       "title": "Suivi conso d'eau",
@@ -176,11 +181,11 @@
       "canUseExerciseLibrary": "Peut utiliser ma bibliothèque d'exercices et de séances",
       "canUseExerciseLibraryHelp": "Permet au membre délégué de consulter et utiliser vos exercices personnalisés et vos modèles de séances lorsqu'il bascule sur votre profil. Ne donne pas accès aux entrées du journal ni aux paramètres du profil.",
       "canManageCheckin": "Peut gérer les données d'enregistrement",
-      "canManageCheckinHelp": "Permet au membre délégué d'enregistrer en votre nom le poids, les mensurations, les photos de progression, le sommeil, l'humeur et le statut de jeûne. Les entrées du journal sont bloquées. Donne un accès en lecture seule au profil.",
+      "canManageCheckinHelp": "Permet au membre délégué d'enregistrer en votre nom le poids, les mensurations, les photos de progression, le sommeil, l'humeur et le statut de jeûne. Donne aussi accès à vos résultats d'analyses. Les entrées du journal sont bloquées. Donne un accès en lecture seule au profil.",
       "canManageMedications": "Peut gérer les médicaments",
       "canManageMedicationsHelp": "Permet au membre délégué d'enregistrer en votre nom les médicaments, les doses, les plans de titration et les sites d'injection. Les entrées du journal sont bloquées. Donne un accès en lecture seule au profil.",
       "canViewReports": "Peut consulter les rapports",
-      "canViewReportsHelp": "Permet au membre délégué de consulter les graphiques, statistiques et historiques de votre tableau de bord. Aucun droit d'écriture n'est accordé. Donne un accès en lecture seule au profil.",
+      "canViewReportsHelp": "Permet au membre délégué de consulter les graphiques, statistiques et historiques de votre tableau de bord. Donne aussi un accès en lecture seule à vos résultats d'analyses. Aucun droit d'écriture n'est accordé. Donne un accès en lecture seule au profil.",
       "shareExternalProviders": "Partager les fournisseurs de données externes",
       "shareExternalProvidersHelp": "Permet au membre délégué de rechercher des aliments et des exercices via vos fournisseurs d'API configurés (ex. FatSecret, USDA). Les intégrations santé (Garmin, Fitbit, etc.) restent strictement privées et ne sont jamais partagées.",
       "accessEndDate": "Date de fin d'accès (facultatif)",
@@ -350,7 +355,10 @@
         "visionService": "Service d'IA de vision global",
         "supportsAudioInput": "Afficher cette configuration dans la liste Voix",
         "supportsAudioInputDescription": "Activez cette option uniquement si le modèle choisi accepte les fichiers audio. Lorsque cette configuration est sélectionnée pour la voix, l'audio enregistré est envoyé à ce modèle pour transcription.",
-        "audioInputProviderUnsupported": "La transcription vocale n'est pas encore prise en charge pour ce type de fournisseur."
+        "audioInputProviderUnsupported": "La transcription vocale n'est pas encore prise en charge pour ce type de fournisseur.",
+        "loadModels": "Charger les modèles",
+        "loadingModels": "Chargement des modèles…",
+        "openCodeGoModelsLoadFailed": "Impossible de charger les modèles OpenCode Go. Vérifiez la clé d'API et réessayez."
       },
       "userSettings": {
         "title": "Services IA",
@@ -457,7 +465,10 @@
         "supportsAudioInputDescription": "Activez cette option uniquement si le modèle choisi accepte les fichiers audio. Lorsque cette configuration est sélectionnée pour la voix, l'audio enregistré est envoyé à ce modèle pour transcription.",
         "audioInputProviderUnsupported": "La transcription vocale n'est pas encore prise en charge pour ce type de fournisseur.",
         "activeVoiceProvider": "Configuration vocale",
-        "systemVoiceFree": "Reconnaissance du système (gratuite)"
+        "systemVoiceFree": "Reconnaissance du système (gratuite)",
+        "loadModels": "Charger les modèles",
+        "loadingModels": "Chargement des modèles…",
+        "openCodeGoModelsLoadFailed": "Impossible de charger les modèles OpenCode Go. Vérifiez la clé d'API et réessayez."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -471,7 +482,8 @@
         "custom": "Personnalisé",
         "xai": "xAI (Grok)",
         "meta": "Meta",
-        "perplexity": "Perplexity AI"
+        "perplexity": "Perplexity AI",
+        "opencodeGo": "OpenCode Go"
       },
       "test": {
         "successTitle": "Succès",
@@ -558,7 +570,7 @@
       "enterNewEmailAddress": "Veuillez saisir un nouveau courriel",
       "currentPassword": "Mot de passe actuel",
       "enterCurrentPassword": "Entre le mot de passe actuel",
-      "updateEmailHint": "Votre adresse e-mail sera mise à jour immédiatement.",
+      "updateEmailHint": "Confirmez votre mot de passe actuel pour changer d'adresse e-mail. Laissez vide si vous vous connectez par SSO.",
       "emailUpdateSuccess": "E-mail mis à jour avec succès.",
       "emailUpdateError": "Échec de la mise à jour de l'e-mail",
       "passwordUpdateError": "Échec de la mise à jour du mot de passe",
@@ -823,7 +835,8 @@
       "totpEnabled": "L'application d'authentification est actuellement activée.",
       "verificationCode": "Code de vérification",
       "verify": "Vérifier et activer",
-      "yourRecoveryCodes": "Vos codes de récupération"
+      "yourRecoveryCodes": "Vos codes de récupération",
+      "passwordSsoHint": "Laissez vide si vous vous connectez par SSO."
     },
     "nutrientAlgorithms": {
       "title": "Algorithmes de calcul des nutriments",
@@ -905,7 +918,17 @@
       "tdeeActivityHint": "Le niveau d'activité n'est utilisé que par le repli BMR + calories actives, lorsqu'aucun total de l'appareil n'est disponible.",
       "tdeeGoalDescription": "Utilise les calories totales de l'appareil (Health Connect, Garmin ou Polar) lorsqu'elles sont disponibles, projette la dépense actuelle jusqu'à minuit et applique directement le mode d'objectif à ce TDEE. Se replie sur BMR + calories actives lorsqu'aucun total de l'appareil n'est disponible.",
       "title": "Ajustement de l'objectif calorique quotidien",
-      "adaptiveEarnBack": "Les objectifs adaptatifs incluent déjà l'activité. Les calories restantes correspondent à l'objectif moins ce qui a été consommé. La récupération des calories d'exercice ne s'applique qu'aux objectifs manuels."
+      "adaptiveEarnBack": "Les objectifs adaptatifs incluent déjà l'activité. Les calories restantes correspondent à l'objectif moins ce qui a été consommé. La récupération des calories d'exercice ne s'applique qu'aux objectifs manuels.",
+      "cardAdaptive": "Adaptatif",
+      "cardAdaptiveSummary": "Apprend de vos apports et de la tendance de votre poids",
+      "cardDynamic": "Dynamique",
+      "cardDynamicSummary": "Ajoute votre activité du jour à votre objectif",
+      "cardFixed": "Fixe",
+      "cardFixedSummary": "La même cible quoi que vous fassiez",
+      "cardPercentage": "Récupération en pourcentage",
+      "cardPercentageSummary": "Rajoute une partie de vos calories d'exercice",
+      "cardDevice": "Projection de l'appareil",
+      "cardDeviceSummary": "Projette la dépense totale de votre appareil jusqu'à minuit"
     },
     "breakdown": {
       "goalSurplusLabel": "Surplus visé :",
@@ -1214,7 +1237,11 @@
       "europeMcpeuCorosComNot": "Europe (mcpeu.coros.com) <span>(pas encore testé)</span>",
       "mainlandChinaMcpcnCorosCom": "Chine continentale (mcpcn.coros.com) <span>(pas encore testé)</span>",
       "ensureLocalUrl": "Vérifiez aussi que votre URL locale est correcte si vous testez en local.",
-      "stravaCallbackNote": "Remarque : l'URL de rappel Strava configurée sur le serveur est : <strong>{{value}}</strong>"
+      "stravaCallbackNote": "Remarque : l'URL de rappel Strava configurée sur le serveur est : <strong>{{value}}</strong>",
+      "garminServiceUnreachable": "Service Garmin injoignable",
+      "garminServiceUnreachableDescription": "SparkyFitness ne parvient pas à joindre le service Garmin : les données Garmin ne peuvent pas être synchronisées. Vérifiez que le microservice Garmin est en cours d'exécution.",
+      "hevyDaily": "Tous les jours à 21 h",
+      "hevyDailyHelp": "La synchronisation quotidienne de Hevy s'exécute à partir de 21 h, dans le fuseau horaire de SparkyFitness. Seule une synchronisation réussie à partir de 21 h compte pour la soirée. La synchronisation automatique nécessite un fournisseur actif."
     },
     "externalProviderList": {
       "dragToReorderProvider": "Faire glisser pour réordonner le fournisseur",
@@ -1289,7 +1316,9 @@
       "urlLabel": "URL :",
       "appIdLabel": "App ID :",
       "appKeyLabel": "App Key :",
-      "syncLabel": "Synchro :"
+      "syncLabel": "Synchro :",
+      "neverSynced": "Dernière synchro : jamais",
+      "garminServiceUnreachable": "Service Garmin injoignable. Synchronisation impossible."
     },
     "providerSpecificFields": {
       "appURL": "URL de l'app",
@@ -1420,6 +1449,42 @@
       "privacyNote": "L'heure de début d'une activité enregistrée par GPS et son lieu de départ, arrondi à deux décimales (environ 1 km), sont envoyés à ce serveur, qui peut les voir. Utilisez un serveur de confiance, ou hébergez le vôtre. Sans fournisseur météo, rien n'est recherché ni envoyé.",
       "freeTierNote": "Aucun serveur n'est configuré par défaut. Le service gratuit d'Open-Meteo ({{url}} ; ses archives pour les activités plus anciennes sont servies par archive-api.open-meteo.com) est réservé à un usage non commercial. Pour un usage commercial, utilisez son service payant (customer-api.open-meteo.com) avec une clé API, ou hébergez votre propre serveur Open-Meteo. Une clé API envoyée ne sert qu'à ce fournisseur.",
       "resultNote": "Une fois ce fournisseur activé, les nouvelles activités enregistrées par GPS reçoivent la température et les conditions météo à leur départ. Les activités qui ont déjà une météo (par exemple depuis Garmin) la conservent."
+    },
+    "calorieCycling": {
+      "title": "Cycle calorique",
+      "description": "Mangez plus les jours d'entraînement et moins les jours de repos. Votre total de la semaine reste le même : votre objectif quotidien × 7.",
+      "unavailable": "Indisponible tant que les calories d'exercice sont rajoutées à votre objectif : votre cible augmente déjà les jours où vous enregistrez une séance. Choisissez Adaptatif ou Fixe, ou utilisez les objectifs adaptatifs sur la journée complète, pour faire varier vos calories.",
+      "pausedByWeeklyPlan": "Un plan d'objectifs hebdomadaire est actif : le cycle calorique est suspendu les jours définis par ce plan.",
+      "modeOff": "Aucun : la même cible chaque jour",
+      "modeTrainingRest": "Entraînement / repos : plus les jours où vous vous entraînez",
+      "modeCustom": "Personnalisé : un pourcentage pour chaque jour",
+      "trainingPercent": "Supplément les jours d'entraînement (avant équilibrage de la semaine)",
+      "needTrainingDays": "Choisissez entre 1 et 6 jours d'entraînement et un pourcentage supérieur à 0, sinon tous les jours restent identiques.",
+      "needDifferentDays": "Donnez des pourcentages différents à au moins deux jours, sinon tous les jours restent identiques.",
+      "atFloor": "Plancher de sécurité",
+      "previewNote": "Calculé à partir de la cible du jour. Quand votre cible change, par exemple lorsque la dépense adaptative est mise à jour, chaque jour la suit. Les glucides absorbent la variation et les protéines restent inchangées.",
+      "baseAtFloor": "Votre objectif quotidien ({{target}} {{unit}}) est égal ou inférieur à votre plancher de sécurité ({{floor}} {{unit}}) : aucun jour ne peut descendre plus bas et tous les jours restent identiques. Le cycle fonctionne dès que votre cible dépasse le plancher, ou avec un plancher personnalisé plus bas.",
+      "previewStep": "Cycle calorique ({{day}}) :",
+      "weekTotalWithBase": "Semaine : {{total}} sur {{budget}} {{unit}} (votre objectif quotidien {{target}} × 7)",
+      "dayPercent": "{{day}} : pourcentage avant équilibrage de la semaine",
+      "decrease": "Baisser de 1 %",
+      "increase": "Augmenter de 1 %",
+      "trainingDay": "Entraînement",
+      "restDay": "Repos",
+      "today": "Aujourd'hui",
+      "vsTarget": "{{change}} {{unit}} ({{percent}}) par rapport à votre objectif quotidien",
+      "modeOffShort": "Aucun",
+      "modeTrainingRestShort": "Entraînement / repos",
+      "modeCustomShort": "Personnalisé",
+      "chartTarget": "Objectif quotidien {{value}}",
+      "chartFloor": "Plancher de sécurité {{value}}",
+      "chartBarLabel": "{{day}} : {{target}}, {{change}}",
+      "atFloorShort": "plancher",
+      "markRest": "Faire de {{day}} un jour de repos",
+      "markTraining": "Faire de {{day}} un jour d'entraînement",
+      "chartHintTraining": "Touchez une barre pour voir ce jour. Touchez l'icône sous un jour pour le faire passer d'entraînement à repos, et inversement.",
+      "chartHintCustom": "Touchez une barre pour voir ce jour, ou faites-la glisser vers le haut ou le bas. Affinez le jour sélectionné ci-dessous.",
+      "previewTargetForDay": "Objectif calorique quotidien ({{day}}) :"
     }
   },
   "aboutDialog": {
@@ -1506,7 +1571,9 @@
       "addCustomTag": "Ajouter « {{tag}} »",
       "replaceTitle": "Remplacer l'exercice",
       "replaceSuccess": "Exercice remplacé",
-      "suggestedTab": "Suggestions"
+      "suggestedTab": "Suggestions",
+      "caloriesPerHourWithUnit": "Calories/heure ({{unit}})",
+      "caloriesPerHourHintWithUnit": "Laissez vide pour utiliser les calories par heure calculées par le système ({{newExerciseCalories}} {{unit}}/heure)."
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Chercher parmi vos séances prédéfinies…",
@@ -1614,7 +1681,9 @@
       "telemetryHeader": "Télémétrie et métriques d'activité",
       "caloriesAppliedPlaceholder": "Vide = les calories brûlées ci-dessus",
       "caloriesAppliedHint": "Mettez 0 si une séance de montre compte déjà cette séance. L'estimation des calories brûlées est conservée.",
-      "caloriesAppliedLinkedHint": "Les calories comptées viennent du lien entre séances. Gérez ce lien depuis la séance saisie manuellement."
+      "caloriesAppliedLinkedHint": "Les calories comptées viennent du lien entre séances. Gérez ce lien depuis la séance saisie manuellement.",
+      "caloriesBurnedOptionalWithUnit": "Calories brûlées ({{unit}}, facultatif)",
+      "caloriesAppliedWithUnit": "Calories comptées dans le total du jour ({{unit}}, facultatif)"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "Nom du champs",
@@ -2109,9 +2178,9 @@
     "startWorkout": "Démarrer la séance",
     "workoutPreset": "Modèles de Séance",
     "activeCaloriesValue": "{{calories}} actives",
-    "setCount": "{{count}} série",
+    "setCount": "Séries : {{count}}",
     "secondsShort": "{{count}}s",
-    "repCount": "{{count}} répétition",
+    "repCount": "{{count}} rép",
     "meta": {
       "beginner": "Débutant",
       "intermediate": "Intermédiaire",
@@ -2225,7 +2294,9 @@
         "enforceMfaForAllUsers": "Imposer la MFA à tous les utilisateurs",
         "enablePasskeyLogin": "Activer la connexion par clé d'accès",
         "emergencyFailSafePasskeyDescription": "Si la connexion par clé d'accès a été désactivée et que vous ne pouvez plus vous connecter, réactivez-la de force avec :",
-        "emergencyFailSafeIfYou": "<strong>Secours d'urgence :</strong> si vous perdez l'accès à votre compte, vous pouvez forcer l'activation de la connexion par e-mail et mot de passe en définissant la variable d'environnement suivante sur votre serveur, puis en le redémarrant :"
+        "emergencyFailSafeIfYou": "<strong>Secours d'urgence :</strong> si vous perdez l'accès à votre compte, vous pouvez forcer l'activation de la connexion par e-mail et mot de passe en définissant la variable d'environnement suivante sur votre serveur, puis en le redémarrant :",
+        "enableMagicLinkLogin": "Activer la connexion par lien magique",
+        "emergencyFailSafeMagicLinkDescription": "Si la connexion par lien magique a été désactivée et que vous ne pouvez plus vous connecter, réactivez-la avec :"
       },
       "oidcProviderManagement": {
         "title": "Gestion des fournisseurs OIDC",
@@ -2580,7 +2651,16 @@
     "saveAndStart": "Enregistrer et démarrer le plan",
     "saveAsPreset": "Enregistrer le modèle et démarrer l'objectif en cascade sur 6 mois",
     "savePresetDescription": "Donnez un nom à votre modèle d'objectifs. Votre configuration actuelle sera enregistrée pour une utilisation future et appliquée comme plan à partir d'aujourd'hui.",
-    "startCascadingPlan": "Démarrer le plan en cascade sur 6 mois"
+    "startCascadingPlan": "Démarrer le plan en cascade sur 6 mois",
+    "calorieCycling": {
+      "baseCalories": "Calories de base ({{energyUnitString}})",
+      "hintHigh": "Le cycle calorique est activé : ceci est votre cible de base. Ce jour passe à environ {{amount}} {{unit}} (jour haut).",
+      "hintLow": "Le cycle calorique est activé : ceci est votre cible de base. Ce jour passe à environ {{amount}} {{unit}} (jour bas).",
+      "hintEven": "Le cycle calorique est activé : ceci est votre cible de base. Ce jour reste inchangé.",
+      "hintAdaptiveHigh": "Le cycle calorique est activé. Avec votre cible adaptative, ce jour est d'environ {{amount}} {{unit}} (jour haut).",
+      "hintAdaptiveLow": "Le cycle calorique est activé. Avec votre cible adaptative, ce jour est d'environ {{amount}} {{unit}} (jour bas).",
+      "hintPausedBySave": "Enregistrer cet objectif calorique passe à un objectif manuel, qui rajoute les calories d'exercice et suspend le cycle calorique."
+    }
   },
   "common": {
     "add": "Ajouter",
@@ -2680,7 +2760,8 @@
     "previousDay": "Jour précédent",
     "nextDay": "Jour suivant",
     "average": "Moy",
-    "range": "Plage"
+    "range": "Plage",
+    "retry": "Réessayer"
   },
   "diary": {
     "nutritionSummary": "Résumé nutritionnel",
@@ -2908,7 +2989,11 @@
       "activityBaselineMath": "TDEE brut sur la journée complète − activité moyenne = base adaptative brute : {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} jours d'historique d'activité).",
       "activityBaselineCapped": "Après le plafond de plausibilité fondé sur le BMR, la base adaptative est de {{baseline}} {{unit}}. Le mode d'objectif et votre plancher de sécurité s'appliquent à cette base.",
       "activityExcludedBaselineValue": "Base adaptative = {{energy}} {{energyUnitString}}",
-      "activitySeparatedCredit": "Les pas et les séances du jour sont crédités une seule fois, à part, sans ajouter le BMR une seconde fois. Tant que l'historique est insuffisant, la base utilise le BMR × votre coefficient d'activité hors séances. Un historique régulier de vos repas, de votre poids et de votre activité améliore cette estimation."
+      "activitySeparatedCredit": "Les pas et les séances du jour sont crédités une seule fois, à part, sans ajouter le BMR une seconde fois. Tant que l'historique est insuffisant, la base utilise le BMR × votre coefficient d'activité hors séances. Un historique régulier de vos repas, de votre poids et de votre activité améliore cette estimation.",
+      "stepBmr": "Métabolisme de base (BMR)",
+      "stepBodyFat": "Pourcentage de masse grasse",
+      "stepAdaptive": "TDEE adaptatif (dépense)",
+      "stepGoal": "Objectif calorique quotidien"
     },
     "caffeineCard": {
       "dose": "Dose"
@@ -2964,7 +3049,9 @@
       "humidity": "Humidité (%)",
       "gearName": "Nom de l'équipement",
       "eGNikePegasus40": "ex. Nike Pegasus 40",
-      "exercise": "Exercice"
+      "exercise": "Exercice",
+      "activeCaloriesWithUnit": "Calories actives ({{unit}})",
+      "restingCaloriesWithUnit": "Calories au repos ({{unit}})"
     },
     "editMealFoodEntryDialog": {
       "modifyTheFoodsAndQuantities": "Modifiez les aliments et les quantités de ce repas enregistré.",
@@ -3026,6 +3113,15 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "calorieCycling": {
+      "highDay": "Jour haut +{{amount}}",
+      "lowDay": "Jour bas −{{amount}}",
+      "stepHigh": "Cycle calorique (jour haut) :",
+      "stepLow": "Cycle calorique (jour bas) :",
+      "stepFloor": "Maintenu à votre plancher de sécurité ; les autres jours compensent la différence.",
+      "pausedWeeklyPlan": "Le cycle calorique est suspendu aujourd'hui : un plan d'objectifs hebdomadaire définit ce jour.",
+      "pausedEarnBack": "Le cycle calorique est suspendu : les calories d'exercice sont rajoutées à votre objectif."
     }
   },
   "foodDiary": {
@@ -3226,7 +3322,8 @@
       "photos": "Photos",
       "sleep": "Sommeil",
       "mindfulness": "Pleine conscience",
-      "symptoms": "Symptômes"
+      "symptoms": "Symptômes",
+      "oralCare": "Hygiène dentaire"
     },
     "noRecentActivity": "Aucune activité récente trouvée.",
     "newCheckin": "Nouvelle saisie",
@@ -3674,7 +3771,8 @@
     "fFatg": "L : {{fat}} g",
     "pTotalProteing": "P : {{totalProtein}} g",
     "cTotalCarbsg": "G : {{totalCarbs}} g",
-    "fTotalFatg": "L : {{totalFat}} g"
+    "fTotalFatg": "L : {{totalFat}} g",
+    "totalEnergyPGC": "<strong>Total :</strong> {{totalCalories}} | P : {{totalProtein}} g | G : {{totalCarbs}} g | L : {{totalFat}} g"
   },
   "workoutPresetForm": {
     "createTitle": "Créer un nouveau modèle de séance",
@@ -4172,7 +4270,47 @@
     "weightTrendWithRate": "Tendance {{weight}} · {{rate}} par semaine",
     "weightTrendWithForecast": "Tendance {{weight}} · Objectif prévu : {{date}}",
     "compareTab": "Comparer",
-    "heartRateTab": "Analyse de la fréquence cardiaque"
+    "heartRateTab": "Analyse de la fréquence cardiaque",
+    "nutritionPeriodSummary": "Synthèse nutritionnelle",
+    "glucose": {
+      "title": "Glycémie",
+      "description": "Relevés enregistrés depuis Apple Health, y compris les données du capteur de glucose Dexcom. Les données Apple Health peuvent arriver avec un certain délai.",
+      "unit": "Unité",
+      "source": "Source",
+      "error": "Impossible de charger les relevés de glycémie.",
+      "loading": "Chargement des relevés de glycémie…",
+      "empty": "Aucun relevé de glycémie sur cette période. Activez le partage Dexcom avec Apple Health, autorisez SparkyFitness à lire la glycémie, puis synchronisez depuis l'app iOS.",
+      "chartLabel": "Relevés de glycémie dans le temps",
+      "foods": "Aliments notés · repères de repas",
+      "foodError": "Impossible de charger les aliments notés.",
+      "mealNote": "Les repères de repas indiquent les heures saisies, pas une réponse mesurée à l'aliment. Les aliments sans heure saisie ne sont pas placés sur la courbe.",
+      "layerMeal": "Alimentation",
+      "layerExercise": "Exercice",
+      "layerSleep": "Sommeil",
+      "layerMedication": "Médicaments",
+      "layerStress": "Stress",
+      "layerCaffeine": "Caféine",
+      "layerAlcohol": "Alcool",
+      "layerHydration": "Hydratation",
+      "context": "Contexte enregistré · calques affichés",
+      "contextLoading": "Chargement du contexte enregistré…",
+      "contextError": "Impossible de charger le contexte enregistré.",
+      "noTime": "Heure non enregistrée",
+      "carbs": "Glucides",
+      "day": "Jour",
+      "unavailable": "Une partie du contexte est indisponible :",
+      "events": "Événements enregistrés et totaux du jour",
+      "contextNote": "Ce sont des événements enregistrés, pas des causes prouvées. L'heure de fin des exercices est calculée à partir de la durée saisie. Les entrées sans heure et les totaux quotidiens ne sont pas placés sur la courbe.",
+      "dailyTotal": "Total du jour",
+      "dailyAverage": "Moyenne quotidienne",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "earlier": "Plus tôt",
+      "later": "Plus tard",
+      "resetZoom": "Réinitialiser le zoom",
+      "windowEvents": "Événements affichés"
+    },
+    "oralCareTab": "Hygiène dentaire"
   },
   "sleepHealth": {
     "hrvStatus": "Statut de la VFC",
@@ -4952,7 +5090,9 @@
       "bmiMethod": "Méthode de l'IMC"
     },
     "useExternalBmr": "Utiliser le BMR mesuré des enregistrements et des appareils synchronisés",
-    "useExternalBmrHint": "Désactivé par défaut : la formule choisie est toujours utilisée tant que vous n'activez pas cette option. Une fois activée, un BMR saisi dans un enregistrement ou synchronisé depuis une balance connectée ou un fournisseur de données de santé remplace la formule pour ce jour-là, à condition qu'il soit physiologiquement plausible pour vous. Certains appareils indiquent le BMR sous forme de total journalier cumulé plutôt que de taux, c'est pourquoi cette option doit être activée volontairement."
+    "useExternalBmrHint": "Désactivé par défaut : la formule choisie est toujours utilisée tant que vous n'activez pas cette option. Une fois activée, un BMR saisi dans un enregistrement ou synchronisé depuis une balance connectée ou un fournisseur de données de santé remplace la formule pour ce jour-là, à condition qu'il soit physiologiquement plausible pour vous. Certains appareils indiquent le BMR sous forme de total journalier cumulé plutôt que de taux, c'est pourquoi cette option doit être activée volontairement.",
+    "adjustMacrosWithExercise": "Ajuster les objectifs de macros en pourcentage avec les calories d'exercice",
+    "adjustMacrosWithExerciseHint": "Augmente les objectifs de protéines, de glucides et de lipides selon vos pourcentages enregistrés lorsque l'exercice ajoute des calories à votre budget du jour. Respecte les paramètres de récupération des calories d'exercice. Les objectifs saisis en grammes ne changent pas. Les changements s'appliquent à partir d'aujourd'hui ; les jours précédents gardent leur réglage."
   },
   "sleepScience": {
     "chronotypeEarlyDesc": "Vous vous réveillez naturellement tôt et êtes plus performant le matin.",
@@ -5440,7 +5580,8 @@
       "cycleOff": "Jours de congé",
       "cycleOn": "Jours de travail",
       "doseAmount": "Quantité de la dose (priorité manuelle)",
-      "time": "Moment de la journée"
+      "time": "Moment de la journée",
+      "supplementDoseScalingEnergy": "Chaque prise compte {{dose}} portions : {{dose}} × {{perDose}} {{unit}} = {{total}} {{unit}}."
     },
     "reports": {
       "logTableTitle": "Tableau du journal des médicaments",
@@ -6637,7 +6778,8 @@
     "reviewDescription": "Vérifiez chaque ingrédient avant l'enregistrement. Modifier les grammes recalcule cette ligne.",
     "weightHint": "C'est au niveau des portions que les estimations basées sur les photos sont les moins précises. Peser l'assiette rend les chiffres beaucoup plus fiables.",
     "captureDescription": "Ajoutez une ou plusieurs photos du repas. Un deuxième angle aide avec des plats empilés ou mélangés.",
-    "title": "Estimation à partir d'une photo"
+    "title": "Estimation à partir d'une photo",
+    "energyPGCG": "{{calories_kcal}} {{unit}} · P : {{protein_g}} g · G : {{carbs_g}} g · L : {{fat_g}} g"
   },
   "workout": {
     "weight": "poids",
@@ -7302,7 +7444,14 @@
     "intervalsAthleteId": "ID d'athlète",
     "intervalsAthleteIdPlaceholder": "Saisissez l'ID d'athlète (i12345)",
     "intervalsApiKeyPlaceholder": "Saisissez la clé API",
-    "intervalsDisconnectConfirm": "Voulez-vous vraiment vous déconnecter d'Intervals.icu ? L'intégration sera désactivée jusqu'à ce que vous la réactiviez."
+    "intervalsDisconnectConfirm": "Voulez-vous vraiment vous déconnecter d'Intervals.icu ? L'intégration sera désactivée jusqu'à ce que vous la réactiviez.",
+    "garminServiceUnreachableTitle": "Garmin injoignable",
+    "garminServiceUnreachable": "Le service Garmin est injoignable. Vérifiez que le microservice Garmin est en cours d'exécution.",
+    "garminSyncIncompleteTitle": "Synchronisation Garmin incomplète",
+    "garminSyncPhaseHealth": "Santé",
+    "garminSyncPhaseActivities": "Activités",
+    "garminSyncPhaseNutrition": "Nutrition",
+    "garminSyncIncomplete": "Certaines données Garmin n'ont pas pu être synchronisées ({{phases}}). Réessayez plus tard."
   },
   "fasting": {
     "checklistTitle": "Minuteur de jeûne",
@@ -7386,7 +7535,8 @@
       "saved": "Préférences de jeûne mises à jour avec succès.",
       "error": "Échec de l'enregistrement des préférences de jeûne.",
       "errorLoading": "Échec du chargement des préférences.",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "calorieThresholdWithUnit": "Seuil calorique ({{unit}})"
     },
     "endFastDialog": {
       "fastCompleted": "Jeûne terminé ! 🎉",
@@ -7402,7 +7552,9 @@
     "fastingZoneBar": {
       "metabolicState": "État métabolique",
       "hours": "{{start}}-{{end}} heures"
-    }
+    },
+    "logMealToEnd": "Noter un repas pour finir le jeûne",
+    "autoFastEndsWithMeal": "Votre jeûne est calculé automatiquement d'après vos repas et prendra fin quand vous noterez un aliment."
   },
   "homeFasting": {
     "startNew": "Commencer un nouveau jeûne",
@@ -8251,7 +8403,8 @@
         "relief": "Soulagement",
         "slept": "Sommeil",
         "food": "Veille",
-        "water": "Eau"
+        "water": "Eau",
+        "impact": "Effet sur la journée"
       },
       "factorsTitle": "Ce qui a précédé",
       "factorsHint": "Combien de vos {{n}} derniers épisodes présentaient chacun de ces éléments. Cela décrit ce qui s'est passé, sans en montrer la cause.",
@@ -9869,9 +10022,9 @@
     },
     "verdict": {
       "question": "Y a-t-il un lien entre votre {{a}} et votre {{b}} {{timing}} ?",
-      "days_one": "{{count}} jour",
-      "days_many": "{{count}} jours",
-      "days_other": "{{count}} jours",
+      "days_one": "{{count}} j",
+      "days_many": "",
+      "days_other": "",
       "weeks_one": "{{count}} semaine",
       "weeks_many": "{{count}} semaines",
       "weeks_other": "{{count}} semaines",
@@ -10110,5 +10263,282 @@
       "minutesDeviation": "{{amount}} min",
       "metricWhen": "{{metric}} ({{timing}})"
     }
+  },
+  "oralCare": {
+    "title": "Hygiène dentaire",
+    "loading": "Chargement de l'hygiène dentaire…",
+    "loadError": "Échec du chargement des données d'hygiène dentaire pour ce jour.",
+    "types": {
+      "brushing": "Brossage",
+      "flossing": "Fil dentaire",
+      "mouthwash": "Bain de bouche",
+      "tongue_cleaning": "Nettoyage de la langue",
+      "other": "Autre"
+    },
+    "goal": {
+      "description": "Objectif : se brosser les dents {{count}} fois par jour, {{time}} à chaque fois",
+      "edit": "Objectif",
+      "title": "Objectif de brossage",
+      "dailyTarget": "Brossages par jour",
+      "targetTime": "Durée par brossage",
+      "hint": "Les dentistes recommandent généralement de se brosser les dents deux fois par jour pendant 2 minutes.",
+      "saved": "Objectif de brossage enregistré."
+    },
+    "stats": {
+      "brushed": "Brossages",
+      "ofTarget": "{{count}} sur {{target}}",
+      "goalMet": "Objectif atteint",
+      "time": "Temps de brossage",
+      "atTarget": "{{count}} d'au moins {{time}}",
+      "streak": "Série",
+      "days": "{{count}} j",
+      "best": "Record : {{count}} j",
+      "other": "Autres soins"
+    },
+    "history": {
+      "title": "Séances",
+      "subtitle": "Notées ici ou synchronisées depuis Apple Health",
+      "empty": "Rien de noté pour ce jour"
+    },
+    "source": {
+      "timer": "Minuteur",
+      "health": "Apple Health"
+    },
+    "coveredBySync": "Aussi enregistré par Apple Health · compté une fois",
+    "actions": {
+      "edit": "Modifier",
+      "delete": "Supprimer"
+    },
+    "dialog": {
+      "editTitle": "Modifier la séance",
+      "createTitle": "Noter un soin dentaire",
+      "type": "Type",
+      "customLabel": "Nom",
+      "customLabelPlaceholder": "ex. Hydropulseur",
+      "time": "Heure",
+      "duration": "Durée (facultatif)",
+      "minutes": "Minutes",
+      "minutesShort": "min",
+      "seconds": "Secondes",
+      "secondsShort": "s",
+      "notes": "Notes"
+    },
+    "deleteDialog": {
+      "title": "Supprimer cette séance ?",
+      "description": "Une séance synchronisée depuis Apple Health revient à la synchronisation suivante, sauf si vous la supprimez aussi dans l'app Santé."
+    },
+    "errors": {
+      "save": "Impossible d'enregistrer la séance.",
+      "delete": "Impossible de supprimer la séance.",
+      "goal": "Impossible d'enregistrer l'objectif."
+    },
+    "report": {
+      "loading": "Chargement de l'hygiène dentaire…",
+      "loadError": "Échec du chargement du rapport d'hygiène dentaire.",
+      "goalDays": "Objectif atteint",
+      "goalDaysValue": "{{met}} jours sur {{total}}",
+      "streak": "Série en cours",
+      "brushesPerDay": "Brossages par jour",
+      "goalValue": "Objectif : {{target}}",
+      "minutesPerDay": "Minutes de brossage par jour",
+      "otherCare": "Autres soins : {{count}}",
+      "clamped": "Affichage des 366 derniers jours de la période.",
+      "brushesChart": "Brossages par jour",
+      "goalLine": "Objectif",
+      "brushes": "Brossages",
+      "minutesChart": "Minutes de brossage par jour",
+      "minutes": "Minutes",
+      "minutesNote": "Seuls les brossages notés avec une durée ajoutent du temps."
+    },
+    "timer": {
+      "title": "Minuteur de brossage",
+      "subtitle": "{{time}}, un quart de la bouche à la fois",
+      "startButton": "Lancer le minuteur",
+      "upperLeft": "En haut à gauche",
+      "upperRight": "En haut à droite",
+      "lowerRight": "En bas à droite",
+      "lowerLeft": "En bas à gauche",
+      "done": "Terminé ! Enregistrez le brossage",
+      "ready": "Prêt",
+      "start": "Démarrer",
+      "pause": "Pause",
+      "resume": "Reprendre",
+      "mute": "Couper le son",
+      "unmute": "Activer le son"
+    }
+  },
+  "labs": {
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "Glycémie à jeun",
+      "total_cholesterol": "Cholestérol total",
+      "hdl": "Cholestérol HDL",
+      "ldl": "Cholestérol LDL",
+      "triglycerides": "Triglycérides",
+      "vitamin_d": "Vitamine D (25-OH)",
+      "tsh": "TSH",
+      "ferritin": "Ferritine",
+      "vitamin_b12": "Vitamine B12",
+      "creatinine": "Créatinine",
+      "egfr": "DFG estimé",
+      "alt": "ALAT (ALT)",
+      "ast": "ASAT (AST)",
+      "non_hdl": "Cholestérol non-HDL",
+      "apob": "Apolipoprotéine B",
+      "vldl": "Cholestérol VLDL",
+      "fasting_insulin": "Insuline à jeun",
+      "wbc": "Globules blancs",
+      "rbc": "Globules rouges",
+      "hemoglobin": "Hémoglobine",
+      "hematocrit": "Hématocrite",
+      "mcv": "VGM",
+      "platelets": "Plaquettes",
+      "sodium": "Sodium",
+      "potassium": "Potassium",
+      "chloride": "Chlorures",
+      "bicarbonate": "Bicarbonates (CO2)",
+      "calcium": "Calcium",
+      "magnesium": "Magnésium",
+      "phosphorus": "Phosphore",
+      "bun": "Azote uréique (BUN)",
+      "uric_acid": "Acide urique",
+      "albumin": "Albumine",
+      "total_protein": "Protéines totales",
+      "alp": "Phosphatases alcalines",
+      "total_bilirubin": "Bilirubine totale",
+      "ggt": "Gamma-GT",
+      "free_t4": "T4 libre",
+      "free_t3": "T3 libre",
+      "iron": "Fer",
+      "tibc": "CTF",
+      "transferrin_saturation": "Saturation de la transferrine",
+      "folate": "Folates",
+      "crp": "CRP ultrasensible",
+      "esr": "VS",
+      "homocysteine": "Homocystéine",
+      "cortisol": "Cortisol (matin)",
+      "psa": "PSA",
+      "testosterone": "Testostérone (totale)",
+      "estradiol": "Estradiol",
+      "lipoprotein_a": "Lipoprotéine(a)",
+      "ketones": "Cétones (bêta-hydroxybutyrate)",
+      "c_peptide": "Peptide C",
+      "fructosamine": "Fructosamine",
+      "neutrophils": "Neutrophiles",
+      "lymphocytes": "Lymphocytes",
+      "monocytes": "Monocytes",
+      "eosinophils": "Éosinophiles",
+      "mch": "TCMH",
+      "mchc": "CCMH",
+      "rdw": "IDR",
+      "mpv": "VPM",
+      "globulin": "Globulines",
+      "direct_bilirubin": "Bilirubine directe",
+      "anion_gap": "Trou anionique",
+      "bun_creatinine_ratio": "Rapport BUN/créatinine",
+      "cystatin_c": "Cystatine C",
+      "urine_albumin_creatinine": "Rapport albumine/créatinine urinaire",
+      "amylase": "Amylase",
+      "lipase": "Lipase",
+      "ldh": "LDH",
+      "ck": "Créatine kinase (CPK)",
+      "ammonia": "Ammoniémie",
+      "zinc": "Zinc",
+      "copper": "Cuivre",
+      "selenium": "Sélénium",
+      "vitamin_b6": "Vitamine B6",
+      "vitamin_a": "Vitamine A",
+      "vitamin_e": "Vitamine E",
+      "pth": "PTH",
+      "igf_1": "IGF-1",
+      "dhea_s": "DHEA-S",
+      "free_testosterone": "Testostérone libre",
+      "shbg": "SHBG",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "Progestérone",
+      "prolactin": "Prolactine",
+      "tpo_antibodies": "Anticorps anti-TPO"
+    },
+    "add": "Ajouter un résultat",
+    "changeMarker": "Changer",
+    "chartEmpty": "Pas encore de résultat",
+    "chartOtherUnits_one": "{{count}} résultat dans une autre unité n'est pas affiché sur le graphique.",
+    "chartOtherUnits_many": "{{count}} résultats dans d'autres unités ne sont pas affichés sur le graphique.",
+    "chartOtherUnits_other": "{{count}} résultats dans d'autres unités ne sont pas affichés sur le graphique.",
+    "createCustom": "Ajouter « {{name}} » comme nouveau marqueur",
+    "date": "Date de l'analyse",
+    "dateFuture": "La date de l'analyse ne peut pas être dans le futur.",
+    "deleteFailed": "Impossible de supprimer le résultat",
+    "deleteMessage": "Supprimer ce résultat d'analyse ?",
+    "deleteTitle": "Supprimer le résultat",
+    "empty": "Aucun résultat d'analyse pour l'instant. Ajoutez un résultat, par exemple HbA1c, LDL ou vitamine D, et suivez-le dans le temps.",
+    "latest": "Dernier",
+    "loadFailed": "Impossible de charger vos résultats d'analyses.",
+    "noMatches": "Aucun marqueur correspondant",
+    "noResults": "Aucun résultat",
+    "notesPlaceholder": "Ajouter une note (facultatif)",
+    "rangeHigh": "Max",
+    "rangeInvalid": "Saisissez des nombres, la valeur basse ne devant pas dépasser la valeur haute.",
+    "rangeLow": "Min",
+    "rangeOptional": "Valeurs de référence (facultatif)",
+    "referenceRange": "Valeurs de référence : {{range}}",
+    "saveFailed": "Impossible d'enregistrer le résultat d'analyse",
+    "searchPlaceholder": "Rechercher un marqueur (HbA1c, LDL…)",
+    "status": {
+      "high": "Élevé",
+      "inRange": "Normal",
+      "low": "Bas"
+    },
+    "unit": "Unité",
+    "value": "Résultat",
+    "rangeFromReport": "Utilisez les valeurs de référence imprimées sur votre compte rendu. Elles sont enregistrées avec ce résultat.",
+    "import": {
+      "blocked": {
+        "duplicate": "Déjà inclus depuis ce compte rendu."
+      },
+      "chooseAnother": "Choisir un autre compte rendu",
+      "cta": "Importer depuis un compte rendu",
+      "includeRow": "Inclure {{name}}",
+      "newMarker": "Nouveau marqueur",
+      "reading": "Lecture de votre compte rendu…",
+      "saveCount_one": "Enregistrer {{count}} résultat",
+      "saveCount_many": "Enregistrer {{count}} résultats",
+      "saveCount_other": "Enregistrer {{count}} résultats",
+      "saved_one": "{{count}} résultat enregistré",
+      "saved_many": "{{count}} résultats enregistrés",
+      "saved_other": "{{count}} résultats enregistrés",
+      "scanFailed": "Impossible de lire ce compte rendu.",
+      "valueFor": "Résultat pour {{name}}",
+      "deleteTitle": "Supprimer les résultats importés",
+      "deleteMessage": "Supprimer tous les résultats importés depuis un compte rendu, ainsi que vos marqueurs personnels restés vides ? Les résultats que vous avez saisis vous-même sont conservés.",
+      "deleted_one": "{{count}} résultat importé supprimé",
+      "deleted_many": "{{count}} résultats importés supprimés",
+      "deleted_other": "{{count}} résultats importés supprimés",
+      "deleteFailed": "Impossible de supprimer les résultats importés",
+      "saveFailed": "Impossible d'enregistrer le compte rendu. Rien n'a été enregistré.",
+      "warning": {
+        "unit": "Vos résultats précédents sont en {{earlierUnit}}, mais ce compte rendu utilise {{reportUnit}}. Les unités ne sont pas converties."
+      },
+      "chooseFile": "Choisir un PDF ou une photo",
+      "introWeb": "Choisissez le PDF d'un compte rendu d'analyses, ou une photo ou une capture d'écran de celui-ci. Votre fournisseur d'IA le lit, et vous vérifiez les résultats avant tout enregistrement. Le compte rendu lui-même n'est pas conservé.",
+      "editHintWeb": "Comparez les valeurs avec votre compte rendu. Chaque résultat est enregistré avec l'unité et les valeurs de référence affichées ici : celles imprimées sur le compte rendu, ou celles par défaut du marqueur si le compte rendu n'en indique pas.",
+      "tooLarge": "Ce fichier est trop volumineux pour être lu (limite : 14 Mo).",
+      "nothingFound": "Aucun résultat trouvé dans ce compte rendu.",
+      "readFailed": "Impossible d'ouvrir ce fichier.",
+      "photoTooLarge": "Cette photo est trop volumineuse pour être lue (limite : 6 Mo). Essayez une photo plus petite ou une capture d'écran.",
+      "lockedAfterFailedSave": "L'enregistrement n'a pas abouti, cette vérification est donc verrouillée : « Enregistrer » renvoie exactement le même compte rendu, qui n'est stocké qu'une seule fois. Pour modifier des valeurs, choisissez à nouveau le compte rendu.",
+      "unconfirmedNoKey": "L'enregistrement n'a pas abouti, et ce navigateur ne peut pas marquer le compte rendu pour qu'un nouvel enregistrement ne le stocke qu'une seule fois. Il est peut-être encore en cours d'enregistrement. Fermez cette fenêtre et vérifiez vos résultats d'analyses dans quelques minutes avant de réimporter quoi que ce soit, afin qu'il ne soit pas enregistré deux fois."
+    },
+    "moreActions": "Plus d'actions",
+    "deleteMarker": "Supprimer le marqueur et ses résultats",
+    "deleteMarkerTitle": "Supprimer le marqueur",
+    "deleteMarkerMessage": "Supprimer {{name}} et tous ses résultats ? Cette action est irréversible.",
+    "deleteMarkerFailed": "Impossible de supprimer le marqueur",
+    "labName": "Laboratoire",
+    "notes": "Notes",
+    "valueInvalid": "Saisissez un marqueur et un résultat numérique.",
+    "historyCutOff": "L'historique affiche au plus les {{count}} résultats les plus récents.",
+    "dateInvalid": "Saisissez la date de l'analyse."
   }
 }

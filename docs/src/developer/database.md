@@ -178,6 +178,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `pregnancies` | Pregnancy records (due date, status) |
 | `run_programs` | A person's run program, their place in it, its Diary schedule, goal date, adjustments to it and which diary entries its workouts were done as |
 | `run_goals` | A person's weekly running distance target and the race they are counting down to |
+| `intervals_nutrition_pushes` | The daily nutrition totals (kcal, protein, carbohydrates, fat) last accepted by Intervals.icu for each day, one row per user per day, so pushing and removal only touch values SparkyFitness wrote |
 | `custom_run_programs` | A person's own run or walk plans: a name, the activity and an ordered list of workouts, each a list of timed steps. Starting one copies it into `run_programs` |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): measurements, whether it was run outdoors or on a treadmill (and the incline), result, the training paces derived from them and the recorded activity it was run as |
 | `routes` | A person's saved routes: name, activity, source (drawn, GPX, activity), distance, elevation gain, a simplified track of points and optional turn cues |
@@ -199,7 +200,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient (predefined or custom) |
 | `user_water_containers` | Configured container sizes |
 | `user_calorie_rule_history` | Calorie settings in force from each change on, so past days keep their target |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`) |
 | `user_medication_display_preferences` | GLP-1/Medication display preferences |
 | `user_mood_display_preferences` | Mood picker visibility settings |
 | `user_cycle_display_preferences` | Cycle dashboard tile visibility |

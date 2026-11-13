@@ -10,6 +10,7 @@ import {
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import {
+  getWorkout,
   updateWorkout,
   deleteWorkout,
   attachExerciseEntryWatchTelemetry,
@@ -29,6 +30,7 @@ import { ApiError } from '../../src/services/api/errors';
 import { clearServerConfigCache } from '../../src/services/storage';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
+  getWorkout: jest.fn(),
   updateWorkout: jest.fn(),
   deleteWorkout: jest.fn(),
   attachExerciseEntryWatchTelemetry: jest.fn(),
@@ -88,6 +90,7 @@ jest.mock('../../modules/watch-connectivity', () => {
 const mockUpdateWorkout = updateWorkout as jest.MockedFunction<
   typeof updateWorkout
 >;
+const mockGetWorkout = getWorkout as jest.MockedFunction<typeof getWorkout>;
 const mockAttachTelemetry =
   attachExerciseEntryWatchTelemetry as jest.MockedFunction<
     typeof attachExerciseEntryWatchTelemetry
@@ -178,6 +181,7 @@ function makeSession(
     description: null,
     notes: null,
     source: 'sparky',
+    revision: 1,
     total_duration_minutes: 60,
     activity_details: [],
     exercises: [
@@ -2785,6 +2789,51 @@ describe('useWatchWorkoutBridge across sessions, failures and watch finishes', (
     const celebration = onWatchFinished.mock.calls[0][0];
     expect(celebration?.session.id).toBe('session-1');
     expect(Object.keys(celebration?.completedSetIds ?? {})).toEqual(['101']);
+  });
+
+  it('fetches the server revision before stamping when a restored session lacks one', async () => {
+    const onWatchFinished = jest.fn();
+    mockUpdateWorkout.mockResolvedValue(null);
+    mockGetWorkout.mockResolvedValue({ ...makeSession(), revision: 3 });
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout({ ...makeSession(), revision: null } as any);
+    });
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+
+    expect(mockGetWorkout).toHaveBeenCalledWith('session-1');
+    expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    const [stampId, stampPayload] = mockUpdateWorkout.mock.calls[0];
+    expect(stampId).toBe('session-1');
+    expect(stampPayload.revision).toBe(3);
+    expect(getStore().sessionId).toBeNull();
+    expect(onWatchFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the phone workout open when the server has no revision for a restored session', async () => {
+    const onWatchFinished = jest.fn();
+    mockUpdateWorkout.mockResolvedValue(null);
+    mockGetWorkout.mockResolvedValue({ ...makeSession(), revision: null });
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout({ ...makeSession(), revision: null } as any);
+    });
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+
+    expect(mockGetWorkout).toHaveBeenCalledWith('session-1');
+    expect(mockUpdateWorkout).not.toHaveBeenCalled();
+    expect(getStore().sessionId).toBe('session-1');
+    expect(onWatchFinished).not.toHaveBeenCalled();
   });
 
   it('does not report a watch finish for a stop the phone already handled', async () => {

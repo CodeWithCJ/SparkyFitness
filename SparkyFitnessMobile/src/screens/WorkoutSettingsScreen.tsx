@@ -81,6 +81,12 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setWorkoutKeepAwakeEnabled = useAppPreferencesStore(
     (s) => s.setWorkoutKeepAwakeEnabled
   );
+  const plannedValuesAsPlaceholders = useAppPreferencesStore(
+    (s) => s.plannedValuesAsPlaceholders
+  );
+  const setPlannedValuesAsPlaceholders = useAppPreferencesStore(
+    (s) => s.setPlannedValuesAsPlaceholders
+  );
   const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
   const setNowCardEnabled = useAppPreferencesStore(
     (s) => s.setActiveWorkoutNowCard
@@ -229,6 +235,27 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
               accessibilityLabel={t('workoutSettings.keepAwakeAccessibility', {
                 defaultValue: 'Keep screen awake',
               })}
+            />
+          }
+        />
+
+        <SettingsRow
+          title={t('workoutSettings.plannedPlaceholders', {
+            defaultValue: 'Use planned values as placeholders',
+          })}
+          subtitle={t('workoutSettings.plannedPlaceholdersSubtitle', {
+            defaultValue:
+              "Workouts started from a plan or saved workout suggest its planned weight and reps instead of last session's. Applies from the next workout you start.",
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={plannedValuesAsPlaceholders}
+              onValueChange={setPlannedValuesAsPlaceholders}
+              accessibilityLabel={t(
+                'workoutSettings.plannedPlaceholdersAccessibility',
+                { defaultValue: 'Use planned values as placeholders' }
+              )}
             />
           }
         />

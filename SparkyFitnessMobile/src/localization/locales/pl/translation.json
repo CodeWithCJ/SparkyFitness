@@ -10,7 +10,7 @@
     "close": "Zamknij",
     "cancel": "Anuluj",
     "continue": "Kontynuuj",
-    "retry": "Spróbuj ponownie",
+    "retry": "Ponów",
     "details": "Szczegóły",
     "error": "Błąd",
     "delete": "Usuń",
@@ -262,7 +262,8 @@
       "fasting": "Post",
       "ongoingWorkout": "Trening w toku",
       "hydration": "Przypomnienia o nawodnieniu",
-      "moodCheckin": "Wpisy nastroju"
+      "moodCheckin": "Wpisy nastroju",
+      "oralCare": "Przypomnienia o szczotkowaniu"
     },
     "actions": {
       "completeSet": "Wykonaj serię",
@@ -306,6 +307,14 @@
     "moodCheckin": {
       "title": "Jak się czujesz?",
       "body": "Zrób szybki wpis dnia: nastrój, energia i skupienie."
+    },
+    "oralCare": {
+      "title": "Czas na szczotkowanie",
+      "body": "Dwie minuty dla zębów, potem to zapisz."
+    },
+    "brushingTimer": {
+      "title": "Szczotkowanie zakończone",
+      "body": "Otwórz SparkyFitness, aby zapisać szczotkowanie."
     }
   },
   "activeWorkout": {
@@ -571,7 +580,9 @@
     "moodHint": "Śledź samopoczucie",
     "mindfulnessHint": "Oddech, zen",
     "checkIn": "Codzienny wpis",
-    "checkInHint": "Nawyki"
+    "checkInHint": "Nawyki",
+    "oralCare": "Higiena jamy ustnej",
+    "oralCareHint": "Szczotkuj, nitkuj"
   },
   "screens": {
     "foods": "Produkty spożywcze",
@@ -789,7 +800,8 @@
     "bodyWaterMass": "Masa wody w ciele",
     "mindfulness": "Uważność",
     "sleepingWristTemperature": "Temperatura nadgarstka podczas snu",
-    "overnightBodyTemperature": "Temperatura ciała w nocy"
+    "overnightBodyTemperature": "Temperatura ciała w nocy",
+    "toothbrushing": "Szczotkowanie zębów"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -803,7 +815,8 @@
     "Cycling": "Kolarstwo",
     "Environment": "Środowisko",
     "Apple": "Apple",
-    "unknown": "Inne"
+    "unknown": "Inne",
+    "Hygiene": "Higiena"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1184,7 +1197,42 @@
     "energyUnitLabel": "Jednostka energii",
     "energyUnitKcal": "Kalorie (kcal)",
     "energyUnitKj": "Kilojoule (kJ)",
-    "energyUnitDescription": "Sposób wyświetlania i wpisywania energii w aplikacji, widżetach i na zegarku. Zmienia też aplikację webową."
+    "energyUnitDescription": "Sposób wyświetlania i wpisywania energii w aplikacji, widżetach i na zegarku. Zmienia też aplikację webową.",
+    "cycling": {
+      "title": "Cyklowanie kalorii",
+      "description": "Jedz więcej w dni treningowe, a mniej w dni odpoczynku. Twój tygodniowy bilans pozostaje bez zmian: dzienny cel × 7.",
+      "unavailable": "Niedostępne, gdy kalorie z treningu są dodawane z powrotem do celu: Twój cel już rośnie w dni, w których zapisujesz trening. Wybierz Adaptacyjny lub Stały, albo użyj całodniowych celów adaptacyjnych, aby cyklować kalorie.",
+      "off": "Wyłączone",
+      "pausedByWeeklyPlan": "Plan celu tygodniowego jest aktywny, więc cyklowanie kalorii jest wstrzymane w dni, które ustala plan.",
+      "trainingPercent": "Dodatkowo w dni treningowe",
+      "needTrainingDays": "Wybierz od 1 do 6 dni treningowych i procent powyżej 0, w przeciwnym razie każdy dzień pozostanie taki sam.",
+      "needDifferentDays": "Nadaj co najmniej dwóm dniom różne procenty, w przeciwnym razie każdy dzień pozostanie taki sam.",
+      "atFloor": "bezpieczne minimum",
+      "previewNote": "Na podstawie dzisiejszego celu. Węglowodany przyjmują zmianę, a białko pozostaje bez zmian.",
+      "replaceCustomTitle": "Zastąpić Twoje niestandardowe dni?",
+      "replaceCustomMessage": "Tryb Trening / odpoczynek ustawia każdy dzień na podstawie dni treningowych i jednego procentu, więc Twoje niestandardowe procenty zostaną zastąpione.",
+      "replaceCustomConfirm": "Zamień",
+      "waitingForTarget": "Twoje dni pojawią się tutaj po wczytaniu dzisiejszego celu kalorycznego.",
+      "baseAtFloorWithUnit": "Twój dzienny cel ({{target}} {{unit}}) jest na poziomie bezpiecznego minimum ({{floor}} {{unit}}) lub poniżej niego, więc żaden dzień nie może zejść niżej i każdy dzień pozostaje taki sam. Cyklowanie zacznie działać, gdy cel wzrośnie powyżej minimum albo po obniżeniu niestandardowego minimum.",
+      "weekTotalWithBase": "Tydzień: {{total}} z {{budget}} {{unit}} (Twój dzienny cel {{target}} × 7)",
+      "decrease": "Obniż o 1%",
+      "increase": "Podnieś o 1%",
+      "dayPercent": "{{day}}: procent przed zbilansowaniem tygodnia",
+      "trainingDay": "Trening",
+      "restDay": "Odpoczynek",
+      "today": "Dziś",
+      "vsTargetWithUnit": "{{change}} {{unit}} ({{percent}}) względem dziennego celu",
+      "chartTarget": "Cel dzienny {{value}}",
+      "chartFloor": "Bezpieczne minimum {{value}}",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "atFloorShort": "minimum",
+      "markRest": "Ustaw {{day}} jako dzień odpoczynku",
+      "markTraining": "Ustaw {{day}} jako dzień treningowy",
+      "trainingRestShort": "Trening / odpoczynek",
+      "customShort": "Niestandardowy",
+      "chartHintTrainingShort": "Dotknij słupka, aby zobaczyć dany dzień. Dotknij dnia poniżej, aby przełączyć trening i odpoczynek.",
+      "chartHintCustomHandle": "Dotknij słupka, aby zobaczyć dany dzień. Przeciągnij uchwyt nad słupkiem, aby go zmienić."
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1231,7 +1279,9 @@
     "trainingLoad": "Obciążenie treningowe",
     "trainingLoadSubtitle": "Pokazuje ten tydzień na tle Twojego zwykłego treningu, z przypomnieniem o odpoczynku",
     "labResults": "Wyniki badań",
-    "labResultsSubtitle": "Pokazuje najnowsze wyniki badań i to, które są poza normą"
+    "labResultsSubtitle": "Pokazuje najnowsze wyniki badań i to, które są poza normą",
+    "oralCare": "Higiena jamy ustnej",
+    "oralCareSubtitle": "Pokazuje szczotkowanie względem celu i Twoją serię"
   },
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1304,7 +1354,14 @@
     "moodCheckinReminderTime": "Przypomnienie {{number}}",
     "moodCheckinReminderTimeAccessibility": "Przypomnienie {{number}}, {{time}}",
     "moodCheckinAddReminder": "Dodaj przypomnienie",
-    "moodCheckinRemoveReminder": "Usuń przypomnienie {{number}}"
+    "moodCheckinRemoveReminder": "Usuń przypomnienie {{number}}",
+    "oralCare": "Higiena jamy ustnej",
+    "oralCareReminders": "Przypomnienia o szczotkowaniu",
+    "oralCareRemindersSubtitle": "Codzienne przypomnienie o szczotkowaniu zębów",
+    "oralCareReminderTime": "Przypomnienie {{number}}",
+    "oralCareReminderTimeAccessibility": "Przypomnienie o szczotkowaniu {{number}}, {{time}}",
+    "oralCareRemoveReminder": "Usuń przypomnienie o szczotkowaniu {{number}}",
+    "oralCareAddReminder": "Dodaj przypomnienie"
   },
   "workoutSettings": {
     "title": "Ustawienia treningu",
@@ -2847,7 +2904,18 @@
     "label": {
       "analyzing": "Analizowanie etykiety…",
       "retake": "Zrób ponownie",
-      "usePhoto": "Użyj zdjęcia"
+      "usePhoto": "Użyj zdjęcia",
+      "cropHelp": "Przeciągnij narożniki, aby wykadrować etykietę żywieniową.",
+      "cropPhoto": "Zdjęcie etykiety żywieniowej",
+      "cropMove": "Przesuń kadr etykiety",
+      "cropTopLeft": "Lewy górny uchwyt kadrowania",
+      "cropTopRight": "Prawy górny uchwyt kadrowania",
+      "cropBottomLeft": "Lewy dolny uchwyt kadrowania",
+      "cropBottomRight": "Prawy dolny uchwyt kadrowania",
+      "cropLeft": "Przesuń w lewo",
+      "cropRight": "Przesuń w prawo",
+      "cropUp": "Przesuń w górę",
+      "cropDown": "Przesuń w dół"
     },
     "lookup": {
       "failed": "Wyszukiwanie nie powiodło się",
@@ -3150,7 +3218,11 @@
     "fallbackProjectionSource": "Zapasowo: BMR + aktywne kalorie",
     "legacyProjectionSource": "Ekstrapolacja z urządzenia",
     "projectedTdeeWithUnit": "Prognozowany TDEE: {{value}} {{unit}}",
-    "goalModeTargetWithUnit": "Cel Trybu celu: {{value}} {{unit}}"
+    "goalModeTargetWithUnit": "Cel Trybu celu: {{value}} {{unit}}",
+    "cycling": {
+      "highDay": "Dzień wysokokaloryczny +{{amount}} {{unit}}",
+      "lowDay": "Dzień niskokaloryczny −{{amount}} {{unit}}"
+    }
   },
   "dateRange": {
     "removeTitle": "Wybierz zakres dat do usunięcia",
@@ -3454,7 +3526,15 @@
       "weeklyGoal": "Tygodniowy cel",
       "weeklyRate": "−0,5 kg",
       "dailyTarget": "Cel dzienny",
-      "dailyAdjustment": "≈ −550 kcal"
+      "dailyAdjustment": "≈ −550 kcal",
+      "vitaminD": "Witamina D",
+      "labLow": "Nisko",
+      "labValue": "18 ng/mL",
+      "labRange": "Zakres 30–100",
+      "deskTag": "Tag na biurku",
+      "tapped": "Dotknięto",
+      "tagWater": "Woda • 500 mL",
+      "logged": "Zapisano"
     },
     "features": {
       "medications": {
@@ -3543,6 +3623,18 @@
         "headline": "Ustaw tygodniowy cel wagowy",
         "body": "Wybierz, ile masy ciała chcesz tracić lub przybierać co tydzień, a Sparky wyliczy Twój dzienny cel kaloryczny.",
         "cta": "Otwórz ustawienia kalorii"
+      },
+      "labResults": {
+        "eyebrow": "WYNIKI BADAŃ",
+        "headline": "Trzymaj wyniki badań w jednym miejscu",
+        "body": "Dodaj wyniki badań krwi ręcznie albo zaimportuj raport laboratoryjny z pliku PDF lub zdjęcia. Zobacz każdy marker względem zakresu referencyjnego, jego wykres w czasie i to, co wychodzi poza zakres, na Pulpicie.",
+        "cta": "Otwórz wyniki badań"
+      },
+      "nfcTags": {
+        "eyebrow": "TAGI NFC",
+        "headline": "Zapisz jednym dotknięciem",
+        "body": "Przyklej tag NFC na butelce wody, biurku lub szafce kuchennej i ustaw go tak, aby zapisywał napój, produkt lub zapisany posiłek. Przyłóż telefon, aby zapisać, z opcją Cofnij, jeśli nie o to chodziło.",
+        "cta": "Skonfiguruj tagi NFC"
       }
     }
   },
@@ -3746,7 +3838,9 @@
     "startFastEarly": "Rozpocznij post teraz",
     "eatingWindowOpened": "Okno otwarte",
     "eatingWindowCloses": "Okno się zamyka",
-    "settings": "Ustawienia postu"
+    "settings": "Ustawienia postu",
+    "logMealToEnd": "Zapisz posiłek, aby zakończyć post",
+    "autoFastEndsWithMeal": "Post jest obliczany automatycznie na podstawie posiłków i zakończy się, gdy zapiszesz produkt."
   },
   "exerciseDetail": {
     "sharedPublicly": "Ćwiczenie udostępniono publicznie",
@@ -4323,7 +4417,9 @@
       "amountRequired": "Ilość musi być większa od zera.",
       "noMealType": "Brak typu posiłku",
       "noMealTypesAvailable": "Brak dostępnych typów posiłków. Sprawdź ustawienia konta.",
-      "foodSaveFailed": "Nie udało się zapisać produktu"
+      "foodSaveFailed": "Nie udało się zapisać produktu",
+      "loadingMealTypes": "Typy posiłków są nadal wczytywane. Spróbuj ponownie za chwilę.",
+      "mealTypesLoadFailed": "Nie udało się wczytać typów posiłków. Spróbuj ponownie."
     }
   },
   "foodDetail": {
@@ -6183,7 +6279,10 @@
     "records_few": "{{count}} rekordy",
     "records_many": "{{count}} rekordów",
     "error": "Błąd",
-    "energy": "{{value}} {{unit}}"
+    "energy": "{{value}} {{unit}}",
+    "brushes_one": "{{count}} szczotkowanie",
+    "brushes_few": "{{count}} szczotkowania",
+    "brushes_many": "{{count}} szczotkowań"
   },
   "mindfulness": {
     "timer": {
@@ -8078,7 +8177,10 @@
         "sunday": "Niedziela"
       }
     },
-    "adaptiveNoteTodayWithUnit": "Tryb adaptacyjny jest włączony, więc Twój cel kaloryczny zmienia się codziennie. Dziś wynosi {{calories}} {{unit}}. Poniższa wartość bazowa określa, jak bardzo chcesz być powyżej lub poniżej szacowanego zapotrzebowania; to nie jest stały dzienny cel."
+    "adaptiveNoteTodayWithUnit": "Tryb adaptacyjny jest włączony, więc Twój cel kaloryczny zmienia się codziennie. Dziś wynosi {{calories}} {{unit}}. Poniższa wartość bazowa określa, jak bardzo chcesz być powyżej lub poniżej szacowanego zapotrzebowania; to nie jest stały dzienny cel.",
+    "cyclingNoteTodayWithUnit": "Cyklowanie kalorii jest włączone, więc kalorie poniżej to Twój cel bazowy, a każdy dzień jest wyższy lub niższy. Dziś wynosi {{calories}} {{unit}}.",
+    "cyclingPausedWeeklyPlan": "Cyklowanie kalorii jest dziś wstrzymane przez aktywny plan celu tygodniowego. Kalorie poniżej ustawiają bezpośrednio cel dzisiejszego planu.",
+    "adjustedGoalFailed": "Nie udało się wczytać dzisiejszego skorygowanego celu."
   },
   "reports": {
     "title": "Raporty",
@@ -8142,7 +8244,9 @@
     "heartRateRangeTooltip": "Średnio {{avg}} bpm ({{min}}–{{max}}) · {{date}}",
     "heartRateRangeHint": "Dotknij i przytrzymaj dzień, aby otworzyć go poniżej",
     "heartRateRangeTimeline": "Średnie tętno według dnia",
-    "heartRateRangeEmpty": "Brak odczytów tętna w tym okresie"
+    "heartRateRangeEmpty": "Brak odczytów tętna w tym okresie",
+    "oralCare": "Higiena jamy ustnej",
+    "oralCareSubtitle": "Szczotkowanie względem celu, serie i czas"
   },
   "nutritionReport": {
     "title": "Odżywianie",
@@ -8335,7 +8439,10 @@
       "heartRateZones": "Strefy intensywności",
       "heartRateRangeTimeline": "Średnie tętno według dnia",
       "heartRateDayTimeline": "Tętno w ciągu dnia",
-      "measurementTimeline": "Oś czasu pomiarów"
+      "measurementTimeline": "Oś czasu pomiarów",
+      "oralCareBrushesChart": "Wykres szczotkowań dziennie",
+      "oralCareMinutesChart": "Wykres minut szczotkowania",
+      "oralCareSummary": "Serie i inne zabiegi"
     },
     "hydrationSections": "Raport nawodnienia",
     "measurementsSections": "Raport pomiarów",
@@ -8344,7 +8451,8 @@
     "nutrientReorderHint": "Zmienia, gdzie ten składnik znajduje się w raporcie",
     "substancesSections": "Raport kofeiny i alkoholu",
     "exerciseSections": "Raport ćwiczeń",
-    "heartRateSections": "Raport tętna"
+    "heartRateSections": "Raport tętna",
+    "oralCareSections": "Raport higieny jamy ustnej"
   },
   "hydrationReport": {
     "title": "Nawodnienie",
@@ -9721,7 +9829,7 @@
       "timeTitle": "Czas na 5 km",
       "timeHint": "Twój czas z zegara jest wypełniony. Zmień go, jeśli bieżnia pokazała inny czas na 5 km.",
       "splitTitle": "Dystans na 10:00",
-      "splitHint": "Dystans pokazany przez bieżnię po 10 minutach. Ostatnie 20 minut ustalają tempo progowe. Zostaw puste, aby przyjąć równomierne tempo.",
+      "splitHint": "Dystans pokazany przez bieżnię po 10 minutach. Ostatnie 20 minut ustalają tempo progowe. Pozostaw puste, aby przyjąć równomierne tempo.",
       "cooperHint": "Wprowadź dystans pokazany przez bieżnię po 12 minutach w polu Dystans powyżej.",
       "inclineTitle": "Nachylenie",
       "inclineHint": "Bieżnia na 0% zaniża wysiłek względem biegu na zewnątrz; 1% to mniej więcej tyle, co płaski bieg na zewnątrz. Wprowadź nachylenie, przy którym biegłeś.",
@@ -9758,7 +9866,7 @@
     },
     "fellBack": "Wybrana metoda wymaga więcej informacji, więc strefy pokazano jako % maksymalnego tętna.",
     "maxHr": "Maksymalne tętno (bpm)",
-    "maxHrHint": "Zostaw puste, aby wyliczyć z daty urodzenia.",
+    "maxHrHint": "Pozostaw puste, aby wyliczyć z daty urodzenia.",
     "restingHr": "Spoczynkowe tętno (bpm)",
     "customFloors": "Od jakiej wartości zaczyna się każda strefa (bpm)",
     "floorLabel": "Strefa {{zone}} zaczyna się od (bpm)",
@@ -10181,5 +10289,124 @@
     "events": "Szczegóły zdarzeń",
     "eventsInView": "Zdarzenia w widoku",
     "noEventsInView": "Brak zdarzeń z czasem w tym oknie."
+  },
+  "oralCare": {
+    "title": "Higiena jamy ustnej",
+    "loading": "Wczytywanie higieny jamy ustnej...",
+    "types": {
+      "brushing": "Szczotkowanie",
+      "flossing": "Nitkowanie",
+      "mouthwash": "Płukanie ust",
+      "other": "Inne",
+      "tongueCleaning": "Czyszczenie języka"
+    },
+    "goal": {
+      "title": "Cel szczotkowania",
+      "dailyTarget": "Szczotkowania dziennie",
+      "targetTime": "Czas jednego szczotkowania",
+      "hint": "Dentyści zwykle zalecają szczotkowanie dwa razy dziennie przez 2 minuty.",
+      "perDay_one": "{{count}} raz dziennie",
+      "perDay_few": "{{count}} razy dziennie",
+      "perDay_many": "{{count}} razy dziennie"
+    },
+    "stats": {
+      "brushed": "Szczotkowania",
+      "time": "Czas szczotkowania",
+      "ofTarget": "{{brushed}} z {{target}}",
+      "streak_one": "Seria: {{count}} dzień",
+      "streak_few": "Seria: {{count}} dni",
+      "streak_many": "Seria: {{count}} dni",
+      "best_one": "Najlepiej: {{count}} dzień",
+      "best_few": "Najlepiej: {{count}} dni",
+      "best_many": "Najlepiej: {{count}} dni",
+      "weekA11y_one": "Cel osiągnięto w {{count}} z ostatnich 7 dni",
+      "weekA11y_few": "Cel osiągnięto w {{count}} z ostatnich 7 dni",
+      "weekA11y_many": "Cel osiągnięto w {{count}} z ostatnich 7 dni"
+    },
+    "source": {
+      "timer": "Timer",
+      "health": "Apple Health"
+    },
+    "coveredBySync": "Rejestrowane także przez Apple Health · liczone raz",
+    "errors": {
+      "save": "Nie udało się zapisać sesji.",
+      "delete": "Nie udało się usunąć sesji.",
+      "goal": "Nie udało się zapisać celu."
+    },
+    "timer": {
+      "title": "Timer szczotkowania",
+      "subtitle": "{{time}}, ćwierć ust za jednym razem",
+      "upperLeft": "Lewa górna",
+      "upperRight": "Prawa górna",
+      "lowerRight": "Prawa dolna",
+      "lowerLeft": "Lewa dolna",
+      "ready": "Gotowo",
+      "start": "Start",
+      "pause": "Wstrzymaj",
+      "resume": "Wznów",
+      "done": "Gotowe! Dotknij Zapisz",
+      "save": "Zapisz",
+      "doneShort": "Gotowe!",
+      "paused": "Wstrzymano"
+    },
+    "loadFailed": "Nie udało się wczytać higieny jamy ustnej",
+    "sessions": "Sesje",
+    "empty": "Nic nie zapisano tego dnia",
+    "actions": {
+      "log": "Zapisz",
+      "startTimer": "Uruchom timer"
+    },
+    "card": {
+      "a11y": "Higiena jamy ustnej, szczotkowano {{brushed}} z {{target}}"
+    },
+    "delete": {
+      "title": "Usunąć tę sesję?",
+      "synced": "Wróci przy następnej synchronizacji, chyba że usuniesz ją także w aplikacji Zdrowie."
+    },
+    "log": {
+      "addTitle": "Zapisz higienę jamy ustnej",
+      "editTitle": "Edytuj sesję",
+      "type": "Typ",
+      "name": "Nazwa",
+      "namePlaceholder": "np. irygator wodny",
+      "time": "Czas",
+      "duration": "Czas trwania (opcjonalnie)",
+      "minutes": "Minuty",
+      "minutesShort": "min",
+      "seconds": "Sekundy",
+      "secondsShort": "sek",
+      "tooLong": "Sesja może trwać maksymalnie 60 minut.",
+      "notes": "Notatki (opcjonalnie)",
+      "notesA11y": "Notatki",
+      "timerHint": "{{time}}, ćwierć ust za jednym razem. Zapisze szczotkowanie za Ciebie.",
+      "timerTitle": "Szczotkuj z timerem",
+      "startTimerA11y": "Uruchom timer szczotkowania na {{time}}"
+    }
+  },
+  "oralCareReport": {
+    "title": "Higiena jamy ustnej",
+    "loadFailed": "Nie udało się wczytać danych higieny jamy ustnej",
+    "empty": "W tym okresie nie zapisano higieny jamy ustnej",
+    "brushesTooltip_one": "{{count}} szczotkowanie · {{date}}",
+    "brushesTooltip_few": "{{count}} szczotkowania · {{date}}",
+    "brushesTooltip_many": "{{count}} szczotkowań · {{date}}",
+    "minutesTooltip": "{{time}} · {{date}}",
+    "goalDays": "Cel osiągnięty",
+    "goalDaysValue": "{{met}} z {{total}} dni",
+    "brushesPerDay": "Szczotkowania dziennie",
+    "minutesPerDay": "Szczotkowanie dziennie",
+    "insightGoal": "Docelową liczbę {{target}} szczotkowań dziennie osiągnięto w {{percent}}% dni.",
+    "insightStreak_one": "Twoja najdłuższa seria to {{count}} dzień.",
+    "insightStreak_few": "Twoja najdłuższa seria to {{count}} dni.",
+    "insightStreak_many": "Twoja najdłuższa seria to {{count}} dni.",
+    "brushesChart": "Szczotkowania dziennie",
+    "minutesChart": "Minuty szczotkowania dziennie",
+    "summaryTitle": "Serie i inne zabiegi",
+    "currentStreak": "Obecna seria",
+    "longestStreak": "Najdłuższa seria",
+    "daysCount_one": "{{count}} dzień",
+    "daysCount_few": "{{count}} dni",
+    "daysCount_many": "{{count}} dni",
+    "otherCare": "Nitkowanie, płukanie ust i inne"
   }
 }

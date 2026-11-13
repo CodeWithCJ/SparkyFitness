@@ -1441,6 +1441,9 @@
     "restSoundSilentSubtitle": "Play the rest chime even when your phone is on silent or vibrate.",
     "restSoundSilentAccessibility": "Play rest timer sound through silent mode",
     "keepAwakeAccessibility": "Keep screen awake",
+    "plannedPlaceholders": "Use planned values as placeholders",
+    "plannedPlaceholdersSubtitle": "Workouts started from a plan or saved workout suggest its planned weight and reps instead of last session's. Applies from the next workout you start.",
+    "plannedPlaceholdersAccessibility": "Use planned values as placeholders",
     "adaptiveCoaching": "Adaptive suggestions",
     "adaptiveCoachingSubtitle": "Adapts upcoming sets and exercise suggestions based on your logged session feedback.",
     "adaptiveCoachingAccessibility": "Adaptive suggestions",
@@ -1471,14 +1474,6 @@
     "buttonHint": "Opens rest period selection"
   },
   "diary": {
-    "view": {
-      "meals": "Meals",
-      "timeline": "Timeline"
-    },
-    "timeline": {
-      "noTime": "No time",
-      "addAt": "Add food at {{time}}"
-    },
     "chooseDate": "Choose diary date",
     "loading": "Loading diary...",
     "loadFailed": "Failed to load diary",
@@ -2456,7 +2451,20 @@
     "doAnotherFirst": "Do another exercise first…",
     "swapTitle": "Swap {{name}}",
     "doNowSets_one": "Do now · {{count}} set",
-    "doNowSets_other": "Do now · {{count}} sets"
+    "doNowSets_other": "Do now · {{count}} sets",
+    "sessionStatus": {
+      "planned": "Planned",
+      "in_progress": "In Progress",
+      "partial": "Partial",
+      "completed": "Completed"
+    },
+    "resumeWorkout": "Resume Workout",
+    "resumeConflictTitle": "Workout changed elsewhere",
+    "resumeConflictMessage": "This workout was updated on another device or tab. Reload it and try again.",
+    "resumeFailedTitle": "Could not resume workout",
+    "resumeFailedMessage": "Please try again.",
+    "finishStampFailedTitle": "Could not mark the workout as finished",
+    "finishStampFailedMessage": "Your sets were saved, but marking the workout finished failed. Retry to complete it."
   },
   "cycleCard": {
     "mode": {
