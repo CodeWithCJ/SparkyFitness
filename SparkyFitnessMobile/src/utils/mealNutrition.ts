@@ -14,6 +14,8 @@ export interface MealGroup {
   sortOrder: number;
   entries: FoodEntry[];
   isSystem: boolean;
+  /** The meal type's default time ('HH:MM' or 'HH:MM:SS'), when it has one. */
+  defaultTime?: string | null;
 }
 
 export interface EntryNutrition {
@@ -159,6 +161,7 @@ export function groupFoodEntriesByMealType(
         sortOrder: mt.sort_order ?? 999,
         entries: group.entries,
         isSystem: mt.user_id === null,
+        defaultTime: mt.default_time ?? null,
       });
     }
   }
