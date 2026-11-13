@@ -13,8 +13,12 @@ import {
   type StepActivity,
   type StrideCalibration,
 } from '../utils/stride';
+import { createSerialQueue } from '../utils/serialQueue';
 
 const KEY = '@SparkyFitness/strideCalibration';
+
+/** Every change to the stored strides, one at a time. */
+const serial = createSerialQueue();
 
 type Stored = Partial<Record<StepActivity, StrideCalibration>>;
 
@@ -96,35 +100,39 @@ export async function setStride(
   meters: number
 ): Promise<boolean> {
   if (!isPlausibleStride(meters)) return false;
-  try {
-    const stored = await read();
-    await AsyncStorage.setItem(
-      KEY,
-      JSON.stringify({
-        ...stored,
-        [activity]: { meters, samples: 0, manual: true },
-      })
-    );
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Stride] Could not save the stride: ${message}`, 'WARNING');
-    return false;
-  }
+  return serial(async () => {
+    try {
+      const stored = await read();
+      await AsyncStorage.setItem(
+        KEY,
+        JSON.stringify({
+          ...stored,
+          [activity]: { meters, samples: 0, manual: true },
+        })
+      );
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Stride] Could not save the stride: ${message}`, 'WARNING');
+      return false;
+    }
+  });
 }
 
 /** Forgets what was learned for one activity, so it starts from the default. */
-export async function resetStride(activity: StepActivity): Promise<boolean> {
-  try {
-    const next = { ...(await read()) };
-    delete next[activity];
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Stride] Could not reset the stride: ${message}`, 'WARNING');
-    return false;
-  }
+export function resetStride(activity: StepActivity): Promise<boolean> {
+  return serial(async () => {
+    try {
+      const next = { ...(await read()) };
+      delete next[activity];
+      await AsyncStorage.setItem(KEY, JSON.stringify(next));
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Stride] Could not reset the stride: ${message}`, 'WARNING');
+      return false;
+    }
+  });
 }
 
 /**
@@ -145,39 +153,44 @@ export async function learnStride(
     );
     return false;
   }
-  try {
-    const stored = await read();
-    const current = stored[activity];
-    // A run counts once: teaching the one taught last again starts from what
-    // the stride was before it, so the new sample replaces the old.
-    const replacing =
-      runId != null && current?.last != null && current.last.runId === runId;
-    const base = replacing ? (current?.last?.before ?? undefined) : current;
-    const { last: _last, ...before } = base ?? {};
-    const hasBefore = base != null;
-    const learned: StrideCalibration = {
-      ...blendStride(
-        hasBefore ? (before as StrideCalibration) : undefined,
-        sample
-      ),
-      ...(runId != null && {
-        last: {
-          runId,
-          before: hasBefore ? (before as StrideCalibration) : null,
-        },
-      }),
-    };
-    await AsyncStorage.setItem(
-      KEY,
-      JSON.stringify({ ...stored, [activity]: learned })
-    );
-    addLog(
-      `[Stride] ${activity} stride now ${learned.meters.toFixed(3)} m from ${steps} steps over ${Math.round(distanceMeters)} m (${learned.samples} distances${replacing ? ', replacing this run’s earlier one' : ''})`
-    );
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Stride] Could not save stride calibration: ${message}`, 'WARNING');
-    return false;
-  }
+  return serial(async () => {
+    try {
+      const stored = await read();
+      const current = stored[activity];
+      // A run counts once: teaching the one taught last again starts from what
+      // the stride was before it, so the new sample replaces the old.
+      const replacing =
+        runId != null && current?.last != null && current.last.runId === runId;
+      const base = replacing ? (current?.last?.before ?? undefined) : current;
+      const { last: _last, ...before } = base ?? {};
+      const hasBefore = base != null;
+      const learned: StrideCalibration = {
+        ...blendStride(
+          hasBefore ? (before as StrideCalibration) : undefined,
+          sample
+        ),
+        ...(runId != null && {
+          last: {
+            runId,
+            before: hasBefore ? (before as StrideCalibration) : null,
+          },
+        }),
+      };
+      await AsyncStorage.setItem(
+        KEY,
+        JSON.stringify({ ...stored, [activity]: learned })
+      );
+      addLog(
+        `[Stride] ${activity} stride now ${learned.meters.toFixed(3)} m from ${steps} steps over ${Math.round(distanceMeters)} m (${learned.samples} distances${replacing ? ', replacing this run’s earlier one' : ''})`
+      );
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[Stride] Could not save stride calibration: ${message}`,
+        'WARNING'
+      );
+      return false;
+    }
+  });
 }

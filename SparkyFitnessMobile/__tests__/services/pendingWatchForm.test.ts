@@ -7,6 +7,7 @@ import {
   rememberPendingWatchForm,
   retryPendingWatchForms,
   sweepRecentRunsMissingForm,
+  updatePendingWatchFormDistance,
 } from '../../src/services/pendingWatchForm';
 import { fetchCardioSessionsPage } from '../../src/services/api/exerciseStatsApi';
 import { ApiError } from '../../src/services/api/errors';
@@ -139,6 +140,27 @@ it('gives up on a run the steps never came for', async () => {
 
   expect(measureWatchRunForm).not.toHaveBeenCalled();
   expect(await stored()).toEqual([]);
+});
+
+it('measures from a distance corrected while the run waits, and learns from it', async () => {
+  await rememberPendingWatchForm(run, T0);
+  await updatePendingWatchFormDistance('entry-1', 3218);
+
+  await retryPendingWatchForms('server-1', T0 + FORM_RETRY_AFTER_MS);
+
+  expect(measureWatchRunForm).toHaveBeenCalledWith(
+    expect.objectContaining({ activity: 'run' }),
+    3218
+  );
+  expect(learnStride).toHaveBeenCalledWith('run', 3487, 3218, 'entry-1');
+});
+
+it('leaves the list alone when the corrected run is not waiting', async () => {
+  await rememberPendingWatchForm(run, T0);
+  await updatePendingWatchFormDistance('entry-2', 3218);
+  expect(await stored()).toEqual([
+    expect.objectContaining({ entryId: 'entry-1', distanceMeters: 2897 }),
+  ]);
 });
 
 describe('sweeping for runs without a cadence', () => {

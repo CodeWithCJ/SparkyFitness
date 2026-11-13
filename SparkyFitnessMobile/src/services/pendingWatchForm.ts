@@ -8,6 +8,7 @@ import { measureWatchRunForm } from './stepDistance';
 import { learnStride } from './strideCalibration';
 import { addDays } from '@workspace/shared';
 import { toLocalDateString } from '../utils/dateUtils';
+import { createSerialQueue } from '../utils/serialQueue';
 
 /**
  * A watch run is filed the moment it reaches the phone, which can be before
@@ -46,13 +47,8 @@ export interface PendingWatchForm {
   nextAttemptAt: number;
 }
 
-let chain: Promise<unknown> = Promise.resolve();
 /** One read-modify-write at a time, so two callers cannot overwrite each other. */
-function serial<T>(work: () => Promise<T>): Promise<T> {
-  const result = chain.then(work, work);
-  chain = result.catch(() => undefined);
-  return result;
-}
+const serial = createSerialQueue();
 
 async function read(): Promise<PendingWatchForm[]> {
   try {
@@ -113,6 +109,37 @@ export function rememberPendingWatchForm(
     } catch (error) {
       addLog(
         `[Watch Run] Could not remember a run to measure later: ${String(error)}`,
+        'WARNING'
+      );
+    }
+  });
+}
+
+/**
+ * Keeps a remembered run in step with its entry when the distance is
+ * corrected before its steps arrive, so the later measurement works the
+ * stride out from the corrected distance and teaches from it, not from the
+ * figure the run was filed with. A run that is not waiting is left alone.
+ */
+export function updatePendingWatchFormDistance(
+  entryId: string,
+  distanceMeters: number
+): Promise<void> {
+  return serial(async () => {
+    try {
+      const items = await read();
+      if (!items.some((item) => item.entryId === entryId)) return;
+      await write(
+        items.map((item) =>
+          item.entryId === entryId
+            ? // A corrected figure is a real distance, so it may teach.
+              { ...item, distanceMeters, taughtDistance: true }
+            : item
+        )
+      );
+    } catch (error) {
+      addLog(
+        `[Watch Run] Could not update a run waiting to be measured: ${String(error)}`,
         'WARNING'
       );
     }

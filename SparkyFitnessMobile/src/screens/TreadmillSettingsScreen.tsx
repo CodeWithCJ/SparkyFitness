@@ -688,14 +688,21 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
               defaultValue: 'Steps taken',
             })}
             value={steps}
-            onChange={setSteps}
+            onChange={(text) => {
+              setSteps(text);
+              // A result for other numbers must not be applied.
+              setTreadmillResult(null);
+            }}
           />
           <NumberField
             label={t('treadmillSettings.calShown', {
               defaultValue: 'Treadmill showed',
             })}
             value={shown}
-            onChange={setShown}
+            onChange={(text) => {
+              setShown(text);
+              setTreadmillResult(null);
+            }}
             suffix={unitLabel}
           />
           <Button

@@ -39,15 +39,17 @@ jest.mock('uniwind', () => ({
   useUniwind: () => ({ theme: 'light' }),
 }));
 
-const renderScreen = () =>
-  render(
-    <TreadmillSettingsScreen
-      {...({
-        navigation: { goBack: jest.fn() },
-        route: { key: 'TreadmillSettings', name: 'TreadmillSettings' },
-      } as never)}
-    />
-  );
+type ScreenProps = React.ComponentProps<typeof TreadmillSettingsScreen>;
+
+const screenProps = {
+  navigation: { goBack: jest.fn() } as unknown as ScreenProps['navigation'],
+  route: {
+    key: 'TreadmillSettings',
+    name: 'TreadmillSettings',
+  } as ScreenProps['route'],
+};
+
+const renderScreen = () => render(<TreadmillSettingsScreen {...screenProps} />);
 
 beforeEach(async () => {
   mockDistanceUnit = 'km';
@@ -308,6 +310,24 @@ describe('treadmill correction', () => {
       4
     );
     expect(screen.getByText('Shows 4% more than you ran')).toBeTruthy();
+  });
+
+  it('drops a result once the numbers behind it change', async () => {
+    await setStride('run', 1);
+    renderScreen();
+    await screen.findByText('1.00 m · set by you');
+
+    openRow('Treadmill display');
+    fireEvent.press(screen.getByText('Not sure? Work it out from your steps'));
+    fireEvent.changeText(screen.getByLabelText('Steps taken'), '5000');
+    fireEvent.changeText(screen.getByLabelText('Treadmill showed'), '5.2');
+    fireEvent.press(screen.getByText('Check my treadmill'));
+    await screen.findByText('Use this correction');
+
+    fireEvent.changeText(screen.getByLabelText('Treadmill showed'), '5.25');
+
+    expect(screen.queryByText('Use this correction')).toBeNull();
+    expect(screen.queryByText(/4% more than you did/)).toBeNull();
   });
 
   it('says when the treadmill is right', async () => {

@@ -48,7 +48,12 @@ import {
 import type { RootStackScreenProps } from '../types/navigation';
 import { learnWatchIndoorScale } from '../services/watchIndoorScale';
 import { learnFromWatchRun } from '../services/stepDistance';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  getTreadmillCorrection,
+  useAppPreferencesStore,
+  whenPreferencesHydrated,
+} from '../stores/appPreferencesStore';
+import { updatePendingWatchFormDistance } from '../services/pendingWatchForm';
 import { correctTreadmillDistance } from '../utils/treadmillCorrection';
 import { formatTreadmillPercent } from '../utils/treadmillCorrectionFormat';
 
@@ -144,11 +149,6 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       : entered;
     // The machine's figure with its known error taken off; this is what is
     // stored and what the watch's factor learns from.
-    const corrected = correctTreadmillDistance(enteredKm * METERS_PER_KM, {
-      enabled: treadmillCorrectionEnabled,
-      percent: treadmillCorrectionPercent,
-    });
-    const km = corrected.correctedMeters / METERS_PER_KM;
     if (!summary.entryId || !(enteredKm > 0) || enteredKm > 1000) {
       showFailure(
         t('runSummary.distanceInvalid', {
@@ -159,7 +159,17 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     setSavingDistance(true);
     try {
+      // Not before the saved preferences are read: an early tap would
+      // otherwise use the default (no correction) and store the raw figure.
+      await whenPreferencesHydrated();
+      const corrected = correctTreadmillDistance(
+        enteredKm * METERS_PER_KM,
+        getTreadmillCorrection()
+      );
+      const km = corrected.correctedMeters / METERS_PER_KM;
       await setExerciseEntryDistance(summary.entryId, km);
+      // A run still waiting for its steps measures from this distance.
+      void updatePendingWatchFormDistance(summary.entryId, km * METERS_PER_KM);
       setDistanceMeters(km * METERS_PER_KM);
       setDisplayedMeters(corrected.applied ? corrected.displayedMeters : null);
       await followStride(summary.entryId, km);
