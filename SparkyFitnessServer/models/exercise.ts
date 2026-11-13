@@ -2,7 +2,9 @@ import {
   deriveExerciseModality,
   isExerciseModality,
   resolveExerciseModality,
+  type Exercises,
 } from '@workspace/shared';
+import type { PoolClient } from 'pg';
 
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
@@ -18,9 +20,12 @@ import {
   parseJsonArrayField,
   normalizeToStringArray,
 } from '../utils/exerciseJsonFields.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExerciseById(id: any, userId: any) {
-  const client = await getClient(userId);
+async function getExerciseById(
+  id: string,
+  userId: string,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient = existingClient ?? (await getClient(userId));
   try {
     const result = await client.query(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
@@ -41,7 +46,7 @@ async function getExerciseById(id: any, userId: any) {
     }
     return exercise;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -567,9 +572,34 @@ async function searchExercisesPaginated(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createExercise(exerciseData: any) {
-  const client = await getClient(exerciseData.user_id);
+type CreateExerciseData = Omit<
+  Partial<Exercises>,
+  | 'id'
+  | 'source_id'
+  | 'user_id'
+  | 'equipment'
+  | 'primary_muscles'
+  | 'secondary_muscles'
+  | 'instructions'
+  | 'images'
+> & {
+  id?: string;
+  source_id?: string | number | null;
+  user_id?: string | number | null;
+  name: string;
+  equipment?: unknown;
+  primary_muscles?: unknown;
+  secondary_muscles?: unknown;
+  instructions?: unknown;
+  images?: unknown;
+};
+
+async function createExercise(
+  exerciseData: CreateExerciseData,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient =
+    existingClient ?? (await getClient(exerciseData.user_id));
   try {
     log(
       'debug',
@@ -629,7 +659,7 @@ async function createExercise(exerciseData: any) {
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1064,7 +1094,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1089,7 +1119,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id
@@ -1118,7 +1148,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1138,7 +1168,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   decrypt: vi.fn(),
   processHevyUserInfo: vi.fn(),
   processHevyWorkouts: vi.fn(),
+  reconcileHevyWorkouts: vi.fn(),
   loadRawBundle: vi.fn(),
   logRawResponse: vi.fn(),
   loadUserTimezone: vi.fn(),
@@ -43,6 +44,9 @@ vi.mock('../integrations/hevy/hevyDataProcessor.js', () => ({
 }));
 vi.mock('../integrations/hevy/hevyExerciseRepository.js', () => ({
   default: { findTemplateIdsWithMuscles: mocks.findTemplateIdsWithMuscles },
+}));
+vi.mock('../integrations/hevy/hevyWorkoutRepository.js', () => ({
+  reconcileHevyWorkouts: mocks.reconcileHevyWorkouts,
 }));
 
 import { syncHevyData } from '../integrations/hevy/hevyService.js';
@@ -145,6 +149,52 @@ beforeEach(() => {
 });
 
 describe('syncHevyData required API reads', () => {
+  it('reconciles a completed live range after its workouts are saved', async () => {
+    await syncHevyData(
+      USER_ID,
+      USER_ID,
+      true,
+      PROVIDER_ID,
+      '2026-10-01',
+      '2026-10-31'
+    );
+    expect(mocks.reconcileHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      ['workout-1'],
+      '2026-10-01',
+      '2026-10-31'
+    );
+    expect(
+      mocks.reconcileHevyWorkouts.mock.invocationCallOrder[0]
+    ).toBeGreaterThan(mocks.processHevyWorkouts.mock.invocationCallOrder[0]!);
+  });
+
+  it('reconciles an empty completed live window, but never an incomplete fetch or replay', async () => {
+    mockApi([{ page: 1, page_count: 1, workouts: [] }]);
+    await syncHevyData(
+      USER_ID,
+      USER_ID,
+      true,
+      PROVIDER_ID,
+      '2026-10-01',
+      '2026-10-31'
+    );
+    expect(mocks.reconcileHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      [],
+      '2026-10-01',
+      '2026-10-31'
+    );
+    mocks.reconcileHevyWorkouts.mockClear();
+    mocks.get.mockRejectedValueOnce(new Error('Workout page unavailable'));
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).rejects.toThrow('Workout page unavailable');
+    expect(mocks.reconcileHevyWorkouts).not.toHaveBeenCalled();
+  });
+
   it('passes every template page to the processor after all GET requests finish', async () => {
     mockApi(
       [
@@ -310,6 +360,7 @@ describe('syncHevyData required API reads', () => {
       syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
     ).rejects.toThrow('Hevy API key');
     expect(mocks.get).not.toHaveBeenCalled();
+    expect(mocks.reconcileHevyWorkouts).not.toHaveBeenCalled();
     expect(syncUpdates()).toEqual([]);
   });
 

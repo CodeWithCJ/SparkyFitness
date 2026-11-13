@@ -10,6 +10,7 @@ import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { describeError } from '../../utils/errors.js';
 import hevyDataProcessor from './hevyDataProcessor.js';
 import hevyExerciseRepository from './hevyExerciseRepository.js';
+import { reconcileHevyWorkouts } from './hevyWorkoutRepository.js';
 import type {
   HevyExerciseTemplate,
   HevyExerciseTemplatesResponse,
@@ -352,6 +353,15 @@ async function syncHevyData(
         workouts,
         timezone,
         templates
+      );
+    }
+    if (!replay) {
+      await reconcileHevyWorkouts(
+        userId,
+        createdByUserId,
+        workouts.map((workout) => workout.id),
+        firstDay,
+        endDate
       );
     }
     // Only a live window covering the current local day can fulfill today's sync.

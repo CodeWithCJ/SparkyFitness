@@ -62,6 +62,20 @@ beforeEach(() => {
 });
 
 describe('LinkSyncedWorkoutDialog', () => {
+  it('defaults to measured calories when the imported workout has zero calories', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: null,
+      candidates: [candidate({ source: 'Health Connect' })],
+    };
+    renderDialog();
+
+    fireEvent.click(screen.getByText('Link workouts'));
+
+    await waitFor(() => expect(mockSetLink).toHaveBeenCalledTimes(1));
+    expect(mockSetLink.mock.calls[0][0].body.resolution).toBe('synced');
+  });
+
   it('preselects the workout that matches the set times and links it', async () => {
     renderDialog();
 
@@ -124,6 +138,64 @@ describe('LinkSyncedWorkoutDialog', () => {
 
     fireEvent.click(screen.getByText('Unlink'));
     await waitFor(() => expect(mockClearLink).toHaveBeenCalledWith('entry-1'));
+  });
+
+  it.each([350, 0])(
+    'restores and resaves an existing custom total of %s kcal',
+    async (total) => {
+      mockSuggestions = {
+        manual_total_calories: 0,
+        link: {
+          resolution: 'custom',
+          synced_entry_id: 'synced-1',
+          custom_calories: total,
+        },
+        candidates: [candidate()],
+      };
+      renderDialog();
+      expect(screen.getByLabelText(/Total for the session/)).toHaveValue(total);
+      fireEvent.click(screen.getByText('Link workouts'));
+      await waitFor(() =>
+        expect(mockSetLink).toHaveBeenCalledWith({
+          entryId: 'entry-1',
+          body: {
+            synced_entry_id: 'synced-1',
+            resolution: 'custom',
+            custom_calories: total,
+          },
+        })
+      );
+    }
+  );
+
+  it('keeps the saved kcal total when the display unit changes to kJ', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: {
+        resolution: 'custom',
+        synced_entry_id: 'synced-1',
+        custom_calories: 350,
+      },
+      candidates: [candidate()],
+    };
+    const view = renderDialog();
+    view.rerender(
+      <LinkSyncedWorkoutDialog
+        entryId="entry-1"
+        open
+        onOpenChange={jest.fn()}
+        energyUnit="kJ"
+        getEnergyUnitString={(unit) => unit}
+        convertEnergy={(value, from, to) =>
+          from === to ? value : from === 'kcal' ? value * 4.184 : value / 4.184
+        }
+      />
+    );
+    expect(screen.getByLabelText(/Total for the session/)).toHaveValue(1464.4);
+    fireEvent.click(screen.getByText('Link workouts'));
+    await waitFor(() =>
+      expect(mockSetLink.mock.calls[0][0].body.custom_calories).toBe(350)
+    );
   });
 
   it('says so when the day has no synced workouts', () => {

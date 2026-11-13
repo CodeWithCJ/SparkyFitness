@@ -5,6 +5,7 @@ import LinkSyncedWorkoutSheet, {
   type LinkSyncedWorkoutSheetRef,
 } from '../../src/components/LinkSyncedWorkoutSheet';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
+import { useEnergyUnit } from '../../src/hooks/useEnergyUnit';
 
 const mockSetLink = jest.fn();
 const mockClearLink = jest.fn();
@@ -56,6 +57,7 @@ describe('LinkSyncedWorkoutSheet', () => {
     await initializeI18n('en');
     await i18n.changeLanguage('en');
     jest.clearAllMocks();
+    jest.mocked(useEnergyUnit).mockReturnValue('kcal');
     mockSetLink.mockResolvedValue({
       applied: [{ entry_id: 'entry-1', calories_applied: null }],
     });
@@ -84,6 +86,20 @@ describe('LinkSyncedWorkoutSheet', () => {
         'entry-1': null,
       })
     );
+  });
+
+  it('defaults to measured calories for a zero-calorie imported workout', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: null,
+      candidates: [candidate({ source: 'Health Connect' })],
+    };
+    const { view } = renderSheet();
+
+    fireEvent.press(view.getByText('Link workouts'));
+
+    await waitFor(() => expect(mockSetLink).toHaveBeenCalledTimes(1));
+    expect(mockSetLink.mock.calls[0][0].resolution).toBe('synced');
   });
 
   it('shows what each choice would count and sends the chosen one', async () => {
@@ -120,6 +136,59 @@ describe('LinkSyncedWorkoutSheet', () => {
     fireEvent.press(view.getByText('Unlink'));
     await waitFor(() => expect(mockClearLink).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(onLinkChange).toHaveBeenCalledWith(null, {}));
+  });
+
+  it.each([350, 0])(
+    'restores and resaves a stored custom total of %s kcal',
+    async (total) => {
+      mockSuggestions = {
+        manual_total_calories: 0,
+        link: {
+          resolution: 'custom',
+          synced_entry_id: 'synced-1',
+          custom_calories: total,
+        },
+        candidates: [candidate()],
+      };
+      const { view } = renderSheet();
+      expect(view.getByTestId('link-custom-calories').props.value).toBe(
+        String(total)
+      );
+      fireEvent.press(view.getByText('Link workouts'));
+      await waitFor(() =>
+        expect(mockSetLink).toHaveBeenCalledWith({
+          synced_entry_id: 'synced-1',
+          resolution: 'custom',
+          custom_calories: total,
+        })
+      );
+    }
+  );
+
+  it('changes the display unit without changing an unedited saved custom total', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: {
+        resolution: 'custom',
+        synced_entry_id: 'synced-1',
+        custom_calories: 350,
+      },
+      candidates: [candidate()],
+    };
+    const { view } = renderSheet();
+    jest.mocked(useEnergyUnit).mockReturnValue('kJ');
+    view.rerender(
+      <LinkSyncedWorkoutSheet entryId="entry-1" entryDate="2026-10-23" />
+    );
+    expect(view.getByTestId('link-custom-calories').props.value).toBe('1464');
+    fireEvent.press(view.getByText('Link workouts'));
+    await waitFor(() =>
+      expect(mockSetLink).toHaveBeenCalledWith({
+        synced_entry_id: 'synced-1',
+        resolution: 'custom',
+        custom_calories: 350,
+      })
+    );
   });
 
   it('says so when the day has no synced workouts', () => {

@@ -15,7 +15,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Oura Ring
 - Withings
 - Polar Flow (partially tested)
-- Hevy (not tested)
+- [Hevy](/features/settings/hevy)
 - [Liftosaur](/features/settings/liftosaur)
 - [Intervals.icu](/features/settings/intervals)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
@@ -78,15 +78,7 @@ The ingredient import is available from the meals library or a Mealie food witho
 
 ## Hevy automatic sync
 
-When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
-
-**Daily at 21:00** uses the timezone saved in your SparkyFitness preferences. The server checks hourly and runs the sync at or after 21:00, once per local evening. If an evening attempt fails, a later hourly check can retry before midnight. Only a successful live sync at or after 21:00 whose date range includes the current local day, including a manual sync, counts for that evening. A sync earlier in the day or limited to other dates does not replace the evening run, so today's workouts can still be imported. The server must be running during the evening; missed days are not automatically caught up after midnight.
-
-**Hourly** keeps the existing hourly schedule. You can still use **Sync** manually with any frequency.
-
-Hevy exercise templates also supply the primary and secondary muscle groups used in exercise reports. The importer matches templates by their Hevy ID and fills missing muscle information on your Hevy exercises while preserving populated fields. To add muscle information to workouts imported by an older version, run a full-history sync once so their diary snapshots are rebuilt with the exercise metadata.
-
-Muscle metadata is best effort: if Hevy's template catalogue or a muscle update is unavailable, the workouts still import. Later syncs can fill missing muscles. The catalogue is skipped when all referenced Hevy exercises already have primary muscles, and unchanged library rows are not rewritten. An existing exercise of your own with the same name can be reused without changing its source or muscle fields; global public exercises and other users' exercises are not reused by this importer.
+See the [Hevy guide](/features/settings/hevy) for automatic sync, persistent workouts, manual calorie links and sync recovery.
 
 ## Canadian Nutrient File (Health Canada)
 

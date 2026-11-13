@@ -103,7 +103,7 @@ import {
   canEditGroupedWorkout,
   effectiveLoadKg,
   entryCaloriesCounted,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   isBodyweightModality,
   resolveExerciseModality,
 } from '@workspace/shared';
@@ -205,11 +205,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const sourceLabel = getSourceLabel(session.source);
   const canEdit = canEditGroupedWorkout(session.source);
-  // Linking works on the whole session, so any of its exercises will do. Only
-  // a workout logged in the app can be linked to a synced one.
+  // Linking works on the whole session, including stable Hevy imports.
   const linkEntryId =
     session.exercises.length > 0 &&
-    isAppLoggedWorkoutSource(session.exercises[0].source)
+    isCalorieLinkWorkoutSource(session.exercises[0].source)
       ? session.exercises[0].id
       : null;
   const isLinked = session.exercises.some((ex) => !!ex.calorie_link_resolution);

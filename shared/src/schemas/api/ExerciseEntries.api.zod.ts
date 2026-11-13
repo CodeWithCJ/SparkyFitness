@@ -869,6 +869,8 @@ export const calorieLinkSuggestionsResponseSchema = z.object({
     .object({
       resolution: calorieLinkResolutionSchema,
       synced_entry_id: z.string().nullable(),
+      /** Persisted custom session total in kcal; absent for other resolutions. */
+      custom_calories: z.number().min(0).optional(),
     })
     .nullable(),
   candidates: z.array(calorieLinkCandidateSchema),

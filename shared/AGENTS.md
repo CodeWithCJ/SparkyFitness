@@ -46,6 +46,8 @@ _Last updated: 2026-11-13_
 
 ## Naming Convention
 
+Calorie-link eligibility is shared by server, web and mobile: `isCalorieLinkWorkoutSource` allows app-logged and Hevy workouts. `isAppLoggedWorkoutSource` still identifies only app-logged workouts; do not use it to split a link's workout and health-recording sides.
+
 - `X.api.zod.ts` = API request/response schema
 - `X.zod.ts` = database table schema
 - Export everything from `src/index.ts`; consuming packages import both types and values via `@workspace/shared`

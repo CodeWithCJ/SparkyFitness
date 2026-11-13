@@ -32,6 +32,15 @@ export function isAppLoggedWorkoutSource(
   );
 }
 
+/** Workout sources whose stable entries can carry a manual calorie link. */
+export function isCalorieLinkWorkoutSource(
+  source: string | null | undefined
+): boolean {
+  return (
+    isAppLoggedWorkoutSource(source) || source?.trim().toLowerCase() === 'hevy'
+  );
+}
+
 /** A set time this far outside the synced workout's window still matches. */
 export const CALORIE_LINK_MATCH_SLACK_MS = 10 * 60 * 1000;
 

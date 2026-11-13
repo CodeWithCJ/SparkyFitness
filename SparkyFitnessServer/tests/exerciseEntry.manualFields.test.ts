@@ -1,9 +1,11 @@
+import type { PoolClient } from 'pg';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import * as poolManager from '../db/poolManager.js';
 import {
   editedSyncFields,
   mergeManualFields,
+  resolveEditedSets,
   storedManualFields,
 } from '../utils/manualFields.js';
 
@@ -49,6 +51,164 @@ describe('editedSyncFields', () => {
 
   it('ignores fields the request does not send', () => {
     expect(editedSyncFields({}, current)).toEqual([]);
+  });
+
+  it('detects corrected or cleared sets', () => {
+    const sets = [
+      { set_number: 1, set_type: 'Working Set', weight: 40, reps: 8 },
+    ];
+    expect(
+      editedSyncFields({ sets: [{ ...sets[0], weight: 45 }] }, { sets })
+    ).toEqual(['sets']);
+    expect(editedSyncFields({ sets: [] }, { sets })).toEqual(['sets']);
+  });
+
+  it('ignores set IDs, numeric encoding and equivalent completion timestamps', () => {
+    expect(
+      editedSyncFields(
+        {
+          sets: [
+            {
+              set_number: 1,
+              weight: 40,
+              reps: 8,
+              completed_at: '2026-11-01T17:00:00Z',
+            },
+          ],
+        },
+        {
+          sets: [
+            {
+              id: 'stored-id',
+              set_number: 1,
+              weight: '40',
+              reps: '8',
+              completed_at: new Date('2026-11-01T17:00:00Z'),
+              notes: null,
+              is_pr: false,
+            },
+          ],
+        }
+      )
+    ).toEqual([]);
+  });
+
+  it('protects the aggregate derived from edited set distances', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 1, sets: [{ set_number: 1, distance: 1 }] }
+      )
+    ).toEqual(['distance', 'sets']);
+  });
+
+  it('keeps a derived aggregate tied to a changed set list even when its total is unchanged', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5, reps: 9 }] },
+        { distance: 2.5, sets: [{ set_number: 1, distance: 2.5, reps: 8 }] }
+      )
+    ).toEqual(['distance', 'sets']);
+  });
+
+  it('does not freeze a derived distance when the set list is unchanged', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 2.5, sets: [{ set_number: '1', distance: '2.5' }] }
+      )
+    ).toEqual([]);
+  });
+
+  it('does not derive a distance override when the edit explicitly supplies one', () => {
+    expect(
+      editedSyncFields(
+        { distance: 1, sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 1, sets: [{ set_number: 1, distance: 1 }] }
+      )
+    ).toEqual(['sets']);
+  });
+
+  it('does not mark omitted stored set fields as corrections', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, weight: 40, reps: 8 }] },
+        {
+          sets: [
+            { set_number: 1, set_type: 'Working Set', weight: '40', reps: 8 },
+          ],
+        }
+      )
+    ).toEqual([]);
+  });
+
+  it('matches an explicitly identified set before its new number', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ id: 9, set_number: 2 }] },
+        {
+          sets: [{ id: 9, set_number: 1, set_type: 'Working Set', weight: 40 }],
+        }
+      )
+    ).toEqual(['sets']);
+  });
+});
+
+describe('sparse set identity', () => {
+  it('normalizes legacy fractional durations without rejecting an otherwise valid edit', () => {
+    expect(resolveEditedSets([{ set_number: 1, duration: 42.5 }], [])).toEqual([
+      { set_number: 1, duration: 43 },
+    ]);
+  });
+
+  const stored = [
+    { id: 1, set_number: 1, weight: 40, notes: 'First set' },
+    { id: 2, set_number: 2, weight: 80, notes: 'Second set' },
+  ];
+
+  it.each([false, true])(
+    'does not copy an explicitly moved set into an ID-less row (ID-less first: %s)',
+    (idlessFirst) => {
+      const identified = { id: 2, set_number: 1, reps: 8 };
+      const idless = { set_number: 2, reps: 9 };
+      const saved = resolveEditedSets(
+        idlessFirst ? [idless, identified] : [identified, idless],
+        stored
+      )!;
+      expect(saved.find((set) => set.set_number === 1)).toMatchObject({
+        weight: 80,
+        notes: 'Second set',
+        reps: 8,
+      });
+      const newSet = saved.find((set) => set.set_number === 2)!;
+      expect(newSet.weight).toBeUndefined();
+      expect(newSet.notes).toBeUndefined();
+    }
+  );
+
+  it('uses an available set-number fallback without changing explicit nulls', () => {
+    expect(
+      resolveEditedSets(
+        [
+          { set_number: 1, notes: null },
+          { id: 2, set_number: 3 },
+        ],
+        stored
+      )
+    ).toMatchObject([
+      { set_number: 1, weight: 40, notes: null },
+      { set_number: 3, weight: 80, notes: 'Second set' },
+    ]);
+  });
+
+  it('does not reuse a set-number fallback for a second submitted row', () => {
+    const saved = resolveEditedSets(
+      [{ set_number: 1 }, { set_number: 1, reps: 9 }],
+      stored
+    )!;
+    expect(saved[0]).toMatchObject({ weight: 40, notes: 'First set' });
+    expect(saved[1]!.weight).toBeUndefined();
+    expect(saved[1]!.notes).toBeUndefined();
   });
 });
 
@@ -134,7 +294,7 @@ describe('manual_fields on exercise entry writes', () => {
 
   it('a re-sent workout keeps the fields the user edited', async () => {
     await exerciseEntryDb._createExerciseEntryWithClient(
-      mockClient,
+      mockClient as unknown as PoolClient,
       'user-1',
       {
         exercise_id: 'ex-1',
@@ -166,7 +326,7 @@ describe('manual_fields on exercise entry writes', () => {
     });
 
     await exerciseEntryDb._createExerciseEntryWithClient(
-      mockClient,
+      mockClient as unknown as PoolClient,
       'user-1',
       {
         exercise_id: 'ex-1',

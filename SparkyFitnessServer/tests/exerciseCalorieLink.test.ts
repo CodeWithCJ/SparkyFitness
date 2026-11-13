@@ -3,6 +3,7 @@ import {
   CALORIE_LINK_MATCH_SLACK_MS,
   distributeCountedCalories,
   isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   matchCalorieLink,
   resolveLinkedCalories,
 } from '@workspace/shared';
@@ -166,6 +167,7 @@ const syncedRow = (over: Row = {}): Row => ({
   calories_burned: 425,
   source: 'Garmin',
   source_id: 'g-1',
+  exercise_preset_entry_id: null,
   exercise_name: 'Other workout',
   ...over,
 });
@@ -320,6 +322,44 @@ describe('getCalorieLinkSuggestions', () => {
 describe('setCalorieLink', () => {
   const body = (resolution: string, extra: Row = {}) =>
     ({ synced_entry_id: 's1', resolution, ...extra }) as never;
+
+  it.each(['Health Connect', 'HealthKit'])(
+    'links a zero-calorie Hevy strength session to %s without losing its measured calories',
+    async (source) => {
+      answer([
+        [/id = \$1 AND user_id = \$2 FOR UPDATE/, [syncedRow({ source })]],
+        [
+          /WHERE user_id = \$2/,
+          [
+            manualRow({
+              id: 'h1',
+              source: 'Hevy',
+              source_id: 'workout_0',
+              calories_burned: 0,
+            }),
+            manualRow({
+              id: 'h2',
+              source: 'Hevy',
+              source_id: 'workout_1',
+              calories_burned: 0,
+            }),
+          ],
+        ],
+      ]);
+
+      const result = await setCalorieLink('u1', 'u1', 'h1', body('synced'));
+
+      expect(result.applied).toEqual([
+        { entry_id: 'h1', calories_applied: 0 },
+        { entry_id: 'h2', calories_applied: 0 },
+      ]);
+      expect(updates().map((call) => [call[1][0], call[1][2]])).toEqual([
+        ['h1', 0],
+        ['h2', 0],
+        ['s1', null],
+      ]);
+    }
+  );
 
   it('counts the SparkyFitness estimate and zeroes the synced side', async () => {
     answer([
@@ -529,6 +569,12 @@ describe('setCalorieLink', () => {
 
   it.each([
     ['a manual entry', syncedRow({ source: 'manual' }), 400],
+    ['a Hevy workout on the device side', syncedRow({ source: 'Hevy' }), 400],
+    [
+      'a daily Active Calories total',
+      syncedRow({ exercise_name: 'Active Calories' }),
+      400,
+    ],
     ['an entry with no source_id', syncedRow({ source_id: null }), 400],
     [
       'one linked to another workout',
@@ -553,6 +599,26 @@ describe('setCalorieLink', () => {
 });
 
 describe('clearCalorieLink', () => {
+  it('unlinks a Hevy workout and restores both sides through the shared link', async () => {
+    answer([
+      [
+        /WHERE user_id = \$2/,
+        [
+          manualRow({
+            source: 'Hevy',
+            source_id: 'workout_0',
+            calorie_link_id: 'hevy-link',
+            calorie_link_resolution: 'synced',
+          }),
+        ],
+      ],
+    ]);
+
+    await clearCalorieLink('u1', 'u1', 'm1');
+
+    expect(updates()[0]![1]).toEqual(['u1', 'hevy-link']);
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+  });
   it('resets both sides through the shared link id', async () => {
     answer([
       [
@@ -596,6 +662,44 @@ describe('reapplyCalorieLinkWithClient', () => {
       },
     };
   };
+
+  it('keeps Hevy on the workout side when the measured health-session calories change', async () => {
+    const { client: fake, calls } = fakeClient([
+      {
+        id: 'h1',
+        source: 'Hevy',
+        calories_burned: 0,
+        calories_applied: 100,
+        calorie_link_resolution: 'average',
+      },
+      {
+        id: 'h2',
+        source: 'Hevy',
+        calories_burned: 0,
+        calories_applied: 100,
+        calorie_link_resolution: 'average',
+      },
+      {
+        id: 's1',
+        source: 'Health Connect',
+        calories_burned: 500,
+        calories_applied: 0,
+        calorie_link_resolution: 'average',
+      },
+    ]);
+
+    await reapplyCalorieLinkWithClient(fake as never, 'u1', 'hevy-link');
+
+    expect(
+      calls
+        .filter(([sql]) => String(sql).trimStart().startsWith('UPDATE'))
+        .map((call) => call[1])
+    ).toEqual([
+      ['h1', 'u1', 125],
+      ['h2', 'u1', 125],
+      ['s1', 'u1', 0],
+    ]);
+  });
 
   it('recomputes both sides from the stored resolution after estimates change', async () => {
     const { client: fake, calls } = fakeClient([
@@ -710,7 +814,22 @@ describe('isAppLoggedWorkoutSource', () => {
   });
 
   it('rejects provider-synced sources', () => {
+    expect(isAppLoggedWorkoutSource('Hevy')).toBe(false);
     expect(isAppLoggedWorkoutSource('HealthKit')).toBe(false);
     expect(isAppLoggedWorkoutSource('garmin')).toBe(false);
+  });
+});
+
+describe('isCalorieLinkWorkoutSource', () => {
+  it('allows Hevy as a workout without classifying health imports as workouts', () => {
+    expect(isCalorieLinkWorkoutSource('Hevy')).toBe(true);
+    expect(isCalorieLinkWorkoutSource(' hevy ')).toBe(true);
+    expect(isCalorieLinkWorkoutSource('manual')).toBe(true);
+    expect(isCalorieLinkWorkoutSource('Sparky')).toBe(true);
+    expect(isCalorieLinkWorkoutSource(null)).toBe(true);
+    expect(isCalorieLinkWorkoutSource('Health Connect')).toBe(false);
+    expect(isCalorieLinkWorkoutSource('HealthKit')).toBe(false);
+    expect(isCalorieLinkWorkoutSource('Garmin')).toBe(false);
+    expect(isCalorieLinkWorkoutSource('Liftosaur')).toBe(false);
   });
 });
