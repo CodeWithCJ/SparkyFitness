@@ -90,6 +90,11 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// Pedometer distance since the run began, paused stretches left out.
     private var pedometerDistance = 0.0
     private var lastPedometerDistance: Double?
+    /// Metres recorded by the pedometer before the system's distance
+    /// collection was switched back on (`fallBackToSystemDistance`, or a
+    /// relaunch with no pedometer). Health never collected them, so they are
+    /// added to what it collects and topped up when the workout is written.
+    private var systemDistanceOffset = 0.0
     /// Set when Health did not show the distance a run wrote for itself, so
     /// later runs go back to Apple's collection rather than lose a distance.
     private static let selfWrittenFailedKey = "indoorSelfWrittenDistanceFailed"
@@ -206,9 +211,11 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// The pedometer must be allowed and able to give distance, and an earlier
     /// run must not have found that Health ignores a distance written this way.
     private static var canWriteOwnDistance: Bool {
-        CMPedometer.isDistanceAvailable()
-            && CMPedometer.authorizationStatus() == .authorized
-            && !UserDefaults.standard.bool(forKey: selfWrittenFailedKey)
+        pedometerCanMeasureDistance && !UserDefaults.standard.bool(forKey: selfWrittenFailedKey)
+    }
+
+    private static var pedometerCanMeasureDistance: Bool {
+        CMPedometer.isDistanceAvailable() && CMPedometer.authorizationStatus() == .authorized
     }
 
     /// Starts the session. Returns false, leaving nothing running, when
@@ -238,6 +245,7 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
             liveDataSource = dataSource
             pedometerDistance = 0
             lastPedometerDistance = nil
+            systemDistanceOffset = 0
             newBuilder.dataSource = dataSource
             newSession.delegate = self
             newBuilder.delegate = self
@@ -373,29 +381,38 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// question is answered. HealthKit cannot lower distance it already
     /// collected, so a larger final figure is topped up with a sample for the
     /// difference; a smaller one leaves the measured distance as it was.
-    func finishHeld(distanceMeters: Double) {
-        guard let held = heldBuilder else { return }
+    ///
+    /// `completion` runs on the main queue once Health has the workout, with
+    /// whether it was written with the final distance. The builder is held by
+    /// the write itself until then, so a failed sample is retried rather than
+    /// the workout being finished without it.
+    func finishHeld(distanceMeters: Double, completion: @escaping (Bool) -> Void = { _ in }) {
+        guard let held = heldBuilder else {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
         heldBuilder = nil
+        let done: (Bool) -> Void = { saved in DispatchQueue.main.async { completion(saved) } }
         if heldSelfWritten {
             heldSelfWritten = false
-            writeOwnDistance(distanceMeters, to: held)
+            writeOwnDistance(distanceMeters, to: held, completion: done)
             return
         }
         let collected = held.statistics(for: Self.distanceType)?
             .sumQuantity()?.doubleValue(for: .meter()) ?? 0
         let missing = distanceMeters - collected
         guard missing >= 1 else {
-            held.finishWorkout { _, _ in }
+            held.finishWorkout { workout, _ in done(workout != nil) }
             return
         }
-        let sample = HKQuantitySample(
-            type: Self.distanceType,
-            quantity: HKQuantity(unit: .meter(), doubleValue: missing),
-            start: heldStart,
-            end: heldEnd
-        )
-        held.add([sample]) { _, _ in
-            held.finishWorkout { _, _ in }
+        let sample = distanceSample(missing)
+        addDistance(sample, to: held) { added in
+            // The measured distance is still in the workout: write it rather
+            // than lose the run, and report that the top-up is missing.
+            held.finishWorkout { workout, _ in
+                if !added, workout != nil { self.saveLooseDistance(sample) }
+                done(added && workout != nil)
+            }
         }
     }
 
@@ -403,31 +420,85 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// the only distance in the workout. After it is saved, Health is asked
     /// what it holds: if that is not the figure written, later runs stop
     /// writing their own distance.
-    private func writeOwnDistance(_ meters: Double, to held: HKLiveWorkoutBuilder) {
-        let finish = {
+    private func writeOwnDistance(
+        _ meters: Double,
+        to held: HKLiveWorkoutBuilder,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard meters >= 1 else {
+            held.finishWorkout { workout, _ in completion(workout != nil) }
+            return
+        }
+        let sample = distanceSample(meters)
+        addDistance(sample, to: held) { added in
+            if !added {
+                // Health would not take the only distance this run has: later
+                // runs go back to Apple's collection.
+                UserDefaults.standard.set(true, forKey: Self.selfWrittenFailedKey)
+            }
             held.finishWorkout { workout, _ in
-                if meters >= 1, let workout { Self.verifyWrittenDistance(meters, in: workout) }
+                guard let workout else { completion(false); return }
+                guard added else {
+                    // The workout is kept (time, heart rate, energy); the
+                    // distance still reaches Health's totals on its own.
+                    self.saveLooseDistance(sample)
+                    completion(false)
+                    return
+                }
+                completion(Self.verifyWrittenDistance(meters, in: workout))
             }
         }
-        guard meters >= 1 else { finish(); return }
-        let sample = HKQuantitySample(
+    }
+
+    private func distanceSample(_ meters: Double) -> HKQuantitySample {
+        HKQuantitySample(
             type: Self.distanceType,
             quantity: HKQuantity(unit: .meter(), doubleValue: meters),
             start: heldStart,
             end: heldEnd
         )
-        held.add([sample]) { _, _ in finish() }
     }
 
-    private static func verifyWrittenDistance(_ meters: Double, in workout: HKWorkout) {
+    /// Adds `sample` to the held builder, trying again a couple of times
+    /// before giving up, since the workout cannot take it once finished.
+    private func addDistance(
+        _ sample: HKQuantitySample,
+        to held: HKLiveWorkoutBuilder,
+        attempt: Int = 1,
+        completion: @escaping (Bool) -> Void
+    ) {
+        held.add([sample]) { [weak self] success, _ in
+            guard !success, attempt < Self.distanceAddAttempts, let self else {
+                completion(success)
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt)) {
+                self.addDistance(sample, to: held, attempt: attempt + 1, completion: completion)
+            }
+        }
+    }
+
+    private static let distanceAddAttempts = 3
+
+    /// A distance the workout would not take, saved on its own so Health's
+    /// daily distance still counts it.
+    private func saveLooseDistance(_ sample: HKQuantitySample) {
+        healthStore.save(sample) { _, _ in }
+    }
+
+    /// Returns whether Health holds the figure written.
+    @discardableResult
+    private static func verifyWrittenDistance(_ meters: Double, in workout: HKWorkout) -> Bool {
         let saved = workout.statistics(for: distanceType)?
             .sumQuantity()?.doubleValue(for: .meter())
             ?? workout.totalDistance?.doubleValue(for: .meter())
             ?? 0
         let tolerance = max(10, meters * 0.02)
-        if abs(saved - meters) > tolerance {
+        guard abs(saved - meters) <= tolerance else {
             UserDefaults.standard.set(true, forKey: selfWrittenFailedKey)
+            return false
         }
+        return true
     }
 
 }
@@ -482,7 +553,9 @@ extension WatchRunHealthKitController {
             distanceSeries: distanceSeries,
             plan: plan,
             planCursor: plan == nil ? nil : planCursor,
-            settings: settings
+            settings: settings,
+            selfWrittenDistance: selfWrittenDistance,
+            systemDistanceOffset: systemDistanceOffset
         ))
     }
 
@@ -518,10 +591,30 @@ extension WatchRunHealthKitController {
                 let recoveredBuilder = recovered.associatedWorkoutBuilder()
                 recovered.delegate = self
                 recoveredBuilder.delegate = self
-                recoveredBuilder.dataSource = HKLiveWorkoutDataSource(
+                let dataSource = HKLiveWorkoutDataSource(
                     healthStore: self.healthStore,
                     workoutConfiguration: recovered.workoutConfiguration
                 )
+                // A run that wrote its own distance keeps doing so: the system's
+                // collection stays off and the pedometer carries on from the
+                // recorded figure, so Health never replaces it and the final
+                // treadmill figure can still be lower. With the pedometer gone,
+                // the system collects again on top of what was recorded.
+                self.pedometerDistance = 0
+                self.lastPedometerDistance = nil
+                self.systemDistanceOffset = snapshot.systemDistanceOffset ?? 0
+                self.selfWrittenDistance = false
+                if place == .indoor, snapshot.selfWrittenDistance == true {
+                    if Self.pedometerCanMeasureDistance {
+                        self.selfWrittenDistance = true
+                        dataSource.disableCollection(for: Self.distanceType)
+                        self.pedometerDistance = snapshot.distanceMeters
+                    } else {
+                        self.systemDistanceOffset = snapshot.distanceMeters
+                    }
+                }
+                self.liveDataSource = dataSource
+                recoveredBuilder.dataSource = dataSource
                 self.session = recovered
                 self.builder = recoveredBuilder
                 self.clientId = snapshot.clientId
@@ -550,8 +643,14 @@ extension WatchRunHealthKitController {
                 let paused = recovered.state == .paused
                 self.pausedByAutoPause = paused && snapshot.pausedByAutoPause
                 var current = WatchRunMetrics()
-                current.distanceMeters = recoveredBuilder.statistics(for: Self.distanceType)?
-                    .sumQuantity()?.doubleValue(for: .meter()) ?? snapshot.distanceMeters
+                if self.selfWrittenDistance {
+                    current.distanceMeters = snapshot.distanceMeters
+                } else {
+                    let offset = self.systemDistanceOffset
+                    let collected = recoveredBuilder.statistics(for: Self.distanceType)?
+                        .sumQuantity()?.doubleValue(for: .meter())
+                    current.distanceMeters = collected.map { $0 + offset } ?? snapshot.distanceMeters
+                }
                 current.activeEnergyKcal = recoveredBuilder.statistics(for: Self.energyType)?
                     .sumQuantity()?.doubleValue(for: .kilocalorie()) ?? snapshot.activeEnergyKcal
                 self.metrics = current
@@ -693,6 +792,9 @@ extension WatchRunHealthKitController {
         if activeElapsed - (distanceSeries.last?.first ?? -Self.distanceSeriesInterval) >= Self.distanceSeriesInterval {
             distanceSeries.append([activeElapsed.rounded(), pedometerDistance])
         }
+        // Health holds none of this distance, so the snapshot is what a
+        // relaunch picks it up from.
+        persistSnapshot()
         onMetrics?(updated)
     }
 
@@ -702,7 +804,11 @@ extension WatchRunHealthKitController {
     private func fallBackToSystemDistance() {
         guard selfWrittenDistance else { return }
         selfWrittenDistance = false
+        // Health never collected what the pedometer measured so far: keep it
+        // as a floor under what the system collects from here on.
+        systemDistanceOffset = pedometerDistance
         liveDataSource?.enableCollection(for: Self.distanceType, predicate: nil)
+        persistSnapshot(force: true)
     }
 
     fileprivate func stopMotion() {
@@ -889,7 +995,9 @@ extension WatchRunHealthKitController: HKLiveWorkoutBuilderDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var updated = self.metrics
-            if !self.selfWrittenDistance, let distance { updated.distanceMeters = distance }
+            if !self.selfWrittenDistance, let distance {
+                updated.distanceMeters = self.systemDistanceOffset + distance
+            }
             if let energy { updated.activeEnergyKcal = energy }
             if let bpm, bpm > 0 { updated.heartRate = bpm }
             let reading = heartRateCollected ? updated.heartRate : nil

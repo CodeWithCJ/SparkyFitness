@@ -795,8 +795,6 @@ final class WatchRunStore: ObservableObject {
             result.metrics.distanceMeters = meters
         }
         pendingResult = nil
-        // The Health workout was held for this answer: write it with the final figure.
-        healthKit.finishHeld(distanceMeters: result.metrics.distanceMeters)
         // Say the finish once the distance is settled (the machine's figure, if
         // given), and before the run is handed to the phone, as on the other
         // finish path: a cue confirmed behind the phone's filing is heard twice.
@@ -807,9 +805,19 @@ final class WatchRunStore: ObservableObject {
             usesMiles: usesMiles
         )
         cue(programDoneText(completed: result.planCompleted).map { "\(finished) \($0)" } ?? finished)
-        // The snapshot stays until the message is durably queued.
-        if WatchSessionManager.shared.sendRunFinished(result) {
-            WatchRunSnapshotStore.clear()
+        let queued = WatchSessionManager.shared.sendRunFinished(result)
+        // The Health workout was held for this answer: write it with the final
+        // figure. The snapshot stays until the message is durably queued and
+        // Health has the workout, so a kill while it is being written still
+        // sends the run on relaunch (the phone files a run id once).
+        let clientId = result.clientId
+        // A distance Health would not take is already handled there (retried,
+        // then saved on its own, and later runs go back to Apple's collection).
+        healthKit.finishHeld(distanceMeters: result.metrics.distanceMeters) { _ in
+            // A run started since then has its own snapshot: leave that one.
+            if queued, WatchRunSnapshotStore.load()?.clientId == clientId {
+                WatchRunSnapshotStore.clear()
+            }
         }
         metrics = result.metrics
         summary = Summary(kind: result.kind, place: result.place, elapsed: pendingElapsed, metrics: result.metrics, saved: true)
