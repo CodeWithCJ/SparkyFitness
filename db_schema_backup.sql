@@ -4355,6 +4355,42 @@ CREATE TABLE public.rate_limit (
 
 
 --
+-- Name: recipe_food_mappings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_food_mappings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    provider_id uuid NOT NULL,
+    source_food_key text NOT NULL,
+    food_id uuid NOT NULL,
+    variant_id uuid NOT NULL,
+    quantity_per_source_unit double precision NOT NULL,
+    unit text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT recipe_food_mappings_quantity_per_source_unit_check CHECK (((quantity_per_source_unit > (0)::double precision) AND (quantity_per_source_unit < 'Infinity'::double precision))),
+    CONSTRAINT recipe_food_mappings_unit_check CHECK ((length(unit) > 0))
+);
+
+
+--
+-- Name: recipe_imports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_imports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    meal_id uuid NOT NULL,
+    provider_id uuid NOT NULL,
+    source jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT recipe_imports_source_check CHECK ((jsonb_typeof(source) = 'object'::text))
+);
+
+
+--
 -- Name: routes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7128,6 +7164,38 @@ ALTER TABLE ONLY public.rate_limit
 
 
 --
+-- Name: recipe_food_mappings recipe_food_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_user_id_provider_id_source_food_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_user_id_provider_id_source_food_key_key UNIQUE (user_id, provider_id, source_food_key);
+
+
+--
+-- Name: recipe_imports recipe_imports_meal_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_meal_id_key UNIQUE (meal_id);
+
+
+--
+-- Name: recipe_imports recipe_imports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: routes routes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8594,6 +8662,41 @@ CREATE INDEX idx_pregnancy_photos_user_id ON public.pregnancy_photos USING btree
 --
 
 CREATE INDEX idx_rate_limit_last_request ON public.rate_limit USING btree (last_request);
+
+
+--
+-- Name: idx_recipe_food_mappings_food; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_food ON public.recipe_food_mappings USING btree (food_id);
+
+
+--
+-- Name: idx_recipe_food_mappings_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_provider ON public.recipe_food_mappings USING btree (provider_id);
+
+
+--
+-- Name: idx_recipe_food_mappings_variant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_variant ON public.recipe_food_mappings USING btree (variant_id);
+
+
+--
+-- Name: idx_recipe_imports_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_imports_provider ON public.recipe_imports USING btree (provider_id);
+
+
+--
+-- Name: idx_recipe_imports_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_imports_user ON public.recipe_imports USING btree (user_id);
 
 
 --
@@ -10838,6 +10941,62 @@ ALTER TABLE ONLY public.profiles
 
 
 --
+-- Name: recipe_food_mappings recipe_food_mappings_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_provider_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.external_data_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.food_variants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_meal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_meal_id_fkey FOREIGN KEY (meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_provider_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.external_data_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: routes routes_source_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12861,6 +13020,20 @@ CREATE POLICY owner_policy ON public.pregnancy_photos USING ((user_id = public.a
 
 
 --
+-- Name: recipe_food_mappings owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.recipe_food_mappings USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: recipe_imports owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.recipe_imports USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
 -- Name: routes owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -13005,6 +13178,18 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.rate_limit ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: recipe_food_mappings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.recipe_food_mappings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: recipe_imports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.recipe_imports ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: routes; Type: ROW SECURITY; Schema: public; Owner: -
@@ -14961,6 +15146,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rate_limit TO sparky_app;
+
+
+--
+-- Name: TABLE recipe_food_mappings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipe_food_mappings TO sparky_app;
+
+
+--
+-- Name: TABLE recipe_imports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipe_imports TO sparky_app;
 
 
 --
