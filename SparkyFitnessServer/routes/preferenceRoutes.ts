@@ -1,5 +1,6 @@
 import express, { type RequestHandler } from 'express';
 import {
+  FEATURE_PLATFORMS,
   featureChoicesPatchSchema,
   featureStorage,
   isFeatureKey,
@@ -82,13 +83,32 @@ const requireOwnFeatures = createRequireSelfActor({
 /**
  * @swagger
  * /user-preferences/features:
+ *   get:
+ *     summary: Read the optional feature choices
+ *     description: >-
+ *       The features the person turned on or off, one map per platform (web,
+ *       mobile); a feature not listed is at its default. Someone acting for
+ *       the person can read them. Cycle tracking is not here: it has its own
+ *       setting (GET /v2/cycle/settings).
+ *     tags: [Goals & Personalization]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The stored choices.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FeatureChoicesResponse'
+ *       403:
+ *         description: Acting for someone whose grant does not cover their settings.
  *   patch:
  *     summary: Turn optional features on or off
  *     description: >-
- *       Merges the given choices into feature_choices. true or false sets a
- *       feature, null resets it to its default, and features not sent keep
- *       their value. Owner only. Cycle tracking has its own setting
- *       (PUT /v2/cycle/settings) and is refused here.
+ *       Merges the given choices into one platform's map, or both. true or
+ *       false sets a feature, null resets it to its default, and features or
+ *       platforms not sent keep their value. Owner only. Cycle tracking has its
+ *       own setting (PUT /v2/cycle/settings) and is refused here.
  *     tags: [Goals & Personalization]
  *     security:
  *       - cookieAuth: []
@@ -99,27 +119,43 @@ const requireOwnFeatures = createRequireSelfActor({
  *           schema:
  *             type: object
  *             minProperties: 1
- *             maxProperties: 64
- *             additionalProperties:
- *               type: boolean
- *               nullable: true
+ *             additionalProperties: false
+ *             properties:
+ *               web:
+ *                 $ref: '#/components/schemas/FeatureChoicesPlatformPatch'
+ *               mobile:
+ *                 $ref: '#/components/schemas/FeatureChoicesPlatformPatch'
  *     responses:
  *       200:
  *         description: The stored choices after the change.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 feature_choices:
- *                   type: object
- *                   additionalProperties:
- *                     type: boolean
+ *               $ref: '#/components/schemas/FeatureChoicesResponse'
  *       400:
- *         description: Invalid body, a feature with its own setting, or more than 64 stored choices.
+ *         description: Invalid body, a feature with its own setting, or more than 64 stored choices on a platform.
  *       403:
  *         description: Acting on someone else's behalf.
  */
+router.get('/features', authenticate, async (req, res, next) => {
+  try {
+    const choices = await preferenceService.getFeatureChoices(
+      req.authenticatedUserId ?? req.userId,
+      req.userId
+    );
+    if (!choices) {
+      return res.status(403).json({
+        error: "Forbidden: your access doesn't include this person's settings.",
+      });
+    }
+    res.status(200).json({ feature_choices: choices });
+  } catch (error) {
+    // Never defaults: an app shown "no choices" would bring back the features
+    // the person turned off.
+    next(error);
+  }
+});
+
 router.patch(
   '/features',
   authenticate,
@@ -129,13 +165,15 @@ router.patch(
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid feature choices.' });
     }
-    const ownSetting = Object.keys(parsed.data).filter(
-      (key) => isFeatureKey(key) && featureStorage(key) !== 'choices'
+    const ownSetting = FEATURE_PLATFORMS.flatMap((platform) =>
+      Object.keys(parsed.data[platform] ?? {}).filter(
+        (key) => isFeatureKey(key) && featureStorage(key) !== 'choices'
+      )
     );
     if (ownSetting.length > 0) {
       return res.status(400).json({
         error: 'These features have their own setting.',
-        keys: ownSetting,
+        keys: [...new Set(ownSetting)],
       });
     }
     try {

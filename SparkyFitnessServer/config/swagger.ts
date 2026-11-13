@@ -1576,14 +1576,36 @@ const options = {
               description:
                 'When true, food search defaults to the aggregated "All Providers" mode rather than a single provider. Held separately from default_food_data_provider_id, which is a uuid and cannot store the aggregated sentinel, so the single-provider choice survives turning this off. Ignored while fewer than two food providers are active.',
             },
+          },
+        },
+        FeatureChoicesResponse: {
+          type: 'object',
+          required: ['feature_choices'],
+          properties: {
             feature_choices: {
               type: 'object',
-              additionalProperties: { type: 'boolean' },
-              readOnly: true,
               description:
-                'Optional features the person turned on or off explicitly; a feature not listed is at its default. Written only by PATCH /user-preferences/features, never by PUT or POST.',
+                'Optional features the person turned on or off explicitly, one map per platform: web is the website on any screen, mobile is the native app with its watch pages and widgets. A feature not listed is at its default. Read and written only through /user-preferences/features.',
+              properties: {
+                web: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+                mobile: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+              },
             },
           },
+        },
+        FeatureChoicesPlatformPatch: {
+          type: 'object',
+          minProperties: 1,
+          maxProperties: 64,
+          description:
+            'true or false sets a feature, null resets it to its default; features not sent keep their value.',
+          additionalProperties: { type: 'boolean', nullable: true },
         },
         OnboardingStatus: {
           type: 'object',

@@ -665,7 +665,7 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
 -- default_temperature_unit inherits the existing preference read/write rules.
 -- oral_care_daily_target and oral_care_target_seconds inherit the existing preference read/write rules.
--- feature_choices (optional features, #3487) inherits the existing preference read/write rules.
+-- feature_choices (optional features per platform, #3487) inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)

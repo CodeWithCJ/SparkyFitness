@@ -128,9 +128,10 @@ export const userPreferencesSchema = z.object({
   // Oral care goal (#1862): brushes per day and target seconds per brush.
   oral_care_daily_target: z.number().int().min(1).max(6),
   oral_care_target_seconds: z.number().int().min(30).max(600),
-  // Manually added (#3487): explicit optional-feature choices, written only by
-  // PATCH /api/user-preferences/features. Optional so a response from an older
-  // server still parses. Keep on regen.
+  // Manually added (#3487): explicit optional-feature choices per platform
+  // ({ web, mobile }), read and written only through
+  // /api/user-preferences/features, never in the general preferences payload.
+  // Optional for that reason. Keep on regen.
   feature_choices: featureChoicesSchema.optional(),
 });
 

@@ -3,6 +3,7 @@ export * from './schemas/api/AlcoholWeek.api.zod.ts';
 export * from './schemas/api/VoiceTranscription.api.zod.ts';
 export * from './schemas/api/ApiKeys.api.zod.ts';
 export * from './schemas/api/Backup.api.zod.ts';
+export * from './schemas/api/FeatureChoices.api.zod.ts';
 export * from './schemas/api/CaffeineKinetics.api.zod.ts';
 export * from './schemas/api/CanadianNutrientFile.api.zod.ts';
 export * from './schemas/api/Livsmedelsverket.api.zod.ts';

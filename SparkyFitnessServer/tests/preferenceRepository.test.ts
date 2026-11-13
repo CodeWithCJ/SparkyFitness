@@ -463,26 +463,39 @@ describe('preferenceRepository mergeFeatureChoices', () => {
     vi.clearAllMocks();
   });
 
-  it('merges in one statement, capped at 64 stored keys', async () => {
+  it('merges each platform in one statement, capped at 64 keys each', async () => {
+    const stored = { web: { labResults: false }, mobile: {} };
     mockClient.query.mockResolvedValue({
-      rows: [{ feature_choices: { labResults: false } }],
+      rows: [{ feature_choices: stored }],
       rowCount: 1,
     });
-    const patch = { labResults: false, medications: null };
+    const patch = { web: { labResults: false, medications: null } };
     const result = await preferenceRepository.mergeFeatureChoices(
       'user-1',
       patch
     );
-    expect(result).toEqual({ status: 'ok', choices: { labResults: false } });
+    expect(result).toEqual({ status: 'ok', choices: stored });
     expect(mockClient.query).toHaveBeenCalledTimes(1);
     const [sql, params] = mockClient.query.mock.calls[0];
-    expect(sql).toContain(
-      'SET feature_choices = jsonb_strip_nulls(feature_choices || $2::jsonb)'
+    const flat = String(sql).replace(/\s+/g, ' ');
+    const merged = (platform: string, param: string) =>
+      `jsonb_strip_nulls( COALESCE(feature_choices -> '${platform}', '{}'::jsonb) || ${param}::jsonb )`;
+    // The merge reads the row being updated, so a concurrent change that
+    // commits first is merged into rather than overwritten.
+    expect(flat).not.toMatch(/WITH|FROM merged/);
+    expect(flat).toContain(`'web', ${merged('web', '$2')}`);
+    expect(flat).toContain(`'mobile', ${merged('mobile', '$3')}`);
+    expect(flat).toContain(`jsonb_object_keys(${merged('web', '$2')})) <= $4`);
+    expect(flat).toContain(
+      `jsonb_object_keys(${merged('mobile', '$3')})) <= $4`
     );
-    expect(sql).toMatch(
-      /jsonb_object_keys\(\s*jsonb_strip_nulls\(feature_choices \|\| \$2::jsonb\)\s*\)\)\s*<= \$3/
-    );
-    expect(params).toEqual(['user-1', JSON.stringify(patch), 64]);
+    // A platform not in the patch merges nothing, so it keeps its choices.
+    expect(params).toEqual([
+      'user-1',
+      JSON.stringify(patch.web),
+      JSON.stringify({}),
+      64,
+    ]);
     expect(getClient).toHaveBeenCalledWith('user-1');
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
@@ -492,7 +505,7 @@ describe('preferenceRepository mergeFeatureChoices', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce({ rows: [{ '?column?': 1 }], rowCount: 1 });
     const result = await preferenceRepository.mergeFeatureChoices('user-1', {
-      labResults: false,
+      web: { labResults: false },
     });
     expect(result).toEqual({ status: 'tooMany' });
     expect(mockClient.query.mock.calls[1]).toEqual([
@@ -505,7 +518,7 @@ describe('preferenceRepository mergeFeatureChoices', () => {
   it('reports noRow when the user has no preferences row', async () => {
     mockClient.query.mockResolvedValue({ rows: [], rowCount: 0 });
     const result = await preferenceRepository.mergeFeatureChoices('user-1', {
-      labResults: false,
+      web: { labResults: false },
     });
     expect(result).toEqual({ status: 'noRow' });
     expect(mockClient.release).toHaveBeenCalledTimes(1);
@@ -514,7 +527,54 @@ describe('preferenceRepository mergeFeatureChoices', () => {
   it('releases the client when the query fails', async () => {
     mockClient.query.mockRejectedValue(new Error('connection lost'));
     await expect(
-      preferenceRepository.mergeFeatureChoices('user-1', { labResults: false })
+      preferenceRepository.mergeFeatureChoices('user-1', {
+        mobile: { labResults: false },
+      })
+    ).rejects.toThrow('connection lost');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('preferenceRepository getFeatureChoices', () => {
+  let mockClient: {
+    query: ReturnType<typeof vi.fn>;
+    release: ReturnType<typeof vi.fn>;
+  };
+  beforeEach(() => {
+    mockClient = { query: vi.fn(), release: vi.fn() };
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
+  });
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reads the column as the person asking, so a delegate passes RLS', async () => {
+    const stored = { web: {}, mobile: { labResults: false } };
+    mockClient.query.mockResolvedValue({ rows: [{ feature_choices: stored }] });
+    expect(
+      await preferenceRepository.getFeatureChoices('owner-1', 'delegate-1')
+    ).toEqual(stored);
+    expect(getClient).toHaveBeenCalledWith('owner-1', 'delegate-1');
+    expect(mockClient.query).toHaveBeenCalledWith(
+      'SELECT feature_choices FROM user_preferences WHERE user_id = $1',
+      ['owner-1']
+    );
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns null when the person has no preferences row', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+    expect(
+      await preferenceRepository.getFeatureChoices('owner-1', 'owner-1')
+    ).toBeNull();
+  });
+
+  it('releases the client and passes on a failed read', async () => {
+    mockClient.query.mockRejectedValue(new Error('connection lost'));
+    await expect(
+      preferenceRepository.getFeatureChoices('owner-1', 'owner-1')
     ).rejects.toThrow('connection lost');
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });

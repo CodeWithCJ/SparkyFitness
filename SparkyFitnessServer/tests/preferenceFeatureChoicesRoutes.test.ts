@@ -25,7 +25,7 @@ vi.mock('../middleware/authMiddleware.js', () => ({
   },
 }));
 vi.mock('../services/preferenceService.js', () => ({
-  default: { updateFeatureChoices: vi.fn() },
+  default: { updateFeatureChoices: vi.fn(), getFeatureChoices: vi.fn() },
 }));
 vi.mock('../services/AdaptiveTdeeService.js', () => ({
   clearUserTdeeCache: vi.fn(),
@@ -45,11 +45,64 @@ function patch(body: unknown, headers: Record<string, string> = {}) {
     .send(body);
 }
 
+const STORED = { web: { labResults: false }, mobile: {} };
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(preferenceService.updateFeatureChoices).mockResolvedValue({
     status: 'ok',
-    choices: { labResults: false },
+    choices: STORED,
+  });
+  vi.mocked(preferenceService.getFeatureChoices).mockResolvedValue(STORED);
+});
+
+describe('GET /user-preferences/features', () => {
+  it('requires authentication', async () => {
+    const response = await request(app).get('/api/user-preferences/features');
+    expect(response.status).toBe(401);
+  });
+
+  it('returns the owner’s choices for both platforms', async () => {
+    const response = await request(app)
+      .get('/api/user-preferences/features')
+      .set({ 'x-test-user': OWNER });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ feature_choices: STORED });
+    expect(preferenceService.getFeatureChoices).toHaveBeenCalledWith(
+      OWNER,
+      OWNER
+    );
+  });
+
+  it('lets someone acting on the owner’s behalf read them', async () => {
+    const response = await request(app)
+      .get('/api/user-preferences/features')
+      .set({ 'x-test-user': OWNER, 'x-test-actor': 'delegate-1' });
+    expect(response.status).toBe(200);
+    expect(preferenceService.getFeatureChoices).toHaveBeenCalledWith(
+      'delegate-1',
+      OWNER
+    );
+  });
+
+  it('refuses someone whose grant does not cover the person’s settings', async () => {
+    vi.mocked(preferenceService.getFeatureChoices).mockResolvedValue(null);
+    const response = await request(app)
+      .get('/api/user-preferences/features')
+      .set({ 'x-test-user': OWNER, 'x-test-actor': 'delegate-1' });
+    expect(response.status).toBe(403);
+    expect(response.body.feature_choices).toBeUndefined();
+  });
+
+  it('answers an error, never default choices, when the read fails', async () => {
+    vi.mocked(preferenceService.getFeatureChoices).mockRejectedValue(
+      new Error('database down')
+    );
+    const response = await request(app)
+      .get('/api/user-preferences/features')
+      .set({ 'x-test-user': OWNER });
+    expect(response.status).toBe(500);
+    expect(response.body.feature_choices).toBeUndefined();
   });
 });
 
@@ -57,15 +110,18 @@ describe('PATCH /user-preferences/features', () => {
   it('requires authentication', async () => {
     const response = await request(app)
       .patch('/api/user-preferences/features')
-      .send({ labResults: false });
+      .send({ web: { labResults: false } });
     expect(response.status).toBe(401);
   });
 
-  it('merges the patch for the owner and returns the stored choices', async () => {
-    const body = { labResults: false, futureFeature: null };
+  it.each([
+    { web: { labResults: false, futureFeature: null } },
+    { mobile: { medications: true } },
+    { web: { labResults: false }, mobile: { labResults: true } },
+  ])('merges %j for the owner and returns the stored choices', async (body) => {
     const response = await patch(body);
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ feature_choices: { labResults: false } });
+    expect(response.body).toEqual({ feature_choices: STORED });
     expect(preferenceService.updateFeatureChoices).toHaveBeenCalledWith(
       OWNER,
       body
@@ -74,7 +130,7 @@ describe('PATCH /user-preferences/features', () => {
 
   it('refuses someone acting on the owner’s behalf', async () => {
     const response = await patch(
-      { labResults: false },
+      { web: { labResults: false } },
       { 'x-test-actor': 'delegate-1' }
     );
     expect(response.status).toBe(403);
@@ -86,14 +142,19 @@ describe('PATCH /user-preferences/features', () => {
 
   it.each([
     ['an empty patch', {}],
+    ['choices without a platform', { labResults: false }],
+    ['a platform it does not know', { watch: { labResults: false } }],
+    ['a platform with no keys', { mobile: {} }],
     ['an array', [true]],
-    ['a malformed key', { 'Lab-Results': false }],
-    ['a value that is not a boolean', { labResults: 'off' }],
+    ['a malformed key', { web: { 'Lab-Results': false } }],
+    ['a value that is not a boolean', { web: { labResults: 'off' } }],
     [
-      'more than 64 keys',
-      Object.fromEntries(
-        Array.from({ length: 65 }, (_, index) => [`feature${index}`, true])
-      ),
+      'more than 64 keys on a platform',
+      {
+        mobile: Object.fromEntries(
+          Array.from({ length: 65 }, (_, index) => [`feature${index}`, true])
+        ),
+      },
     ],
   ])('rejects %s', async (_label, body) => {
     const response = await patch(body);
@@ -103,9 +164,9 @@ describe('PATCH /user-preferences/features', () => {
   });
 
   it.each([
-    { cycle: true },
-    { cycle: null },
-    { cycle: false, labResults: true },
+    { web: { cycle: true } },
+    { mobile: { cycle: null } },
+    { web: { cycle: false, labResults: true }, mobile: { cycle: true } },
   ])('refuses cycle, which has its own setting: %j', async (body) => {
     const response = await patch(body);
     expect(response.status).toBe(400);
@@ -113,11 +174,11 @@ describe('PATCH /user-preferences/features', () => {
     expect(preferenceService.updateFeatureChoices).not.toHaveBeenCalled();
   });
 
-  it('answers 400 when the stored choices would pass the limit', async () => {
+  it('answers 400 when a platform would pass the limit', async () => {
     vi.mocked(preferenceService.updateFeatureChoices).mockResolvedValue({
       status: 'tooMany',
     });
-    const response = await patch({ labResults: false });
+    const response = await patch({ web: { labResults: false } });
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Too many feature choices.');
   });
@@ -126,7 +187,7 @@ describe('PATCH /user-preferences/features', () => {
     vi.mocked(preferenceService.updateFeatureChoices).mockResolvedValue({
       status: 'noRow',
     });
-    const response = await patch({ labResults: false });
+    const response = await patch({ web: { labResults: false } });
     expect(response.status).toBe(500);
   });
 });
