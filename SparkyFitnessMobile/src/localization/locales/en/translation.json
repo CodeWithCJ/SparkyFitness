@@ -6086,7 +6086,16 @@
     "roundRest": "Round Rest",
     "rest": "Rest",
     "round": "Round",
-    "set": "Set"
+    "set": "Set",
+    "allSets": "All sets",
+    "roundRestPeriod": "Round rest period",
+    "restPeriod": "Rest period",
+    "pageHint": "Set it for every set, or one set at a time. New exercises start from your default rest.",
+    "lessLabel": "Subtract 15 seconds",
+    "moreLabel": "Add 15 seconds",
+    "less": "− 15 s",
+    "more": "+ 15 s",
+    "pageFootnote": "While resting, the timer is a taller bar inside the workout screen, and sets stay visible below it."
   },
   "pregnancyDueDate": {
     "errors": {
