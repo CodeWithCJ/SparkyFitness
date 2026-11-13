@@ -70,6 +70,9 @@ final class WorkoutSessionStore: ObservableObject {
     /// snapshot: the rest itself is not either, so after a relaunch the next
     /// update has to be free to bring the phone's back.
     private var lastPhoneRest: PhoneRest?
+    /// When the wearer last skipped a rest here, until another rest starts.
+    /// See `StaleRest`.
+    private var restSkippedAt: Date?
     @Published private(set) var latestBpm: Double?
     @Published private(set) var activeEnergyKcal: Double?
     @Published private(set) var elapsedSeconds: Int = 0
@@ -344,8 +347,17 @@ final class WorkoutSessionStore: ObservableObject {
             .subtracting(phoneCompleted)
             .filter { targets[$0] != nil }
         if let phoneRest, unseenHere.isEmpty, phoneRest != lastPhoneRest {
-            follow(phoneRest)
             lastPhoneRest = phoneRest
+            if case let .resting(endsAt, durationSeconds) = phoneRest,
+               StaleRest.isStale(endsAt: endsAt, durationSeconds: durationSeconds, skippedAt: restSkippedAt) {
+                // The wearer skipped this rest before the phone reported it,
+                // so the phone ignored the skip (its rest ended at another
+                // time than the watch's guess). Skip it there too, by its
+                // own deadline this time, rather than bring it back here.
+                onRestChangedHere?(endsAt, nil)
+            } else {
+                follow(phoneRest)
+            }
         }
         if let setTimers { applyPhoneTimers(setTimers) }
         persistSnapshot(reportedEnergyKcal: nil)
@@ -570,6 +582,7 @@ final class WorkoutSessionStore: ObservableObject {
         phoneConfirmedIds = []
         pendingUnlogs = []
         lastPhoneRest = nil
+        restSkippedAt = nil
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
@@ -707,6 +720,7 @@ final class WorkoutSessionStore: ObservableObject {
         pendingUnlogs = []
         pendingSetCompletion = nil
         lastPhoneRest = nil
+        restSkippedAt = nil
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
@@ -1292,6 +1306,7 @@ final class WorkoutSessionStore: ObservableObject {
     func skipRest() {
         guard let previous = restEndsAt, restPausedRemaining == nil else { return }
         stopRestTimer()
+        restSkippedAt = Date()
         onRestChangedHere?(previous, nil)
     }
 
@@ -1306,6 +1321,7 @@ final class WorkoutSessionStore: ObservableObject {
         let newEndsAt = endsAt.addingTimeInterval(TimeInterval(delta))
         guard newEndsAt > Date() else {
             stopRestTimer()
+            restSkippedAt = Date()
             onRestChangedHere?(endsAt, nil)
             return
         }
@@ -1698,6 +1714,7 @@ final class WorkoutSessionStore: ObservableObject {
 
     private func startRest(until endsAt: Date, durationSeconds: Int) {
         restTimer?.invalidate()
+        restSkippedAt = nil
         restPausedRemaining = nil
         restEndsAt = endsAt
         restDurationSeconds = max(1, durationSeconds)
