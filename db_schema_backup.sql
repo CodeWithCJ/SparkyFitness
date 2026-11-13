@@ -5294,6 +5294,7 @@ CREATE TABLE public.user_preferences (
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
@@ -5306,6 +5307,8 @@ CREATE TABLE public.user_preferences (
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
     CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
     CONSTRAINT user_preferences_default_temperature_unit_check CHECK ((default_temperature_unit = ANY (ARRAY['celsius'::text, 'fahrenheit'::text]))),
+    CONSTRAINT user_preferences_feature_choices_no_cycle CHECK (((NOT (COALESCE((feature_choices -> 'web'::text), '{}'::jsonb) ? 'cycle'::text)) AND (NOT (COALESCE((feature_choices -> 'mobile'::text), '{}'::jsonb) ? 'cycle'::text)))),
+    CONSTRAINT user_preferences_feature_choices_platforms CHECK (((jsonb_typeof(feature_choices) = 'object'::text) AND (((feature_choices - 'web'::text) - 'mobile'::text) = '{}'::jsonb) AND (jsonb_typeof(COALESCE((feature_choices -> 'web'::text), '{}'::jsonb)) = 'object'::text) AND (jsonb_typeof(COALESCE((feature_choices -> 'mobile'::text), '{}'::jsonb)) = 'object'::text))),
     CONSTRAINT user_preferences_hr_zone_custom_floors_check CHECK (((hr_zone_custom_floors IS NULL) OR (array_length(hr_zone_custom_floors, 1) = 5))),
     CONSTRAINT user_preferences_hr_zone_display_count_check CHECK ((hr_zone_display_count = ANY (ARRAY[4, 5]))),
     CONSTRAINT user_preferences_hr_zone_method_check CHECK ((hr_zone_method = ANY (ARRAY['percent_max'::text, 'heart_rate_reserve'::text, 'custom'::text]))),
@@ -5493,6 +5496,13 @@ COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPho
 --
 
 COMMENT ON COLUMN public.user_preferences.default_temperature_unit IS 'Unit temperatures are shown in: celsius or fahrenheit. Stored temperatures stay in °C.';
+
+
+--
+-- Name: COLUMN user_preferences.feature_choices; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.feature_choices IS 'Explicit on/off choices for optional features, one map per platform ({"web": {...}, "mobile": {...}}), keyed by feature id (the shared OPTIONAL_FEATURES registry; well-formed ids a newer app knows are kept too). A missing platform or key uses the registry default; cycle is never stored here. Read and written only through /api/user-preferences/features. UI only: no route reads it to block access.';
 
 
 --
