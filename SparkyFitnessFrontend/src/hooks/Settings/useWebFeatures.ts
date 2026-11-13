@@ -70,9 +70,10 @@ export type CycleSwitchState =
   'ready' | 'loading' | 'loadFailed' | 'actingOnBehalf';
 
 /**
- * The cycle tracking switch, shared by Settings → Features and Settings →
- * Cycle & Pregnancy so both behave the same. Turning it on the first time
- * opens the setup wizard on /cycle; after that, cycle comes back as it was.
+ * The cycle tracking switch of Settings → Features, the only place cycle is
+ * turned on or off (Settings → Cycle & Pregnancy reads its state and points
+ * there). Turning it on the first time opens the setup wizard on /cycle;
+ * after that, cycle comes back as it was.
  */
 export function useCycleSwitch() {
   const { isActingOnBehalf } = useActiveUser();

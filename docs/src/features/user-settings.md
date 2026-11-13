@@ -28,7 +28,7 @@ The Settings page is organized into four tabs. Each tab contains collapsible sec
 
 ## Wellness
 
-- **Cycle & Pregnancy**: cycle tracking and pregnancy-mode configuration; the full feature lives in the [Cycle Hub](/features/cycle-hub/). Its on/off switch is the same as in Features, and the rest of its settings show once cycle is on and set up
+- **Cycle & Pregnancy**: cycle tracking and pregnancy-mode configuration; the full feature lives in the [Cycle Hub](/features/cycle-hub/). Cycle is turned on or off in Features, and the rest of its settings show once cycle is on and set up
 - **Guided Workouts**: enable guided mode and pick the voice for coached workout playback ([Guided Workouts](/features/exercises/guided-workouts))
 - **Custom Categories**: create the extra measurement categories (numeric or text, with their own units) that appear on the [Measurements](/features/measurements) tab of Check-In
 

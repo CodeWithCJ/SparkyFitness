@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import type { SharedCycleSettings } from '@workspace/shared';
 import type { CycleSwitchState } from '@/hooks/Settings/useWebFeatures';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
@@ -56,13 +57,17 @@ const cycleRow = (
 
 function renderSettings() {
   return render(
-    <Accordion type="multiple" defaultValue={['cycle-settings']}>
-      <AccordionItem value="cycle-settings">
-        <CycleSettings />
-      </AccordionItem>
-    </Accordion>
+    <MemoryRouter>
+      <Accordion type="multiple" defaultValue={['cycle-settings']}>
+        <AccordionItem value="cycle-settings">
+          <CycleSettings />
+        </AccordionItem>
+      </Accordion>
+    </MemoryRouter>
   );
 }
+
+const featuresLink = () => screen.getByRole('link', { name: 'Open Features' });
 
 const saveButton = () =>
   screen.queryByRole('button', { name: 'Save Preferences' });
@@ -82,16 +87,24 @@ describe('CycleSettings', () => {
     };
   });
 
-  it('writes nothing for someone who never set cycle up, except through the switch', () => {
+  it('has no switch of its own: it points to Features, where cycle is turned on', () => {
+    renderSettings();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Cycle tracking is off. Turn it on in Features.')
+    ).toBeInTheDocument();
+    expect(featuresLink()).toHaveAttribute(
+      'href',
+      '/settings?section=features'
+    );
+  });
+
+  it('writes nothing for someone who never set cycle up', () => {
     renderSettings();
     expect(saveButton()).not.toBeInTheDocument();
     expect(resetButton()).not.toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Enable Cycle & Pregnancy Tracking' })
-    );
-    expect(mockSetOn).toHaveBeenCalledWith(true);
     expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockSetOn).not.toHaveBeenCalled();
   });
 
   it('keeps Save and Reset away while cycle is turned off', () => {
@@ -115,11 +128,14 @@ describe('CycleSettings', () => {
     expect(body).not.toHaveProperty('mark_onboarded');
   });
 
-  it('offers Reset once cycle is set up', () => {
+  it('offers Reset once cycle is set up, and says it is on', () => {
     mockSettings = cycleRow();
     mockCycle = { ...mockCycle, on: true };
     renderSettings();
     expect(resetButton()).toBeInTheDocument();
+    expect(
+      screen.getByText('Cycle tracking is on. You can turn it off in Features.')
+    ).toBeInTheDocument();
   });
 
   it('offers to finish the setup instead of the details while cycle is on but not set up', () => {
@@ -138,8 +154,8 @@ describe('CycleSettings', () => {
     renderSettings();
     expect(saveButton()).not.toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Enable Cycle & Pregnancy Tracking' })
-    ).toBeDisabled();
+      screen.getByText('Cycle tracking is turned on or off in Features.')
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(mockReload).toHaveBeenCalledTimes(1);
   });

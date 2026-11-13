@@ -1971,8 +1971,10 @@
     "cycle": {
       "title": "Cycle & Pregnancy",
       "description": "Manage reproductive health, menstruation cycles, and pregnancy tracking",
-      "enableLabel": "Enable Cycle & Pregnancy Tracking",
-      "enableHint": "Shows the cycle hub on the website and in the mobile app. The first time, you answer a few questions to set it up.",
+      "switchInFeatures": "Cycle tracking is turned on or off in Features.",
+      "onInFeatures": "Cycle tracking is on. You can turn it off in Features.",
+      "offInFeatures": "Cycle tracking is off. Turn it on in Features.",
+      "openFeatures": "Open Features",
       "mode": "Tracker Mode",
       "bcMethod": "Birth Control",
       "terminology": "Terminology",
