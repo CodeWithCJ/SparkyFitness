@@ -840,6 +840,29 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(mockAccessoryHandles['401'].log).toHaveBeenCalledTimes(1);
   });
 
+  it('walks a multi-set cardio row from duration to distance to RPE', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const cardio = makeExercise('ex-d', 'Running', [
+      makeSet(401, { reps: null, weight: null, duration: 600, distance: 1 }),
+      makeSet(402, { reps: null, weight: null, duration: 600, distance: 1 }),
+    ]);
+    cardio.exercise_snapshot.modality = 'duration_distance';
+    session.exercises.push(cardio);
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-duration-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith(
+      'distance'
+    );
+
+    fireEvent.press(getByTestId('focus-distance-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith('rpe');
+  });
+
   it('ends a completed cardio bar at Done — no Next Set into a second set', () => {
     startWithCardio(true);
     const { getByTestId, queryByText } = renderScreen();

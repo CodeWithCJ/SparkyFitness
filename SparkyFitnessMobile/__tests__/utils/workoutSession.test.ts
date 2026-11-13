@@ -37,6 +37,7 @@ import {
   evaluateExerciseProgression,
   resolveAssumedSetValues,
   alignPreviousSets,
+  previousSetFillPatch,
   resolveLiveAssumedSetValues,
   extractPlannedSetValues,
   stripPlannedSetValues,
@@ -7244,5 +7245,72 @@ describe('upcomingExercises', () => {
 
   it('is empty without an active set', () => {
     expect(upcomingExercises(session, null, {})).toEqual([]);
+  });
+});
+
+describe('previousSetFillPatch', () => {
+  const previous = (
+    overrides: Partial<ExerciseRecentSessionSet>
+  ): ExerciseRecentSessionSet => ({
+    setNumber: 1,
+    setType: 'normal',
+    weight: null,
+    reps: null,
+    ...overrides,
+  });
+
+  it('fills weight and reps for a weight-reps set', () => {
+    expect(
+      previousSetFillPatch(previous({ weight: 80, reps: 8 }), 'weight_reps')
+    ).toEqual({ weight: 80, reps: 8 });
+  });
+
+  it('leaves out a field the previous set lacks', () => {
+    expect(
+      previousSetFillPatch(previous({ weight: 80 }), 'weight_reps')
+    ).toEqual({ weight: 80 });
+    expect(previousSetFillPatch(previous({}), 'weight_reps')).toEqual({});
+  });
+
+  it('fills reps only for reps-only sets and ignores a stray weight on duration rows', () => {
+    expect(previousSetFillPatch(previous({ reps: 12 }), 'reps_only')).toEqual({
+      reps: 12,
+    });
+    expect(
+      previousSetFillPatch(previous({ weight: 5, duration: 45 }), 'duration')
+    ).toEqual({ duration: 45 });
+  });
+
+  it('fills duration and distance for cardio sets', () => {
+    expect(
+      previousSetFillPatch(
+        previous({ duration: 600, distance: 2 }),
+        'duration_distance'
+      )
+    ).toEqual({ duration: 600, distance: 2 });
+  });
+
+  it('never reads reps as seconds for cardio', () => {
+    expect(
+      previousSetFillPatch(previous({ reps: 10 }), 'duration_distance')
+    ).toEqual({});
+    expect(previousSetFillPatch(previous({ reps: 30 }), 'duration')).toEqual({
+      duration: 30,
+    });
+  });
+
+  it('fills weight with duration or distance for loaded holds and carries', () => {
+    expect(
+      previousSetFillPatch(
+        previous({ weight: 20, duration: 30 }),
+        'weight_duration'
+      )
+    ).toEqual({ weight: 20, duration: 30 });
+    expect(
+      previousSetFillPatch(
+        previous({ weight: 40, distance: 0.05 }),
+        'weight_distance'
+      )
+    ).toEqual({ weight: 40, distance: 0.05 });
   });
 });

@@ -754,20 +754,29 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         e.sets.some((s) => String(s.id) === focusedSetId) &&
         rendersCardioEffortForm(e.exercise_snapshot, e.sets.length)
     );
+    const focusedExercise = session.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === focusedSetId)
+    );
+    // A multi-set cardio row has a distance cell after its duration cell, so
+    // it walks duration -> distance -> RPE like the one-set form does.
+    const focusedIsDurationDistance =
+      resolveSnapshotModality(focusedExercise?.exercise_snapshot) ===
+      'duration_distance';
     const nextField = focusedEntryIsCardioForm
       ? focusedField === 'duration'
         ? ('distance' as const)
         : null
       : focusedField === 'weight'
         ? ('reps' as const)
-        : (focusedField === 'reps' || focusedField === 'duration') &&
-            metricColumn === 'rpe'
-          ? ('rpe' as const)
-          : null;
+        : focusedField === 'duration' && focusedIsDurationDistance
+          ? ('distance' as const)
+          : (focusedField === 'reps' ||
+                focusedField === 'duration' ||
+                (focusedField === 'distance' && focusedIsDurationDistance)) &&
+              metricColumn === 'rpe'
+            ? ('rpe' as const)
+            : null;
     const focusedSetCompleted = completedSetIds[focusedSetId] != null;
-    const focusedExercise = session.exercises.find((e) =>
-      e.sets.some((s) => String(s.id) === focusedSetId)
-    );
     const showCalculator =
       focusedField === 'weight' &&
       usesBarbell(focusedExercise?.exercise_snapshot?.equipment);

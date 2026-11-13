@@ -1460,7 +1460,7 @@ function ActiveWorkoutExerciseCard({
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                   {t('workout.sec', { defaultValue: 'Sec' })}
                 </Text>
-                {readOnly && modality === 'duration_distance' && (
+                {(readOnly || isLive) && modality === 'duration_distance' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                     {distanceUnit === 'miles'
                       ? t('workout.mi', { defaultValue: 'mi' })
