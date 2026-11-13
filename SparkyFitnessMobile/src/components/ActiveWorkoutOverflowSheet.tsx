@@ -173,6 +173,7 @@ export default function ActiveWorkoutOverflowSheet({
         label: t('workout.removeFromSuperset', {
           defaultValue: 'Remove from superset',
         }),
+        icon: 'remove-circle',
         onPress: () => {
           onUngroupExercise(entryId);
         },

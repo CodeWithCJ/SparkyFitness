@@ -20,6 +20,7 @@ import { RIR_MAX, RIR_MIN, isBodyweightModality } from '@workspace/shared';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
+import { TableCellInput } from './FocusSetCells';
 import {
   SetCellInput,
   SetSwipeDeleteAction,
@@ -271,6 +272,12 @@ interface ActiveWorkoutSetRowProps {
   ) => void;
   onAddSet?: (entryId: string) => void;
   /**
+   * The focus view's table look (Phone-OtherTypes board): 44 pt rounded value
+   * cells like the stepper rows' instead of the list's flat ones. Same inputs,
+   * drafts and handlers.
+   */
+  focusLook?: boolean;
+  /**
    * Live and edit: register this row's {@link SetRowAccessoryHandle} (keyed by
    * its render key) so the screen's sticky accessory bar can dispatch
    * Next/Log/advance to the focused row. Called with `null` on unmount.
@@ -279,6 +286,37 @@ interface ActiveWorkoutSetRowProps {
     key: string,
     handle: SetRowAccessoryHandle | null
   ) => void;
+}
+
+type CellInputProps = React.ComponentProps<typeof SetCellInput>;
+
+/** `SetCellInput`'s props on the focus view's 44 pt cell (the list's chip-only props are dropped). */
+function FocusCellInput({
+  className: _className,
+  flat: _flat,
+  keyboardType,
+  placeholder,
+  ...rest
+}: CellInputProps) {
+  // The cell fills its column: the list's cells are sized by their callers'
+  // `w-16` / `w-11`, which would shrink these 44 pt chips around the value.
+  return (
+    <View
+      style={{
+        alignSelf: 'stretch',
+        flexGrow: 1,
+        flexShrink: 1,
+        minWidth: 0,
+        paddingHorizontal: 2,
+      }}
+    >
+      <TableCellInput
+        {...rest}
+        keyboardType={keyboardType}
+        placeholder={placeholder}
+      />
+    </View>
+  );
 }
 
 function ActiveWorkoutSetRow({
@@ -312,9 +350,11 @@ function ActiveWorkoutSetRow({
   onActivateRpe,
   onEditFieldChange,
   onAddSet,
+  focusLook = false,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutSetRowProps) {
   const { t } = useTranslation();
+  const CellInput = focusLook ? FocusCellInput : SetCellInput;
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -1030,7 +1070,47 @@ function ActiveWorkoutSetRow({
     setNumberAnchor
   );
 
+  // The focus table's check cell: a 44 pt rounded chip, accent once logged
+  // (like the stepper rows'), a muted tick while it still waits.
+  const focusCheckCell = (
+    done: boolean,
+    onPress: () => void,
+    label: string
+  ) => (
+    <Pressable
+      onPress={onPress}
+      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className={`h-11 w-11 items-center justify-center rounded-[14px] active:opacity-80 ${done ? '' : 'bg-raised'}`}
+      style={done ? { backgroundColor: accentPrimary } : undefined}
+    >
+      <Icon
+        name="checkmark"
+        size={20}
+        color={done ? '#ffffff' : textMuted}
+        weight="bold"
+      />
+    </Pressable>
+  );
+
   const checkControl = (() => {
+    if (focusLook && isLive && !readOnly) {
+      const done = state === 'done';
+      return focusCheckCell(
+        done,
+        done ? () => onUncomplete?.(setId) : handleLog,
+        done
+          ? t('activeWorkout.setRow.incomplete', {
+              defaultValue: 'Un-complete set {{setNumber}}',
+              setNumber: set.set_number,
+            })
+          : t('activeWorkout.setRow.log', {
+              defaultValue: 'Log set {{setNumber}}',
+              setNumber: set.set_number,
+            })
+      );
+    }
     if (state === 'done') {
       if (readOnly) {
         return <CompletionCheck size={28} />;
@@ -1243,7 +1323,7 @@ function ActiveWorkoutSetRow({
       : 'numeric';
   const weightInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={weightInputRef}
         value={isEdit ? editWeightText : weightDraft}
         onChangeText={
@@ -1265,7 +1345,7 @@ function ActiveWorkoutSetRow({
   );
   const repsInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={repsInputRef}
         value={isEdit ? editRepsText : repsDraft}
         onChangeText={
@@ -1293,7 +1373,7 @@ function ActiveWorkoutSetRow({
       : null;
   const distanceInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={distanceInputRef}
         value={isEdit ? editDistanceText : distanceDraft}
         onChangeText={
@@ -1351,7 +1431,7 @@ function ActiveWorkoutSetRow({
       className="flex-1 flex-row items-center justify-center"
       style={{ gap: 4 }}
     >
-      <SetCellInput
+      <CellInput
         inputRef={durationInputRef}
         value={
           stopwatchStartedAt != null
@@ -1424,7 +1504,7 @@ function ActiveWorkoutSetRow({
   // cell being an input.
   const rpeInputCell = showRpeInput ? (
     <View className="w-14 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={rpeInputRef}
         value={rpeDraft}
         onChangeText={isEdit ? handleEditRpeChange : handleEffortTyped}
@@ -1452,9 +1532,9 @@ function ActiveWorkoutSetRow({
     <Pressable
       testID="set-row"
       onLongPress={longPress}
-      className={`flex-row items-center ${isLive ? 'py-2' : 'py-2.5'} px-1 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
+      className={`flex-row items-center ${focusLook ? 'py-1' : isLive ? 'py-2' : 'py-2.5'} px-1 ${isCursor && !focusLook ? 'rounded-xl' : focusLook ? '' : 'bg-background'}`}
       style={
-        isCursor
+        isCursor && !focusLook
           ? { backgroundColor: withAlpha(accentPrimary, 0.12) }
           : undefined
       }
@@ -1513,7 +1593,7 @@ function ActiveWorkoutSetRow({
           </Text>
         )}
       </View>
-      <View className="w-10 items-center">
+      <View className={focusLook ? 'w-11 items-center' : 'w-10 items-center'}>
         {isEdit ? editLastCell : checkControl}
       </View>
     </Pressable>
