@@ -129,4 +129,15 @@ final class WatchPlatesStepTests: XCTestCase {
         let manyPairs = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: [.init(weight: 20, pairs: Int.max)])
         _ = WatchPlates.calculate(targetKg: 100, config: manyPairs)
     }
+
+    func testThirtyTwoBitOverflowingPlateTotalsAreInvalid() {
+        // 10_000 kg plates x 1000 pairs is 10_000_000_000 thousandths, past
+        // Int32.max, where Int is 32-bit on arm64_32 watches.
+        let heavy = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: [.init(weight: 10_000, pairs: 1000)])
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 100, config: heavy), .invalid)
+        XCTAssertNil(WatchPlates.nextLoadable(from: 100, up: true, config: heavy))
+        // Each kind fits, their sum does not.
+        let many = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: (1...3).map { .init(weight: 1000 + Double($0), pairs: 1000) })
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 100, config: many), .invalid)
+    }
 }

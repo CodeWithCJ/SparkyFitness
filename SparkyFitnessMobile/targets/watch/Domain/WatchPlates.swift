@@ -58,6 +58,9 @@ enum WatchPlates {
     private static let maxTargetKg = 1000.0
     private static let maxConfigWeight = 10_000.0
     private static let maxPairs = 1000
+    /// Int is 32-bit on arm64_32 watches: every thousandths total below must
+    /// stay within this, or the config is refused rather than trapping.
+    private static let maxUnits = Int(Int32.max)
 
     /// A kg weight in the config's unit.
     static func inUnit(_ kg: Double, of config: WatchPlateConfig) -> Double {
@@ -74,17 +77,25 @@ enum WatchPlates {
         var merged: [Int: Int] = [:]
         for plate in config.plates where plate.weight.isFinite && plate.weight > 0 && plate.pairs > 0 {
             guard plate.weight <= maxConfigWeight else { return .invalid }
-            merged[Int((plate.weight * scale).rounded()), default: 0] += min(plate.pairs, maxPairs)
+            let units = Int((plate.weight * scale).rounded())
+            merged[units] = min((merged[units] ?? 0) + min(plate.pairs, maxPairs), maxPairs)
         }
         let kinds = merged.map { (units: $0.key, pairs: min($0.value, maxPairs)) }.sorted { $0.units > $1.units }
         let fixed = (config.barWeight * scale).rounded() + 2 * (config.collarWeight * scale).rounded()
         let side = (target * scale - fixed) / 2
         let step = kinds.reduce(0) { gcd($0, $1.units) }.nonZero ?? 1
-        let maxSide = kinds.reduce(0) { $0 + $1.units * $1.pairs }
+        var maxSide = 0
+        for kind in kinds {
+            let (product, productOverflow) = kind.units.multipliedReportingOverflow(by: kind.pairs)
+            let (sum, sumOverflow) = maxSide.addingReportingOverflow(product)
+            guard !productOverflow, !sumOverflow, sum <= maxUnits else { return .invalid }
+            maxSide = sum
+        }
         let heaviest = kinds.first?.units ?? 0
         let cap = min(maxSide, Int(max(0, side.rounded(.up))) + heaviest)
         let cells = cap / step + 1
-        guard cells * max(kinds.count, 1) <= maxSearchCells else { return .invalid }
+        let (searchCells, cellsOverflow) = cells.multipliedReportingOverflow(by: max(kinds.count, 1))
+        guard !cellsOverflow, searchCells <= maxSearchCells else { return .invalid }
 
         let table = fewestPlates(kinds: kinds.map { ($0.units / step, $0.pairs) }, cells: cells)
         func reachable(_ cell: Int) -> Bool { cell >= 0 && cell < cells && table[0][cell] != notReachable }
