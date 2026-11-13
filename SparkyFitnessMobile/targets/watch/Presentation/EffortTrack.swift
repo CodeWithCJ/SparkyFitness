@@ -74,7 +74,9 @@ struct EffortTrack: View {
             .gesture(
                 DragGesture(minimumDistance: 0).onChanged { drag in
                     engaged = true
-                    focused = true
+                    // Focus only takes effect once `.focusable(engaged)` has
+                    // rendered, so ask on the next turn of the run loop.
+                    DispatchQueue.main.async { focused = true }
                     let fraction = min(max(drag.location.x / max(geo.size.width, 1), 0), 0.999)
                     let next = Int(fraction * Double(values.count))
                     guard next != index else { return }
@@ -100,7 +102,7 @@ struct EffortTrack: View {
         .onChange(of: index) { if Int(position.rounded()) != index { position = Double(index) } }
         .accessibilityElement()
         .accessibilityLabel(String(localized: "watch.effort.label", defaultValue: "Effort"))
-        .accessibilityValue("\(Int(values[index]))")
+        .accessibilityValue(SetValueText.format(values[index]))
         .accessibilityAdjustableAction { direction in
             index = min(max(index + (direction == .increment ? 1 : -1), 0), values.count - 1)
         }

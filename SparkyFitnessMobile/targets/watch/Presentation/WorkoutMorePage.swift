@@ -247,9 +247,9 @@ struct WorkoutMoreWorkoutPage: View {
     @State private var confirmingFinish = false
     @State private var confirmingDiscard = false
 
-    /// The most recently logged set in running order, the one Undo Set reopens.
+    /// The set logged last (completion order), the one Undo Set reopens.
     private var lastLogged: WorkoutStep? {
-        store.steps.last(where: store.isCompleted)
+        store.loggedSteps.last
     }
 
     var body: some View {

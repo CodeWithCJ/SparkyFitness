@@ -33,7 +33,8 @@ struct WorkoutTopLine: View {
     private var liveReadings: Readings {
         Readings(
             bpm: store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--",
-            kcal: store.activeEnergyKcal.map { "\(Int(checkIn.context.energyFromKcal($0)))" } ?? "--"
+            kcal: store.activeEnergyKcal.map { "\(Int(checkIn.context.energyFromKcal($0)))" } ?? "--",
+            energyUnit: checkIn.context.energyUnitLabel
         )
     }
 
@@ -59,6 +60,8 @@ struct WorkoutTopLine: View {
     struct Readings: Equatable {
         let bpm: String
         let kcal: String
+        /// The account's energy unit, as the reading is converted to it.
+        let energyUnit: String
     }
 }
 
@@ -113,7 +116,7 @@ private struct TopLineContent: View, Equatable {
                 Text(readings.kcal)
                     .font(.system(size: size, weight: WatchStyle.numWeight))
                     .monospacedDigit()
-                Text(String(localized: "watch.workout.kcalUnit", defaultValue: "kcal"))
+                Text(readings.energyUnit)
                     .font(.system(size: WatchStyle.m(12), weight: .semibold))
             }
             .foregroundStyle(tint.light.opacity(stale ? 0.7 : 1))
@@ -121,7 +124,7 @@ private struct TopLineContent: View, Equatable {
         .lineLimit(1)
         .minimumScaleFactor(0.6)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "watch.workout.metricsOnlyLine", defaultValue: "Heart rate \(readings.bpm), \(readings.kcal) calories"))
+        .accessibilityLabel(String(localized: "watch.workout.metricsOnlyLine", defaultValue: "Heart rate \(readings.bpm), \(readings.kcal) \(readings.energyUnit)"))
     }
 
     private func timeLine(now: Date) -> some View {

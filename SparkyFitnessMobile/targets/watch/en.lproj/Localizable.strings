@@ -304,7 +304,7 @@
 "watch.run.cue.checkInMiles" = "%@. %@ miles. Average pace %@ per mile.";
 "watch.run.cue.checkInKmOne" = "%@. %@ kilometer. Average pace %@ per kilometer.";
 "watch.run.cue.checkInKm" = "%@. %@ kilometers. Average pace %@ per kilometer.";
-"watch.workout.metricsOnlyLine" = "Heart rate %@, %@ calories";
+"watch.workout.metricsOnlyLine" = "Heart rate %@, %@ %@";
 "watch.workout.timeLine" = "Time %@";
 "watch.effort.label" = "Effort";
 "watch.common.continue" = "Continue";
@@ -374,7 +374,6 @@
 "watch.workout.platesLighter" = "Lighter";
 "watch.workout.platesClosest" = "Closest";
 "watch.workout.holdTapToEnd" = "Tap the ring to end early";
-"watch.workout.kcalUnit" = "kcal";
 "watch.workout.keepShort" = "Keep";
 "watch.workout.logged" = "logged";
 "watch.workout.metricsTitle" = "Live";

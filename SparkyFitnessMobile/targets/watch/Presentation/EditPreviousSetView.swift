@@ -21,8 +21,13 @@ struct EditPreviousSetView: View {
     /// Position in the logged sets, oldest first, starting at the one logged last.
     @State private var index: Int
     @State private var editing: Field?
-    /// Edits not saved yet, for the set on screen.
+    /// The set on screen, by id: a phone update can unlog an earlier set and
+    /// shift the positions under `index`.
+    @State private var selectedId: String?
+    /// Edits not saved yet, and the set they were made on. A draft whose set is
+    /// not the one on screen (it was unlogged) is ignored, never saved elsewhere.
     @State private var draft = SetValues()
+    @State private var draftSetId: String?
 
     private var logged: [WorkoutStep] { store.loggedSteps }
     private var unit: WeightUnit { checkIn.context.effectiveWeightUnit }
@@ -43,8 +48,8 @@ struct EditPreviousSetView: View {
 
     var body: some View {
         let sets = logged
-        if sets.indices.contains(index) {
-            content(for: sets[index], count: sets.count)
+        if let shown = shownIndex(in: sets) {
+            content(for: sets[shown], at: shown, count: sets.count)
         } else {
             Text(String(localized: "watch.workout.noLoggedSets", defaultValue: "No sets logged yet"))
                 .font(.footnote)
@@ -52,11 +57,25 @@ struct EditPreviousSetView: View {
         }
     }
 
-    private func content(for step: WorkoutStep, count: Int) -> some View {
+    /// Where the selected set is now, else the stored position when it is still valid.
+    private func shownIndex(in sets: [WorkoutStep]) -> Int? {
+        if let selectedId, let found = sets.firstIndex(where: { $0.plannedSet.setId == selectedId }) {
+            return found
+        }
+        return sets.indices.contains(index) ? index : nil
+    }
+
+    /// The unsaved edits, only while they belong to `step`.
+    private func draft(for step: WorkoutStep) -> SetValues {
+        draftSetId == step.plannedSet.setId ? draft : SetValues()
+    }
+
+    private func content(for step: WorkoutStep, at position: Int, count: Int) -> some View {
+        let pending = draft(for: step)
         var values = store.values(for: step)
-        if let weight = draft.weightKg { values.weightKg = weight }
-        if let reps = draft.reps { values.reps = reps }
-        if let distance = draft.distanceKm { values.distanceKm = distance }
+        if let weight = pending.weightKg { values.weightKg = weight }
+        if let reps = pending.reps { values.reps = reps }
+        if let distance = pending.distanceKm { values.distanceKm = distance }
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 HStack(spacing: WatchStyle.m(7)) {
@@ -131,8 +150,8 @@ struct EditPreviousSetView: View {
             .padding(.top, WatchStyle.m(6))
             Spacer(minLength: WatchStyle.m(8))
             HStack(spacing: WatchStyle.m(6)) {
-                RoundBackButton { moveOlder() }
-                    .disabled(LoggedSetOrder.older(than: index) == nil)
+                RoundBackButton { moveOlder(from: position) }
+                    .disabled(LoggedSetOrder.older(than: position) == nil)
                     .accessibilityLabel(String(localized: "watch.workout.previousLoggedSet", defaultValue: "Previous logged set"))
                 Button(action: Haptics.tapping { save(step) }) {
                     Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
@@ -144,7 +163,7 @@ struct EditPreviousSetView: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                RoundBackButton(glyph: "›") { moveNewer(count: count) }
+                RoundBackButton(glyph: "›") { moveNewer(from: position, count: count) }
                     .accessibilityLabel(String(localized: "watch.workout.nextLoggedSet", defaultValue: "Next set"))
             }
             .padding(.bottom, WatchStyle.bottom)
@@ -160,11 +179,15 @@ struct EditPreviousSetView: View {
                 allowsDecimal: field != .reps,
                 allowsNegative: field == .weight && store.isBodyweight(step)
             ) { entered in
+                var next = pending
                 switch field {
-                case .weight: draft.weightKg = unit.toKg(entered)
-                case .reps: draft.reps = entered
-                case .distance: draft.distanceKm = carryUnit.toKm(entered)
+                case .weight: next.weightKg = unit.toKg(entered)
+                case .reps: next.reps = entered
+                case .distance: next.distanceKm = carryUnit.toKm(entered)
                 }
+                draft = next
+                draftSetId = step.plannedSet.setId
+                selectedId = step.plannedSet.setId
                 editing = nil
             }
         }
@@ -173,7 +196,7 @@ struct EditPreviousSetView: View {
     private func title(for field: Field) -> String {
         switch field {
         case .weight: return unit == .lbs ? "LB" : "KG"
-        case .reps: return "REPS"
+        case .reps: return String(localized: "watch.workout.field.reps", defaultValue: "Reps").uppercased()
         case .distance: return carryUnit.title
         }
     }
@@ -187,26 +210,35 @@ struct EditPreviousSetView: View {
     }
 
     /// Moving never saves: the edits made on this set are dropped.
-    private func moveOlder() {
-        guard let older = LoggedSetOrder.older(than: index) else { return }
-        draft = SetValues()
-        index = older
+    private func moveOlder(from position: Int) {
+        guard let older = LoggedSetOrder.older(than: position) else { return }
+        select(older)
     }
 
-    private func moveNewer(count: Int) {
-        draft = SetValues()
-        switch LoggedSetOrder.newer(than: index, count: count) {
-        case .set(let newer): index = newer
-        case .current: onClose()
+    private func moveNewer(from position: Int, count: Int) {
+        switch LoggedSetOrder.newer(than: position, count: count) {
+        case .set(let newer): select(newer)
+        case .current:
+            draft = SetValues()
+            draftSetId = nil
+            onClose()
         }
     }
 
+    private func select(_ position: Int) {
+        draft = SetValues()
+        draftSetId = nil
+        index = position
+        selectedId = logged.indices.contains(position) ? logged[position].plannedSet.setId : nil
+    }
+
     private func save(_ step: WorkoutStep) {
+        let pending = draft(for: step)
         store.setValue(
             for: step.plannedSet.setId,
-            weightKg: draft.weightKg,
-            reps: draft.reps,
-            distanceKm: draft.distanceKm
+            weightKg: pending.weightKg,
+            reps: pending.reps,
+            distanceKm: pending.distanceKm
         )
         onClose()
     }
