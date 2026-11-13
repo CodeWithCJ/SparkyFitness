@@ -104,11 +104,14 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  push: jest.fn(),
   setOptions: jest.fn(),
 } as any;
+const mockUseFocusEffect = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
+  useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
 }));
 
 const mockUseDeleteMeal = useDeleteMeal as jest.MockedFunction<
@@ -362,6 +365,66 @@ describe('MealDetailScreen', () => {
         }),
       })
     );
+  });
+
+  it('allows adjusting an ingredient quantity and logs with customized foods', () => {
+    const screen = renderScreen();
+
+    // Tap on ingredient to open modal
+    fireEvent.press(screen.getByText('Chicken'));
+
+    // Modal is open, update quantity
+    const input = screen.getByDisplayValue('2');
+    fireEvent.changeText(input, '3');
+    fireEvent.press(screen.getByText('Apply'));
+
+    // Tap Log Meal
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        customizedFoods: [
+          expect.objectContaining({
+            food_name: 'Chicken',
+            quantity: 3,
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows resetting customized foods back to template', () => {
+    const screen = renderScreen();
+
+    // Adjust ingredient
+    fireEvent.press(screen.getByText('Chicken'));
+    fireEvent.changeText(screen.getByDisplayValue('2'), '4');
+    fireEvent.press(screen.getByText('Apply'));
+
+    // Reset button should now be visible
+    expect(screen.getByText('Reset')).toBeTruthy();
+    fireEvent.press(screen.getByText('Reset'));
+
+    // Tap Log Meal
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.not.objectContaining({
+        customizedFoods: expect.anything(),
+      })
+    );
+  });
+
+  it('navigates to food search when Add Food is pressed', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(navigation.push).toHaveBeenCalledWith('FoodSearch', {
+      pickerMode: 'meal-builder',
+    });
   });
 
   it('opens a prefilled meal plan form from the detail screen', () => {

@@ -60,6 +60,8 @@
     "learnMore": "Learn more",
     "next": "Next",
     "later": "Later",
+    "apply": "Apply",
+    "reset": "Reset",
     "close": "Close",
     "cancel": "Cancel",
     "continue": "Continue",
@@ -4168,7 +4170,17 @@
     "makesSummary_other": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "items_one": "{{formattedCount}} item",
     "items_other": "{{formattedCount}} items",
-    "notes": "Notes"
+    "notes": "Notes",
+    "resetToTemplate": "Reset to template",
+    "reset": "Reset",
+    "editIngredientQuantity": "Edit {{name}} quantity: {{quantity}} {{unit}}",
+    "addFood": "Add Food",
+    "removeIngredient": "Remove from Meal",
+    "quantity": "Quantity",
+    "changeUnit": "Change unit",
+    "selectUnit": "Select unit",
+    "savedPortions": "Saved Portions",
+    "standardUnits": "Standard Units"
   },
   "dailyNutritionDetails": {
     "title": "Nutrition Details",

@@ -44,7 +44,7 @@ import type {
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from './foodUnitVariants';
-import type { Meal, MealIngredientDraft } from './meals';
+import type { Meal, MealFood, MealIngredientDraft } from './meals';
 import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
 import type { WorkoutPlanTemplate } from './workoutPlans';
@@ -237,6 +237,7 @@ export type RootStackParamList = {
     /** Optional canonical meal type id to pre-select when logging. */
     mealTypeId?: string;
     mealPlanTarget?: MealPlanPickerTarget;
+    customizedFoods?: MealFood[];
   };
   /** Multi-select batch review (#1980): the basket lives in
    * useFoodSearchSelectionStore, not route params, so no selection data

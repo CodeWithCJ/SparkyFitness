@@ -27,6 +27,7 @@ import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
 import { foodItemToFoodInfo, mealToFoodInfo } from '../../src/types/foodInfo';
 import type { FoodInfoItem } from '../../src/types/foodInfo';
 import type { FoodItem } from '../../src/types/foods';
+import type { MealFood } from '../../src/types/meals';
 import type {
   RootStackParamList,
   RootStackScreenProps,
@@ -75,11 +76,14 @@ const mockNavigation = {
   >(() => jest.fn()),
 } satisfies Partial<jest.Mocked<FoodEntryNavigation>>;
 
+const mockUseFocusEffect = jest.fn();
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
     useNavigation: () => mockNavigation,
+    useFocusEffect: (cb: () => void) => mockUseFocusEffect(cb),
     StackActions: {
       pop: (count: number) => mockPop(count),
       popToTop: () => mockPopToTop(),
@@ -135,6 +139,7 @@ jest.mock('../../src/hooks/useAddFoodEntryMeal', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+  consumePendingMealIngredientSelection: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealPlanSelection', () => ({
@@ -2257,6 +2262,258 @@ describe('FoodEntryAddScreen', () => {
     );
     expect(mockAddMeal.mock.calls[0][0]).not.toHaveProperty('foods');
     expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('logs a meal with customizedFoods passed through navigation params', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const customizedFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Oats',
+        food_name: 'Oats',
+        brand: null,
+        quantity: 50,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: customizedFoods,
+        },
+      },
+      customizedFoods,
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 50,
+            unit: 'g',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows adjusting ingredient quantity via modal before logging', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    const stepperInput = screen.getByDisplayValue('100');
+    fireEvent.changeText(stepperInput, '150');
+
+    fireEvent.press(screen.getByText('Apply'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 150,
+            unit: 'g',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows changing ingredient unit via modal before logging', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    fireEvent.press(screen.getByLabelText('Change unit'));
+
+    fireEvent.press(screen.getByText('oz'));
+
+    fireEvent.press(screen.getByText('Apply'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            unit: 'oz',
+            serving_unit: 'oz',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows removing an ingredient from a meal before logging', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+      {
+        id: 'mf-2',
+        meal_id: 'meal-1',
+        food_id: 'food-2',
+        name: 'Whole Milk',
+        food_name: 'Whole Milk',
+        brand: null,
+        quantity: 200,
+        unit: 'ml',
+        serving_size: 200,
+        serving_unit: 'ml',
+        calories: 122,
+        protein: 6.8,
+        carbs: 9.6,
+        fat: 6.6,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Whole Milk'));
+
+    fireEvent.press(screen.getByText('Remove from Meal'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 100,
+          }),
+        ],
+      })
+    );
+    expect(mockAddMeal.mock.calls[0][0].foods).toHaveLength(1);
   });
 
   it('sends the entry note when logging a meal item', () => {
