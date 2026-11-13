@@ -12,6 +12,7 @@ import { MAX_GOAL_MODE_WEEKLY_CHANGE_KG } from '../../utils/calorieCalculations.
 import { HR_ZONE_METHODS } from '../../utils/heartRateZones.ts';
 import { GLUCOSE_UNITS } from '../../constants/bloodGlucose.ts';
 import { TEMPERATURE_UNITS } from '../../utils/temperatureUnit.ts';
+import { featureChoicesSchema } from '../../features/optionalFeatures.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
 
@@ -127,6 +128,11 @@ export const userPreferencesSchema = z.object({
   // Oral care goal (#1862): brushes per day and target seconds per brush.
   oral_care_daily_target: z.number().int().min(1).max(6),
   oral_care_target_seconds: z.number().int().min(30).max(600),
+  // Manually added (#3487): explicit optional-feature choices per platform
+  // ({ web, mobile }), read and written only through
+  // /api/user-preferences/features, never in the general preferences payload.
+  // Optional for that reason. Keep on regen.
+  feature_choices: featureChoicesSchema.optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({

@@ -199,7 +199,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User full name, height, display metrics |
-| `user_preferences` | Unit, formatting, chart display, and heart rate zone preferences |
+| `user_preferences` | Unit, formatting, chart display, heart rate zone and optional feature (`feature_choices`, per platform) preferences |
 | `user_nutrient_display_preferences` | Nutrient column display preferences |
 | `user_meal_visibilities` | Visibility settings for meals |
 | `user_goals` | Active daily calorie/macro goals |

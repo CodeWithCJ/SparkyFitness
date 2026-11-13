@@ -1578,6 +1578,38 @@ const options = {
             },
           },
         },
+        FeatureChoicesResponse: {
+          type: 'object',
+          required: ['feature_choices'],
+          additionalProperties: false,
+          properties: {
+            feature_choices: {
+              type: 'object',
+              required: ['web', 'mobile'],
+              additionalProperties: false,
+              description:
+                'Optional features the person turned on or off explicitly, one map per platform: web is the website on any screen, mobile is the native app with its watch pages and widgets. A feature not listed is at its default. Read and written only through /user-preferences/features.',
+              properties: {
+                web: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+                mobile: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        FeatureChoicesPlatformPatch: {
+          type: 'object',
+          minProperties: 1,
+          maxProperties: 64,
+          description:
+            'true or false sets a feature, null resets it to its default; features not sent keep their value.',
+          additionalProperties: { type: 'boolean', nullable: true },
+        },
         OnboardingStatus: {
           type: 'object',
           properties: {

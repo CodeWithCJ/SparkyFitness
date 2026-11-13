@@ -1,7 +1,10 @@
 import { getClient } from '../db/poolManager.js';
-import type {
-  UserPreferencesInitializer,
-  UserPreferencesMutator,
+import {
+  MAX_FEATURE_CHOICES,
+  type FeatureChoices,
+  type FeatureChoicesPatch,
+  type UserPreferencesInitializer,
+  type UserPreferencesMutator,
 } from '@workspace/shared';
 
 export interface OpenFoodFactsContributionPreferences {
@@ -514,6 +517,97 @@ async function upsertUserPreferences(
     client.release();
   }
 }
+export type FeatureChoicesMergeResult =
+  | { status: 'ok'; choices: FeatureChoices }
+  | { status: 'tooMany' }
+  | { status: 'noRow' };
+
+/**
+ * Merges a feature-switch patch into `feature_choices` in one statement, per
+ * platform: keys set to null are removed (back to their default), the others
+ * are set, and keys not in the patch are kept, so two devices changing
+ * different features, or different platforms, never overwrite each other. A
+ * platform left with more than MAX_FEATURE_CHOICES keys is refused, not just a
+ * patch that size, so repeated patches cannot grow the stored object without
+ * limit.
+ */
+async function mergeFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      // Both sides are worked out from the row being updated, not a separate
+      // read, so a concurrent change that commits first is merged into, never
+      // overwritten.
+      `UPDATE user_preferences
+          SET feature_choices = jsonb_build_object(
+                'web',
+                jsonb_strip_nulls(
+                  COALESCE(feature_choices -> 'web', '{}'::jsonb) || $2::jsonb
+                ),
+                'mobile',
+                jsonb_strip_nulls(
+                  COALESCE(feature_choices -> 'mobile', '{}'::jsonb) || $3::jsonb
+                )
+              ),
+              updated_at = now()
+        WHERE user_id = $1
+          AND (SELECT count(*)
+                 FROM jsonb_object_keys(jsonb_strip_nulls(
+                   COALESCE(feature_choices -> 'web', '{}'::jsonb) || $2::jsonb
+                 ))) <= $4
+          AND (SELECT count(*)
+                 FROM jsonb_object_keys(jsonb_strip_nulls(
+                   COALESCE(feature_choices -> 'mobile', '{}'::jsonb) || $3::jsonb
+                 ))) <= $4
+        RETURNING feature_choices`,
+      [
+        userId,
+        JSON.stringify(patch.web ?? {}),
+        JSON.stringify(patch.mobile ?? {}),
+        MAX_FEATURE_CHOICES,
+      ]
+    );
+    const row = result.rows[0] as
+      { feature_choices: FeatureChoices } | undefined;
+    if (row) {
+      return { status: 'ok', choices: row.feature_choices };
+    }
+    const existing = await client.query(
+      'SELECT 1 FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    return existing.rowCount ? { status: 'tooMany' } : { status: 'noRow' };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * The person's stored feature choices, per platform, or null when they have
+ * no preferences row. `actorUserId` is who is asking, so row-level security
+ * lets someone acting for the person read them.
+ */
+async function getFeatureChoices(
+  userId: string,
+  actorUserId: string
+): Promise<FeatureChoices | null> {
+  const client = await getClient(userId, actorUserId);
+  try {
+    const result = await client.query(
+      'SELECT feature_choices FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    const row = result.rows[0] as
+      { feature_choices: FeatureChoices } | undefined;
+    return row ? row.feature_choices : null;
+  } finally {
+    client.release();
+  }
+}
+
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
@@ -521,6 +615,8 @@ export { bootstrapUserTimezoneIfUnset };
 export { upsertUserPreferences };
 export { getOpenFoodFactsContributionPreferences };
 export { setOpenFoodFactsContributionPreferences };
+export { mergeFeatureChoices };
+export { getFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
@@ -529,4 +625,6 @@ export default {
   upsertUserPreferences,
   getOpenFoodFactsContributionPreferences,
   setOpenFoodFactsContributionPreferences,
+  mergeFeatureChoices,
+  getFeatureChoices,
 };
