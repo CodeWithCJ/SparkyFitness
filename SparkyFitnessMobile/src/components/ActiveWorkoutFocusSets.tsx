@@ -1063,7 +1063,7 @@ function ActiveWorkoutFocusSets({
   }
 
   return (
-    <View className={stepperRows ? 'gap-1.5' : 'rounded-2xl bg-surface p-2'}>
+    <View className="gap-1.5">
       {resting && <FocusRestCard nextText={restNextText} />}
       {bodyweightExercise && (
         <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
@@ -1206,6 +1206,7 @@ function ActiveWorkoutFocusSets({
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
             disableSwipeDelete
+            focusLook
             onPressSetType={onPressSetType}
             onLongPress={
               onToggleSetDetail
@@ -1244,24 +1245,10 @@ function ActiveWorkoutFocusSets({
             exercise.exercise_snapshot?.name ??
             t('workout.exercise', { defaultValue: 'Exercise' }),
         })}
-        className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full active:opacity-70 ${
-          stepperRows ? 'mt-1 bg-raised' : 'mt-1'
-        }`}
+        className="mt-1 min-h-12 flex-row items-center justify-center gap-2 rounded-full bg-raised active:opacity-70"
       >
-        <Icon
-          name="add"
-          size={stepperRows ? 18 : 15}
-          color={stepperRows ? textPrimary : accentPrimary}
-          weight="bold"
-        />
-        <Text
-          className={
-            stepperRows
-              ? 'text-base font-bold text-text-primary'
-              : 'text-sm font-medium'
-          }
-          style={stepperRows ? undefined : { color: accentPrimary }}
-        >
+        <Icon name="add" size={18} color={textPrimary} weight="bold" />
+        <Text className="text-base font-bold text-text-primary">
           {t('activeWorkout.exercise.addSetLabel', {
             defaultValue: 'Add set',
           })}

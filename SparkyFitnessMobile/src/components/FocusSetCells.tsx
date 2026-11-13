@@ -19,6 +19,8 @@ interface CellInputProps {
   textColor?: string;
   /** Ring color while the cell does not hold the keyboard (the resting set). */
   ringColor?: string;
+  /** False shows the value read-only (e.g. while a set stopwatch runs). */
+  editable?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function TableCellInput({
   inputRef,
   textColor,
   ringColor,
+  editable = true,
 }: CellInputProps) {
   const [focused, setFocused] = useState(false);
   const [accent, muted, primary] = useCSSVariable([
@@ -66,6 +69,7 @@ export function TableCellInput({
           onBlur?.();
         }}
         keyboardType={keyboardType}
+        editable={editable}
         selectTextOnFocus
         placeholder={placeholder}
         placeholderTextColor={muted}
