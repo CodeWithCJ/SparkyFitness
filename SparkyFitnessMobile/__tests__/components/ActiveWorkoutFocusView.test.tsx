@@ -29,6 +29,7 @@ jest.mock('react-native-gesture-handler', () => {
 import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
+import type { FocusHold } from '../../src/hooks/useFocusHold';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
 import {
@@ -184,6 +185,7 @@ function viewElement(
       prSetIds={{}}
       activeExerciseId={activeExerciseId}
       supersetBorders={new Map()}
+      hold={IDLE_HOLD}
       sessionId="session-1"
       verifiedSourcePresetId={undefined}
       historyScopeSettled
@@ -203,6 +205,17 @@ function viewElement(
 }
 
 const shownName = () => screen.getByTestId('media-name').props.children;
+
+const IDLE_HOLD: FocusHold = {
+  phase: 'idle',
+  setId: null,
+  entryId: null,
+  targetSec: null,
+  getReadyEndsAt: null,
+  startedAt: null,
+  start: jest.fn(),
+  tap: jest.fn(),
+};
 
 describe('ActiveWorkoutFocusView', () => {
   beforeEach(() => {

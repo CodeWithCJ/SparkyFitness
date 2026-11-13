@@ -15,6 +15,7 @@ import ActiveWorkoutRestBar, {
 import { useClockTick } from '../../src/hooks/useClockTick';
 import { fireSelectionHaptic } from '../../src/services/haptics';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import { playIntervalCue } from '../../src/services/sounds';
 import {
   __resetActiveWorkoutStoreForTests,
@@ -298,11 +299,35 @@ describe('ActiveWorkoutRestBar', () => {
       expect(ready.queryByTestId('rest-bar-glass')).toBeNull();
       ready.unmount();
       const resting = renderBar({ focusReady: { restLabel: '1:00' } });
-      expect(resting.getByText('0:45')).toBeTruthy();
+      expect(resting.queryByTestId('rest-bar-glass')).toBeNull();
+      expect(resting.getByLabelText('Skip rest')).toBeTruthy();
+    });
+
+    it('while resting shows only Skip rest; the timer is the rest card', () => {
+      const { getByLabelText, queryByText, props } = renderBar({
+        focusReady: { restLabel: '1:00' },
+      });
+      expect(queryByText('0:45')).toBeNull();
+      fireEvent.press(getByLabelText('Skip rest'));
+      expect(props.onSkip).toHaveBeenCalled();
+    });
+
+    it('turns Log set into Start hold for a timed set', () => {
+      const onStartHold = jest.fn();
+      const { getByLabelText, props } = renderBar({
+        state: 'ready',
+        focusReady: { restLabel: '1:00', onStartHold },
+      });
+      fireEvent.press(getByLabelText('Start hold'));
+      expect(onStartHold).toHaveBeenCalled();
+      expect(props.onCompleteSet).not.toHaveBeenCalled();
     });
   });
 
   describe('countdown lead-in', () => {
+    afterEach(() => {
+      useAppPreferencesStore.setState({ watchWorkoutCountdown: 3 });
+    });
     beforeEach(() => {
       mockPlayIntervalCue.mockClear();
       setAppState('active');
@@ -317,6 +342,18 @@ describe('ActiveWorkoutRestBar', () => {
         </SafeAreaProvider>
       );
       expect(mockPlayIntervalCue).toHaveBeenCalledTimes(2);
+    });
+
+    it('follows the watch countdown setting: off is silent', () => {
+      useAppPreferencesStore.setState({ watchWorkoutCountdown: 0 });
+      renderBar({ remainingMs: 2_500 });
+      expect(mockPlayIntervalCue).not.toHaveBeenCalled();
+    });
+
+    it('follows the watch countdown setting: 5 s starts at five', () => {
+      useAppPreferencesStore.setState({ watchWorkoutCountdown: 5 });
+      renderBar({ remainingMs: 4_500 });
+      expect(mockPlayIntervalCue).toHaveBeenCalledWith('countdown');
     });
 
     it('stays quiet off screen, leaving the rest-complete chime as the only sound', () => {

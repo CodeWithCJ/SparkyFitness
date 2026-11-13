@@ -17,6 +17,8 @@ interface CellInputProps {
   inputRef?: React.Ref<TextInput>;
   /** Overrides the value color (an effort tone). */
   textColor?: string;
+  /** Ring color while the cell does not hold the keyboard (the resting set). */
+  ringColor?: string;
 }
 
 /**
@@ -35,6 +37,7 @@ export function TableCellInput({
   accessibilityLabel,
   inputRef,
   textColor,
+  ringColor,
 }: CellInputProps) {
   const [focused, setFocused] = useState(false);
   const [accent, muted, primary] = useCSSVariable([
@@ -47,7 +50,7 @@ export function TableCellInput({
       className="h-11 justify-center rounded-[14px] bg-raised"
       style={{
         borderWidth: 2,
-        borderColor: focused ? accent : 'transparent',
+        borderColor: focused ? accent : (ringColor ?? 'transparent'),
       }}
     >
       <TextInput
