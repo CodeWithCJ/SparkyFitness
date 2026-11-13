@@ -101,4 +101,30 @@ describe('PlateCalculatorSheet', () => {
     fireEvent.press(screen.getByLabelText('Close plate calculator'));
     expect(onClose).toHaveBeenCalled();
   });
+
+  describe('page appearance', () => {
+    it('shows the target, the plates per side and the plates you own', () => {
+      renderSheet({
+        page: true,
+        targetWeight: 100,
+        exerciseName: 'Bench Press',
+        setNumber: 2,
+      });
+      expect(screen.getByText('100 kg')).toBeTruthy();
+      expect(screen.getByText('Bench Press · set 2')).toBeTruthy();
+      expect(screen.getByText(/per side$/)).toBeTruthy();
+      expect(screen.getByText('Plates you own')).toBeTruthy();
+      expect(screen.getByText('Edit plate inventory')).toBeTruthy();
+    });
+
+    it('names the nearest loadable weights when the target cannot be made', () => {
+      mockInventory({
+        ...presetInventory('kg'),
+        plates: [{ weight: 20, pairs: 1 }],
+      });
+      renderSheet({ page: true, targetWeight: 70 });
+      expect(screen.getByText("When the weight can't be made")).toBeTruthy();
+      expect(screen.getByText(/Nearest below: 60 kg/)).toBeTruthy();
+    });
+  });
 });

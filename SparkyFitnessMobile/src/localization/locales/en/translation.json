@@ -10610,7 +10610,14 @@
     "calculatorShort": "Calculator",
     "barCard": "Bar {{number}}: {{name}}",
     "removeBarShort": "Remove",
-    "barWeightUnit": "Weight ({{unit}})"
+    "barWeightUnit": "Weight ({{unit}})",
+    "editInventory": "Edit plate inventory",
+    "targetWeightLabel": "Target weight",
+    "setOf": "{{name}} · set {{number}}",
+    "perSideSummary": "{{plates}} per side",
+    "pageBreakdown": "collars {{collars}} {{unit}} · bar {{bar}} {{unit}} · {{plates}} {{unit}} of plates",
+    "cantBeMade": "When the weight can't be made",
+    "platesYouOwn": "Plates you own"
   },
   "trainingCalendar": {
     "load": {
