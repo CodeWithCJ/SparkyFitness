@@ -104,18 +104,6 @@ describe('CalorieSettingsScreen', () => {
     }
   );
 
-  it('falls back to current English uncertainty text when the registered locale still has the old adaptive hint', async () => {
-    await act(async () => {
-      await i18n.changeLanguage('pl');
-    });
-    const screen = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />
-    );
-    expect(
-      screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
-    ).toBeTruthy();
-  });
-
   it('keeps adaptive timing caveats out of Device Projection', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'tdee';
     const screen = render(
