@@ -70,6 +70,7 @@ import {
   useLiveProgression,
 } from '../hooks/useLiveExerciseCoaching';
 import type { ExerciseProgressionPatch } from '../hooks/draftExercisesSlice';
+import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
@@ -562,6 +563,8 @@ function ActiveWorkoutExerciseCard({
   // During a live workout, the newest reading the watch sent for this
   // exercise instead; the saved average only exists once the workout is.
   const liveBpm = useLiveHeartRate(isLive ? String(exercise.id) : null);
+  // Live readings take the person's heart rate zone color, as on the watch.
+  const liveZoneColor = useHeartRateZoneColor(liveBpm);
   const heartRateText = (() => {
     if (!readOnly) return liveBpm != null ? String(liveBpm) : null;
     const avg = exercise.avg_heart_rate;
@@ -1329,7 +1332,12 @@ function ActiveWorkoutExerciseCard({
             {heartRateText != null && (
               <ExerciseHeartRateChip
                 text={heartRateText}
-                color={heartRateColor}
+                color={
+                  !readOnly ? (liveZoneColor ?? heartRateColor) : heartRateColor
+                }
+                valueColor={
+                  !readOnly ? (liveZoneColor ?? undefined) : undefined
+                }
                 accessibilityLabel={
                   readOnly
                     ? t('activeWorkout.exercise.heartRateFor', {
