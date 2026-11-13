@@ -348,126 +348,128 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
     >
       {header}
       <ServerGate>
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 16,
-          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
-        }}
-      >
-        <View className="bg-surface rounded-xl px-4 py-4 border border-border-subtle">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 mr-3">
-              <Text className="text-lg font-semibold text-text-primary">
-                {plan.plan_name}
-              </Text>
-              {plan.description ? (
-                <Text className="text-sm text-text-secondary mt-1">
-                  {plan.description}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          <Text className="text-sm text-text-secondary mt-3">
-            {[
-              plan.schedule_type === 'sequential'
-                ? t('workoutPlans.sequential', { defaultValue: 'Sequential' })
-                : t('workoutPlans.weekly', { defaultValue: 'Weekly' }),
-              plan.sequence_position
-                ? t('workoutPlans.sessionPosition', {
-                    defaultValue: 'Session {{current}} of {{total}}',
-                    current: plan.sequence_position.current,
-                    total: plan.sequence_position.total,
-                  })
-                : plan.end_date
-                  ? t('workoutPlans.dateRange', {
-                      defaultValue: '{{start}} – {{end}}',
-                      start: formatDateLabel(
-                        plan.start_date.slice(0, 10),
-                        t,
-                        dateLocale
-                      ),
-                      end: formatDateLabel(
-                        plan.end_date.slice(0, 10),
-                        t,
-                        dateLocale
-                      ),
-                    })
-                  : t('workoutPlans.starting', {
-                      defaultValue: 'Starting {{date}}',
-                      date: formatDateLabel(
-                        plan.start_date.slice(0, 10),
-                        t,
-                        dateLocale
-                      ),
-                    }),
-            ].join(' · ')}
-          </Text>
-          <View className="flex-row items-center justify-between mt-4 border-t border-border-subtle pt-3">
-            <View className="flex-1 mr-4">
-              <Text className="text-base font-semibold text-text-primary">
-                {t('workoutPlans.activePlan', { defaultValue: 'Active plan' })}
-              </Text>
-              <Text className="text-sm text-text-secondary mt-1">
-                {t('workoutPlans.activePlanHint', {
-                  defaultValue:
-                    'An active plan puts its workouts on your days and in the watch’s schedule.',
-                })}
-              </Text>
-            </View>
-            <Switch
-              accessibilityLabel={t('workoutPlans.activePlan', {
-                defaultValue: 'Active plan',
-              })}
-              value={plan.is_active}
-              disabled={isToggling}
-              onValueChange={(value) => void toggleActive(value)}
-            />
-          </View>
-          {showImpactNote ? (
-            <View className="bg-raised rounded-xl px-3 py-2.5 mt-3">
-              <Text className="text-xs text-text-secondary">
-                {t('workoutPlans.impactNote', {
-                  defaultValue:
-                    'This active plan fills upcoming sessions into your diary. Edits refresh only planned sessions; workouts you logged, started or finished stay untouched.',
-                })}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        <Text className="text-lg font-semibold text-text-primary mt-6 mb-1">
-          {plan.schedule_type === 'sequential'
-            ? t('workoutPlans.sessions', { defaultValue: 'Sessions' })
-            : t('workoutPlans.weeklyPlan', { defaultValue: 'Weekly plan' })}
-        </Text>
-        {sections.length === 0 ? (
-          <StatusView
-            inline
-            icon="exercise-weights"
-            title={t('workoutPlans.noAssignmentsTitle', {
-              defaultValue: 'No workouts in this plan yet',
-            })}
-            subtitle={t('workoutPlans.noAssignmentsSubtitle', {
-              defaultValue: 'Edit the plan to add workouts.',
-            })}
-          />
-        ) : (
-          sections.map(renderSection)
-        )}
-        <Button
-          variant="secondary"
-          accessibilityLabel={t('workoutPlans.deleteNamed', {
-            defaultValue: 'Delete {{name}}',
-            name: plan.plan_name,
-          })}
-          onPress={confirmDelete}
-          disabled={isDeleting}
-          className="mt-4"
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
+          }}
         >
-          {t('workoutPlans.deletePlan', { defaultValue: 'Delete plan' })}
-        </Button>
-      </ScrollView>
+          <View className="bg-surface rounded-xl px-4 py-4 border border-border-subtle">
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 mr-3">
+                <Text className="text-lg font-semibold text-text-primary">
+                  {plan.plan_name}
+                </Text>
+                {plan.description ? (
+                  <Text className="text-sm text-text-secondary mt-1">
+                    {plan.description}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <Text className="text-sm text-text-secondary mt-3">
+              {[
+                plan.schedule_type === 'sequential'
+                  ? t('workoutPlans.sequential', { defaultValue: 'Sequential' })
+                  : t('workoutPlans.weekly', { defaultValue: 'Weekly' }),
+                plan.sequence_position
+                  ? t('workoutPlans.sessionPosition', {
+                      defaultValue: 'Session {{current}} of {{total}}',
+                      current: plan.sequence_position.current,
+                      total: plan.sequence_position.total,
+                    })
+                  : plan.end_date
+                    ? t('workoutPlans.dateRange', {
+                        defaultValue: '{{start}} – {{end}}',
+                        start: formatDateLabel(
+                          plan.start_date.slice(0, 10),
+                          t,
+                          dateLocale
+                        ),
+                        end: formatDateLabel(
+                          plan.end_date.slice(0, 10),
+                          t,
+                          dateLocale
+                        ),
+                      })
+                    : t('workoutPlans.starting', {
+                        defaultValue: 'Starting {{date}}',
+                        date: formatDateLabel(
+                          plan.start_date.slice(0, 10),
+                          t,
+                          dateLocale
+                        ),
+                      }),
+              ].join(' · ')}
+            </Text>
+            <View className="flex-row items-center justify-between mt-4 border-t border-border-subtle pt-3">
+              <View className="flex-1 mr-4">
+                <Text className="text-base font-semibold text-text-primary">
+                  {t('workoutPlans.activePlan', {
+                    defaultValue: 'Active plan',
+                  })}
+                </Text>
+                <Text className="text-sm text-text-secondary mt-1">
+                  {t('workoutPlans.activePlanHint', {
+                    defaultValue:
+                      'An active plan puts its workouts on your days and in the watch’s schedule.',
+                  })}
+                </Text>
+              </View>
+              <Switch
+                accessibilityLabel={t('workoutPlans.activePlan', {
+                  defaultValue: 'Active plan',
+                })}
+                value={plan.is_active}
+                disabled={isToggling}
+                onValueChange={(value) => void toggleActive(value)}
+              />
+            </View>
+            {showImpactNote ? (
+              <View className="bg-raised rounded-xl px-3 py-2.5 mt-3">
+                <Text className="text-xs text-text-secondary">
+                  {t('workoutPlans.impactNote', {
+                    defaultValue:
+                      'This active plan fills upcoming sessions into your diary. Edits refresh only planned sessions; workouts you logged, started or finished stay untouched.',
+                  })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text className="text-lg font-semibold text-text-primary mt-6 mb-1">
+            {plan.schedule_type === 'sequential'
+              ? t('workoutPlans.sessions', { defaultValue: 'Sessions' })
+              : t('workoutPlans.weeklyPlan', { defaultValue: 'Weekly plan' })}
+          </Text>
+          {sections.length === 0 ? (
+            <StatusView
+              inline
+              icon="exercise-weights"
+              title={t('workoutPlans.noAssignmentsTitle', {
+                defaultValue: 'No workouts in this plan yet',
+              })}
+              subtitle={t('workoutPlans.noAssignmentsSubtitle', {
+                defaultValue: 'Edit the plan to add workouts.',
+              })}
+            />
+          ) : (
+            sections.map(renderSection)
+          )}
+          <Button
+            variant="secondary"
+            accessibilityLabel={t('workoutPlans.deleteNamed', {
+              defaultValue: 'Delete {{name}}',
+              name: plan.plan_name,
+            })}
+            onPress={confirmDelete}
+            disabled={isDeleting}
+            className="mt-4"
+          >
+            {t('workoutPlans.deletePlan', { defaultValue: 'Delete plan' })}
+          </Button>
+        </ScrollView>
       </ServerGate>
     </View>
   );

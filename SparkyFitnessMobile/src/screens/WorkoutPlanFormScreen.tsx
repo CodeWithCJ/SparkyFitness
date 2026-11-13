@@ -33,10 +33,7 @@ import type {
 } from '../types/workoutPlans';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
 import { parseDecimalInput } from '../utils/numericInput';
-import {
-  storedWeightInUnit,
-  weightToKg,
-} from '../utils/unitConversions';
+import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import {
   addDraftSet,
@@ -279,8 +276,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
       // Locale-aware parsing: decimal-comma keyboards produce '22,5',
       // which Number() silently turns into NaN (and a saved empty value).
       const parsed = value.trim() === '' ? null : parseDecimalInput(value);
-      const numeric =
-        parsed != null && Number.isFinite(parsed) ? parsed : null;
+      const numeric = parsed != null && Number.isFinite(parsed) ? parsed : null;
       // The draft stores kg; the user types in their preferred unit.
       const stored =
         field === 'weight' && numeric != null
@@ -606,13 +602,13 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
                       rawSetInputs[
                         rawSetKey(assignment.key, setIndex, 'weight')
                       ] ??
-                        (set.weight == null
-                          ? ''
-                          : String(
-                              weightUnit == null
-                                ? set.weight
-                                : storedWeightInUnit(set.weight, weightUnit)
-                            ))
+                      (set.weight == null
+                        ? ''
+                        : String(
+                            weightUnit == null
+                              ? set.weight
+                              : storedWeightInUnit(set.weight, weightUnit)
+                          ))
                     }
                     onChangeText={(value) =>
                       changeSetNumber(assignment.key, setIndex, 'weight', value)
