@@ -46,7 +46,7 @@ enum WatchPlates {
         case invalid
     }
 
-    private static let kgPerLb = 0.45359237
+    private static let kgPerLb = WeightRounding.kgPerLb
     /// Weights keep three decimals, so the search runs in thousandths.
     private static let scale = 1000.0
     private static let notReachable = UInt16.max
@@ -62,13 +62,19 @@ enum WatchPlates {
     /// stay within this, or the config is refused rather than trapping.
     private static let maxUnits = Int(Int32.max)
 
-    /// A kg weight in the config's unit.
+    /// A kg weight in the config's unit, rounded as the set screen shows it
+    /// (a tenth of a pound, a hundredth of a kilo): a stored 47.63 kg is the
+    /// 105 lb that was loaded, not 105.011.
     static func inUnit(_ kg: Double, of config: WatchPlateConfig) -> Double {
-        config.unit == "lbs" ? kg / kgPerLb : kg
+        WeightRounding.displayed(kg: kg, lbs: config.unit == "lbs")
     }
 
     static func calculate(targetKg: Double, config: WatchPlateConfig) -> Result {
-        let target = inUnit(targetKg, of: config)
+        calculate(target: inUnit(targetKg, of: config), targetKg: targetKg, config: config)
+    }
+
+    /// `target` is the weight in the config's unit, already rounded.
+    private static func calculate(target: Double, targetKg: Double, config: WatchPlateConfig) -> Result {
         guard targetKg.isFinite, targetKg > 0, targetKg <= maxTargetKg, target.isFinite, target > 0,
               config.barWeight.isFinite, config.collarWeight.isFinite,
               (0...maxConfigWeight).contains(config.barWeight),
@@ -137,7 +143,7 @@ enum WatchPlates {
     static func nextLoadable(from targetKg: Double, up: Bool, config: WatchPlateConfig) -> Double? {
         guard targetKg.isFinite, targetKg <= maxTargetKg else { return nil }
         let probe = inUnit(targetKg, of: config) + (up ? 0.0005 : -0.0005)
-        guard case .inexact(let below, let above) = calculate(targetKg: toKg(probe, of: config), config: config),
+        guard case .inexact(let below, let above) = calculate(target: probe, targetKg: toKg(probe, of: config), config: config),
               let load = up ? above : below else { return nil }
         return toKg(load.total, of: config)
     }

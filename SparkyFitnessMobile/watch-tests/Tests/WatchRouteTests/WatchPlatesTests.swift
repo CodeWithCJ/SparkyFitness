@@ -140,4 +140,28 @@ final class WatchPlatesStepTests: XCTestCase {
         let many = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: (1...3).map { .init(weight: 1000 + Double($0), pairs: 1000) })
         XCTAssertEqual(WatchPlates.calculate(targetKg: 100, config: many), .invalid)
     }
+
+    func testStoredKgRoundTripOfPoundsStaysExact() {
+        // 105 lb is 47.627 kg; the server keeps 47.63, which is 105.011 lb raw.
+        // The calculator must treat it as the 105 lb that was loaded: 45 bar
+        // plus 30 a side (25 + 5), exact, not "closest 105 / 110".
+        let lbs = WatchPlateConfig(unit: "lbs", barWeight: 45, collarWeight: 0, plates: [45, 35, 25, 10, 5, 2.5].map { .init(weight: $0, pairs: 2) })
+        for kg in [105 * 0.45359237, 47.63] {
+            guard case .exact(let load) = WatchPlates.calculate(targetKg: kg, config: lbs) else {
+                return XCTFail("expected exact for \(kg) kg")
+            }
+            XCTAssertEqual(load.perSide, 30, "kg=\(kg)")
+            XCTAssertEqual(load.total, 105, "kg=\(kg)")
+            XCTAssertEqual(WatchPlates.summary(load.plates), "25+5", "kg=\(kg)")
+            XCTAssertEqual(WatchPlates.inUnit(kg, of: lbs), 105)
+        }
+    }
+
+    func testCrownStepsFromARoundedPoundTarget() {
+        let lbs = WatchPlateConfig(unit: "lbs", barWeight: 45, collarWeight: 0, plates: [45, 35, 25, 10, 5, 2.5].map { .init(weight: $0, pairs: 2) })
+        let up = WatchPlates.nextLoadable(from: 47.63, up: true, config: lbs)
+        XCTAssertEqual(WatchPlates.inUnit(up ?? 0, of: lbs), 110)
+        let down = WatchPlates.nextLoadable(from: 47.63, up: false, config: lbs)
+        XCTAssertEqual(WatchPlates.inUnit(down ?? 0, of: lbs), 100)
+    }
 }

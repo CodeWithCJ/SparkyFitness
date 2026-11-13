@@ -49,7 +49,7 @@ enum ScreenshotSeed {
     }
 
     /// Settings the phone would send, as a comma list in
-    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `fast`, `demo` (demo pictures for the mockup plan's bench press), `longname`, `newworkout`, `countdown`, `topmetrics` (the new view's top line starts on
+    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `large`, `lbs` (pounds, with the bench at 105 lb), `fast`, `demo` (demo pictures for the mockup plan's bench press), `longname`, `newworkout`, `countdown`, `topmetrics` (the new view's top line starts on
     /// heart rate and calories), `dimmed` (the new view as the always-on display draws it).
     static func has(_ option: String) -> Bool {
         (ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_OPTIONS"] ?? "")

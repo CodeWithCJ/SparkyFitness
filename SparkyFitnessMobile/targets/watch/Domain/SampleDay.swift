@@ -105,7 +105,7 @@ enum SampleDay {
             ackedClientIds: [],
             failedClientIds: [],
             updatedAt: Date(),
-            weightUnit: .kg,
+            weightUnit: ScreenshotSeed.has("lbs") ? .lbs : .kg,
             nutrition: nutrition,
             water: water,
             waterContainers: containers,
@@ -125,6 +125,7 @@ enum SampleDay {
             exerciseDoNow: true,
             setScreenMetrics: !ScreenshotSeed.has("nometrics"),
             upNextPage: ScreenshotSeed.has("upnext"),
+            largerText: ScreenshotSeed.has("large"),
             newWorkout: ScreenshotSeed.has("newworkout"),
             workoutCountdown: ScreenshotSeed.has("countdown") ? 3 : nil,
             workoutTopLine: ScreenshotSeed.has("topmetrics") ? "metrics" : nil,
@@ -237,10 +238,14 @@ enum SampleDay {
     /// The workout the design mockups show (`mockup` option): six blocks, the
     /// sixth a superset, with an exercise of every kind for the screen to land on.
     /// A 20 kg bar and no 25s or 15s, so 82.5 kg is 20 + 10 + 1.25 a side.
-    static let mockupPlates = WatchPlateConfig(
-        unit: "kg", barWeight: 20, collarWeight: 0,
-        plates: [20, 10, 5, 2.5, 1.25].map { .init(weight: $0, pairs: 2) }
-    )
+    /// `lbs` option: a 45 lb bar and pound plates, and the bench's sets are the
+    /// 105 lb the server stores as 47.63 kg.
+    static let mockupPlates = ScreenshotSeed.has("lbs")
+        ? WatchPlateConfig(unit: "lbs", barWeight: 45, collarWeight: 0, plates: [45, 35, 25, 10, 5, 2.5].map { .init(weight: $0, pairs: 2) })
+        : WatchPlateConfig(
+            unit: "kg", barWeight: 20, collarWeight: 0,
+            plates: [20, 10, 5, 2.5, 1.25].map { .init(weight: $0, pairs: 2) }
+        )
 
     static let mockupPlan = ActiveWorkoutPlan(
         sessionId: "mockup-session",
@@ -251,10 +256,10 @@ enum SampleDay {
                 PlannedSet(setId: "m1b", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
             ]),
             PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", plates: mockupPlates, imageKey: ScreenshotSeed.showsDemo ? ScreenshotSeed.demoImageKey : nil, imageCount: ScreenshotSeed.showsDemo ? 2 : nil, muscle: ScreenshotSeed.showsDemo ? "Chest" : nil, sets: [
-                PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: 80, restSeconds: 120, setType: "normal"),
-                PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
-                PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
-                PlannedSet(setId: "m2d", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 80, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2d", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
             ]),
             PlannedExercise(exerciseEntryId: "m3", name: "Weighted Plank", supersetRun: nil, equipment: "Plate", sets: (0..<6).map {
                 PlannedSet(setId: "m3\($0)", targetReps: nil, targetWeightKg: 20, restSeconds: 60, setType: "normal", targetDurationSec: 60, weighted: true)

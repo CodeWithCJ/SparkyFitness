@@ -136,7 +136,7 @@ struct EditPreviousSetView: View {
             HStack(spacing: WatchStyle.m(6)) {
                 if !timed || values.weightKg != nil || store.isWeightedHold(step) {
                     ValueBox(
-                        value: SetValueText.format(values.weightKg.map(unit.fromKg)),
+                        value: SetValueText.format(values.weightKg.map(unit.displayedFromKg)),
                         label: String(localized: "watch.workout.field.weight", defaultValue: "Weight").uppercased(),
                         suffix: unit == .lbs ? "lb" : "kg"
                     ) {
@@ -225,7 +225,7 @@ struct EditPreviousSetView: View {
 
     private func initial(for field: Field, values: SetValues) -> Double? {
         switch field {
-        case .weight: return values.weightKg.map(unit.fromKg)
+        case .weight: return values.weightKg.map(unit.displayedFromKg)
         case .reps: return values.reps
         case .distance: return values.distanceKm.map { (carryUnit.fromKm($0) * 10).rounded() / 10 }
         }
