@@ -6,10 +6,14 @@ import onboardingRoutes from '../routes/onboardingRoutes.js';
 import onboardingService from '../services/onboardingService.js';
 import errorHandler from '../middleware/errorHandler.js';
 
+// The signed-in person; set to someone else to act for testUserId.
+const auth = vi.hoisted(() => ({ actorUserId: 'testUserId' }));
+
 vi.mock('../services/onboardingService.js');
 vi.mock('../middleware/authMiddleware', () => ({
   authenticate: vi.fn((req, res, next) => {
     req.userId = 'testUserId';
+    req.authenticatedUserId = auth.actorUserId;
     next();
   }),
 }));
@@ -22,6 +26,7 @@ app.use(errorHandler);
 describe('Onboarding Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.actorUserId = 'testUserId';
   });
 
   // --- POST /onboarding ---
@@ -253,5 +258,78 @@ describe('Onboarding Routes', () => {
 
       expect(res.statusCode).toEqual(500);
     });
+  });
+
+  // --- Acting for another account (Family Access) ---
+  describe('while acting for another account', () => {
+    beforeEach(() => {
+      auth.actorUserId = 'delegateUserId';
+    });
+
+    it('still reads the onboarding status', async () => {
+      // @ts-expect-error TS(2339)
+      onboardingService.checkOnboardingStatus.mockResolvedValue({
+        onboarding_complete: false,
+        onboarding_skipped: false,
+      });
+
+      const res = await request(app).get('/onboarding/status');
+
+      expect(res.statusCode).toEqual(200);
+      expect(onboardingService.checkOnboardingStatus).toHaveBeenCalledWith(
+        'testUserId'
+      );
+    });
+
+    it.each([
+      [
+        'submitting onboarding',
+        'post',
+        '/onboarding',
+        {
+          sex: 'male',
+          primaryGoal: 'lose_weight',
+          currentWeight: 80,
+          height: 180,
+          birthDate: '1990-01-01',
+          activityLevel: 'moderate',
+          targetWeight: 75,
+        },
+        'processOnboardingData',
+      ],
+      [
+        'setting the goal weight',
+        'put',
+        '/onboarding/target-weight',
+        { targetWeight: 70 },
+        'setTargetWeight',
+      ],
+      [
+        'skipping onboarding',
+        'post',
+        '/onboarding/skip',
+        undefined,
+        'skipOnboarding',
+      ],
+      [
+        'resetting onboarding',
+        'post',
+        '/onboarding/reset',
+        undefined,
+        'resetOnboardingStatus',
+      ],
+    ] as const)(
+      'refuses %s for them (403)',
+      async (_label, method, path, body, serviceFn) => {
+        const res = await request(app)[method](path).send(body);
+
+        expect(res.statusCode).toEqual(403);
+        expect(res.body).toEqual({
+          error:
+            'Forbidden: onboarding can only be changed on your own account.',
+        });
+        expect(onboardingService[serviceFn]).not.toHaveBeenCalled();
+      }
+    );
   });
 });

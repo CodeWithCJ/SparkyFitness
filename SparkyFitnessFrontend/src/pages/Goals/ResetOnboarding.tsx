@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useResetOnboarding } from '@/hooks/Onboarding/useOnboarding';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 export const ResetOnboarding = () => {
   const { t } = useTranslation();
+  const { isActingOnBehalf } = useActiveUser();
   const { mutateAsync: resetOnboardingStatus, isPending: saving } =
     useResetOnboarding();
   const handleResetOnboarding = async () => {
@@ -25,6 +27,8 @@ export const ResetOnboarding = () => {
       console.error('Failed to reset onboarding', error);
     }
   };
+  // Only the account owner can reset their onboarding.
+  if (isActingOnBehalf) return null;
   return (
     <Card>
       <CardHeader>

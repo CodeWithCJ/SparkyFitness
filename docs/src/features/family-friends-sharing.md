@@ -109,7 +109,7 @@ The following data can be **read** by delegates who hold at least one of `can_ma
 * Nutrient column display preferences (`user_nutrient_display_preferences`)
 * Calorie settings history (`user_calorie_rule_history` — the goal mode, activity level, BMR, exercise-adjusted percentage macro opt-in, calorie cycling and other calculation settings in force from each change on, so past days keep their calorie and macro targets). It is recorded automatically when the owner changes those settings; family members can see it alongside the preferences, but cannot change it.
 * Dashboard widget layout and the website tabs you hid (`user_dashboard_layouts`). Hidden tabs only change your own view: someone acting for you sees the tabs their permissions allow.
-* Onboarding data and completion status (`onboarding_data`, `onboarding_status`)
+* Onboarding data and completion status (`onboarding_data`, `onboarding_status`). The setup questions are only ever shown to you: someone acting for you never gets them, and the server refuses to answer, skip or reset them, or to change your goal weight, for you.
 
 Delegates with only library permissions **cannot** read or write any of the above.
 
