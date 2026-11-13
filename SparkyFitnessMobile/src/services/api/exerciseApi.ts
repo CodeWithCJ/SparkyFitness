@@ -175,6 +175,8 @@ export interface CreateExercisePayload {
   category: string;
   /** Silently dropped by pre-modality servers (they derive from category). */
   modality?: ExerciseModality;
+  /** Health activity type key (#1750); omitted is Automatic. Older servers drop it. */
+  health_activity_type?: string;
   /** Omit when blank — server defaults missing/falsy values to 0. */
   calories_per_hour?: number;
   description: string | null;
@@ -194,6 +196,8 @@ export interface UpdateExercisePayload {
   category?: string;
   /** Sent only when the user changes it; omitted preserves (server COALESCEs). */
   modality?: ExerciseModality;
+  /** A key sets the override, 'automatic' clears it, omitted preserves it. */
+  health_activity_type?: string;
   calories_per_hour?: number;
   /** Empty string clears, omitted/null preserves (server COALESCEs nulls). */
   description?: string | null;
@@ -264,6 +268,10 @@ export const transformExerciseRow = (
   category: (row.category as string | null) ?? null,
   // Guarded: server rows are untyped, and pre-modality servers omit the field.
   modality: isExerciseModality(row.modality) ? row.modality : null,
+  health_activity_type:
+    typeof row.health_activity_type === 'string'
+      ? row.health_activity_type
+      : null,
   equipment: parseJsonArray(row.equipment),
   primary_muscles: parseJsonArray(row.primary_muscles),
   secondary_muscles: parseJsonArray(row.secondary_muscles),

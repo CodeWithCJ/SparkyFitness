@@ -3578,3 +3578,108 @@ describe('telemetry cache commits only after a successful upload (PR #2218 revie
     expect(mockReadRecords).not.toHaveBeenCalled();
   });
 });
+
+describe('daily totals leave out exercise write-back records (#1750)', () => {
+  const {
+    setOwnPackageName,
+  } = require('../../../src/services/healthconnect/dataTransformation');
+  const {
+    saveHealthPreference,
+  } = require('../../../src/services/healthconnect/preferences');
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await AsyncStorage.clear();
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
+    setOwnPackageName('com.sparky.app');
+  });
+
+  afterEach(() => {
+    setOwnPackageName(null);
+  });
+
+  // Answers per record type and filter, since the active-calorie read also
+  // asks for other calorie types.
+  const answer = (withOwn: number, withoutOwn: number, origins: string[]) =>
+    mockAggregateGroupByPeriod.mockImplementation(
+      async (request: { recordType: string; dataOriginFilter?: string[] }) => {
+        if (request.recordType !== 'ActiveCaloriesBurned') return [];
+        return request.dataOriginFilter
+          ? [
+              periodBucket(2024, 1, 15, {
+                ACTIVE_CALORIES_TOTAL: { inKilocalories: withoutOwn },
+                dataOrigins: request.dataOriginFilter,
+              }),
+            ]
+          : [
+              periodBucket(2024, 1, 15, {
+                ACTIVE_CALORIES_TOTAL: { inKilocalories: withOwn },
+                dataOrigins: origins,
+              }),
+            ];
+      }
+    );
+
+  const activeCalls = () =>
+    mockAggregateGroupByPeriod.mock.calls
+      .map(([request]) => request)
+      .filter(
+        (request: { recordType: string }) =>
+          request.recordType === 'ActiveCaloriesBurned'
+      );
+
+  test('re-aggregates without this app once it has written a workout', async () => {
+    await saveHealthPreference('writebackExerciseFilterOwn', true);
+    answer(700, 500, ['com.sparky.app', 'com.watch.app']);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result[0].value).toBe(500);
+    expect(activeCalls()[1]).toMatchObject({
+      dataOriginFilter: ['com.watch.app'],
+    });
+  });
+
+  test('leaves the query alone until something was written', async () => {
+    answer(700, 500, ['com.sparky.app', 'com.watch.app']);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result[0].value).toBe(700);
+    expect(activeCalls()).toHaveLength(1);
+  });
+
+  test('reads nothing when this app was the only contributor', async () => {
+    await saveHealthPreference('writebackExerciseFilterOwn', true);
+    answer(300, 0, ['com.sparky.app']);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  test('drops written sessions before enrichment', async () => {
+    const result = await enrichExerciseSessions(
+      [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T08:30:00Z',
+          metadata: {
+            clientRecordId: 'sparky-exercise-individual-e1-session-1',
+          },
+        },
+      ],
+      createTelemetryRunContext()
+    );
+    expect(result).toEqual([]);
+  });
+});

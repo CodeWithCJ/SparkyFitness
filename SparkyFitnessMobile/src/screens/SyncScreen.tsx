@@ -27,6 +27,7 @@ import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
 import {
   WRITEBACK_METRICS,
+  writebackMetricPermissions,
   type WritebackMetric,
   type WritebackDateRange,
 } from '../WritebackMetrics';
@@ -94,6 +95,7 @@ import type { HealthMetric } from '../HealthMetrics';
 import type {
   HealthMetricStates,
   HealthDataDisplayState,
+  PermissionRequest,
 } from '../types/healthRecords';
 import { useSyncHealthData, usePreferences } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -467,7 +469,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     try {
       const granted = await requestHealthPermissions([
         ...(await loadAllEnabledPermissions()),
-        metric.permission,
+        ...(writebackMetricPermissions(metric) as PermissionRequest[]),
       ]);
       if (!granted) {
         Alert.alert(
@@ -574,9 +576,9 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         defaultValue: 'Remove all {{store}} data',
         store: writebackStoreName,
       }),
-      t('syncScreen.removal.confirmMessage', {
+      t('syncScreen.removal.confirmMessageAll', {
         defaultValue:
-          'Delete every nutrition and hydration record SparkyFitness wrote to {{store}}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.',
+          'Delete every record SparkyFitness wrote to {{store}} (nutrition, hydration, workouts and the rest), and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.',
         store: writebackStoreName,
       }),
       [

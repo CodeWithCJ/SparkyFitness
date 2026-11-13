@@ -11,7 +11,8 @@ import { Platform, type ImageSourcePropType } from 'react-native';
 // will extend writeback to the other readable metrics (which is why this is a
 // category-grouped list rather than a flat pair).
 
-export type WritebackMetricId = 'nutrition' | 'hydration' | 'toothbrushing';
+export type WritebackMetricId =
+  'nutrition' | 'hydration' | 'toothbrushing' | 'exercise';
 
 /** Inclusive local-calendar-day range (YYYY-MM-DD) for a targeted writeback removal.
  *  `null` removal means "all time" (full purge). */
@@ -25,7 +26,8 @@ export interface WritebackRemovalResult {
   ok: boolean;
 }
 
-type WritebackRecordType = 'Nutrition' | 'Hydration' | 'Toothbrushing';
+type WritebackRecordType =
+  'Nutrition' | 'Hydration' | 'Toothbrushing' | 'ExerciseSession';
 
 export interface WritebackMetric {
   id: WritebackMetricId;
@@ -37,6 +39,13 @@ export interface WritebackMetric {
   preferenceKey: string;
   recordType: WritebackRecordType;
   permission: { accessType: 'write'; recordType: WritebackRecordType };
+  /**
+   * More permissions requested with `permission` whenever this metric is
+   * turned on or re-affirmed (the exercise metric's energy and distance writes,
+   * and the workout read its duplicate check needs, on Android; iOS expands
+   * the workout write itself in healthKitAuthorizationTypes).
+   */
+  extraPermissions?: { accessType: 'read' | 'write'; recordType: string }[];
   /** Platforms the store has a record type for; absent means both. */
   platforms?: ('android' | 'ios')[];
   icon: ImageSourcePropType;
@@ -77,6 +86,35 @@ const ALL_WRITEBACK_METRICS: WritebackMetric[] = [
     category: 'Hygiene',
     platforms: ['ios'],
   },
+  {
+    // Workouts logged in Sparky as one workout per session, with active energy
+    // and distance (#1750): HKWorkout on iOS, ExerciseSessionRecord (with a
+    // segment per timed set) on Android. Never provider imports.
+    id: 'exercise',
+    labelKey: 'healthMetrics.exercise',
+    defaultLabel: 'Exercise',
+    preferenceKey: 'writebackExerciseEnabled',
+    recordType: 'ExerciseSession',
+    permission: { accessType: 'write', recordType: 'ExerciseSession' },
+    extraPermissions:
+      Platform.OS === 'android'
+        ? [
+            { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
+            { accessType: 'write', recordType: 'Distance' },
+            { accessType: 'read', recordType: 'ExerciseSession' },
+          ]
+        : undefined,
+    icon: require('../assets/icons/health-metrics/exercise_session.png'),
+    category: 'Exercise',
+  },
+];
+
+/** Every permission a writeback metric asks for: its own, then any extras. */
+export const writebackMetricPermissions = (
+  metric: WritebackMetric
+): { accessType: 'read' | 'write'; recordType: string }[] => [
+  metric.permission,
+  ...(metric.extraPermissions ?? []),
 ];
 
 /** The writeback metrics this platform's health store can hold. */
@@ -88,4 +126,8 @@ export const WRITEBACK_METRICS: WritebackMetric[] =
   );
 
 /** Order categories render in (mirrors the read section's grouping). */
-export const WRITEBACK_CATEGORY_ORDER: string[] = ['Nutrition', 'Hygiene'];
+export const WRITEBACK_CATEGORY_ORDER: string[] = [
+  'Nutrition',
+  'Exercise',
+  'Hygiene',
+];

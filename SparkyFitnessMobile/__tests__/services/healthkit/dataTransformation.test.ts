@@ -586,6 +586,28 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(0);
     });
 
+    test('skips a workout exercise write-back saved from the diary', () => {
+      // #1750: the diary session it came from is already in Sparky.
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T08:30:00Z',
+          activityType: 52,
+          duration: 1800,
+          metadata: {
+            SparkyExerciseWriteback: 'sparky-exercise-individual-e1',
+          },
+        },
+      ];
+      const result = transformHealthRecords(records, {
+        recordType: 'Workout',
+        unit: '',
+        type: 'workout',
+      });
+
+      expect(result).toHaveLength(0);
+    });
+
     test('titles a walk recorded on the watch alone by place', () => {
       setOwnBundleId('com.sparky.app');
       try {

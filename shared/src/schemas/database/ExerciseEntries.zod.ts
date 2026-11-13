@@ -37,6 +37,7 @@ export const exerciseEntriesSchema = z.object({
   sort_order: z.number().nullable(),
   superset_group: z.number().nullable(),
   modality: z.string().nullable(),
+  health_activity_type: z.string().nullable(),
   // New telemetry fields
   max_heart_rate: z.number().nullable(),
   heart_rate_recovery_1min: z.number().nullable(),
@@ -126,6 +127,7 @@ export const exerciseEntriesInitializerSchema = z.object({
   sort_order: z.number().optional().nullable(),
   superset_group: z.number().optional().nullable(),
   modality: z.string().optional().nullable(),
+  health_activity_type: z.string().optional().nullable(),
   max_heart_rate: z.number().optional().nullable(),
   heart_rate_recovery_1min: z.number().optional().nullable(),
   avg_respiration_brpm: z.number().optional().nullable(),

@@ -79,6 +79,11 @@ const androidPermissions = [
   // so these live in the base list (not the dev-only writes below).
   'android.permission.health.WRITE_NUTRITION',
   'android.permission.health.WRITE_HYDRATION',
+  // Exercise write-back (#1750): one exercise session per diary workout, with
+  // its active energy and distance.
+  'android.permission.health.WRITE_EXERCISE',
+  'android.permission.health.WRITE_ACTIVE_CALORIES_BURNED',
+  'android.permission.health.WRITE_DISTANCE',
   // Exact rest-complete alerts: without this special access (user-granted via
   // "Alarms & reminders" on Android 13+), expo-notifications falls back to
   // inexact alarms that the OS batches ~15s late.
@@ -86,7 +91,6 @@ const androidPermissions = [
 ];
 
 const devAndroidPermissions = [
-  'android.permission.health.WRITE_ACTIVE_CALORIES_BURNED',
   'android.permission.health.WRITE_BASAL_BODY_TEMPERATURE',
   'android.permission.health.WRITE_BASAL_METABOLIC_RATE',
   'android.permission.health.WRITE_BLOOD_GLUCOSE',
@@ -97,9 +101,7 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_BONE_MASS',
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CYCLING_PEDALING_CADENCE',
-  'android.permission.health.WRITE_EXERCISE',
   'android.permission.health.WRITE_EXERCISE_ROUTE',
-  'android.permission.health.WRITE_DISTANCE',
   'android.permission.health.WRITE_ELEVATION_GAINED',
   'android.permission.health.WRITE_FLOORS_CLIMBED',
   'android.permission.health.WRITE_HEART_RATE',

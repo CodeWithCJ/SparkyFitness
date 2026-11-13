@@ -42,6 +42,13 @@ import {
 import { getMealTypeLabel } from '../../constants/meals';
 import i18n from '../../localization/i18n';
 import { runTasksInBatches } from '../../utils/concurrency';
+import {
+  EXERCISE_FILTER_OWN_PREF,
+  WORKOUT_TYPE,
+  removeExerciseData,
+  writeExerciseForDate,
+} from './exerciseWriteback';
+import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -577,9 +584,11 @@ const writableMetrics = (metrics: WritebackMetric[]): WritebackMetric[] =>
     const gate: ObjectTypeIdentifier =
       m.id === 'toothbrushing'
         ? TOOTHBRUSHING_IDENTIFIER
-        : m.id === 'hydration'
-          ? DIETARY_WATER_IDENTIFIER
-          : DIETARY_ENERGY_IDENTIFIER;
+        : m.id === 'exercise'
+          ? WORKOUT_TYPE
+          : m.id === 'hydration'
+            ? DIETARY_WATER_IDENTIFIER
+            : DIETARY_ENERGY_IDENTIFIER;
     const ok = isAuthorized(gate);
     if (!ok)
       addLog(
@@ -609,6 +618,12 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
 
   // Traceability marker stamped into written samples' metadata (no clientRecordId on iOS).
   const version = Date.now();
+
+  // Exercise needs the profile zone (for entries without their own) and the
+  // weight unit (for the sets summary); loaded once per run.
+  const exerciseContext = writable.some((m) => m.id === 'exercise')
+    ? await loadExerciseWritebackContext()
+    : null;
 
   // One worker per date. The metrics within a date stay sequential (they write distinct
   // sample types to the same day, so there's nothing to gain from racing them), but
@@ -643,6 +658,18 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
       try {
         if (metric.id === 'nutrition') {
           await writeNutritionForDate(date, summary, version);
+        } else if (metric.id === 'exercise') {
+          if (exerciseContext) {
+            await writeExerciseForDate(
+              date,
+              summary.exerciseSessions ?? [],
+              version,
+              {
+                ...exerciseContext,
+                bmrKcalPerDay: summary.calorieBalance?.bmr ?? null,
+              }
+            );
+          }
         } else {
           await writeHydrationForDate(date, summary, version);
         }
@@ -689,7 +716,8 @@ const trackingKeysToClear = (
 ): string[] =>
   keys.filter((k) => {
     if (!k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`)) return false;
-    if (!k.includes('Uuids:') && !k.includes('Sig:')) return false;
+    if (!k.includes('Uuids:') && !k.includes('Sig:') && !k.includes('Keys:'))
+      return false;
     if (!range) return true;
     const day = k.slice(k.lastIndexOf(':') + 1);
     return day >= range.from && day <= range.to;
@@ -722,7 +750,7 @@ export const removeWrittenData = async (
       }
     : { endDate: new Date() };
 
-  let ok = true;
+  let ok = await removeExerciseData(dateFilter);
   for (const type of WRITEBACK_DELETE_TYPES) {
     try {
       await deleteObjects(type, { date: dateFilter });
@@ -743,6 +771,8 @@ export const removeWrittenData = async (
     await Promise.all(
       WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false))
     );
+    // Nothing written is left, so the daily totals stop filtering for it.
+    if (ok) await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, false);
   }
 
   addLog(

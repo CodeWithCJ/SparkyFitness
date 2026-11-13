@@ -170,6 +170,7 @@ export default defineConfig({
             { text: 'Interval & WOD Workouts', link: '/features/exercises/interval-wod-workouts' },
             { text: 'Guided Workouts', link: '/features/exercises/guided-workouts' },
             { text: 'GPS Activity Recording', link: '/features/exercises/gps-activity-recording' },
+            { text: 'Sending Workouts to Health Apps', link: '/features/exercises/workouts-to-health' },
             { text: 'Training Programs', link: '/features/exercises/training-programs' },
             { text: 'Running Trends', link: '/features/exercises/running-trends' },
             { text: 'Fitness Tests', link: '/features/exercises/fitness-tests' },
@@ -234,6 +235,7 @@ export default defineConfig({
           text: 'Mobile Application',
           items: [
             { text: 'Mobile App Guide', link: '/mobile-app/mobile-app' },
+            { text: 'Writing to Apple Health and Health Connect', link: '/mobile-app/health-writeback' },
             { text: 'Watch Apps (Apple Watch & Wear OS)', link: '/mobile-app/watch-apps' },
             { text: 'Proxy Setup', link: '/mobile-app/proxy-setup' },
             { text: 'Troubleshooting', link: '/mobile-app/troubleshooting' },

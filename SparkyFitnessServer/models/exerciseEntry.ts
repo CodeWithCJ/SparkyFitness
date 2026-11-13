@@ -1253,7 +1253,7 @@ async function _createExerciseEntryWithClient(
       // No existing entry, create a new one
       // 1. Fetch the exercise details to create the snapshot
       const exerciseSnapshotQuery = await client.query(
-        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality
+        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality, health_activity_type
          FROM exercises WHERE id = $1`,
         [entryData.exercise_id]
       );
@@ -1303,6 +1303,7 @@ async function _createExerciseEntryWithClient(
         snapshot.modality,
         ...telemetryValuesFrom(entryData),
         entryData.record_timezone ?? null,
+        snapshot.health_activity_type ?? null,
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
@@ -1314,7 +1315,7 @@ async function _createExerciseEntryWithClient(
         'equipment, primary_muscles, secondary_muscles, instructions, images, ' +
         'distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated, ' +
         'superset_group, entry_time, modality';
-      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone${idColumn}`;
+      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone, health_activity_type${idColumn}`;
       const placeholders = entryValues
         .map((_, index) => `$${index + 1}`)
         .join(', ');

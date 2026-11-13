@@ -48,7 +48,8 @@ async function updateExerciseEntriesSnapshot(
        SET
           exercise_name = $1,
           calories_per_hour = $2,
-          modality = $3
+          modality = $3,
+          health_activity_type = $6
        WHERE user_id = $4 AND exercise_id = $5
        RETURNING id`,
       [
@@ -57,6 +58,7 @@ async function updateExerciseEntriesSnapshot(
         newSnapshotData.modality,
         userId,
         exerciseId,
+        newSnapshotData.health_activity_type ?? null,
       ]
     );
     return result.rowCount;

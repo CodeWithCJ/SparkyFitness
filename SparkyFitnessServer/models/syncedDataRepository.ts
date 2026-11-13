@@ -1,3 +1,7 @@
+import {
+  USER_ORIGINATED_SOURCES,
+  isUserOriginatedSource,
+} from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 
@@ -65,20 +69,8 @@ const SYNCED_TABLE_COLUMNS: ReadonlyArray<
 // (LOWER(source) in SQL, toLowerCase() in JS). This is a denylist: if a NEW
 // user-originated source tag is ever introduced in the app, add it here so it
 // is not offered for deletion.
-const USER_ORIGINATED_SOURCES = [
-  'manual',
-  'sparky',
-  'workout preset',
-  'workout plan',
-] as const;
-
-// True when a source string represents user-created data, regardless of casing.
-const isUserOriginatedSource = (source: string | null | undefined): boolean =>
-  USER_ORIGINATED_SOURCES.includes(
-    (source ?? '')
-      .trim()
-      .toLowerCase() as (typeof USER_ORIGINATED_SOURCES)[number]
-  );
+// The list and its check live in @workspace/shared (also used by health
+// write-back); re-exported here for existing imports.
 
 export interface SyncedSourceSummary {
   source: string;
