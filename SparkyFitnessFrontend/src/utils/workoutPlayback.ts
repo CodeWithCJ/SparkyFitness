@@ -460,7 +460,10 @@ export function createWorkoutPlaybackDraftFromPreset(
         images: exercise.exercise?.images ?? undefined,
         instructions: exercise.exercise?.instructions ?? undefined,
         mechanic: exercise.exercise?.mechanic ?? null,
-        equipment: exercise.exercise?.equipment ?? undefined,
+        // The presets API sends equipment on the preset exercise, with no
+        // nested `exercise`; without it playback hides the plate calculator.
+        equipment:
+          exercise.equipment ?? exercise.exercise?.equipment ?? undefined,
         modality: resolveExerciseModality(
           exercise.modality ?? exercise.exercise?.modality,
           exercise.category ?? exercise.exercise?.category
