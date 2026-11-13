@@ -13,6 +13,7 @@ import {
   type AssumedSetValues,
   type AssumedValueSources,
 } from '../utils/workoutSession';
+import { describePresetChanges } from '../utils/focusView';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 
@@ -26,6 +27,8 @@ function isAppInBackground(state: string | null | undefined): boolean {
 
 export interface PresetUpdateOffer {
   presetName: string;
+  /** What differs from the preset, as short translated lines. */
+  changes: string[];
   /** Writes the workout's exercises into the preset. Resolves false when the write fails, so the question can be asked again. */
   update: () => Promise<boolean>;
 }
@@ -168,9 +171,17 @@ export function useWorkoutCompletePresetSync({
     announcedRef.current = true;
     onNeedsUpdateRef.current?.({
       presetName: sourcePreset.name,
+      changes: describePresetChanges(session, sourcePreset, t),
       update: applyUpdate,
     });
-  }, [sourcePreset, presetUpdateExercises, profile?.id, applyUpdate]);
+  }, [
+    sourcePreset,
+    presetUpdateExercises,
+    profile?.id,
+    applyUpdate,
+    session,
+    t,
+  ]);
 
   useEffect(() => {
     if (promptedRef.current || !isFocused || !appActive) return;

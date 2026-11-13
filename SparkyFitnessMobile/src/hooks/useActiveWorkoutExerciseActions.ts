@@ -9,7 +9,7 @@ import type {
   ExerciseSetRestUpdate,
 } from '../components/ExerciseSetRestSheet';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { isFocusViewActive } from '../utils/focusView';
 import { exerciseFromSnapshot, getSupersetRuns } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
@@ -22,17 +22,6 @@ interface UseActiveWorkoutExerciseActionsArgs {
   setUserExpandedIds: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>;
   setFocusedExerciseId: React.Dispatch<React.SetStateAction<string | null>>;
   scrollToExercise: (entryId: string) => void;
-}
-
-/** The focus view is showing: the view is chosen, standard format, no guided mode. */
-function inFocusView(): boolean {
-  const prefs = useAppPreferencesStore.getState();
-  return (
-    prefs.activeWorkoutView === 'focus' &&
-    !prefs.guidedWorkoutEnabled &&
-    (useActiveWorkoutStore.getState().workoutFormat ?? 'standard') ===
-      'standard'
-  );
 }
 
 export function useActiveWorkoutExerciseActions({
@@ -102,7 +91,7 @@ export function useActiveWorkoutExerciseActions({
         navigation.navigate('ExerciseSearch', {
           returnKey: route.key,
           replaceFor,
-          ...(inFocusView() ? { focusStyle: true } : null),
+          ...(isFocusViewActive() ? { focusStyle: true } : null),
         });
       });
     },

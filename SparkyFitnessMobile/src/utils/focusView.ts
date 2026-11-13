@@ -1,6 +1,11 @@
+import type { TFunction } from 'i18next';
+import type { WorkoutPreset } from '../types/workoutPresets';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type {
   ExerciseModality,
   ExerciseRecentSessionSet,
+  PresetSessionResponse,
 } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
 import { distanceFromKm, storedWeightInUnit } from './unitConversions';
@@ -136,4 +141,71 @@ export function formatLastTimeSets(
       return weight ?? '';
     })
     .filter((text) => text !== '');
+}
+
+/**
+ * Whether the active workout screen is drawing the focus view: the view is
+ * chosen, the format is standard and guided mode is off. Read from the stores
+ * so a handler (replace, finish) can ask without the screen's render state.
+ */
+export function isFocusViewActive(): boolean {
+  const prefs = useAppPreferencesStore.getState();
+  return (
+    prefs.activeWorkoutView === 'focus' &&
+    !prefs.guidedWorkoutEnabled &&
+    (useActiveWorkoutStore.getState().workoutFormat ?? 'standard') ===
+      'standard'
+  );
+}
+
+/**
+ * Short, translated lines on how today's workout differs in structure from the
+ * preset it started from (the same differences the "Update preset?" check
+ * counts): exercises added or removed, and a changed number of sets.
+ */
+export function describePresetChanges(
+  session: PresetSessionResponse,
+  preset: WorkoutPreset,
+  t: TFunction
+): string[] {
+  const lines: string[] = [];
+  const unmatched = [...preset.exercises];
+  for (const exercise of session.exercises) {
+    const name =
+      exercise.exercise_snapshot?.name ??
+      t('workout.exercise', { defaultValue: 'Exercise' });
+    const index = unmatched.findIndex(
+      (p) => p.exercise_id === exercise.exercise_id
+    );
+    if (index < 0) {
+      lines.push(
+        t('workoutComplete.changes.added', {
+          defaultValue: '{{name}} added.',
+          name,
+        })
+      );
+      continue;
+    }
+    const [match] = unmatched.splice(index, 1);
+    const before = match.sets?.length ?? 0;
+    if (before !== exercise.sets.length) {
+      lines.push(
+        t('workoutComplete.changes.sets', {
+          defaultValue: '{{name}} {{count}} sets, was {{before}}.',
+          name,
+          count: exercise.sets.length,
+          before,
+        })
+      );
+    }
+  }
+  for (const removed of unmatched) {
+    lines.push(
+      t('workoutComplete.changes.removed', {
+        defaultValue: '{{name}} removed.',
+        name: removed.exercise_name,
+      })
+    );
+  }
+  return lines;
 }
