@@ -372,6 +372,27 @@ describe('ActiveWorkoutFocusView', () => {
       expect(handlers.onPressRestChip).toHaveBeenCalledWith('b', null);
     });
 
+    it('hides the rest chip for a one-set cardio exercise, which logs in a form', () => {
+      const cardio = makeExercise('d', 'Running', {
+        exercise_snapshot: {
+          name: 'Running',
+          modality: 'duration_distance',
+          images: [],
+        },
+        sets: [
+          {
+            id: 'd-0',
+            set_number: 1,
+            set_type: 'normal',
+            weight: null,
+            reps: null,
+          },
+        ],
+      });
+      render(viewElement('d', {}, { exercises: [cardio] }));
+      expect(screen.queryByLabelText(/^Rest /)).toBeNull();
+    });
+
     it('keeps the note editor closed until the menu opens it or a note exists', () => {
       const { rerender } = render(viewElement('a'));
       expect(screen.queryByLabelText('Notes for Bench Press')).toBeNull();
