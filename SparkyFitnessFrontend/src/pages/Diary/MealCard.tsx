@@ -17,6 +17,10 @@ import {
   History,
   Utensils,
   ClipboardCopy,
+  Cookie,
+  Moon,
+  Sun,
+  Sunrise,
   PlusCircle,
   Users,
 } from 'lucide-react';
@@ -78,6 +82,49 @@ const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
   dietary_fiber: { label: 'nutrition.fiber', defaultLabel: 'Fiber' },
 };
 
+// The diary reads as one timeline: each meal sits on a vertical rail with an
+// icon for its time of day, and each entry hangs off the rail with its own dot.
+const MEAL_ICON_STYLES: Record<
+  string,
+  { Icon: typeof Utensils; className: string }
+> = {
+  breakfast: {
+    Icon: Sunrise,
+    className:
+      'bg-amber-100 text-amber-600 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800',
+  },
+  lunch: {
+    Icon: Sun,
+    className:
+      'bg-orange-100 text-orange-600 ring-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:ring-orange-800',
+  },
+  snacks: {
+    Icon: Cookie,
+    className:
+      'bg-green-100 text-green-700 ring-green-200 dark:bg-green-900/40 dark:text-green-300 dark:ring-green-800',
+  },
+  dinner: {
+    Icon: Moon,
+    className:
+      'bg-indigo-100 text-indigo-600 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:ring-indigo-800',
+  },
+};
+
+const DEFAULT_MEAL_ICON_STYLE = {
+  Icon: Utensils,
+  className:
+    'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
+};
+
+// Own keys only, so a meal named e.g. "constructor" never resolves to an
+// Object.prototype member.
+const mealIconStyleFor = (key: string) => {
+  const normalized = key.toLowerCase();
+  return Object.hasOwn(MEAL_ICON_STYLES, normalized)
+    ? MEAL_ICON_STYLES[normalized]
+    : undefined;
+};
+
 interface MealCardProps {
   meal: {
     name: string;
@@ -85,6 +132,8 @@ interface MealCardProps {
     entries: (FoodEntry | FoodEntryMeal)[];
     targetCalories?: number;
     selectedDate: string;
+    /** The meal type's default time ('HH:MM' or 'HH:MM:SS'), if it has one. */
+    defaultTime?: string | null;
   };
   totals: MealTotals;
   selectedDate: string;
@@ -160,6 +209,14 @@ const MealCard = ({
       ? t('common.kcalUnit', 'kcal')
       : t('common.kJUnit', 'kJ');
   };
+  const mealIconStyle =
+    mealIconStyleFor(meal.type) ??
+    mealIconStyleFor(meal.name) ??
+    DEFAULT_MEAL_ICON_STYLE;
+  const MealIcon = mealIconStyle.Icon;
+  const mealStartTime = meal.defaultTime
+    ? formatTimeOfDayString(meal.defaultTime, timeFormat)
+    : null;
   debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
   debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
   const [editingFood, setEditingFood] = useState<Food | null>(null); // Changed from editingFoodEntry to editingFood
@@ -242,19 +299,41 @@ const MealCard = ({
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
-                {meal.name}
-              </CardTitle>
-              <span className="text-xs sm:text-sm text-gray-500">
-                {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
-                {!!meal.targetCalories && (
-                  <span>{` / ${Math.round(
-                    convertEnergy(meal.targetCalories, 'kcal', energyUnit)
-                  )}`}</span>
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ring-4',
+                  mealIconStyle.className
                 )}
-                {getEnergyUnitString(energyUnit)}
-              </span>
+                aria-hidden="true"
+              >
+                <MealIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
+                  {meal.name}
+                </CardTitle>
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {mealStartTime && (
+                    <>
+                      {t('mealCard.fromTime', 'from {{time}}', {
+                        time: mealStartTime,
+                      })}
+                      {' · '}
+                    </>
+                  )}
+                  <span className="font-semibold text-foreground">
+                    {Math.round(
+                      convertEnergy(totals.calories, 'kcal', energyUnit)
+                    )}
+                    {!!meal.targetCalories &&
+                      ` / ${Math.round(
+                        convertEnergy(meal.targetCalories, 'kcal', energyUnit)
+                      )}`}{' '}
+                    {getEnergyUnitString(energyUnit)}
+                  </span>
+                </span>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
               <Dialog
@@ -375,11 +454,25 @@ const MealCard = ({
         </CardHeader>
         <CardContent>
           {meal.entries.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {t('foodDiary.noFoodsAddedYet', 'No foods added yet')}
+            <div className="relative pl-12">
+              <span
+                className="absolute bottom-0 left-5 top-0 w-px bg-border"
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                className="w-full rounded-xl border border-dashed border-muted-foreground/40 py-6 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+                onClick={() => handleFoodSearchOpenChange(true)}
+              >
+                {t('mealCard.nothingLogged', 'Nothing logged yet, add food')}
+              </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="relative space-y-3 pl-12">
+              <span
+                className="absolute bottom-0 left-5 top-0 w-px bg-border"
+                aria-hidden="true"
+              />
               {meal.entries.map((item) => {
                 // Changed entry to item
                 const entryNutrition = getEntryNutrition(item);
@@ -479,10 +572,14 @@ const MealCard = ({
                     <div
                       key={item.id}
                       className={cn(
-                        'rounded-xl border bg-card p-4 shadow-sm transition-colors duration-300 dark:bg-secondary/50',
+                        'group relative rounded-xl border bg-card p-4 shadow-sm transition-all duration-300 hover:shadow-md dark:bg-secondary/50',
                         entryIsHighlighted && 'border-2 border-blue-500'
                       )}
                     >
+                      <span
+                        className="absolute -left-[33px] top-5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background transition-colors group-hover:bg-primary"
+                        aria-hidden="true"
+                      />
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                         <div className="min-w-0">
                           <div className="text-base font-semibold leading-tight text-card-foreground">
@@ -636,10 +733,14 @@ const MealCard = ({
                   <div
                     key={item.id} // Use item.id directly
                     className={cn(
-                      'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-colors duration-300',
+                      'group relative flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-all duration-300 hover:shadow-md',
                       entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
+                    <span
+                      className="absolute -left-[33px] top-5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background transition-colors group-hover:bg-primary"
+                      aria-hidden="true"
+                    />
                     {entryImageSrc && (
                       <button
                         type="button"

@@ -17,6 +17,8 @@ import {
   type MealGroup,
 } from '../utils/mealNutrition';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { usePreferences } from '../hooks/usePreferences';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 interface FoodSummaryProps {
@@ -54,7 +56,7 @@ const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
       accessibilityLabel={t('foodSummary.tapToAddFood', {
         defaultValue: 'Tap to add food',
       })}
-      className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      className="rounded-xl p-4 mb-2 items-center py-6 border border-dashed border-border-strong"
     >
       <Text className="text-text-muted text-base">
         {t('foodSummary.tapToAddFood', { defaultValue: 'Tap to add food' })}
@@ -83,6 +85,11 @@ const MealSection: React.FC<MealSectionProps> = ({
   const icon = systemConfig?.icon ?? 'meal-snack';
 
   const energyUnit = useEnergyUnit();
+  const { preferences } = usePreferences();
+  const startTime = formatTimeLabel(
+    group.defaultTime,
+    preferences?.time_format
+  );
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
   const targetCalories = React.useMemo(
     () => getMealTargetCalories(group.name, group.isSystem, goals, calorieGoal),
@@ -91,10 +98,21 @@ const MealSection: React.FC<MealSectionProps> = ({
 
   const headerContent = (
     <>
-      <Icon name={icon} size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-secondary flex-1">
-        {label}
-      </Text>
+      {/* The meal icon sits on the timeline rail that runs past its entries. */}
+      <View className="w-9 h-9 rounded-full bg-accent-primary/10 items-center justify-center">
+        <Icon name={icon} size={18} color={accentPrimary} />
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-bold text-text-secondary">{label}</Text>
+        {startTime && (
+          <Text className="text-xs text-text-muted">
+            {t('foodSummary.fromTime', {
+              defaultValue: 'from {{time}}',
+              time: startTime,
+            })}
+          </Text>
+        )}
+      </View>
       {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
@@ -133,17 +151,29 @@ const MealSection: React.FC<MealSectionProps> = ({
           {headerContent}
         </View>
       )}
-      {group.entries.map((entry, index) => {
-        const nutrition = calculateEntryNutrition(entry);
-        return (
-          <SwipeableFoodRow
-            key={entry.id || index}
-            entry={entry}
-            nutrition={nutrition}
-            onAdjustServing={onAdjustServing}
-          />
-        );
-      })}
+      <View>
+        <View
+          className="absolute top-0 bottom-0 bg-border"
+          style={{ left: 17.5, width: 1 }}
+        />
+        {group.entries.map((entry, index) => {
+          const nutrition = calculateEntryNutrition(entry);
+          return (
+            <View key={entry.id || index} className="flex-row items-center">
+              <View className="w-9 items-center">
+                <View className="w-2.5 h-2.5 rounded-full border-2 border-accent-primary bg-surface" />
+              </View>
+              <View className="flex-1 ml-2">
+                <SwipeableFoodRow
+                  entry={entry}
+                  nutrition={nutrition}
+                  onAdjustServing={onAdjustServing}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };

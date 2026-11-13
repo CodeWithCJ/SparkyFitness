@@ -437,6 +437,7 @@ const Diary = () => {
                 effectiveGoals
               ),
               selectedDate: selectedDate,
+              defaultTime: mealTypeObj.default_time ?? null,
             }}
             totals={getMealTotals(
               mealTypeObj.name,
