@@ -1472,6 +1472,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       <ExerciseSetRestSheet
         ref={setRestSheetRef}
+        appearance={focusMode ? 'page' : 'sheet'}
         onApply={handleApplySetRests}
       />
 
