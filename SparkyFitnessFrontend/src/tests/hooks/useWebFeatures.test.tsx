@@ -6,6 +6,7 @@ import { cycleKeys } from '@/hooks/useCycle';
 import {
   useCycleSwitch,
   useWebFeatures,
+  withoutHiddenCategories,
 } from '@/hooks/Settings/useWebFeatures';
 import { getSettings, putSettings } from '@/api/Cycle/cycleService';
 
@@ -87,6 +88,31 @@ describe('useWebFeatures', () => {
     expect(result.current.features.isEnabled('cycle')).toBe(expected);
     expect(result.current.cycle.on).toBe(expected);
     expect(result.current.cycle.needsSetup).toBe(false);
+  });
+
+  it.each([
+    ['turned off on purpose', cycleRow({ enabled: false }), true],
+    ['on', cycleRow(), false],
+    ['never set up (no row)', null, false],
+  ])(
+    'hides the reproductive Health categories only when cycle is %s',
+    async (_label, row, hidden) => {
+      getMock.mockResolvedValue(row);
+      const { result } = setup();
+      await waitFor(() => expect(result.current.cycle.state).toBe('ready'));
+      const { isExplicitlyOff, hiddenCustomCategories } =
+        result.current.features;
+      expect(isExplicitlyOff('cycle')).toBe(hidden);
+      expect(hiddenCustomCategories.has('menstruation_flow')).toBe(hidden);
+      expect(hiddenCustomCategories.has('ovulation_test')).toBe(hidden);
+    }
+  );
+
+  it('hides nothing while cycle settings load', () => {
+    getMock.mockReturnValue(new Promise(() => {}));
+    const { result } = setup();
+    expect(result.current.features.isExplicitlyOff('cycle')).toBe(false);
+    expect(result.current.features.hiddenCustomCategories.size).toBe(0);
   });
 
   it('stays usable when a later refetch fails, with what loaded', async () => {
@@ -223,5 +249,18 @@ describe('useCycleSwitch', () => {
       client.getQueryData<SharedCycleSettings | null>(cycleKeys.settings())
         ?.enabled
     ).toBeUndefined();
+  });
+});
+
+describe('withoutHiddenCategories', () => {
+  it('leaves out the hidden category names and keeps the rest', () => {
+    const categories = [
+      { id: '1', name: 'blood_glucose' },
+      { id: '2', name: 'menstruation_flow' },
+    ];
+    expect(
+      withoutHiddenCategories(categories, new Set(['menstruation_flow']))
+    ).toEqual([{ id: '1', name: 'blood_glucose' }]);
+    expect(withoutHiddenCategories(categories, new Set())).toEqual(categories);
   });
 });

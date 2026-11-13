@@ -1,6 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isFeatureEnabled, type FeatureKey } from '@workspace/shared';
+import {
+  FEATURE_CUSTOM_CATEGORIES,
+  FEATURE_KEYS,
+  isFeatureEnabled,
+  isFeatureExplicitlyOff,
+  type FeatureKey,
+} from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useCycleSettings, useSetCycleEnabledMutation } from '@/hooks/useCycle';
 
@@ -11,7 +17,11 @@ import { useCycleSettings, useSetCycleEnabledMutation } from '@/hooks/useCycle';
  * far, keeps its own account-wide switch in `cycle_settings.enabled`; the
  * website's `feature_choices` join here with the first feature stored there.
  *
- * Off while its value is loading or could not be read, as before Features.
+ * `isEnabled` is off while its value is loading or could not be read, as
+ * before Features. `isExplicitlyOff` is only for a feature the person turned
+ * off: data shown outside the feature's own pages (the reproductive Health
+ * categories, cycle hub symptoms) hides only then, so nothing disappears for
+ * someone who never chose, or while the answer loads.
  */
 export function useWebFeatures() {
   const { data: cycleSettings } = useCycleSettings();
@@ -21,7 +31,33 @@ export function useWebFeatures() {
       isFeatureEnabled(key, 'web', { choices: undefined, cycleEnabled }),
     [cycleEnabled]
   );
-  return { isEnabled };
+  const isExplicitlyOff = useCallback(
+    (key: FeatureKey) =>
+      isFeatureExplicitlyOff(key, 'web', { choices: undefined, cycleEnabled }),
+    [cycleEnabled]
+  );
+  // Custom categories that belong to a feature turned off on purpose. Lists
+  // of measurements leave them out; Settings > Custom Categories keeps them.
+  const hiddenCustomCategories = useMemo<ReadonlySet<string>>(
+    () =>
+      new Set(
+        FEATURE_KEYS.filter(isExplicitlyOff).flatMap(
+          (key) => FEATURE_CUSTOM_CATEGORIES[key] ?? []
+        )
+      ),
+    [isExplicitlyOff]
+  );
+  return { isEnabled, isExplicitlyOff, hiddenCustomCategories };
+}
+
+/** The categories to list, less those of features turned off on purpose. */
+export function withoutHiddenCategories<T extends { name: string }>(
+  categories: readonly T[],
+  hidden: ReadonlySet<string>
+): T[] {
+  return hidden.size === 0
+    ? [...categories]
+    : categories.filter((category) => !hidden.has(category.name));
 }
 
 /**

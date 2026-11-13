@@ -12,11 +12,13 @@ import type {
   CreateSymptomEntryBody,
   CreateSymptomOptionBody,
   EndSymptomEpisodeBody,
+  SymptomEntryResponse,
   SymptomImpact,
   SymptomOptionKind,
   UpdateSymptomDefinitionBody,
   UpdateSymptomEntryBody,
 } from '@workspace/shared';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 import i18n from 'i18next';
 const symptomKeys = {
@@ -77,10 +79,24 @@ export const useSymptomOptions = (kind?: SymptomOptionKind) =>
     },
   });
 
+const withoutCycleHubSymptoms = (entries: SymptomEntryResponse[]) =>
+  entries.filter((entry) => entry.source !== 'cycle');
+
+/**
+ * Symptoms logged in the cycle hub belong to cycle tracking: while the person
+ * has turned it off (Settings > Features), lists outside the hub leave them
+ * out. They stay stored and come back when cycle is turned on.
+ */
+const useCycleHubSymptomsFilter = () =>
+  useWebFeatures().isExplicitlyOff('cycle')
+    ? withoutCycleHubSymptoms
+    : undefined;
+
 export const useSymptomEntries = (filters?: SymptomEntryFilters) =>
   useQuery({
     queryKey: symptomKeys.entries(filters),
     queryFn: () => symptomService.listSymptomEntries(filters),
+    select: useCycleHubSymptomsFilter(),
     meta: {
       errorMessage: i18n.t(
         'hooks.useSymptoms.failedToLoadSymptomLogs',
@@ -93,6 +109,7 @@ export const useOngoingEpisodes = () =>
   useQuery({
     queryKey: symptomKeys.ongoing(),
     queryFn: () => symptomService.listOngoingEpisodes(),
+    select: useCycleHubSymptomsFilter(),
     meta: {
       errorMessage: i18n.t(
         'hooks.useSymptoms.failedToLoadOngoingEpisodes',

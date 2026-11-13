@@ -85,6 +85,8 @@ const showSavedCycleSettings = (
   queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
   queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
   queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
+  // A symptom's context carries its cycle phase only while cycle is on.
+  queryClient.invalidateQueries({ queryKey: ['symptom-context'] });
 };
 
 /** The cached settings query itself, which goes away when the cache is cleared. */
