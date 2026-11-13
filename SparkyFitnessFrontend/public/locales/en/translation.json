@@ -3304,7 +3304,7 @@
       },
       "toolGone": "The server no longer lists this tool.",
       "sendUserIdLabel": "Tell the server who is chatting",
-      "sendUserIdHelp": "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person. Its tools then work only in that person's own account, not in a family member's."
+      "sendUserIdHelp": "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person."
     },
     "providerSpecificFields": {
       "appURL": "App URL",

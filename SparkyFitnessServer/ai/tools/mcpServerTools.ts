@@ -650,11 +650,11 @@ function toChatTool(
   outsideTool: OutsideTool,
   { actorUserId, accountUserId }: McpServerToolContext
 ): Tool {
-  const { server, listed, sendUserId } = outsideTool;
-  // An outside server is not bound by Family Access: it trusts the ID it is
-  // sent. So a tool that is told who is chatting works in that person's own
-  // account only.
-  const ownAccountOnly = sendUserId && actorUserId !== accountUserId;
+  const { server, listed } = outsideTool;
+  // Family Access shares an account with a person, not with an outside server,
+  // so no outside tool runs in a family member's account: one could read their
+  // data in chat and send it on.
+  const ownAccountOnly = actorUserId !== accountUserId;
   return tool({
     description: withoutToken(
       listed.description?.trim() || `The "${listed.name}" tool.`,

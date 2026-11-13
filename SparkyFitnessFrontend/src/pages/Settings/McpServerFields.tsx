@@ -302,7 +302,7 @@ export const McpServerFields = ({
         <p className="text-sm text-muted-foreground">
           {t(
             'settings.mcpServer.sendUserIdHelp',
-            "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person. Its tools then work only in that person's own account, not in a family member's.",
+            "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person.",
             { header: MCP_SERVER_USER_ID_HEADER }
           )}
         </p>

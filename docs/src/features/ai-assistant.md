@@ -74,7 +74,7 @@ A server on your own network works too, since only an admin adds one. Over plain
 
 ### Tell the server who is chatting
 
-With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. After switching to a family member's profile, the server's tools refuse to run, since the server would only know who is signed in. With it off, the server is not told who is chatting, so it cannot tell people apart, and its tools also run in a family member's profile. The server should accept the header only together with the token, since SparkyFitness does not sign it.
+With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. With it off, the server is not told who is chatting, so it cannot tell people apart. Either way, after switching to a family member's profile, outside tools refuse to run: that person shared their data with you, not with the outside server. The server should accept the header only together with the token, since SparkyFitness does not sign it.
 
 ### Limits and safety
 

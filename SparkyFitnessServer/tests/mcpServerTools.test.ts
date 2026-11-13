@@ -717,9 +717,18 @@ describe('what the outside server is told', () => {
     expect(calls('tools/call')).toEqual([]);
   });
 
-  it('still works in a family member’s account when the server is told nothing', async () => {
+  it('refuses in a family member’s account when the server is told nothing', async () => {
     getServers.mockResolvedValue([toolServer(['whoami'])]);
     const tools = await loadMcpServerTools(FAMILY_ACCOUNT);
+    await expect(run(tools.mcp_household_tools__whoami)).resolves.toBe(
+      "Error [FORBIDDEN]: This only works in the user's own account, not in a family member's."
+    );
+    expect(calls('tools/call')).toEqual([]);
+  });
+
+  it('works in the user’s own account when the server is told nothing', async () => {
+    getServers.mockResolvedValue([toolServer(['whoami'])]);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
     expect(
       JSON.parse(await run(tools.mcp_household_tools__whoami))
     ).toMatchObject({ user: null });
