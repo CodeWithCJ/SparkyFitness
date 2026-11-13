@@ -804,14 +804,15 @@ describe('what the outside server is told', () => {
     expect(seen.every((request) => request.userId === undefined)).toBe(true);
   });
 
-  it('gives no outside tools in a family member’s account and contacts no server', async () => {
-    getServers.mockResolvedValue([
-      toolServer(['whoami'], { send_user_id: true }),
-    ]);
-    expect(await loadMcpServerTools(FAMILY_ACCOUNT)).toEqual({});
-    expect(seen).toEqual([]);
-    expect(vi.mocked(getChatMcpServerIds)).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    'gives no outside tools in a family member’s account and contacts no server (send_user_id %s)',
+    async (send_user_id) => {
+      getServers.mockResolvedValue([toolServer(['whoami'], { send_user_id })]);
+      expect(await loadMcpServerTools(FAMILY_ACCOUNT)).toEqual({});
+      expect(seen).toEqual([]);
+      expect(vi.mocked(getChatMcpServerIds)).not.toHaveBeenCalled();
+    }
+  );
 
   it('refuses a call once the person turned the server off mid-turn', async () => {
     getServers.mockResolvedValue([toolServer(['whoami'])]);
