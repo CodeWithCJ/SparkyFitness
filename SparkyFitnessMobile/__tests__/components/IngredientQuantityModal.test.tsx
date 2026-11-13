@@ -113,9 +113,12 @@ describe('IngredientQuantityModal', () => {
     fireEvent.press(getByText('1 oz'));
     fireEvent.press(getByText('Apply'));
 
+    // 160 g is about 5.64 oz (divided by 28.35 g per oz, not multiplied).
     expect(onSave).toHaveBeenCalledWith(
-      expect.any(Number),
+      5.64,
       expect.objectContaining({
+        quantity: 5.64,
+        calories: 47,
         variant_id: 'variant-oz',
         unit: 'oz',
         serving_unit: 'oz',

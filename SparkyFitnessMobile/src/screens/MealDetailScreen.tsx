@@ -531,13 +531,11 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
         <Button
           variant="primary"
           onPress={() => {
-            const customFoods = stagedFoods;
-            const targetMeal = customFoods
-              ? { ...meal, foods: customFoods }
-              : meal;
+            // The item keeps the saved meal's ingredients so Reset on the
+            // next screen goes back to them; the edits travel separately.
             navigation.navigate('FoodEntryAdd', {
-              item: mealToFoodInfo(targetMeal),
-              ...(customFoods ? { customizedFoods: customFoods } : {}),
+              item: mealToFoodInfo(meal),
+              ...(stagedFoods ? { customizedFoods: stagedFoods } : {}),
             });
           }}
         >

@@ -15,6 +15,7 @@ import {
 } from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 import { getConversionFactor } from '@workspace/shared';
+import { formatLocalizedNumber } from '../localization';
 import Button from './ui/Button';
 import StepperInput from './StepperInput';
 import Icon from './Icon';
@@ -187,9 +188,11 @@ export default function IngredientQuantityModal({
     setSelectedUnit(newUnit);
     setIsUnitPickerOpen(false);
 
+    // factor is how many old units one new unit holds (1 oz = 28.35 g), so
+    // the amount in the new unit is the old amount divided by it.
     const factor = getConversionFactor(oldUnit, newUnit);
-    if (factor !== null && parsedQuantity > 0) {
-      const newQty = Math.round(parsedQuantity * factor * 100) / 100;
+    if (factor !== null && factor > 0 && parsedQuantity > 0) {
+      const newQty = Math.round((parsedQuantity / factor) * 100) / 100;
       setQuantityText(String(newQty));
     } else if (variant.serving_size > 0) {
       setQuantityText(String(variant.serving_size));
@@ -240,7 +243,7 @@ export default function IngredientQuantityModal({
       const localized = localizeFoodUnit(variant.serving_unit, t);
       const label =
         variant.serving_size > 0 && variant.serving_unit
-          ? `${variant.serving_size} ${localized}`
+          ? `${formatLocalizedNumber(variant.serving_size)} ${localized}`
           : localized;
       return {
         key: `variant-${variant.id ?? variant.serving_unit}-${variant.serving_size}`,
@@ -380,12 +383,13 @@ export default function IngredientQuantityModal({
                       />
                     </View>
                     <Text className="text-text-muted text-xs">
-                      {previewCalories} {energyUnitLabel(energyUnit, t)} ·{' '}
-                      {previewProtein}g{' '}
+                      {formatLocalizedNumber(previewCalories)}{' '}
+                      {energyUnitLabel(energyUnit, t)} ·{' '}
+                      {formatLocalizedNumber(previewProtein)}g{' '}
                       {t('mealDetail.protein', { defaultValue: 'protein' })} ·{' '}
-                      {previewCarbs}g{' '}
+                      {formatLocalizedNumber(previewCarbs)}g{' '}
                       {t('mealDetail.carbs', { defaultValue: 'carbs' })} ·{' '}
-                      {previewFat}g{' '}
+                      {formatLocalizedNumber(previewFat)}g{' '}
                       {t('mealDetail.fat', { defaultValue: 'fat' })}
                     </Text>
                   </>

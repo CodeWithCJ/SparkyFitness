@@ -392,6 +392,11 @@ describe('MealDetailScreen', () => {
         ],
       })
     );
+    // The item keeps the saved ingredients, which Reset returns to.
+    const params = (navigation.navigate as jest.Mock).mock.calls[0][1];
+    expect(params.item.originalItem.foods).toEqual([
+      expect.objectContaining({ food_name: 'Chicken', quantity: 2 }),
+    ]);
   });
 
   it('allows resetting customized foods back to template', () => {

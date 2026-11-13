@@ -350,12 +350,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     );
   const activeItem = savedFoodOverride ?? item;
   const isMealItem = activeItem.source === 'meal';
+  // The saved meal's own ingredients: what Reset returns to. Edits made on
+  // MealDetail arrive separately as customizedFoods and start out applied.
   const initialMealFoods = useMemo(() => {
     if (!isMealItem) return null;
-    if (route.params?.customizedFoods) return route.params.customizedFoods;
     const originalMeal = activeItem.originalItem as Meal | undefined;
     return originalMeal?.foods ?? null;
-  }, [isMealItem, route.params?.customizedFoods, activeItem.originalItem]);
+  }, [isMealItem, activeItem.originalItem]);
 
   const [mealCustomizedFoods, setMealCustomizedFoods] = useState<
     MealFood[] | null
@@ -2347,7 +2348,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                       {calories} {energyUnitLabel(energyUnit, t)}
                     </Text>
                     <Text className="text-text-muted text-sm mt-1">
-                      {food.quantity} {food.unit}
+                      {formatLocalizedNumber(food.quantity, {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      {food.unit}
                     </Text>
                   </View>
                 </TouchableOpacity>

@@ -2319,6 +2319,50 @@ describe('FoodEntryAddScreen', () => {
     );
   });
 
+  it('resets edits from the meal screen back to the saved ingredients', () => {
+    const oats: MealFood = {
+      id: 'mf-1',
+      meal_id: 'meal-1',
+      food_id: 'food-1',
+      name: 'Oats',
+      food_name: 'Oats',
+      brand: null,
+      quantity: 100,
+      unit: 'g',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 389,
+      protein: 16.9,
+      carbs: 66.3,
+      fat: 6.9,
+    };
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: [oats],
+        },
+      },
+      customizedFoods: [{ ...oats, quantity: 50 }],
+      date: '2026-05-15',
+    });
+
+    expect(screen.getByText('50 g')).toBeTruthy();
+    fireEvent.press(screen.getByText('Reset'));
+    expect(screen.queryByText('Reset')).toBeNull();
+    // The list shows the saved amount again, matching what will be logged.
+    expect(screen.queryByText('50 g')).toBeNull();
+    expect(screen.getByText('100 g')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    // The saved meal is logged as it is, so no ingredient list is sent.
+    expect(mockAddMeal.mock.calls[0][0].foods).toBeUndefined();
+  });
+
   it('allows adjusting ingredient quantity via modal before logging', () => {
     mockUseFoodVariants.mockReturnValueOnce({
       variants: [],
