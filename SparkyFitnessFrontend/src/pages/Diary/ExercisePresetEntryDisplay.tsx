@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
@@ -118,12 +118,15 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   // Who the page belongs to now, and whether it is still on screen: a reopen
   // that answers after another account or profile took over, or after the
   // person left the Diary, must not open the player over what they are doing.
+  // Layout effects, so both change in the same commit as the switch: a
+  // passive effect runs later, and a reply landing in between would still
+  // read the previous person.
   const activeUserIdRef = useRef(activeUserId);
   const mountedRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     activeUserIdRef.current = activeUserId;
   }, [activeUserId]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;

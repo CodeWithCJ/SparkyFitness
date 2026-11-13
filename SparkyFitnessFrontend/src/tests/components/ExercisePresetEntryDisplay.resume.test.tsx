@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom';
+import { useLayoutEffect } from 'react';
+import { createRoot } from 'react-dom/client';
 import { act, fireEvent, render } from '@testing-library/react';
 import ExercisePresetEntryDisplay from '@/pages/Diary/ExercisePresetEntryDisplay';
 import type { PresetSessionEntry } from '@/types/exercises';
@@ -185,5 +187,66 @@ describe('ExercisePresetEntryDisplay resume', () => {
 
     expect(saveWorkoutPlaybackDraftToStorage).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('stops a resume that answers in the same commit as the switch, before effects run', async () => {
+    // Outside act(), so React runs passive effects (useEffect) after the
+    // commit, as in the browser, and a reply can land in between.
+    const reactGlobal = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const actEnvironment = reactGlobal.IS_REACT_ACT_ENVIRONMENT;
+    reactGlobal.IS_REACT_ACT_ENVIRONMENT = false;
+    const wait = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    const reopen = deferred<unknown>();
+    mockUpdatePresetSession.mockReturnValue(reopen.promise);
+
+    // Answers the reopen in the commit that hands the page to someone else.
+    function AnswerOnCommit({ changed }: { changed: boolean }) {
+      useLayoutEffect(() => {
+        if (changed) reopen.resolve({ id: 'session-1' });
+      }, [changed]);
+      return null;
+    }
+    const tree = (changed: boolean) => (
+      <>
+        <ExercisePresetEntryDisplay
+          presetEntry={presetEntry}
+          currentUserId="user-1"
+          handleDelete={jest.fn()}
+          handleDeleteExerciseEntry={jest.fn()}
+          handleEdit={jest.fn()}
+          handleEditExerciseDatabase={jest.fn()}
+          setExerciseToPlay={jest.fn()}
+          setIsPlaybackModalOpen={jest.fn()}
+          energyUnit="kcal"
+          convertEnergy={(value) => value}
+          getEnergyUnitString={() => 'kcal'}
+        />
+        <AnswerOnCommit changed={changed} />
+      </>
+    );
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      root.render(tree(false));
+      await wait(50);
+      fireEvent.click(resumeButton(container));
+      await wait(0);
+
+      mockActiveUserId = 'user-2';
+      root.render(tree(true));
+      await wait(100);
+
+      expect(saveWorkoutPlaybackDraftToStorage).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    } finally {
+      root.unmount();
+      container.remove();
+      reactGlobal.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+    }
   });
 });
