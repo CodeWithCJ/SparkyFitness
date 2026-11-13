@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -324,6 +324,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Open Food Facts publication:
   inspect `services/openFoodFactsManualContributionService.ts`, `integrations/openfoodfacts/openFoodFactsContribution.ts`, and `constants/openFoodFacts.ts`; retained automatic queue code is dormant and needs a new migration before a future release can activate its triggers
 - Skin temperature (Apple sleeping wrist temperature, Polar): the `skin_temperature` handler in `services/healthDataHandlers.ts` takes one record per night from `/api/health-data` (value in °C, 20 to 45) and writes a `skin_temperature` sample through `upsertSamplesByDay` in merge mode, one write per `source` and `site` (`wrist` for Apple's sleeping wrist temperature, `body` for an overnight Body Temperature mean; both are `healthkit`), passing `site` so the merge keeps the other site's samples in the shared day row (a stored sample with no site predates the field and is replaced); Polar's `processPolarSkinTemperature` writes the same metric with its own deviation. Oura's nightly deviation is still the "Skin Temperature Variation" custom measurement. Read it with `GET /api/generic-health/samples?metric=skin_temperature`.
+- Onboarding issue (the setup wizard's status, skip, reset or goal weight):
+  inspect `routes/onboardingRoutes.ts`, `services/onboardingService.ts` and `models/onboardingRepository.ts`. `GET /status` follows the active profile, so someone acting for the owner can read it; `POST /`, `PUT /target-weight`, `POST /skip` and `POST /reset` are owner-only (`createRequireSelfActor`, 403), as are the write policies on `onboarding_status` and `onboarding_data`, so an `UPDATE` from anyone else would match no row and still answer 200
 - Optional features issue (a feature switch not saved, reset or refused; #3487):
   inspect `routes/preferenceRoutes.ts` (`GET`/`PATCH /features`), `models/preferenceRepository.ts` (`mergeFeatureChoices`, `getFeatureChoices`), the migration `db/migrations/20261113090000_add_user_feature_choices.sql` (it also resets choices of another shape that a database kept from the migration's first draft) and the registry `../shared/src/features/optionalFeatures.ts`. Cycle is switched through `PUT /api/v2/cycle/settings`, not here
 - Heart rate zone, max heart rate or time-in-zone issue:

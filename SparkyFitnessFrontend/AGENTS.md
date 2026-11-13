@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -115,6 +115,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages. Most query keys don't name the account, so `useAuth` clears the whole query cache whenever the account changes: sign-out, an expired session, a profile switch, and a different account taking over without a sign-out (signed in from another browser tab, or a sign-in over another account). The page's first account keeps what was cached before it.
 - Remote MCP OAuth admin, consent, or connected-app issue: `src/pages/Admin/AuthenticationSettings.tsx`, `src/pages/Auth/OAuthConsent.tsx`, `src/pages/Settings/OAuthClientSettings.tsx`, `src/api/Auth/oauth.ts`, and `src/hooks/Auth/useOAuth.ts`.
 - Family-access/acting-user issue: `src/contexts/ActiveUserContext.tsx` and the hooks consuming it.
+- Onboarding wizard: `src/pages/Index.tsx` opens `components/Onboarding/` on its own while the signed-in person's onboarding is neither complete nor skipped, and `MainLayout` offers Complete Setup after a skip. Never while acting on behalf: the wizard replaces the whole layout, profile switcher included, and the server refuses onboarding writes from anyone but the owner, so `Index` doesn't even read the status then; Goals → Reset Onboarding (`pages/Goals/ResetOnboarding.tsx`) is hidden too.
 - Chat (Sparky) issue: `src/pages/Chat/`, `src/components/ai/`, `src/api/Chatbot/`. Voice controls live in `VoiceInputControl.tsx`; `VoiceInputSettings.tsx` shares server-backed enable/System/AI choices with mobile. `active_voice_ai_service_id: null` means System, never automatic inheritance from Chat. A compatible Chat model is only a suggestion. Cancelling, leaving the page, hiding the tab, or changing voice preferences releases the microphone and aborts uploads.
 - Theme/preferences issue: `src/contexts/ThemeContext.tsx`, `src/contexts/PreferencesContext.tsx`, `src/api/Settings/preferences.ts`, `src/utils/userPreferences.ts`.
 - Calorie goal settings: `src/pages/Settings/CalculationSettings.tsx`; `components/WeeklyWeightGoalInput.tsx` edits the `weekly` goal mode with direction and kg, g, lbs or stones + pounds per week, defaulting to the profile weight unit. Store signed kilograms in `goal_mode_weekly_change_kg` (negative loss, positive gain, zero maintenance), preserving legacy percentage modes. Use shared `formatWeeklyGoalRate` / `parseWeeklyGoalRate` for display and input; switching units preserves the canonical rate. Pass `weeklyChangeKg` to `computeCalorieTarget`; Diary preview and `CalorieTargetBreakdown` use the same preference.
