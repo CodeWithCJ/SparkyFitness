@@ -2,50 +2,33 @@ import XCTest
 @testable import WatchRoute
 
 final class WorkoutPageSnapTests: XCTestCase {
-    private let page: CGFloat = 251
-    private var moreTop: CGFloat { 2 * page }
+    // Metrics, set, More: not an even multiple of anything, as on a real watch.
+    private let stops: [CGFloat] = [0, 223.5, 447.5]
 
-    func testEveryOffsetAboveMoreLandsOnAPage() {
-        let pages: Set<CGFloat> = [0, page, moreTop]
-        var y: CGFloat = 0
-        while y < moreTop {
-            XCTAssertTrue(pages.contains(WorkoutPageSnap.snapped(y, moreTop: moreTop, pageHeight: page)), "y=\(y)")
-            y += 0.5
+    func testRestsOnTheNearestStopAboveTheLastOne() {
+        XCTAssertEqual(WorkoutPageSnap.snapped(40, stops: stops), 0)
+        XCTAssertEqual(WorkoutPageSnap.snapped(120, stops: stops), 223.5)
+        XCTAssertEqual(WorkoutPageSnap.snapped(340, stops: stops), 447.5)
+    }
+
+    func testEveryResultIsAStop() {
+        for y in stride(from: CGFloat(0), to: 447.5, by: 7.3) {
+            XCTAssertTrue(stops.contains(WorkoutPageSnap.snapped(y, stops: stops)), "y=\(y)")
         }
     }
 
-    func testNearestPageWins() {
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 0.4, moreTop: moreTop, pageHeight: page), 0)
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 0.6, moreTop: moreTop, pageHeight: page), page)
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 1.4, moreTop: moreTop, pageHeight: page), page)
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 1.6, moreTop: moreTop, pageHeight: page), moreTop)
+    func testMoreScrollsFreelyFromItsTop() {
+        XCTAssertEqual(WorkoutPageSnap.snapped(447.5, stops: stops), 447.5)
+        XCTAssertEqual(WorkoutPageSnap.snapped(612.2, stops: stops), 612.2)
     }
 
-    func testMoreScrollsFreely() {
-        XCTAssertEqual(WorkoutPageSnap.snapped(moreTop + 123.4, moreTop: moreTop, pageHeight: page), moreTop + 123.4)
+    func testADemoPageAddsAStopAbove() {
+        let withDemo: [CGFloat] = [0, 223.5, 447, 670.5]
+        XCTAssertEqual(WorkoutPageSnap.snapped(100, stops: withDemo), 0)
+        XCTAssertEqual(WorkoutPageSnap.snapped(330, stops: withDemo), 223.5)
     }
 
-    func testDemoPageIsOneMoreSnapStopAboveMetrics() {
-        let withDemo = 3 * page
-        let stops: Set<CGFloat> = [0, page, 2 * page, withDemo]
-        var y: CGFloat = 0
-        while y < withDemo {
-            XCTAssertTrue(stops.contains(WorkoutPageSnap.snapped(y, moreTop: withDemo, pageHeight: page)), "y=\(y)")
-            y += 0.5
-        }
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 0.4, moreTop: withDemo, pageHeight: page), 0)
-        XCTAssertEqual(WorkoutPageSnap.snapped(page * 1.6, moreTop: withDemo, pageHeight: page), 2 * page)
-    }
-
-    func testPageOrderPutsDemoAboveMetricsOnlyWhenPresent() {
-        XCTAssertEqual(WorkoutPageSnap.pages(hasDemo: true), [.demo, .metrics, .set])
-        XCTAssertEqual(WorkoutPageSnap.pages(hasDemo: false), [.metrics, .set])
-    }
-
-    func testOffsetsOfThePages() {
-        XCTAssertEqual(WorkoutPageSnap.offset(of: .set, hasDemo: false, pageHeight: page), page)
-        XCTAssertEqual(WorkoutPageSnap.offset(of: .set, hasDemo: true, pageHeight: page), 2 * page)
-        XCTAssertEqual(WorkoutPageSnap.offset(of: .demo, hasDemo: true, pageHeight: page), 0)
-        XCTAssertEqual(WorkoutPageSnap.offset(of: .metrics, hasDemo: true, pageHeight: page), page)
+    func testNoStopsLeavesTheTargetAlone() {
+        XCTAssertEqual(WorkoutPageSnap.snapped(50, stops: []), 50)
     }
 }

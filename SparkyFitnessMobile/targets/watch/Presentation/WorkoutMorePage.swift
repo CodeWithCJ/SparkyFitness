@@ -45,12 +45,12 @@ struct WorkoutMoreUpNextPage: View {
                 .frame(height: WatchStyle.m(25))
                 if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true) {
                     Text(target)
-                        .font(.system(size: WatchStyle.m(26), weight: .semibold, design: .rounded))
+                        .font(.system(size: WatchStyle.m(24), weight: .semibold, design: .rounded))
                         .foregroundStyle(tint.light)
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                        .frame(height: WatchStyle.m(31))
+                        .frame(height: WatchStyle.m(28))
                 }
                 Text(String(localized: "watch.workout.upNextSets", defaultValue: "\(next.setCount) sets"))
                     .font(.system(size: WatchStyle.m(17)))
@@ -62,8 +62,8 @@ struct WorkoutMoreUpNextPage: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
             }
-            Spacer(minLength: WatchStyle.m(6))
-            HStack(spacing: WatchStyle.m(6)) {
+            Spacer(minLength: WatchStyle.m(5))
+            HStack(spacing: WatchStyle.m(5)) {
                 if next != nil, checkIn.context.exerciseDoNow == true, let anchor = store.currentStep?.exerciseEntryId, let next {
                     cardButton(String(localized: "watch.workout.doFirst", defaultValue: "Do first")) {
                         session.sendWorkoutEdit(.doExerciseNow(exerciseEntryId: next.exerciseEntryId, anchorEntryId: anchor))
@@ -73,22 +73,22 @@ struct WorkoutMoreUpNextPage: View {
                 cardButton(String(localized: "watch.workout.moreList", defaultValue: "List"), action: onOpenList)
             }
         }
-        .padding(.horizontal, WatchStyle.m(12))
-        .padding(.vertical, WatchStyle.m(9))
+        // As tall as its lines and two slim buttons need, not a fixed block.
+        .padding(.horizontal, WatchStyle.m(10))
+        .padding(.vertical, WatchStyle.m(7))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: WatchStyle.m(168))
         .background(tint.mixed(0.26, over: (4 / 255, 18 / 255, 46 / 255)), in: RoundedRectangle(cornerRadius: WatchStyle.m(18), style: .continuous))
     }
 
     private func cardButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: Haptics.tapping(action)) {
             Text(title)
-                .font(.system(size: WatchStyle.m(19), weight: .semibold))
+                .font(.system(size: WatchStyle.m(16), weight: .semibold))
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
-                .frame(height: WatchStyle.m(42))
+                .frame(height: WatchStyle.m(34))
                 .background(WatchStyle.surface, in: Capsule())
                 .contentShape(Capsule())
         }
@@ -161,7 +161,11 @@ struct WorkoutMoreExercisePage: View {
         }
         .sheet(isPresented: $swapping) { SwapExerciseSheet() }
         #if DEBUG
-        .onAppear { if ScreenshotSeed.opensPlates { showingPlates = true } }
+        .onAppear {
+            // After the scroll has settled on this page: a sheet asked for while
+            // the pages are still being laid out is dropped.
+            if ScreenshotSeed.opensPlates { DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { showingPlates = true } }
+        }
         #endif
         .sheet(isPresented: $showingPlates) {
             if let plates {

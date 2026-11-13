@@ -347,11 +347,12 @@ private struct ActiveWorkoutView: View {
     @EnvironmentObject private var checkIn: CheckInStore
 
     @State private var showingExercises = false
-    @State private var moreTop: CGFloat = 0
     /// Nil until the view appears: set to `.set` then, so the scroll moves
     /// to the set screen even with the metrics page above it. Starting at
     /// `.set` asked for nothing and left the scroll at the top page.
     @State private var page: WorkoutPageID?
+    /// Where each snapping page and the top of More sit in the scroll.
+    @State private var stops: [CGFloat] = []
     /// A logged set held back while the wearer picks an effort. Held here and
     /// not in `CurrentSetView`: logging a set starts the rest, which swaps that
     /// view for `RestView` and would take the screen, and the set with it,
@@ -395,9 +396,13 @@ private struct ActiveWorkoutView: View {
 
     var body: some View {
         // From the top: the exercise's demo (only with pictures), the metrics,
-        // the set screen, then the More list (taller than the screen, scrolled
-        // freely). The first three are one screen tall each and snapped to. The crown scrolls only while no
-        // value box has claimed it for adjusting a number.
+        // the set screen, then the More list (taller than the screen). The first
+        // three are one screen tall each and the scroll comes to rest on one of
+        // them, or on the top of More, then scrolls the list freely. The stops
+        // are measured where those views sit, not worked out from a height
+        // (`WorkoutPageSnap`). `.viewAligned` was tried first and never reached
+        // the set screen the scroll is positioned on at launch. The crown scrolls only while no value box has claimed it for
+        // adjusting a number.
         GeometryReader { geo in
             let pageHeight = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             ScrollView {
@@ -411,22 +416,22 @@ private struct ActiveWorkoutView: View {
                         )
                         .frame(height: pageHeight)
                         .colorMultiply(dimmedBrightness)
+                        .reportsStop()
                         .id(WorkoutPageID.demo)
                     }
                     WorkoutMetricsPage()
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .scrollScreenPage(height: pageHeight)
                         .padding(.horizontal, 4)
+                        .reportsStop()
                         .id(WorkoutPageID.metrics)
                     setScreen
-                        .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .scrollScreenPage(height: pageHeight)
                         .padding(.horizontal, 4)
+                        .reportsStop()
                         .id(WorkoutPageID.set)
-                        // Where the pages end and the More list starts.
-                        .background(GeometryReader { proxy in
-                            Color.clear.preference(key: MoreTopKey.self, value: proxy.frame(in: .named("workoutScroll")).maxY)
-                        })
                     VStack(spacing: WatchStyle.m(6)) {
                         WorkoutMoreUpNextPage(onOpenList: { showingExercises = true })
+                            .reportsStop()
                             .id(WorkoutPageID.moreUpNext)
                         if let step = store.currentStep {
                             WorkoutMoreExercisePage(step: step, onOpenList: { showingExercises = true })
@@ -447,9 +452,9 @@ private struct ActiveWorkoutView: View {
             // other pages put their 4 pt back themselves.
             .padding(.horizontal, -4)
             .scrollPosition(id: $page, anchor: .top)
-            .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, moreTop: moreTop))
+            .scrollTargetBehavior(WorkoutScrollBehavior(stops: stops))
+            .onPreferenceChange(StopsKey.self) { stops = $0 }
             .scrollIndicators(.hidden)
-            .onPreferenceChange(MoreTopKey.self) { moreTop = $0 }
             // Once the lists below Up Next lead the scroll, their content has
             // reached the clock: it fades out under a black band there, as a
             // watchOS list does. (`page` follows the leading item while scrolling.)
@@ -481,7 +486,9 @@ private struct ActiveWorkoutView: View {
             page = nil
             DispatchQueue.main.async { page = keep }
         }
-        .onAppear { page = .set }
+        .onAppear {
+            page = .set
+        }
         .padding(.horizontal, 4)
         .overlay {
             if showingExercises {
@@ -614,28 +621,27 @@ private struct ActiveWorkoutView: View {
     }
 }
 
-/// A snap to a whole page for the metrics and the set screen, and free
-/// scrolling through the More list below them.
+/// Snaps to the measured stops; see `WorkoutPageSnap`.
 private struct WorkoutScrollBehavior: ScrollTargetBehavior {
-    let pageHeight: CGFloat
-    /// Where the More list starts: measured, not derived from the content size,
-    /// which can include the scroll view's insets and then lands every page
-    /// that much off its boundary.
-    let moreTop: CGFloat
+    let stops: [CGFloat]
 
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        target.rect.origin.y = Self.snapped(target.rect.minY, moreTop: moreTop, pageHeight: pageHeight)
-    }
-
-    static func snapped(_ y: CGFloat, moreTop: CGFloat, pageHeight: CGFloat) -> CGFloat {
-        WorkoutPageSnap.snapped(y, moreTop: moreTop, pageHeight: pageHeight)
+        target.rect.origin.y = WorkoutPageSnap.snapped(target.rect.minY, stops: stops)
     }
 }
 
-/// The y of the end of the set screen, reported up to the scroll's snapping.
-private struct MoreTopKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+/// The y of the top of each snapping view in the scroll's content.
+private struct StopsKey: PreferenceKey {
+    static var defaultValue: [CGFloat] = []
+    static func reduce(value: inout [CGFloat], nextValue: () -> [CGFloat]) { value += nextValue() }
+}
+
+private extension View {
+    func reportsStop() -> some View {
+        background(GeometryReader { proxy in
+            Color.clear.preference(key: StopsKey.self, value: [proxy.frame(in: .named("workoutScroll")).minY])
+        })
+    }
 }
 
 private enum WorkoutPageID: Hashable {
@@ -727,6 +733,7 @@ private struct ExerciseRow: View {
     let isCurrent: Bool
 
     @EnvironmentObject private var store: WorkoutSessionStore
+    @Environment(\.watchLargerTextSetting) private var largeText
 
     var body: some View {
         let done = store.completedSetCount(for: exercise)
@@ -734,9 +741,12 @@ private struct ExerciseRow: View {
         let tint = SetTint.blue
         let shape = RoundedRectangle(cornerRadius: WatchStyle.m(16), style: .continuous)
         HStack(spacing: WatchStyle.m(8)) {
+            // A long name wraps to a second line at the full size rather than
+            // shrinking to a smaller one; it only eases down a little after that.
             Text(exercise.name)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
             // Sets logged over sets planned; green once all are in.
             Text("\(done)/\(exercise.sets.count)")
@@ -744,11 +754,11 @@ private struct ExerciseRow: View {
                 .foregroundStyle(isDone ? Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255) : (isCurrent ? tint.color : Color.white))
                 .fixedSize()
         }
-        .font(.system(size: WatchStyle.m(16), weight: .medium))
+        .font(.system(size: WatchStyle.m(largeText ? 20 : 18), weight: .medium))
         .foregroundStyle(isCurrent ? tint.color : Color.white)
         .padding(.horizontal, WatchStyle.m(12))
-        .frame(maxWidth: .infinity)
-        .frame(height: WatchStyle.m(54))
+        .padding(.vertical, WatchStyle.m(7))
+        .frame(maxWidth: .infinity, minHeight: WatchStyle.m(54))
         .background(isCurrent ? tint.mixed(0.26) : WatchStyle.surface, in: shape)
         // A superset's members carry its colour as a bar down the left edge.
         .overlay(alignment: .leading) {
@@ -1511,9 +1521,26 @@ private struct CurrentSetView: View {
         crownSeen = min(max(stored ?? 0, floor), maxValue(for: field))
         crownValue = stored ?? 0
         crownField = field
-        // Next turn of the run loop: the row only becomes focusable once
-        // `crownField` is set, and focus asked for before that is dropped.
+        takeCrown(for: field)
+    }
+
+    /// Gives the crown to the value row. The row only becomes focusable once
+    /// `crownField` is set, and a focus request made before that has rendered
+    /// is dropped; this page is heavy enough (the vertical scroll, the live top
+    /// line) that the one turn of the run loop that used to be enough on the
+    /// original page is not always, and then the scroll view kept the crown and
+    /// the pages scrolled instead of the value. So ask on the next turn and
+    /// check twice more, re-asking from a cleared state if the row is still
+    /// not the one holding it.
+    private func takeCrown(for field: EditableField) {
         DispatchQueue.main.async { crownFocused = true }
+        for delay in [0.15, 0.5] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard crownField == field, !crownFocused else { return }
+                crownFocused = false
+                DispatchQueue.main.async { crownFocused = true }
+            }
+        }
     }
 
     /// Each crown event is a step from the stored number. The binding clamps
@@ -1629,7 +1656,7 @@ private struct CurrentSetView: View {
     private func storedValue(for field: EditableField, on step: WorkoutStep) -> Double? {
         let values = store.values(for: step)
         switch field {
-        case .weight: return values.weightKg.map(unit.fromKg)
+        case .weight: return values.weightKg.map(unit.displayedFromKg)
         case .reps: return values.reps
         case .distance:
             // Rounded to a tenth so a stored km value does not show float dust
@@ -1777,7 +1804,7 @@ enum SetValueText {
     }
 
     private static func weightText(_ kg: Double, unit: WeightUnit) -> String {
-        let shown = unit.fromKg(kg)
+        let shown = unit.displayedFromKg(kg)
         return shown == shown.rounded()
             ? String(Int(shown))
             : String(format: "%.1f", shown)
@@ -2873,7 +2900,7 @@ private struct PendingRpe: Identifiable {
     func summary(unit: WeightUnit) -> String {
         var parts: [String] = []
         if let kg = values.weightKg, kg > 0 {
-            parts.append("\(SetValueText.format(unit.fromKg(kg))) \(unit.suffix)")
+            parts.append("\(SetValueText.format(unit.displayedFromKg(kg))) \(unit.suffix)")
         }
         if let reps = values.reps {
             parts.append(String(format: "%.0f", reps))
@@ -3184,21 +3211,18 @@ private func previewStore(
 
 
 private extension View {
-    /// One full screen tall, with the content kept inside the safe area, so
-    /// it sits where a plain page would.
-    /// `fromScreenTop`: the content starts at the top of the screen, under the
-    /// clock, as the set screen does.
-    func workoutPage(_ geo: GeometryProxy, alignment: Alignment = .center, fromScreenTop: Bool = false) -> some View {
+    /// One screen tall inside the workout's vertical scroll. The content starts at
+    /// the top of the screen under the clock, with the page dots' 14 pt below.
+    func scrollScreenPage(height: CGFloat) -> some View {
         self
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .padding(.top, fromScreenTop ? WatchStyle.top : geo.safeAreaInsets.top)
-            // The page dots sit in the bottom 14 pt of a set page.
-            .padding(.bottom, fromScreenTop ? WatchStyle.m(14) : geo.safeAreaInsets.bottom)
-            .frame(
-                height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
-            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.top, WatchStyle.top)
+            .padding(.bottom, WatchStyle.m(14))
+            .frame(height: height)
     }
 }
+
+
 
 /// The walks and runs the watch can record on its own: Run and Walk side by
 /// side under Outdoor and Indoor, then any plans, in the same flat squircles
