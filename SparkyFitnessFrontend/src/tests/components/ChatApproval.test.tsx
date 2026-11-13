@@ -146,3 +146,38 @@ it('waits for every approval response, including earlier steps, without changing
   messages[0]!.parts.push({ type: 'tool-three', state: 'input-available' });
   expect(chatApprovalResponsesReady({ messages })).toBe(false);
 });
+
+it('shows plain delete wording and compact arguments without outside sources', () => {
+  state.message.metadata.custom.outsideSource = {
+    servers: [],
+    toolServers: { mcp_mail: 'Mail' },
+    approvalSources: { call: [] },
+  };
+  render(
+    <ApprovalCard
+      {...props}
+      toolName="sparky_manage_food"
+      args={{ action: 'delete_entry', entry_id: 'entry-1' }}
+    />
+  );
+  expect(screen.getByText(/Sparky wants to run/)).toBeInTheDocument();
+  expect(
+    screen.getByText('{"action":"delete_entry","entry_id":"entry-1"}')
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/After reading/)).not.toBeInTheDocument();
+});
+it('limits the inline argument preview while keeping full details', () => {
+  const args = { action: 'delete_entry', entry_id: 'x'.repeat(200) };
+  render(<ApprovalCard {...props} args={args} />);
+  expect(
+    screen.getByText(JSON.stringify(args).slice(0, 120) + '…')
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Details'));
+  expect(
+    screen.getByText(
+      (_text, node) =>
+        node?.tagName === 'PRE' &&
+        node.textContent === JSON.stringify(args, null, 2)
+    )
+  ).toBeInTheDocument();
+});

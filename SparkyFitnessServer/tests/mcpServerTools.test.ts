@@ -156,6 +156,11 @@ function buildMcpServer(request: IncomingMessage): McpServer {
   mcp.registerTool(`named_${TOKEN}`, { description: 'Named.' }, async () =>
     text('named')
   );
+  mcp.registerTool(
+    'oversized',
+    { description: 'Oversized response' },
+    async () => text('x'.repeat(300_000))
+  );
   mcp.registerTool('big', { description: 'A long answer.' }, async () =>
     text('x'.repeat(20_000))
   );
@@ -667,12 +672,15 @@ describe('which tools chat gets', () => {
       getServers.mockResolvedValue([
         toolServer(['page_1', 'page_2'], { path: '/paged' }),
       ]);
-      expect(Object.keys(await loadMcpServerTools(OWN_ACCOUNT))).toEqual([
-        'mcp_household_tools__page_2',
-      ]);
-      expect(JSON.stringify(vi.mocked(log).mock.calls)).toContain(
-        `page_1 is left out: its input schema ${reason}`
-      );
+      const loaded = await loadMcpServerTools(OWN_ACCOUNT);
+      if (schema.length > 256 * 1024) {
+        expect(Object.keys(loaded)).toEqual([]);
+      } else {
+        expect(Object.keys(loaded)).toEqual(['mcp_household_tools__page_2']);
+        expect(JSON.stringify(vi.mocked(log).mock.calls)).toContain(
+          `page_1 is left out: its input schema ${reason}`
+        );
+      }
     }
   );
 
@@ -1290,12 +1298,14 @@ describe('the tool list an admin chooses from', () => {
         name: 'page_1',
         fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
         description: 'The tool on page 1.',
+        inputSchema: '{"properties":{"a":{"enum":5}},"type":"object"}',
         problem: 'malformed',
       },
       {
         name: 'page_2',
         fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
         description: 'The tool on page 2.',
+        inputSchema: { type: 'object', properties: {} },
         problem: null,
       },
     ]);
@@ -1465,4 +1475,26 @@ describe('tool definition fingerprints', () => {
       })
     );
   });
+});
+
+it('rejects oversized outside responses before parsing and returns a tool failure', async () => {
+  getServers.mockResolvedValue([toolServer(['oversized'])]);
+  const tools = await loadMcpServerTools(OWN_ACCOUNT);
+  const result = await run(tools.mcp_household_tools__oversized);
+  expect(result).toContain('Error');
+  expect(result.length).toBeLessThan(8200);
+});
+it('returns the full input schema for admin review', async () => {
+  const listed = await listToolsForAdmin(toolServer([]));
+  expect(
+    listed.find((entry) => entry.name === 'echo')?.inputSchema
+  ).toMatchObject({ type: 'object', properties: { text: { type: 'string' } } });
+});
+
+it('keeps rejected deep definitions serializable for the admin picker', async () => {
+  pagedSchema = `{"type":"object","properties":{"a":{"enum":5}},"extra":${'{"items":'.repeat(6000)}{}${'}'.repeat(6000)}}`;
+  const tools = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+  expect(tools[0]?.problem).toBe('malformed');
+  expect(typeof tools[0]?.inputSchema).toBe('string');
+  expect(() => JSON.stringify(tools)).not.toThrow();
 });

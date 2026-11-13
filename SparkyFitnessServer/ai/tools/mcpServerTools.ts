@@ -52,9 +52,21 @@ export function mcpToolFingerprint(listed: {
   description?: string;
   inputSchema: unknown;
 }): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        listed.name,
+        listed.description ?? '',
+        serializeSchema(listed.inputSchema),
+      ])
+    )
+    .digest('hex');
+}
+
+function serializeSchema(schema: unknown): string {
   const parts: string[] = [];
   const pending: Array<{ value: unknown } | { text: string }> = [
-    { value: listed.inputSchema },
+    { value: schema },
   ];
   while (pending.length) {
     const next = pending.pop();
@@ -85,11 +97,7 @@ export function mcpToolFingerprint(listed: {
       parts.push(JSON.stringify(next.value) ?? 'null');
     }
   }
-  return createHash('sha256')
-    .update(
-      JSON.stringify([listed.name, listed.description ?? '', parts.join('')])
-    )
-    .digest('hex');
+  return parts.join('');
 }
 
 interface OutsideTool {
@@ -365,7 +373,42 @@ async function withServerClient<T>(
     { capabilities: {}, jsonSchemaValidator: skipOutputSchemas }
   );
   const transport = new StreamableHTTPClientTransport(new URL(endpoint.url), {
-    fetch: endpoint.fetch,
+    fetch: async (input, init) => {
+      const response = await endpoint.fetch(input, init);
+      if (!response.body) return response;
+      const reader = response.body.getReader();
+      let bytes = 0;
+      // Count decoded bytes before the SDK can parse JSON or SSE events.
+      const body = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            const chunk = await reader.read();
+            if (chunk.done) {
+              controller.close();
+              return;
+            }
+            bytes += chunk.value.byteLength;
+            if (bytes > 256 * 1024) {
+              controller.error(
+                new Error('Outside server response exceeds 256 KB')
+              );
+              await reader.cancel().catch(() => undefined);
+              await client.close().catch(() => undefined);
+              return;
+            }
+            controller.enqueue(chunk.value);
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+        cancel: (reason) => reader.cancel(reason),
+      });
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    },
     requestInit: { headers },
   });
   try {
@@ -829,19 +872,30 @@ export async function listToolsForAdmin(
             client,
             server,
             ({ name, description, inputSchema }) => {
+              const fingerprint = mcpToolFingerprint({
+                name,
+                description,
+                inputSchema,
+              });
+              const rawSchema = serializeSchema(inputSchema);
+              const problem = schemaProblem(inputSchema, server);
+              const token = server.app_key?.trim();
+              const redactedSchema = token
+                ? rawSchema.replaceAll(
+                    JSON.stringify(token).slice(1, -1),
+                    '[redacted]'
+                  )
+                : rawSchema;
               tools.push({
                 name,
-                fingerprint: mcpToolFingerprint({
-                  name,
-                  description,
-                  inputSchema,
-                }),
-                description: withoutToken(
-                  description?.trim() ?? '',
-                  server
-                ).slice(0, DESCRIPTION_MAX_LENGTH),
-                problem:
-                  toolNameProblem(name) ?? schemaProblem(inputSchema, server),
+                fingerprint,
+                description: withoutToken(description ?? '', server),
+                // A rejected deep schema must not overflow Express's JSON serializer.
+                inputSchema:
+                  problem !== null
+                    ? redactedSchema
+                    : (JSON.parse(redactedSchema) as unknown),
+                problem: toolNameProblem(name) ?? problem,
               });
             }
           );

@@ -136,3 +136,34 @@ it('shows the line for legacy outside tool parts', () => {
   render(<OutsideSourceLine onClearChat={jest.fn()} />);
   expect(screen.getByText('Mail')).toBeTruthy();
 });
+
+it('uses plain wording and inline arguments without an outside result', () => {
+  mockState.message.metadata.custom.outsideSource = {
+    servers: [],
+    toolServers: { mcp_mail: 'Mail' },
+    approvalSources: { call: [] },
+  };
+  render(
+    <ApprovalCard
+      part={{
+        ...props,
+        toolName: 'sparky_manage_food',
+        args: { action: 'delete_entry', entry_id: 'entry-1' },
+      }}
+    />
+  );
+  expect(screen.getByText(/Sparky wants to run/)).toBeTruthy();
+  expect(screen.getByTestId('approval-arguments').props.children).toBe(
+    '{"action":"delete_entry","entry_id":"entry-1"}'
+  );
+  expect(screen.queryByText(/After reading/)).toBeNull();
+});
+it('limits inline arguments and retains full details', () => {
+  const args = { action: 'delete_entry', entry_id: 'x'.repeat(200) };
+  render(<ApprovalCard part={{ ...props, args }} />);
+  expect(screen.getByTestId('approval-arguments').props.children).toBe(
+    JSON.stringify(args).slice(0, 120) + '…'
+  );
+  fireEvent.press(screen.getByTestId('approval-details'));
+  expect(screen.getByText(JSON.stringify(args, null, 2))).toBeTruthy();
+});

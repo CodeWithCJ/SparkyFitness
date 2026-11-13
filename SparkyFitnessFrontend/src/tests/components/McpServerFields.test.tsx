@@ -372,7 +372,7 @@ describe('McpServerFields', () => {
     expect(latest).toEqual({ allowed_tools: [], send_user_id: true });
   });
 
-  it('re-pins a selected tool after Load and explains the changed version', async () => {
+  it('unticks a changed fingerprint after Load and explains why', async () => {
     jest.mocked(apiCall).mockResolvedValue(listed);
     renderWithClient(
       <Harness
@@ -388,14 +388,18 @@ describe('McpServerFields', () => {
     loadTools();
     expect(
       await screen.findByText(
-        'Changed since it was saved. Saving allows this version.'
+        'Changed since it was saved. Tick it again to allow this version.'
       )
     ).toBeInTheDocument();
     expect(latest?.allowed_tools).toEqual([
-      { name: 'search', fingerprint: 'a'.repeat(64) },
       { name: 'retired', fingerprint: 'd'.repeat(64) },
     ]);
-    expect(screen.getByRole('checkbox', { name: 'search' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'search' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search' }));
+    expect(latest?.allowed_tools).toContainEqual({
+      name: 'search',
+      fingerprint: 'a'.repeat(64),
+    });
   });
 
   it('keeps saved fingerprints when editing without loading tools', () => {
@@ -407,4 +411,52 @@ describe('McpServerFields', () => {
     expect(latest).toEqual({ allowed_tools: saved, send_user_id: true });
     expect(apiCall).not.toHaveBeenCalled();
   });
+});
+
+it('shows the schema in a collapsed Details disclosure', async () => {
+  jest.mocked(apiCall).mockResolvedValue({
+    tools: [
+      {
+        ...listed.tools[0],
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+        },
+      },
+    ],
+  });
+  const { container } = renderWithClient(<Harness />);
+  loadTools();
+  await screen.findByRole('checkbox', { name: 'search' });
+  const details = container.querySelector('details');
+  expect(details).not.toHaveAttribute('open');
+  expect(details).toHaveTextContent('"query"');
+  expect(details).toHaveTextContent('"inputSchema"');
+});
+
+it('unticks a schema-only fingerprint change with an unchanged description', async () => {
+  jest.mocked(apiCall).mockResolvedValue({
+    tools: [
+      {
+        ...listed.tools[0],
+        fingerprint: 'b'.repeat(64),
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'number' } },
+        },
+      },
+    ],
+  });
+  renderWithClient(
+    <Harness
+      initial={{
+        allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+        send_user_id: false,
+      }}
+    />
+  );
+  loadTools();
+  expect(await screen.findByText('Searches notes.')).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'search' })).not.toBeChecked();
+  expect(latest?.allowed_tools).toEqual([]);
 });

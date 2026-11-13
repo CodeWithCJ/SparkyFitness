@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createGlobalExternalDataProvider,
+  deleteGlobalExternalDataProvider,
   getActiveMcpServers,
   getChatMcpServerChoices,
   getExternalDataProviderByUserIdAndProviderName,
@@ -152,17 +153,90 @@ describe('externalProviderRepository MCP tool servers', () => {
   it('leaves stored options alone unless an update brings new ones', async () => {
     query.mockResolvedValue({ rows: [{ id: 'provider-1' }] });
     await updateGlobalExternalDataProvider('provider-1', { is_active: true });
-    expect(query.mock.calls[0][0]).toContain(
+    const updates = () =>
+      query.mock.calls.filter(([sql]) =>
+        sql.includes('UPDATE external_data_providers')
+      );
+    expect(updates()[0][0]).toContain(
       'provider_options = COALESCE($16::jsonb, provider_options)'
     );
-    expect(query.mock.calls[0][1][15]).toBeNull();
+    expect(updates()[0][1][15]).toBeNull();
 
     await updateGlobalExternalDataProvider('provider-1', {
       provider_options: OPTIONS,
     });
-    expect(query.mock.calls[1][1][15]).toBe(JSON.stringify(OPTIONS));
+    expect(updates()[1][1][15]).toBe(JSON.stringify(OPTIONS));
   });
 
+  it.each([
+    ['URL', { base_url: 'https://new.example/mcp' }, true],
+    [
+      'user ID',
+      { provider_options: { ...OPTIONS, send_user_id: false } },
+      true,
+    ],
+    ['name', { provider_name: 'New' }, false],
+    [
+      'allowed tools',
+      { provider_options: { ...OPTIONS, allowed_tools: [] } },
+      false,
+    ],
+  ])(
+    'clears opt-ins only for identity changes: %s',
+    async (_label, changes, clears) => {
+      const before = {
+        provider_type: 'mcp_server',
+        base_url: 'https://old.example/mcp',
+        provider_options: OPTIONS,
+      };
+      query.mockImplementation(async (sql: string) => ({
+        rows: sql.startsWith('SELECT')
+          ? [before]
+          : sql.includes('UPDATE external_data_providers')
+            ? [{ ...before, ...changes }]
+            : [],
+        rowCount: 3,
+      }));
+      await updateGlobalExternalDataProvider('provider-1', changes);
+      expect(
+        query.mock.calls.some(([sql]) => sql.includes('array_remove'))
+      ).toBe(clears);
+      expect(query.mock.calls[0][0]).toBe('BEGIN');
+      expect(query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
+      expect(query.mock.calls[1][0]).toContain('FOR UPDATE');
+    }
+  );
+  it('clears opt-ins on delete in the same transaction', async () => {
+    query.mockImplementation(async (sql: string) => ({
+      rows: sql.startsWith('DELETE')
+        ? [{ id: 'provider-1', provider_type: 'mcp_server' }]
+        : [],
+      rowCount: 2,
+    }));
+    expect(await deleteGlobalExternalDataProvider('provider-1')).toBe(true);
+    expect(query.mock.calls[2][0]).toContain('array_remove');
+    expect(query.mock.calls[2][1]).toEqual(['provider-1']);
+    expect(query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
+  });
+  it('rolls back the provider update if clearing consent fails', async () => {
+    const before = {
+      provider_type: 'mcp_server',
+      base_url: 'old',
+      provider_options: OPTIONS,
+    };
+    query.mockImplementation(async (sql: string) => {
+      if (sql.includes('array_remove')) throw new Error('write failed');
+      return {
+        rows: sql.startsWith('SELECT')
+          ? [before]
+          : [{ ...before, base_url: 'new' }],
+      };
+    });
+    await expect(
+      updateGlobalExternalDataProvider('provider-1', { base_url: 'new' })
+    ).rejects.toThrow('write failed');
+    expect(query.mock.calls.at(-1)?.[0]).toBe('ROLLBACK');
+  });
   describe('the servers chat may use', () => {
     const stored = {
       id: 'provider-1',

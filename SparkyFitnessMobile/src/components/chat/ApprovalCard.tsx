@@ -59,9 +59,12 @@ export default function ApprovalCard({ part }: { part: ToolCallMessagePart }) {
       <Text className="text-text-primary">
         <Trans
           i18nKey={
-            part.toolName.startsWith('mcp_')
-              ? 'chat.approval.send'
-              : 'chat.approval.run'
+            (sources.approvalSources[part.toolCallId] ?? sources.servers)
+              .length === 0
+              ? 'chat.approval.runPlain'
+              : part.toolName.startsWith('mcp_')
+                ? 'chat.approval.send'
+                : 'chat.approval.run'
           }
           values={{
             server: (
@@ -73,6 +76,16 @@ export default function ApprovalCard({ part }: { part: ToolCallMessagePart }) {
           }}
           components={{ bold: <Text style={{ fontWeight: 'bold' }} /> }}
         />
+      </Text>
+      <Text
+        testID="approval-arguments"
+        numberOfLines={1}
+        className="text-text-secondary text-xs"
+        style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
+      >
+        {JSON.stringify(part.args).length > 120
+          ? `${JSON.stringify(part.args).slice(0, 120)}…`
+          : JSON.stringify(part.args)}
       </Text>
       <Pressable
         testID="approval-details"

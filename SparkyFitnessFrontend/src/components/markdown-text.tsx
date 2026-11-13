@@ -77,6 +77,23 @@ const useCopyToClipboard = ({
 };
 
 const defaultComponents = memoizeMarkdownComponents({
+  img: ({ src, alt }) => {
+    if (typeof src !== 'string') return null;
+    try {
+      const url = new URL(src, window.location.href);
+      if (
+        !(url.protocol === 'data:' && /^data:image\//i.test(src)) &&
+        !(
+          url.origin === window.location.origin &&
+          /^https?:$/.test(url.protocol)
+        )
+      )
+        return null;
+    } catch {
+      return null;
+    }
+    return <img src={src} alt={alt} />;
+  },
   h1: ({ className, ...props }) => (
     <h1
       className={cn(

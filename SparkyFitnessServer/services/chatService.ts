@@ -3237,7 +3237,13 @@ async function processChatMessageStream(
       activeTools: activeToolNames,
       prepareStep: (options) => {
         approvalGate.prepareStep(options);
-        return prepareStep?.(options) ?? {};
+        const next = prepareStep?.(options) ?? {};
+        return {
+          ...next,
+          activeTools: approvalGate.restrictActiveTools(
+            next.activeTools ?? activeToolNames ?? Object.keys(tools)
+          ),
+        };
       },
       toolApproval: approvals ? approvalGate.toolApproval : undefined,
       providerOptions: chatProviderOptions,

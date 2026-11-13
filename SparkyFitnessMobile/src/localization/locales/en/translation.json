@@ -4981,7 +4981,8 @@
       "deny": "Deny",
       "allowed": "Allowed",
       "denied": "Denied",
-      "failed": "Could not save your answer. Please try again."
+      "failed": "Could not save your answer. Please try again.",
+      "runPlain": "Sparky wants to run <bold>{{tool}}{{action}}</bold>."
     },
     "outsideSource": {
       "line": "Used <bold>{{servers}}</bold>. Something look wrong?",

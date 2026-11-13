@@ -1,3 +1,5 @@
+import { isDestructiveToolCall } from '../ai/chatToolApproval.js';
+import { asSchema } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { jsonSchema, tool, zodSchema } from 'ai';
@@ -649,4 +651,47 @@ it('publishes UUID fields without the Zod UUID regex', async () => {
     tools.sparky_food_assistant_state.inputSchema as z.ZodType
   ).validate!({ action: 'get_task', task_id: 'not-a-uuid' });
   expect(parsed.success).toBe(false);
+});
+
+describe('destructive chat tool coverage', () => {
+  it('cards every destructive enum/literal action and delete mode in the published tool schemas', async () => {
+    const tools = buildChatbotTools('destructive-audit', 'UTC', 'full', false);
+    let checked = 0;
+    for (const [name, definition] of Object.entries(tools)) {
+      const schema = await asSchema(definition.inputSchema).jsonSchema;
+      const visit = (node: unknown, field?: string): void => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) {
+          node.forEach((value) => visit(value, field));
+          return;
+        }
+        const record = node as Record<string, unknown>;
+        const values = Array.isArray(record.enum)
+          ? record.enum
+          : [record.const];
+        for (const value of values) {
+          if (
+            typeof value === 'string' &&
+            ((field === 'action' &&
+              /^(delete|remove|clear|reset)/.test(value)) ||
+              (field === 'mode' && /^delete/.test(value)))
+          ) {
+            expect(
+              isDestructiveToolCall(name, { [field!]: value }),
+              `${name}: ${field}=${value}`
+            ).toBe(true);
+            checked++;
+          }
+        }
+        for (const [key, value] of Object.entries(record)) {
+          if (key === 'properties' && value && typeof value === 'object') {
+            for (const [property, child] of Object.entries(value))
+              visit(child, property);
+          } else visit(value, field);
+        }
+      };
+      visit(schema);
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
 });

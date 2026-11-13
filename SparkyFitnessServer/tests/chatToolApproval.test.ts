@@ -9,6 +9,7 @@ import {
 } from 'ai';
 import {
   createChatApprovalGate,
+  isDestructiveToolCall,
   needsOutsideApproval,
   outsideResultSeen,
 } from '../ai/chatToolApproval.js';
@@ -223,4 +224,103 @@ describe('outside chat approval policy', () => {
     expect(needsOutsideApproval('unknown', {})).toBe(true);
     expect(needsOutsideApproval('mcp_notes', {})).toBe(true);
   });
+});
+
+it('always cards deletes, preserves ordinary writes, and denies unknown tools', async () => {
+  const gate = createChatApprovalGate([
+    { role: 'user', content: 'Delete it.' },
+  ]);
+  const tools = {
+    sparky_manage_food: tool({ inputSchema: jsonSchema({ type: 'object' }) }),
+  };
+  const decision = (name: string, input: unknown) =>
+    gate.toolApproval({
+      toolCall: {
+        type: 'tool-call',
+        toolName: name,
+        toolCallId: 'delete',
+        input,
+      },
+      tools,
+      messages: [],
+      toolsContext: {},
+      runtimeContext: undefined,
+    } as Parameters<typeof gate.toolApproval>[0]);
+  expect(await decision('sparky_manage_food', { action: 'delete_entry' })).toBe(
+    'user-approval'
+  );
+  expect(await decision('sparky_manage_food', { action: 'log_food' })).toBe(
+    'not-applicable'
+  );
+  expect(await decision('unknown', { action: 'delete_entry' })).toBe('denied');
+  expect(isDestructiveToolCall('unknown', { mode: 'delete' })).toBe(false);
+  expect(isDestructiveToolCall('sparky_manage_food', { food_id: 'id' })).toBe(
+    true
+  );
+  gate.prepareStep({ steps: [{ toolResults: [{ toolName: 'mcp_notes' }] }] });
+  expect(await decision('sparky_manage_food', { action: 'log_food' })).toBe(
+    'user-approval'
+  );
+});
+it('removes hosted web search after outside results and resets on a new turn', () => {
+  const gate = createChatApprovalGate([]);
+  expect(
+    gate.restrictActiveTools(['web_search', 'sparky_manage_food'])
+  ).toEqual(['web_search', 'sparky_manage_food']);
+  gate.prepareStep({ steps: [{ toolResults: [{ toolName: 'mcp_notes' }] }] });
+  expect(
+    gate.restrictActiveTools(['web_search', 'sparky_manage_food'])
+  ).toEqual(['sparky_manage_food']);
+  expect(
+    createChatApprovalGate([
+      { role: 'user', content: 'New reply' },
+    ]).restrictActiveTools(['web_search'])
+  ).toEqual(['web_search']);
+});
+
+it.each([
+  ['sparky_food_assistant_state', { action: 'forget_preference' }],
+  ['sparky_manage_food', { action: 'set_food_notes', notes: '' }],
+  ['sparky_manage_food', { mode: 'delete_with_history' }],
+  ['sparky_manage_medications', { action: 'update_entry', notes: null }],
+  ['sparky_manage_run_program', { action: 'start_run_program' }],
+  ['sparky_manage_run_program', { action: 'realign_run_program' }],
+  [
+    'sparky_manage_run_program',
+    { action: 'set_run_program_schedule', end_date: null },
+  ],
+  [
+    'sparky_manage_food',
+    { action: 'list_diary', delete_food: { food_id: 'id' } },
+  ],
+])('cards destructive or clearing calls: %s %j', (name, input) => {
+  expect(isDestructiveToolCall(name, input)).toBe(true);
+});
+
+it.each([
+  [
+    'sparky_manage_exercise',
+    {
+      action: 'log_exercise',
+      exercise_name: 'Squat',
+      sets: [{ reps: 5, weight: 100 }],
+    },
+  ],
+  ['sparky_manage_exercise', { action: 'rate_workout', pain: false }],
+  ['sparky_manage_food', { action: 'log_water', quantity: 500, unit: 'ml' }],
+  [
+    'sparky_manage_food',
+    { action: 'log_food', update_note: { entry_date: '2026-11-13' } },
+  ],
+])('leaves ordinary writes without a card: %s %j', (name, input) => {
+  expect(isDestructiveToolCall(name, input)).toBe(false);
+});
+
+it('cards a nested delete mode', () => {
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      action: 'update_food',
+      update_food: { mode: 'delete' },
+    })
+  ).toBe(true);
 });

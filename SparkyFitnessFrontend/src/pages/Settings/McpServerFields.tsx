@@ -30,6 +30,7 @@ interface ToolRow {
   name: string;
   fingerprint: string;
   description: string;
+  inputSchema?: unknown;
   problem: McpServerToolChoice['problem'];
   // Allowed before, but not in the list the server just gave.
   gone: boolean;
@@ -150,11 +151,9 @@ export const McpServerFields = ({
       setResult({ inputs: asked, tools, error: null, changedNames });
       update({
         ...options,
-        allowed_tools: options.allowed_tools.map((saved) => {
+        allowed_tools: options.allowed_tools.filter((saved) => {
           const listed = byName.get(saved.name);
-          return listed
-            ? { name: listed.name, fingerprint: listed.fingerprint }
-            : saved;
+          return !listed || listed.fingerprint === saved.fingerprint;
         }),
       });
     } catch (error) {
@@ -298,16 +297,34 @@ export const McpServerFields = ({
                         {row.description}
                       </p>
                     )}
+                    {row.inputSchema !== undefined && (
+                      <details>
+                        <summary className="text-sm cursor-pointer">
+                          {t('settings.mcpServer.details', 'Details')}
+                        </summary>
+                        <pre className="max-h-64 overflow-auto font-mono text-xs">
+                          {JSON.stringify(
+                            {
+                              name: row.name,
+                              description: row.description,
+                              inputSchema: row.inputSchema,
+                            },
+                            null,
+                            2
+                          )}
+                        </pre>
+                      </details>
+                    )}
                     {row.problem && (
                       <p className="text-sm text-destructive">
                         {problemText[row.problem]}
                       </p>
                     )}
-                    {checked && shown?.changedNames?.includes(row.name) && (
+                    {shown?.changedNames?.includes(row.name) && (
                       <p className="text-sm text-destructive">
                         {t(
                           'settings.mcpServer.toolChanged',
-                          'Changed since it was saved. Saving allows this version.'
+                          'Changed since it was saved. Tick it again to allow this version.'
                         )}
                       </p>
                     )}

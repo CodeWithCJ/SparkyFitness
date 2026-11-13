@@ -53,11 +53,13 @@ An admin can give chat the tools of another MCP server, such as a notes app or a
 
 Whatever the assistant passes to these tools is sent to that server, and what comes back enters the chat. Add only servers you trust. Admins should add only servers that hold no personal data or that keep each person's data separate.
 
+The admin can see each tool's full definition in **Details**. Changed tools are switched off until the admin ticks them again. Replies never load images from other sites.
+
 Each person turns on each server for their own chat in **AI service settings** on the web or **AI** settings in the app, under **Tools from outside servers**. Every server is off by default. Turning on a server lets chat use only the tools the admin allowed.
 
-Outside results are shown to the assistant as data in the reply that read them and are not kept for later messages. The assistant can call the tool again if it needs those details.
+Outside results are shown to the assistant only in the reply that read them. The raw result stays in the saved chat history, which you can delete. The assistant can call the tool again if it needs those details.
 
-After reading an outside server, changes need your approval through an **Allow / Deny** card. If a reply looks wrong or asks for something unexpected, tap **Deny** and delete that message.
+In current apps, deletes in chat always ask for your approval through an **Allow / Deny** card. After reading an outside server, every change in that reply asks for approval. If a reply looks wrong or asks for something unexpected, tap **Deny** and delete that message.
 
 ### Add a server
 

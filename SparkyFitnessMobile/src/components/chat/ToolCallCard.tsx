@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
@@ -110,7 +111,21 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
           {expanded && (
             <View className="px-3 pb-3">
               {hasResult ? (
-                resultIsString ? (
+                part.toolName.startsWith('mcp_') ? (
+                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled>
+                    <Text
+                      selectable
+                      testID="outside-tool-output"
+                      className="text-text-secondary text-xs"
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      {(resultIsString
+                        ? String(part.result)
+                        : JSON.stringify(part.result, null, 2)
+                      ).slice(0, 8000)}
+                    </Text>
+                  </ScrollView>
+                ) : resultIsString ? (
                   // Tool results are complete (not streaming) and may carry markdown
                   // (the server's confirmation strings), rendered compact + secondary.
                   <MarkdownMessage

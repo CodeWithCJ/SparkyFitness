@@ -41,6 +41,7 @@ export type McpServerToolsRequest = z.infer<typeof mcpServerToolsRequestSchema>;
 export const mcpServerToolChoiceSchema = z.object({
   name: z.string(),
   description: z.string(),
+  inputSchema: z.unknown().optional(),
   fingerprint: z.string().regex(/^[0-9a-f]{64}$/),
   // Why chat would leave this tool out, or null when it can use it.
   problem: z.enum(MCP_SERVER_TOOL_PROBLEMS).nullable(),

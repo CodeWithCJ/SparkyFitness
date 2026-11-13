@@ -54,9 +54,12 @@ export const ApprovalCard: ToolCallMessagePartComponent = ({
       <p>
         <Trans
           i18nKey={
-            toolName.startsWith('mcp_')
-              ? 'chat.approval.send'
-              : 'chat.approval.run'
+            (sources.approvalSources[toolCallId] ?? sources.servers).length ===
+            0
+              ? 'chat.approval.runPlain'
+              : toolName.startsWith('mcp_')
+                ? 'chat.approval.send'
+                : 'chat.approval.run'
           }
           values={{
             server: (
@@ -69,6 +72,11 @@ export const ApprovalCard: ToolCallMessagePartComponent = ({
           components={{ bold: <strong /> }}
         />
       </p>
+      <pre className="truncate font-mono text-xs">
+        {JSON.stringify(args).length > 120
+          ? `${JSON.stringify(args).slice(0, 120)}…`
+          : JSON.stringify(args)}
+      </pre>
       <Collapsible>
         <CollapsibleTrigger asChild>
           <Button variant="ghost">{t('chat.approval.details')}</Button>

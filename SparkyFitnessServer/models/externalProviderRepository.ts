@@ -1157,12 +1157,32 @@ async function createGlobalExternalDataProvider(
   }
 }
 
+async function clearMcpChatOptIns(
+  client: PoolClient,
+  providerId: string
+): Promise<number> {
+  const result = await client.query(
+    'UPDATE user_preferences SET chat_mcp_server_ids = array_remove(chat_mcp_server_ids, $1::uuid), updated_at = now() WHERE $1::uuid = ANY(chat_mcp_server_ids)',
+    [providerId]
+  );
+  return result.rowCount ?? 0;
+}
+
 async function updateGlobalExternalDataProvider(
   id: string,
   updateData: GlobalProviderWrite
 ) {
-  const client = await getSystemClient();
+  const client: PoolClient = await getSystemClient();
   try {
+    await client.query('BEGIN');
+    const previous = await client.query<{
+      provider_type: string;
+      base_url: string | null;
+      provider_options: McpServerOptions | null;
+    }>(
+      'SELECT provider_type, base_url, provider_options FROM external_data_providers WHERE id = $1 AND is_public = TRUE FOR UPDATE',
+      [id]
+    );
     let encryptedAppId = null,
       appIdIv = null,
       appIdTag = null;
@@ -1228,20 +1248,51 @@ async function updateGlobalExternalDataProvider(
           : null,
       ]
     );
-    return result.rows[0];
+    const before = previous.rows[0];
+    const after = result.rows[0];
+    if (
+      before?.provider_type === 'mcp_server' &&
+      after &&
+      (before.base_url !== after.base_url ||
+        (before.provider_options?.send_user_id ?? false) !==
+          (after.provider_options?.send_user_id ?? false))
+    ) {
+      const cleared = await clearMcpChatOptIns(client, id);
+      log(
+        'info',
+        `MCP server ${id}: cleared chat opt-ins for ${cleared} users`
+      );
+    }
+    await client.query('COMMIT');
+    return after;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
 }
 
-async function deleteGlobalExternalDataProvider(id: any) {
-  const client = await getSystemClient();
+async function deleteGlobalExternalDataProvider(id: string) {
+  const client: PoolClient = await getSystemClient();
   try {
+    await client.query('BEGIN');
     const result = await client.query(
-      'DELETE FROM external_data_providers WHERE id = $1 AND is_public = TRUE RETURNING id',
+      'DELETE FROM external_data_providers WHERE id = $1 AND is_public = TRUE RETURNING id, provider_type',
       [id]
     );
-    return result.rowCount > 0;
+    if (result.rows[0]?.provider_type === 'mcp_server') {
+      const cleared = await clearMcpChatOptIns(client, id);
+      log(
+        'info',
+        `MCP server ${id}: cleared chat opt-ins for ${cleared} users`
+      );
+    }
+    await client.query('COMMIT');
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
