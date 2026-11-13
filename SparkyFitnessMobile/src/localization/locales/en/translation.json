@@ -5015,8 +5015,9 @@
     },
     "changes": {
       "added": "{{name}} added.",
-      "sets": "{{name}} {{count}} sets, was {{before}}.",
-      "removed": "{{name}} removed."
+      "removed": "{{name}} removed.",
+      "sets_one": "{{name}} {{count}} set, was {{before}}.",
+      "sets_other": "{{name}} {{count}} sets, was {{before}}."
     },
     "effort": {
       "easy": "Easy",
