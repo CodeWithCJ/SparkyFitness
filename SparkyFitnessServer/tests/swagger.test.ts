@@ -10,6 +10,43 @@ const routesDir = path.resolve(__dirname, '../routes');
 
 const serverFilePath = path.resolve(__dirname, '../SparkyFitnessServer.ts');
 
+it('publishes strict ingredient save and suggestion request bodies in the generated paths', () => {
+  for (const [operation, name] of [
+    ['save', 'RecipeImportSaveRequest'],
+    ['suggest', 'RecipeImportSuggestionRequest'],
+  ] as const) {
+    expect(
+      specs.paths['/v2/recipe-imports/mealie/' + operation].post.requestBody
+    ).toEqual({
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/' + name },
+        },
+      },
+    });
+    expect(specs.components.schemas[name].additionalProperties).toBe(false);
+    expect(specs.components.schemas[name].required).toEqual(
+      expect.arrayContaining(['providerId', 'recipeSlug', 'sourceFingerprint'])
+    );
+  }
+  const save = specs.components.schemas.RecipeImportSaveRequest;
+  expect(save.required).toContain('mappings');
+  expect(save.required).not.toContain('servings');
+  expect(save.properties.finishedWeightGrams.maximum).toBe(1e9);
+  expect(save.properties.mappings).toMatchObject({
+    minItems: 1,
+    maxItems: 100,
+    items: { additionalProperties: false },
+  });
+  const suggest = specs.components.schemas.RecipeImportSuggestionRequest;
+  expect(suggest.properties.ingredientIds.maxItems).toBe(20);
+  expect(suggest.properties.confirmedIngredientIds.maxItems).toBe(100);
+  expect(suggest.required).not.toContain('useAi');
+  expect(suggest.properties.useAi.default).toBe(false);
+  expect(suggest.properties.serviceConfigId.format).toBe('uuid');
+});
+
 // Dynamically construct mount mappings by parsing SparkyFitnessServer.ts and sub-routers
 function buildMountMap(
   serverPath: string,

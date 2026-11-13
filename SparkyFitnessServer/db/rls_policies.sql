@@ -812,6 +812,9 @@ SELECT create_owner_policy('run_goals');
 SELECT create_owner_policy('custom_run_programs');
 -- Running fitness tests (5K, 30-minute run, Cooper) and the paces they gave: personal training data, owner-only.
 SELECT create_owner_policy('fitness_tests');
+-- Recipe integration provenance and source-food mappings are never delegated.
+SELECT create_owner_policy('recipe_imports');
+SELECT create_owner_policy('recipe_food_mappings');
 SELECT create_owner_policy('routes');
 -- Intervals.icu nutrition push log: owner-only, never shared.
 SELECT create_owner_policy('intervals_nutrition_pushes');

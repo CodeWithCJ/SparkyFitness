@@ -42,6 +42,7 @@ import {
   SafeOnboarding,
   SafeFoodsLibrary,
   SafeMealsLibrary,
+  SafeRecipeImport,
   SafeMealPlans,
   SafeLabReportImport,
   SafeLabResultAdd,
@@ -485,6 +486,7 @@ function AppContent() {
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        RecipeImport: 'meals/import-mealie',
         // The Android calorie and macro widgets' fasting shortcut.
         FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
@@ -629,6 +631,11 @@ function AppContent() {
             name="MealsLibrary"
             component={SafeMealsLibrary}
             options={createStackScreenOptions(t('screens.meals', { defaultValue: 'Meals' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="RecipeImport"
+            component={SafeRecipeImport}
+            options={createStackScreenOptions(t('recipeImport.title', { defaultValue: 'Import Mealie ingredients' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="MealPlans"

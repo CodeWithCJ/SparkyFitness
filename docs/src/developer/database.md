@@ -102,6 +102,13 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `meal_plan_template_assignments` | Scheduled meal templates to calendar |
 | `meal_plan_assignment_sets` | Sets within assigned meal plans |
 
+### Recipe Ingredient Imports (Tier 1: Owner-Only)
+
+| Table | Purpose |
+| --- | --- |
+| `recipe_imports` | Mealie source provenance, reviewed mappings, meal fingerprint and explicit nutrition sync status for an ordinary reusable meal. The private source JSON optionally stores a versioned content/nutrition baseline; it is excluded from the strict public source DTO. Legacy rows retain full-source fingerprint checks. |
+| `recipe_food_mappings` | Confirmed food mappings reused against current quantities only for unique, unchanged source preparation contexts. Ambiguous repeated contexts require individual review. |
+
 ### Exercise & Workouts (Tier 1/2/3: Owner-Only, Owner-Write, or Delegate-Read/Write)
 | Table | Purpose |
 |-------|---------|

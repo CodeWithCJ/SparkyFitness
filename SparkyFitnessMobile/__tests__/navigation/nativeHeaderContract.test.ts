@@ -7,6 +7,8 @@ const NATIVE_TABS_ROUTE_EXCLUSIONS = {
   Onboarding: 'First-run setup route shown before the tab host exists.',
   FoodsLibrary: 'Root-stack library drill-in presented above the tab host.',
   MealsLibrary: 'Root-stack library drill-in presented above the tab host.',
+  RecipeImport:
+    'Root-stack recipe import drill-in presented above the tab host.',
   ExercisesLibrary: 'Root-stack library drill-in presented above the tab host.',
   WorkoutPresetsLibrary:
     'Root-stack library drill-in presented above the tab host.',

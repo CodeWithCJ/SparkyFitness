@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-09_
+_Last updated: 2026-11-12_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -47,6 +47,8 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - Example: a Medications bug lives in `src/pages/Medications/` + `src/api/Medications/` + `src/hooks/` medication hooks. Start there, not with a repo-wide search.
 
 ## Source Map
+
+- Mealie ingredient meals: `pages/Foods/RecipeImportDialog.tsx` browses configured sources, `RecipeImportReview.tsx` reviews whole-recipe amounts and cooked weight, and `RecipeImportIngredientRow.tsx` reuses food search/import/unit selection. `hooks/Foods/useRecipeImport.ts` guards confirmed mappings and batches matching requests (20 rows); `hooks/Foods/useRecipeImportQueries.ts` owns owner-scoped browsing, direct recipe previews, saved-choice management, food lookups and source sync; `RecipeImportSavedMappings.tsx` lists/forgets private suggestions. Browser cards reuse `FoodResultCard` and `useFoodResultNutrientConfig` from normal food search; `api/Foods/recipeImportService.ts` consumes shared RecipeImport contracts. `RecipeImportSourcePanel.tsx` and `RecipeImportSyncConfirmation.tsx` review current nutrition before explicit writeback from saved meals and ordinary meal edit/details; 404 means an ordinary meal, and owner-only panels unmount on profile switches. Recipe unit selection opts into preserving source amounts across compatible units and requires explicit incompatible amounts. Existing quick-food recipe import remains separate.
 
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
@@ -99,6 +101,8 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Lint is strict (`--max-warnings 0`); unused imports fail the build.
 
 ## Quick Routing
+
+- Import Mealie ingredients from the Meals library action in `MealManagement.tsx` or the no-nutrition food-details link. `MealManagement` validates and consumes the provider/recipe query parameters, then opens the ordinary saved-meal editor. Remembered mappings require explicit confirmation for each import. Original ingredient amounts are whole-recipe totals; optional finished cooked grams only define normal meal serving size. AI candidates require explicit review and local food/variant IDs. Saving creates an ordinary meal; source sync has independent pending/error/success state and must preserve a successful local save. Private recipe data and operations stay disabled while acting on behalf.
 
 - Glucose / CGM: `pages/Reports/GlucoseCard.tsx` under Reports → Measurements reads `blood_glucose` samples, separates source streams, uses the account `default_glucose_unit` (Preferences → Glucose Unit) for mmol/L or mg/dL display and leaves gaps over 15 minutes. `hooks/Reports/useGlucoseContext.ts` adds independently selectable day context; exercise and sleep show start/end spans. Setup: `docs/src/features/cgm.md`.
 

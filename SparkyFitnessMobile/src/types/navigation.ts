@@ -1,3 +1,4 @@
+import type { RecipeImportPickerTarget } from '../services/recipeImportSelection';
 import type { BarcodeLookupContext } from '../utils/barcodeFoods';
 import type { RunSummaryParams } from '../utils/runSummary';
 import type { NavigatorScreenParams } from '@react-navigation/native';
@@ -121,6 +122,8 @@ export type RootStackParamList = {
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  RecipeImport:
+    { providerId: string; recipeSlug: string; scope: string } | undefined;
   MealPlans: undefined;
   WorkoutPlans: undefined;
   WorkoutPlanForm: { template?: WorkoutPlanTemplate } | undefined;
@@ -210,6 +213,7 @@ export type RootStackParamList = {
     | {
         date?: string;
         pickerMode?: FoodPickerMode;
+        recipeImportTarget?: RecipeImportPickerTarget;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
         mealPlanTarget?: MealPlanPickerTarget;
@@ -228,6 +232,7 @@ export type RootStackParamList = {
     selectedVariantOverride?: FoodUnitVariant;
     pickerMode?: FoodPickerMode;
     ingredientIndex?: number;
+    recipeImportTarget?: RecipeImportPickerTarget;
     returnDepth?: number;
     /** Optional canonical meal type id to pre-select when logging. */
     mealTypeId?: string;

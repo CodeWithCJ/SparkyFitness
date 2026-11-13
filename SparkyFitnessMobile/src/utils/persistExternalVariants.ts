@@ -28,9 +28,11 @@ type SavedFoodWithDefaultVariant = {
  */
 export async function persistExternalVariants(
   savedFood: SavedFoodWithDefaultVariant,
-  externalVariants: ExternalFoodVariant[] | undefined
+  externalVariants: ExternalFoodVariant[] | undefined,
+  isCurrent: () => boolean = () => true
 ) {
-  if (!externalVariants || externalVariants.length === 0) return;
+  if (!isCurrent() || !externalVariants || externalVariants.length === 0)
+    return;
 
   const existingKeys = new Set<string>();
   const legacyExistingBaseKeyCounts = new Map<string, number>();
@@ -52,6 +54,8 @@ export async function persistExternalVariants(
     // If we can't check existing variants, fall back to the saved default only.
     // A possible duplicate is less harmful than missing all alternate servings.
   }
+
+  if (!isCurrent()) return;
 
   const defaultKey = servingVariantKey(savedFood.default_variant ?? {});
   const externalBaseKeyCounts = externalVariants.reduce((counts, variant) => {
@@ -77,6 +81,7 @@ export async function persistExternalVariants(
 
   await Promise.all(
     variantsToCreate.map(async (variant) => {
+      if (!isCurrent()) return;
       try {
         await createFoodVariant({
           food_id: savedFood.id,

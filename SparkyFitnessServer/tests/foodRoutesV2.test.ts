@@ -98,6 +98,62 @@ app.use('/v2/foods', foodRoutesV2);
 app.use((err: any, req: any, res: any, _next: any) => {
   res.status(err.status || 500).json({ error: err.message });
 });
+describe('Mealie browsing through the existing food-search boundary', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('allows an empty Mealie search and retains recipe context without creating foods', async () => {
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Ingredient recipe',
+          brand: null,
+          is_custom: true,
+          provider_type: 'mealie',
+          provider_external_id: 'recipe-slug',
+          recipe_has_nutrition: false,
+          recipe_servings: 4,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'serving',
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            is_default: true,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+    });
+    const response = await request(app)
+      .get('/v2/foods/search/mealie')
+      .query({ query: '', providerId: 'personal-provider' });
+    expect(response.status).toBe(200);
+    expect(response.body.foods[0]).toMatchObject({
+      provider_external_id: 'recipe-slug',
+      recipe_has_nutrition: false,
+      recipe_servings: 4,
+    });
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-123',
+      'mealie',
+      '',
+      {
+        page: 1,
+        pageSize: 20,
+        providerId: 'personal-provider',
+        autoScale: true,
+      },
+      'user-123'
+    );
+  });
+  it('continues to reject empty searches for other food providers', async () => {
+    const response = await request(app)
+      .get('/v2/foods/search/usda')
+      .query({ query: '' });
+    expect(response.status).toBe(400);
+    expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+});
 describe('GET /v2/foods/barcode/:barcode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
