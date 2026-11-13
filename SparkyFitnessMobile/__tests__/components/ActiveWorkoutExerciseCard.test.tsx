@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import ActiveWorkoutExerciseCard from '../../src/components/ActiveWorkoutExerciseCard';
@@ -130,6 +131,12 @@ const mockUseLiveHeartRate = jest.fn(
 );
 jest.mock('../../src/stores/liveHeartRateStore', () => ({
   useLiveHeartRate: (entryId: string | null) => mockUseLiveHeartRate(entryId),
+}));
+const mockUseHeartRateZoneColor = jest.fn(
+  (_bpm: number | null): string | null => null
+);
+jest.mock('../../src/hooks/useHeartRateZoneColor', () => ({
+  useHeartRateZoneColor: (bpm: number | null) => mockUseHeartRateZoneColor(bpm),
 }));
 
 jest.mock('../../src/stores/activeWorkoutStore', () => {
@@ -680,6 +687,31 @@ describe('ActiveWorkoutExerciseCard', () => {
         expect(mockUseLiveHeartRate).toHaveBeenCalledWith(null);
       } finally {
         mockUseLiveHeartRate.mockImplementation(() => null);
+      }
+    });
+
+    it('colors the live reading by the heart rate zone, never the saved average', () => {
+      mockUseLiveHeartRate.mockImplementation((entryId) =>
+        entryId === 'ex-uuid-1' ? 137 : null
+      );
+      mockUseHeartRateZoneColor.mockImplementation((bpm) =>
+        bpm != null ? '#22c55e' : null
+      );
+      try {
+        const live = renderCard(true, { mode: 'live' });
+        const text = live.getByText('137 bpm');
+        expect(StyleSheet.flatten(text.props.style).color).toBe('#22c55e');
+
+        const view = renderCard(true, {
+          mode: 'view',
+          exercise: makeExercise({ avg_heart_rate: 140, max_heart_rate: 140 }),
+        });
+        expect(
+          StyleSheet.flatten(view.getByText('140 bpm').props.style).color
+        ).toBeUndefined();
+      } finally {
+        mockUseLiveHeartRate.mockImplementation(() => null);
+        mockUseHeartRateZoneColor.mockImplementation(() => null);
       }
     });
 
