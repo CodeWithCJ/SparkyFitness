@@ -31,7 +31,7 @@ import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
-import PlateBarGraphic from './PlateBarGraphic';
+import FocusPlateStrip from './FocusPlateStrip';
 import RestPeriodChip from './RestPeriodChip';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { AnchorRect } from './AnchoredMenu';
@@ -93,6 +93,8 @@ interface SetEditorProps {
   onUncomplete: (setId: string) => void;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
   onAddSet: (entryId: string) => void;
+  /** Opens the plate calculator sheet for a set (barbell exercises). */
+  onOpenPlateCalculator: (setId: string) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet: (setId: string) => void;
   onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
@@ -136,6 +138,8 @@ interface Props extends SetEditorProps, HistoryProps {
   onSeeAlternatives?: (entryId: string) => void;
   /** Asks the view to show an exercise now (rest bar tap, "do this now"); a new `seq` is a new request. */
   showRequest?: { id: string; seq: number } | null;
+  /** Reports the index of the exercise on show, for the screen's header pill. */
+  onSelectedIndexChange?: (index: number) => void;
   /** Closes the keyboard and clears the screen's focused set, before a page change. */
   onDismissKeyboard: () => void;
   /** The screen's scroll ref, so it can scroll to the end buttons after the last set. */
@@ -203,17 +207,16 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   sessionId,
   verifiedSourcePresetId,
   weightUnit,
+  onOpenPlateCalculator,
   ...setEditorProps
 }: PageProps) {
   const { t } = useTranslation();
-  const [textMuted, textSecondary, prColor, accent, heartRateColor] =
-    useCSSVariable([
-      '--color-text-muted',
-      '--color-text-secondary',
-      '--color-pr',
-      '--color-accent-primary',
-      '--color-heart-rate',
-    ]) as [string, string, string, string, string];
+  const [textPrimary, prColor, accent, heartRateColor] = useCSSVariable([
+    '--color-text-primary',
+    '--color-pr',
+    '--color-accent-primary',
+    '--color-heart-rate',
+  ]) as [string, string, string, string];
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
 
   const snapshot = exercise.exercise_snapshot;
@@ -300,83 +303,115 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     snapshot?.equipment?.[0]
   );
 
-  const pillClass =
-    'flex-row items-center rounded-full bg-raised px-2.5 py-1 gap-1';
-  const titleBlock = (
-    <View className={mediaExpanded ? 'mt-3' : 'flex-1'}>
-      <View className="flex-row items-start gap-2">
+  const hasMedia = (snapshot?.images ?? []).some(
+    (path) => path !== '' && getImageSource(path) !== null
+  );
+  const mediaMode = !hasMedia ? 'none' : mediaExpanded ? 'expanded' : 'min';
+  const planText =
+    plan != null
+      ? t('activeWorkout.focus.planShort', {
+          defaultValue: 'Plan {{sets}} × {{reps}}',
+          sets: plan.sets,
+          reps: plan.reps,
+        })
+      : null;
+  const lastTimeText =
+    lastTime.length > 0
+      ? t('activeWorkout.focus.lastTimeShort', {
+          defaultValue: 'Last time {{sets}}',
+          sets: lastTime.join(', '),
+        })
+      : null;
+
+  const tagClass =
+    'h-7 flex-row items-center gap-1.5 rounded-full bg-raised px-2.5';
+  const nameText = (
+    <Text
+      className={`${mediaMode === 'expanded' ? 'flex-1 text-2xl' : 'text-[22px]'} font-bold text-text-primary`}
+      accessibilityRole="header"
+    >
+      {name}
+    </Text>
+  );
+  const swapButton = (
+    <Pressable
+      onPress={() => onSwap(exercise.id)}
+      accessibilityRole="button"
+      accessibilityLabel={t('activeWorkout.now.swapLabel', {
+        defaultValue: 'Swap {{name}}',
+        name,
+      })}
+      className="h-11 items-center justify-center rounded-full bg-raised px-4 active:opacity-70"
+    >
+      <Text className="text-[15px] font-semibold text-text-primary">
+        {t('activeWorkout.now.swap', { defaultValue: 'Swap' })}
+      </Text>
+    </Pressable>
+  );
+  const moreButton = (
+    <Pressable
+      onPress={() => onPressOverflow(exercise.id)}
+      accessibilityRole="button"
+      accessibilityLabel={t('activeWorkout.exercise.moreOptions', {
+        defaultValue: 'More options for {{name}}',
+        name,
+      })}
+      className="h-11 w-11 items-center justify-center rounded-full bg-raised active:opacity-70"
+    >
+      <Icon name="ellipsis-horizontal" size={22} color={textPrimary} />
+    </Pressable>
+  );
+  // Beside the thumbnail, or alone for an exercise without pictures: the name,
+  // the plan under it, then Swap and the menu.
+  const sideTitle = (
+    <View className="min-w-0 flex-1 gap-1">
+      {nameText}
+      {planText != null && (
         <Text
-          className="flex-1 text-2xl font-bold text-text-primary"
-          accessibilityRole="header"
+          className="text-[15px] text-text-secondary"
+          style={{ fontVariant: ['tabular-nums'] }}
         >
-          {name}
+          {planText}
         </Text>
-        <Pressable
-          onPress={() => onSwap(exercise.id)}
-          accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.now.swapLabel', {
-            defaultValue: 'Swap {{name}}',
-            name,
-          })}
-          className="min-h-11 flex-row items-center gap-1.5 bg-raised rounded-full px-3 active:opacity-70"
-        >
-          <Icon name="swap-horizontal" size={15} color={accent} />
-          <Text className="text-sm font-semibold text-accent-primary">
-            {t('activeWorkout.now.swap', { defaultValue: 'Swap' })}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onPressOverflow(exercise.id)}
-          accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.exercise.moreOptions', {
-            defaultValue: 'More options for {{name}}',
-            name,
-          })}
-          className="h-11 w-11 items-center justify-center active:opacity-70"
-        >
-          <Icon name="ellipsis-horizontal" size={20} color={textMuted} />
-        </Pressable>
-      </View>
-      {(muscle !== '' || equipment !== '' || bestDisplay != null) && (
-        <View className="mt-1 flex-row flex-wrap gap-2">
-          {muscle !== '' && (
-            <View className={pillClass}>
-              <Text className="text-xs text-text-secondary">{muscle}</Text>
-            </View>
-          )}
-          {equipment !== '' && (
-            <View className={pillClass}>
-              <Text className="text-xs text-text-secondary">{equipment}</Text>
-            </View>
-          )}
-          {bestDisplay != null && (
-            <View
-              className={pillClass}
-              accessibilityLabel={t('activeWorkout.exercise.best', {
-                defaultValue: 'Best {{value}}',
-                value: bestText,
-              })}
-            >
-              <Icon
-                name="trophy-outline"
-                size={12}
-                color={bestIsPr ? prColor : textMuted}
-              />
-              <Text
-                className="text-xs"
-                style={{
-                  color: bestIsPr ? prColor : textSecondary,
-                  fontVariant: ['tabular-nums'],
-                }}
-              >
-                {bestText}
-              </Text>
-            </View>
-          )}
-        </View>
       )}
+      <View className="mt-1 flex-row items-center gap-2">
+        {swapButton}
+        {moreButton}
+      </View>
     </View>
   );
+
+  const hasTags = muscle !== '' || equipment !== '' || bestDisplay != null;
+  const showMetaRow = hasTags || liveBpm != null;
+  const restChip = !cardioForm && (
+    <RestPeriodChip
+      largeTarget
+      tile
+      value={exercise.sets[0]?.rest_time}
+      values={exercise.sets.map((set) => set.rest_time)}
+      onPress={() =>
+        onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
+      }
+    />
+  );
+  const contextText =
+    mediaMode === 'expanded'
+      ? [planText, lastTimeText].filter(Boolean).join(' · ')
+      : (lastTimeText ?? '');
+  const plateSetId = useMemo(() => {
+    const sets = exercise.sets;
+    return String(
+      (
+        sets.find((set) => String(set.id) === setEditorProps.activeSetId) ??
+        sets.find((set) => !setEditorProps.completedSetIds[String(set.id)]) ??
+        sets[0]
+      )?.id ?? ''
+    );
+  }, [
+    exercise.sets,
+    setEditorProps.activeSetId,
+    setEditorProps.completedSetIds,
+  ]);
 
   return (
     <View className="gap-3">
@@ -388,34 +423,58 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         onToggleExpanded={onToggleMedia}
         onBackToCurrent={onBackToCurrent}
       >
-        {titleBlock}
+        {sideTitle}
       </ActiveWorkoutFocusMedia>
-      {mediaExpanded && titleBlock}
+      {mediaMode === 'expanded' && (
+        <View className="flex-row items-center gap-2">
+          {nameText}
+          {swapButton}
+          {moreButton}
+        </View>
+      )}
+      {mediaMode === 'none' && sideTitle}
 
-      {(!cardioForm || liveBpm != null) && (
-        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-1">
-          {!cardioForm && (
-            <RestPeriodChip
-              largeTarget
-              value={exercise.sets[0]?.rest_time}
-              values={exercise.sets.map((set) => set.rest_time)}
-              onPress={() =>
-                onPressRestChip(
-                  exercise.id,
-                  exercise.sets[0]?.rest_time ?? null
-                )
-              }
-            />
+      {showMetaRow && (
+        <View className="flex-row flex-wrap gap-2">
+          {muscle !== '' && (
+            <View className={tagClass}>
+              <Text className="text-[13px] font-semibold text-text-secondary">
+                {muscle}
+              </Text>
+            </View>
           )}
-          {showPlates && plateTarget != null && (
-            <PlateBarGraphic
-              targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
-              weightUnit={weightUnit}
-              equipment={plateEquipment}
-            />
+          {equipment !== '' && (
+            <View className={tagClass}>
+              <Text className="text-[13px] font-semibold text-text-secondary">
+                {equipment}
+              </Text>
+            </View>
+          )}
+          {bestDisplay != null && (
+            <View
+              className={tagClass}
+              accessibilityLabel={t('activeWorkout.exercise.best', {
+                defaultValue: 'Best {{value}}',
+                value: bestText,
+              })}
+            >
+              <Text className="text-[13px] font-semibold text-text-secondary">
+                {t('activeWorkout.focus.bestLabel', { defaultValue: 'Best' })}
+              </Text>
+              <Text
+                className="text-[13px] font-bold"
+                style={{
+                  color: bestIsPr ? prColor : accent,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {bestText}
+              </Text>
+            </View>
           )}
           {liveBpm != null && (
             <ExerciseHeartRateChip
+              pill
               text={String(liveBpm)}
               color={zoneColor ?? heartRateColor}
               valueColor={zoneColor ?? undefined}
@@ -426,6 +485,30 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
             />
           )}
         </View>
+      )}
+
+      {(contextText !== '' || restChip) && (
+        <View className="flex-row items-center justify-between gap-3">
+          {mediaMode !== 'expanded' && restChip}
+          {contextText !== '' && (
+            <Text
+              className={`min-w-0 flex-1 text-[15px] text-text-secondary ${mediaMode === 'expanded' ? '' : 'text-right'}`}
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {contextText}
+            </Text>
+          )}
+          {mediaMode === 'expanded' && restChip}
+        </View>
+      )}
+
+      {showPlates && plateTarget != null && (
+        <FocusPlateStrip
+          targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
+          weightUnit={weightUnit}
+          equipment={plateEquipment}
+          onOpenCalculator={() => onOpenPlateCalculator(plateSetId)}
+        />
       )}
 
       {(!!exercise.notes || noteEditorEntryId === exercise.id) && (
@@ -441,31 +524,6 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
             name,
           })}
         />
-      )}
-
-      {(plan != null || lastTime.length > 0) && (
-        <View className="gap-0.5">
-          {plan != null && (
-            <Text className="text-sm text-text-secondary">
-              {t('activeWorkout.focus.plan', {
-                defaultValue: 'Plan: {{sets}} × {{reps}}',
-                sets: plan.sets,
-                reps: plan.reps,
-              })}
-            </Text>
-          )}
-          {lastTime.length > 0 && (
-            <Text
-              className="text-sm text-text-secondary"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {t('activeWorkout.focus.lastTime', {
-                defaultValue: 'Last time: {{sets}}',
-                sets: lastTime.join(', '),
-              })}
-            </Text>
-          )}
-        </View>
       )}
 
       <AdaptiveSuggestionBanner
@@ -532,15 +590,14 @@ function ActiveWorkoutFocusView({
   historyScopeSettled,
   showRequest,
   onDismissKeyboard,
+  onSelectedIndexChange,
   scrollRef,
   scrollContentStyle,
   keyboardBottomOffset,
   children,
   ...setEditorProps
 }: Props) {
-  const { t } = useTranslation();
   const reducedMotion = useReducedMotion();
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const { exercises } = session;
   const { weightUnit, completedSetIds } = setEditorProps;
 
@@ -567,6 +624,9 @@ function ActiveWorkoutFocusView({
     )
   );
   const exercise: FocusExercise | undefined = exercises[selectedIndex];
+  useEffect(() => {
+    onSelectedIndexChange?.(selectedIndex);
+  }, [selectedIndex, onSelectedIndexChange]);
 
   const slide = useSharedValue(0);
   const fade = useSharedValue(1);
@@ -688,57 +748,8 @@ function ActiveWorkoutFocusView({
   }, [weightUnit, setStoreWeightUnit]);
 
   if (exercise == null) return null;
-  const previous = exercises[selectedIndex - 1];
-  const next = exercises[selectedIndex + 1];
-  const nameOf = (e: FocusExercise) =>
-    e.exercise_snapshot?.name ??
-    t('workout.exercise', { defaultValue: 'Exercise' });
   const awayFromCurrent =
     activeExerciseId != null && activeExerciseId !== exercise.id;
-
-  const navButton = (target: FocusExercise | undefined, direction: -1 | 1) => {
-    const label =
-      direction < 0
-        ? t('activeWorkout.focus.previous', { defaultValue: 'Previous' })
-        : t('activeWorkout.focus.next', { defaultValue: 'Next' });
-    return (
-      <Pressable
-        onPress={() => goBy(direction)}
-        disabled={target == null}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: target == null }}
-        accessibilityLabel={
-          target == null
-            ? label
-            : direction < 0
-              ? t('activeWorkout.focus.previousLabel', {
-                  defaultValue: 'Previous exercise, {{name}}',
-                  name: nameOf(target),
-                })
-              : t('activeWorkout.focus.nextLabel', {
-                  defaultValue: 'Next exercise, {{name}}',
-                  name: nameOf(target),
-                })
-        }
-        className={`min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-raised px-3 active:opacity-70 ${
-          target == null ? 'opacity-40' : ''
-        }`}
-      >
-        {direction < 0 && (
-          <Icon name="chevron-back" size={16} color={accentPrimary} />
-        )}
-        <Text
-          className="text-sm font-semibold"
-          style={{ color: accentPrimary }}
-        >
-          {label}
-        </Text>
-        {direction > 0 && (
-          <Icon name="chevron-forward" size={16} color={accentPrimary} />
-        )}
-      </Pressable>
-    );
-  };
 
   return (
     <>
@@ -752,7 +763,7 @@ function ActiveWorkoutFocusView({
       <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"
-        contentContainerClassName="px-3 pt-2"
+        contentContainerClassName="px-4 pt-1"
         contentContainerStyle={scrollContentStyle}
         keyboardShouldPersistTaps="handled"
         bottomOffset={keyboardBottomOffset}
@@ -786,10 +797,6 @@ function ActiveWorkoutFocusView({
               verifiedSourcePresetId={verifiedSourcePresetId}
               {...setEditorProps}
             />
-            <View className="mt-3 flex-row gap-3">
-              {navButton(previous, -1)}
-              {navButton(next, 1)}
-            </View>
           </Animated.View>
         </GestureDetector>
         {children}

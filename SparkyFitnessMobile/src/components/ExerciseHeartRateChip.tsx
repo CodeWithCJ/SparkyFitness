@@ -12,6 +12,8 @@ interface ExerciseHeartRateChipProps {
   color: string;
   /** Color of the number and unit; defaults to the secondary text color. */
   valueColor?: string;
+  /** Draws the readout as a tag (the focus view's meta row) with a bold number. */
+  pill?: boolean;
 }
 
 /**
@@ -24,23 +26,41 @@ function ExerciseHeartRateChip({
   accessibilityLabel,
   color,
   valueColor,
+  pill = false,
 }: ExerciseHeartRateChipProps) {
   const { t } = useTranslation();
   return (
     <View
       testID="exercise-heart-rate"
-      className="flex-row items-center"
+      className={
+        pill
+          ? 'h-7 flex-row items-center gap-1.5 rounded-full bg-raised px-2.5'
+          : 'flex-row items-center'
+      }
       accessibilityLabel={accessibilityLabel}
     >
       <Icon name="heart-rate" size={14} color={color} />
       <Text
-        className="text-sm text-text-secondary ml-1"
+        className={
+          pill
+            ? 'text-[13px] font-semibold text-text-secondary'
+            : 'text-sm text-text-secondary ml-1'
+        }
         style={[
           { fontVariant: ['tabular-nums'] },
-          valueColor != null ? { color: valueColor } : null,
+          !pill && valueColor != null ? { color: valueColor } : null,
         ]}
       >
-        {text}{' '}
+        {pill ? (
+          <Text
+            className="font-bold"
+            style={valueColor != null ? { color: valueColor } : undefined}
+          >
+            {text}
+          </Text>
+        ) : (
+          text
+        )}{' '}
         {t('activeWorkout.exercise.heartRateUnit', { defaultValue: 'bpm' })}
       </Text>
     </View>

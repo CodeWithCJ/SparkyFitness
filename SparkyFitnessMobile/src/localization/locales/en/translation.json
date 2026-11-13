@@ -590,7 +590,8 @@
         "label": "Exercise {{number}} of {{total}}, {{name}}, {{status}}",
         "done": "done",
         "inProgress": "in progress",
-        "todo": "not started"
+        "todo": "not started",
+        "supersetLabel": "{{label}}, superset {{letter}}{{member}}"
       },
       "plan": "Plan: {{sets}} × {{reps}}",
       "lastTime": "Last time: {{sets}}",
@@ -598,7 +599,38 @@
       "next": "Next",
       "previousLabel": "Previous exercise, {{name}}",
       "nextLabel": "Next exercise, {{name}}",
-      "backToCurrent": "Back to current"
+      "backToCurrent": "Back to current",
+      "header": {
+        "position": "Exercise {{position}} of {{total}}",
+        "list": "Exercise list"
+      },
+      "bar": {
+        "previousSet": "Previous set, edit in place",
+        "logSet": "Log set",
+        "logSetRest": "Log set, rest {{duration}}"
+      },
+      "hero": {
+        "label": "Set {{setNumber}} of {{total}}",
+        "setOf": "Set {{setNumber}} of {{total}}",
+        "typedSet": "Set {{letter}}",
+        "fill": "Fill {{value}}",
+        "fillLabel": "Fill set {{setNumber}} with {{value}}",
+        "step": "step {{step}} {{unit}}",
+        "lastReps": "last {{reps}}",
+        "optional": "optional",
+        "optionalRepsLeft_one": "optional · {{count}} rep left",
+        "optionalRepsLeft_other": "optional · {{count}} reps left",
+        "decreaseEffort": "Decrease {{metric}} for set {{setNumber}}",
+        "increaseEffort": "Increase {{metric}} for set {{setNumber}}"
+      },
+      "plates": {
+        "perSide": "Per side:",
+        "onBar": "on a {{bar}} {{unit}} bar",
+        "calculator": "Plate calculator"
+      },
+      "planShort": "Plan {{sets}} × {{reps}}",
+      "lastTimeShort": "Last time {{sets}}",
+      "bestLabel": "Best"
     }
   },
   "addSheet": {

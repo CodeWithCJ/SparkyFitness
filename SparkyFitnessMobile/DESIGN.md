@@ -32,12 +32,13 @@ Token classes follow Tailwind v4 naming: the utility prefix plus the token name.
 
 ### Surfaces and chrome
 
-| Role                | Token class     | Light hex | Dark hex | Usage                                                                                                                                       |
-| ------------------- | --------------- | --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cool Mist Canvas    | `bg-background` | #F2F4F7   | #0C0E12  | Screen background (`flex-1 bg-background` on almost every screen), navigation card color, sticky section headers, footer bars               |
-| Porcelain Card      | `bg-surface`    | #F9FAFB   | #13161B  | Cards, grouped settings rows, bottom sheets, popover menus, swipeable rows                                                                  |
-| Bright Control Fill | `bg-raised`     | #FFFFFF   | #1C1F26  | Controls, on a card or directly on the canvas: text inputs, search bars, segmented-control track, picker triggers, secondary buttons, chips |
-| Chrome Bar          | `bg-chrome`     | #FFFFFF   | #0E1116  | Persistent bars only: custom tab bar, docked active-workout bar, What's New banner, non-glass fallback for Liquid Glass pills               |
+| Role                 | Token class     | Light hex | Dark hex | Usage                                                                                                                                              |
+| -------------------- | --------------- | --------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cool Mist Canvas     | `bg-background` | #F2F4F7   | #0C0E12  | Screen background (`flex-1 bg-background` on almost every screen), navigation card color, sticky section headers, footer bars                      |
+| Porcelain Card       | `bg-surface`    | #F9FAFB   | #13161B  | Cards, grouped settings rows, bottom sheets, popover menus, swipeable rows                                                                         |
+| Bright Control Fill  | `bg-raised`     | #FFFFFF   | #1C1F26  | Controls, on a card or directly on the canvas: text inputs, search bars, segmented-control track, picker triggers, secondary buttons, chips        |
+| Control on a Control | `bg-control`    | #EAECF1   | #2A2E37  | Buttons and fields set on a `bg-raised` card or control, one step off it: the focus view's stepper buttons and metric tiles on the active-set card |
+| Chrome Bar           | `bg-chrome`     | #FFFFFF   | #0E1116  | Persistent bars only: custom tab bar, docked active-workout bar, What's New banner, non-glass fallback for Liquid Glass pills                      |
 
 In Light, the canvas is the darkest surface and controls are white. In Dark, raised is the lightest surface, so a control on a card always looks lifted.
 
@@ -149,6 +150,7 @@ AMOLED uses the Dark values for 48 of the 61 color tokens. Only these 13 change:
 | `--color-background`     | #000000 (pure black)   | #0C0E12  |
 | `--color-surface`        | #080A0C                | #13161B  |
 | `--color-raised`         | #111318                | #1C1F26  |
+| `--color-control`        | #1F2229                | #2A2E37  |
 | `--color-chrome`         | #000000 at 90% opacity | #0E1116  |
 | `--color-border`         | #1C1F26                | #272C35  |
 | `--color-border-subtle`  | #16181D                | #1E2229  |
@@ -309,6 +311,7 @@ Radius classes in sections 1–5 use the app's remapped scale, not web Tailwind'
 - Keyboard accessory bar (set entry Done / Next / Log, 52pt): hidden behind the keyboard and rising with it.
 - Floating summary bar (food search basket): `absolute left-4 right-4 rounded-xl bg-raised border border-border-subtle px-4 py-3`, 12pt above the bottom inset.
 - Active workout bar: docked above the custom tab bar as a Chrome Bar strip (at least 66pt tall) with a 3px progress line in Sparky Blue on Progress Track. On Liquid Glass it becomes a frosted pill (fully rounded, 20pt side margins, 6pt above the tab bar, hairline border, soft shadow).
+- Focus view (iPhone workout): 44 pt `bg-raised` round or pill controls (`h-11 rounded-full`; 17px bold accent numerals in the header pills), 44 pt exercise circles with a superset wrapped in one `rounded-[28px]` group tinted 14% in its color, table cells `h-11 rounded-[14px] bg-raised` with 19px bold values, a dashed `border-border-strong` Prev cell, and the active set as a `rounded-[20px] bg-raised` card with a 2px accent outline whose weight, reps and RPE fields are a 44 pt `bg-control` [−] 26px bold value [+]. The bottom bar is a 56 pt back circle beside a 56 pt `rounded-full` accent Log set button (20px bold, the rest in 16px at 75%), in `FooterActionBar`.
 - Rest bar (`ActiveWorkoutRestBar`): docked `bg-surface border-t border-border-subtle px-4 pt-2` with a 4px (`h-1`) progress track, a `text-3xl font-bold` countdown and round `bg-raised` controls.
 
 ### Badges, pills and chips

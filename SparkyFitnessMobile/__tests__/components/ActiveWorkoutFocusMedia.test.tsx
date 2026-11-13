@@ -118,12 +118,23 @@ describe('ActiveWorkoutFocusMedia', () => {
     expect(frame()).toBe('https://img/a.jpg');
   });
 
-  it('shows a placeholder with children and no pills without images', () => {
-    renderMedia({ images: [] });
-    expect(screen.getByTestId('focus-media-placeholder')).toBeTruthy();
-    expect(screen.getByText('Title block')).toBeTruthy();
-    expect(screen.queryByText('Minimize')).toBeNull();
-    expect(screen.queryByText('Pause')).toBeNull();
+  it.each([true, false])(
+    'stays collapsed with no placeholder, children or pills without images (expanded: %s)',
+    (expanded) => {
+      renderMedia({ images: [], expanded });
+      expect(screen.queryByTestId('focus-media-placeholder')).toBeNull();
+      expect(screen.queryByTestId('safe-image')).toBeNull();
+      expect(screen.queryByText('Title block')).toBeNull();
+      expect(screen.queryByText('Minimize')).toBeNull();
+      expect(screen.queryByText('Pause')).toBeNull();
+    }
+  );
+
+  it('keeps Back to current when there are no pictures', () => {
+    const onBackToCurrent = jest.fn();
+    renderMedia({ images: [], onBackToCurrent });
+    fireEvent.press(screen.getByText('Back to current'));
+    expect(onBackToCurrent).toHaveBeenCalledTimes(1);
   });
 
   it('does not cycle when Reduce Motion is on', () => {

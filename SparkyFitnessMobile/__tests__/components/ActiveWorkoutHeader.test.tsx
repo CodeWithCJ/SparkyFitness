@@ -123,6 +123,63 @@ describe('ActiveWorkoutHeader', () => {
     expect(getByText('01:02 elapsed')).toBeTruthy();
   });
 
+  describe('focus bar', () => {
+    function renderFocusBar(onOpenList?: () => void, onBack = jest.fn()) {
+      const progress = buildExerciseProgress(makeSession(), {});
+      return render(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          progressInSubtitle
+          focusBar={{ position: 2, total: 3, onOpenList }}
+          onBack={onBack}
+          onDiscard={jest.fn()}
+        />
+      );
+    }
+
+    it('shows the position pill, the elapsed pill and the buttons instead of the title block', () => {
+      const { getByText, getByLabelText, queryByText } = renderFocusBar(
+        jest.fn()
+      );
+      expect(getByText('2/3')).toBeTruthy();
+      expect(getByLabelText('Exercise 2 of 3')).toBeTruthy();
+      expect(getByText('01:02')).toBeTruthy();
+      expect(getByLabelText('01:02 elapsed')).toBeTruthy();
+      expect(getByLabelText('Exercise list')).toBeTruthy();
+      expect(getByLabelText('Workout menu')).toBeTruthy();
+      expect(queryByText('01:02 elapsed')).toBeNull();
+    });
+
+    it('opens the exercise list from the position pill and the list button', () => {
+      const onOpenList = jest.fn();
+      const { getByLabelText } = renderFocusBar(onOpenList);
+      fireEvent.press(getByLabelText('Exercise 2 of 3'));
+      fireEvent.press(getByLabelText('Exercise list'));
+      expect(onOpenList).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops the list button when there is no list to open, and still goes back', () => {
+      const onBack = jest.fn();
+      const { queryByLabelText, getByLabelText } = renderFocusBar(
+        undefined,
+        onBack
+      );
+      expect(queryByLabelText('Exercise list')).toBeNull();
+      fireEvent.press(getByLabelText('Back'));
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('ticks the elapsed pill on its own', () => {
+      const { getByText } = renderFocusBar(jest.fn());
+      act(() => {
+        jest.advanceTimersByTime(1_000);
+      });
+      expect(getByText('01:03')).toBeTruthy();
+    });
+  });
+
   it('advances the elapsed clock every second on its own', () => {
     const { getByText } = renderHeaderComponent({});
     act(() => {

@@ -48,6 +48,8 @@ interface RestPeriodChipProps {
   readOnly?: boolean;
   /** Grows the tap target to 44pt, for layouts without surrounding padding. */
   largeTarget?: boolean;
+  /** The focus view's 44 pt tile: a raised chip with the timer glyph, no chevron. */
+  tile?: boolean;
 }
 
 function RestPeriodChip({
@@ -56,6 +58,7 @@ function RestPeriodChip({
   onPress,
   readOnly = false,
   largeTarget = false,
+  tile = false,
 }: RestPeriodChipProps) {
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
@@ -92,6 +95,34 @@ function RestPeriodChip({
           })}
         </Text>
       </View>
+    );
+  }
+
+  if (tile) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={t('restPeriod.buttonLabel', {
+          defaultValue: 'Rest {{duration}}',
+          duration: label,
+        })}
+        accessibilityHint={t('restPeriod.buttonHint', {
+          defaultValue: 'Opens rest period selection',
+        })}
+        className="h-11 flex-row items-center gap-2 rounded-[14px] bg-raised px-3.5 active:opacity-70"
+      >
+        <Icon name="timer" size={16} color={textMuted} />
+        <Text
+          className="text-[15px] font-semibold text-text-primary"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {t('restPeriod.rest', {
+            defaultValue: 'Rest {{duration}}',
+            duration: label,
+          })}
+        </Text>
+      </Pressable>
     );
   }
 

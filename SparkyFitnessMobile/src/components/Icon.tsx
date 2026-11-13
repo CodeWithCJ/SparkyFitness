@@ -18,6 +18,10 @@ const ICON_MAP = {
 
   // Actions
   expand: { sf: 'arrow.up.left.and.arrow.down.right', ion: 'expand-outline' },
+  contract: {
+    sf: 'arrow.down.right.and.arrow.up.left',
+    ion: 'contract-outline',
+  },
   move: {
     sf: 'arrow.up.and.down.and.arrow.left.and.right',
     ion: 'move-outline',
