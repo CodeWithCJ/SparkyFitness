@@ -378,3 +378,5 @@ export {
   type GlucoseContextEvent,
   type GlucoseContextData,
 } from './glucose/context.ts';
+
+export * from './schemas/api/Chat.api.zod.ts';

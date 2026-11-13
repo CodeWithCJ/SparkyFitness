@@ -62,6 +62,8 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 ## Source Map
 
+- Chat outside-tool approval: `ai/chatToolApproval.ts` gates writes and `mcp_` calls after an outside result. Only streaming requests with `approvals: true` load outside tools. `services/chatService.ts` resumes persisted approval parts using this request's tools; `models/chatRepository.ts` claims responses once and cancels pending approvals on new user text. Outside results are delimited as data and replayed in later turns only as a call note, without the result or error text.
+
 - Glucose / CGM uses the existing generic health samples API and `health_metric_samples` RLS. `blood_glucose` samples store `mmol_l` plus optional source bundle attribution; `user_preferences.default_glucose_unit` is a validated display-only preference shared by mobile and web; setup and deployment notes are in `docs/src/features/cgm.md`.
 
 - Family diary copies: `foodEntryRoutes.ts` exposes actor-scoped reviewed and selected copies in both directions. `foodEntryService.ts` checks the real actor's copy grant; `models/foodEntry.ts` rechecks reviewed rows and writes the whole copy atomically. `GET /meal-types/family/:familyUserId` reads recipient meal types under the same copy permission without switching profiles. Existing web `/copy-to-user` stays context-scoped.

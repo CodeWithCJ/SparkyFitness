@@ -7,6 +7,7 @@ import express, {
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import chatRoutes from '../routes/chatRoutes.js';
+import chatService from '../services/chatService.js';
 import { getChatMcpServerChoices } from '../models/externalProviderRepository.js';
 import {
   getChatMcpServerIds,
@@ -20,7 +21,12 @@ vi.mock('../middleware/authMiddleware.js', () => ({
     next();
   },
 }));
-vi.mock('../services/chatService.js', () => ({ default: {} }));
+vi.mock('../services/chatService.js', () => ({
+  default: { processChatMessageStream: vi.fn() },
+}));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn(async () => false),
+}));
 vi.mock('../services/voiceTranscriptionService.js', () => ({
   transcribeVoiceAudio: vi.fn(),
 }));
@@ -111,5 +117,52 @@ describe('/api/chat/mcp-servers', () => {
     vi.mocked(getChatMcpServerIds).mockRejectedValue(new Error('offline'));
     const result = await request(app).get('/api/chat/mcp-servers');
     expect(result.status).toBe(500);
+  });
+});
+
+describe('/api/chat/stream approval capability', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(chatService.processChatMessageStream).mockImplementation(
+      async () => ({
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue({ type: 'finish', finishReason: 'stop' });
+            controller.close();
+          },
+        }),
+      })
+    );
+  });
+  it.each([undefined, true, false])(
+    'passes the explicit capability with default false (%s)',
+    async (approvals) => {
+      const messages = [{ role: 'user', content: 'Hello.' }];
+      const result = await request(app)
+        .post('/api/chat/stream')
+        .send({
+          messages,
+          service_config_id: 'svc-1',
+          ...(approvals === undefined ? {} : { approvals }),
+        });
+      expect(result.status).toBe(200);
+      expect(chatService.processChatMessageStream).toHaveBeenCalledWith(
+        messages,
+        'svc-1',
+        'owner',
+        'owner',
+        false,
+        undefined,
+        undefined,
+        approvals ?? false
+      );
+    }
+  );
+  it('rejects a nonboolean capability', async () => {
+    const result = await request(app)
+      .post('/api/chat/stream')
+      .send({ messages: [], service_config_id: 'svc-1', approvals: 'true' });
+    expect(result.status).toBe(400);
+    expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
   });
 });

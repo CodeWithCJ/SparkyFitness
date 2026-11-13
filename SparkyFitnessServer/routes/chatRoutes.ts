@@ -20,6 +20,7 @@ import {
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
 import {
+  chatApprovalCapabilitySchema,
   updateChatMcpServersRequestSchema,
   testAiServiceConnectionRequestSchema,
   listOpenCodeGoModelsRequestSchema,
@@ -421,6 +422,9 @@ router.post('/', authenticate, async (req, res, next) => {
 router.post('/stream', authenticate, async (req, res, next) => {
   const { messages, service_config_id } = req.body;
   const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
+  const capability = chatApprovalCapabilitySchema.safeParse(req.body);
+  if (!capability.success)
+    return res.status(400).json({ error: 'Invalid approval capability.' });
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const { stream } = await chatService.processChatMessageStream(
@@ -432,7 +436,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
       toolCategories,
       typeof req.body?.conversationId === 'string'
         ? req.body.conversationId
-        : undefined
+        : undefined,
+      capability.data.approvals
     );
 
     pipeUIMessageStreamToResponse({ response: res, stream });

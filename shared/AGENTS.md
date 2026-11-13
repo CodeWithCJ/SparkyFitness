@@ -44,6 +44,8 @@ _Last updated: 2026-11-13_
 
 - Recipe ingredient imports: `src/schemas/api/RecipeImport.api.zod.ts` defines camelCase preview/save/suggestion/source and nutrition-confirmation contracts. `RecipeImports.zod.ts` and `RecipeFoodMappings.zod.ts` mirror owner-only source provenance and confirmed mappings. `utils/recipeImport.ts` shares numeric/unknown nutrition handling, unconfirmed saved choices, amount-like note detection, and the complete supported write/skip comparison. Sync previews include optional coverage and saved-meal provenance; saved-mapping management contracts remain owner-scoped. Both clients consume these; external food selections must use existing detail/import and supply accessible local IDs before save.
 
+- Chat approval capability: `src/schemas/api/Chat.api.zod.ts` defines `approvals` (default false). Only clients that render and respond to approval cards should send true; clients resend the saved assistant message ID and `approval-responded` tool parts.
+
 - Outside tool opt-in contracts: `src/schemas/api/McpServer.api.zod.ts` defines the safe per-person server list and whole-list save request; `UserPreferences.zod.ts` mirrors `chat_mcp_server_ids`.
 
 ## Naming Convention

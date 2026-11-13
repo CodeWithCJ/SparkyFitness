@@ -5,7 +5,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPError,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { McpError } from '@modelcontextprotocol/sdk/types.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type {
   JsonSchemaValidator,
   jsonSchemaValidator,
@@ -606,6 +606,23 @@ function resultText(result: {
   return text || 'The tool returned nothing.';
 }
 
+// Escape names separately from the body so neither can end the data boundary.
+function outsideResult(
+  text: string,
+  serverName: string,
+  toolName: string
+): string {
+  const attribute = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  const body = text.replace(/<\s*\/\s*outside_tool_result/gi, '$&_');
+  return `<outside_tool_result server="${attribute(serverName)}" tool="${attribute(toolName)}">\n${body}\n</outside_tool_result>`;
+}
+
 type SchemaNode = NonNullable<JSONSchema7['properties']>[string] | undefined;
 
 // True when the schema plainly leaves null out. Anything this cannot read,
@@ -658,69 +675,91 @@ async function callServerTool(
   input: unknown,
   abortSignal: AbortSignal | undefined
 ): Promise<string> {
-  // Nothing checks the arguments before this point, and calling the tool
-  // with none in their place could do something the model did not ask for.
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return ERRORS.VALIDATION('The arguments must be a JSON object.');
-  }
-  // Read again at each call: the person may have turned the server off while
-  // this turn was running, and nothing goes to it after they have.
-  let stillOn: boolean;
-  try {
-    stillOn = (await getChatMcpServerIds(actorUserId)).includes(server.id);
-  } catch (error) {
-    log(
-      'warn',
-      `MCP tool server ${server.id} (${server.provider_name}): could not check the person's choice before ${listed.name}: ${describeError(error)}`
-    );
-    stillOn = false;
-  }
-  if (!stillOn) {
-    return ERRORS.FORBIDDEN(
-      'The user has not turned this server on for chat. Do not retry.'
-    );
-  }
-  const headers = authHeaders(server);
-  if (sendUserId) headers[MCP_SERVER_USER_ID_HEADER] = actorUserId;
   const startedAt = Date.now();
+  let outcome: 'ok' | 'error' | 'timeout' | 'refused' = 'refused';
   try {
-    // Inside the try: arguments nested deeply enough can run this walk out of
-    // stack, and that must not make the tool throw.
-    const args = dropRefusedNulls(input, listed.inputSchema) as Record<
-      string,
-      unknown
-    >;
-    // Never retried: the call may have changed something on the other side.
-    const result = await withServerClient(
-      endpoint,
-      headers,
-      (client) =>
-        client.callTool({ name: listed.name, arguments: args }, undefined, {
-          timeout: CALL_TIMEOUT_MS,
-          signal: abortSignal,
-        }),
-      abortSignal
-    );
+    // Nothing checks the arguments before this point, and calling the tool
+    // with none in their place could do something the model did not ask for.
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return ERRORS.VALIDATION('The arguments must be a JSON object.');
+    }
+    // Read again at each call: the person may have turned the server off while
+    // this turn was running, and nothing goes to it after they have.
+    let stillOn: boolean;
+    try {
+      stillOn = (await getChatMcpServerIds(actorUserId)).includes(server.id);
+    } catch (error) {
+      log(
+        'warn',
+        `MCP tool server ${server.id} (${server.provider_name}): could not check the person's choice before ${listed.name}: ${describeError(error)}`
+      );
+      stillOn = false;
+    }
+    if (!stillOn) {
+      return ERRORS.FORBIDDEN(
+        'The user has not turned this server on for chat. Do not retry.'
+      );
+    }
+    outcome = 'error';
+    const headers = authHeaders(server);
+    if (sendUserId) headers[MCP_SERVER_USER_ID_HEADER] = actorUserId;
+    try {
+      // Inside the try: arguments nested deeply enough can run this walk out of
+      // stack, and that must not make the tool throw.
+      const args = dropRefusedNulls(input, listed.inputSchema) as Record<
+        string,
+        unknown
+      >;
+      // Never retried: the call may have changed something on the other side.
+      const result = await withServerClient(
+        endpoint,
+        headers,
+        (client) =>
+          client.callTool({ name: listed.name, arguments: args }, undefined, {
+            timeout: CALL_TIMEOUT_MS,
+            signal: abortSignal,
+          }),
+        abortSignal
+      );
+      log(
+        'debug',
+        `MCP tool server ${server.id}: ${listed.name} answered in ${Date.now() - startedAt} ms`
+      );
+      const text = truncateIfNeeded(
+        withoutToken(resultText(result), server),
+        TRUNCATION_HINT
+      );
+      outcome = result.isError ? 'error' : 'ok';
+      return outsideResult(
+        result.isError ? toolError('EXTERNAL_TOOL_ERROR', text) : text,
+        withoutToken(server.provider_name, server),
+        listed.name
+      );
+    } catch (error) {
+      outcome =
+        isOutboundUrlBlockedError(error) || abortSignal?.aborted
+          ? 'refused'
+          : error instanceof NoAnswerError ||
+              (error instanceof McpError &&
+                error.code === ErrorCode.RequestTimeout)
+            ? 'timeout'
+            : 'error';
+      // The arguments stay out of the log: they can hold health data. A
+      // cancelled chat is not the server's failure, so it is not a warning.
+      log(
+        abortSignal?.aborted ? 'debug' : 'warn',
+        `MCP tool server ${server.id} (${server.provider_name}): ${listed.name} failed after ${Date.now() - startedAt} ms: ${failureReason(error)}`
+      );
+      return toolError(
+        'EXTERNAL_TOOL_UNAVAILABLE',
+        `The tool server "${server.provider_name}" did not answer.`,
+        'Tell the user this outside tool is not available right now. Do NOT call it again in this reply.'
+      );
+    }
+  } finally {
     log(
-      'debug',
-      `MCP tool server ${server.id}: ${listed.name} answered in ${Date.now() - startedAt} ms`
-    );
-    const text = truncateIfNeeded(
-      withoutToken(resultText(result), server),
-      TRUNCATION_HINT
-    );
-    return result.isError ? toolError('EXTERNAL_TOOL_ERROR', text) : text;
-  } catch (error) {
-    // The arguments stay out of the log: they can hold health data. A
-    // cancelled chat is not the server's failure, so it is not a warning.
-    log(
-      abortSignal?.aborted ? 'debug' : 'warn',
-      `MCP tool server ${server.id} (${server.provider_name}): ${listed.name} failed after ${Date.now() - startedAt} ms: ${failureReason(error)}`
-    );
-    return toolError(
-      'EXTERNAL_TOOL_UNAVAILABLE',
-      `The tool server "${server.provider_name}" did not answer.`,
-      'Tell the user this outside tool is not available right now. Do NOT call it again in this reply.'
+      'info',
+      `MCP tool call userId=${actorUserId} serverId=${server.id} tool=${listed.name} durationMs=${Date.now() - startedAt} outcome=${outcome}`
     );
   }
 }

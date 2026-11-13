@@ -55,6 +55,10 @@ Whatever the assistant passes to these tools is sent to that server, and what co
 
 Each person turns on each server for their own chat in **AI service settings** on the web or **AI** settings in the app, under **Tools from outside servers**. Every server is off by default. Turning on a server lets chat use only the tools the admin allowed.
 
+Outside results are shown to the assistant as data in the reply that read them and are not kept for later messages. The assistant can call the tool again if it needs those details.
+
+After reading an outside server, changes need your approval through an **Allow / Deny** card. If a reply looks wrong or asks for something unexpected, tap **Deny** and delete that message.
+
 ### Add a server
 
 1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add or configure one. Each person chooses whether to use it in their own AI settings.
