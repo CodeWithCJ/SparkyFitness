@@ -45,7 +45,7 @@ import {
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
-import { storedWeightInUnit } from '../utils/unitConversions';
+import { storedWeightInUnit, weightFromKg } from '../utils/unitConversions';
 import {
   ActiveWorkoutCompactRestRow,
   COMPACT_REST_ROW_HEIGHT,
@@ -62,6 +62,12 @@ import WorkoutDurationSheet, {
 } from '../components/WorkoutDurationSheet';
 import FocusExercisesSheet from '../components/FocusExercisesSheet';
 import FocusSetOptionsPage from '../components/FocusSetOptionsPage';
+import FocusEffortSheet, {
+  effortStartValue,
+  type EffortMetric,
+} from '../components/FocusEffortSheet';
+import FocusPrCard from '../components/FocusPrCard';
+import { formatLocalizedNumber } from '../localization';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
 import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
@@ -105,6 +111,7 @@ import {
   isCardioModality,
   isDurationModality,
   isMetricClampedToRpe,
+  isWarmupSetType,
   SET_TYPE_OPTIONS,
 } from '../utils/workoutSession';
 import {
@@ -897,9 +904,43 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [barCarriesRest]
   );
 
+  // What the focus view shows after a logged set: the effort sheet (only with
+  // the effort column on and no effort yet), then the PR card for a record.
+  const [postSet, setPostSet] = useState<{
+    setId: string;
+    stage: 'effort' | 'pr';
+  } | null>(null);
+  const handleClosePrCard = useCallback(() => setPostSet(null), []);
+  const startPostSetFlow = useCallback((setId: string) => {
+    const state = useActiveWorkoutStore.getState();
+    const exercise = state.session?.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === setId)
+    );
+    const set = exercise?.sets.find((s) => String(s.id) === setId);
+    if (exercise == null || set == null || state.completedSetIds[setId] == null)
+      return;
+    const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+    const column = useAppPreferencesStore.getState().activeWorkoutMetricColumn;
+    const effective =
+      isMetricClampedToRpe(modality) && column !== 'rir' ? 'rpe' : column;
+    const effortColumnOn =
+      (effective === 'rpe' || effective === 'rir') &&
+      !rendersCardioEffortForm(
+        exercise.exercise_snapshot,
+        exercise.sets.length
+      );
+    const hasEffort = set.rpe != null || set.rir != null;
+    if (effortColumnOn && !hasEffort && !isWarmupSetType(set.set_type)) {
+      setPostSet({ setId, stage: 'effort' });
+    } else if (state.prSetIds[setId]) {
+      setPostSet({ setId, stage: 'pr' });
+    }
+  }, []);
+
   const handleCompleteSet = useCallback(
     (setId: string) => {
       useActiveWorkoutStore.getState().completeSet(setId);
+      if (focusModeRef.current) startPostSetFlow(setId);
       setFocusedSetKey(null);
       setExpandedSetKey(null);
       Keyboard.dismiss();
@@ -918,7 +959,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }, 350);
       }
     },
-    [setFocusedSetKey]
+    [setFocusedSetKey, startPostSetFlow]
   );
 
   const handleCompleteActiveSet = useCallback(() => {
@@ -1192,6 +1233,52 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       setSetTypeMenu(null);
     };
   })();
+
+  // The set behind the post-set effort sheet / PR card.
+  const postSetTarget = (() => {
+    if (postSet == null) return null;
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === postSet.setId);
+      if (set) return { exercise, set };
+    }
+    return null;
+  })();
+  const effortMetric: EffortMetric = metricColumn === 'rir' ? 'rir' : 'rpe';
+  const finishEffortPrompt = (value: number | null) => {
+    if (postSet == null) return;
+    if (value != null) {
+      handleCommitField(
+        postSet.setId,
+        effortMetric === 'rir' ? { rir: value } : { rpe: value }
+      );
+    }
+    const isPr = useActiveWorkoutStore.getState().prSetIds[postSet.setId];
+    setPostSet(isPr ? { setId: postSet.setId, stage: 'pr' } : null);
+  };
+  const prDetail = (() => {
+    if (postSetTarget == null) return null;
+    const { exercise, set } = postSetTarget;
+    const baseline =
+      useActiveWorkoutStore.getState().prBaseline[exercise.exercise_id ?? ''];
+    if (baseline?.weight == null || set.weight == null) return null;
+    const gainKg = set.weight - baseline.weight;
+    if (gainKg <= 0) return null;
+    const fmt = (kg: number) =>
+      `${formatLocalizedNumber(weightFromKg(kg, weightUnit), { maximumFractionDigits: 2 })} ${weightUnit}`;
+    return { gain: `+${fmt(gainKg)}`, previous: fmt(baseline.weight) };
+  })();
+  const prLoad =
+    postSetTarget != null
+      ? (formatSetLoad(
+          {
+            weightKg: postSetTarget.set.weight ?? null,
+            reps: postSetTarget.set.reps ?? null,
+            durationSec: null,
+          },
+          weightUnit,
+          t
+        ) ?? '')
+      : '';
 
   const footerButtons = (
     <>
@@ -1649,6 +1736,31 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           page={focusMode}
           exerciseName={plateCalc?.exerciseName}
           setNumber={plateCalc?.setNumber}
+        />
+      )}
+
+      {focusMode && postSetTarget != null && postSet?.stage === 'effort' && (
+        <FocusEffortSheet
+          key={postSet.setId}
+          visible
+          title={`${postSetTarget.exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' })} · ${t('workout.setNumber', { defaultValue: 'Set {{number}}', number: postSetTarget.set.set_number })}`}
+          metric={effortMetric}
+          initialValue={effortStartValue(effortMetric)}
+          onSave={(value) => finishEffortPrompt(value)}
+          onSkip={() => finishEffortPrompt(null)}
+        />
+      )}
+      {focusMode && postSetTarget != null && postSet?.stage === 'pr' && (
+        <FocusPrCard
+          key={postSet.setId}
+          visible
+          exerciseName={
+            postSetTarget.exercise.exercise_snapshot?.name ??
+            t('workout.exercise', { defaultValue: 'Exercise' })
+          }
+          load={prLoad}
+          detail={prDetail}
+          onClose={handleClosePrCard}
         />
       )}
 

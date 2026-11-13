@@ -60,6 +60,7 @@
       --color-cat-teal: hsl(182, 64%, 33%);
       --color-cat-amber: hsl(40, 88%, 43%);
       --color-superset: hsl(280, 55%, 50%);
+      --color-effort: hsl(280, 55%, 50%);
       --color-rest: hsl(24, 92%, 46%);
       --color-hold: hsl(172, 70%, 32%);
 
@@ -167,6 +168,7 @@
       --color-cat-teal: hsl(182, 35%, 52%);
       --color-cat-amber: hsl(40, 60%, 58%);
       --color-superset: hsl(282, 70%, 72%);
+      --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
       --color-hold: hsl(172, 62%, 55%);
 
@@ -268,6 +270,7 @@
       --color-cat-teal: hsl(182, 35%, 52%);
       --color-cat-amber: hsl(40, 60%, 58%);
       --color-superset: hsl(282, 70%, 72%);
+      --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
       --color-hold: hsl(172, 62%, 55%);
 
