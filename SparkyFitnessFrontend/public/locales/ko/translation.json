@@ -1285,7 +1285,6 @@
       "title": "알레르기 유발 물질 설정"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* 실제 신진대사에 따라 일일 목표를 자동으로 조정합니다. 정확도를 높이려면 음식 섭취량과 체중을 꾸준히 기록해야 합니다.",
       "burnedActivity": "활동(운동 및 걸음 수만)",
       "burnedBmr": "활동 + BMR(기초대사량)",
       "burnedTdee": "Health Connect 총 칼로리(BMR + 활동 칼로리 대체값)",
@@ -1447,9 +1446,6 @@
       "unsafeGainText": "주당 체중 증가율이 0.5%를 넘으면 늘어난 체중의 대부분은 근육이 아니라 지방입니다. 칼로리 잉여를 더 천천히 늘리면 지방 증가는 훨씬 줄이면서도 비슷한 양의 근육을 늘릴 수 있습니다.",
       "unsafeLossTitle": "위험한 체중 감량률",
       "unsafeLossText": "주당 체중의 1.5%를 초과해 감량하는 것은 과도한 것으로 간주됩니다. 이 속도는 심각한 근육 손실, 무기력, 호르몬 불균형 및 영양 결핍의 위험을 크게 높입니다. 보다 완만한 목표 모드를 선택하십시오.",
-      "calibrationDescription": "Sparky의 적응형 TDEE 엔진이 대사량을 정확히 계산하려면 최소 {{required}}일 동안 꾸준히 기록해야 합니다(현재는 대체 추정치를 사용하고 있습니다). 보정 속도를 높이려면:",
-      "calibrationWeightTip": "체중을 주 3~4회 이상 기록합니다.",
-      "calibrationFoodTip": "매일 음식 섭취량 기록(하루 200kcal 초과)",
       "livePreviewSavedNote": "설정을 변경하면 기초대사량(BMR)과 체지방률이 업데이트됩니다. 칼로리 소모량은 저장된 설정을 기준으로 서버에서 계산되므로, 저장한 후에야 칼로리 소모량과 최종 목표치가 변경됩니다."
     },
     "mfa": {
@@ -2115,7 +2111,6 @@
       "calorieLogRequirement": "• TDEE 계산을 위한 칼로리 기록(200 kcal 이상인 날이 7일 이상)",
       "daysMissing": "❌ 누락 ({{days}}/{{required}}일 기록됨)",
       "daysMet": "✓ 충족 ({{days}}/{{required}}일 기록됨)",
-      "stabilityRequirement": "• 목표 예산 안정성을 위한 칼로리 기록({{required}}일 이상, 하루 200kcal 이상)",
       "daysWarning": "⚠️ 누락 ({{days}}/{{required}}일 기록됨)",
       "usingFallbackBmr": "대체 기초대사량(BMR) × 활동 계수 사용:",
       "fallbackMath": "계산: BMR ({{bmr}} kcal) × 활동 계수 ({{multiplier}}) = {{result}} {{unit}}",

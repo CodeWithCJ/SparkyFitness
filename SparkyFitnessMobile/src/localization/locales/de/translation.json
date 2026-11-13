@@ -413,7 +413,7 @@
       "supplements": "Supplements"
     },
     "supplement": {
-      "add": "Supplement hinzufügen",
+      "add": "Nahrungsergänzung hinzufügen",
       "none": "Noch keine Supplements",
       "toggle": "Dies ist ein Supplement",
       "form": "Form",
@@ -670,7 +670,7 @@
       "mostlySkipped": "Meist übersprungen",
       "allSkipped": "Alle Dosen übersprungen",
       "snoozedOnly": "Nur verschoben",
-      "sideEffect": "Symptom als Nebenwirkung",
+      "sideEffect": "Symptom (Nebenwirkung)",
       "generalSymptom": "Allgemeines Symptom",
       "tooltipTaken_one": "{{count}} eingenommen",
       "tooltipTaken_other": "{{count}} eingenommen",
@@ -820,7 +820,8 @@
     "bodyWaterMass": "Körperwassermasse",
     "mindfulness": "Achtsamkeit",
     "sleepingWristTemperature": "Handgelenkstemperatur im Schlaf",
-    "overnightBodyTemperature": "Körpertemperatur über Nacht"
+    "overnightBodyTemperature": "Körpertemperatur über Nacht",
+    "toothbrushing": "Zähneputzen"
   },
   "familyDiary": {
     "title": "Familientagebücher",
@@ -904,7 +905,9 @@
       "fasting": "Fasten",
       "hydration": "Flüssigkeits-Erinnerungen",
       "ongoingWorkout": "Laufendes Training",
-      "moodCheckin": "Stimmungs-Check-ins"
+      "moodCheckin": "Stimmungs-Check-ins",
+      "oralCare": "Zahnputz-Erinnerungen",
+      "mindfulness": "Meditations-Timer"
     },
     "actions": {
       "completeSet": "Satz abschließen",
@@ -947,6 +950,18 @@
     "moodCheckin": {
       "title": "Wie fühlst du dich?",
       "body": "Mach einen kurzen Check-in: Stimmung, Energie und Fokus."
+    },
+    "oralCare": {
+      "title": "Zeit zum Zähneputzen",
+      "body": "Zwei Minuten für deine Zähne, danach kurz eintragen."
+    },
+    "brushingTimer": {
+      "title": "Zähneputzen abgeschlossen",
+      "body": "Öffne SparkyFitness, um den Putzvorgang zu speichern."
+    },
+    "meditationTimer": {
+      "title": "Meditation abgeschlossen",
+      "body": "Öffne SparkyFitness, um deine Sitzung zu speichern."
     }
   },
   "activeWorkout": {
@@ -1203,13 +1218,15 @@
     "scanShort": "Scannen",
     "measureShort": "Messen",
     "symptomsHealth": "Symptome & Gesundheit",
-    "syncHealthShort": "Gesundheit sync.",
+    "syncHealthShort": "Health synchronisieren",
     "photosHint": "Visuell",
     "symptomsHint": "Erfassen",
     "moodHint": "Befinden erfassen",
     "mindfulnessHint": "Atmung, Ruhe",
     "checkIn": "Täglicher Check-in",
-    "checkInHint": "Gewohnheiten"
+    "checkInHint": "Gewohnheiten",
+    "oralCare": "Mundpflege",
+    "oralCareHint": "Zähneputzen, Zahnseide"
   },
   "screens": {
     "foods": "Lebensmittel",
@@ -1375,7 +1392,8 @@
     "Cycling": "Radfahren",
     "Environment": "Umgebung",
     "Apple": "Apple",
-    "unknown": "Sonstiges"
+    "unknown": "Sonstiges",
+    "Hygiene": "Hygiene"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1746,7 +1764,6 @@
       "dailyAdjustment": "Geschätzte tägliche Anpassung: {{sign}}{{amount}} {{unit}}",
       "estimateHint": "Dein Wochenziel wird in eine tägliche Kalorienanpassung umgerechnet. Das ist eine Schätzung; deine Sicherheitsuntergrenze kann die Abnahme begrenzen."
     },
-    "adaptiveFallbackWithUnit": "Die Fallback-Schätzung, bis genügend Tracking-Daten vorliegen – und bestimmt danach weiterhin die Plausibilitätsgrenzen. Dein gemessener TDEE ist auf maximal ±{{amount}} {{unit}} von BMR × diesem Multiplikator begrenzt.",
     "adjustMacrosWithExercise": "Prozentuale Makroziele an Trainingskalorien anpassen",
     "adjustMacrosWithExerciseHint": "Erhöht Protein-, Kohlenhydrat- und Fettziele anhand der gespeicherten Prozentsätze, wenn durch Training Kalorien zum Tagesbudget hinzukommen. Berücksichtigt Einstellungen zur Verrechnung von Trainingskalorien (Earn-Back). In Gramm eingegebene Ziele bleiben unverändert. Änderungen gelten ab heute; vorherige Tage behalten ihre Einstellung bei.",
     "useMoveRingActiveCalories": "Bewegungsring für Aktivitätskalorien verwenden",
@@ -1771,8 +1788,26 @@
       "replaceCustomConfirm": "Ersetzen",
       "waitingForTarget": "Deine Tage werden hier angezeigt, sobald das heutige Kalorienziel geladen wurde.",
       "baseAtFloorWithUnit": "Dein Tagesziel ({{target}} {{unit}}) liegt an oder unter deiner Sicherheitsuntergrenze ({{floor}} {{unit}}). Kein Tag kann niedriger ausfallen und jeder Tag bleibt gleich. Cycling greift erst, wenn dein Ziel über der Untergrenze liegt oder du eine niedrigere Untergrenze festlegst.",
-      "weekTotalWithBase": "Woche: {{total}} von {{budget}} {{unit}} (dein Tagesziel {{target}} × 7)"
-    }
+      "weekTotalWithBase": "Woche: {{total}} von {{budget}} {{unit}} (dein Tagesziel {{target}} × 7)",
+      "decrease": "Um 1 % senken",
+      "increase": "Um 1 % erhöhen",
+      "dayPercent": "{{day}}: Prozentsatz vor dem Wochenausgleich",
+      "restDay": "Ruhetag",
+      "today": "Heute",
+      "vsTargetWithUnit": "{{change}} {{unit}} ({{percent}}) gegenüber deinem Tagesziel",
+      "chartTarget": "Tagesziel {{value}}",
+      "chartFloor": "Sicherheitsuntergrenze {{value}}",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "atFloorShort": "Untergrenze",
+      "markRest": "{{day}} als Ruhetag festlegen",
+      "markTraining": "{{day}} als Trainingstag festlegen",
+      "trainingRestShort": "Training / Ruhetag",
+      "customShort": "Benutzerdefiniert",
+      "chartHintTrainingShort": "Tippe auf einen Balken für Tagesdetails. Tippe unten auf einen Tag, um zwischen Training und Ruhetag zu wechseln.",
+      "chartHintCustomHandle": "Tippe auf einen Balken für Tagesdetails. Ziehe den Griff oben am Balken, um den Wert anzupassen.",
+      "trainingDay": "Training"
+    },
+    "adaptiveEstimateRangeWithUnit": "Das Aktivitätslevel bestimmt den Startschätzwert und den Plausibilitätsbereich von ±{{amount}} {{unit}} um BMR × diesem Faktor. Es kann mehrere Wochen dauern, bis sich die Schätzung einpendelt; Gewichtsschwankungen und unvollständige Ernährungsprotokolle erhöhen die Unsicherheit."
   },
   "dashboardSettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",
@@ -1819,7 +1854,9 @@
     "trainingLoad": "Trainingslast",
     "trainingLoadSubtitle": "Diese Woche im Vergleich zu deinem üblichen Training anzeigen, mit Hinweis zur Erholung",
     "labResults": "Laborwerte",
-    "labResultsSubtitle": "Zeigt deine neuesten Laborwerte und welche außerhalb des Referenzbereichs liegen"
+    "labResultsSubtitle": "Zeigt deine neuesten Laborwerte und welche außerhalb des Referenzbereichs liegen",
+    "oralCare": "Mundpflege",
+    "oralCareSubtitle": "Zähneputzen im Vergleich zu deinem Ziel und deiner Serie anzeigen"
   },
   "diarySettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",
@@ -1891,7 +1928,14 @@
     "moodCheckinReminderTime": "Erinnerung {{number}}",
     "moodCheckinReminderTimeAccessibility": "Erinnerung {{number}}, {{time}}",
     "moodCheckinAddReminder": "Erinnerung hinzufügen",
-    "moodCheckinRemoveReminder": "Erinnerung {{number}} entfernen"
+    "moodCheckinRemoveReminder": "Erinnerung {{number}} entfernen",
+    "oralCare": "Mundpflege",
+    "oralCareReminders": "Zahnputz-Erinnerungen",
+    "oralCareRemindersSubtitle": "Eine tägliche Erinnerung zum Zähneputzen",
+    "oralCareReminderTime": "Erinnerung {{number}}",
+    "oralCareReminderTimeAccessibility": "Zahnputz-Erinnerung {{number}}, {{time}}",
+    "oralCareRemoveReminder": "Zahnputz-Erinnerung {{number}} entfernen",
+    "oralCareAddReminder": "Erinnerung hinzufügen"
   },
   "workoutSettings": {
     "title": "Trainingseinstellungen",
@@ -2479,7 +2523,7 @@
   },
   "fastingProtocol": {
     "fastStarted": "Fasten gestartet",
-    "failedStart": "Fehler beim Starten des Fastens.",
+    "failedStart": "Fehler beim Starten des Fastens",
     "startTitle": "Fasten starten",
     "hourFast": "Stunden-Fasten",
     "startTime": "Startzeit",
@@ -2510,7 +2554,7 @@
       },
       "custom": {
         "name": "Eigenes Fasten",
-        "description": "Eigene Fastendauer festlegen"
+        "description": "Eigene Fastendauer festlegen."
       }
     }
   },
@@ -2537,7 +2581,7 @@
     "updated": "Fasten aktualisiert",
     "failedUpdate": "Fehler beim Aktualisieren des Fastens",
     "deleted": "Fasten gelöscht",
-    "failedDelete": "Fehler beim Löschen des Fastens.",
+    "failedDelete": "Fehler beim Löschen des Fastens",
     "deleteTitle": "Fasten löschen?",
     "deleteMessage": "Das kann nicht rückgängig gemacht werden.",
     "editTitle": "Fasten bearbeiten",
@@ -2816,7 +2860,18 @@
     "label": {
       "analyzing": "Etikett wird analysiert …",
       "retake": "Erneut aufnehmen",
-      "usePhoto": "Foto verwenden"
+      "usePhoto": "Foto verwenden",
+      "cropHelp": "Ziehe die Ecken, um die Nährwerttabelle einzurahmen.",
+      "cropPhoto": "Foto der Nährwerttabelle",
+      "cropMove": "Ausschnitt verschieben",
+      "cropTopLeft": "Zuschnitt-Griff oben links",
+      "cropTopRight": "Zuschnitt-Griff oben rechts",
+      "cropBottomLeft": "Zuschnitt-Griff unten links",
+      "cropBottomRight": "Zuschnitt-Griff unten rechts",
+      "cropLeft": "Nach links verschieben",
+      "cropRight": "Nach rechts verschieben",
+      "cropUp": "Nach oben verschieben",
+      "cropDown": "Nach unten verschieben"
     },
     "lookup": {
       "failed": "Nachschlagen fehlgeschlagen",
@@ -3112,7 +3167,11 @@
     "collapse": "Diesen Abschnitt einklappen",
     "expand": "Diesen Abschnitt ausklappen",
     "projectedTdeeWithUnit": "Prognostizierter TDEE: {{value}} {{unit}}",
-    "goalModeTargetWithUnit": "Ziel-Modus: {{value}} {{unit}}"
+    "goalModeTargetWithUnit": "Ziel-Modus: {{value}} {{unit}}",
+    "cycling": {
+      "highDay": "Kalorienreicher Tag +{{amount}} {{unit}}",
+      "lowDay": "Kalorienarmer Tag −{{amount}} {{unit}}"
+    }
   },
   "dateRange": {
     "removeTitle": "Wähle einen zu entfernenden Zeitraum aus",
@@ -3373,7 +3432,7 @@
       "mildNormal": "Leicht • Normal",
       "benchPress": "Bankdrücken",
       "threeSets": "3 Sätze",
-      "setOneReps": "Satz 1: 10 Wdh.",
+      "setOneReps": "Satz 1: 10 Wdh",
       "doneWeight": "80 kg • Fertig",
       "fauxprofen": "Fauxprofen",
       "dailyDose": "200 mg • Täglich",
@@ -3414,7 +3473,15 @@
       "weeklyGoal": "Wochenziel",
       "weeklyRate": "−0,5 kg",
       "dailyTarget": "Tagesziel",
-      "dailyAdjustment": "≈ −550 kcal"
+      "dailyAdjustment": "≈ −550 kcal",
+      "labLow": "Niedrig",
+      "labValue": "18 ng/ml",
+      "labRange": "Bereich 30–100",
+      "deskTag": "Schreibtisch-Tag",
+      "tapped": "Gescannt",
+      "tagWater": "Wasser • 500 ml",
+      "logged": "Erfasst",
+      "vitaminD": "Vitamin D"
     },
     "features": {
       "medications": {
@@ -3471,8 +3538,8 @@
       "checkIn": {
         "eyebrow": "GEFÜHRTER CHECK-IN",
         "headline": "Check-in in einem Durchgang",
-        "body": "Erfasse Stimmung, Messwerte und ein Fortschrittsfoto in drei schnellen Schritten. Schalte es in den Tagebuch-Einstellungen ein.",
-        "cta": "Tagebuch-Einstellungen öffnen"
+        "body": "Erfasse Stimmung, Körpermaße und ein Fortschrittsfoto in drei schnellen Schritten. Du findest den täglichen Check-in im +-Menü.",
+        "cta": "Check-in starten"
       },
       "strength": {
         "eyebrow": "KRAFT-WERKZEUGE",
@@ -3503,6 +3570,18 @@
         "headline": "Wöchentliches Gewichtsziel festlegen",
         "body": "Wähle, wie viel Gewicht du pro Woche ab- oder zunehmen willst, und Sparky berechnet dein tägliches Kalorienziel.",
         "cta": "Kalorien-Einstellungen öffnen"
+      },
+      "labResults": {
+        "eyebrow": "LABORWERTE",
+        "headline": "Alle Laborwerte an einem Ort",
+        "body": "Trage Blutwerte manuell ein oder importiere einen Laborbefund als PDF oder Foto. Vergleiche jeden Wert mit seinem Referenzbereich, verfolge den Verlauf im Diagramm und erkenne Auffälligkeiten direkt auf dem Dashboard.",
+        "cta": "Laborwerte öffnen"
+      },
+      "nfcTags": {
+        "eyebrow": "NFC-TAGS",
+        "headline": "Erfassen per Antippen",
+        "body": "Klebe einen NFC-Tag auf deine Trinkflasche, deinen Schreibtisch oder Küchenschrank und verknüpfe ihn mit einem Getränk, Lebensmittel oder einer gespeicherten Mahlzeit. Halte einfach dein Smartphone daran, um den Eintrag zu erfassen – inklusive Rückgängig-Funktion bei versehentlichem Scannen.",
+        "cta": "NFC-Tags einrichten"
       }
     }
   },
@@ -3703,7 +3782,9 @@
     "startFastEarly": "Fasten jetzt starten",
     "eatingWindowOpened": "Fenster geöffnet",
     "eatingWindowCloses": "Fenster schließt",
-    "settings": "Fasten-Einstellungen"
+    "settings": "Fasten-Einstellungen",
+    "logMealToEnd": "Mahlzeit eintragen, um Fasten zu beenden",
+    "autoFastEndsWithMeal": "Dein Fasten wird automatisch anhand deiner Mahlzeiten berechnet und endet, sobald du etwas zu essen einträgst."
   },
   "exerciseDetail": {
     "sharedPublicly": "Übung öffentlich geteilt",
@@ -4371,7 +4452,9 @@
       "invalidAmount": "Ungültige Menge",
       "amountRequired": "Die Menge muss größer als null sein.",
       "noMealType": "Kein Mahlzeitentyp",
-      "noMealTypesAvailable": "Es sind keine Mahlzeitentypen verfügbar. Bitte überprüfe deine Kontoeinstellungen."
+      "noMealTypesAvailable": "Es sind keine Mahlzeitentypen verfügbar. Bitte überprüfe deine Kontoeinstellungen.",
+      "loadingMealTypes": "Mahlzeitentypen werden noch geladen. Bitte versuche es gleich noch einmal.",
+      "mealTypesLoadFailed": "Mahlzeitentypen konnten nicht geladen werden. Bitte versuche es erneut."
     }
   },
   "foodDetail": {
@@ -6266,7 +6349,10 @@
     "workouts_one": "{{count}} Training",
     "workouts_other": "{{count}} Trainings",
     "records_one": "{{count}} Datensatz",
-    "records_other": "{{count}} Datensätze"
+    "records_other": "{{count}} Datensätze",
+    "brushes_one": "{{count}} Putzvorgang",
+    "brushes_other": "{{count}} Putzvorgänge",
+    "energy": "{{value}} {{unit}}"
   },
   "sleep": {
     "wakeUp": "Aufwachen",
@@ -6305,7 +6391,16 @@
     "restingHeartRate": "Ruheherzfrequenz",
     "percentUnit": "%",
     "bpmUnit": "bpm",
-    "quality": "Schlafqualität"
+    "quality": "Schlafqualität",
+    "overnightHrv": "Nächtliche HRV",
+    "skinTemperature": "Hauttemperatur",
+    "skinTemperatureDeviation": "Hauttemp. vs. Normalwert",
+    "celsiusUnit": "°C",
+    "msUnit": "ms",
+    "fahrenheitUnit": "°F",
+    "showTrendHint": "Zeigt diesen Wert über die letzten 30 Nächte an",
+    "trendLoadFailed": "Trend konnte nicht geladen werden",
+    "trendNotEnoughData": "Noch nicht genügend Nächte für einen Trend vorhanden"
   },
   "foodProvenance": {
     "aiEstimate": "KI-Schätzung",
@@ -6640,7 +6735,7 @@
     "roundPlusOne": "+1 Runde ({{current}})",
     "timeCap": "Zeitlimit",
     "wodScore": "WOD-Ergebnis",
-    "amrapScore": "{{rounds}} Runden + {{reps}} Wdh.",
+    "amrapScore": "{{rounds}} Runden + {{reps}} Wdh",
     "completed": "Abgeschlossen",
     "roundsCompleted": "{{rounds}} Runden abgeschlossen"
   },
@@ -6770,7 +6865,7 @@
     "rpeSubtitleWearOs": "Nachdem du auf der Uhr einen Satz erfasst hast, dreh die Krone oder tippe auf +/−, um von 5 bis 10 zu wählen, wie anstrengend er war, und tippe dann auf „Speichern“ – oder auf „Überspringen“.",
     "layoutTitle": "Layout",
     "setScreenMetricsTitle": "Messwerte auf dem Satzbildschirm",
-    "setScreenMetricsSubtitle": "Verstrichene Zeit, Herzfrequenz und Kalorien. Aus verschiebt sie auf eine eigene Seite nach dem Satzbildschirm (nach „Als Nächstes“, wenn diese Seite aktiv ist).",
+    "setScreenMetricsSubtitle": "Verstrichene Zeit, Herzfrequenz und Kalorien. „Aus“ verschiebt sie auf eine eigene Seite oberhalb des Satzbildschirms: wische nach unten, um sie anzuzeigen.",
     "upNextTitle": "Seite „Als Nächstes“",
     "upNextSubtitle": "Eine Seite, einmal nach oben gewischt vom Satzbildschirm, mit der nächsten Übung, ihrem Ziel und einer Tauschen-Schaltfläche, um zuerst eine andere Übung zu machen.",
     "largerTextTitle": "Größere Schrift auf der Uhr",
@@ -6896,7 +6991,8 @@
       "degreesC": "{{value}}°C",
       "degreesF": "{{value}}°F",
       "splits": "Zwischenzeiten",
-      "effort": "Anstrengung"
+      "effort": "Anstrengung",
+      "caloriesWithUnit": "{{value}} {{unit}}"
     },
     "consistency": {
       "title": "Trainingskonstanz",
@@ -7320,7 +7416,9 @@
     "eatingWindowAlertHint": "Benachrichtigt dich, wenn dein Fastenziel erreicht ist und wenn dein Essensfenster öffnet.",
     "save": "Fasten-Einstellungen speichern",
     "saved": "Fasten-Einstellungen gespeichert",
-    "saveFailed": "Fasten-Einstellungen konnten nicht gespeichert werden"
+    "saveFailed": "Fasten-Einstellungen konnten nicht gespeichert werden",
+    "calorieThresholdWithUnit": "Kalorienschwelle ({{unit}})",
+    "calorieThresholdRangeWithUnit": "Gib eine ganze Zahl von 0 bis {{max}} ein."
   },
   "fastingReport": {
     "range": {
@@ -7352,7 +7450,7 @@
     "methodSubtitle": "Jeder Aufwärmsatz ist ein Prozentsatz deines ersten Arbeitssatzes, für eine bestimmte Anzahl Wiederholungen.",
     "setLetter": "A",
     "percentLabel": "Aufwärmen {{number}} Prozent",
-    "repsLabel": "Aufwärmen {{number}} Wdh.",
+    "repsLabel": "Aufwärmen {{number}} Wdh",
     "removeSet": "Satz entfernen",
     "addSet": "Satz hinzufügen",
     "reset": "Auf Standard zurücksetzen",
@@ -7787,7 +7885,10 @@
     "fields": {
       "water": "Wasser ({{unit}})",
       "exerciseMinutes": "Trainingsdauer (min)",
-      "steps": "Tägliche Schritte"
+      "steps": "Tägliche Schritte",
+      "exerciseCaloriesWithUnit": "Trainingskalorien ({{unit}})",
+      "baselineCaloriesWithUnit": "Basis-Kalorien ({{unit}})",
+      "calories": "Kalorien ({{unit}})"
     },
     "adaptiveNote": "Der adaptive Modus ist an, daher ändert sich dein Kalorienziel täglich. Der Grundwert unten legt fest, wie weit du über oder unter deinem geschätzten Erhaltungsbedarf liegen willst; er ist kein festes Tagesziel.",
     "customNutrients": {
@@ -7809,13 +7910,14 @@
       "distributeRemaining": "Rest gleichmäßig verteilen",
       "lock": "{{meal}} sperren",
       "unlock": "{{meal}} entsperren",
-      "mealPercent": "{{meal}} (%)"
+      "mealPercent": "{{meal}} (%)",
+      "mealCaloriesWithUnit": "{{meal}} ({{calories}} {{unit}})"
     },
     "directions": {
       "minimum": "Min",
       "maximum": "Max",
       "range": "Bereich",
-      "rangeMin": "Bereich min.",
+      "rangeMin": "Bereich min",
       "rangeMax": "Bereich max.",
       "invalidRange": "Ein Bereich braucht ein Minimum und ein Maximum; das Minimum darf nicht über dem Maximum liegen.",
       "note": "Min heißt: mehr ist besser. Max heißt: darunter bleiben. Bereich heißt: zwischen zwei Werten bleiben. Das ändert, wie der Fortschritt bewertet wird, nicht die Zielwerte.",
@@ -7886,7 +7988,8 @@
       "nameLabel": "Name der Vorlage",
       "nameRequired": "Gib der Vorlage einen Namen.",
       "editDescription": "Eine Vorlage ist eine gespeicherte Zusammenstellung von Zielen. Wende sie auf deine Ziele an oder weise sie in einem Wochenplan einzelnen Wochentagen zu.",
-      "notFound": "Diese Vorlage wurde nicht gefunden."
+      "notFound": "Diese Vorlage wurde nicht gefunden.",
+      "summaryWithUnit": "{{calories}} {{unit}}, {{protein}} g P, {{carbs}} g KH, {{fat}} g F"
     },
     "weekly": {
       "sectionDescription": "Verwende an jedem Wochentag eine andere Zielvorlage, zum Beispiel mehr Kalorien an Trainingstagen.",
@@ -7925,7 +8028,11 @@
         "saturday": "Samstag",
         "sunday": "Sonntag"
       }
-    }
+    },
+    "adaptiveNoteTodayWithUnit": "Der adaptive Modus ist aktiv, daher ändert sich dein Kalorienziel täglich. Heute liegt es bei {{calories}} {{unit}}. Der Basiswert unten legt fest, wie weit du über oder unter deinem geschätzten Erhaltungsumsatz liegen möchtest; er ist kein festes Tagesziel.",
+    "cyclingNoteTodayWithUnit": "Calorie Cycling ist aktiv, daher bilden die unten stehenden Kalorien dein Basisziel und jeder Tag liegt darüber oder darunter. Heute liegt es bei {{calories}} {{unit}}.",
+    "cyclingPausedWeeklyPlan": "Calorie Cycling ist heute durch einen aktiven Wochenzielplan pausiert. Die unten stehenden Kalorien legen das heutige Planziel direkt fest.",
+    "adjustedGoalFailed": "Das angepasste heutige Tagesziel konnte nicht geladen werden."
   },
   "reports": {
     "title": "Berichte",
@@ -7967,7 +8074,31 @@
     "heartRateSummary": "Herzfrequenz-Übersicht",
     "heartRateInsights": "Einblicke zum Ruhepuls",
     "insightAthletic": "Dein durchschnittlicher Ruhepuls liegt im sportlichen Bereich (<60 bpm) und zeigt ein leistungsfähiges Herz-Kreislauf-System.",
-    "insightNormal": "Bei gesunden Erwachsenen liegt der Ruhepuls meist zwischen 60 und 100 bpm. Niedrigere Werte deuten in der Regel auf eine bessere Ausdauerfitness hin."
+    "insightNormal": "Bei gesunden Erwachsenen liegt der Ruhepuls meist zwischen 60 und 100 bpm. Niedrigere Werte deuten in der Regel auf eine bessere Ausdauerfitness hin.",
+    "restingHrTrend": "Ruhepuls-Trend",
+    "restingHrTrendImproving": "↓ {{bpm}} bpm (Verbessert)",
+    "restingHrTrendElevated": "↑ {{bpm}} bpm (Erhöht)",
+    "restingHrTrendStable": "Stabil",
+    "restingHrTrendHint": "Zweite Hälfte der Messwerte im Vergleich zur ersten Hälfte",
+    "heartRateWorkoutFallback": "Training",
+    "heartRateDaytimeAvg": "Tagesdurchschnitt",
+    "heartRateSleepingAvg": "Schlafdurchschnitt",
+    "heartRateSleepDip": "{{percent}} % gegenüber tagsüber",
+    "heartRateLowest": "Niedrigster",
+    "heartRateHighest": "Höchster",
+    "heartRateDayTimeline": "Herzfrequenz im Tagesverlauf",
+    "heartRatePreviousDay": "Vorheriger Tag",
+    "heartRateNextDay": "Nächster Tag",
+    "heartRateDayEmpty": "Keine Herzfrequenz-Messwerte für diesen Tag",
+    "heartRateLegendSleep": "Schlaf",
+    "heartRateLegendWorkout": "Training",
+    "heartRateDayFigures": "Tageswerte",
+    "heartRateRangeTooltip": "Ø {{avg}} bpm ({{min}}–{{max}}) · {{date}}",
+    "heartRateRangeHint": "Tippe und halte einen Tag gedrückt, um ihn unten zu öffnen",
+    "heartRateRangeTimeline": "Durchschnittliche Herzfrequenz pro Tag",
+    "heartRateRangeEmpty": "Keine Herzfrequenz-Messwerte in diesem Zeitraum",
+    "oralCare": "Mundpflege",
+    "oralCareSubtitle": "Zähneputzen im Vergleich zu deinem Ziel, Serien und Dauer"
   },
   "nutritionReport": {
     "title": "Ernährung",
@@ -8015,7 +8146,8 @@
     "insightDown": "Deine durchschnittlichen Kalorien liegen {{pct}} % unter dem vorherigen Zeitraum.",
     "insightWeekday": "{{weekday}} ist dein kalorienreichster Tag, im Schnitt {{kcal}}.",
     "insightStreak_one": "Deine längste Erfassungsserie war {{count}} Tag.",
-    "insightStreak_other": "Deine längste Erfassungsserie war {{count}} Tage."
+    "insightStreak_other": "Deine längste Erfassungsserie war {{count}} Tage.",
+    "kcalWithUnit": "{{value}} {{unit}}"
   },
   "moodReport": {
     "title": "Stimmung",
@@ -8153,7 +8285,13 @@
       "alcoholSummary": "Alkohol-Übersicht",
       "substancesWeekly": "Woche für Woche",
       "restingHrChart": "Ruhepuls-Diagramm",
-      "heartRateZones": "Intensitätszonen"
+      "heartRateZones": "Intensitätszonen",
+      "heartRateRangeTimeline": "Durchschnittliche Herzfrequenz pro Tag",
+      "heartRateDayTimeline": "Herzfrequenz im Tagesverlauf",
+      "measurementTimeline": "Messwertverlauf",
+      "oralCareBrushesChart": "Diagramm: Zähneputzen pro Tag",
+      "oralCareMinutesChart": "Diagramm: Putzminuten",
+      "oralCareSummary": "Serien und weitere Pflege"
     },
     "hydrationSections": "Trinkbericht",
     "measurementsSections": "Messwerte-Bericht",
@@ -8162,7 +8300,8 @@
     "nutrientReorderHint": "Ändert die Position dieses Nährstoffs im Bericht",
     "substancesSections": "Bericht zu Koffein und Alkohol",
     "exerciseSections": "Trainingsbericht",
-    "heartRateSections": "Herzfrequenz-Bericht"
+    "heartRateSections": "Herzfrequenz-Bericht",
+    "oralCareSections": "Mundpflege-Bericht"
   },
   "hydrationReport": {
     "title": "Flüssigkeitszufuhr",
@@ -8932,7 +9071,8 @@
       "arrive": "Ziel erreicht"
     },
     "goBack": "Zurück",
-    "followRoadsTooMany": "„Straßen folgen“ geht mit höchstens {{max}} Punkten. Mach Punkte rückgängig oder schalte „Straßen folgen“ zum Speichern aus."
+    "followRoadsTooMany": "„Straßen folgen“ geht mit höchstens {{max}} Punkten. Mach Punkte rückgängig oder schalte „Straßen folgen“ zum Speichern aus.",
+    "osmAttribution": "© OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9585,8 +9725,8 @@
     "chartOtherUnits_one": "{{count}} Ergebnis in einer anderen Einheit wird nicht dargestellt.",
     "chartOtherUnits_other": "{{count}} Ergebnisse in anderen Einheiten werden nicht dargestellt.",
     "createCustom": "„{{name}}“ als neuen Marker hinzufügen",
-    "date": "Prüfungsdatum",
-    "dateFuture": "Das Prüfungsdatum darf nicht in der Zukunft liegen.",
+    "date": "Abnahmedatum",
+    "dateFuture": "Das Abnahmedatum darf nicht in der Zukunft liegen.",
     "deleteFailed": "Das Ergebnis konnte nicht gelöscht werden",
     "deleteMessage": "Dieses Laborergebnis löschen?",
     "deleteTitle": "Ergebnis löschen",
@@ -9638,11 +9778,11 @@
       "potassium": "Kalium",
       "mcv": "MCV",
       "chloride": "Chlorid",
-      "bicarbonate": "Bikarbonat (CO₂)",
+      "bicarbonate": "Hydrogencarbonat",
       "calcium": "Kalzium",
       "magnesium": "Magnesium",
       "phosphorus": "Phosphor",
-      "bun": "BUN",
+      "bun": "Harnstoff-Kreatinin-Quotient",
       "uric_acid": "Harnsäure",
       "albumin": "Albumin",
       "total_protein": "Gesamtprotein",
@@ -9667,7 +9807,7 @@
       "monocytes": "Monocyten",
       "neutrophils": "Neutrophile",
       "lymphocytes": "Lymphocyten",
-      "ck": "Creatin-Kinase",
+      "ck": "Kreatinkinase",
       "zinc": "Zink",
       "copper": "Kupfer",
       "selenium": "Selen",
@@ -9700,7 +9840,7 @@
       "lh": "LH",
       "mpv": "MPV",
       "rdw": "RDW",
-      "c_peptide": "C-Peptide"
+      "c_peptide": "C-Peptid"
     },
     "rangeFromReport": "Nutze den Referenzbereich aus deinem Befund. Er wird mit diesem Ergebnis gespeichert.",
     "import": {
@@ -9727,13 +9867,36 @@
       "warning": {
         "unit": "Deine bisherigen Ergebnisse nutzen {{earlierUnit}}, dieser Befund jedoch {{reportUnit}}. Einheiten werden nicht umgerechnet."
       },
-      "lockedAfterFailedSave": "Das Speichern wurde nicht abgeschlossen, daher ist diese Überprüfung gesperrt: Erneutes Speichern übermittelt exakt denselben Befund und speichert ihn nur einmal. Um Werte zu ändern, wähle den Befund erneut aus."
+      "lockedAfterFailedSave": "Das Speichern wurde nicht abgeschlossen, daher ist diese Überprüfung gesperrt: Erneutes Speichern übermittelt exakt denselben Befund und speichert ihn nur einmal. Um Werte zu ändern, wähle den Befund erneut aus.",
+      "cameraDenied": "Für die Aufnahme eines Fotos ist Kamerazugriff erforderlich.",
+      "choosePdf": "PDF auswählen",
+      "choosePhoto": "Foto oder Screenshot auswählen",
+      "intro": "Wähle ein PDF, Foto oder einen Screenshot eines Laborbefunds aus. Dein KI-Anbieter liest die Werte aus und du prüfst sie, bevor etwas gespeichert wird. Der Befund selbst wird nicht gespeichert.",
+      "pickFailed": "Diese Datei konnte nicht geöffnet werden.",
+      "takePhoto": "Foto aufnehmen",
+      "tooLarge": "Dieses PDF ist zum Auslesen zu groß (Limit: 14 MB).",
+      "editHint": "Vergleiche die Werte mit deinem Befund. Tippe auf einen Wert, um ihn zu korrigieren. Jedes Ergebnis wird mit der auf dem Befund angegebenen Einheit und dem Referenzbereich gespeichert.",
+      "saveUnconfirmed": "Es konnte nicht bestätigt werden, ob der Befund gespeichert wurde. Speichere erneut – er wird nur einmal abgespeichert."
     },
     "moreActions": "Weitere Aktionen",
     "deleteMarker": "Marker und alle Ergebnisse löschen",
     "deleteMarkerTitle": "Marker löschen",
     "deleteMarkerMessage": "{{name}} und alle zugehörigen Ergebnisse löschen? Dies kann nicht rückgängig gemacht werden.",
-    "deleteMarkerFailed": "Der Marker konnte nicht gelöscht werden"
+    "deleteMarkerFailed": "Der Marker konnte nicht gelöscht werden",
+    "markerDataFailed": "Gespeicherte Ergebnisse konnten nicht geladen werden, daher können Einheit und Referenzbereich nicht automatisch ausgefüllt werden.",
+    "card": {
+      "a11y": "Laborwerte",
+      "empty": "Noch keine Ergebnisse. Tippe hier, um eines hinzuzufügen.",
+      "outOfRange_one": "{{count}} außerhalb des Referenzbereichs",
+      "outOfRange_other": "{{count}} außerhalb des Referenzbereichs",
+      "title": "Laborwerte"
+    },
+    "rangeForSex": "Vorausgefüllt für {{sex}} Erwachsene basierend auf deinem Profil. Da Labore abweichen können, passe den Bereich bei Bedarf an deinen Befund an.",
+    "rangeNoSex": "Dieser Wert unterscheidet sich je nach Geschlecht. Hinterlege dein Geschlecht im Profil für einen passenden Bereich oder übernimm den Bereich aus deinem Befund.",
+    "sex": {
+      "female": "weiblich",
+      "male": "männlich"
+    }
   },
   "actionTags": {
     "waiting": {
@@ -9746,7 +9909,296 @@
       "undoFailed": "Konnte nicht rückgängig gemacht werden",
       "tooSoon": "Gerade eben bereits erfasst",
       "title": "NFC-Tag",
-      "noServer": "Server konnte nicht erreicht werden"
+      "noServer": "Server konnte nicht erreicht werden",
+      "noServerSubtitle": "Prüfe deine Verbindung und halte das Smartphone erneut an den Tag.",
+      "running": "Wird erfasst…",
+      "confirmTitle": "{{label}} erfassen?",
+      "confirmAction": "Erfassen",
+      "unknownTitle": "Dieser Tag ist nicht in deinem Konto eingerichtet",
+      "unknownSubtitle": "Es wurde nichts erfasst. Richte ihn ein, um festzulegen, was beim Antippen passiert.",
+      "setUp": "Diesen Tag einrichten",
+      "missingTitle": "Dieser Tag verweist auf einen gelöschten Eintrag",
+      "missingSubtitle": "Es wurde nichts erfasst. Wähle aus, was der Tag tun soll.",
+      "fix": "Diesen Tag reparieren",
+      "serverTooOld": "Dein Server unterstützt noch keine NFC-Tags",
+      "failed": "Erfassung fehlgeschlagen",
+      "serverTooOldSubtitle": "Aktualisiere deinen SparkyFitness-Server und versuche es erneut.",
+      "failedSubtitle": "Es wurde nichts erfasst. Prüfe deine Verbindung und versuche es erneut."
+    },
+    "form": {
+      "errors": {
+        "labelRequired": "Gib dem Tag einen Namen",
+        "containerRequired": "Wähle ein Trinkgefäß aus",
+        "drinks": "Getränke pro Antippen muss eine ganze Zahl zwischen 1 und {{max}} sein",
+        "amount": "Gib eine Menge größer als null ein",
+        "itemRequired": "Wähle ein Lebensmittel oder eine Mahlzeit aus",
+        "invalid": "Prüfe Menge und Name und versuche es erneut. Es wurde nichts auf den Tag geschrieben."
+      },
+      "holdToWrite": "Halte dein Smartphone an den NFC-Tag",
+      "written": "Tag ist einsatzbereit",
+      "overwriteTitle": "Dieser Tag enthält bereits Daten",
+      "overwriteSparky": "Dieser Tag ist bereits für eine andere Aktion in SparkyFitness eingerichtet. Wenn du ihn überschreibst, funktioniert der bisherige Tag nicht mehr.",
+      "overwriteOther": "Er enthält andere Daten, z. B. einen Link oder eine Visitenkarte. Durch diesen Tag ersetzen?",
+      "replace": "Ersetzen",
+      "writeFailed": "Tag konnte nicht beschrieben werden",
+      "writeFailedHint": "Halte das Smartphone ruhig an den Tag. Schreibgeschützte oder metallische Tags können nicht beschrieben werden.",
+      "saved": "Tag gespeichert",
+      "saveFailed": "Tag konnte nicht gespeichert werden",
+      "deleteTitle": "Diesen Tag entfernen?",
+      "deleteMessage": "Der Sticker behält seinen Link, aber beim Scannen wird nichts mehr erfasst.",
+      "deleteFailed": "Tag konnte nicht entfernt werden",
+      "editTitle": "NFC-Tag bearbeiten",
+      "createTitle": "NFC-Tag einrichten",
+      "loading": "Tag wird geladen…",
+      "action": "Was soll passieren?",
+      "container": "Wasserbehälter",
+      "containerPlaceholder": "Wasserbehälter auswählen",
+      "drinks": "Getränke pro Scan",
+      "namePlaceholder": "z. B. Schreibtisch-Flasche",
+      "askFirst": "Vor dem Erfassen nachfragen",
+      "askFirstHint": "Zeigt bei jedem Scan eine Bestätigung an, anstatt sofort zu erfassen.",
+      "writeHint": "Halte dein Smartphone beim Speichern an den Tag, um ihn zu beschreiben. Verwende auf Metall (z. B. einer Edelstahlflasche) einen speziellen On-Metal-Tag.",
+      "writeAgain": "Erneut auf Tag schreiben",
+      "delete": "Diesen Tag entfernen",
+      "serverTooOld": "Dein Server unterstützt noch keine Lebensmittel- und Mahlzeiten-Tags. Aktualisiere den Server und versuche es erneut.",
+      "amountIn": "Menge pro Scan({{unit}})",
+      "servings": "Portionen pro Scan",
+      "name": "Name",
+      "mealType": "Erfassen unter",
+      "mealTypeHint": "„Nach Tageszeit“ nutzt wie bei der Schnellerfassung die übliche Uhrzeit der jeweiligen Mahlzeit.",
+      "foodOrMeal": "Lebensmittel oder Mahlzeit",
+      "foodOrMealPlaceholder": "Lebensmittel oder Mahlzeit auswählen"
+    },
+    "unsupportedTitle": "Dieses Smartphone unterstützt keine NFC-Tags",
+    "unsupportedSubtitle": "Für NFC-Tags wird ein Smartphone mit NFC benötigt.",
+    "disabledTitle": "NFC ist deaktiviert",
+    "disabledSubtitle": "Aktiviere NFC in den Smartphone-Einstellungen und kehre dann zurück.",
+    "list": {
+      "holdToScan": "Halte dein Smartphone an den NFC-Tag",
+      "notOurs": "Dieser Tag ist nicht mit SparkyFitness verknüpft",
+      "scanFailed": "Tag konnte nicht gelesen werden",
+      "add": "Tag einrichten",
+      "asksFirst": "Fragt vor dem Erfassen nach",
+      "loading": "NFC-Tag-Verknüpfungen werden geladen…",
+      "serverTooOld": "Dein Server unterstützt noch keine NFC-Tags",
+      "serverTooOldSubtitle": "Aktualisiere deinen SparkyFitness-Server, um sie zu nutzen.",
+      "emptyTitle": "Noch keine NFC-Tags eingerichtet",
+      "loadFailed": "NFC-Tag-Verknüpfungen konnten nicht geladen werden",
+      "loadFailedSubtitle": "Prüfe deine Verbindung und versuche es erneut.",
+      "emptySubtitle": "Klebe einen NFC-Tag auf eine Flasche oder Tasse, richte ihn hier ein und scanne ihn, um ein Getränk zu erfassen.",
+      "scan": "Tag scannen"
+    },
+    "title": "NFC-Tags",
+    "action": {
+      "water": "{{drinks}} × {{name}}",
+      "waterMissing": "Wasserbehälter existiert nicht mehr",
+      "servings_one": "{{formattedCount}} Portion",
+      "servings_other": "{{formattedCount}} Portionen",
+      "food": "{{amount}} · {{meal}}",
+      "amount": "{{quantity}} {{unit}}",
+      "unsupported": "Aktualisiere die App, um diesen Tag zu nutzen"
+    },
+    "type": {
+      "water": "Wasser oder Getränk",
+      "foodOrMeal": "Lebensmittel oder Mahlzeit"
+    },
+    "container": {
+      "add": "NFC-Tag hinzufügen",
+      "count_one": "{{formattedCount}} Tag erfasst diesen Wasserbehälter",
+      "count_other": "{{formattedCount}} Tags erfassen diesen Wasserbehälter",
+      "hint": "Scanne einen Sticker auf dieser Flasche, um ein Getränk zu erfassen"
+    },
+    "food": {
+      "count_one": "{{formattedCount}} Tag erfasst dieses Lebensmittel",
+      "count_other": "{{formattedCount}} Tags erfassen dieses Lebensmittel",
+      "hint": "Scanne einen Sticker, um dieses Lebensmittel zu erfassen"
+    },
+    "meal": {
+      "auto": "Nach Tageszeit",
+      "count_one": "{{formattedCount}} Tag erfasst diese Mahlzeit",
+      "count_other": "{{formattedCount}} Tags erfassen diese Mahlzeit",
+      "hint": "Scanne einen Sticker, um diese Mahlzeit zu erfassen"
     }
+  },
+  "oralCare": {
+    "title": "Mundpflege",
+    "loading": "Mundpflege wird geladen...",
+    "types": {
+      "brushing": "Zähneputzen",
+      "flossing": "Zahnseide",
+      "mouthwash": "Mundspülung",
+      "other": "Sonstiges",
+      "tongueCleaning": "Zungenreinigung"
+    },
+    "goal": {
+      "title": "Zahnputz-Ziel",
+      "dailyTarget": "Zähneputzen pro Tag",
+      "targetTime": "Dauer pro Putzvorgang",
+      "hint": "Zahnärzte empfehlen in der Regel, zweimal täglich für 2 Minuten die Zähne zu putzen.",
+      "perDay_one": "{{count}}-mal pro Tag",
+      "perDay_other": "{{count}}-mal pro Tag"
+    },
+    "stats": {
+      "brushed": "Geputzt",
+      "time": "Putzzeit",
+      "streak_one": "Serie: {{count}} Tag",
+      "streak_other": "Serie: {{count}} Tage",
+      "best_one": "Rekord: {{count}} Tag",
+      "best_other": "Rekord: {{count}} Tage",
+      "weekA11y_one": "Ziel an {{count}} der letzten 7 Tage erreicht",
+      "weekA11y_other": "Ziel an {{count}} der letzten 7 Tage erreicht",
+      "ofTarget": "{{brushed}} von {{target}}"
+    },
+    "source": {
+      "health": "Apple Health",
+      "timer": "Timer"
+    },
+    "coveredBySync": "Auch von Apple Health erfasst · einmal gezählt",
+    "errors": {
+      "save": "Der Eintrag konnte nicht gespeichert werden.",
+      "delete": "Der Eintrag konnte nicht gelöscht werden.",
+      "goal": "Das Ziel konnte nicht gespeichert werden."
+    },
+    "timer": {
+      "title": "Zahnputz-Timer",
+      "subtitle": "{{time}}, ein Quadrant nach dem anderen",
+      "upperLeft": "Oben links",
+      "upperRight": "Oben rechts",
+      "lowerRight": "Unten rechts",
+      "lowerLeft": "Unten links",
+      "ready": "Bereit",
+      "start": "Start",
+      "resume": "Fortsetzen",
+      "pause": "Pause",
+      "done": "Fertig! Tippe auf Speichern",
+      "save": "Speichern",
+      "doneShort": "Fertig!",
+      "paused": "Pausiert"
+    },
+    "loadFailed": "Mundpflege konnte nicht geladen werden",
+    "sessions": "Einträge",
+    "empty": "Für diesen Tag wurde nichts erfasst",
+    "actions": {
+      "log": "Erfassen",
+      "startTimer": "Timer starten"
+    },
+    "card": {
+      "a11y": "Mundpflege, {{brushed}} von {{target}} geputzt"
+    },
+    "delete": {
+      "title": "Diesen Eintrag löschen?",
+      "synced": "Er erscheint bei der nächsten Synchronisierung erneut, sofern du ihn nicht auch in der Health-App löschst."
+    },
+    "log": {
+      "addTitle": "Mundpflege erfassen",
+      "editTitle": "Eintrag bearbeiten",
+      "type": "Art",
+      "namePlaceholder": "z. B. Munddusche",
+      "time": "Uhrzeit",
+      "duration": "Dauer (optional)",
+      "minutes": "Minuten",
+      "minutesShort": "Min.",
+      "seconds": "Sekunden",
+      "secondsShort": "Sek.",
+      "tooLong": "Ein Eintrag darf maximal 60 Minuten lang sein.",
+      "notes": "Notizen (optional)",
+      "notesA11y": "Notizen",
+      "timerHint": "{{time}}, ein Quadrant nach dem anderen. Speichert den Putzvorgang automatisch.",
+      "timerTitle": "Mit Timer Zähne putzen",
+      "startTimerA11y": "Zahnputz-Timer für {{time}} starten",
+      "name": "Name"
+    }
+  },
+  "oralCareReport": {
+    "brushesTooltip_one": "{{count}} Putzvorgang · {{date}}",
+    "brushesTooltip_other": "{{count}} Putzvorgänge · {{date}}",
+    "insightStreak_one": "Deine längste Serie beträgt {{count}} Tag.",
+    "insightStreak_other": "Deine längste Serie beträgt {{count}} Tage.",
+    "daysCount_one": "{{count}} Tag",
+    "daysCount_other": "{{count}} Tage",
+    "title": "Mundpflege",
+    "loadFailed": "Mundpflege-Daten konnten nicht geladen werden",
+    "empty": "In diesem Zeitraum wurde keine Mundpflege erfasst",
+    "goalDays": "Ziel erreicht",
+    "goalDaysValue": "{{met}} von {{total}} Tagen",
+    "brushesPerDay": "Zähneputzen pro Tag",
+    "minutesPerDay": "Putzzeit pro Tag",
+    "insightGoal": "Du hast dir an {{percent}} % der Tage {{target}}-mal täglich die Zähne geputzt.",
+    "brushesChart": "Zähneputzen pro Tag",
+    "minutesChart": "Putzminuten pro Tag",
+    "summaryTitle": "Serien und weitere Pflege",
+    "currentStreak": "Aktuelle Serie",
+    "longestStreak": "Längste Serie",
+    "otherCare": "Zahnseide, Mundspülung und Sonstiges",
+    "minutesTooltip": "{{time}} · {{date}}"
+  },
+  "serverStatus": {
+    "notConfiguredTitle": "Kein Server eingerichtet",
+    "notConfiguredSubtitle": "Richte deine Serververbindung in den Einstellungen ein.",
+    "goToSettings": "Zu den Einstellungen",
+    "unreachableTitle": "Server nicht erreichbar",
+    "unreachableSubtitle": "Prüfe deine Verbindung oder versuche es erneut.",
+    "tryAgain": "Erneut versuchen"
+  },
+  "waterLog": {
+    "title": "Getränke",
+    "history": "Verlauf",
+    "open": "Getränkeverlauf",
+    "drink": "Getränk",
+    "linkedDrink": "Mit einem Lebensmitteleintrag verknüpft",
+    "noWaterCredit": "Kein Wasser",
+    "deleteTitle": "Getränk löschen",
+    "deleteMessage": "Dieses Getränk löschen?",
+    "deleteLinkedMessage": "Dieses Getränk löschen? Der zugehörige Eintrag im Ernährungstagebuch wird ebenfalls gelöscht.",
+    "deleteDrink": "{{name}} um {{time}} löschen",
+    "deleteFailed": "Getränk konnte nicht gelöscht werden",
+    "loading": "Getränke werden geladen...",
+    "loadFailed": "Getränke konnten nicht geladen werden",
+    "loadFailedSubtitle": "Prüfe deine Verbindung und versuche es erneut.",
+    "emptyTitle": "Keine Getränke erfasst",
+    "emptySubtitle": "Getränke, die du über die Wasser-Schaltflächen, eine Getränkevorlage, die Uhr oder eine verknüpfte App erfasst, erscheinen hier."
+  },
+  "measurementTimeline": {
+    "glucose": "Blutzucker (CGM)",
+    "title": "Messwertverlauf",
+    "category": "Messwert",
+    "previous": "Vorheriger Tag",
+    "next": "Nächster Tag",
+    "source": "Quelle",
+    "unit": "Einheit",
+    "error": "Messwerte konnten nicht geladen werden.",
+    "loading": "Messwerte werden geladen…",
+    "empty": "Keine Messwerte mit Zeitstempel für diesen Tag vorhanden. Wähle eine benutzerdefinierte Kategorie für importierte/API-Werte oder synchronisiere den Blutzucker über Apple Health.",
+    "meals": "Erfasste Lebensmittel · Mahlzeiten-Markierungen",
+    "foodError": "Erfasste Lebensmittel konnten nicht geladen werden.",
+    "food": "Ernährung",
+    "noTime": "Uhrzeit nicht erfasst",
+    "note": "Dies sind erfasste Ereignisse, keine nachgewiesenen Ursachen. Trainingsendzeiten basieren auf der erfassten Dauer. Einträge ohne Uhrzeit und Tagesgesamtwerte werden nicht auf der Kurve dargestellt. Nutze deine Sensor-App für Live-Werte und Alarme.",
+    "layerMeal": "Ernährung",
+    "layerExercise": "Training",
+    "layerSleep": "Schlaf",
+    "layerMedication": "Medikamente",
+    "layerStress": "Stress",
+    "layerCaffeine": "Koffein",
+    "layerAlcohol": "Alkohol",
+    "layerHydration": "Flüssigkeitszufuhr",
+    "context": "Erfasster Kontext · Anzeigeebenen",
+    "contextLoading": "Erfasster Kontext wird geladen…",
+    "contextError": "Erfasster Kontext konnte nicht geladen werden.",
+    "carbs": "Kohlenhydrate",
+    "unavailable": "Einige Kontextdaten sind nicht verfügbar: {{layers}}",
+    "dailyTotal": "Tagesgesamt",
+    "dailyAverage": "Tagesdurchschnitt",
+    "noBodyMeasurements": "Keine Körpermaße in diesem Zeitraum",
+    "options": "Diagrammoptionen",
+    "resetZoom": "Zoom zurücksetzen",
+    "explore": "Zoomen & verschieben",
+    "inspect": "Messwerte prüfen",
+    "inspectHint": "Halte einen Messpunkt gedrückt, um seinen Wert anzuzeigen.",
+    "zoomHint": "Zum Zoomen zwei Finger aufziehen/zusammenführen · horizontal ziehen zum Verschieben",
+    "layerOptions": "Kontextebenen",
+    "events": "Ereignisdetails",
+    "eventsInView": "Ereignisse im Sichtbereich",
+    "noEventsInView": "Keine Ereignisse mit Zeitstempel in diesem Bereich."
   }
 }

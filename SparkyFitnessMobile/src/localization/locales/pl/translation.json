@@ -263,7 +263,8 @@
       "ongoingWorkout": "Trening w toku",
       "hydration": "Przypomnienia o nawodnieniu",
       "moodCheckin": "Wpisy nastroju",
-      "oralCare": "Przypomnienia o szczotkowaniu"
+      "oralCare": "Przypomnienia o szczotkowaniu",
+      "mindfulness": "Timer medytacji"
     },
     "actions": {
       "completeSet": "Wykonaj serię",
@@ -315,6 +316,10 @@
     "brushingTimer": {
       "title": "Szczotkowanie zakończone",
       "body": "Otwórz SparkyFitness, aby zapisać szczotkowanie."
+    },
+    "meditationTimer": {
+      "title": "Medytacja zakończona",
+      "body": "Otwórz SparkyFitness, aby zapisać sesję."
     }
   },
   "activeWorkout": {
@@ -1193,7 +1198,6 @@
     "adjustMacrosWithExerciseHint": "Zwiększa cele białka, węglowodanów i tłuszczów według zapisanych procentów, gdy trening dodaje kalorie do dziennego budżetu. Respektuje ustawienia odpracowania kalorii z treningu. Cele wpisane w gramach pozostają bez zmian. Zmiany obowiązują od dzisiaj; wcześniejsze dni zachowują swoje ustawienie.",
     "useMoveRingActiveCalories": "Używaj pierścienia Move dla kalorii aktywnych",
     "useMoveRingActiveCaloriesHint": "Domyślnie wyłączone: kalorie aktywne pochodzą z łącznej energii aktywnej z Apple Health. Po włączeniu pochodzą z pierścienia Move, więc zgadzają się z aplikacją Fitness. Pierścień liczy to, co mierzą Twój Apple Watch i iPhone, a treningi zapisane do Apple Health przez inne aplikacje też mogą się do niego doliczać. Dzień bez pierścienia, np. gdy dostęp do Aktywności jest wyłączony, używa łącznej energii aktywnej. Dotyczy dni synchronizowanych po zmianie.",
-    "adaptiveFallbackWithUnit": "Szacowanie zapasowe, dopóki nie zbierzesz wystarczającej liczby danych śledzenia, a potem nadal określa limity wiarygodności. Zmierzony TDEE jest ograniczony do ±{{amount}} {{unit}} od BMR × ten mnożnik.",
     "energyUnitLabel": "Jednostka energii",
     "energyUnitKcal": "Kalorie (kcal)",
     "energyUnitKj": "Kilojoule (kJ)",
@@ -1232,7 +1236,8 @@
       "customShort": "Niestandardowy",
       "chartHintTrainingShort": "Dotknij słupka, aby zobaczyć dany dzień. Dotknij dnia poniżej, aby przełączyć trening i odpoczynek.",
       "chartHintCustomHandle": "Dotknij słupka, aby zobaczyć dany dzień. Przeciągnij uchwyt nad słupkiem, aby go zmienić."
-    }
+    },
+    "adaptiveEstimateRangeWithUnit": "Poziom aktywności ustawia oszacowanie początkowe oraz zakres wiarygodności ±{{amount}} {{unit}} wokół BMR × tego mnożnika. Oszacowania mogą potrzebować kilku tygodni na ustabilizowanie; wahania masy ciała i niekompletne zapisy żywieniowe zwiększają niepewność."
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",

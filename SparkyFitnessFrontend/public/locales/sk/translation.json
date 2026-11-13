@@ -2035,7 +2035,6 @@
       "title": "Preferencie alergénov"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dynamicky upravuje váš denný cieľ na základe vášho skutočného metabolizmu. Vyžaduje konzistentné sledovanie jedla a hmotnosti pre vysokú presnosť.",
       "burnedActivity": "Aktivita (iba cvičenie a kroky)",
       "burnedBmr": "Aktivita + BMR (váš základný metabolizmus)",
       "burnedTdee": "Celkové kalórie z Health Connect (záloha BMR + aktívne kalórie)",
@@ -2196,10 +2195,7 @@
       "unsafeGainTitle": "Nebezpečné tempo priberania",
       "unsafeGainText": "Priberanie viac ako 0,5 % telesnej hmotnosti za týždeň znamená, že väčšina pridaného hmotnosti bude tuk namiesto svalov. Pomalší prebytok buduje podobné množstvo svalov s oveľa menším priberaním tuku.",
       "unsafeLossTitle": "Nebezpečné tempo chudnutia",
-      "unsafeLossText": "Chudnutie viac ako 1,5 % telesnej hmotnosti za týždeň sa považuje za nadmerné. Toto tempo dramaticky zvyšuje riziko vážnej straty svalov, letargie, hormonálnej nerovnováhy a nutričných nedostatkov. Vyberte si menej agresívny režim cieľov.",
-      "calibrationDescription": "Motor adaptívneho TDEE Sparky vyžaduje aspoň {{required}} dní konzistentného sledovania na presný výpočet vášho metabolizmu (momentálne sa používajú záložné odhady). Na urýchlenie kalibrácie:",
-      "calibrationWeightTip": "Zaznamenávajte hmotnosť aspoň 3–4 krát týždenne.",
-      "calibrationFoodTip": "Zaznamenávajte príjem jedla denne (>200 kcal/deň)."
+      "unsafeLossText": "Chudnutie viac ako 1,5 % telesnej hmotnosti za týždeň sa považuje za nadmerné. Toto tempo dramaticky zvyšuje riziko vážnej straty svalov, letargie, hormonálnej nerovnováhy a nutričných nedostatkov. Vyberte si menej agresívny režim cieľov."
     },
     "mfa": {
       "confirmPassword": "Na pokračovanie potvrďte heslo",
