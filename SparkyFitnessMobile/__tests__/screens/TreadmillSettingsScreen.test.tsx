@@ -142,7 +142,7 @@ describe('treadmill correction', () => {
     expect(screen.queryByText('It shows')).toBeNull();
 
     fireEvent(
-      screen.getByLabelText('My treadmill is off'),
+      screen.getByLabelText('Correct my treadmill'),
       'valueChange',
       true
     );

@@ -64,6 +64,9 @@ const unsignedPercent = (percent: number) =>
 const parseField = (text: string): number | null =>
   text.trim() === '' ? null : parseDecimalInput(text);
 
+/** A link lined up with the text above it, not inset by the button padding. */
+const LINK_STYLE = { paddingHorizontal: 0, paddingVertical: 8 };
+
 const SectionTitle: React.FC<{ children: string }> = ({ children }) => (
   <Text className="text-text-secondary text-sm font-semibold uppercase tracking-wider mt-4 mb-2 px-1">
     {children}
@@ -489,6 +492,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
                 <View className="flex-row mt-2" style={{ gap: 16 }}>
                   <Button
                     variant="link"
+                    style={LINK_STYLE}
                     className="self-start"
                     onPress={() =>
                       editing === activity
@@ -505,6 +509,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
                   {changed ? (
                     <Button
                       variant="link"
+                      style={LINK_STYLE}
                       className="self-start"
                       accessibilityLabel={t('treadmillSettings.resetA11y', {
                         defaultValue: 'Reset {{activity}}',
@@ -531,11 +536,11 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
         </SectionTitle>
         <SettingsRow
           title={t('treadmillSettings.correction', {
-            defaultValue: 'My treadmill is off',
+            defaultValue: 'Correct my treadmill',
           })}
           subtitle={t('treadmillSettings.correctionSubtitle', {
             defaultValue:
-              'Fixes the distance you type in from the treadmill. Distances worked out from your steps are not changed. Kept on this phone.',
+              'Turn on if your treadmill shows more or less distance than you really covered. The distance you type in from it is then fixed before it is saved. Distances worked out from your steps are not changed. Kept on this phone.',
           })}
           subtitleNumberOfLines={0}
           rightAccessory={
@@ -543,7 +548,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
               value={enabled}
               onValueChange={setEnabled}
               accessibilityLabel={t('treadmillSettings.correctionA11y', {
-                defaultValue: 'My treadmill is off',
+                defaultValue: 'Correct my treadmill',
               })}
             />
           }
@@ -820,6 +825,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
                 {info ? (
                   <Button
                     variant="link"
+                    style={LINK_STYLE}
                     className="self-start mt-2"
                     onPress={() => void resetWatchIndoorScale(activity)}
                   >

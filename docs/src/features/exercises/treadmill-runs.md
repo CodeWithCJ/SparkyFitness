@@ -42,7 +42,7 @@ To set a stride by hand, tap **Type it in** under the stride, enter it and tap *
 
 ### Treadmill display
 
-If your treadmill shows more or less distance than you really covered, turn on **My treadmill is off**, choose **More than I ran** or **Less than I ran**, and enter by how much, up to 25 percent. The screen shows an example: when the treadmill shows 5.00 km, 4.81 km is saved.
+If your treadmill shows more or less distance than you really covered, turn on **Correct my treadmill**, choose **More than I ran** or **Less than I ran**, and enter by how much, up to 25 percent. The screen shows an example: when the treadmill shows 5.00 km, 4.81 km is saved.
 
 The correction divides the display figure by one plus the percent, so a display that reads 4 percent long and shows 5.20 km is saved as 5.00 km. The stored distance, and the pace worked out from it, are the corrected ones. Where it matters the screens show both: "Treadmill showed 5.20 km. Saved as 5.00 km with your +4% treadmill correction." Turn the switch off to save figures exactly as typed.
 
