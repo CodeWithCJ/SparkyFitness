@@ -29,6 +29,7 @@ import { startRunOnWatch } from '../../src/services/watchRunControl';
 import { useRunProgram } from '../../src/services/runProgramService';
 import { programStatus } from '@workspace/shared';
 import { saveRecordedActivity } from '../../src/services/gpsRecordingSave';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import { useIndoorDistanceEstimate } from '../../src/hooks/useIndoorDistanceEstimate';
 import { useLiveHeartRateStore } from '../../src/stores/liveHeartRateStore';
 import { initializeI18n } from '../../src/localization/i18n';
@@ -1293,6 +1294,133 @@ describe('RecordActivityScreen', () => {
           false
         )
       );
+    });
+
+    describe('with a treadmill correction', () => {
+      const correct = (percent: number) => {
+        useAppPreferencesStore.getState().setTreadmillCorrectionEnabled(true);
+        useAppPreferencesStore
+          .getState()
+          .setTreadmillCorrectionPercent(percent);
+      };
+      afterEach(() => {
+        act(() => {
+          useAppPreferencesStore
+            .getState()
+            .setTreadmillCorrectionEnabled(false);
+          useAppPreferencesStore.getState().setTreadmillCorrectionPercent(0);
+        });
+      });
+
+      it('corrects a figure typed from the treadmill and shows both', async () => {
+        correct(4);
+        finishedIndoor();
+        jest.mocked(useIndoorDistanceEstimate).mockReturnValue(rough);
+        jest
+          .mocked(saveRecordedActivity)
+          .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-08' });
+        const screen = await renderScreen();
+
+        fireEvent.changeText(screen.getByLabelText('Distance'), '5.2');
+        expect(
+          screen.getByText(
+            'Treadmill showed 5.20 km. Saved as 5.00 km with your +4% treadmill correction.'
+          )
+        ).toBeTruthy();
+        fireEvent.press(screen.getByText('Save activity'));
+
+        await waitFor(() =>
+          expect(saveRecordedActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ indoor: true }),
+            [],
+            'km',
+            expect.closeTo(5, 6),
+            rough,
+            false
+          )
+        );
+      });
+
+      it('leaves an indoor ride as typed, since the setting is for a treadmill', async () => {
+        correct(4);
+        state(
+          session({
+            activity: 'ride',
+            indoor: true,
+            status: 'finished',
+            finishedAt: Date.now(),
+          })
+        );
+        jest.mocked(useIndoorDistanceEstimate).mockReturnValue(null);
+        jest
+          .mocked(saveRecordedActivity)
+          .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-08' });
+        const screen = await renderScreen();
+
+        fireEvent.changeText(screen.getByLabelText('Distance'), '10');
+        expect(screen.queryByText(/treadmill correction/)).toBeNull();
+        fireEvent.press(screen.getByText('Save activity'));
+
+        await waitFor(() =>
+          expect(saveRecordedActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ activity: 'ride', indoor: true }),
+            [],
+            'km',
+            10,
+            null,
+            false
+          )
+        );
+      });
+
+      it('never corrects the step estimate it prefilled', async () => {
+        correct(4);
+        finishedIndoor();
+        jest.mocked(useIndoorDistanceEstimate).mockReturnValue(rough);
+        jest
+          .mocked(saveRecordedActivity)
+          .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-08' });
+        const screen = await renderScreen();
+
+        expect(screen.queryByText(/treadmill correction/)).toBeNull();
+        fireEvent.press(screen.getByText('Save activity'));
+
+        await waitFor(() =>
+          expect(saveRecordedActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ indoor: true }),
+            [],
+            'km',
+            3.12,
+            rough,
+            true
+          )
+        );
+      });
+
+      it('saves a typed figure as it is while the correction is off', async () => {
+        useAppPreferencesStore.getState().setTreadmillCorrectionPercent(4);
+        finishedIndoor();
+        jest.mocked(useIndoorDistanceEstimate).mockReturnValue(rough);
+        jest
+          .mocked(saveRecordedActivity)
+          .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-08' });
+        const screen = await renderScreen();
+
+        fireEvent.changeText(screen.getByLabelText('Distance'), '5.2');
+        expect(screen.queryByText(/treadmill correction/)).toBeNull();
+        fireEvent.press(screen.getByText('Save activity'));
+
+        await waitFor(() =>
+          expect(saveRecordedActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ indoor: true }),
+            [],
+            'km',
+            5.2,
+            rough,
+            false
+          )
+        );
+      });
     });
 
     it('lets them clear it to log no distance', async () => {

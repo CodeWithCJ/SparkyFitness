@@ -15,6 +15,9 @@ import {
   setExerciseEntryStrideLength,
 } from '../../src/services/api/exerciseApi';
 import { usePersonalRecords } from '../../src/hooks/usePersonalRecords';
+import { learnWatchIndoorScale } from '../../src/services/watchIndoorScale';
+import { learnFromWatchRun } from '../../src/services/stepDistance';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import type { RunSummaryParams } from '../../src/utils/runSummary';
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -27,6 +30,12 @@ jest.mock('../../src/services/runProgramService', () => ({
 jest.mock('../../src/services/api/exerciseApi', () => ({
   setExerciseEntryDistance: jest.fn(() => Promise.resolve()),
   setExerciseEntryStrideLength: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('../../src/services/stepDistance', () => ({
+  learnFromWatchRun: jest.fn(() => Promise.resolve(true)),
+}));
+jest.mock('../../src/services/watchIndoorScale', () => ({
+  learnWatchIndoorScale: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../src/hooks/usePersonalRecords', () => ({
   usePersonalRecords: jest.fn(() => ({ records: [] })),
@@ -336,6 +345,153 @@ describe('treadmill distance', () => {
     );
     fireEvent.press(screen.getByText('Update'));
     expect(setExerciseEntryDistance).not.toHaveBeenCalled();
+  });
+});
+
+describe('treadmill correction', () => {
+  const treadmill = (overrides: Partial<RunSummaryParams> = {}) =>
+    params({
+      entryId: 'entry-1',
+      editableDistance: true,
+      distanceMeters: 4000,
+      activeSeconds: 1200,
+      ...overrides,
+    });
+  const correct = (percent: number) => {
+    useAppPreferencesStore.getState().setTreadmillCorrectionEnabled(true);
+    useAppPreferencesStore.getState().setTreadmillCorrectionPercent(percent);
+  };
+  afterEach(() => {
+    useAppPreferencesStore.getState().setTreadmillCorrectionEnabled(false);
+    useAppPreferencesStore.getState().setTreadmillCorrectionPercent(0);
+  });
+
+  it('stores the corrected distance and shows the machine’s figure next to it', async () => {
+    correct(4);
+    renderScreen(treadmill());
+    expect(
+      screen.getByText(/Your \+4% treadmill correction is taken off/)
+    ).toBeTruthy();
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5.2'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await screen.findByText('Distance updated.');
+
+    expect(setExerciseEntryDistance).toHaveBeenCalledWith(
+      'entry-1',
+      expect.closeTo(5, 6)
+    );
+    expect(
+      screen.getByText(
+        'Machine showed 5.20 km; saved as 5.00 km with your treadmill correction.'
+      )
+    ).toBeTruthy();
+    // The headline figure is the corrected one.
+    expect(screen.getByText('5.00')).toBeTruthy();
+  });
+
+  it('teaches the run under its entry on every Update, so a later figure replaces the earlier', async () => {
+    const watchIndoor = {
+      scale: 1,
+      estimatedMeters: 4000,
+      startedAt: 1_000_000,
+      endedAt: 2_200_000,
+    };
+    jest.mocked(learnWatchIndoorScale).mockClear();
+    jest.mocked(learnFromWatchRun).mockClear();
+    renderScreen(treadmill({ watchIndoor, distanceMeters: 5000 }));
+    for (const typed of ['5', '5.1']) {
+      fireEvent.changeText(
+        screen.getByLabelText('Distance from the treadmill in km'),
+        typed
+      );
+      fireEvent.press(screen.getByText('Update'));
+      await screen.findByText('Distance updated.');
+    }
+    // Keyed by the entry, so the figure typed on the wrist is replaced, not
+    // counted again, and so is the first Update by the second.
+    expect(learnWatchIndoorScale).toHaveBeenCalledTimes(2);
+    expect(learnWatchIndoorScale).toHaveBeenLastCalledWith(
+      'run',
+      1,
+      4000,
+      expect.closeTo(5100, 3),
+      'phone',
+      'entry-1'
+    );
+    expect(learnFromWatchRun).toHaveBeenCalledTimes(2);
+    expect(learnFromWatchRun).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.closeTo(5100, 3),
+      'entry-1'
+    );
+  });
+
+  it('teaches the watch factor from the corrected figure, not the display', async () => {
+    correct(4);
+    renderScreen(
+      treadmill({
+        watchIndoor: {
+          scale: 1,
+          estimatedMeters: 4000,
+          startedAt: 1_000_000,
+          endedAt: 2_200_000,
+        },
+      })
+    );
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5.2'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await screen.findByText('Distance updated.');
+
+    expect(learnWatchIndoorScale).toHaveBeenCalledWith(
+      'run',
+      1,
+      4000,
+      expect.closeTo(5000, 3),
+      'phone',
+      'entry-1'
+    );
+    // The stride learns from the phone's steps over the run, same corrected figure.
+    expect(learnFromWatchRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startedAt: 1_000_000,
+        finishedAt: 2_200_000,
+        activeSeconds: 1200,
+      }),
+      expect.closeTo(5000, 3),
+      'entry-1'
+    );
+  });
+
+  it('sends the figure as typed while the correction is off', async () => {
+    useAppPreferencesStore.getState().setTreadmillCorrectionPercent(4);
+    renderScreen(treadmill());
+    expect(screen.queryByText(/treadmill correction is taken off/)).toBeNull();
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5.2'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await screen.findByText('Distance updated.');
+
+    expect(setExerciseEntryDistance).toHaveBeenCalledWith('entry-1', 5.2);
+    expect(screen.queryByText(/Machine showed/)).toBeNull();
+  });
+
+  it('shows the figure typed on the watch when it was corrected on arrival', () => {
+    renderScreen(
+      treadmill({ distanceMeters: 5000, treadmillDisplayMeters: 5200 })
+    );
+    expect(
+      screen.getByText(
+        'Machine showed 5.20 km; saved as 5.00 km with your treadmill correction.'
+      )
+    ).toBeTruthy();
   });
 });
 

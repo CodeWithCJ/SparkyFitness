@@ -170,6 +170,7 @@ export default defineConfig({
             { text: 'Interval & WOD Workouts', link: '/features/exercises/interval-wod-workouts' },
             { text: 'Guided Workouts', link: '/features/exercises/guided-workouts' },
             { text: 'GPS Activity Recording', link: '/features/exercises/gps-activity-recording' },
+            { text: 'Treadmill Runs', link: '/features/exercises/treadmill-runs' },
             { text: 'Training Programs', link: '/features/exercises/training-programs' },
             { text: 'Running Trends', link: '/features/exercises/running-trends' },
             { text: 'Fitness Tests', link: '/features/exercises/fitness-tests' },

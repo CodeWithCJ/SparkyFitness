@@ -2,17 +2,20 @@ import {
   getHealthStepsBetween,
   getStepsBetween,
 } from '../../src/services/stepCounter';
+import { addLog } from '../../src/services/LogService';
 import { getStride, learnStride } from '../../src/services/strideCalibration';
 import {
   estimateIndoorDistance,
   learnFromIndoorEntry,
   learnFromOutdoorRecording,
+  learnFromWatchRun,
   measureOutdoorForm,
   measureWatchRunForm,
   type IndoorDistanceEstimate,
   type StepWindow,
 } from '../../src/services/stepDistance';
 
+jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/stepCounter');
 jest.mock('../../src/services/strideCalibration');
 
@@ -117,6 +120,120 @@ describe('learnFromIndoorEntry', () => {
     await learnFromIndoorEntry('walk', estimate, 0);
     await learnFromIndoorEntry('ride', estimate, 3.5);
 
+    expect(mockedLearn).not.toHaveBeenCalled();
+  });
+});
+
+describe('learnFromWatchRun', () => {
+  it('prefers the steps Apple Health holds, so the phone can be left behind', async () => {
+    mockedHealthSteps.mockResolvedValue(5200);
+
+    expect(await learnFromWatchRun(window({ activity: 'run' }), 5000)).toBe(
+      true
+    );
+
+    expect(mockedHealthSteps).toHaveBeenCalledWith(START, START + 30 * 60_000);
+    expect(mockedSteps).not.toHaveBeenCalled();
+    expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, undefined);
+  });
+
+  it('teaches two corrections of a run in the order they were made', async () => {
+    // The first Health read is slow; the second correction must still be
+    // the one the stride ends on.
+    let releaseFirst: (steps: number) => void = () => undefined;
+    mockedHealthSteps
+      .mockImplementationOnce(
+        () =>
+          new Promise<number | null>((resolve) => {
+            releaseFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce(5200);
+
+    const first = learnFromWatchRun(window({ activity: 'run' }), 5000, 'e1');
+    const second = learnFromWatchRun(window({ activity: 'run' }), 5300, 'e1');
+    await Promise.resolve();
+    expect(mockedHealthSteps).toHaveBeenCalledTimes(1);
+    releaseFirst(5200);
+    await Promise.all([first, second]);
+
+    expect(mockedLearn.mock.calls.map((call) => call[2])).toEqual([5000, 5300]);
+  });
+
+  it('logs why nothing was learned when Health has no steps', async () => {
+    mockedHealthSteps.mockResolvedValue(null);
+    mockedSteps.mockResolvedValue(null);
+
+    expect(
+      await learnFromWatchRun(
+        window({ activity: 'run' }),
+        5000,
+        'entry-1',
+        false
+      )
+    ).toBe(false);
+
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('Apple Health had no steps over the run')
+    );
+  });
+
+  it('names the run, so teaching it again replaces its sample', async () => {
+    mockedHealthSteps.mockResolvedValue(5200);
+
+    await learnFromWatchRun(window({ activity: 'run' }), 5000, 'entry-1');
+
+    expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, 'entry-1');
+  });
+
+  it('does not ask for Motion & Fitness when told not to', async () => {
+    await learnFromWatchRun(
+      window({ activity: 'run' }),
+      5000,
+      'entry-1',
+      false
+    );
+
+    expect(mockedSteps).toHaveBeenCalledWith(START, START + 30 * 60_000, {
+      askForPermission: false,
+    });
+  });
+
+  it('leaves paused time out of the Health steps', async () => {
+    mockedHealthSteps.mockResolvedValue(5200);
+
+    await learnFromWatchRun(
+      window({ activity: 'run', activeSeconds: 1200 }),
+      4000
+    );
+
+    expect(mockedLearn).toHaveBeenCalledWith('run', 3467, 4000, undefined);
+  });
+
+  it('learns from the phone’s steps over the run and the corrected distance, asking for access', async () => {
+    expect(await learnFromWatchRun(window({ activity: 'run' }), 5000)).toBe(
+      true
+    );
+
+    expect(mockedSteps).toHaveBeenCalledWith(START, START + 30 * 60_000, {
+      askForPermission: true,
+    });
+    expect(mockedLearn).toHaveBeenCalledWith('run', 3900, 5000, undefined);
+  });
+
+  it('learns nothing from a phone that was left behind', async () => {
+    mockedSteps.mockResolvedValue(5);
+
+    expect(await learnFromWatchRun(window(), 5000)).toBe(false);
+    expect(mockedLearn).not.toHaveBeenCalled();
+  });
+
+  it('learns nothing without a step reading, or from a ride', async () => {
+    mockedSteps.mockResolvedValue(null);
+    expect(await learnFromWatchRun(window(), 5000)).toBe(false);
+    expect(await learnFromWatchRun(window({ activity: 'ride' }), 5000)).toBe(
+      false
+    );
     expect(mockedLearn).not.toHaveBeenCalled();
   });
 });

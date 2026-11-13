@@ -143,9 +143,10 @@ describe('attachHeartRateToLoggedWorkouts', () => {
     expect(bench[3]!.length).toBe(121); // 17:00:00 through 17:20:00 inclusive
     expect(bench[3]![0]).toEqual({ t: '2026-11-02T17:00:00.000Z', bpm: 120 });
     expect(bench[3]![120]).toEqual({ t: '2026-11-02T17:20:00.000Z', bpm: 120 });
-    expect(bench[8]).toBe('Google Health');
-    // Calories and duration are left to the workout itself.
-    expect(bench.slice(4, 8)).toEqual([
+    expect(bench[9]).toBe('Google Health');
+    // Calories, duration, zones, stride and cadence are left to the workout.
+    expect(bench.slice(4, 9)).toEqual([
+      undefined,
       undefined,
       undefined,
       undefined,

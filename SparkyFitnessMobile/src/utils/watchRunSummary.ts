@@ -69,8 +69,13 @@ export function watchRunSummary(
             scale: payload.distanceScale ?? 1,
             estimatedMeters:
               payload.estimatedDistanceMeters ?? payload.distanceMeters,
+            startedAt: payload.startedAt,
+            endedAt: payload.endedAt,
           },
         }
+      : {}),
+    ...(payload.treadmillDisplayMeters != null
+      ? { treadmillDisplayMeters: payload.treadmillDisplayMeters }
       : {}),
     activeEnergyKcal:
       payload.activeEnergyKcal > 0 ? payload.activeEnergyKcal : null,

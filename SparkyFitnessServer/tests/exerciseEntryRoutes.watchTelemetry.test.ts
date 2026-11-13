@@ -76,6 +76,7 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       undefined
     );
   });
@@ -134,6 +135,7 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       87.4,
       undefined,
       undefined,
+      undefined,
       undefined
     );
   });
@@ -152,6 +154,7 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       ENTRY_ID,
       undefined,
       42,
+      undefined,
       undefined,
       undefined,
       undefined
@@ -173,6 +176,7 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       undefined,
       undefined,
       12.5,
+      undefined,
       undefined,
       undefined
     );
@@ -200,8 +204,31 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       undefined,
       undefined,
       101.5,
+      undefined,
     ]);
     expect(calls[1][7]).toBeNull();
+  });
+
+  it('forwards an average cadence on its own, and null to clear it', async () => {
+    await request(app)
+      .post(`/exercise-entries/${ENTRY_ID}/watch-telemetry`)
+      .send({ avgCadence: 124 })
+      .expect(204);
+    await request(app)
+      .post(`/exercise-entries/${ENTRY_ID}/watch-telemetry`)
+      .send({ avgCadence: null })
+      .expect(204);
+    await request(app)
+      .post(`/exercise-entries/${ENTRY_ID}/watch-telemetry`)
+      .send({ avgCadence: 0 })
+      .expect(400);
+
+    const calls = vi.mocked(
+      exerciseEntryService.attachWatchTelemetryToExerciseEntry
+    ).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][8]).toBe(124);
+    expect(calls[1][8]).toBeNull();
   });
 
   it('rejects a body carrying neither heart rate nor active energy', async () => {

@@ -39,7 +39,7 @@ A phone can't measure treadmill distance exactly, so treat the estimate as a sta
 - **Change it to match your treadmill.** When you correct the distance, the app works out your stride from it and uses that next time. It learns walking and running separately, and the estimate gets closer over a few sessions. If you leave the estimate as it is, nothing is learned.
 - **Outdoor recordings help too.** A saved outdoor walk or run, whose GPS distance is known, also teaches the app your stride if you've already allowed Motion & Fitness access. It never asks for access just to learn.
 
-Your stride is kept on your phone only. If you don't allow access, or an Android phone restarts during the session, the field starts empty and you type the distance. There's no step estimate for a ride.
+To see the stride the app has learned, set it by hand, or tell the app that your treadmill reads long or short, see [Treadmill Runs](/features/exercises/treadmill-runs). Your stride is kept on your phone only. If you don't allow access, or an Android phone restarts during the session, the field starts empty and you type the distance. There's no step estimate for a ride.
 
 The saved activity is logged as **Indoor Walking**, **Indoor Running** or **Indoor Cycling**, and has no route or splits.
 
@@ -313,7 +313,7 @@ When a run you just saved set one or more records, or became your Best Effort, t
 
 ## Correcting a treadmill distance
 
-A run recorded on the watch indoors has no route, so its distance is the watch's estimate from your arm and step motion, which can be off. On the summary screen (tap the "Run from your watch saved" message) a **Treadmill distance** card lets you enter what the machine showed. The distance, pace, lap distances and stride length update, and heart rate and calories are kept. Runs with a GPS route get their distance from the route and cannot be changed this way.
+A run recorded on the watch indoors has no route, so its distance is the watch's estimate from your arm and step motion, which can be off. On the summary screen (tap the "Run from your watch saved" message) a **Treadmill distance** card lets you enter what the machine showed. The distance, pace, lap distances and stride length update, and heart rate and calories are kept. Runs with a GPS route get their distance from the route and cannot be changed this way. If your treadmill display reads long or short, set a [treadmill correction](/features/exercises/treadmill-runs) once and the figure you enter is corrected before it is saved.
 
 ## Following a watch run on the phone
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import WatchConnectivity, {
   type WatchRunCuePayload,
@@ -14,6 +15,12 @@ import { queryClient } from './queryClient';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { usePreferences } from './usePreferences';
 import { addLog } from '../services/LogService';
+import {
+  FORM_RETRY_AFTER_MS,
+  retryPendingWatchForms,
+  sweepRecentRunsMissingForm,
+} from '../services/pendingWatchForm';
+import { getActiveServerConfigId } from '../services/storage';
 import {
   acceptPendingWatchRuns,
   enqueueWatchRun,
@@ -64,6 +71,13 @@ export function useWatchRunBridge(
         announceWatchRun(payload, unitRef.current, tRef.current, entryId, form)
     );
     for (const day of new Set(days)) invalidateExerciseCache(queryClient, day);
+    // Runs filed before their steps reached Apple Health get cadence and
+    // stride now, if the steps are there.
+    const ownerId = await getActiveServerConfigId();
+    await sweepRecentRunsMissingForm(ownerId);
+    const filled = await retryPendingWatchForms(ownerId);
+    for (const day of new Set(filled))
+      invalidateExerciseCache(queryClient, day);
   });
 
   // What the watch says about a run in progress, for the phone's live view.
@@ -193,6 +207,24 @@ export function useWatchRunBridge(
     if (!enabled || !isServerConnected) return;
     void drain.current().catch(() => undefined);
   }, [enabled, isServerConnected, preferencesLoaded]);
+
+  // A run filed before its steps reached Apple Health is measured again once
+  // its wait is over. Nothing else may happen then (no run finishing, no
+  // reconnect), so look on a timer and whenever the app comes back to the
+  // front; the drain itself skips what is not due yet.
+  useEffect(() => {
+    if (!enabled || !isServerConnected) return;
+    const timer = setInterval(() => {
+      void drain.current().catch(() => undefined);
+    }, FORM_RETRY_AFTER_MS);
+    const foreground = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void drain.current().catch(() => undefined);
+    });
+    return () => {
+      clearInterval(timer);
+      foreground.remove();
+    };
+  }, [enabled, isServerConnected]);
 
   // A diary request can fail while the identity check still says the server
   // is up. Try that run again once; the drain itself waits if it is not.

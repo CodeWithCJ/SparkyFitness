@@ -500,6 +500,21 @@ export const setExerciseEntryStrideLength = async (
   return attachExerciseEntryWatchTelemetry(id, { strideLengthCm });
 };
 
+/**
+ * Sets the cadence and stride of an entry alone, through the telemetry-only
+ * endpoint. For a watch run filed before its steps had reached Apple Health,
+ * whose form is measured afterwards.
+ */
+export const setExerciseEntryForm = async (
+  id: string,
+  form: { avgCadence: number; strideLengthCm: number | null }
+): Promise<void> => {
+  return attachExerciseEntryWatchTelemetry(id, {
+    avgCadence: form.avgCadence,
+    ...(form.strideLengthCm != null && { strideLengthCm: form.strideLengthCm }),
+  });
+};
+
 export const getWorkout = async (
   id: string
 ): Promise<PresetSessionResponse> => {
@@ -567,6 +582,8 @@ export const attachExerciseEntryWatchTelemetry = async (
     }[];
     /** Stride length in cm; null clears it. */
     strideLengthCm?: number | null;
+    /** Average cadence in steps per minute; null clears it. */
+    avgCadence?: number | null;
   }
 ): Promise<void> => {
   return apiFetch<void>({

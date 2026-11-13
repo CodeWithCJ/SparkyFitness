@@ -1,3 +1,4 @@
+import { addLog } from './LogService';
 import { getHealthStepsBetween, getStepsBetween } from './stepCounter';
 import { getStride, learnStride } from './strideCalibration';
 import {
@@ -9,6 +10,7 @@ import {
   MIN_CALIBRATION_METERS,
 } from '../utils/stride';
 import type { DiaryActivity } from '../utils/gpsRecording';
+import { createSerialQueue } from '../utils/serialQueue';
 
 /** What a recording needs to turn steps into distance. */
 export interface StepWindow {
@@ -96,6 +98,71 @@ export async function learnFromIndoorEntry(
     Math.abs(enteredKm - estimate.distanceKm) <= estimate.distanceKm * 0.01;
   if (unchanged) return;
   await learnStride(activity, estimate.steps, enteredKm * 1000);
+}
+
+/**
+ * Learns from a treadmill run the watch recorded, once the person has entered
+ * what the machine showed. The steps come from Apple Health over the run's
+ * window (the watch writes them there, and the phone can be left on the
+ * treadmill), falling back to the phone's pedometer. A window with too few steps teaches nothing. Asks for
+ * Motion & Fitness only on that fallback, and only when `askForPermission`
+ * (the person has just acted on the run), never from a background filing. `runId` keeps a run to one sample however often it is taught.
+ * Returns whether a stride was learned.
+ */
+/**
+ * Watch-run learning, one at a time, Health read included: two corrections of
+ * the same run in quick succession must teach in the order they were made, or
+ * a slow read for the earlier one would replace the later distance.
+ */
+const watchRunLearning = createSerialQueue();
+
+export function learnFromWatchRun(
+  window: StepWindow,
+  distanceMeters: number,
+  runId?: string,
+  askForPermission = true
+): Promise<boolean> {
+  return watchRunLearning(() =>
+    learnFromWatchRunNow(window, distanceMeters, runId, askForPermission)
+  );
+}
+
+async function learnFromWatchRunNow(
+  window: StepWindow,
+  distanceMeters: number,
+  runId: string | undefined,
+  askForPermission: boolean
+): Promise<boolean> {
+  if (!isStepActivity(window.activity)) return false;
+  const health = await getHealthStepsBetween(
+    window.startedAt,
+    window.finishedAt
+  );
+  const steps =
+    health != null
+      ? Math.round(
+          health *
+            activeShare(
+              window.activeSeconds,
+              (window.finishedAt - window.startedAt) / 1000
+            )
+        )
+      : await activeSteps(window, askForPermission);
+  // Every way this can learn nothing is logged, since the stride otherwise
+  // just stays blank with no hint why.
+  if (steps == null || steps < MIN_STEPS_FOR_ESTIMATE) {
+    addLog(
+      `[Stride] No ${window.activity} stride learned: ${
+        steps == null
+          ? health == null
+            ? 'Apple Health had no steps over the run (not synced from the watch yet, or step access is off) and the phone had none to use'
+            : 'no steps could be counted'
+          : `only ${steps} steps counted`
+      }`
+    );
+    return false;
+  }
+  return learnStride(window.activity, steps, distanceMeters, runId);
 }
 
 /**
