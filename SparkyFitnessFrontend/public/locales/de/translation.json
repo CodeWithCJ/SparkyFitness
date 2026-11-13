@@ -181,11 +181,11 @@
       "canUseExerciseLibrary": "Meine Übungs- und Trainingsbibliothek verwenden",
       "canUseExerciseLibraryHelp": "Ermöglicht der bevollmächtigten Person, bei aktiviertem Kontextwechsel deine eigenen Übungen und Trainingsvorlagen anzuzeigen und zu verwenden. Gewährt keinen Zugriff auf Tagebucheinträge oder Profileinstellungen.",
       "canManageCheckin": "Check-in-Daten verwalten",
-      "canManageCheckinHelp": "Ermöglicht der bevollmächtigten Person, in deinem Namen Gewicht, Körpermaße, Fortschrittsfotos, Schlaf- und Stimmungseinträge sowie den Fastenstatus zu erfassen. Tagebucheinträge sind gesperrt. Gewährt ausschließlich Lesezugriff auf das Profil.",
+      "canManageCheckinHelp": "Ermöglicht der bevollmächtigten Person, in deinem Namen Gewicht, Körpermaße, Fortschrittsfotos, Schlaf- und Stimmungseinträge sowie den Fastenstatus zu erfassen. Gewährt außerdem Zugriff auf deine Laborwerte. Tagebucheinträge sind gesperrt. Gewährt ausschließlich Lesezugriff auf das Profil.",
       "canManageMedications": "Medikamente verwalten",
       "canManageMedicationsHelp": "Ermöglicht der bevollmächtigten Person, in deinem Namen Medikamente, Dosen, Titrationspläne und Injektionsstellen zu protokollieren. Tagebucheinträge sind gesperrt. Gewährt schreibgeschützten Profilzugriff.",
       "canViewReports": "Berichte anzeigen",
-      "canViewReportsHelp": "Ermöglicht der bevollmächtigten Person, Diagramme, Statistiken und vergangene Einträge in deinem Dashboard anzuzeigen. Es werden keine Schreibrechte gewährt. Gewährt ausschließlich Lesezugriff auf das Profil.",
+      "canViewReportsHelp": "Ermöglicht der bevollmächtigten Person, Diagramme, Statistiken und vergangene Einträge in deinem Dashboard anzuzeigen. Gewährt außerdem Lesezugriff auf deine Laborwerte. Es werden keine Schreibrechte gewährt. Gewährt ausschließlich Lesezugriff auf das Profil.",
       "shareExternalProviders": "Externe Datenanbieter teilen",
       "shareExternalProvidersHelp": "Ermöglicht der bevollmächtigten Person, über deine konfigurierten API-Anbieter (z. B. FatSecret, USDA) nach Lebensmitteln und Übungen zu suchen. Gesundheitsintegrationen (Garmin, Fitbit usw.) bleiben strikt privat und werden niemals geteilt.",
       "accessEndDate": "Enddatum des Zugriffs (optional)",
@@ -357,7 +357,7 @@
         "supportsAudioInputDescription": "Aktiviere dies nur, wenn das ausgewählte Modell Audiodateien akzeptiert. Ist diese Konfiguration für die Spracheingabe ausgewählt, werden Audioaufnahmen zur Transkription an dieses Modell gesendet.",
         "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt.",
         "loadModels": "Modelle laden",
-        "loadingModels": "Lade Modelle",
+        "loadingModels": "Lade Modelle…",
         "openCodeGoModelsLoadFailed": "Die OpenCode Go-Modelle konnten nicht geladen werden. Überprüfen Sie den API-Schlüssel und versuchen Sie es erneut."
       },
       "userSettings": {
@@ -722,14 +722,14 @@
       "totpEnabled": "Die Authentifizierungs-App ist derzeit aktiviert.",
       "verificationCode": "Bestätigungscode",
       "verify": "Überprüfen und aktivieren",
-      "yourRecoveryCodes": "Deine Wiederherstellungscodes"
+      "yourRecoveryCodes": "Deine Wiederherstellungscodes",
+      "passwordSsoHint": "Leer lassen, wenn du dich per SSO anmeldest."
     },
     "nutrientGoalDirection": {
       "title": "Nährstoffzielrichtung",
       "description": "Lege fest, ob es sich bei jedem Nährstoffziel um einen zu erreichenden Mindestwert, einen nicht zu überschreitenden Höchstwert oder einen anzustrebenden Zielbereich handelt"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Passt dein Tagesziel dynamisch an deinen tatsächlichen Stoffwechsel an. Benötigt eine konsistente Ernährungs- und Gewichtsverfolgung für hohe Genauigkeit.",
       "burnedActivity": "Aktivität (nur Training und Schritte)",
       "burnedBmr": "Aktivität + BMR (dein Grundstoffwechsel)",
       "burnedTitle": "Verbrannte Kalorien",
@@ -749,7 +749,8 @@
       "burnedTdee": "Gesamtkalorien des Geräts (Grundumsatz + aktive Kalorien als Fallback)",
       "remainingActivitySeparated": "Tagesziel - Gegessen + Aktivität (Schritte und Trainings, ohne BMR)",
       "activitySeparatedFootnote": "Nach dem Speichern lässt die adaptive Grundlinie vergangene Aktivität außen vor; die heutigen Schritte und Trainings werden einmal ohne BMR angerechnet. Vom Server berechnete Vorschauwerte nutzen deine gespeicherten Einstellungen.",
-      "remainingTdeeWeekly": "Prognostizierter TDEE + wöchentliche Anpassung − Gegessen"
+      "remainingTdeeWeekly": "Prognostizierter TDEE + wöchentliche Anpassung − Gegessen",
+      "adaptiveEstimateFootnote": "Passt dein Tagesziel schrittweise mithilfe von Schätzungen aus Ernährungs- und Gewichtseinträgen an. Gewichtsschwankungen und unvollständige Protokolle erhöhen die Unsicherheit."
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Sehr aktiv (×1,725)",
@@ -758,9 +759,9 @@
       "activityModerate": "Mäßig aktiv (×1,55)",
       "activityNone": "Keine (×1,0)",
       "activityNotMuch": "Sitzend (×1,2)",
-      "adaptiveActivityHint": "Im adaptiven Modus dient diese Einstellung als Ausweichwert, bis genügend Erfassungsdaten vorliegen. Danach bestimmt sie weiterhin die Plausibilitätsgrenzen. Dein gemessener TDEE wird auf ±500 kcal um BMR × diesen Faktor begrenzt. Ein zu niedrig eingestelltes Aktivitätsniveau kann einen tatsächlich höheren Verbrauch daher nach unten begrenzen.",
+      "adaptiveActivityHint": "Im adaptiven Modus legt diese Einstellung den Formel-Basiswert sowie den Plausibilitätsbereich von ±500 kcal für jede vollständige Schätzung fest. Der angezeigte Schätzwert passt sich schrittweise an und nähert sich wieder dem Formel-Basiswert an, wenn Daten veralten – ein zu niedrig angesetztes Aktivitätslevel kann ihn daher nach unten drücken.",
       "adaptiveGoal": "Adaptives Ziel",
-      "adaptiveGoalDescription": "Dein Kalorienziel wird anhand deines gemessenen Kalorienverbrauchs ermittelt, indem deine erfasste Kalorienaufnahme mit deiner Gewichtsentwicklung der letzten 28 Tage verglichen wird. Dies ist die genaueste Methode, sobald du einige Wochen lang konsequent dein Gewicht und deine Ernährung protokolliert hast.",
+      "adaptiveGoalDescription": "Dein Kalorienziel nutzt den geschätzten Verbrauch aus protokollierten Mahlzeiten und gemessenen Gewichten. Neue vollständige Daten fließen schrittweise ein, während ältere Daten in Richtung des BMR-basierten Formel-Basiswerts ausblenden. Regelmäßiges Protokollieren hilft, doch fehlende Einträge und Gewichtsschwankungen erhöhen die Unsicherheit.",
       "allowNegativeAdjustment": "Die Fallback-Projektion soll das Ziel absenken",
       "dynamicGoal": "Dynamisches Ziel",
       "dynamicGoalDescription": "Dein Kalorienziel wird basierend auf deinem täglichen Aktivitätsniveau dynamisch angepasst (z. B. Übung, Schritte). Dies ist ideal für aktive Personen oder Personen, deren Aktivitätsniveau täglich schwankt.",
@@ -876,7 +877,7 @@
       "safetyFloorModeLabel": "Adaptiver Sicherheitsboden",
       "safetyFloorStandardHint": "Es wird der höhere Wert aus deinem geschätzten RMR und dem klinischen Mindestwert (1.200 kcal für Frauen, 1.500 kcal für Männer) zugrunde gelegt.",
       "safetyFloorValueLabel": "Benutzerdefiniertes Minimum",
-      "clampAdviceEstimated": ". Um schneller abzunehmen, steigere deinen Kalorienverbrauch durch körperliche Aktivität oder überprüfe, ob dein Aktivitätsniveau zu niedrig angesetzt ist. Bis genügend Daten für eine gemessene Basislinie vorliegen, legt es diese Obergrenze fest.",
+      "clampAdviceEstimated": ". Prüfe, ob dein Aktivitätslevel nicht zu niedrig angesetzt ist: Es legt den Formel-Basiswert und die Plausibilitätsgrenzen fest, die während der gesamten schrittweisen Berechnung des adaptiven TDEE verwendet werden.",
       "safetyFloorStandard": "Standard (RMR / klinisches Minimum)",
       "customPercentageUnreachable": "Tiefer als die ~{{percent}} %, die dein Mindestwert zulässt; das Ziel wird auf diesen Mindestwert angehoben.",
       "deficitCeilingHintEstimated": "Bei deinem derzeitigen Aktivitätsniveau beträgt das tiefstmögliche Defizit etwa {{percent}} %. Tiefere Modi werden auf dein Sicherheitsminimum angehoben.",
@@ -889,8 +890,8 @@
         "bulk": "Aufbau",
         "manual": "Manuell"
       },
-      "deficitCeilingHintMeasured": "Basierend auf deinem gemessenen TDEE beträgt das tiefstmögliche Defizit etwa {{percent}} %. Tiefere Modi werden auf deinen Sicherheitsboden angehoben.",
-      "clampAdviceMeasured": ". Um schneller abzunehmen, steigere deinen tatsächlichen Verbrauch, statt die Kalorienzufuhr weiter zu senken. Da deine Basis gemessen wird, wirkt sich die Einstellung des Aktivitätsniveaus nicht mehr darauf aus.",
+      "deficitCeilingHintMeasured": "Basierend auf deinem geschätzten TDEE beträgt das maximal erreichbare Defizit etwa {{percent}} %. Tiefere Modi werden auf deine Sicherheitsuntergrenze angehoben.",
+      "clampAdviceMeasured": ". Beim adaptiven TDEE legt das Aktivitätslevel weiterhin den Formel-Basiswert sowie die Plausibilitätsgrenzen fest und beeinflusst die schrittweise Rückkehr zu diesem Basiswert, wenn Daten veralten.",
       "dailyCalorieTarget": "Tägliches Kalorienziel:",
       "perWeek": "/ Woche",
       "rate": "Rate:",
@@ -909,18 +910,13 @@
       "unsafeGainText": "Wer mehr als 0,5 % des Körpergewichts pro Woche zunimmt, baut überwiegend Fett statt Muskeln auf. Ein langsamerer Überschuss baut eine ähnliche Menge Muskeln bei deutlich weniger Fettzunahme auf.",
       "unsafeLossTitle": "Unsichere Gewichtsabnahmerate",
       "unsafeLossText": "Ein Verlust von mehr als 1,5 % des Körpergewichts pro Woche gilt als übermäßig. Diese Rate erhöht das Risiko für starken Muskelabbau, Erschöpfung, hormonelle Ungleichgewichte und Nährstoffmängel erheblich. Wähle einen weniger aggressiven Zielmodus.",
-      "calibrationDescription": "Sparkys adaptive TDEE-Engine benötigt mindestens {{required}} Tage durchgängiger Erfassung, um deinen Stoffwechsel genau zu berechnen. Derzeit werden Ausweichschätzungen verwendet. So beschleunigst du die Kalibrierung:",
-      "calibrationWeightTip": "Erfasse dein Gewicht mindestens 3–4 Mal pro Woche.",
-      "calibrationFoodTip": "Erfasse täglich deine Nahrungsaufnahme (>200 kcal/Tag).",
       "livePreviewSavedNote": "BMR und Körperfett werden bei Änderungen der Einstellungen sofort aktualisiert. Der Verbrauch wird auf dem Server aus deinen gespeicherten Einstellungen berechnet, daher ändern sich dieser und das endgültige Ziel erst nach dem Speichern.",
       "kcalCalories": "kcal (Kalorien)",
       "kJJoules": "kJ (Joule)",
-      "adaptiveGoalTheGoldStandard": "<span>Adaptives Ziel:</span> Der „Goldstandard“. SparkyFitness berechnet deinen TDEE, indem es deine tatsächlichen Gewichtsveränderungen der letzten 35 Tage mit deiner Kalorienaufnahme abgleicht. So „lernt“ es deinen individuellen Stoffwechsel.",
       "dynamicGoalYourCalorieGoal": "<span>Dynamisches Ziel:</span> Dein Kalorienziel wird basierend auf deinem täglichen Aktivitätsniveau dynamisch angepasst (z. B. Training, Schritte). Ideal für aktive Personen oder Personen, deren Aktivitätsniveau täglich schwankt.",
       "fixedGoalYourCalorieGoal": "<span>Festes Ziel:</span> Dein Kalorienziel bleibt unabhängig von deiner täglichen Aktivität gleich. Geeignet für Personen mit konstantem Aktivitätsniveau oder für alle, die ein stabiles Ziel bevorzugen.",
       "percentageEarnBackOnlyEarn": "<span>Prozentuale Anrechnung:</span> Lass dir nur einen festgelegten Prozentsatz deiner Trainingskalorien gutschreiben. Beispielsweise schafft 50 % einen Sicherheitspuffer, um übermäßiges Essen aufgrund eines überschätzten Kalorienverbrauchs zu vermeiden.",
       "deviceProjectionUsesHealthConnect": "<span>Geräteprojektion:</span> Verwendet die Gesamtkalorien des Geräts (Health Connect, Garmin oder Polar), sofern verfügbar, rechnet den aktuellen Verbrauch bis Mitternacht hoch und wendet den Zielmodus direkt auf diesen TDEE an. Ist kein Gesamtwert des Geräts verfügbar, werden Grundumsatz plus aktive Kalorien verwendet.",
-      "inAdaptiveModeThisIs": "💡 Im adaptiven Modus dient diese Einstellung als Ausweichwert, bis genügend Erfassungsdaten vorliegen – und bestimmt danach weiterhin die Plausibilitätsgrenzen. Dein gemessener TDEE wird auf ±500 kcal um BMR × diesen Faktor begrenzt. Ein zu niedrig eingestelltes Niveau kann einen tatsächlich höheren Verbrauch daher nach unten begrenzen.",
       "bodyRecomposition10": "Körperrekomposition (-10 %)",
       "cut15": "Diät (-15 %)",
       "highCut20": "Starke Diät (-20 %)",
@@ -951,7 +947,12 @@
       "weeklyHint": "Das ist eine gewünschte Rate, keine Garantie. Dein Kalorienziel nutzt dieselbe Schätzung wie die Gewichtsprognose, und dein eingestellter Sicherheitsboden gilt weiterhin.",
       "baselineActivityExcluded": "Adaptive Grundlinie (ohne Aktivität)",
       "adaptiveActivitySeparate": "Aktivitätskalorien getrennt zählen",
-      "adaptiveActivitySeparateHint": "Nach dem Speichern wird eine Grundlinie ohne vergangene Aktivität gelernt, und die heutigen Schritte und Trainings werden einmal angerechnet, ohne den BMR erneut hinzuzufügen. Dafür braucht es einen lückenlosen Verlauf von Ernährung, Gewicht, Schritten und Trainings. Bis genug Verlauf vorliegt, gilt BMR × dein Aktivitätsfaktor ohne Training."
+      "adaptiveActivitySeparateHint": "Nach dem Speichern wird eine Grundlinie ohne vergangene Aktivität gelernt, und die heutigen Schritte und Trainings werden einmal angerechnet, ohne den BMR erneut hinzuzufügen. Dafür braucht es einen lückenlosen Verlauf von Ernährung, Gewicht, Schritten und Trainings. Bis genug Verlauf vorliegt, gilt BMR × dein Aktivitätsfaktor ohne Training.",
+      "adaptiveWeightIntervalTip": "Erfasse dein tatsächliches Gewicht zu möglichst festen Zeiten und protokolliere deine Ernährung über den gesamten Beobachtungszeitraum.",
+      "adaptiveFoodIntervalTip": "Protokolliere deine Ernährung so vollständig wie möglich; ein gewerteter Tag kann auch unvollständig erfasst sein.",
+      "adaptiveGoalMatchedEvidence": "<span>Adaptives Ziel:</span> Schätzt den Energieverbrauch anhand von Ernährungsprotokollen und gemessenen Gewichten über übereinstimmende Beobachtungszeiträume. Neue Daten fließen schrittweise ein; ältere, unsichere oder gedeckelte Werte können das Ergebnis weiterhin beeinflussen. Fehlende Einträge und Gewichtsschwankungen erhöhen die Unsicherheit.",
+      "adaptivePlausibilityBandHint": "💡 Im adaptiven Modus legt dies den Formel-Basiswert sowie den Plausibilitätsbereich von ±{{band}} {{unit}} für jede vollständige Schätzung fest. Der angezeigte Schätzwert passt sich schrittweise an und nähert sich wieder dem Formel-Basiswert an, wenn Daten veralten – ein zu niedrig angesetztes Aktivitätslevel kann ihn daher nach unten drücken.",
+      "adaptiveFallbackDescription": "Der Formel-Basiswert wird verwendet, solange verwertbare Gewichts- und Ernährungsdaten gesammelt werden. Unvollständige Tage und Gewichtsschwankungen erhöhen weiterhin die Unsicherheit; ausreichende Einträge ermöglichen eine Schätzung, ersetzen aber keine direkte Stoffwechselmessung."
     },
     "breakdown": {
       "goalSurplusLabel": "Zielüberschuss:",
@@ -960,13 +961,15 @@
       "surplus": "Überschuss",
       "deficit": "Defizit",
       "adaptiveFormula": "Formel: Durchschnittliche tägliche Kalorien − (tägliche Gewichtsveränderung in {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
-      "adaptiveFormulaExplainer": "{{kcalPerUnit}} kcal/{{massUnit}} entspricht dem Energiegehalt von jeweils {{unitName}} Körpergewicht, sodass dein Gewichtstrend in Kalorien umgerechnet werden kann. Verlorenes oder hinzugewonnenes Körpergewicht besteht aus einer Mischung aus Fett (~{{fatPerUnit}} kcal/{{massUnit}}), fettfreier Masse und Wasser (~{{leanPerUnit}} kcal/{{massUnit}}). {{kcalPerUnit}} stellt dabei eine typische Mischung dar.",
+      "adaptiveFormulaExplainer": "Die Berechnung geht von {{kcalPerUnit}} kcal/{{massUnit}} für nachhaltige Gewebeveränderungen aus. Eine Einheit ({{unitName}}) des Gewichts auf der Waage kann auch Wasser, Glykogen und Darminhalt umfassen; diese Schätzung kann weder deren Energiegehalt noch deine Körperzusammensetzung messen. Fett (~{{fatPerUnit}} kcal/{{massUnit}}) und fettfreie Masse (~{{leanPerUnit}} kcal/{{massUnit}}) haben unterschiedliche Energiedichten.",
       "adjustment": "Anpassung",
-      "goalAdjustmentLabel": "Zielanpassung:"
+      "goalAdjustmentLabel": "Zielanpassung:",
+      "adaptiveWeightedFormula": "Formel: Gewichtete tägliche Zufuhr − (Beobachtete tägliche Gewichtsänderung in {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
+      "adaptiveCompatibilityDensity": "Der Faktor {{kcalPerUnit}} kcal/{{massUnit}} wird als Kompatibilitätsannahme beibehalten. Die tatsächliche Energiedichte variiert je nach Zusammensetzung und Richtung der Gewichtsänderung; sie ist kein fester Messwert für jede Einheit auf der Waage. Diese Berechnung unterscheidet nicht zwischen Wasser, Fett oder Muskelmasse."
     },
     "calorieBreakdown": {
       "confidence": "Sicherheit: {{level}}",
-      "adaptiveConfidenceCaveat": "Basierend auf {{days}} Tag(en) mit Kalorienprotokollen. Zu wenig erfasste Kalorien lassen diese Schätzung höher erscheinen. Protokolliere durchgängig, um sie zu verbessern.",
+      "adaptiveConfidenceCaveat": "Basierend auf {{days}} Tag(en) mit Kalorienprotokollen. Eine zu niedrig erfasste Zufuhr kann dazu führen, dass diese Schätzung zu gering ausfällt; unvollständige Tage und Gewichtsschwankungen erhöhen die Unsicherheit.",
       "bodyFatUsed": "Der oben gemessene Wert wird von dieser BMR-Formel verwendet; die Schätzung dient nur zum Vergleich.",
       "bodyFatMissing": "{{algorithm}} verwendet den Körperfettanteil, aber es ist keine Messung erfasst. Erfasse einen Wert für ein genaues Ziel.",
       "bodyFatUnused": "Nur zur Information angezeigt – {{algorithm}} berücksichtigt den Körperfettanteil nicht als Eingabewert.",
@@ -974,7 +977,8 @@
       "customFloorDescription": "selbst festgelegten Mindestwert",
       "customFloorActive": "Ein benutzerdefinierter Sicherheitsboden ist aktiv; die empfohlenen Grenzwerte werden trotzdem oben angezeigt.",
       "raisedToSafetyFloor": "⚠️ Das Tagesbudget wurde automatisch auf den Grenzwert des Sicherheitsbodens angehoben.",
-      "safetyFloorDisabled": "Die automatische Begrenzung durch den Sicherheitsboden ist deaktiviert; die empfohlenen Grenzwerte werden trotzdem oben angezeigt."
+      "safetyFloorDisabled": "Die automatische Begrenzung durch den Sicherheitsboden ist deaktiviert; die empfohlenen Grenzwerte werden trotzdem oben angezeigt.",
+      "latestAdaptiveConfidence": "Zuverlässigkeit der letzten Berechnung: {{level}}"
     },
     "allergens": {
       "title": "Allergenpräferenzen",
@@ -2994,7 +2998,8 @@
     "previousDay": "Vorheriger Tag",
     "nextDay": "Nächster Tag",
     "average": "Ø",
-    "range": "Zeitraum"
+    "range": "Zeitraum",
+    "retry": "Erneut versuchen"
   },
   "diary": {
     "nutritionSummary": "Ernährungsübersicht",
@@ -3075,27 +3080,26 @@
       "invalidMeasurements": "Ungültige Messwerte für die Log-Berechnung.",
       "navyMaleMath": "Formel (männlich): 86,01 × log10(Taille − Hals) − 70,041 × log10(Größe) + 36,76 (in Zoll)\nBerechnung: 86,01 × log10({{waist}} Zoll − {{neck}} Zoll) − 70,041 × log10({{height}} Zoll) + 36,76\nErgebnis: {{result}} %",
       "navyFemaleMath": "Formel (weiblich): 163,205 × log10(Taille + Hüfte − Hals) − 97,684 × log10(Größe) − 78,387 (in Zoll)\nBerechnung: 163,205 × log10({{waist}} Zoll + {{hips}} Zoll − {{neck}} Zoll) − 97,684 × log10({{height}} Zoll) − 78,387\nErgebnis: {{result}} %",
-      "fallbackInsufficient": "Für das Ziel wird aufgrund unzureichender Daten der Ausweich-BMR ({{value}} {{unit}}) verwendet.",
-      "fallbackWeight": "Für das Ziel wird der Ausweich-BMR ({{value}} {{unit}}) verwendet, da Gewichtsprotokolle fehlen (mindestens 2 Gewichtseinträge über 7+ Tage erforderlich).",
-      "fallbackCalories": "Für das Ziel wird der Ausweich-BMR ({{value}} {{unit}}) verwendet, da Kalorienprotokolle fehlen (mindestens 7 Tage mit ≥200 kcal erforderlich).",
-      "fallbackUnknown": "Für das Ziel wird der Ausweich-BMR ({{value}} {{unit}}) verwendet, Grund: {{reason}}",
-      "fallbackRequiredDays": "Für das Ziel wird der Ausweich-BMR ({{value}} {{unit}}) verwendet, bis {{required}} Tage mit Kalorienprotokollen erreicht sind (derzeit {{days}}/{{required}} Tage erfasst).",
+      "fallbackInsufficient": "Für das Ziel wird aufgrund unzureichender Daten der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet.",
+      "fallbackWeight": "Für das Ziel wird der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet, da zu wenige Gewichtsdaten vorliegen (mindestens {{readings}} Messtage über {{span}}+ Tage erforderlich).",
+      "fallbackCalories": "Für das Ziel wird der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet, da zu wenige Kaloriendaten vorliegen (mindestens {{required}} Tage mit ≥200 kcal erforderlich).",
+      "fallbackUnknown": "Für das Ziel wird der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet, Grund: {{reason}}",
+      "fallbackRequiredDays": "Für das Ziel wird der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet, bis {{required}} Tage mit Kalorienprotokollen erreicht sind (derzeit {{days}}/{{required}} Tage erfasst).",
       "adaptiveTitle": "3. Adaptives TDEE (Verbrauch)",
       "fallbackEstimate": "Ausweichschätzung",
       "adaptiveTdee": "Adaptives TDEE",
-      "adaptiveFormula": "Formel: Durchschnittliche Tageskalorien − (tägliche Gewichtsänderung in kg × 7700 kcal)",
+      "adaptiveFormula": "Formel: Durchschnittliche Tageskalorien − (Tägliche Gewichtsänderung in {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
       "adaptiveBypassedStatus": "Status: Rohberechnung ({{value}} {{unit}}) wegen unzureichender Historie umgangen.",
       "adaptiveChecklist": "Checkliste für den Übergang vom Ausweichwert zum adaptiven TDEE:",
-      "weightLogRequirement": "• Gewichtsprotokolle (2+ Einträge über 7+ Tage)",
+      "weightLogRequirement": "Gewichtsprotokolle ({{readings}}+ Messtage über {{span}}+ Tage)",
       "weightLogsMissing": "❌ Fehlt (Check-in-Gewichtsprotokolle)",
       "requirementMet": "✓ Erfüllt",
-      "calorieLogRequirement": "• Kalorienprotokolle für die TDEE-Berechnung (7+ Tage ≥ 200 kcal)",
+      "calorieLogRequirement": "Kalorienprotokolle für die TDEE-Berechnung und automatische Ziele ({{required}}+ Tage ≥ 200 kcal)",
       "daysMissing": "❌ Fehlt ({{days}}/{{required}} Tage erfasst)",
       "daysMet": "✓ Erfüllt ({{days}}/{{required}} Tage erfasst)",
-      "stabilityRequirement": "• Kalorienprotokolle für ein stabiles Zielbudget ({{required}}+ Tage ≥ 200 kcal)",
       "daysWarning": "⚠️ Fehlt ({{days}}/{{required}} Tage erfasst)",
       "usingFallbackBmr": "Ausweich-BMR × Aktivitätsfaktor verwenden:",
-      "fallbackMath": "Berechnung: BMR ({{bmr}} kcal) × Aktivitätsfaktor ({{multiplier}}) = {{result}} {{unit}}",
+      "fallbackMath": "Berechnung: BMR ({{bmr}} {{unit}}) × Aktivitätsfaktor ({{multiplier}}) = {{result}} {{unit}}",
       "adaptiveActiveStatus": "Status: Aktiv (Basiswert aus Protokollen berechnet).",
       "averageDailyIntake": "Durchschnittliche tägliche Kalorienaufnahme:",
       "calculatedExpenditure": "Berechneter Verbrauch (TDEE):",
@@ -3105,7 +3109,7 @@
       "adaptiveManualGoal": "Adaptives manuelles Kalorienziel",
       "targetSafeRange": "✓ Ziel liegt im sicheren Bereich oberhalb des metabolischen Sicherheitsbodens.",
       "weightTrendTerm": "Gewichtstrend: {{start}} → {{end}} ({{change}} über die {{days}} Tage zwischen dem ersten und letzten Tag des Zeitraums) = {{daily}} {{massUnit}}/Tag — 7-Tage-Durchschnitte deiner erfassten Gewichte, nicht die Einzelmessungen selbst, mit dazwischen ausgefüllten fehlenden Tagen",
-      "weightTrendCalories": "Energie aus diesem Trend: −({{daily}} {{massUnit}}/Tag × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
+      "weightTrendCalories": "Energie aus der angewandten Gewichtsrate: −({{daily}} {{massUnit}}/Tag × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
       "adaptiveClamped": "Der Rohschätzwert von {{raw}} {{unit}} wurde auf {{capped}} {{unit}} begrenzt, die Plausibilitätsgrenze von ±{{band}} {{unit}} um deine BMR-basierte Schätzung ({{min}}–{{max}} {{unit}}).",
       "intakeWindow": "(Mittelwert aus {{logged}} erfassten Tagen zwischen {{start}} und {{end}}; Tage unter 200 kcal werden ausgeschlossen, nicht als Null gezählt)",
@@ -3131,7 +3135,48 @@
       "stepBmr": "Grundumsatz (BMR)",
       "stepBodyFat": "Körperfettanteil",
       "stepAdaptive": "Adaptiver Gesamtumsatz (TDEE)",
-      "stepGoal": "Tägliches Kalorienziel"
+      "stepGoal": "Tägliches Kalorienziel",
+      "fallbackOverlap": "Es wird der Formel-Basiswert ({{value}} {{unit}}) verwendet, da der letzte Gewichts-Beobachtungszeitraum weniger als {{required}} gewertete Kalorientage enthielt. Es wird ein neuer abgeschlossener Wiegetag mit ausreichend überschneidenden Ernährungsdaten benötigt, selbst wenn die aktuellen Checklisten-Anforderungen erfüllt sind.",
+      "fallbackAlignedOverlap": "Es wird der Formel-Basiswert ({{value}} {{unit}}) verwendet, da der letzte Gewichts-Beobachtungszeitraum weniger als {{required}} gewertete Ernährungstage enthielt. Der erste Wiegetag ist eingeschlossen, der letzte ausgeschlossen. Es wird ein neuer abgeschlossener Wiegetag mit ausreichend passenden Ernährungsdaten benötigt, selbst wenn die {{window}}-Tage-Checklistenwerte erreicht sind.",
+      "fallbackWeightIntervals": "Für das Ziel wird der BMR-basierte Formel-Basiswert ({{value}} {{unit}}) verwendet, da zu wenige Gewichtsdaten vorliegen (mindestens {{readings}} Messtage über {{span}}+ Tage innerhalb von {{window}} abgeschlossenen Tagen mit gewerteten Ernährungsprotokollen dazwischen erforderlich).",
+      "weightIntervalRequirement": "Gewichtsprotokolle ({{readings}}+ Messtage über {{span}}+ Tage innerhalb von {{window}} abgeschlossenen Tagen)",
+      "calorieIntervalRequirement": "• Kalorienprotokolle im {{window}}-Tage-Rückblick ({{required}}+ gewertete Tage ≥ 200 kcal)",
+      "calorieOverlapAction": "Eine vollständige Schätzung erfordert zudem {{required}} gewertete Ernährungstage zwischen den angepassten Gewichten: Der erste Wiegetag ist eingeschlossen, der letzte ausgeschlossen. Der Gesamtwert des Rückblicks allein bestätigt diese Überschneidung nicht.",
+      "formulaBaselineDetail": "BMR ({{bmr}} {{unit}}) × Aktivitätsfaktor ({{multiplier}}) = {{result}} {{unit}}. Derzeit fließen keine erlernten Daten in diesen Basiswert ein.",
+      "fittedWeightTrend": "Berechneter Gewichtstrend: {{start}} → {{end}} ({{change}} über {{days}} Tage) = {{daily}} {{massUnit}}/Tag — eine an die tatsächlichen Messtage angepasste Trendlinie; fehlende Tage werden nicht aufgefüllt.",
+      "observedWeightRateSummary": "Beobachteter Gewichtstrend: {{sign}}{{rate}} {{unit}}/Woche.",
+      "adaptiveCalculationDetails": "Berechnungsdetails",
+      "adaptiveSummaryFallback": "Status: Formel-Basiswert aktiv, da mehr überschneidende Gewichts- und Ernährungsdaten benötigt werden.",
+      "adaptiveSummaryFading": "Status: Nähert sich wieder dem Formel-Basiswert an, da Daten veralten.",
+      "adaptiveSummaryAdjusting": "Status: Passt sich noch an; ältere Daten verbleiben in der schrittweisen Schätzung.",
+      "adaptiveSummaryWeeklyWeighIn": "Status: Wiege dich mindestens wöchentlich, um Zielempfehlungen freizuschalten.",
+      "adaptiveSummaryReady": "Status: Adaptive Schätzung; die aktuellen Verlaufsdaten erfüllen die Qualitätskriterien.",
+      "adaptiveLearnedContributions": "Erlernte Beiträge: {{days}} von {{window}} Tagen in der schrittweisen Schätzung.",
+      "adaptiveHistoryQualityMet": "Der ausgewählte Verlauf erfüllt die Kriterien für Aktualität, Zuverlässigkeit und Plausibilität. Dies garantiert jedoch nicht, dass die Schätzung eine tatsächliche Veränderung bereits vollständig abbildet.",
+      "adaptiveHistoryQualityPending": "Der gesamte ausgewählte Verlauf ist noch nicht bestätigt: Ältere, unsichere, veraltete oder gedeckelte Daten können diesen Wert noch beeinflussen, selbst wenn die letzte Berechnung stabil wirkt. Der Wert passt sich weiterhin schrittweise an.",
+      "regressionIntervalAssumption": "Ernährung und Aktivität nutzen dieselben positiven Regressionsgewichte vom ersten angepassten Wiegetag (eingeschlossen) bis zum letzten angepassten Wiegetag (ausgeschlossen). Bei reinen Tageseinträgen geht das Modell von Wägungen zu festen Tageszeiten aus; die Ernährung am letzten Wiegetag fließt in eine spätere Berechnung ein.",
+      "weightedDailyCalorieIntake": "Gewichtete tägliche Zufuhr: {{displayAdaptiveIntake}} {{energyUnitString}}",
+      "regressionWeightedIntakeWindow": "({{logged}} gewertete Ernährungstage nutzen die Regressionsgewichte zwischen den angepassten Messungen; der letzte angepasste Wiegetag ist ausgeschlossen. Auswahlzeitraum: {{start}}–{{end}}, bis zu {{window}} abgeschlossene Tage.)",
+      "weightedActivityBaselineMath": "Roher Gesamtumsatz (TDEE) − gewichtete Aktivität = roher adaptiver Basiswert: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} beitragende Ernährungs-/Aktivitätstage mit denselben Intervallgewichten).",
+      "adaptiveWholeChainTiming": "Synthetisches Benchmark-Timing bei durchgängigen Tagesdaten: Eine vollständige Erstschätzung dauerte {{startup}} Tage ({{startupWeeks}} Wochen). Eine getestete dauerhafte Verbrauchsänderung erreichte etwa die Hälfte ihrer Anpassung an Tag {{half}}, 90 % an Tag {{ninety}} und die vollständige Anpassung an Tag {{full}} (ca. {{fullWeeks}} Wochen). Lückenhafte Protokolle, Plausibilitätsgrenzen oder ein geänderter Formel-Basiswert können zu abweichenden Ergebnissen führen. Diese Testszenarien stellen weder eine klinische Validierung noch eine persönliche Prognose dar.",
+      "adaptiveUnknownFoodBias": "Tage unter 200 kcal gelten als unbekannt: Sie werden ausgelassen und die verbleibenden Gewichte neu normiert, anstatt mit null aufgefüllt zu werden. Nicht protokollierte höhere Kalorienzufuhr kann den geschätzten Verbrauch zu niedrig ausfallen lassen; echtes, nicht markiertes Fasten kann ihn zu hoch ansetzen. Ein gewerteter Ernährungstag kann dennoch unvollständig sein.",
+      "measuredWeightCoverage": "Beobachtete Gewichte: {{readings}} Messtage über {{span}} Tage.",
+      "adaptiveStatusLearning": "Status: Lernphase ({{days}}/{{window}} Tageseingaben enthalten erlernte Daten).",
+      "adaptiveStatusAdaptive": "Status: Adaptiv (schrittweise Schätzung aus vollständigen Daten).",
+      "adaptiveStatusHeld": "Status: Letzte vollständige Schätzung wird gehalten, während auf neue gültige Gewichtsdaten gewartet wird.",
+      "adaptiveStatusFading": "Status: Nähert sich schrittweise wieder dem Formel-Basiswert an, da vollständige Daten veralten.",
+      "adaptiveStatusFallback": "Status: Formel-Basiswert (keine vollständigen Daten tragen zur Schätzung bei).",
+      "adaptiveEvidenceAge": "Letzte vollständige Daten: {{date}} (vor {{days}} Tagen).",
+      "adaptiveWeightAge": "Letztes gemessenes Gewicht: {{date}} (vor {{days}} Tagen).",
+      "adaptiveAlignedHistoryPolicy": "Die Schätzung bildet den Durchschnitt aus {{window}} Tageseingaben. Vollständige Daten werden {{hold}} Tage lang gehalten und blenden dann über {{fade}} Tage hinweg in Richtung Formel-Basiswert aus. Der angezeigte Durchschnitt kann sich weiter verändern, während diese Daten gehalten werden.",
+      "adaptiveAlignedDailyBound": "Bei unverändertem Formel-Basiswert und unveränderten vergangenen Einträgen ändert sich die Schätzung pro Tag um maximal {{limit}} {{unit}}/Tag. Geburtstage, Änderungen des gemessenen BMR oder Profil-/Einstellungsänderungen können den Basiswert verändern; korrigierte vergangene Einträge können ebenfalls zu einer Neuberechnung führen.",
+      "adaptiveWholeChainCaveat": "Das Mittelungsfenster ist nur ein Teil der Anpassung: Das Angleichen von Gewichtsveränderungen, das Mitführen älterer Daten und deren Ausblenden erzeugen ebenfalls eine Verzögerung. Plötzliche Gewichtsschwankungen werden gedämpft, jedoch nicht als Wasser identifiziert oder herausgerechnet. Diese Zeitfenster sind technische Festlegungen und keine klinisch validierten Schwellenwerte.",
+      "observedWeightCalories": "Energie aus der beobachteten Gewichtsrate: −({{daily}} {{massUnit}}/Tag × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
+      "rawExpenditureCandidate": "Roher Verbrauchskandidat: {{energy}} {{energyUnitString}}",
+      "candidatePlausibilityBand": "Plausibilitätsgrenzen basierend auf deinem Aktivitätslevel (×{{multiplier}}): {{min}}–{{max}} {{unit}}. Der rohe Kandidat liegt innerhalb dieses Bereichs; es folgt die Verlaufsanpassung.",
+      "adaptiveHistoryAdjustment": "Verlaufsanpassung: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}} (der {{window}}-Tage-Durchschnitt nach dem Halten und Ausblenden älterer Schätzungen).",
+      "activityCandidateCapped": "Nach der BMR-basierten Plausibilitätsdeckelung beträgt der Kandidat ohne Aktivität {{baseline}} {{unit}}; es folgt seine Verlaufsanpassung.",
+      "activityHistoryAdjustment": "Verlaufsanpassung des Aktivitäts-Basiswerts: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Der Zielmodus und deine Sicherheitsuntergrenze gelten für diesen gefilterten Basiswert."
     },
     "copyAllError": "Kopieren des gesamten Tages fehlgeschlagen.",
     "copyAllFromYesterday": "Alles von gestern kopieren",
@@ -3352,7 +3397,9 @@
       "stepLow": "Kalorien-Cycling (Low-Day):",
       "stepFloor": "Wird auf deiner Sicherheitsuntergrenze gehalten; die anderen Tage gleichen die Differenz aus.",
       "pausedWeeklyPlan": "Kalorien-Cycling ist heute pausiert: Ein wöchentlicher Zielplan legt diesen Tag fest.",
-      "pausedEarnBack": "Kalorien-Cycling ist pausiert: Trainingskalorien werden auf dein Ziel angerechnet."
+      "pausedEarnBack": "Kalorien-Cycling ist pausiert: Trainingskalorien werden auf dein Ziel angerechnet.",
+      "highDay": "Kalorienreicher Tag +{{amount}}",
+      "lowDay": "Kalorienarmer Tag +{{amount}}"
     }
   },
   "foodDiary": {
@@ -3550,7 +3597,8 @@
       "photos": "Fotos",
       "sleep": "Schlaf",
       "mindfulness": "Achtsamkeit",
-      "symptoms": "Symptome"
+      "symptoms": "Symptome",
+      "oralCare": "Mundpflege"
     },
     "bmr": "BMR (kcal)",
     "failedToLoadPreviousCustom": "Vorherige benutzerdefinierte Werte konnten nicht geladen werden.",
@@ -4328,7 +4376,7 @@
       "drinksOver_other": "{{count}} Drinks über dem Limit",
       "upcomingDay": "Noch nicht",
       "stdDrinksG": "Standarddrinks ({{total_g}} g)",
-      "limitG": "Limit: {{limit_standard_drinks}} (<span>{{limit_g}}</span> g)"
+      "limitG": "Limit: {{limit_standard_drinks}} (<span>{{limit_g}}</span>g)"
     },
     "hydration": {
       "title": "Flüssigkeitszufuhr",
@@ -4430,7 +4478,8 @@
       "later": "danach",
       "resetZoom": "Zoom zurücksetzen",
       "windowEvents": "Angezeigte Ereignisse"
-    }
+    },
+    "oralCareTab": "Mundpflege"
   },
   "reportsTables": {
     "foodDiaryTable": "Tabelle Mahlzeitenübersicht",
@@ -5261,7 +5310,7 @@
       "partialTaken": "Teilweise eingenommen",
       "mostlySkipped": "Meist übersprungen",
       "allSkipped": "Alle Dosen übersprungen",
-      "sideEffect": "Symptom als Nebenwirkung",
+      "sideEffect": "Symptom (Nebenwirkung)",
       "generalSymptom": "Allgemeines Symptom",
       "tooltipTaken": "{{count}} genommen",
       "tooltipSkipped": "{{count}} übersprungen",
@@ -5453,7 +5502,7 @@
       "macroLabel_protein": "Eiweiß",
       "macroLabel_carbs": "Kohlenhydrate",
       "nutrientUnit": "Einheit",
-      "addSupplement": "Supplement hinzufügen",
+      "addSupplement": "Nahrungsergänzung hinzufügen",
       "editSupplement": "Supplement bearbeiten",
       "doseForm": "Form",
       "strengthUnit": "Stärkeeinheit",
@@ -6423,7 +6472,7 @@
       "decrease": "{{displayName}} verringern",
       "increase": "{{displayName}} erhöhen",
       "energyLevel": "Energielevel",
-      "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span> ml)",
+      "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span>ml)",
       "energy": "Energie: {{energy}}"
     }
   },
@@ -7041,7 +7090,9 @@
     "fastingZoneBar": {
       "metabolicState": "Stoffwechselzustand",
       "hours": "{{start}}–{{end}} Stunden"
-    }
+    },
+    "logMealToEnd": "Mahlzeit eintragen, um Fasten zu beenden",
+    "autoFastEndsWithMeal": "Dein Fasten wird automatisch anhand deiner Mahlzeiten berechnet und endet, sobald du etwas zu essen einträgst."
   },
   "i18n": {
     "locale": "de-DE"
@@ -10209,8 +10260,8 @@
     "chartOtherUnits_one": "{{count}} Ergebnis in einer anderen Einheit wird nicht dargestellt.",
     "chartOtherUnits_other": "{{count}} Ergebnisse in anderen Einheiten werden nicht dargestellt.",
     "createCustom": "„{{name}}“ als neuen Marker hinzufügen",
-    "date": "Prüfungsdatum",
-    "dateFuture": "Das Prüfungsdatum darf nicht in der Zukunft liegen.",
+    "date": "Abnahmedatum",
+    "dateFuture": "Das Abnahmedatum darf nicht in der Zukunft liegen.",
     "deleteFailed": "Das Ergebnis konnte nicht gelöscht werden",
     "deleteMessage": "Dieses Laborergebnis löschen?",
     "deleteTitle": "Ergebnis löschen",
@@ -10262,11 +10313,11 @@
       "potassium": "Kalium",
       "mcv": "MCV",
       "chloride": "Chlorid",
-      "bicarbonate": "Bikarbonat (CO₂)",
+      "bicarbonate": "Hydrogencarbonat",
       "calcium": "Kalzium",
       "magnesium": "Magnesium",
       "phosphorus": "Phosphor",
-      "bun": "BUN",
+      "bun": "Harnstoff-Kreatinin-Quotient",
       "uric_acid": "Harnsäure",
       "albumin": "Albumin",
       "total_protein": "Gesamtprotein",
@@ -10291,7 +10342,7 @@
       "monocytes": "Monocyten",
       "neutrophils": "Neutrophile",
       "lymphocytes": "Lymphocyten",
-      "ck": "Creatin-Kinase",
+      "ck": "Kreatinkinase",
       "zinc": "Zink",
       "copper": "Kupfer",
       "selenium": "Selen",
@@ -10324,7 +10375,7 @@
       "lh": "LH",
       "mpv": "MPV",
       "rdw": "RDW",
-      "c_peptide": "C-Peptide"
+      "c_peptide": "C-Peptid"
     },
     "rangeFromReport": "Nutze den Referenzbereich aus deinem Befund. Er wird mit diesem Ergebnis gespeichert.",
     "import": {
@@ -10371,5 +10422,108 @@
     "valueInvalid": "Gib einen Marker und einen numerischen Wert ein.",
     "historyCutOff": "Der Verlauf zeigt maximal die neuesten {{count}} Ergebnisse.",
     "dateInvalid": "Gib das Testdatum ein."
+  },
+  "oralCare": {
+    "title": "Mundpflege",
+    "loading": "Mundpflege wird geladen...",
+    "loadError": "Mundpflege für diesen Tag konnte nicht geladen werden.",
+    "types": {
+      "brushing": "Zähneputzen",
+      "flossing": "Zahnseide",
+      "mouthwash": "Mundspülung",
+      "tongue_cleaning": "Zungenreinigung",
+      "other": "Sonstiges"
+    },
+    "goal": {
+      "description": "Ziel: {{count}}-mal täglich für jeweils {{time}} Zähne putzen",
+      "edit": "Ziel",
+      "title": "Zahnputz-Ziel",
+      "dailyTarget": "Zähneputzen pro Tag",
+      "targetTime": "Dauer pro Putzvorgang",
+      "hint": "Zahnärzte empfehlen in der Regel, zweimal täglich für 2 Minuten die Zähne zu putzen.",
+      "saved": "Zahnputz-Ziel gespeichert."
+    },
+    "stats": {
+      "brushed": "Geputzt",
+      "ofTarget": "{{count}} von {{target}}",
+      "goalMet": "Ziel erreicht",
+      "time": "Putzzeit",
+      "atTarget": "{{count}} erreichten {{time}}",
+      "streak": "Serie",
+      "days": "{{count}} Tage",
+      "best": "Rekord: {{count}} Tage",
+      "other": "Weitere Pflege"
+    },
+    "history": {
+      "title": "Einträge",
+      "subtitle": "Hier erfasst oder mit Apple Health synchronisiert",
+      "empty": "Für diesen Tag wurde nichts erfasst"
+    },
+    "source": {
+      "health": "Apple Health",
+      "timer": "Timer"
+    },
+    "coveredBySync": "Auch von Apple Health erfasst · einmal gezählt",
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen"
+    },
+    "dialog": {
+      "editTitle": "Eintrag bearbeiten",
+      "createTitle": "Mundpflege erfassen",
+      "type": "Art",
+      "customLabelPlaceholder": "z. B. Munddusche",
+      "time": "Uhrzeit",
+      "duration": "Dauer (optional)",
+      "minutes": "Minuten",
+      "minutesShort": "Min.",
+      "seconds": "Sekunden",
+      "notes": "Notizen",
+      "customLabel": "Name",
+      "secondsShort": "Sek."
+    },
+    "deleteDialog": {
+      "title": "Diesen Eintrag löschen?",
+      "description": "Ein aus Apple Health synchronisierter Eintrag erscheint bei der nächsten Synchronisierung erneut, sofern du ihn nicht auch in der Health-App löschst."
+    },
+    "errors": {
+      "save": "Der Eintrag konnte nicht gespeichert werden.",
+      "delete": "Der Eintrag konnte nicht gelöscht werden.",
+      "goal": "Das Ziel konnte nicht gespeichert werden."
+    },
+    "report": {
+      "loading": "Mundpflege wird geladen...",
+      "loadError": "Mundpflege-Bericht konnte nicht geladen werden.",
+      "goalDays": "Ziel erreicht",
+      "goalDaysValue": "{{met}} von {{total}} Tagen",
+      "streak": "Aktuelle Serie",
+      "brushesPerDay": "Zähneputzen pro Tag",
+      "goalValue": "Ziel: {{target}}",
+      "minutesPerDay": "Putzminuten pro Tag",
+      "otherCare": "Weitere Pflege: {{count}}",
+      "clamped": "Es werden die letzten 366 Tage des Zeitraums angezeigt.",
+      "brushesChart": "Zähneputzen pro Tag",
+      "goalLine": "Ziel",
+      "brushes": "Putzvorgänge",
+      "minutesChart": "Putzminuten pro Tag",
+      "minutes": "Minuten",
+      "minutesNote": "Nur Putzvorgänge mit erfasster Dauer werden zur Zeit addiert."
+    },
+    "timer": {
+      "title": "Zahnputz-Timer",
+      "subtitle": "{{time}}, ein Quadrant nach dem anderen",
+      "startButton": "Timer starten",
+      "upperLeft": "Oben links",
+      "upperRight": "Oben rechts",
+      "lowerRight": "Unten rechts",
+      "lowerLeft": "Unten links",
+      "done": "Fertig! Putzvorgang speichern",
+      "ready": "Bereit",
+      "start": "Start",
+      "resume": "Fortsetzen",
+      "mute": "Ton ausschalten",
+      "unmute": "Ton einschalten",
+      "pause": "Pause"
+    }
   }
 }

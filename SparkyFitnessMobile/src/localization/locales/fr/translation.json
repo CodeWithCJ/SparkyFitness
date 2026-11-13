@@ -2078,7 +2078,6 @@
       "dailyAdjustment": "Ajustement quotidien estimé : {{sign}}{{amount}} {{unit}}",
       "estimateHint": "Votre objectif hebdomadaire est converti en ajustement calorique quotidien. C'est une estimation ; votre plancher de sécurité configuré peut limiter la perte de poids."
     },
-    "adaptiveFallbackWithUnit": "L'estimation de repli tant que vous n'avez pas assez de données de suivi, qui continue ensuite à fixer les limites de plausibilité. Votre TDEE mesuré est limité à ±{{amount}} {{unit}} autour de BMR × ce coefficient.",
     "adjustMacrosWithExercise": "Ajuster les macros en % avec les calories d'exercice",
     "adjustMacrosWithExerciseHint": "Augmente les objectifs de protéines, de glucides et de lipides selon vos pourcentages enregistrés lorsque l'exercice ajoute des calories à votre budget du jour. Respecte les paramètres de récupération des calories d'exercice. Les objectifs saisis en grammes ne changent pas. Les changements s'appliquent à partir d'aujourd'hui ; les jours précédents gardent leur réglage.",
     "useMoveRingActiveCalories": "Calories actives de l'anneau Bouger",

@@ -1956,7 +1956,6 @@
       "title": "Allergie voorkeuren"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Past uw dagelijkse doel dynamisch aan op basis van uw werkelijke stofwisseling. Voor een hoge nauwkeurigheid is het nodig dat u de voeding en het gewicht consequent bijhoudt.",
       "burnedActivity": "Activiteit (alleen beweging en stappen)",
       "burnedBmr": "Activiteit + BMR (uw basaal metabolisme)",
       "burnedTitle": "Verbruikte calorieën",
@@ -2118,9 +2117,6 @@
       "unsafeGainText": "Meer dan 0,5% van uw lichaamsgewicht per week aankomen betekent dat het grootste deel van het toegenomen gewicht vet zal zijn in plaats van spier. Een langzamer overschot bouwt een vergelijkbare hoeveelheid spier op met veel minder vetopslag.",
       "unsafeLossTitle": "Onveilig Tempo van Gewichtsverlies",
       "unsafeLossText": "Meer dan 1,5% van uw lichaamsgewicht per week verliezen wordt als excessief beschouwd. Dit tempo verhoogt de risico's op ernstig spierverlies, lethargie, hormonale disbalans en voedingstekorten sterk. Kies een minder agressieve doelmodus.",
-      "calibrationDescription": "De Adaptieve TDEE-engine van Sparky heeft minstens {{required}} dagen aan consistente registratie nodig om uw stofwisseling nauwkeurig te berekenen (momenteel worden terugvalschattingen gebruikt). Om de kalibratie te versnellen:",
-      "calibrationWeightTip": "Registreer minstens 3-4 keer per week uw gewicht.",
-      "calibrationFoodTip": "Registreer dagelijks uw voedingsinname (>200 kcal/dag).",
       "livePreviewSavedNote": "BMR en lichaamsvet worden bijgewerkt terwijl u instellingen wijzigt. Het verbruik wordt op de server berekend op basis van uw opgeslagen instellingen, dus dit en het uiteindelijke doel veranderen pas nadat u hebt opgeslagen."
     },
     "mfa": {
@@ -2579,7 +2575,6 @@
       "calorieLogRequirement": "• Calorieregistraties voor TDEE-berekening (7+ dagen ≥ 200 kcal)",
       "daysMissing": "❌ Ontbreekt ({{days}}/{{required}} dagen geregistreerd)",
       "daysMet": "✓ Voldaan ({{days}}/{{required}} dagen geregistreerd)",
-      "stabilityRequirement": "• Calorieregistraties voor stabiliteit van het doelbudget ({{required}}+ dagen ≥ 200 kcal)",
       "daysWarning": "⚠️ Ontbreekt ({{days}}/{{required}} dagen geregistreerd)",
       "usingFallbackBmr": "Terugval-BMR × Activiteitsfactor wordt gebruikt:",
       "fallbackMath": "Berekening: BMR ({{bmr}} kcal) × activiteitsfactor ({{multiplier}}) = {{result}} {{unit}}",
