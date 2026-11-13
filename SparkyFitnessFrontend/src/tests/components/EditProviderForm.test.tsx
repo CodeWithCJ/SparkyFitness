@@ -167,7 +167,10 @@ describe('EditProviderForm MCP tool server', () => {
     is_active: true,
     base_url: 'https://tools.example/mcp',
     visibility: 'public',
-    provider_options: { allowed_tools: ['search'], send_user_id: false },
+    provider_options: {
+      allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+      send_user_id: false,
+    },
   };
 
   it('locks its type, which cannot be changed, and shows its allowed tools', () => {

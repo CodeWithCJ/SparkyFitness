@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   createServer,
   type IncomingMessage,
@@ -29,6 +29,7 @@ import {
 } from '@workspace/shared';
 import {
   listToolsForAdmin,
+  mcpToolFingerprint,
   loadMcpServerTools,
   McpServerListError,
 } from '../ai/tools/mcpServerTools.js';
@@ -374,6 +375,7 @@ const close = (target: Server) =>
     target.close(() => resolve());
   });
 
+const fixtureFingerprints = new Map<string, string>();
 let rowCount = 0;
 function toolServer(
   allowedTools: string[],
@@ -393,7 +395,19 @@ function toolServer(
     base_url: `${origin}${overrides.path ?? '/mcp'}`,
     app_key: TOKEN,
     provider_options: {
-      allowed_tools: allowedTools,
+      allowed_tools: allowedTools.map((name) => ({
+        name,
+        fingerprint: name.startsWith('page_')
+          ? mcpToolFingerprint({
+              name,
+              description: `The tool on page ${name.slice(5)}.`,
+              inputSchema:
+                name === 'page_1' && pagedSchema !== undefined
+                  ? (JSON.parse(pagedSchema) as unknown)
+                  : { type: 'object', properties: {} },
+            })
+          : (fixtureFingerprints.get(name) ?? '0'.repeat(64)),
+      })),
       send_user_id: overrides.send_user_id ?? false,
     },
     updated_at: overrides.updated_at ?? new Date('2026-11-10T00:00:00Z'),
@@ -430,6 +444,10 @@ beforeAll(async () => {
   });
   await Promise.all([listen(server), listen(elsewhere)]);
   origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  isAdmin.mockResolvedValue(true);
+  for (const tool of await listToolsForAdmin(toolServer([]))) {
+    fixtureFingerprints.set(tool.name, tool.fingerprint);
+  }
 });
 
 afterAll(async () => {
@@ -1061,6 +1079,7 @@ describe('the tool list an admin chooses from', () => {
       expect(
         mcpServerToolChoiceSchema.safeParse({
           name: 'tool',
+          fingerprint: 'a'.repeat(64),
           description: '',
           problem,
         }).success
@@ -1070,6 +1089,7 @@ describe('the tool list an admin chooses from', () => {
       expect(
         mcpServerToolChoiceSchema.safeParse({
           name: 'tool',
+          fingerprint: 'a'.repeat(64),
           description: '',
           problem,
         }).success
@@ -1080,13 +1100,23 @@ describe('the tool list an admin chooses from', () => {
   it('uses the shared name limit for allowed tools', () => {
     expect(
       mcpServerOptionsSchema.safeParse({
-        allowed_tools: ['n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH)],
+        allowed_tools: [
+          {
+            name: 'n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH),
+            fingerprint: 'a'.repeat(64),
+          },
+        ],
         send_user_id: false,
       }).success
     ).toBe(true);
     expect(
       mcpServerOptionsSchema.safeParse({
-        allowed_tools: ['n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH + 1)],
+        allowed_tools: [
+          {
+            name: 'n'.repeat(MCP_SERVER_TOOL_NAME_MAX_LENGTH + 1),
+            fingerprint: 'a'.repeat(64),
+          },
+        ],
         send_user_id: false,
       }).success
     ).toBe(false);
@@ -1098,10 +1128,16 @@ describe('the tool list an admin chooses from', () => {
     expect(tools).toEqual([
       {
         name: 'page_1',
+        fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
         description: 'The tool on page 1.',
         problem: 'malformed',
       },
-      { name: 'page_2', description: 'The tool on page 2.', problem: null },
+      {
+        name: 'page_2',
+        fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
+        description: 'The tool on page 2.',
+        problem: null,
+      },
     ]);
   });
 
@@ -1175,5 +1211,98 @@ describe('the tool list an admin chooses from', () => {
       'This server URL is not valid or not allowed.'
     );
     expect(seen).toEqual([]);
+  });
+});
+
+describe('tool definition fingerprints', () => {
+  const definition = {
+    name: 'search',
+    description: ' Searches notes. ',
+    inputSchema: {
+      type: 'object',
+      properties: { b: { type: 'string' }, a: { enum: ['x', 'y'] } },
+    },
+  };
+
+  it('uses canonical JSON with recursively sorted keys', () => {
+    expect(mcpToolFingerprint(definition)).toBe(
+      mcpToolFingerprint({
+        ...definition,
+        inputSchema: {
+          properties: { a: { enum: ['x', 'y'] }, b: { type: 'string' } },
+          type: 'object',
+        },
+      })
+    );
+  });
+
+  it('hashes the specified tuple with the schema serialized as canonical JSON', () => {
+    const expected = createHash('sha256')
+      .update(
+        JSON.stringify([
+          'search',
+          ' Searches notes. ',
+          '{"properties":{"a":{"enum":["x","y"]},"b":{"type":"string"}},"type":"object"}',
+        ])
+      )
+      .digest('hex');
+    expect(mcpToolFingerprint(definition)).toBe(expected);
+  });
+
+  it('pins raw names, descriptions and schemas including array order', () => {
+    for (const changed of [
+      { ...definition, name: 'find' },
+      { ...definition, description: definition.description.trim() },
+      { ...definition, inputSchema: { type: 'object' } },
+      {
+        ...definition,
+        inputSchema: {
+          type: 'object',
+          properties: { b: { type: 'string' }, a: { enum: ['y', 'x'] } },
+        },
+      },
+    ]) {
+      expect(mcpToolFingerprint(changed)).not.toBe(
+        mcpToolFingerprint(definition)
+      );
+    }
+    expect(mcpToolFingerprint({ name: 'x', inputSchema: {} })).toBe(
+      mcpToolFingerprint({ name: 'x', description: '', inputSchema: {} })
+    );
+  });
+
+  it('leaves out a changed tool while keeping a matching tool', async () => {
+    const row = toolServer(['echo', 'whoami']);
+    row.provider_options.allowed_tools[0]!.fingerprint = '0'.repeat(64);
+    getServers.mockResolvedValue([row]);
+    expect(Object.keys(await loadMcpServerTools(OWN_ACCOUNT))).toEqual([
+      'mcp_household_tools__whoami',
+    ]);
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining(
+        'echo is left out: it changed since an admin allowed it'
+      )
+    );
+  });
+
+  it('lists fingerprints of the raw definitions before stripping tokens or normalizing schemas', async () => {
+    const tools = await listToolsForAdmin(toolServer([]));
+    expect(tools.find((tool) => tool.name === 'leaky')?.fingerprint).toBe(
+      mcpToolFingerprint({
+        name: 'leaky',
+        description: `Repeats Bearer ${TOKEN}.`,
+        inputSchema: { type: 'object', properties: {} },
+      })
+    );
+    pagedSchema = '{"type":"object","properties":{"values":{"type":"array"}}}';
+    const listed = await listToolsForAdmin(toolServer([], { path: '/paged' }));
+    expect(listed[0]?.fingerprint).toBe(
+      mcpToolFingerprint({
+        name: 'page_1',
+        description: 'The tool on page 1.',
+        inputSchema: JSON.parse(pagedSchema) as unknown,
+      })
+    );
   });
 });

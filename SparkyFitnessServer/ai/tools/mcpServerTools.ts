@@ -45,6 +45,52 @@ interface ListedTool {
   inputSchema: JSONSchema7;
 }
 
+// Serialize iteratively because even a rejected server schema may be deeply nested.
+export function mcpToolFingerprint(listed: {
+  name: string;
+  description?: string;
+  inputSchema: unknown;
+}): string {
+  const parts: string[] = [];
+  const pending: Array<{ value: unknown } | { text: string }> = [
+    { value: listed.inputSchema },
+  ];
+  while (pending.length) {
+    const next = pending.pop();
+    if (!next) break;
+    if ('text' in next) {
+      parts.push(next.text);
+    } else if (Array.isArray(next.value)) {
+      parts.push('[');
+      pending.push({ text: ']' });
+      for (let index = next.value.length - 1; index >= 0; index -= 1) {
+        pending.push({ value: next.value[index] });
+        if (index > 0) pending.push({ text: ',' });
+      }
+    } else if (typeof next.value === 'object' && next.value !== null) {
+      const record = next.value as Record<string, unknown>;
+      const keys = Object.keys(record)
+        .filter((key) => record[key] !== undefined)
+        .sort();
+      parts.push('{');
+      pending.push({ text: '}' });
+      for (let index = keys.length - 1; index >= 0; index -= 1) {
+        const key = keys[index]!;
+        pending.push({ value: record[key] });
+        pending.push({ text: `${JSON.stringify(key)}:` });
+        if (index > 0) pending.push({ text: ',' });
+      }
+    } else {
+      parts.push(JSON.stringify(next.value) ?? 'null');
+    }
+  }
+  return createHash('sha256')
+    .update(
+      JSON.stringify([listed.name, listed.description ?? '', parts.join('')])
+    )
+    .digest('hex');
+}
+
 interface OutsideTool {
   server: McpServerRow;
   endpoint: ProviderFetchEndpoint;
@@ -364,11 +410,21 @@ async function eachListedTool(
 async function readAllowedTools(
   client: Client,
   server: McpServerRow,
-  allowed: ReadonlySet<string>
+  allowed: ReadonlyMap<string, string>
 ): Promise<ListedTool[]> {
   const tools: ListedTool[] = [];
   await eachListedTool(client, server, ({ name, description, inputSchema }) => {
     if (!allowed.has(name)) return;
+    if (
+      mcpToolFingerprint({ name, description, inputSchema }) !==
+      allowed.get(name)
+    ) {
+      log(
+        'warn',
+        `MCP tool server ${server.id} (${server.provider_name}): ${name} is left out: it changed since an admin allowed it; an admin has to load the tools again and save`
+      );
+      return;
+    }
     const problem = schemaProblem(inputSchema, server);
     if (problem) {
       log(
@@ -393,7 +449,7 @@ async function readAllowedTools(
 async function listServerTools(
   server: McpServerRow,
   endpoint: ProviderFetchEndpoint,
-  allowed: ReadonlySet<string>
+  allowed: ReadonlyMap<string, string>
 ): Promise<ListedTool[] | null> {
   const key = `${server.id}|${server.updated_at.getTime()}`;
   const cached = listCache.get(key);
@@ -433,7 +489,12 @@ async function allowedServerTools(
     );
     return [];
   }
-  const allowed = new Set(options.data.allowed_tools);
+  const allowed = new Map(
+    options.data.allowed_tools.map(({ name, fingerprint }) => [
+      name,
+      fingerprint,
+    ])
+  );
   if (allowed.size === 0) return [];
   const endpoint = await resolveProviderFetchEndpoint(
     server,
@@ -702,6 +763,11 @@ export async function listToolsForAdmin(
             ({ name, description, inputSchema }) => {
               tools.push({
                 name,
+                fingerprint: mcpToolFingerprint({
+                  name,
+                  description,
+                  inputSchema,
+                }),
                 description: withoutToken(
                   description?.trim() ?? '',
                   server

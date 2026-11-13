@@ -85,14 +85,14 @@ describe('provider_options on global provider bodies', () => {
     const result = CreateGlobalExternalDataProviderBodySchema.safeParse({
       ...base,
       provider_options: {
-        allowed_tools: [' solve_shake '],
+        allowed_tools: [{ name: ' solve_shake ', fingerprint: 'a'.repeat(64) }],
         send_user_id: true,
       },
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.provider_options?.allowed_tools).toEqual([
-        'solve_shake',
+        { name: 'solve_shake', fingerprint: 'a'.repeat(64) },
       ]);
     }
   });
@@ -103,10 +103,10 @@ describe('provider_options on global provider bodies', () => {
   ])('%s', (_name, count, accepted) => {
     const result = UpdateGlobalExternalDataProviderBodySchema.safeParse({
       provider_options: {
-        allowed_tools: Array.from(
-          { length: count },
-          (_, index) => `tool_${index}`
-        ),
+        allowed_tools: Array.from({ length: count }, (_, index) => ({
+          name: `tool_${index}`,
+          fingerprint: 'a'.repeat(64),
+        })),
         send_user_id: false,
       },
     });
@@ -128,8 +128,39 @@ describe('provider_options on global provider bodies', () => {
   it('needs both options, so nothing is on by omission', () => {
     const result = CreateGlobalExternalDataProviderBodySchema.safeParse({
       ...base,
-      provider_options: { allowed_tools: ['solve_shake'] },
+      provider_options: {
+        allowed_tools: [{ name: 'solve_shake', fingerprint: 'a'.repeat(64) }],
+      },
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('MCP tool fingerprint validation', () => {
+  const entry = { name: 'search', fingerprint: 'a'.repeat(64) };
+  it.each(['', 'a'.repeat(63), 'A'.repeat(64), 'g'.repeat(64)])(
+    'rejects invalid fingerprints (%s)',
+    (fingerprint) => {
+      expect(
+        UpdateGlobalExternalDataProviderBodySchema.safeParse({
+          provider_options: {
+            allowed_tools: [{ ...entry, fingerprint }],
+            send_user_id: false,
+          },
+        }).success
+      ).toBe(false);
+    }
+  );
+  it('rejects duplicate names after trimming and unknown item fields', () => {
+    for (const tools of [
+      [entry, { ...entry, name: ' search ' }],
+      [{ ...entry, extra: true }],
+    ]) {
+      expect(
+        UpdateGlobalExternalDataProviderBodySchema.safeParse({
+          provider_options: { allowed_tools: tools, send_user_id: false },
+        }).success
+      ).toBe(false);
+    }
   });
 });

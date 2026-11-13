@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ interface McpServerFieldsProps {
 
 interface ToolRow {
   name: string;
+  fingerprint: string;
   description: string;
   problem: McpServerToolChoice['problem'];
   // Allowed before, but not in the list the server just gave.
@@ -96,7 +97,7 @@ export const McpServerFields = ({
       'Its name is empty or starts or ends with a space.'
     ),
   };
-  const allowed = new Set(current.allowed_tools);
+  const allowed = new Set(current.allowed_tools.map((tool) => tool.name));
   // A list, or why it failed, is kept with the URL and token it was asked
   // with and shown only while the fields still hold them, so tools from one
   // server are never offered for another, even when an answer arrives late.
@@ -104,9 +105,26 @@ export const McpServerFields = ({
     inputs: string;
     tools: McpServerToolChoice[] | null;
     error: string | null;
+    changedNames?: string[];
   } | null>(null);
   const { mutateAsync: listTools, isPending } = useListMcpServerToolsMutation();
   const inputs = JSON.stringify([(baseUrl ?? '').trim(), appKey?.trim() ?? '']);
+  const latest = useRef({ inputs, current, onOptionsChange });
+  useLayoutEffect(() => {
+    latest.current = { inputs, current, onOptionsChange };
+  }, [inputs, current, onOptionsChange]);
+  // The edit form is shared between servers, so a list that arrives after
+  // this one closed must not land in the next server's choices.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const savedFingerprints = useRef(
+    new Map(current.allowed_tools.map((tool) => [tool.name, tool.fingerprint]))
+  );
   const shown = result?.inputs === inputs ? result : null;
   const loaded = shown?.tools ?? null;
   const loadError = shown?.error ?? null;
@@ -120,7 +138,25 @@ export const McpServerFields = ({
         app_key: appKey?.trim() || undefined,
         provider_id: providerId,
       });
-      setResult({ inputs: asked, tools, error: null });
+      if (!mounted.current || latest.current.inputs !== asked) return;
+      const { current: options, onOptionsChange: update } = latest.current;
+      const byName = new Map(tools.map((tool) => [tool.name, tool]));
+      const changedNames = tools
+        .filter((tool) => {
+          const saved = savedFingerprints.current.get(tool.name);
+          return saved !== undefined && saved !== tool.fingerprint;
+        })
+        .map((tool) => tool.name);
+      setResult({ inputs: asked, tools, error: null, changedNames });
+      update({
+        ...options,
+        allowed_tools: options.allowed_tools.map((saved) => {
+          const listed = byName.get(saved.name);
+          return listed
+            ? { name: listed.name, fingerprint: listed.fingerprint }
+            : saved;
+        }),
+      });
     } catch (error) {
       setResult({
         inputs: asked,
@@ -134,9 +170,9 @@ export const McpServerFields = ({
   const rows: ToolRow[] = [
     ...(loaded ?? []).map((tool) => ({ ...tool, gone: false })),
     ...current.allowed_tools
-      .filter((name) => !loadedNames.has(name))
-      .map((name) => ({
-        name,
+      .filter((tool) => !loadedNames.has(tool.name))
+      .map((tool) => ({
+        ...tool,
         description: '',
         problem: null,
         gone: loaded !== null,
@@ -144,10 +180,10 @@ export const McpServerFields = ({
   ];
   const full = allowed.size >= MCP_SERVER_MAX_TOOLS;
 
-  const setAllowed = (name: string, on: boolean) => {
+  const setAllowed = ({ name, fingerprint }: ToolRow, on: boolean) => {
     const next = on
-      ? [...current.allowed_tools, name]
-      : current.allowed_tools.filter((allowedName) => allowedName !== name);
+      ? [...current.allowed_tools, { name, fingerprint }]
+      : current.allowed_tools.filter((tool) => tool.name !== name);
     onOptionsChange({ ...current, allowed_tools: next });
   };
 
@@ -250,7 +286,7 @@ export const McpServerFields = ({
                     id={id}
                     checked={checked}
                     disabled={!checked && (row.problem !== null || full)}
-                    onCheckedChange={(on) => setAllowed(row.name, on === true)}
+                    onCheckedChange={(on) => setAllowed(row, on === true)}
                     className="mt-0.5"
                   />
                   <div className="min-w-0 space-y-0.5">
@@ -265,6 +301,14 @@ export const McpServerFields = ({
                     {row.problem && (
                       <p className="text-sm text-destructive">
                         {problemText[row.problem]}
+                      </p>
+                    )}
+                    {checked && shown?.changedNames?.includes(row.name) && (
+                      <p className="text-sm text-destructive">
+                        {t(
+                          'settings.mcpServer.toolChanged',
+                          'Changed since it was saved. Saving allows this version.'
+                        )}
                       </p>
                     )}
                     {row.gone && (

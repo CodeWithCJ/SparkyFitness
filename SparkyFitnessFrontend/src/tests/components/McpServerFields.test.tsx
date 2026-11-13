@@ -17,9 +17,15 @@ jest.mock('@/api/api', () => ({
 
 const listed = {
   tools: [
-    { name: 'search', description: 'Searches notes.', problem: null },
+    {
+      name: 'search',
+      fingerprint: 'a'.repeat(64),
+      description: 'Searches notes.',
+      problem: null,
+    },
     {
       name: 'broken',
+      fingerprint: 'b'.repeat(64),
       description: 'A careless tool.',
       problem: 'malformed',
     },
@@ -73,7 +79,10 @@ describe('McpServerFields', () => {
     loadTools();
     fireEvent.click(await screen.findByRole('checkbox', { name: 'search' }));
 
-    expect(latest).toEqual({ allowed_tools: ['search'], send_user_id: false });
+    expect(latest).toEqual({
+      allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+      send_user_id: false,
+    });
     expect(apiCall).toHaveBeenCalledWith(
       '/admin/external-data-providers/mcp-server/tools',
       expect.objectContaining({
@@ -93,7 +102,12 @@ describe('McpServerFields', () => {
   it('drops the loaded tools once the server URL changes', async () => {
     jest.mocked(apiCall).mockResolvedValue(listed);
     renderWithClient(
-      <Harness initial={{ allowed_tools: ['search'], send_user_id: false }} />
+      <Harness
+        initial={{
+          allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+          send_user_id: false,
+        }}
+      />
     );
 
     loadTools();
@@ -118,7 +132,10 @@ describe('McpServerFields', () => {
     renderWithClient(
       <Harness
         providerId="server-1"
-        initial={{ allowed_tools: ['search'], send_user_id: true }}
+        initial={{
+          allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+          send_user_id: true,
+        }}
       />
     );
     expect(
@@ -151,7 +168,12 @@ describe('McpServerFields', () => {
 
   it('keeps selected tools for a URL whitespace change', () => {
     renderWithClient(
-      <Harness initial={{ allowed_tools: ['search'], send_user_id: false }} />
+      <Harness
+        initial={{
+          allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+          send_user_id: false,
+        }}
+      />
     );
     fireEvent.change(screen.getByLabelText('MCP server URL'), {
       target: { value: ' https://tools.example/mcp ' },
@@ -194,7 +216,14 @@ describe('McpServerFields', () => {
         answer = resolve;
       })
     );
-    renderWithClient(<Harness />);
+    renderWithClient(
+      <Harness
+        initial={{
+          allowed_tools: [{ name: 'search', fingerprint: 'c'.repeat(64) }],
+          send_user_id: false,
+        }}
+      />
+    );
 
     loadTools();
     fireEvent.change(screen.getByLabelText('MCP server URL'), {
@@ -208,6 +237,31 @@ describe('McpServerFields', () => {
     expect(
       screen.queryByRole('checkbox', { name: 'search' })
     ).not.toBeInTheDocument();
+    expect(latest).toEqual({ allowed_tools: [], send_user_id: false });
+  });
+
+  it('ignores a list that arrives after the form closed', async () => {
+    let answer: (value: typeof listed) => void = () => {};
+    jest.mocked(apiCall).mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    const { unmount } = renderWithClient(
+      <Harness
+        initial={{
+          allowed_tools: [{ name: 'search', fingerprint: 'c'.repeat(64) }],
+          send_user_id: false,
+        }}
+      />
+    );
+
+    loadTools();
+    unmount();
+    answer(listed);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(latest).toBeUndefined();
   });
 
   it('will not allow a tool chat would leave out, and says why', async () => {
@@ -263,12 +317,21 @@ describe('McpServerFields', () => {
     jest.mocked(apiCall).mockResolvedValue({
       tools: [...twenty, 'one_more'].map((name) => ({
         name,
+        fingerprint: 'a'.repeat(64),
         description: '',
         problem: null,
       })),
     });
     renderWithClient(
-      <Harness initial={{ allowed_tools: twenty, send_user_id: false }} />
+      <Harness
+        initial={{
+          allowed_tools: twenty.map((name) => ({
+            name,
+            fingerprint: 'a'.repeat(64),
+          })),
+          send_user_id: false,
+        }}
+      />
     );
 
     loadTools();
@@ -282,7 +345,12 @@ describe('McpServerFields', () => {
   it('keeps a tool the server no longer lists, so the admin can remove it', async () => {
     jest.mocked(apiCall).mockResolvedValue(listed);
     renderWithClient(
-      <Harness initial={{ allowed_tools: ['retired'], send_user_id: false }} />
+      <Harness
+        initial={{
+          allowed_tools: [{ name: 'retired', fingerprint: 'a'.repeat(64) }],
+          send_user_id: false,
+        }}
+      />
     );
 
     loadTools();
@@ -302,5 +370,41 @@ describe('McpServerFields', () => {
     );
 
     expect(latest).toEqual({ allowed_tools: [], send_user_id: true });
+  });
+
+  it('re-pins a selected tool after Load and explains the changed version', async () => {
+    jest.mocked(apiCall).mockResolvedValue(listed);
+    renderWithClient(
+      <Harness
+        initial={{
+          allowed_tools: [
+            { name: 'search', fingerprint: 'c'.repeat(64) },
+            { name: 'retired', fingerprint: 'd'.repeat(64) },
+          ],
+          send_user_id: false,
+        }}
+      />
+    );
+    loadTools();
+    expect(
+      await screen.findByText(
+        'Changed since it was saved. Saving allows this version.'
+      )
+    ).toBeInTheDocument();
+    expect(latest?.allowed_tools).toEqual([
+      { name: 'search', fingerprint: 'a'.repeat(64) },
+      { name: 'retired', fingerprint: 'd'.repeat(64) },
+    ]);
+    expect(screen.getByRole('checkbox', { name: 'search' })).toBeChecked();
+  });
+
+  it('keeps saved fingerprints when editing without loading tools', () => {
+    const saved = [{ name: 'search', fingerprint: 'c'.repeat(64) }];
+    renderWithClient(
+      <Harness initial={{ allowed_tools: saved, send_user_id: false }} />
+    );
+    fireEvent.click(screen.getByRole('switch'));
+    expect(latest).toEqual({ allowed_tools: saved, send_user_id: true });
+    expect(apiCall).not.toHaveBeenCalled();
   });
 });

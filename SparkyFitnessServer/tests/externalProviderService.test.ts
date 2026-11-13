@@ -1589,7 +1589,10 @@ describe('MCP tool servers', () => {
       baseUrl: SERVER_URL,
       providerOptions: undefined,
     };
-    const options = { allowed_tools: ['solve_shake'], send_user_id: true };
+    const options = {
+      allowed_tools: [{ name: 'solve_shake', fingerprint: 'a'.repeat(64) }],
+      send_user_id: true,
+    };
 
     const saved = {
       ...input,

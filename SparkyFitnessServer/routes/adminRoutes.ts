@@ -932,7 +932,17 @@ router.get('/external-data-providers/global', async (req, res, next) => {
  *                   allowed_tools:
  *                     type: array
  *                     items:
- *                       type: string
+ *                       type: object
+ *                       additionalProperties: false
+ *                       required: [name, fingerprint]
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           minLength: 1
+ *                           maxLength: 128
+ *                         fingerprint:
+ *                           type: string
+ *                           pattern: '^[0-9a-f]{64}$'
  *                   send_user_id:
  *                     type: boolean
  *     responses:
@@ -1039,7 +1049,28 @@ router.post('/external-data-providers/global', async (req, res, next) => {
  *                 format: uuid
  *     responses:
  *       200:
- *         description: The server's tools. Each has a stable problem code for an unusable schema or an overlong name, or null.
+ *         description: The server's tools. Each includes a fingerprint to echo on save and a stable problem code, or null.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tools:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [name, description, fingerprint, problem]
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       fingerprint:
+ *                         type: string
+ *                         pattern: '^[0-9a-f]{64}$'
+ *                       problem:
+ *                         type: string
+ *                         nullable: true
  *       400:
  *         description: Invalid request body, provider_id is not a public MCP tool server, or a different URL needs a token.
  *       401:
@@ -1144,7 +1175,17 @@ router.post(
  *                   allowed_tools:
  *                     type: array
  *                     items:
- *                       type: string
+ *                       type: object
+ *                       additionalProperties: false
+ *                       required: [name, fingerprint]
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           minLength: 1
+ *                           maxLength: 128
+ *                         fingerprint:
+ *                           type: string
+ *                           pattern: '^[0-9a-f]{64}$'
  *                   send_user_id:
  *                     type: boolean
  *     responses:

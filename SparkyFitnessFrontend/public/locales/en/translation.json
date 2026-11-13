@@ -3291,6 +3291,7 @@
       "loadingTools": "Loading tools...",
       "allowedCount": "Chat may use {{count}} of at most {{max}} tools.",
       "noTools": "The server lists no tools.",
+      "toolChanged": "Changed since it was saved. Saving allows this version.",
       "tokenUrlChanged": "Enter the token again when you change the server URL.",
       "toolProblem": {
         "not_object": "Its input schema does not describe an object.",

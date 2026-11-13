@@ -23,7 +23,10 @@ vi.mock('../security/encryption.js', () => ({
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
-const OPTIONS = { allowed_tools: ['solve_shake'], send_user_id: true };
+const OPTIONS = {
+  allowed_tools: [{ name: 'solve_shake', fingerprint: 'a'.repeat(64) }],
+  send_user_id: true,
+};
 
 describe('externalProviderRepository MCP tool servers', () => {
   const query = vi.fn();

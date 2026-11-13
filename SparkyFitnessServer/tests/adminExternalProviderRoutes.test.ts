@@ -454,7 +454,10 @@ describe('admin global MCP tool servers', () => {
     provider_type: 'mcp_server',
     base_url: 'http://192.168.1.20:8000/mcp',
   };
-  const options = { allowed_tools: ['solve_shake'], send_user_id: true };
+  const options = {
+    allowed_tools: [{ name: 'solve_shake', fingerprint: 'a'.repeat(64) }],
+    send_user_id: true,
+  };
 
   it('adds a server with every tool blocked', async () => {
     const response = await request(app)
@@ -640,7 +643,12 @@ describe('admin global MCP tool servers', () => {
 describe('listing an MCP tool server’s tools', () => {
   const SERVER_ID = '7f1d6c2e-3b4a-4c5d-8e9f-0a1b2c3d4e5f';
   const listing = [
-    { name: 'search', description: 'Searches notes.', problem: null },
+    {
+      name: 'search',
+      fingerprint: 'a'.repeat(64),
+      description: 'Searches notes.',
+      problem: null,
+    },
   ];
 
   it('asks the server with the token the admin typed', async () => {

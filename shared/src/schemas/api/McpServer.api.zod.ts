@@ -8,8 +8,18 @@ import {
 export const mcpServerOptionsSchema = z
   .object({
     allowed_tools: z
-      .array(z.string().trim().min(1).max(MCP_SERVER_TOOL_NAME_MAX_LENGTH))
-      .max(MCP_SERVER_MAX_TOOLS),
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(MCP_SERVER_TOOL_NAME_MAX_LENGTH),
+            fingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+          })
+          .strict()
+      )
+      .max(MCP_SERVER_MAX_TOOLS)
+      .refine(
+        (tools) => new Set(tools.map((tool) => tool.name)).size === tools.length
+      ),
     send_user_id: z.boolean(),
   })
   .strict();
@@ -31,6 +41,7 @@ export type McpServerToolsRequest = z.infer<typeof mcpServerToolsRequestSchema>;
 export const mcpServerToolChoiceSchema = z.object({
   name: z.string(),
   description: z.string(),
+  fingerprint: z.string().regex(/^[0-9a-f]{64}$/),
   // Why chat would leave this tool out, or null when it can use it.
   problem: z.enum(MCP_SERVER_TOOL_PROBLEMS).nullable(),
 });
