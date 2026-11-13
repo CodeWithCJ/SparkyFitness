@@ -115,4 +115,18 @@ final class WatchPlatesStepTests: XCTestCase {
         let next = WatchPlates.nextLoadable(from: 135 * 0.45359237, up: true, config: lbs)
         XCTAssertEqual(next ?? 0, 140 * 0.45359237, accuracy: 1e-6)
     }
+
+    func testEnormousValuesAreInvalidInsteadOfTrapping() {
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 1e300, config: kg), .invalid)
+        XCTAssertEqual(WatchPlates.calculate(targetKg: Double.greatestFiniteMagnitude, config: kg), .invalid)
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 1e18, config: kg), .invalid)
+        XCTAssertNil(WatchPlates.nextLoadable(from: 1e300, up: true, config: kg))
+        XCTAssertNil(WatchPlates.nextLoadable(from: 1e300, up: false, config: kg))
+        let hugePlate = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: [.init(weight: 1e300, pairs: 2)])
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 100, config: hugePlate), .invalid)
+        let hugeBar = WatchPlateConfig(unit: "kg", barWeight: 1e300, collarWeight: 0, plates: [.init(weight: 20, pairs: 2)])
+        XCTAssertEqual(WatchPlates.calculate(targetKg: 100, config: hugeBar), .invalid)
+        let manyPairs = WatchPlateConfig(unit: "kg", barWeight: 20, collarWeight: 0, plates: [.init(weight: 20, pairs: Int.max)])
+        _ = WatchPlates.calculate(targetKg: 100, config: manyPairs)
+    }
 }

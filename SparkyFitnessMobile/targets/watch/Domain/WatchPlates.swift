@@ -53,6 +53,11 @@ enum WatchPlates {
     /// slots x denominations; past it the search is refused rather than cut short.
     private static let maxSearchCells = 4_000_000
     private static let exactNoise = 1e-9
+    /// Realistic ceilings (kg, and the config's unit for bar/collar/plates) so a
+    /// payload value can never overflow an Int conversion below.
+    private static let maxTargetKg = 1000.0
+    private static let maxConfigWeight = 10_000.0
+    private static let maxPairs = 1000
 
     /// A kg weight in the config's unit.
     static func inUnit(_ kg: Double, of config: WatchPlateConfig) -> Double {
@@ -61,13 +66,17 @@ enum WatchPlates {
 
     static func calculate(targetKg: Double, config: WatchPlateConfig) -> Result {
         let target = inUnit(targetKg, of: config)
-        guard target.isFinite, target > 0, config.barWeight >= 0, config.collarWeight >= 0 else { return .invalid }
+        guard targetKg.isFinite, targetKg > 0, targetKg <= maxTargetKg, target.isFinite, target > 0,
+              config.barWeight.isFinite, config.collarWeight.isFinite,
+              (0...maxConfigWeight).contains(config.barWeight),
+              (0...maxConfigWeight).contains(config.collarWeight) else { return .invalid }
 
         var merged: [Int: Int] = [:]
-        for plate in config.plates where plate.weight > 0 && plate.pairs > 0 {
-            merged[Int((plate.weight * scale).rounded()), default: 0] += plate.pairs
+        for plate in config.plates where plate.weight.isFinite && plate.weight > 0 && plate.pairs > 0 {
+            guard plate.weight <= maxConfigWeight else { return .invalid }
+            merged[Int((plate.weight * scale).rounded()), default: 0] += min(plate.pairs, maxPairs)
         }
-        let kinds = merged.map { (units: $0.key, pairs: $0.value) }.sorted { $0.units > $1.units }
+        let kinds = merged.map { (units: $0.key, pairs: min($0.value, maxPairs)) }.sorted { $0.units > $1.units }
         let fixed = (config.barWeight * scale).rounded() + 2 * (config.collarWeight * scale).rounded()
         let side = (target * scale - fixed) / 2
         let step = kinds.reduce(0) { gcd($0, $1.units) }.nonZero ?? 1
@@ -115,6 +124,7 @@ enum WatchPlates {
     /// loadable weight on that side. This is how the plate calculator's crown
     /// moves through only the weights the plates can make.
     static func nextLoadable(from targetKg: Double, up: Bool, config: WatchPlateConfig) -> Double? {
+        guard targetKg.isFinite, targetKg <= maxTargetKg else { return nil }
         let probe = inUnit(targetKg, of: config) + (up ? 0.0005 : -0.0005)
         guard case .inexact(let below, let above) = calculate(targetKg: toKg(probe, of: config), config: config),
               let load = up ? above : below else { return nil }

@@ -189,6 +189,12 @@ export function useWorkoutCompletePresetSync({
       return;
     }
     if (skipPrompt) return;
+    // The alert closed without settling (the watch took over, or the write
+    // failed): allow the prompt again once nothing else holds it back.
+    const rearmPrompt = () => {
+      promptedRef.current = false;
+      setPromptNonce((n) => n + 1);
+    };
     const timer = setTimeout(() => {
       promptedRef.current = true;
       Alert.alert(
@@ -207,7 +213,11 @@ export function useWorkoutCompletePresetSync({
             }),
             style: 'cancel',
             onPress: () => {
-              if (!skipPromptRef.current) onSettledRef.current?.();
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
+              onSettledRef.current?.();
             },
           },
           {
@@ -215,7 +225,10 @@ export function useWorkoutCompletePresetSync({
               defaultValue: 'Update',
             }),
             onPress: () => {
-              if (skipPromptRef.current) return;
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
               void (async () => {
                 if (await applyUpdate()) {
                   onSettledRef.current?.();
@@ -223,8 +236,7 @@ export function useWorkoutCompletePresetSync({
                 }
                 // The alert is already gone. Ask again instead of dropping
                 // the question because the write failed.
-                promptedRef.current = false;
-                setPromptNonce((n) => n + 1);
+                rearmPrompt();
               })();
             },
           },
