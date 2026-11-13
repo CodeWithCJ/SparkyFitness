@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, View } from 'react-native';
+import { LayoutAnimation, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import FormInput from '../components/FormInput';
+import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
-import SettingsRow from '../components/SettingsRow';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import Button from '../components/ui/Button';
-import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatLocalizedNumber } from '../localization';
@@ -45,10 +46,15 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'TreadmillSettings'>;
 
-type Direction = 'long' | 'short';
-type MeasureMode = 'stride' | 'treadmill';
+/** How the treadmill display compares with the distance really covered. */
+type Reading = 'right' | 'long' | 'short';
+/** The one row that is open; the rest of the screen stays a summary. */
+type Row = StepActivity | 'treadmill';
 
 const ACTIVITIES: StepActivity[] = ['walk', 'run'];
+
+/** A link lined up with the text above it, not inset by the button padding. */
+const LINK_STYLE = { paddingHorizontal: 0, paddingVertical: 8 };
 
 const decimal = (value: number, digits: number) =>
   formatLocalizedNumber(value, {
@@ -64,24 +70,12 @@ const unsignedPercent = (percent: number) =>
 const parseField = (text: string): number | null =>
   text.trim() === '' ? null : parseDecimalInput(text);
 
-/** A link lined up with the text above it, not inset by the button padding. */
-const LINK_STYLE = { paddingHorizontal: 0, paddingVertical: 8 };
-
-const SectionTitle: React.FC<{ children: string }> = ({ children }) => (
-  <Text className="text-text-secondary text-sm font-semibold uppercase tracking-wider mt-4 mb-2 px-1">
-    {children}
-  </Text>
-);
-
-const SectionHint: React.FC<{ children: string }> = ({ children }) => (
-  <Text className="text-text-secondary text-sm mb-3 px-1">{children}</Text>
-);
-
 interface NumberFieldProps {
   label: string;
   value: string;
   onChange: (text: string) => void;
   suffix?: string;
+  placeholder?: string;
 }
 
 const NumberField: React.FC<NumberFieldProps> = ({
@@ -89,6 +83,7 @@ const NumberField: React.FC<NumberFieldProps> = ({
   value,
   onChange,
   suffix,
+  placeholder,
 }) => (
   <View className="mt-3">
     <Text className="text-text-secondary text-sm mb-1">{label}</Text>
@@ -97,6 +92,7 @@ const NumberField: React.FC<NumberFieldProps> = ({
         className="flex-1"
         keyboardType="decimal-pad"
         value={value}
+        placeholder={placeholder}
         accessibilityLabel={label}
         onChangeText={(text) => {
           if (text !== '' && !DECIMAL_INPUT_REGEX.test(text)) return;
@@ -115,6 +111,9 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [
+    string,
+  ];
   const { preferences } = usePreferences();
   const miles = preferences?.default_distance_unit === 'miles';
   const unit: 'km' | 'miles' = miles ? 'miles' : 'km';
@@ -125,71 +124,56 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
   const strideUnitLabel = miles
     ? t('treadmillSettings.unitFeet', { defaultValue: 'ft' })
     : t('treadmillSettings.unitMeters', { defaultValue: 'm' });
-  const strideDigits = 2;
   const formatStride = (meters: number) =>
-    `${decimal(strideToDisplay(meters, unit), strideDigits)} ${strideUnitLabel}`;
+    `${decimal(strideToDisplay(meters, unit), 2)} ${strideUnitLabel}`;
 
   const header = useScreenHeader({
     title: t('treadmillSettings.title', { defaultValue: 'Treadmill & Stride' }),
     left: { kind: 'back' },
   });
 
-  const activityLabel = (activity: StepActivity) =>
-    activity === 'walk'
-      ? t('recordActivity.activity.walk', { defaultValue: 'Walk' })
-      : t('recordActivity.activity.run', { defaultValue: 'Run' });
   const activityName = (activity: StepActivity) =>
     activity === 'walk'
       ? t('treadmillSettings.walkingStride', { defaultValue: 'Walking stride' })
       : t('treadmillSettings.runningStride', {
           defaultValue: 'Running stride',
         });
-  const activitySegments = ACTIVITIES.map((key) => ({
-    key,
-    label: activityLabel(key),
-  }));
 
-  // --- Treadmill display correction -------------------------------------
+  // --- The open row and its form -------------------------------------------
 
-  const enabled = useAppPreferencesStore((s) => s.treadmillCorrectionEnabled);
-  const percent = useAppPreferencesStore((s) => s.treadmillCorrectionPercent);
-  const setEnabled = useAppPreferencesStore(
-    (s) => s.setTreadmillCorrectionEnabled
-  );
-  const setPercent = useAppPreferencesStore(
-    (s) => s.setTreadmillCorrectionPercent
-  );
-
-  // The direction is its own control because a decimal keypad has no minus
-  // key; the stored percent carries the sign.
-  const [direction, setDirection] = useState<Direction>(
-    percent < 0 ? 'short' : 'long'
-  );
-  const [percentText, setPercentText] = useState(
-    percent === 0 ? '' : String(Math.abs(percent))
-  );
-  const commitPercent = (nextDirection: Direction, text: string) => {
-    const magnitude = parseField(text);
-    if (magnitude === null) {
-      setPercent(0);
-      return;
-    }
-    if (!Number.isFinite(magnitude)) return;
-    setPercent(nextDirection === 'short' ? -magnitude : magnitude);
+  const [open, setOpen] = useState<Row | null>(null);
+  const [steps, setSteps] = useState('');
+  const [distance, setDistance] = useState('');
+  const [shown, setShown] = useState('');
+  const [strideText, setStrideText] = useState('');
+  const [showMeasure, setShowMeasure] = useState(false);
+  const [error, setError] = useState<'stride' | 'measure' | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [treadmillResult, setTreadmillResult] = useState<{
+    actualMeters: number;
+    percent: number;
+  } | null>(null);
+  const toggle = (row: Row) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen((current) => (current === row ? null : row));
+    setSteps('');
+    setDistance('');
+    setShown('');
+    setStrideText('');
+    setShowMeasure(false);
+    setError(null);
+    setNotice(null);
+    setTreadmillResult(null);
   };
-  const preview = correctTreadmillDistance(5 * unitMeters, {
-    enabled: true,
-    percent,
-  });
-  const applyMeasuredPercent = (measured: number) => {
-    const next = clampTreadmillPercent(measured);
-    setEnabled(true);
-    setPercent(next);
-    setDirection(next < 0 ? 'short' : 'long');
-    setPercentText(next === 0 ? '' : String(Math.abs(next)));
-  };
+  const chevron = (row: Row) => (
+    <Icon
+      name={open === row ? 'chevron-up' : 'chevron-down'}
+      size={20}
+      color={textSecondary}
+    />
+  );
 
-  // --- Strides -----------------------------------------------------------
+  // --- Strides -------------------------------------------------------------
 
   const [profile, setProfile] = useState<Record<
     StepActivity,
@@ -210,34 +194,28 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
   const strideMeters = (activity: StepActivity) =>
     profile?.[activity].meters ?? DEFAULT_STRIDE_METERS[activity];
 
-  const [editing, setEditing] = useState<StepActivity | null>(null);
-  const [strideText, setStrideText] = useState('');
-  const [strideError, setStrideError] = useState(false);
-  const startEditing = (activity: StepActivity) => {
-    setEditing(activity);
-    setStrideText('');
-    setStrideError(false);
-  };
-  const saveStride = async (activity: StepActivity) => {
-    const typed = parseField(strideText);
-    const meters =
-      typed === null || !Number.isFinite(typed)
-        ? NaN
-        : strideFromDisplay(typed, unit);
-    if (!isPlausibleStride(meters) || !(await setStride(activity, meters))) {
-      setStrideError(true);
-      return;
+  const strideSummary = (info: StrideInfo) => {
+    const stride = formatStride(info.meters);
+    if (info.manual) {
+      return t('treadmillSettings.strideSummaryManual', {
+        defaultValue: '{{stride}} · set by you',
+        stride,
+      });
     }
-    setEditing(null);
-    setStrideError(false);
-    await reload();
+    if (info.samples > 0) {
+      return t('treadmillSettings.strideSummaryLearned', {
+        count: info.samples,
+        stride,
+        defaultValue_one: '{{stride}} · learned from {{count}} distance',
+        defaultValue_other: '{{stride}} · learned from {{count}} distances',
+        defaultValue: '{{stride}} · learned from {{count}} distances',
+      });
+    }
+    return t('treadmillSettings.strideSummaryTypical', {
+      defaultValue: '{{stride}} · typical',
+      stride,
+    });
   };
-  const reset = async (activity: StepActivity) => {
-    setEditing(null);
-    await resetStride(activity);
-    await reload();
-  };
-
   const strideStatus = (info: StrideInfo) => {
     if (info.manual) {
       return t('treadmillSettings.strideManual', {
@@ -247,74 +225,183 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
     if (info.samples > 0) {
       return t('treadmillSettings.strideLearned', {
         count: info.samples,
-        defaultValue_one: 'Learned from {{count}} real distance.',
-        defaultValue_other: 'Learned from {{count}} real distances.',
-        defaultValue: 'Learned from {{count}} real distances.',
+        defaultValue_one:
+          'Learned from {{count}} real distance. Each new one nudges it.',
+        defaultValue_other:
+          'Learned from {{count}} real distances. Each new one nudges it.',
+        defaultValue:
+          'Learned from {{count}} real distances. Each new one nudges it.',
       });
     }
     return t('treadmillSettings.strideDefault', {
-      defaultValue: 'A typical stride until it learns yours.',
+      defaultValue:
+        'A typical stride. It learns yours each time you type in a treadmill’s distance after a walk or run, or you can set it here.',
     });
   };
 
-  // --- Measuring on purpose ----------------------------------------------
-
-  const [mode, setMode] = useState<MeasureMode>('stride');
-  const [measureActivity, setMeasureActivity] = useState<StepActivity>('run');
-  const [steps, setSteps] = useState('');
-  const [distance, setDistance] = useState('');
-  const [shown, setShown] = useState('');
-  const [measureFailed, setMeasureFailed] = useState(false);
-  const [strideResult, setStrideResult] = useState<{
-    activity: StepActivity;
-    meters: number;
-  } | null>(null);
-  const [treadmillResult, setTreadmillResult] = useState<{
-    actualMeters: number;
-    percent: number;
-  } | null>(null);
-  const clearResults = () => {
-    setMeasureFailed(false);
-    setStrideResult(null);
-    setTreadmillResult(null);
-  };
-
-  const measureStride = async () => {
-    clearResults();
-    const stepCount = parseField(steps);
-    const km = parseField(distance);
+  const saveStride = async (activity: StepActivity) => {
+    setNotice(null);
+    const typed = parseField(strideText);
     const meters =
-      stepCount !== null && km !== null
-        ? strideFromSample(stepCount, km * unitMeters)
-        : null;
-    if (meters == null || !(await setStride(measureActivity, meters))) {
-      setMeasureFailed(true);
+      typed === null || !Number.isFinite(typed)
+        ? NaN
+        : strideFromDisplay(typed, unit);
+    if (!isPlausibleStride(meters) || !(await setStride(activity, meters))) {
+      setError('stride');
       return;
     }
-    setStrideResult({ activity: measureActivity, meters });
+    setError(null);
+    setStrideText('');
+    await reload();
+  };
+  const measureStride = async (activity: StepActivity) => {
+    setNotice(null);
+    const stepCount = parseField(steps);
+    const known = parseField(distance);
+    const meters =
+      stepCount !== null && known !== null
+        ? strideFromSample(stepCount, known * unitMeters)
+        : null;
+    if (meters == null || !(await setStride(activity, meters))) {
+      setError('measure');
+      return;
+    }
+    setError(null);
+    setSteps('');
+    setDistance('');
+    setShowMeasure(false);
+    setNotice(
+      t('treadmillSettings.calibrated', {
+        defaultValue: 'Your {{activity}} is now {{stride}}.',
+        activity: activityName(activity).toLowerCase(),
+        stride: formatStride(meters),
+      })
+    );
+    await reload();
+  };
+  const reset = async (activity: StepActivity) => {
+    setError(null);
+    setNotice(null);
+    await resetStride(activity);
     await reload();
   };
 
+  // --- Treadmill display ---------------------------------------------------
+
+  const enabled = useAppPreferencesStore((s) => s.treadmillCorrectionEnabled);
+  const percent = useAppPreferencesStore((s) => s.treadmillCorrectionPercent);
+  const setEnabled = useAppPreferencesStore(
+    (s) => s.setTreadmillCorrectionEnabled
+  );
+  const setPercent = useAppPreferencesStore(
+    (s) => s.setTreadmillCorrectionPercent
+  );
+  const activePercent = enabled ? percent : 0;
+  // "About right" is the correction switched off. More and Less keep their
+  // own choice even at 0 %, so picking one does not snap back while typing.
+  const [reading, setReading] = useState<Reading>(
+    !enabled ? 'right' : percent < 0 ? 'short' : 'long'
+  );
+  const [percentText, setPercentText] = useState(
+    percent === 0 ? '' : String(Math.abs(percent))
+  );
+  const commitPercent = (next: 'long' | 'short', text: string) => {
+    const magnitude = parseField(text);
+    if (magnitude === null) {
+      setPercent(0);
+      return;
+    }
+    if (!Number.isFinite(magnitude)) return;
+    setPercent(next === 'short' ? -magnitude : magnitude);
+  };
+  const chooseReading = (next: Reading) => {
+    setReading(next);
+    if (next === 'right') {
+      setEnabled(false);
+      return;
+    }
+    setEnabled(true);
+    commitPercent(next, percentText);
+  };
+  const applyMeasuredPercent = (measured: number) => {
+    const next = clampTreadmillPercent(measured);
+    setEnabled(next !== 0);
+    setPercent(next);
+    setReading(next === 0 ? 'right' : next < 0 ? 'short' : 'long');
+    setPercentText(next === 0 ? '' : String(Math.abs(next)));
+    setTreadmillResult(null);
+    setShowMeasure(false);
+  };
+  const preview = correctTreadmillDistance(5 * unitMeters, {
+    enabled: true,
+    percent: activePercent,
+  });
+  const treadmillSummary =
+    activePercent === 0
+      ? t('treadmillSettings.treadmillSummaryOff', {
+          defaultValue: 'About right. Nothing is changed.',
+        })
+      : activePercent > 0
+        ? t('treadmillSettings.treadmillSummaryLong', {
+            defaultValue: 'Shows {{percent}} more than you ran',
+            percent: unsignedPercent(activePercent),
+          })
+        : t('treadmillSettings.treadmillSummaryShort', {
+            defaultValue: 'Shows {{percent}} less than you ran',
+            percent: unsignedPercent(activePercent),
+          });
+
+  const [checkActivity, setCheckActivity] = useState<StepActivity>('run');
   const checkTreadmill = () => {
-    clearResults();
+    setTreadmillResult(null);
     const stepCount = parseField(steps);
     const display = parseField(shown);
     const result =
       stepCount !== null && display !== null
         ? treadmillCheckFromSteps(
             stepCount,
-            strideMeters(measureActivity),
+            strideMeters(checkActivity),
             display * unitMeters
           )
         : null;
     if (!result) {
-      setMeasureFailed(true);
+      setError('measure');
       return;
     }
+    setError(null);
     setTreadmillResult(result);
   };
+  const treadmillResultText = (result: {
+    actualMeters: number;
+    percent: number;
+  }) => {
+    const actual = decimal(result.actualMeters / unitMeters, 2);
+    if (result.percent === 0) {
+      return t('treadmillSettings.checkedSame', {
+        defaultValue:
+          'Your steps make that {{actual}} {{unit}}. The treadmill is right, so there is nothing to fix.',
+        actual,
+        unit: unitLabel,
+      });
+    }
+    return result.percent > 0
+      ? t('treadmillSettings.checkedLong', {
+          defaultValue:
+            'Your steps make that {{actual}} {{unit}}, so the treadmill shows {{percent}} more than you did.',
+          actual,
+          unit: unitLabel,
+          percent: unsignedPercent(result.percent),
+        })
+      : t('treadmillSettings.checkedShort', {
+          defaultValue:
+            'Your steps make that {{actual}} {{unit}}, so the treadmill shows {{percent}} less than you did.',
+          actual,
+          unit: unitLabel,
+          percent: unsignedPercent(result.percent),
+        });
+  };
 
-  // --- What the watch has learned ----------------------------------------
+  // --- What the watch has learned -----------------------------------------
 
   // It changes when a run is corrected, so this follows the store rather
   // than loading once.
@@ -344,7 +431,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
     }
     const change = (info.scale - 1) * 100;
     const count = info.samples;
-    const percent = unsignedPercent(change);
+    const changePercent = unsignedPercent(change);
     if (Math.abs(change) < 0.05) {
       return t('treadmillSettings.watchScaleSame', {
         count,
@@ -359,25 +446,282 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
     return change < 0
       ? t('treadmillSettings.watchScaleLower', {
           count,
-          percent,
+          percent: changePercent,
           defaultValue_one:
-            'The watch’s distance is lowered by {{percent}}. Learned from {{count}} run.',
+            'Lowered by {{percent}}. Learned from {{count}} run.',
           defaultValue_other:
-            'The watch’s distance is lowered by {{percent}}. Learned from {{count}} runs.',
-          defaultValue:
-            'The watch’s distance is lowered by {{percent}}. Learned from {{count}} runs.',
+            'Lowered by {{percent}}. Learned from {{count}} runs.',
+          defaultValue: 'Lowered by {{percent}}. Learned from {{count}} runs.',
         })
       : t('treadmillSettings.watchScaleRaise', {
           count,
-          percent,
+          percent: changePercent,
           defaultValue_one:
-            'The watch’s distance is raised by {{percent}}. Learned from {{count}} run.',
+            'Raised by {{percent}}. Learned from {{count}} run.',
           defaultValue_other:
-            'The watch’s distance is raised by {{percent}}. Learned from {{count}} runs.',
-          defaultValue:
-            'The watch’s distance is raised by {{percent}}. Learned from {{count}} runs.',
+            'Raised by {{percent}}. Learned from {{count}} runs.',
+          defaultValue: 'Raised by {{percent}}. Learned from {{count}} runs.',
         });
   };
+
+  // --- Pieces --------------------------------------------------------------
+
+  const errorText = (kind: 'stride' | 'measure') =>
+    error === kind ? (
+      <Text className="text-text-danger-subtle text-sm mt-2">
+        {kind === 'stride'
+          ? t('treadmillSettings.strideInvalid', {
+              defaultValue:
+                'That stride does not look right. A step is usually between 0.3 and 2.5 m (1 and 8 ft).',
+            })
+          : t('treadmillSettings.calibrateFailed', {
+              defaultValue:
+                'That is too short or does not add up. Use at least 150 steps and 100 m, and check the numbers.',
+            })}
+      </Text>
+    ) : null;
+
+  const stridePanel = (activity: StepActivity, info: StrideInfo) => (
+    <View className="px-4 pb-4">
+      <Text className="text-text-secondary text-sm">{strideStatus(info)}</Text>
+
+      <View className="flex-row items-end" style={{ gap: 8 }}>
+        <View className="flex-1">
+          <NumberField
+            label={t('treadmillSettings.strideInputA11y', {
+              defaultValue: '{{activity}} in {{unit}}',
+              activity: activityName(activity),
+              unit: strideUnitLabel,
+            })}
+            value={strideText}
+            onChange={setStrideText}
+            placeholder={decimal(strideToDisplay(info.meters, unit), 2)}
+          />
+        </View>
+        <Button
+          variant="secondary"
+          disabled={strideText.trim() === ''}
+          onPress={() => void saveStride(activity)}
+        >
+          {t('common.save', { defaultValue: 'Save' })}
+        </Button>
+      </View>
+      {errorText('stride')}
+
+      {showMeasure ? (
+        <View className="mt-4">
+          <Text className="text-text-secondary text-sm">
+            {t('treadmillSettings.measureStrideHint', {
+              defaultValue:
+                'Walk or run a distance you know is right, like laps of a track. Then enter the steps from Health or your watch, and that distance.',
+            })}
+          </Text>
+          <NumberField
+            label={t('treadmillSettings.calSteps', {
+              defaultValue: 'Steps taken',
+            })}
+            value={steps}
+            onChange={setSteps}
+          />
+          <NumberField
+            label={t('treadmillSettings.calDistance', {
+              defaultValue: 'Real distance',
+            })}
+            value={distance}
+            onChange={setDistance}
+            suffix={unitLabel}
+          />
+          <Button
+            className="mt-3"
+            disabled={steps.trim() === '' || distance.trim() === ''}
+            onPress={() => void measureStride(activity)}
+          >
+            {t('treadmillSettings.calibrateAction', {
+              defaultValue: 'Set my stride',
+            })}
+          </Button>
+          {errorText('measure')}
+        </View>
+      ) : null}
+      {notice ? (
+        <Text className="text-text-primary text-sm mt-3">{notice}</Text>
+      ) : null}
+
+      <View className="flex-row mt-2" style={{ gap: 20 }}>
+        {!showMeasure ? (
+          <Button
+            variant="link"
+            style={LINK_STYLE}
+            onPress={() => {
+              setShowMeasure(true);
+              setNotice(null);
+            }}
+          >
+            {t('treadmillSettings.measureStrideToggle', {
+              defaultValue: 'Measure it on a track',
+            })}
+          </Button>
+        ) : null}
+        {info.manual || info.samples > 0 ? (
+          <Button
+            variant="link"
+            style={LINK_STYLE}
+            accessibilityLabel={t('treadmillSettings.resetA11y', {
+              defaultValue: 'Reset {{activity}}',
+              activity: activityName(activity).toLowerCase(),
+            })}
+            onPress={() => void reset(activity)}
+          >
+            {t('treadmillSettings.reset', { defaultValue: 'Reset' })}
+          </Button>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const treadmillPanel = (
+    <View className="px-4 pb-4">
+      <Text className="text-text-secondary text-sm mb-2">
+        {t('treadmillSettings.displayReads', {
+          defaultValue: 'Compared with what you really ran, it shows',
+        })}
+      </Text>
+      <SegmentedControl<Reading>
+        segments={[
+          {
+            key: 'right',
+            label: t('treadmillSettings.readsRight', {
+              defaultValue: 'About right',
+            }),
+          },
+          {
+            key: 'long',
+            label: t('treadmillSettings.readsLong', { defaultValue: 'More' }),
+          },
+          {
+            key: 'short',
+            label: t('treadmillSettings.readsShort', { defaultValue: 'Less' }),
+          },
+        ]}
+        activeKey={reading}
+        onSelect={chooseReading}
+      />
+      {reading !== 'right' ? (
+        <>
+          <View className="flex-row items-center mt-3">
+            <Text className="text-text-secondary text-base mr-3">
+              {t('treadmillSettings.percentBy', { defaultValue: 'By' })}
+            </Text>
+            <FormInput
+              className="flex-1"
+              keyboardType="decimal-pad"
+              value={percentText}
+              placeholder="0"
+              accessibilityLabel={t('treadmillSettings.percentA11y', {
+                defaultValue: 'Percent the treadmill is off',
+              })}
+              onChangeText={(text) => {
+                if (text !== '' && !DECIMAL_INPUT_REGEX.test(text)) return;
+                setPercentText(text);
+                commitPercent(reading, text);
+              }}
+            />
+            <Text className="text-text-secondary text-base ml-3">%</Text>
+          </View>
+          {preview.applied ? (
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('treadmillSettings.preview', {
+                defaultValue:
+                  'When it shows {{shown}} {{unit}}, {{saved}} {{unit}} is saved.',
+                shown: decimal(5, 2),
+                saved: decimal(preview.correctedMeters / unitMeters, 2),
+                unit: unitLabel,
+              })}
+            </Text>
+          ) : null}
+        </>
+      ) : null}
+
+      {showMeasure ? (
+        <View className="mt-4">
+          <Text className="text-text-secondary text-sm mb-2">
+            {t('treadmillSettings.measureTreadmillHint', {
+              defaultValue:
+                'Walk or run on the treadmill, then enter the steps from Health or your watch and what the treadmill showed. Your steps times your stride give the real distance.',
+            })}
+          </Text>
+          <SegmentedControl<StepActivity>
+            segments={ACTIVITIES.map((key) => ({
+              key,
+              label:
+                key === 'walk'
+                  ? t('recordActivity.activity.walk', { defaultValue: 'Walk' })
+                  : t('recordActivity.activity.run', { defaultValue: 'Run' }),
+            }))}
+            activeKey={checkActivity}
+            onSelect={(next) => {
+              setCheckActivity(next);
+              setTreadmillResult(null);
+            }}
+          />
+          <NumberField
+            label={t('treadmillSettings.calSteps', {
+              defaultValue: 'Steps taken',
+            })}
+            value={steps}
+            onChange={setSteps}
+          />
+          <NumberField
+            label={t('treadmillSettings.calShown', {
+              defaultValue: 'Treadmill showed',
+            })}
+            value={shown}
+            onChange={setShown}
+            suffix={unitLabel}
+          />
+          <Button
+            className="mt-3"
+            disabled={steps.trim() === '' || shown.trim() === ''}
+            onPress={checkTreadmill}
+          >
+            {t('treadmillSettings.checkAction', {
+              defaultValue: 'Check my treadmill',
+            })}
+          </Button>
+          {errorText('measure')}
+          {treadmillResult ? (
+            <View className="mt-3">
+              <Text className="text-text-primary text-sm">
+                {treadmillResultText(treadmillResult)}
+              </Text>
+              {treadmillResult.percent !== 0 ? (
+                <Button
+                  variant="secondary"
+                  className="mt-2"
+                  onPress={() => applyMeasuredPercent(treadmillResult.percent)}
+                >
+                  {t('treadmillSettings.useCorrection', {
+                    defaultValue: 'Use this correction',
+                  })}
+                </Button>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <Button
+          variant="link"
+          style={LINK_STYLE}
+          className="self-start mt-2"
+          onPress={() => setShowMeasure(true)}
+        >
+          {t('treadmillSettings.measureTreadmillToggle', {
+            defaultValue: 'Not sure? Work it out from your steps',
+          })}
+        </Button>
+      )}
+    </View>
+  );
 
   return (
     <View
@@ -395,446 +739,96 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
-        <Text className="text-text-secondary text-sm px-1">
-          {t('treadmillSettings.intro', {
-            defaultValue:
-              'Indoors there is no GPS, so the app works out distance from your steps and your stride. When you type in what the treadmill showed, that is used instead, and your stride learns from it.',
-          })}
-        </Text>
-
-        {/* Your stride */}
-        <SectionTitle>
-          {t('treadmillSettings.strideSection', {
+        <SettingsRowGroup
+          title={t('treadmillSettings.strideSection', {
             defaultValue: 'Your stride',
           })}
-        </SectionTitle>
-        <View className="bg-surface rounded-xl px-4 mb-2">
-          {ACTIVITIES.map((activity, index) => {
+          subtitle={t('treadmillSettings.strideSectionHint', {
+            defaultValue:
+              'How far one step takes you. Indoors there is no GPS, so the app turns your steps into distance with it.',
+          })}
+        >
+          {ACTIVITIES.map((activity) => {
             const info = profile?.[activity];
-            const changed = info ? info.manual || info.samples > 0 : false;
             return (
-              <View
-                key={activity}
-                className={`py-4 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
-                testID={`stride-${activity}`}
-              >
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-text-primary text-base font-semibold">
-                    {activityName(activity)}
-                  </Text>
-                  {info ? (
-                    <Text className="text-text-primary text-lg font-semibold">
-                      {formatStride(info.meters)}
-                    </Text>
-                  ) : null}
-                </View>
-                {info ? (
-                  <Text className="text-text-secondary text-sm mt-1">
-                    {strideStatus(info)}
-                  </Text>
-                ) : null}
-
-                {editing === activity ? (
-                  <>
-                    <View
-                      className="flex-row items-center mt-3"
-                      style={{ gap: 8 }}
-                    >
-                      <FormInput
-                        className="flex-1"
-                        keyboardType="decimal-pad"
-                        autoFocus
-                        value={strideText}
-                        placeholder={
-                          info
-                            ? decimal(
-                                strideToDisplay(info.meters, unit),
-                                strideDigits
-                              )
-                            : undefined
-                        }
-                        accessibilityLabel={t(
-                          'treadmillSettings.strideInputA11y',
-                          {
-                            defaultValue: '{{activity}} in {{unit}}',
-                            activity: activityName(activity),
-                            unit: strideUnitLabel,
-                          }
-                        )}
-                        onChangeText={(text) => {
-                          if (text !== '' && !DECIMAL_INPUT_REGEX.test(text))
-                            return;
-                          setStrideText(text);
-                        }}
-                      />
-                      <Text className="text-text-secondary text-base">
-                        {strideUnitLabel}
-                      </Text>
-                      <Button
-                        variant="secondary"
-                        disabled={strideText.trim() === ''}
-                        onPress={() => void saveStride(activity)}
-                      >
-                        {t('common.save', { defaultValue: 'Save' })}
-                      </Button>
-                    </View>
-                    {strideError ? (
-                      <Text className="text-text-danger-subtle text-sm mt-2">
-                        {t('treadmillSettings.strideInvalid', {
-                          defaultValue:
-                            'That stride does not look right. A step is usually between 0.3 and 2.5 m (1 and 8 ft).',
-                        })}
-                      </Text>
-                    ) : null}
-                  </>
-                ) : null}
-
-                <View className="flex-row mt-2" style={{ gap: 16 }}>
-                  <Button
-                    variant="link"
-                    style={LINK_STYLE}
-                    className="self-start"
-                    onPress={() =>
-                      editing === activity
-                        ? setEditing(null)
-                        : startEditing(activity)
-                    }
-                  >
-                    {editing === activity
-                      ? t('common.cancel', { defaultValue: 'Cancel' })
-                      : t('treadmillSettings.strideEdit', {
-                          defaultValue: 'Type it in',
-                        })}
-                  </Button>
-                  {changed ? (
-                    <Button
-                      variant="link"
-                      style={LINK_STYLE}
-                      className="self-start"
-                      accessibilityLabel={t('treadmillSettings.resetA11y', {
-                        defaultValue: 'Reset {{activity}}',
-                        activity: activityName(activity).toLowerCase(),
-                      })}
-                      onPress={() => void reset(activity)}
-                    >
-                      {t('treadmillSettings.reset', {
-                        defaultValue: 'Reset',
-                      })}
-                    </Button>
-                  ) : null}
-                </View>
+              <View key={activity} testID={`stride-${activity}`}>
+                <SettingsRow
+                  title={activityName(activity)}
+                  subtitle={info ? strideSummary(info) : undefined}
+                  onPress={() => toggle(activity)}
+                  rightAccessory={chevron(activity)}
+                />
+                {open === activity && info ? stridePanel(activity, info) : null}
               </View>
             );
           })}
-        </View>
+        </SettingsRowGroup>
 
-        {/* Treadmill display */}
-        <SectionTitle>
-          {t('treadmillSettings.displaySection', {
-            defaultValue: 'Treadmill display',
+        <SettingsRowGroup
+          title={t('treadmillSettings.treadmillSection', {
+            defaultValue: 'Treadmill',
           })}
-        </SectionTitle>
-        <SettingsRow
-          title={t('treadmillSettings.correction', {
-            defaultValue: 'Correct my treadmill',
-          })}
-          subtitle={t('treadmillSettings.correctionSubtitle', {
+          subtitle={t('treadmillSettings.treadmillSectionHint', {
             defaultValue:
-              'Turn on if your treadmill shows more or less distance than you really covered. The distance you type in from it is then fixed before it is saved. Distances worked out from your steps are not changed. Kept on this phone.',
+              'Only changes distances you type in from a treadmill. Kept on this phone.',
           })}
-          subtitleNumberOfLines={0}
-          rightAccessory={
-            <Switch
-              value={enabled}
-              onValueChange={setEnabled}
-              accessibilityLabel={t('treadmillSettings.correctionA11y', {
-                defaultValue: 'Correct my treadmill',
+        >
+          <View testID="treadmill">
+            <SettingsRow
+              title={t('treadmillSettings.treadmillRow', {
+                defaultValue: 'Treadmill display',
               })}
+              subtitle={treadmillSummary}
+              subtitleNumberOfLines={0}
+              onPress={() => toggle('treadmill')}
+              rightAccessory={chevron('treadmill')}
             />
-          }
-        />
-
-        {enabled ? (
-          <View className="bg-surface rounded-xl p-4 mb-2">
-            <Text className="text-text-primary text-base font-semibold mb-2">
-              {t('treadmillSettings.displayReads', {
-                defaultValue: 'It shows',
-              })}
-            </Text>
-            <SegmentedControl<Direction>
-              segments={[
-                {
-                  key: 'long',
-                  label: t('treadmillSettings.readsLong', {
-                    defaultValue: 'More than I ran',
-                  }),
-                },
-                {
-                  key: 'short',
-                  label: t('treadmillSettings.readsShort', {
-                    defaultValue: 'Less than I ran',
-                  }),
-                },
-              ]}
-              activeKey={direction}
-              onSelect={(next) => {
-                setDirection(next);
-                commitPercent(next, percentText);
-              }}
-            />
-            <View className="flex-row items-center mt-3">
-              <Text className="text-text-secondary text-base mr-3">
-                {t('treadmillSettings.percentBy', { defaultValue: 'By' })}
-              </Text>
-              <FormInput
-                className="flex-1"
-                keyboardType="decimal-pad"
-                value={percentText}
-                placeholder="0"
-                accessibilityLabel={t('treadmillSettings.percentA11y', {
-                  defaultValue: 'Percent the treadmill is off',
-                })}
-                onChangeText={(text) => {
-                  if (text !== '' && !DECIMAL_INPUT_REGEX.test(text)) return;
-                  setPercentText(text);
-                  commitPercent(direction, text);
-                }}
-              />
-              <Text className="text-text-secondary text-base ml-3">%</Text>
-            </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              {preview.applied
-                ? t('treadmillSettings.preview', {
-                    defaultValue:
-                      'When the treadmill shows {{shown}} {{unit}}, {{saved}} {{unit}} is saved.',
-                    shown: decimal(5, 2),
-                    saved: decimal(preview.correctedMeters / unitMeters, 2),
-                    unit: unitLabel,
-                  })
-                : t('treadmillSettings.previewNone', {
-                    defaultValue:
-                      'Not sure by how much? Use Measure, below, to find out.',
-                  })}
-            </Text>
+            {open === 'treadmill' ? treadmillPanel : null}
           </View>
-        ) : null}
+        </SettingsRowGroup>
 
-        {/* Measure */}
-        <SectionTitle>
-          {t('treadmillSettings.measureSection', { defaultValue: 'Measure' })}
-        </SectionTitle>
-        <SectionHint>
-          {t('treadmillSettings.measureHint', {
-            defaultValue:
-              'Optional. Measure your stride first, then use it to check the treadmill. Get the steps from Health or your watch.',
-          })}
-        </SectionHint>
-        <View className="bg-surface rounded-xl p-4 mb-2">
-          <SegmentedControl<MeasureMode>
-            segments={[
-              {
-                key: 'stride',
-                label: t('treadmillSettings.measureStride', {
-                  defaultValue: 'My stride',
-                }),
-              },
-              {
-                key: 'treadmill',
-                label: t('treadmillSettings.measureTreadmill', {
-                  defaultValue: 'My treadmill',
-                }),
-              },
-            ]}
-            activeKey={mode}
-            onSelect={(next) => {
-              setMode(next);
-              clearResults();
-            }}
-          />
-          <View className="mt-3">
-            <SegmentedControl<StepActivity>
-              segments={activitySegments}
-              activeKey={measureActivity}
-              onSelect={(next) => {
-                setMeasureActivity(next);
-                clearResults();
-              }}
-            />
-          </View>
-
-          <Text className="text-text-secondary text-sm mt-3">
-            {mode === 'stride'
-              ? t('treadmillSettings.measureStrideHint', {
-                  defaultValue:
-                    'Walk or run a distance you know is right, like laps of a track, then enter your steps and that distance.',
-                })
-              : t('treadmillSettings.measureTreadmillHint', {
-                  defaultValue:
-                    'Walk or run on the treadmill, then enter your steps and what the treadmill showed. Your steps times your {{activity}} ({{stride}}) give the real distance.',
-                  activity: activityName(measureActivity).toLowerCase(),
-                  stride: formatStride(strideMeters(measureActivity)),
-                })}
-          </Text>
-
-          <NumberField
-            label={t('treadmillSettings.calSteps', {
-              defaultValue: 'Steps taken',
+        <View testID="watch-scale">
+          <SettingsRowGroup
+            title={t('treadmillSettings.watchScale', { defaultValue: 'Watch' })}
+            subtitle={t('treadmillSettings.watchScaleHint', {
+              defaultValue:
+                'The watch guesses treadmill distance from your arm swing. Each time you type in what the treadmill showed after a watch run, it learns how far off it was.',
             })}
-            value={steps}
-            onChange={setSteps}
-          />
-          {mode === 'stride' ? (
-            <NumberField
-              label={t('treadmillSettings.calDistance', {
-                defaultValue: 'Real distance',
-              })}
-              value={distance}
-              onChange={setDistance}
-              suffix={unitLabel}
-            />
-          ) : (
-            <NumberField
-              label={t('treadmillSettings.calShown', {
-                defaultValue: 'Treadmill showed',
-              })}
-              value={shown}
-              onChange={setShown}
-              suffix={unitLabel}
-            />
-          )}
-
-          <Button
-            className="mt-4"
-            disabled={
-              steps.trim() === '' ||
-              (mode === 'stride' ? distance : shown).trim() === ''
-            }
-            onPress={() =>
-              mode === 'stride' ? void measureStride() : checkTreadmill()
-            }
           >
-            {mode === 'stride'
-              ? t('treadmillSettings.calibrateAction', {
-                  defaultValue: 'Set my stride',
-                })
-              : t('treadmillSettings.checkAction', {
-                  defaultValue: 'Check my treadmill',
-                })}
-          </Button>
-
-          {measureFailed ? (
-            <Text className="text-text-danger-subtle text-sm mt-2">
-              {t('treadmillSettings.calibrateFailed', {
-                defaultValue:
-                  'That is too short or does not add up. Use at least 150 steps and 100 m, and check the numbers.',
-              })}
-            </Text>
-          ) : null}
-
-          {strideResult ? (
-            <Text className="text-text-primary text-sm mt-3">
-              {t('treadmillSettings.calibrated', {
-                defaultValue: 'Your {{activity}} is now {{stride}}.',
-                activity: activityName(strideResult.activity).toLowerCase(),
-                stride: formatStride(strideResult.meters),
-              })}
-            </Text>
-          ) : null}
-
-          {treadmillResult ? (
-            <View className="mt-3">
-              <Text className="text-text-primary text-sm">
-                {treadmillResult.percent === 0
-                  ? t('treadmillSettings.checkedSame', {
-                      defaultValue:
-                        'Your steps make that {{actual}} {{unit}}. The treadmill is right, so there is nothing to fix.',
-                      actual: decimal(
-                        treadmillResult.actualMeters / unitMeters,
-                        2
-                      ),
-                      unit: unitLabel,
-                    })
-                  : treadmillResult.percent > 0
-                    ? t('treadmillSettings.checkedLong', {
-                        defaultValue:
-                          'Your steps make that {{actual}} {{unit}}, so the treadmill shows {{percent}} more than you did.',
-                        actual: decimal(
-                          treadmillResult.actualMeters / unitMeters,
-                          2
-                        ),
-                        unit: unitLabel,
-                        percent: unsignedPercent(treadmillResult.percent),
-                      })
-                    : t('treadmillSettings.checkedShort', {
-                        defaultValue:
-                          'Your steps make that {{actual}} {{unit}}, so the treadmill shows {{percent}} less than you did.',
-                        actual: decimal(
-                          treadmillResult.actualMeters / unitMeters,
-                          2
-                        ),
-                        unit: unitLabel,
-                        percent: unsignedPercent(treadmillResult.percent),
-                      })}
-              </Text>
-              {treadmillResult.percent !== 0 ? (
-                <Button
-                  variant="secondary"
-                  className="mt-2"
-                  onPress={() => applyMeasuredPercent(treadmillResult.percent)}
-                >
-                  {t('treadmillSettings.useCorrection', {
-                    defaultValue: 'Use this correction',
-                  })}
-                </Button>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-
-        {/* Watch */}
-        <SectionTitle>
-          {t('treadmillSettings.watchScale', { defaultValue: 'Watch' })}
-        </SectionTitle>
-        <SectionHint>
-          {t('treadmillSettings.watchScaleHint', {
-            defaultValue:
-              'The watch guesses treadmill distance from your arm swing. When you type in what the treadmill showed after a watch run, it learns how far off it was and fixes its next runs.',
-          })}
-        </SectionHint>
-        <View className="bg-surface rounded-xl px-4 mb-4" testID="watch-scale">
-          {ACTIVITIES.map((activity, index) => {
-            const info = watchScale?.[activity] ?? null;
-            return (
-              <View
-                key={activity}
-                className={`py-4 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
-                testID={`watch-scale-${activity}`}
-              >
-                <Text className="text-text-primary text-base font-semibold">
-                  {activity === 'walk'
-                    ? t('treadmillSettings.watchScaleWalk', {
-                        defaultValue: 'Walks',
-                      })
-                    : t('treadmillSettings.watchScaleRun', {
-                        defaultValue: 'Runs',
-                      })}
-                </Text>
-                <Text className="text-text-secondary text-sm mt-1">
-                  {watchScaleStatus(info)}
-                </Text>
-                {info ? (
-                  <Button
-                    variant="link"
-                    style={LINK_STYLE}
-                    className="self-start mt-2"
-                    onPress={() => void resetWatchIndoorScale(activity)}
-                  >
-                    {t('treadmillSettings.reset', { defaultValue: 'Reset' })}
-                  </Button>
-                ) : null}
-              </View>
-            );
-          })}
+            {ACTIVITIES.map((activity) => {
+              const info = watchScale?.[activity] ?? null;
+              return (
+                <View key={activity} testID={`watch-scale-${activity}`}>
+                  <SettingsRow
+                    title={
+                      activity === 'walk'
+                        ? t('treadmillSettings.watchScaleWalk', {
+                            defaultValue: 'Walks',
+                          })
+                        : t('treadmillSettings.watchScaleRun', {
+                            defaultValue: 'Runs',
+                          })
+                    }
+                    subtitle={watchScaleStatus(info)}
+                    subtitleNumberOfLines={0}
+                    rightAccessory={
+                      info ? (
+                        <Button
+                          variant="link"
+                          style={LINK_STYLE}
+                          onPress={() => void resetWatchIndoorScale(activity)}
+                        >
+                          {t('treadmillSettings.reset', {
+                            defaultValue: 'Reset',
+                          })}
+                        </Button>
+                      ) : null
+                    }
+                  />
+                </View>
+              );
+            })}
+          </SettingsRowGroup>
         </View>
       </ScrollView>
     </View>
