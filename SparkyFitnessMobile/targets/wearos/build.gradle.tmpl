@@ -20,12 +20,6 @@ android {
         compose true
     }
 
-    testOptions {
-            unitTests {
-                includeAndroidResources = true
-            }
-        }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -121,6 +115,4 @@ dependencies {
     implementation 'com.google.guava:guava:33.2.1-android'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20231013'
-    testImplementation 'org.robolectric:robolectric:4.14.1'
-    testImplementation 'androidx.test:core-ktx:1.6.1'
 }

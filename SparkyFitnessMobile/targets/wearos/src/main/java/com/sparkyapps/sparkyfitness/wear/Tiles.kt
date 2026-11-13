@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.toArgb
 import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders.argb
@@ -50,7 +51,8 @@ data class TileMacroRow(
   val label: String,
   val valueText: String,
   val progress: Float,
-  val colorArgb: Int
+  val colorArgb: Int,
+  @StringRes val labelRes: Int = 0
 )
 
 data class NutritionTileModel(
@@ -68,8 +70,16 @@ data class NutritionTileModel(
 data class TileStageBadge(
   val label: String,
   val durationText: String,
-  val colorArgb: Int
+  val colorArgb: Int,
+  @StringRes val labelRes: Int = 0
 )
+
+sealed class SleepWindow {
+  data object NoSleepLogged : SleepWindow()
+  data class BedWake(val bedtime: String, val wakeTime: String) : SleepWindow()
+  data class Naps(val count: Int, val durationText: String) : SleepWindow()
+  data class InBed(val durationText: String) : SleepWindow()
+}
 
 data class SleepTileModel(
   val hasData: Boolean,
@@ -78,7 +88,10 @@ data class SleepTileModel(
   val windowText: String,
   val biometricsText: String?,
   val progress: Float,
-  val stages: List<TileStageBadge>
+  val stages: List<TileStageBadge>,
+  val sleepScore: Int? = null,
+  val inBedDurationText: String? = null,
+  val window: SleepWindow = SleepWindow.NoSleepLogged
 )
 
 data class TileDoseRow(
@@ -96,13 +109,15 @@ data class MedicationsTileModel(
   val headlineText: String,
   val subtitleText: String,
   val progress: Float,
-  val doseRows: List<TileDoseRow>
+  val doseRows: List<TileDoseRow>,
+  val skippedCount: Int = 0
 )
 
 data class TileExerciseItemRow(
   val title: String,
   val subtitle: String,
-  val badgeColorArgb: Int
+  val badgeColorArgb: Int,
+  @StringRes val subtitleRes: Int = 0
 )
 
 data class ExerciseTileModel(
@@ -115,7 +130,10 @@ data class ExerciseTileModel(
   val headlineText: String,
   val subtitleText: String,
   val progress: Float,
-  val rows: List<TileExerciseItemRow>
+  val rows: List<TileExerciseItemRow>,
+  val hasExerciseSummary: Boolean = false,
+  val stepsCount: Int? = null,
+  val hasScheduledWorkouts: Boolean = false
 )
 
 object TileModels {
@@ -150,7 +168,6 @@ object TileModels {
    * Builds the display model for the Nutrition tile from today's [NutritionSnapshot].
    */
   fun buildNutritionTileModel(
-    context: Context,
     nutrition: NutritionSnapshot?,
     energy: EnergyDisplay = EnergyDisplay.KCAL
   ): NutritionTileModel {
@@ -171,10 +188,17 @@ object TileModels {
     val goal = max(0, energy.whole(nutrition.caloriesConsumed + nutrition.caloriesRemaining))
     val progress = nutrition.calorieProgress.toFloat().coerceIn(0f, 1f)
 
+    val defaultLabels = mapOf(
+      "protein" to R.string.common_protein,
+      "carbs" to R.string.common_carbs,
+      "fat" to R.string.common_fat
+    )
+
+    val usingFallbackRows = nutrition.rows.isNullOrEmpty()
     val sourceRows = nutrition.rows?.takeIf { it.isNotEmpty() } ?: listOf(
       NutrientRow(
         key = "protein",
-        label = context.getString(R.string.common_protein),
+        label = "Protein",
         unit = "g",
         consumed = nutrition.protein.consumed,
         goal = nutrition.protein.goal.takeIf { it > 0 },
@@ -182,7 +206,7 @@ object TileModels {
       ),
       NutrientRow(
         key = "carbs",
-        label = context.getString(R.string.common_carbs),
+        label = "Carbs",
         unit = "g",
         consumed = nutrition.carbs.consumed,
         goal = nutrition.carbs.goal.takeIf { it > 0 },
@@ -190,7 +214,7 @@ object TileModels {
       ),
       NutrientRow(
         key = "fat",
-        label = context.getString(R.string.common_fat),
+        label = "Fat",
         unit = "g",
         consumed = nutrition.fat.consumed,
         goal = nutrition.fat.goal.takeIf { it > 0 },
@@ -211,7 +235,8 @@ object TileModels {
         label = row.label.take(12),
         valueText = valueText,
         progress = row.progress.toFloat().coerceIn(0f, 1f),
-        colorArgb = colorForNutrientKey(row.key)
+        colorArgb = colorForNutrientKey(row.key),
+        labelRes = if (usingFallbackRows) (defaultLabels[row.key] ?: 0) else 0
       )
     }
 
@@ -230,44 +255,61 @@ object TileModels {
   /**
    * Builds the display model for the Sleep Health tile from today's [SleepSnapshot].
    */
-  fun buildSleepTileModel(context: Context, sleep: SleepSnapshot?): SleepTileModel {
+  fun buildSleepTileModel(sleep: SleepSnapshot?): SleepTileModel {
     if (sleep == null || !sleep.isToday || (sleep.totalSeconds <= 0 && sleep.timeInBedSeconds <= 0)) {
       return SleepTileModel(
         hasData = false,
         durationText = "—",
         scoreText = null,
-        windowText = context.getString(R.string.tile_sleep_no_logged),
+        windowText = "No sleep logged today",
         biometricsText = null,
         progress = 0f,
-        stages = emptyList()
+        stages = emptyList(),
+        sleepScore = null,
+        inBedDurationText = null,
+        window = SleepWindow.NoSleepLogged
       )
+    }
+    val inBedOnlyDuration = if (sleep.totalSeconds <= 0) {
+      formatDurationSeconds(sleep.timeInBedSeconds)
+    } else {
+      null
     }
     val durationText = if (sleep.totalSeconds > 0) {
       formatDurationSeconds(sleep.totalSeconds)
     } else {
-      context.getString(R.string.tile_sleep_in_bed, formatDurationSeconds(sleep.timeInBedSeconds))
+      "In bed $inBedOnlyDuration"
     }
-    val scoreText = sleep.sleepScore?.let { context.getString(R.string.tile_sleep_score, it) }
-    val windowText = when {
-      sleep.bedtime.isNotBlank() && sleep.wakeTime.isNotBlank() -> "${sleep.bedtime} – ${sleep.wakeTime}"
-      sleep.napCount > 0 -> context.resources.getQuantityString(
-        R.plurals.tile_sleep_naps,
-        sleep.napCount,
-        sleep.napCount,
-        formatDurationSeconds(sleep.napSeconds)
-      )
-      else -> context.getString(R.string.tile_sleep_in_bed, formatDurationSeconds(sleep.timeInBedSeconds))
+    val scoreText = sleep.sleepScore?.let { "Score $it" }
+    val window: SleepWindow
+    val windowText: String
+    when {
+      sleep.bedtime.isNotBlank() && sleep.wakeTime.isNotBlank() -> {
+        window = SleepWindow.BedWake(sleep.bedtime, sleep.wakeTime)
+        windowText = "${sleep.bedtime} – ${sleep.wakeTime}"
+      }
+      sleep.napCount > 0 -> {
+        val napDur = formatDurationSeconds(sleep.napSeconds)
+        val napWord = if (sleep.napCount == 1) "nap" else "naps"
+        window = SleepWindow.Naps(sleep.napCount, napDur)
+        windowText = "${sleep.napCount} $napWord ($napDur)"
+      }
+      else -> {
+        val inBedDur = formatDurationSeconds(sleep.timeInBedSeconds)
+        window = SleepWindow.InBed(inBedDur)
+        windowText = "In bed $inBedDur"
+      }
     }
 
     val stages = mutableListOf<TileStageBadge>()
     sleep.deepSeconds?.takeIf { it > 0 }?.let {
-      stages.add(TileStageBadge(context.getString(R.string.sleep_stage_deep), formatDurationSeconds(it), 0xFF818CF8.toInt()))
+      stages.add(TileStageBadge("Deep", formatDurationSeconds(it), 0xFF818CF8.toInt(), R.string.sleep_stage_deep))
     }
     sleep.remSeconds?.takeIf { it > 0 }?.let {
-      stages.add(TileStageBadge(context.getString(R.string.sleep_stage_rem), formatDurationSeconds(it), 0xFFC084FC.toInt()))
+      stages.add(TileStageBadge("REM", formatDurationSeconds(it), 0xFFC084FC.toInt(), R.string.sleep_stage_rem))
     }
     sleep.lightSeconds?.takeIf { it > 0 }?.let {
-      stages.add(TileStageBadge(context.getString(R.string.sleep_stage_light), formatDurationSeconds(it), 0xFF38BDF8.toInt()))
+      stages.add(TileStageBadge("Light", formatDurationSeconds(it), 0xFF38BDF8.toInt(), R.string.sleep_stage_light))
     }
 
     val bioParts = mutableListOf<String>()
@@ -290,24 +332,28 @@ object TileModels {
       windowText = windowText,
       biometricsText = biometricsText,
       progress = progress,
-      stages = stages
+      stages = stages,
+      sleepScore = sleep.sleepScore,
+      inBedDurationText = inBedOnlyDuration,
+      window = window
     )
   }
 
   /**
    * Builds the display model for the Medications tile from today's [MedicationSnapshot].
    */
-  fun buildMedicationsTileModel(context: Context, medications: MedicationSnapshot?): MedicationsTileModel {
+  fun buildMedicationsTileModel(medications: MedicationSnapshot?): MedicationsTileModel {
     if (medications == null || !medications.isToday) {
       return MedicationsTileModel(
         hasData = false,
         takenCount = 0,
         totalCount = 0,
         pendingCount = 0,
-        headlineText = context.getString(R.string.tile_meds_not_synced),
-        subtitleText = context.getString(R.string.tile_meds_open_app),
+        headlineText = "Not synced",
+        subtitleText = "Open app to sync",
         progress = 0f,
-        doseRows = emptyList()
+        doseRows = emptyList(),
+        skippedCount = 0
       )
     }
     val doses = medications.doses
@@ -317,10 +363,11 @@ object TileModels {
         takenCount = 0,
         totalCount = 0,
         pendingCount = 0,
-        headlineText = context.getString(R.string.tile_meds_taken_count, 0, 0),
-        subtitleText = context.getString(R.string.tile_meds_none_today),
+        headlineText = "0 / 0 Taken",
+        subtitleText = "No doses scheduled today",
         progress = 1f,
-        doseRows = emptyList()
+        doseRows = emptyList(),
+        skippedCount = 0
       )
     }
     val takenCount = doses.count { it.status == MedicationDoseStatus.TAKEN }
@@ -329,11 +376,11 @@ object TileModels {
     val totalCount = doses.size
     val progress = (takenCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
 
-    val headlineText = context.getString(R.string.tile_meds_taken_count, takenCount, totalCount)
+    val headlineText = "$takenCount / $totalCount Taken"
     val subtitleText = when {
-      pendingCount > 0 -> context.getString(R.string.tile_meds_pending_today, pendingCount)
-      skippedCount > 0 -> context.getString(R.string.tile_meds_skipped_done, skippedCount)
-      else -> context.getString(R.string.tile_meds_all_done)
+      pendingCount > 0 -> "$pendingCount pending today"
+      skippedCount > 0 -> "$skippedCount skipped · All done"
+      else -> "All doses completed"
     }
 
     val ordered = doses.sortedBy {
@@ -367,7 +414,8 @@ object TileModels {
       headlineText = headlineText,
       subtitleText = subtitleText,
       progress = progress,
-      doseRows = doseRows
+      doseRows = doseRows,
+      skippedCount = skippedCount
     )
   }
 
@@ -375,7 +423,6 @@ object TileModels {
    * Builds the display model for the Exercise tile from today's exercise summary, scheduled workouts, and steps.
    */
   fun buildExerciseTileModel(
-    context: Context,
     exercise: ExerciseSummarySnapshot?,
     scheduledWorkouts: List<ScheduledWorkout>,
     steps: StepsSnapshot?,
@@ -408,27 +455,26 @@ object TileModels {
         if (caloriesGoal > 0) "$shownCalories/$shownGoal ${energy.unit}" else "$shownCalories ${energy.unit}"
       "${minutes}m · $calorieText"
     } else if (validSteps != null) {
-      context.getString(R.string.tile_exercise_steps_count, validSteps.count)
+      "${validSteps.count} steps"
     } else {
       "0m · 0 ${energy.unit}"
     }
 
     val subtitleParts = mutableListOf<String>()
     if (minutesGoal > 0) {
-      subtitleParts.add(context.getString(R.string.tile_exercise_goal_minutes, minutesGoal))
+      subtitleParts.add("Goal ${minutesGoal}m")
     }
     if (sessionCount > 0) {
-      subtitleParts.add(
-        context.resources.getQuantityString(R.plurals.tile_exercise_workouts, sessionCount, sessionCount)
-      )
+      val workoutWord = if (sessionCount == 1) "workout" else "workouts"
+      subtitleParts.add("$sessionCount $workoutWord")
     } else if (validSteps != null) {
-      subtitleParts.add(context.getString(R.string.tile_exercise_steps_count, validSteps.count))
+      subtitleParts.add("${validSteps.count} steps")
     }
     val subtitleText = subtitleParts.joinToString(" · ").ifEmpty {
       if (scheduledWorkouts.isNotEmpty()) {
-        context.getString(R.string.tile_exercise_planned_today)
+        "Workout planned today"
       } else {
-        context.getString(R.string.tile_exercise_tap_start)
+        "Tap to start a workout"
       }
     }
 
@@ -444,11 +490,14 @@ object TileModels {
     }
     if (rows.size < 2) {
       for (sched in scheduledWorkouts.take(2 - rows.size)) {
+        val rawSub = sched.planName.ifBlank { sched.caption }
+        val useFallback = rawSub.isBlank()
         rows.add(
           TileExerciseItemRow(
             title = sched.name.take(15),
-            subtitle = sched.planName.ifBlank { sched.caption }.ifBlank { context.getString(R.string.tile_exercise_scheduled) }.take(16),
-            badgeColorArgb = 0xFFFB923C.toInt()
+            subtitle = (if (useFallback) "Scheduled" else rawSub).take(16),
+            badgeColorArgb = 0xFFFB923C.toInt(),
+            subtitleRes = if (useFallback) R.string.tile_exercise_scheduled else 0
           )
         )
       }
@@ -464,7 +513,10 @@ object TileModels {
       headlineText = headlineText,
       subtitleText = subtitleText,
       progress = progress,
-      rows = rows
+      rows = rows,
+      hasExerciseSummary = validExercise != null,
+      stepsCount = validSteps?.count,
+      hasScheduledWorkouts = scheduledWorkouts.isNotEmpty()
     )
   }
 }
@@ -807,7 +859,7 @@ class NutritionTileService : BaseSparkyTileService() {
   override val accentColorArgb = 0xFF4ADE80.toInt()
 
   override fun currentRingProgress(session: WearSessionManager): Float {
-    return TileModels.buildNutritionTileModel(applicationContext, session.checkInStore.nutrition.value).calorieProgress
+    return TileModels.buildNutritionTileModel(session.checkInStore.nutrition.value).calorieProgress
   }
 
   /**
@@ -815,7 +867,6 @@ class NutritionTileService : BaseSparkyTileService() {
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
     val model = TileModels.buildNutritionTileModel(
-      applicationContext,
       session.checkInStore.nutrition.value,
       EnergyDisplay.of(session.checkInStore.watchContext.value)
     )
@@ -889,9 +940,10 @@ class NutritionTileService : BaseSparkyTileService() {
 
     for ((idx, macro) in model.macros.withIndex()) {
       if (idx > 0) col.addContent(vSpacer(3f))
+      val macroLabel = if (macro.labelRes != 0) getString(macro.labelRes) else macro.label
       col.addContent(
         pillRow(
-          leftLabel = macro.label,
+          leftLabel = macroLabel,
           rightValue = macro.valueText,
           accentColorArgb = macro.colorArgb
         )
@@ -918,14 +970,26 @@ class SleepTileService : BaseSparkyTileService() {
   override val accentColorArgb = 0xFF818CF8.toInt()
 
   override fun currentRingProgress(session: WearSessionManager): Float {
-    return TileModels.buildSleepTileModel(applicationContext, session.checkInStore.sleep.value).progress
+    return TileModels.buildSleepTileModel(session.checkInStore.sleep.value).progress
+  }
+
+  private fun formatSleepWindow(window: SleepWindow): String = when (window) {
+    is SleepWindow.NoSleepLogged -> getString(R.string.tile_sleep_no_logged)
+    is SleepWindow.BedWake -> "${window.bedtime} – ${window.wakeTime}"
+    is SleepWindow.Naps -> resources.getQuantityString(
+      R.plurals.tile_sleep_naps,
+      window.count,
+      window.count,
+      window.durationText
+    )
+    is SleepWindow.InBed -> getString(R.string.tile_sleep_in_bed, window.durationText)
   }
 
   /**
    * Builds the ProtoLayout content column for the Sleep Health tile.
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
-    val model = TileModels.buildSleepTileModel(applicationContext, session.checkInStore.sleep.value)
+    val model = TileModels.buildSleepTileModel(session.checkInStore.sleep.value)
     val headerLabel = if (model.hasData && model.biometricsText != null && model.stages.size >= 3) {
       getString(R.string.tile_sleep_header_bio, model.biometricsText.take(12).uppercase(Locale.US))
     } else {
@@ -972,10 +1036,14 @@ class SleepTileService : BaseSparkyTileService() {
       return col.build()
     }
 
-    val headlineText = if (model.scoreText != null) {
-      "${model.durationText} · ${model.scoreText}"
+    val resolvedDuration = model.inBedDurationText?.let {
+      getString(R.string.tile_sleep_in_bed, it)
+    } ?: model.durationText
+    val resolvedScore = model.sleepScore?.let { getString(R.string.tile_sleep_score, it) }
+    val headlineText = if (resolvedScore != null) {
+      "$resolvedDuration · $resolvedScore"
     } else {
-      model.durationText
+      resolvedDuration
     }
     col.addContent(
       tileText(
@@ -987,7 +1055,7 @@ class SleepTileService : BaseSparkyTileService() {
     )
     col.addContent(
       tileText(
-        value = model.windowText,
+        value = formatSleepWindow(model.window),
         sizeSp = 10f,
         colorArgb = 0xFF94A3B8.toInt()
       )
@@ -996,9 +1064,10 @@ class SleepTileService : BaseSparkyTileService() {
 
     for ((idx, stage) in model.stages.take(3).withIndex()) {
       if (idx > 0) col.addContent(vSpacer(3f))
+      val stageLabel = if (stage.labelRes != 0) getString(stage.labelRes) else stage.label
       col.addContent(
         pillRow(
-          leftLabel = stage.label,
+          leftLabel = stageLabel,
           rightValue = stage.durationText,
           accentColorArgb = stage.colorArgb
         )
@@ -1025,14 +1094,26 @@ class MedicationsTileService : BaseSparkyTileService() {
   override val accentColorArgb = 0xFF2DD4BF.toInt()
 
   override fun currentRingProgress(session: WearSessionManager): Float {
-    return TileModels.buildMedicationsTileModel(applicationContext, session.checkInStore.medications.value).progress
+    return TileModels.buildMedicationsTileModel(session.checkInStore.medications.value).progress
   }
 
   /**
    * Builds the ProtoLayout content column for the Medications tile.
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
-    val model = TileModels.buildMedicationsTileModel(applicationContext, session.checkInStore.medications.value)
+    val model = TileModels.buildMedicationsTileModel(session.checkInStore.medications.value)
+    val headlineText = if (!model.hasData) {
+      getString(R.string.tile_meds_not_synced)
+    } else {
+      getString(R.string.tile_meds_taken_count, model.takenCount, model.totalCount)
+    }
+    val subtitleText = when {
+      !model.hasData -> getString(R.string.tile_meds_open_app)
+      model.totalCount == 0 -> getString(R.string.tile_meds_none_today)
+      model.pendingCount > 0 -> getString(R.string.tile_meds_pending_today, model.pendingCount)
+      model.skippedCount > 0 -> getString(R.string.tile_meds_skipped_done, model.skippedCount)
+      else -> getString(R.string.tile_meds_all_done)
+    }
     val col = Column.Builder()
       .setWidth(expand())
       .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
@@ -1047,7 +1128,7 @@ class MedicationsTileService : BaseSparkyTileService() {
       .addContent(vSpacer(2f))
       .addContent(
         tileText(
-          value = model.headlineText,
+          value = headlineText,
           sizeSp = 15f,
           colorArgb = 0xFFFFFFFF.toInt(),
           bold = true
@@ -1055,7 +1136,7 @@ class MedicationsTileService : BaseSparkyTileService() {
       )
       .addContent(
         tileText(
-          value = model.subtitleText,
+          value = subtitleText,
           sizeSp = 10f,
           colorArgb = 0xFF94A3B8.toInt()
         )
@@ -1099,7 +1180,6 @@ class ExerciseTileService : BaseSparkyTileService() {
   override fun currentRingProgress(session: WearSessionManager): Float {
     val store = session.checkInStore
     return TileModels.buildExerciseTileModel(
-      context = applicationContext,
       exercise = store.exerciseSummary.value,
       scheduledWorkouts = store.scheduledWorkouts.value,
       steps = store.steps.value,
@@ -1113,13 +1193,35 @@ class ExerciseTileService : BaseSparkyTileService() {
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
     val store = session.checkInStore
     val model = TileModels.buildExerciseTileModel(
-      context = applicationContext,
       exercise = store.exerciseSummary.value,
       scheduledWorkouts = store.scheduledWorkouts.value,
       steps = store.steps.value,
       stepGoal = store.stepGoal.value,
       energy = EnergyDisplay.of(store.watchContext.value)
     )
+    val headlineText = if (!model.hasExerciseSummary && model.stepsCount != null) {
+      getString(R.string.tile_exercise_steps_count, model.stepsCount)
+    } else {
+      model.headlineText
+    }
+    val subtitleParts = mutableListOf<String>()
+    if (model.minutesGoal > 0) {
+      subtitleParts.add(getString(R.string.tile_exercise_goal_minutes, model.minutesGoal))
+    }
+    if (model.sessionCount > 0) {
+      subtitleParts.add(
+        resources.getQuantityString(R.plurals.tile_exercise_workouts, model.sessionCount, model.sessionCount)
+      )
+    } else if (model.stepsCount != null) {
+      subtitleParts.add(getString(R.string.tile_exercise_steps_count, model.stepsCount))
+    }
+    val subtitleText = subtitleParts.joinToString(" · ").ifEmpty {
+      if (model.hasScheduledWorkouts) {
+        getString(R.string.tile_exercise_planned_today)
+      } else {
+        getString(R.string.tile_exercise_tap_start)
+      }
+    }
     val col = Column.Builder()
       .setWidth(expand())
       .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
@@ -1134,7 +1236,7 @@ class ExerciseTileService : BaseSparkyTileService() {
       .addContent(vSpacer(2f))
       .addContent(
         tileText(
-          value = model.headlineText,
+          value = headlineText,
           sizeSp = 15f,
           colorArgb = 0xFFFFFFFF.toInt(),
           bold = true
@@ -1142,7 +1244,7 @@ class ExerciseTileService : BaseSparkyTileService() {
       )
       .addContent(
         tileText(
-          value = model.subtitleText,
+          value = subtitleText,
           sizeSp = 10f,
           colorArgb = 0xFF94A3B8.toInt()
         )
@@ -1151,10 +1253,11 @@ class ExerciseTileService : BaseSparkyTileService() {
 
     for ((idx, row) in model.rows.withIndex()) {
       if (idx > 0) col.addContent(vSpacer(3f))
+      val rowSubtitle = if (row.subtitleRes != 0) getString(row.subtitleRes) else row.subtitle
       col.addContent(
         pillRow(
           leftLabel = row.title,
-          rightValue = row.subtitle,
+          rightValue = rowSubtitle,
           accentColorArgb = row.badgeColorArgb
         )
       )

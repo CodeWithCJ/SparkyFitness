@@ -1,8 +1,7 @@
 package com.sparkyapps.sparkyfitness.wear
 
-import android.content.Context
 import androidx.compose.ui.graphics.toArgb
-import androidx.test.core.app.ApplicationProvider
+import com.SparkyApps.SparkyFitnessMobile.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -10,15 +9,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
 class WearOsParityTest {
-
-    private fun createTestContext(): Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `water context parsing, food hydration, and tap or delete outbound payloads`() {
@@ -422,7 +414,6 @@ class WearOsParityTest {
     @Test
     fun `tiles models build nutrition, sleep, medications, and exercise summaries`() {
         val today = CheckInDate.today()
-        val testContext = createTestContext()
         val rawCtx = JSONObject().apply {
             put("today", today)
             put("caloriesConsumed", 1650.0)
@@ -508,7 +499,7 @@ class WearOsParityTest {
 
         val ctx = ContextPayloadMapper.parseContext(rawCtx, WatchContext.empty)
 
-        val nutritionTile = TileModels.buildNutritionTileModel(testContext, ctx.nutrition)
+        val nutritionTile = TileModels.buildNutritionTileModel(ctx.nutrition)
         assertTrue(nutritionTile.hasData)
         assertEquals(1650, nutritionTile.consumedKcal)
         assertEquals(2200, nutritionTile.goalKcal)
@@ -520,15 +511,20 @@ class WearOsParityTest {
         assertEquals("24/32g", nutritionTile.macros[1].valueText)
         assertEquals(SparkyColors.Green.toArgb(), nutritionTile.macros[1].colorArgb)
 
-        val sleepTile = TileModels.buildSleepTileModel(testContext, ctx.sleep)
+        val sleepTile = TileModels.buildSleepTileModel(ctx.sleep)
         assertTrue(sleepTile.hasData)
         assertEquals("7h 45m", sleepTile.durationText)
         assertEquals("Score 86", sleepTile.scoreText)
-        assertEquals("11:00 PM – 6:45 AM", sleepTile.windowText)
+        assertEquals(86, sleepTile.sleepScore)
+        assertEquals("11:00 PM \u2013 6:45 AM", sleepTile.windowText)
+        assertEquals(SleepWindow.BedWake("11:00 PM", "6:45 AM"), sleepTile.window)
         assertEquals(3, sleepTile.stages.size)
-        assertEquals("RHR 54bpm · HRV 64ms", sleepTile.biometricsText)
+        assertEquals(R.string.sleep_stage_deep, sleepTile.stages[0].labelRes)
+        assertEquals(R.string.sleep_stage_rem, sleepTile.stages[1].labelRes)
+        assertEquals(R.string.sleep_stage_light, sleepTile.stages[2].labelRes)
+        assertEquals("RHR 54bpm \u00B7 HRV 64ms", sleepTile.biometricsText)
 
-        val medsTile = TileModels.buildMedicationsTileModel(testContext, ctx.medications)
+        val medsTile = TileModels.buildMedicationsTileModel(ctx.medications)
         assertTrue(medsTile.hasData)
         assertEquals(1, medsTile.takenCount)
         assertEquals(2, medsTile.totalCount)
@@ -537,7 +533,6 @@ class WearOsParityTest {
         assertEquals("Magnesium", medsTile.doseRows[0].name)
 
         val exerciseTile = TileModels.buildExerciseTileModel(
-            context = testContext,
             exercise = ctx.exerciseSummary,
             scheduledWorkouts = emptyList(),
             steps = null,
@@ -546,7 +541,7 @@ class WearOsParityTest {
         assertTrue(exerciseTile.hasData)
         assertEquals(45, exerciseTile.minutes)
         assertEquals(60, exerciseTile.minutesGoal)
-        assertEquals("45m · 380/500 kcal", exerciseTile.headlineText)
+        assertEquals("45m \u00B7 380/500 kcal", exerciseTile.headlineText)
         assertEquals("Upper Body Push", exerciseTile.rows[0].title)
     }
 }
