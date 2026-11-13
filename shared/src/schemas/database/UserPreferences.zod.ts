@@ -15,6 +15,15 @@ import { TEMPERATURE_UNITS } from '../../utils/temperatureUnit.ts';
 import { featureChoicesSchema } from '../../features/optionalFeatures.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
+export const SUPPORTED_DATE_FORMATS = [
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd.MM.yyyy',
+  'dd-MMM-yyyy',
+  'yyyy-MM-dd',
+  'MMM dd, yyyy',
+] as const;
+export type SupportedDateFormat = (typeof SUPPORTED_DATE_FORMATS)[number];
 
 const externalDataProvidersIdSchema = z.any();
 

@@ -1419,7 +1419,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (savedWeightUnit) setWeightUnitState(savedWeightUnit);
         if (savedMeasurementUnit) setMeasurementUnitState(savedMeasurementUnit);
-        if (savedDateFormat) setDateFormatState(savedDateFormat);
+        if (savedDateFormat)
+          setDateFormatState(
+            savedDateFormat.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
+          );
         if (savedTimeFormat) setTimeFormatState(savedTimeFormat);
         if (savedDistanceUnit) setDistanceUnitState(savedDistanceUnit);
         if (savedLanguage) setLanguageState(savedLanguage);

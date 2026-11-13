@@ -160,6 +160,12 @@ export const PreferenceSettings = () => {
                     'dd/MM/yyyy (25/12/2024)'
                   )}
                 </SelectItem>
+                <SelectItem value="dd.MM.yyyy">
+                  {t(
+                    'settings.preferenceSettings.ddMMDotYyyy2512',
+                    'dd.MM.yyyy (25.12.2024)'
+                  )}
+                </SelectItem>
                 <SelectItem value="dd-MMM-yyyy">
                   {t(
                     'settings.preferenceSettings.ddMMMYyyy25Dec',
