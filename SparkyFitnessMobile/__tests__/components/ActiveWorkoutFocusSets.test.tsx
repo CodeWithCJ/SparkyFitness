@@ -931,4 +931,31 @@ describe('ActiveWorkoutFocusSets', () => {
       expect(getAllByTestId('set-row')).toHaveLength(2);
     });
   });
+
+  describe('bodyweight banner', () => {
+    it('explains a bodyweight exercise with the body weight it counts', () => {
+      const { getByTestId, getByText } = renderSets({
+        modality: 'bodyweight_reps',
+        sets: [makeSet({ weight: null })],
+      });
+      expect(getByTestId('bodyweight-banner')).toBeTruthy();
+      expect(getByText(/counts your body weight \(80 kg\)/)).toBeTruthy();
+    });
+
+    it('uses the display unit', () => {
+      const { getByText } = renderSets({
+        modality: 'bodyweight_reps',
+        weightUnit: 'lbs',
+        sets: [makeSet({ weight: null })],
+      });
+      expect(getByText(/\(176\.4 lbs\)/)).toBeTruthy();
+    });
+
+    it('is not shown for weighted or reps-only exercises', () => {
+      expect(renderSets().queryByTestId('bodyweight-banner')).toBeNull();
+      expect(
+        renderSets({ modality: 'reps_only' }).queryByTestId('bodyweight-banner')
+      ).toBeNull();
+    });
+  });
 });

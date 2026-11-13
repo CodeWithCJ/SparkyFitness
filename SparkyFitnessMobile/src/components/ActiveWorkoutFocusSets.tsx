@@ -23,6 +23,7 @@ import ActiveWorkoutSetRow, {
   parseRpeInput,
   weightMetricText,
 } from './ActiveWorkoutSetRow';
+import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
@@ -700,10 +701,8 @@ function ActiveWorkoutFocusSets({
       weightUnit,
       exercise.exercise_snapshot?.equipment
     ).increment ?? DEFAULT_WARMUP_PLATE_ROUNDING[weightUnit];
-  const bodyWeightKg = useBodyWeightKg(
-    undefined,
-    stepperRows && isBodyweightModality(modality)
-  );
+  const bodyweightExercise = isBodyweightModality(modality);
+  const bodyWeightKg = useBodyWeightKg(undefined, bodyweightExercise);
   const effortHeader = (() => {
     switch (effectiveMetricColumn) {
       case 'rir':
@@ -795,6 +794,9 @@ function ActiveWorkoutFocusSets({
 
   return (
     <View className="rounded-2xl bg-surface p-2">
+      {bodyweightExercise && (
+        <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
+      )}
       {stepperRows && (
         <View className="flex-row items-center gap-2 px-2 pb-1">
           <View className="w-9" />
