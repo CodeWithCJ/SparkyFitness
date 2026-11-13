@@ -10,6 +10,7 @@ import { queryClient } from './queryClient';
 import { plateInventoryQueryKey } from './queryKeys';
 import { fetchPlateInventory } from '../services/api/plateInventoryApi';
 import { buildWatchWorkoutStartPayload } from './useStartLiveWorkout';
+import { sendWatchExerciseImages } from '../services/watchExerciseImages';
 
 type ActiveWorkoutState = ReturnType<typeof useActiveWorkoutStore.getState>;
 
@@ -27,6 +28,9 @@ function watchPlanStructureKey(plan: WatchWorkoutStartPayload): string {
       exercise.bodyweight ?? false,
       exercise.equipment ?? null,
       exercise.plates ?? null,
+      exercise.imageKey ?? null,
+      exercise.imageCount ?? null,
+      exercise.muscle ?? null,
       exercise.sets.map((set) => [set.setId, set.setType, set.restSeconds]),
     ]),
     plan.setOrder,
@@ -101,7 +105,17 @@ export function useWatchPlanSync(enabled: boolean): void {
       void watch.updateWorkoutPlan({ ...plan, revision: lastRevision });
     };
 
+    // The exercises' demo pictures follow the plan as files, once per arm
+    // and exercise (`sendWatchExerciseImages` remembers what it sent).
+    const sendImages = (state: ActiveWorkoutState): void => {
+      const { session, watchArmedAt } = state;
+      if (session == null || session.type !== 'preset' || watchArmedAt == null)
+        return;
+      void sendWatchExerciseImages(session.exercises, watchArmedAt);
+    };
+
     sync(useActiveWorkoutStore.getState());
+    sendImages(useActiveWorkoutStore.getState());
     // The plate inventory feeds the Plates tile; send it once it has loaded.
     void queryClient
       .prefetchQuery({
@@ -128,6 +142,7 @@ export function useWatchPlanSync(enabled: boolean): void {
         return;
       }
       sync(state);
+      sendImages(state);
     });
     return () => {
       unsubscribeInventory();

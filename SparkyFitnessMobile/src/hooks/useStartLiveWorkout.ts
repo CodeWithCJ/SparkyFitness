@@ -37,6 +37,7 @@ import {
 } from '../services/notifications';
 import { getActiveServerConfig } from '../services/storage';
 import { getTodayDate } from '../utils/dateUtils';
+import { watchDemoFields } from '../utils/watchExerciseImages';
 import { isBodyweightModality } from '@workspace/shared';
 import {
   extractPlannedSetValues,
@@ -154,6 +155,7 @@ export function buildWatchWorkoutStartPayload(
         resolveSnapshotModality(exercise.exercise_snapshot)
       ),
       ...watchPlateFields(exercise.exercise_snapshot?.equipment),
+      ...watchDemoFields(exercise.exercise_snapshot),
       sets: exercise.sets.map((set) => {
         const setId = String(set.id);
         const target = targets.get(setId);

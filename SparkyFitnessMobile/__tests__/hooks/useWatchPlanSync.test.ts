@@ -14,6 +14,10 @@ jest.mock('../../modules/watch-connectivity', () => ({
   },
 }));
 
+jest.mock('../../src/services/watchExerciseImages', () => ({
+  sendWatchExerciseImages: jest.fn(),
+}));
+
 const mockSave = jest.fn(() => Promise.resolve('saved'));
 jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
   saveActiveWorkoutSession: () => mockSave(),

@@ -670,6 +670,24 @@ public class WatchConnectivityModule: Module {
             Self.launchWatchApp()
         }
 
+        /// One exercise demo picture for the watch's demo page: a small JPEG
+        /// sent with `transferFile`, which the system queues and delivers over
+        /// the phone link (no network on the watch needed). The metadata names
+        /// the exercise's cache key and which picture (0 start, 1 end); the
+        /// watch stores it under that name and removes the oldest beyond a cap.
+        AsyncFunction("sendExerciseImage") { (image: [String: Any]) -> Void in
+            guard WCSession.isSupported(),
+                let key = image["key"] as? String,
+                let index = (image["index"] as? NSNumber)?.intValue,
+                let uri = image["uri"] as? String,
+                let url = URL(string: uri), url.isFileURL
+            else { return }
+            WCSession.default.transferFile(
+                url,
+                metadata: ["type": "exerciseImage", "key": key, "index": index]
+            )
+        }
+
         /// The live workout's plan again, after an exercise, superset or set
         /// was added, removed or regrouped on the phone. Same shape as
         /// `startWorkout` plus a `revision`; the watch swaps the plan in

@@ -527,6 +527,15 @@ export interface WatchPlannedExercisePayload {
   equipment?: string;
   /** Present only for an exercise loaded on a bar: what the watch needs for its Plates tile. */
   plates?: WatchPlateConfigPayload;
+  /**
+   * Cache key (the exercise id) of the demo pictures sent separately with
+   * `sendExerciseImage`, and how many (1 or 2). Absent without pictures or
+   * from an older phone build; the watch then has no demo page.
+   */
+  imageKey?: string;
+  imageCount?: number;
+  /** Primary muscle ("Chest"), for the line under the name on the demo page. */
+  muscle?: string;
   sets: WatchPlannedSetPayload[];
 }
 
@@ -1156,6 +1165,16 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     durable: boolean
   ): Promise<void>;
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
+  /**
+   * Transfers one exercise demo picture (a local JPEG, already scaled down) to
+   * the watch as a file, queued by the system. `index` 0 is the start position,
+   * 1 the end. iOS only; absent on Android.
+   */
+  sendExerciseImage?(image: {
+    key: string;
+    index: number;
+    uri: string;
+  }): Promise<void>;
   /** Starts a walk or run on the watch and opens its app. */
   startRun(request: WatchRunStartPayload): Promise<void>;
   /**
