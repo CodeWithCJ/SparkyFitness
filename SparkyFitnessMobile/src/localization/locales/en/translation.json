@@ -660,6 +660,16 @@
         "supersetHeader": "Superset",
         "supersetMember": "superset {{badge}}",
         "setsProgress": "{{done}}/{{total}} sets"
+      },
+      "setOptions": {
+        "title": "Set {{number}} · {{name}}",
+        "setType": "Set type",
+        "metricColumn": "Metric column",
+        "metricHint": "Vol, 1RM and 10RM are calculated from weight and reps.",
+        "setDetail": "Set detail",
+        "volume": "Vol",
+        "e1rm": "1RM",
+        "tenrm": "10RM"
       }
     }
   },
