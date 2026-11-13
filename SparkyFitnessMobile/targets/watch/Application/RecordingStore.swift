@@ -110,7 +110,8 @@ final class RecordingStore: ObservableObject {
                 // A strength workout owns the HealthKit session; the
                 // recording then runs without heart rate.
                 guard !WorkoutSessionStore.shared.isActive,
-                      !WatchRunStore.shared.isActive else { return }
+                      !WatchRunStore.shared.isActive,
+                      !WatchRunHealthKitController.shared.holdsWorkoutSession else { return }
                 collectingFor = current.sessionId
                 // Starting a recording settles any workout still held.
                 heldFor = nil

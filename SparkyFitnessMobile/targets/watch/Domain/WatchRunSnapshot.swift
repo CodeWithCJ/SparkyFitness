@@ -48,6 +48,27 @@ struct WatchRunSnapshot: Codable {
     /// relaunch can ask the pedometer for the distance covered since (pauses
     /// left out) instead of losing it. Optional for older snapshots.
     var pedometerReadAt: Date?
+    /// Set when an indoor run has ended and its Health workout is held for
+    /// the treadmill answer. The session is paused, not ended, until the
+    /// workout is saved, so a relaunch finds it again (`recoverIfNeeded`).
+    /// The held fields are all optional for older snapshots.
+    var heldEndedAt: Date?
+    /// Active seconds and steps at the end, for the run sent to the phone.
+    var heldElapsed: TimeInterval?
+    var heldSteps: Int?
+    /// The distance sample is already in the held workout, so a retry after
+    /// a relaunch does not add it twice.
+    var heldDistanceAdded: Bool?
+    /// The wearer has answered: `confirmedMeters` is what the machine showed
+    /// (nil to keep the watch's figure), `finalDistanceMeters` the distance
+    /// written to Health and `heldScale` the indoor factor the run used, so the
+    /// same settled run is rebuilt after a relaunch.
+    var distanceConfirmed: Bool?
+    var confirmedMeters: Double?
+    var finalDistanceMeters: Double?
+    var heldScale: Double?
+    /// The settled run is queued for the phone; only Health is left.
+    var phoneQueued: Bool?
 
     /// A run left this long ago is not one the wearer is still doing.
     static let maxAge: TimeInterval = 12 * 60 * 60
@@ -126,50 +147,6 @@ enum WatchRunOutbox {
 
     static func clear() {
         guard let url else { return }
-        try? FileManager.default.removeItem(at: url)
-    }
-}
-
-/// An indoor workout that ended but is not yet in Apple Health. The live
-/// builder waits in memory for the treadmill answer (`finishHeld`), so a kill
-/// in between, or a save HealthKit refuses, would leave the run with no Health
-/// workout at all. This record outlives both: it is written when the workout is
-/// held, updated with the final distance, and removed only once a workout is
-/// saved. On the next launch a record that is still here is written as a
-/// workout of its own.
-struct WatchRunPendingWorkout: Codable {
-    var clientId: String
-    var kind: String
-    var start: Date
-    var end: Date
-    /// The run's final distance once the wearer answered, else the measured one.
-    var distanceMeters: Double
-    /// Whether the system collected no distance for this run, so Health holds
-    /// none of it and the rebuilt workout must carry it.
-    var selfWrittenDistance: Bool
-    var savedAt: Date
-}
-
-enum WatchRunPendingWorkoutStore {
-    private static var url: URL? {
-        try? FileManager.default
-            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appendingPathComponent("watch-run-pending-workout.json")
-    }
-
-    static func load() -> WatchRunPendingWorkout? {
-        guard let url, let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(WatchRunPendingWorkout.self, from: data)
-    }
-
-    static func save(_ pending: WatchRunPendingWorkout) {
-        guard let url, let data = try? JSONEncoder().encode(pending) else { return }
-        try? data.write(to: url, options: .atomic)
-    }
-
-    /// Removes the record for `clientId` only, so a later run's is left alone.
-    static func clear(clientId: String) {
-        guard let url, load()?.clientId == clientId else { return }
         try? FileManager.default.removeItem(at: url)
     }
 }

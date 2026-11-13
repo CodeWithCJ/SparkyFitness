@@ -98,6 +98,8 @@ final class WatchRunStore: ObservableObject {
             && !RecordingStore.shared.isActive
             && !WorkoutHealthKitController.shared.hasLiveSession
             && !RecordingHealthKitController.shared.hasLiveSession
+            // An indoor run's workout still waiting for Health keeps its session.
+            && !healthKit.holdsWorkoutSession
     }
 
     private let healthKit = WatchRunHealthKitController.shared
@@ -416,6 +418,48 @@ final class WatchRunStore: ObservableObject {
                     )
                     self.lastSplitElapsed = resumedAt
                     self.phase = recovery.paused ? .paused : .running
+                    completion(true)
+                case .awaitingDistance(let unscaled, let elapsed):
+                    // The run had ended and the app went before the treadmill
+                    // answer: ask again. Its paused session is held meanwhile.
+                    self.followRoute(nil)
+                    let scale = Self.scale(for: unscaled.kind, place: unscaled.place)
+                    var scaled = unscaled.scalingDistance(by: scale)
+                    scaled.distanceScale = scale
+                    self.kind = scaled.kind
+                    self.place = scaled.place
+                    self.distanceScale = scale
+                    self.metrics = scaled.metrics
+                    self.summary = nil
+                    self.plan = self.healthKit.plan
+                    self.pendingResult = scaled
+                    self.pendingElapsed = elapsed
+                    self.phase = .confirmingDistance
+                    completion(true)
+                case .answeredHeld(let unscaled, let answer, let scale, let queued):
+                    // Answered before the app went: the same settled run, with
+                    // the factor it used then. Health's write is the
+                    // controller's; the phone gets the run unless it has it.
+                    self.followRoute(nil)
+                    guard !queued else { completion(true); return }
+                    var scaled = unscaled.scalingDistance(by: scale)
+                    scaled.distanceScale = scale
+                    let result = Self.settle(scaled, answer: answer)
+                    if WatchSessionManager.shared.sendRunFinished(result) {
+                        self.healthKit.messageQueued(clientId: result.clientId)
+                    }
+                    self.kind = result.kind
+                    self.place = result.place
+                    self.metrics = result.metrics
+                    self.summary = Summary(
+                        kind: result.kind,
+                        place: result.place,
+                        elapsed: result.activeSeconds,
+                        metrics: result.metrics,
+                        saved: true,
+                        clientId: result.clientId
+                    )
+                    self.phase = .finished
                     completion(true)
                 case .salvaged(let unscaled):
                     self.followRoute(nil)
@@ -940,14 +984,9 @@ final class WatchRunStore: ObservableObject {
     /// or nil to keep the watch's figure. Sends the run to the phone either
     /// way, then shows the summary.
     func confirmDistance(_ meters: Double?) {
-        guard phase == .confirmingDistance, var result = pendingResult else { return }
-        let shown = result.metrics.distanceMeters
-        if let meters, meters > 0 {
-            result.estimatedDistanceMeters = shown
-            result = result.scalingDistance(by: shown > 0 ? meters / shown : 1)
-            // A watch that measured nothing still takes the machine's figure.
-            result.metrics.distanceMeters = meters
-        }
+        guard phase == .confirmingDistance, let pending = pendingResult else { return }
+        let answer = meters.flatMap { $0 > 0 ? $0 : nil }
+        let result = Self.settle(pending, answer: answer)
         pendingResult = nil
         // Say the finish once the distance is settled (the machine's figure, if
         // given), and before the run is handed to the phone, as on the other
@@ -964,26 +1003,42 @@ final class WatchRunStore: ObservableObject {
         // The Health workout was held for this answer: write it with the final
         // figure, then send the run with the workout's heart-rate zones. Health
         // answers within `finishWorkoutTimeout`, without zones if it is slow.
-        // A workout HealthKit refuses is kept on disk by the controller and
-        // written from there, so Health's outcome does not hold up the phone,
-        // and the snapshot stays until the message is durably queued, so a kill
-        // before then still sends the run on relaunch.
-        let settled = result
-        healthKit.finishHeld(distanceMeters: settled.metrics.distanceMeters) { outcome in
+        // The answer is in the snapshot before anything is written, so a kill
+        // from here on still sends this settled run (`answeredHeld`), and the
+        // snapshot stays until both the message is queued and Health has the
+        // workout; until then the held session keeps a new run from starting.
+        healthKit.finishHeld(
+            answer: answer,
+            finalDistanceMeters: result.metrics.distanceMeters,
+            scale: result.distanceScale
+        ) { outcome in
             let zones = outcome.zones
             Task { @MainActor in
-                var sent = settled
+                var sent = result
                 sent.appleZones = zones
-                // A run started since then has its own snapshot: leave that one.
-                if WatchSessionManager.shared.sendRunFinished(sent),
-                   WatchRunSnapshotStore.load()?.clientId == settled.clientId {
-                    WatchRunSnapshotStore.clear()
+                if WatchSessionManager.shared.sendRunFinished(sent) {
+                    self.healthKit.messageQueued(clientId: result.clientId)
                 }
+                // The held session is gone or failed: Start can show again.
+                self.objectWillChange.send()
             }
         }
         metrics = result.metrics
         summary = Summary(kind: result.kind, place: result.place, elapsed: pendingElapsed, metrics: result.metrics, saved: true, clientId: result.clientId)
         phase = .finished
+    }
+
+    /// The run once the treadmill question is answered: `answer` is what the
+    /// machine showed, or nil to keep the watch's figure. Used for the answer
+    /// and again for a run rebuilt after a relaunch, so both come out the same.
+    private static func settle(_ scaled: WatchRunResult, answer: Double?) -> WatchRunResult {
+        guard let answer else { return scaled }
+        let shown = scaled.metrics.distanceMeters
+        var result = scaled.scalingDistance(by: shown > 0 ? answer / shown : 1)
+        result.estimatedDistanceMeters = shown
+        // A watch that measured nothing still takes the machine's figure.
+        result.metrics.distanceMeters = answer
+        return result
     }
 
     /// The learned indoor factor for a new run; outdoors the GPS needs none.
@@ -1036,6 +1091,6 @@ final class WatchRunStore: ObservableObject {
             completion(true)
             return
         }
-        healthKit.saveEffort(score, completion: completion)
+        healthKit.saveEffort(score, for: summary?.clientId, completion: completion)
     }
 }
