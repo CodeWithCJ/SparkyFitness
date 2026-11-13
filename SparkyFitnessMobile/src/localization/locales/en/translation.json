@@ -674,6 +674,28 @@
       "menu": {
         "viewHint": "Instructions and history",
         "warmupsHint": "Calculated from your working weight"
+      },
+      "effort": {
+        "maxEffort": "Max effort",
+        "noneLeft": "Nothing left",
+        "repsLeft_one": "{{count}} rep left",
+        "repsLeft_other": "{{count}} reps left",
+        "scaleRpe": "Same scale as RPE, 1 to 10",
+        "scaleRir": "Reps in reserve, 0 to 5",
+        "question": "How hard was that set?",
+        "easy": "Easy",
+        "max": "Max",
+        "lower": "Lower",
+        "higher": "Higher",
+        "skip": "Skip",
+        "save": "Save"
+      },
+      "pr": {
+        "label": "Personal record",
+        "title": "New PR!",
+        "over": "{{gain}} over your previous best of {{previous}}",
+        "continue": "Continue · {{seconds}} s",
+        "autoClose": "Closes on its own after about 5 s"
       }
     }
   },

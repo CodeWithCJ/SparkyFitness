@@ -103,6 +103,7 @@ Eight balanced hues for things that need a distinct color but no fixed meaning. 
 | Category Teal   | `--color-cat-teal` (JS only)   | #1E868A   | #5AADAF  | Deep sleep stage, provider badges                                                                           |
 | Category Amber  | `--color-cat-amber` (JS only)  | #CE8E0D   | #D4A954  | Favorite star, moderate RPE, provider badges                                                                |
 | Superset Lilac  | `--color-superset` (JS only)   | #9739C6   | #CC86EA  | Focus view superset group (first run; later runs use the category colors from Orange on, as the watch does) |
+| Effort Lilac    | `--color-effort` (JS only)     | #9739C6   | #CC86EA  | Focus view post-set effort sheet (number, filled segments, Save) |
 | Rest Orange     | `--color-rest` (JS only)       | #E16009   | #FF9A52  | Focus view rest card, ring and Skip rest button                                                             |
 | Hold Teal       | `--color-hold` (JS only)       | #188B7B   | #45D3C0  | Focus view timed hold ring and Get ready number                                                             |
 

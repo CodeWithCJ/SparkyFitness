@@ -320,6 +320,26 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
   };
 });
 
+// The post-set effort sheet and PR card have component tests; here only when
+// the screen shows them and what Save writes.
+const mockEffortSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusEffortSheet', () => ({
+  __esModule: true,
+  effortStartValue: (metric: string) => (metric === 'rir' ? 2 : 8),
+  default: (props: any) => {
+    mockEffortSheet.props = props;
+    return null;
+  },
+}));
+const mockPrCard: { props: any } = { props: null };
+jest.mock('../../src/components/FocusPrCard', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockPrCard.props = props;
+    return null;
+  },
+}));
+
 // The Exercises sheet has its own component test; here only its wiring.
 const mockExercisesSheet: { props: any } = { props: null };
 jest.mock('../../src/components/FocusExercisesSheet', () => ({
@@ -1866,6 +1886,75 @@ describe('ActiveWorkoutScreen focus view', () => {
     expect(queryByTestId('card-ex-a')).toBeNull();
     expect(getByText('Add an Exercise')).toBeTruthy();
     expect(getByText('End Workout')).toBeTruthy();
+  });
+
+  describe('post-set effort sheet and PR card', () => {
+    const logLast = (getByTestId: (id: string) => any) => {
+      fireEvent.press(getByTestId('focus-complete-last'));
+    };
+    const findSet = (setId: string) =>
+      useActiveWorkoutStore
+        .getState()
+        .session?.exercises.flatMap((e) => e.sets)
+        .find((set) => String(set.id) === setId);
+
+    beforeEach(() => {
+      mockEffortSheet.props = null;
+      mockPrCard.props = null;
+      useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    });
+
+    it('asks how hard the set was when the effort column is on, and saves it', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+
+      expect(mockEffortSheet.props.metric).toBe('rpe');
+      expect(mockEffortSheet.props.initialValue).toBe(8);
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(findSet('301')?.rpe).toBe(9);
+    });
+
+    it('writes RIR when that is the effort column, and Skip writes nothing', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rir');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props.metric).toBe('rir');
+      act(() => mockEffortSheet.props.onSkip());
+      expect(findSet('301')?.rir ?? null).toBeNull();
+      expect(findSet('301')?.rpe ?? null).toBeNull();
+    });
+
+    it('adds no step when the effort column is off', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('volume');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).toBeNull();
+    });
+
+    it('shows the PR card for a record, after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.setState({
+          prSetIds: { '301': true },
+        });
+      });
+      // completeSet restamps PR ids from the baseline; stub the stamp through
+      // the store state the screen reads after completing.
+      const original = useActiveWorkoutStore.getState().completeSet;
+      useActiveWorkoutStore.setState({
+        completeSet: (setId: string) => {
+          original(setId);
+          useActiveWorkoutStore.setState({ prSetIds: { [setId]: true } });
+        },
+      });
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).not.toBeNull();
+      act(() => mockEffortSheet.props.onSkip());
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      act(() => mockPrCard.props.onClose());
+    });
   });
 
   it('opens the Exercises sheet from the header list button', () => {
