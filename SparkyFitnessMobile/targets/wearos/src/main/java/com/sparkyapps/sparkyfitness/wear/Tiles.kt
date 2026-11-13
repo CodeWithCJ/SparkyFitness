@@ -84,8 +84,6 @@ sealed class SleepWindow {
 data class SleepTileModel(
   val hasData: Boolean,
   val durationText: String,
-  val scoreText: String?,
-  val windowText: String,
   val biometricsText: String?,
   val progress: Float,
   val stages: List<TileStageBadge>,
@@ -106,8 +104,6 @@ data class MedicationsTileModel(
   val takenCount: Int,
   val totalCount: Int,
   val pendingCount: Int,
-  val headlineText: String,
-  val subtitleText: String,
   val progress: Float,
   val doseRows: List<TileDoseRow>,
   val skippedCount: Int = 0
@@ -128,7 +124,6 @@ data class ExerciseTileModel(
   val caloriesGoal: Int,
   val sessionCount: Int,
   val headlineText: String,
-  val subtitleText: String,
   val progress: Float,
   val rows: List<TileExerciseItemRow>,
   val hasExerciseSummary: Boolean = false,
@@ -260,8 +255,6 @@ object TileModels {
       return SleepTileModel(
         hasData = false,
         durationText = "—",
-        scoreText = null,
-        windowText = "No sleep logged today",
         biometricsText = null,
         progress = 0f,
         stages = emptyList(),
@@ -278,27 +271,15 @@ object TileModels {
     val durationText = if (sleep.totalSeconds > 0) {
       formatDurationSeconds(sleep.totalSeconds)
     } else {
-      "In bed $inBedOnlyDuration"
+      inBedOnlyDuration.orEmpty()
     }
-    val scoreText = sleep.sleepScore?.let { "Score $it" }
-    val window: SleepWindow
-    val windowText: String
-    when {
-      sleep.bedtime.isNotBlank() && sleep.wakeTime.isNotBlank() -> {
-        window = SleepWindow.BedWake(sleep.bedtime, sleep.wakeTime)
-        windowText = "${sleep.bedtime} – ${sleep.wakeTime}"
-      }
-      sleep.napCount > 0 -> {
-        val napDur = formatDurationSeconds(sleep.napSeconds)
-        val napWord = if (sleep.napCount == 1) "nap" else "naps"
-        window = SleepWindow.Naps(sleep.napCount, napDur)
-        windowText = "${sleep.napCount} $napWord ($napDur)"
-      }
-      else -> {
-        val inBedDur = formatDurationSeconds(sleep.timeInBedSeconds)
-        window = SleepWindow.InBed(inBedDur)
-        windowText = "In bed $inBedDur"
-      }
+    val window = when {
+      sleep.bedtime.isNotBlank() && sleep.wakeTime.isNotBlank() ->
+        SleepWindow.BedWake(sleep.bedtime, sleep.wakeTime)
+      sleep.napCount > 0 ->
+        SleepWindow.Naps(sleep.napCount, formatDurationSeconds(sleep.napSeconds))
+      else ->
+        SleepWindow.InBed(formatDurationSeconds(sleep.timeInBedSeconds))
     }
 
     val stages = mutableListOf<TileStageBadge>()
@@ -328,8 +309,6 @@ object TileModels {
     return SleepTileModel(
       hasData = true,
       durationText = durationText,
-      scoreText = scoreText,
-      windowText = windowText,
       biometricsText = biometricsText,
       progress = progress,
       stages = stages,
@@ -349,8 +328,6 @@ object TileModels {
         takenCount = 0,
         totalCount = 0,
         pendingCount = 0,
-        headlineText = "Not synced",
-        subtitleText = "Open app to sync",
         progress = 0f,
         doseRows = emptyList(),
         skippedCount = 0
@@ -363,8 +340,6 @@ object TileModels {
         takenCount = 0,
         totalCount = 0,
         pendingCount = 0,
-        headlineText = "0 / 0 Taken",
-        subtitleText = "No doses scheduled today",
         progress = 1f,
         doseRows = emptyList(),
         skippedCount = 0
@@ -375,13 +350,6 @@ object TileModels {
     val skippedCount = doses.count { it.status == MedicationDoseStatus.SKIPPED }
     val totalCount = doses.size
     val progress = (takenCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
-
-    val headlineText = "$takenCount / $totalCount Taken"
-    val subtitleText = when {
-      pendingCount > 0 -> "$pendingCount pending today"
-      skippedCount > 0 -> "$skippedCount skipped · All done"
-      else -> "All doses completed"
-    }
 
     val ordered = doses.sortedBy {
       when (it.status) {
@@ -411,8 +379,6 @@ object TileModels {
       takenCount = takenCount,
       totalCount = totalCount,
       pendingCount = pendingCount,
-      headlineText = headlineText,
-      subtitleText = subtitleText,
       progress = progress,
       doseRows = doseRows,
       skippedCount = skippedCount
@@ -454,28 +420,8 @@ object TileModels {
       val calorieText =
         if (caloriesGoal > 0) "$shownCalories/$shownGoal ${energy.unit}" else "$shownCalories ${energy.unit}"
       "${minutes}m · $calorieText"
-    } else if (validSteps != null) {
-      "${validSteps.count} steps"
     } else {
       "0m · 0 ${energy.unit}"
-    }
-
-    val subtitleParts = mutableListOf<String>()
-    if (minutesGoal > 0) {
-      subtitleParts.add("Goal ${minutesGoal}m")
-    }
-    if (sessionCount > 0) {
-      val workoutWord = if (sessionCount == 1) "workout" else "workouts"
-      subtitleParts.add("$sessionCount $workoutWord")
-    } else if (validSteps != null) {
-      subtitleParts.add("${validSteps.count} steps")
-    }
-    val subtitleText = subtitleParts.joinToString(" · ").ifEmpty {
-      if (scheduledWorkouts.isNotEmpty()) {
-        "Workout planned today"
-      } else {
-        "Tap to start a workout"
-      }
     }
 
     val rows = mutableListOf<TileExerciseItemRow>()
@@ -511,7 +457,6 @@ object TileModels {
       caloriesGoal = caloriesGoal,
       sessionCount = sessionCount,
       headlineText = headlineText,
-      subtitleText = subtitleText,
       progress = progress,
       rows = rows,
       hasExerciseSummary = validExercise != null,
@@ -519,6 +464,108 @@ object TileModels {
       hasScheduledWorkouts = scheduledWorkouts.isNotEmpty()
     )
   }
+
+  fun formatSleepDuration(
+    model: SleepTileModel,
+    getString: (Int, Array<out Any>) -> String
+  ): String = model.inBedDurationText?.let {
+    getString(R.string.tile_sleep_in_bed, arrayOf(it))
+  } ?: model.durationText
+
+  fun formatSleepDuration(context: Context, model: SleepTileModel): String =
+    formatSleepDuration(model) { id, args -> context.getString(id, *args) }
+
+  fun formatSleepWindow(
+    window: SleepWindow,
+    getString: (Int, Array<out Any>) -> String,
+    getQuantityString: (Int, Int, Array<out Any>) -> String
+  ): String = when (window) {
+    is SleepWindow.NoSleepLogged -> getString(R.string.tile_sleep_no_logged, emptyArray())
+    is SleepWindow.BedWake -> "${window.bedtime} – ${window.wakeTime}"
+    is SleepWindow.Naps -> getQuantityString(
+      R.plurals.tile_sleep_naps,
+      window.count,
+      arrayOf(window.count, window.durationText)
+    )
+    is SleepWindow.InBed -> getString(R.string.tile_sleep_in_bed, arrayOf(window.durationText))
+  }
+
+  fun formatSleepWindow(context: Context, window: SleepWindow): String = formatSleepWindow(
+    window = window,
+    getString = { id, args -> if (args.isEmpty()) context.getString(id) else context.getString(id, *args) },
+    getQuantityString = { id, qty, args -> context.resources.getQuantityString(id, qty, *args) }
+  )
+
+  fun formatMedicationsHeadline(
+    model: MedicationsTileModel,
+    getString: (Int, Array<out Any>) -> String
+  ): String = if (!model.hasData) {
+    getString(R.string.tile_meds_not_synced, emptyArray())
+  } else {
+    getString(R.string.tile_meds_taken_count, arrayOf(model.takenCount, model.totalCount))
+  }
+
+  fun formatMedicationsHeadline(context: Context, model: MedicationsTileModel): String =
+    formatMedicationsHeadline(model) { id, args ->
+      if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
+    }
+
+  fun formatMedicationsSubtitle(
+    model: MedicationsTileModel,
+    getString: (Int, Array<out Any>) -> String
+  ): String = when {
+    !model.hasData -> getString(R.string.tile_meds_open_app, emptyArray())
+    model.totalCount == 0 -> getString(R.string.tile_meds_none_today, emptyArray())
+    model.pendingCount > 0 -> getString(R.string.tile_meds_pending_today, arrayOf(model.pendingCount))
+    model.skippedCount > 0 -> getString(R.string.tile_meds_skipped_done, arrayOf(model.skippedCount))
+    else -> getString(R.string.tile_meds_all_done, emptyArray())
+  }
+
+  fun formatMedicationsSubtitle(context: Context, model: MedicationsTileModel): String =
+    formatMedicationsSubtitle(model) { id, args ->
+      if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
+    }
+
+  fun formatExerciseHeadline(
+    model: ExerciseTileModel,
+    getString: (Int, Array<out Any>) -> String
+  ): String = if (!model.hasExerciseSummary && model.stepsCount != null) {
+    getString(R.string.tile_exercise_steps_count, arrayOf(model.stepsCount))
+  } else {
+    model.headlineText
+  }
+
+  fun formatExerciseHeadline(context: Context, model: ExerciseTileModel): String =
+    formatExerciseHeadline(model) { id, args -> context.getString(id, *args) }
+
+  fun formatExerciseSubtitle(
+    model: ExerciseTileModel,
+    getString: (Int, Array<out Any>) -> String,
+    getQuantityString: (Int, Int, Array<out Any>) -> String
+  ): String {
+    val parts = mutableListOf<String>()
+    if (model.minutesGoal > 0) {
+      parts.add(getString(R.string.tile_exercise_goal_minutes, arrayOf(model.minutesGoal)))
+    }
+    if (model.sessionCount > 0) {
+      parts.add(getQuantityString(R.plurals.tile_exercise_workouts, model.sessionCount, arrayOf(model.sessionCount)))
+    } else if (model.stepsCount != null) {
+      parts.add(getString(R.string.tile_exercise_steps_count, arrayOf(model.stepsCount)))
+    }
+    return parts.joinToString(" · ").ifEmpty {
+      if (model.hasScheduledWorkouts) {
+        getString(R.string.tile_exercise_planned_today, emptyArray())
+      } else {
+        getString(R.string.tile_exercise_tap_start, emptyArray())
+      }
+    }
+  }
+
+  fun formatExerciseSubtitle(context: Context, model: ExerciseTileModel): String = formatExerciseSubtitle(
+    model = model,
+    getString = { id, args -> if (args.isEmpty()) context.getString(id) else context.getString(id, *args) },
+    getQuantityString = { id, qty, args -> context.resources.getQuantityString(id, qty, *args) }
+  )
 }
 
 object TileUpdater {
@@ -973,18 +1020,6 @@ class SleepTileService : BaseSparkyTileService() {
     return TileModels.buildSleepTileModel(session.checkInStore.sleep.value).progress
   }
 
-  private fun formatSleepWindow(window: SleepWindow): String = when (window) {
-    is SleepWindow.NoSleepLogged -> getString(R.string.tile_sleep_no_logged)
-    is SleepWindow.BedWake -> "${window.bedtime} – ${window.wakeTime}"
-    is SleepWindow.Naps -> resources.getQuantityString(
-      R.plurals.tile_sleep_naps,
-      window.count,
-      window.count,
-      window.durationText
-    )
-    is SleepWindow.InBed -> getString(R.string.tile_sleep_in_bed, window.durationText)
-  }
-
   /**
    * Builds the ProtoLayout content column for the Sleep Health tile.
    */
@@ -1036,9 +1071,7 @@ class SleepTileService : BaseSparkyTileService() {
       return col.build()
     }
 
-    val resolvedDuration = model.inBedDurationText?.let {
-      getString(R.string.tile_sleep_in_bed, it)
-    } ?: model.durationText
+    val resolvedDuration = TileModels.formatSleepDuration(this, model)
     val resolvedScore = model.sleepScore?.let { getString(R.string.tile_sleep_score, it) }
     val headlineText = if (resolvedScore != null) {
       "$resolvedDuration · $resolvedScore"
@@ -1055,7 +1088,7 @@ class SleepTileService : BaseSparkyTileService() {
     )
     col.addContent(
       tileText(
-        value = formatSleepWindow(model.window),
+        value = TileModels.formatSleepWindow(this, model.window),
         sizeSp = 10f,
         colorArgb = 0xFF94A3B8.toInt()
       )
@@ -1102,18 +1135,8 @@ class MedicationsTileService : BaseSparkyTileService() {
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
     val model = TileModels.buildMedicationsTileModel(session.checkInStore.medications.value)
-    val headlineText = if (!model.hasData) {
-      getString(R.string.tile_meds_not_synced)
-    } else {
-      getString(R.string.tile_meds_taken_count, model.takenCount, model.totalCount)
-    }
-    val subtitleText = when {
-      !model.hasData -> getString(R.string.tile_meds_open_app)
-      model.totalCount == 0 -> getString(R.string.tile_meds_none_today)
-      model.pendingCount > 0 -> getString(R.string.tile_meds_pending_today, model.pendingCount)
-      model.skippedCount > 0 -> getString(R.string.tile_meds_skipped_done, model.skippedCount)
-      else -> getString(R.string.tile_meds_all_done)
-    }
+    val headlineText = TileModels.formatMedicationsHeadline(this, model)
+    val subtitleText = TileModels.formatMedicationsSubtitle(this, model)
     val col = Column.Builder()
       .setWidth(expand())
       .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
@@ -1199,29 +1222,8 @@ class ExerciseTileService : BaseSparkyTileService() {
       stepGoal = store.stepGoal.value,
       energy = EnergyDisplay.of(store.watchContext.value)
     )
-    val headlineText = if (!model.hasExerciseSummary && model.stepsCount != null) {
-      getString(R.string.tile_exercise_steps_count, model.stepsCount)
-    } else {
-      model.headlineText
-    }
-    val subtitleParts = mutableListOf<String>()
-    if (model.minutesGoal > 0) {
-      subtitleParts.add(getString(R.string.tile_exercise_goal_minutes, model.minutesGoal))
-    }
-    if (model.sessionCount > 0) {
-      subtitleParts.add(
-        resources.getQuantityString(R.plurals.tile_exercise_workouts, model.sessionCount, model.sessionCount)
-      )
-    } else if (model.stepsCount != null) {
-      subtitleParts.add(getString(R.string.tile_exercise_steps_count, model.stepsCount))
-    }
-    val subtitleText = subtitleParts.joinToString(" · ").ifEmpty {
-      if (model.hasScheduledWorkouts) {
-        getString(R.string.tile_exercise_planned_today)
-      } else {
-        getString(R.string.tile_exercise_tap_start)
-      }
-    }
+    val headlineText = TileModels.formatExerciseHeadline(this, model)
+    val subtitleText = TileModels.formatExerciseSubtitle(this, model)
     val col = Column.Builder()
       .setWidth(expand())
       .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
