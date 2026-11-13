@@ -1156,7 +1156,8 @@
       "later": "Później",
       "resetZoom": "Resetuj powiększenie",
       "windowEvents": "Zdarzenia w widoku"
-    }
+    },
+    "oralCareTab": "Higiena jamy ustnej"
   },
   "exerciseReportsDashboard": {
     "compareTo": "Porównaj z",
@@ -1720,11 +1721,11 @@
       "canUseExerciseLibrary": "Może korzystać z mojej biblioteki ćwiczeń i treningów",
       "canUseExerciseLibraryHelp": "Umożliwia pełnomocnikowi przeglądanie i używanie Twoich własnych ćwiczeń i szablonów treningów w trybie przełączonym. Nie daje dostępu do wpisów dziennika ani ustawień profilu.",
       "canManageCheckin": "Może zarządzać danymi wpisów dnia",
-      "canManageCheckinHelp": "Umożliwia pełnomocnikowi rejestrowanie masy ciała, pomiarów ciała, zdjęć postępów, snu, nastroju i statusu postu w Twoim imieniu. Wpisy dziennika są zablokowane. Daje dostęp do profilu tylko do odczytu.",
+      "canManageCheckinHelp": "Umożliwia pełnomocnikowi rejestrowanie masy ciała, pomiarów ciała, zdjęć postępów, snu, nastroju i statusu postu w Twoim imieniu. Zapewnia także dostęp do wyników badań laboratoryjnych. Wpisy dziennika są zablokowane. Daje dostęp do profilu tylko do odczytu.",
       "canManageMedications": "Może zarządzać lekami",
       "canManageMedicationsHelp": "Umożliwia pełnomocnikowi rejestrowanie leków, dawek, planów tytracji i miejsc wstrzyknięć w Twoim imieniu. Wpisy dziennika są zablokowane. Daje dostęp do profilu tylko do odczytu.",
       "canViewReports": "Może przeglądać raporty",
-      "canViewReportsHelp": "Umożliwia pełnomocnikowi przeglądanie wykresów, statystyk i historycznych wpisów na Twoim pulpicie. Nie przyznaje uprawnień do zapisu. Daje dostęp do profilu tylko do odczytu.",
+      "canViewReportsHelp": "Umożliwia pełnomocnikowi przeglądanie wykresów, statystyk i historycznych wpisów na Twoim pulpicie. Zapewnia także dostęp tylko do odczytu do wyników badań laboratoryjnych. Nie przyznaje uprawnień do zapisu. Daje dostęp do profilu tylko do odczytu.",
       "shareExternalProviders": "Udostępnia zewnętrznych dostawców danych",
       "shareExternalProvidersHelp": "Umożliwia pełnomocnikowi wyszukiwanie produktów/ćwiczeń z wykorzystaniem skonfigurowanych przez Ciebie dostawców API (np. FatSecret, USDA). Integracje zdrowotne (Garmin, Fitbit itd.) są ściśle prywatne i nigdy nie są udostępniane.",
       "accessEndDate": "Data końca dostępu (opcjonalnie)",
@@ -2271,7 +2272,17 @@
       "tdeeGoalDescription": "Podobnie jak MyFitnessPal z Apple Watchem. SparkyFitness prognozuje spalanie z całego dnia, ekstrapolując bieżące dane z urządzenia do północy. Korekta = prognoza − TDEE.",
       "title": "Korekta dziennego celu kalorycznego",
       "tdeeActivityHint": "Poziom aktywności jest używany tylko przez zastępcze obliczenie BMR + kalorie z aktywności, gdy łączna wartość z urządzenia jest niedostępna.",
-      "adaptiveEarnBack": "Cele adaptacyjne już uwzględniają aktywność. Pozostałe kalorie to cel minus spożyte. Odzyskiwanie za trening dotyczy tylko celów ustawionych ręcznie."
+      "adaptiveEarnBack": "Cele adaptacyjne już uwzględniają aktywność. Pozostałe kalorie to cel minus spożyte. Odzyskiwanie za trening dotyczy tylko celów ustawionych ręcznie.",
+      "cardAdaptive": "Adaptacyjny",
+      "cardAdaptiveSummary": "Uczy się z Twojego spożycia i trendu masy ciała",
+      "cardDynamic": "Dynamiczny",
+      "cardDynamicSummary": "Dodaje Twoją dzienną aktywność do celu",
+      "cardFixed": "Stały",
+      "cardFixedSummary": "Ten sam cel, cokolwiek robisz",
+      "cardPercentage": "Procentowy zwrot kalorii",
+      "cardPercentageSummary": "Dodaje z powrotem część kalorii z treningu",
+      "cardDevice": "Projekcja z urządzenia",
+      "cardDeviceSummary": "Projektuje całkowity wydatek energetyczny z Twojego urządzenia do północy"
     },
     "dataImport": {
       "checkin": {
@@ -2462,7 +2473,8 @@
       "totpEnabled": "Aplikacja uwierzytelniająca jest obecnie włączona.",
       "verificationCode": "Kod weryfikacyjny",
       "verify": "Zweryfikuj i włącz",
-      "yourRecoveryCodes": "Twoje kody odzyskiwania"
+      "yourRecoveryCodes": "Twoje kody odzyskiwania",
+      "passwordSsoHint": "Pozostaw puste, jeśli logujesz się przez SSO."
     },
     "passkey": {
       "add": "Dodaj klucz dostępu",
@@ -2947,7 +2959,7 @@
       "maxHrSummary": "Maksymalne tętno {{max}} bpm. {{source}}.",
       "fellBack": "Wybrana metoda wymaga więcej informacji, więc strefy pokazano jako % maksymalnego tętna.",
       "maxHr": "Maksymalne tętno (bpm)",
-      "maxHrHint": "Zostaw puste, aby wyliczyć z daty urodzenia.",
+      "maxHrHint": "Pozostaw puste, aby wyliczyć z daty urodzenia.",
       "restingHr": "Spoczynkowe tętno (bpm)",
       "customFloors": "Od jakiej wartości zaczyna się każda strefa (bpm)",
       "historyNote": "Zmiany dotyczą treningów nagrywanych lub synchronizowanych od teraz. Czas w strefie zapisany dla przeszłych treningów nie jest przeliczany.",
@@ -2977,6 +2989,42 @@
         "needsResting": "Strefy rezerwy tętna wymagają spoczynkowego tętna.",
         "customFloors": "Każda strefa musi zaczynać się powyżej poprzedniej, od 30 do 250 bpm."
       }
+    },
+    "calorieCycling": {
+      "title": "Cyklowanie kalorii",
+      "description": "Jedz więcej w dni treningowe, a mniej w dni odpoczynku. Twój tygodniowy bilans pozostaje bez zmian: dzienny cel × 7.",
+      "unavailable": "Niedostępne, gdy kalorie z treningu są dodawane z powrotem do celu: Twój cel już rośnie w dni, w których zapisujesz trening. Wybierz Adaptacyjny lub Stały, albo użyj całodniowych celów adaptacyjnych, aby cyklować kalorie.",
+      "pausedByWeeklyPlan": "Plan celu tygodniowego jest aktywny, więc cyklowanie kalorii jest wstrzymane w dni, które ustala plan.",
+      "modeOff": "Wyłączone: ten sam cel każdego dnia",
+      "modeTrainingRest": "Trening vs odpoczynek: więcej w dni, w których trenujesz",
+      "modeCustom": "Niestandardowy: procent dla każdego dnia",
+      "trainingPercent": "Dodatkowo w dni treningowe (przed zbilansowaniem tygodnia)",
+      "needTrainingDays": "Wybierz od 1 do 6 dni treningowych i procent powyżej 0, w przeciwnym razie każdy dzień pozostanie taki sam.",
+      "needDifferentDays": "Nadaj co najmniej dwóm dniom różne procenty, w przeciwnym razie każdy dzień pozostanie taki sam.",
+      "atFloor": "Bezpieczne minimum",
+      "previewNote": "Na podstawie dzisiejszego celu. Gdy Twój cel się zmieni, na przykład po aktualizacji wydatku adaptacyjnego, każdy dzień podąży za nim. Węglowodany przyjmują zmianę, a białko pozostaje bez zmian.",
+      "baseAtFloor": "Twój dzienny cel ({{target}} {{unit}}) jest na poziomie bezpiecznego minimum ({{floor}} {{unit}}) lub poniżej niego, więc żaden dzień nie może zejść niżej i każdy dzień pozostaje taki sam. Cyklowanie zacznie działać, gdy cel wzrośnie powyżej minimum albo po obniżeniu niestandardowego minimum.",
+      "previewStep": "Cyklowanie kalorii ({{day}}):",
+      "weekTotalWithBase": "Tydzień: {{total}} z {{budget}} {{unit}} (Twój dzienny cel {{target}} × 7)",
+      "dayPercent": "{{day}}: procent przed zbilansowaniem tygodnia",
+      "decrease": "Obniż o 1%",
+      "increase": "Podnieś o 1%",
+      "trainingDay": "Trening",
+      "restDay": "Odpoczynek",
+      "today": "Dziś",
+      "vsTarget": "{{change}} {{unit}} ({{percent}}) względem dziennego celu",
+      "modeOffShort": "Wyłączone",
+      "modeTrainingRestShort": "Trening / odpoczynek",
+      "modeCustomShort": "Niestandardowy",
+      "chartTarget": "Cel dzienny {{value}}",
+      "chartFloor": "Bezpieczne minimum {{value}}",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "atFloorShort": "minimum",
+      "markRest": "Ustaw {{day}} jako dzień odpoczynku",
+      "markTraining": "Ustaw {{day}} jako dzień treningowy",
+      "chartHintTraining": "Dotknij słupka, aby zobaczyć dany dzień. Dotknij ikony pod dniem, aby przełączyć go między treningiem a dniem odpoczynku.",
+      "chartHintCustom": "Dotknij słupka, aby zobaczyć dany dzień, lub przeciągnij go w górę lub w dół. Dopracuj wybrany dzień poniżej.",
+      "previewTargetForDay": "Dzienny cel kaloryczny ({{day}}):"
     }
   },
   "admin": {
@@ -3351,7 +3399,16 @@
     "saveAndStart": "Zapisz i rozpocznij plan",
     "saveAsPreset": "Zapisz szablon i rozpocznij 6-miesięczny cel kaskadowy",
     "savePresetDescription": "Nadaj nazwę szablonowi celu. Zapisze on bieżącą konfigurację do wykorzystania w przyszłości i zastosuje ją jako plan od dzisiaj.",
-    "startCascadingPlan": "Rozpocznij 6-miesięczny plan kaskadowy"
+    "startCascadingPlan": "Rozpocznij 6-miesięczny plan kaskadowy",
+    "calorieCycling": {
+      "baseCalories": "Kalorie bazowe ({{energyUnitString}})",
+      "hintHigh": "Cyklowanie kalorii jest włączone, więc to Twój cel bazowy. Ten dzień wynosi około {{amount}} {{unit}} (dzień wysokokaloryczny).",
+      "hintLow": "Cyklowanie kalorii jest włączone, więc to Twój cel bazowy. Ten dzień wynosi około {{amount}} {{unit}} (dzień niskokaloryczny).",
+      "hintEven": "Cyklowanie kalorii jest włączone, więc to Twój cel bazowy. Ten dzień pozostaje bez zmian.",
+      "hintAdaptiveHigh": "Cyklowanie kalorii jest włączone. Przy celu adaptacyjnym ten dzień to około {{amount}} {{unit}} (dzień wysokokaloryczny).",
+      "hintAdaptiveLow": "Cyklowanie kalorii jest włączone. Przy celu adaptacyjnym ten dzień to około {{amount}} {{unit}} (dzień niskokaloryczny).",
+      "hintPausedBySave": "Zapisanie tego celu kalorycznego przełącza na cel ręczny, który dodaje kalorie z treningu z powrotem i wstrzymuje cyklowanie kalorii."
+    }
   },
   "common": {
     "add": "Dodaj",
@@ -3451,7 +3508,8 @@
     "previousDay": "Poprzedni dzień",
     "nextDay": "Następny dzień",
     "average": "Śred.",
-    "range": "Zakres"
+    "range": "Zakres",
+    "retry": "Ponów"
   },
   "diary": {
     "nutritionSummary": "Podsumowanie odżywiania",
@@ -3594,7 +3652,11 @@
       "activityBaselineMath": "Surowe całodniowe TDEE − średnia aktywność = surowa baza adaptacyjna: {{total}} − {{activity}} = {{baseline}} {{unit}} ({{days}} dni historii aktywności).",
       "activityBaselineCapped": "Po ograniczeniu wiarygodności na podstawie BMR adaptacyjna baza wynosi {{baseline}} {{unit}}. Tryb celu i Twój bezpieczny limit stosują się do tej bazy.",
       "activityExcludedBaselineValue": "Baza adaptacyjna = {{energy}} {{energyUnitString}}",
-      "activitySeparatedCredit": "Dzisiejsze kroki i treningi są zaliczane osobno, jednokrotnie, bez ponownego dodawania BMR. Dopóki historia jest niewystarczająca, baza używa BMR × Twojego mnożnika aktywności pozatrenningowej. Spójna historia posiłków, masy ciała i aktywności poprawia tę estymację."
+      "activitySeparatedCredit": "Dzisiejsze kroki i treningi są zaliczane osobno, jednokrotnie, bez ponownego dodawania BMR. Dopóki historia jest niewystarczająca, baza używa BMR × Twojego mnożnika aktywności pozatrenningowej. Spójna historia posiłków, masy ciała i aktywności poprawia tę estymację.",
+      "stepBmr": "Przemiana materii w spoczynku (BMR)",
+      "stepBodyFat": "Procent tkanki tłuszczowej",
+      "stepAdaptive": "Adaptacyjne TDEE (wydatek)",
+      "stepGoal": "Dzienny cel kaloryczny"
     },
     "copyAllError": "Nie udało się skopiować całego dnia.",
     "copyAllFromYesterday": "Skopiuj wszystko z wczoraj",
@@ -3799,6 +3861,15 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "calorieCycling": {
+      "highDay": "Dzień wysokokaloryczny +{{amount}}",
+      "lowDay": "Dzień niskokaloryczny −{{amount}}",
+      "stepHigh": "Cyklowanie kalorii (dzień wysokokaloryczny):",
+      "stepLow": "Cyklowanie kalorii (dzień niskokaloryczny):",
+      "stepFloor": "Utrzymano na bezpiecznym minimum; pozostałe dni oddają różnicę.",
+      "pausedWeeklyPlan": "Cyklowanie kalorii jest dziś wstrzymane: plan celu tygodniowego ustala ten dzień.",
+      "pausedEarnBack": "Cyklowanie kalorii jest wstrzymane: kalorie z treningu są dodawane z powrotem do celu."
     }
   },
   "foodDiary": {
@@ -3997,7 +4068,8 @@
       "photos": "Zdjęcia",
       "sleep": "Sen",
       "mindfulness": "Uważność",
-      "symptoms": "Objawy"
+      "symptoms": "Objawy",
+      "oralCare": "Higiena jamy ustnej"
     },
     "bmr": "BMR (kcal)",
     "failedToLoadPreviousCustom": "Nie udało się wczytać poprzednich własnych wartości.",
@@ -4299,7 +4371,7 @@
     "errorTitle": "Błąd",
     "loadMealError": "Nie udało się załadować posiłku do edycji.",
     "successTitle": "Sukces",
-    "foodAddedToMeal": "Dodano {{name}} do posiłku.",
+    "foodAddedToMeal": "Dodano {{foodName}} do posiłku.",
     "removedTitle": "Usunięto",
     "foodRemovedFromMeal": "Składnik usunięty z posiłku.",
     "mealNameEmptyError": "Nazwa posiłku nie może być pusta.",
@@ -7174,7 +7246,9 @@
     "fastingZoneBar": {
       "metabolicState": "Stan metaboliczny",
       "hours": "{{start}}-{{end}} godz."
-    }
+    },
+    "logMealToEnd": "Zapisz posiłek, aby zakończyć post",
+    "autoFastEndsWithMeal": "Post jest obliczany automatycznie na podstawie posiłków i zakończy się, gdy zapiszesz produkt."
   },
   "copyFoodEntryDialog": {
     "targetDate": "Data docelowa",
@@ -8740,7 +8814,7 @@
       "couldNotConnectToThe": "Nie udało się połączyć z serwerem."
     },
     "useBackups": {
-      "restoredLoggingOut": "Przywrócono. Wylogowywanie…"
+      "restoredLoggingOut": "Przywrócono. Wylogowywanie..."
     },
     "useExerciseImport": {
       "bodyweightExerciseForChestShoulders": "Ćwiczenie z masą ciała na klatkę piersiową, barki i triceps."
@@ -10363,5 +10437,108 @@
     "valueInvalid": "Podaj wskaźnik i wynik liczbowy.",
     "historyCutOff": "Historia pokazuje co najwyżej {{count}} najnowszych wyników.",
     "dateInvalid": "Podaj datę badania."
+  },
+  "oralCare": {
+    "title": "Higiena jamy ustnej",
+    "loading": "Wczytywanie higieny jamy ustnej...",
+    "loadError": "Nie udało się wczytać higieny jamy ustnej na ten dzień.",
+    "types": {
+      "brushing": "Szczotkowanie",
+      "flossing": "Nitkowanie",
+      "mouthwash": "Płukanie ust",
+      "tongue_cleaning": "Czyszczenie języka",
+      "other": "Inne"
+    },
+    "goal": {
+      "description": "Cel: szczotkuj {{count}} razy dziennie po {{time}}",
+      "edit": "Cel",
+      "title": "Cel szczotkowania",
+      "dailyTarget": "Szczotkowania dziennie",
+      "targetTime": "Czas jednego szczotkowania",
+      "hint": "Dentyści zwykle zalecają szczotkowanie dwa razy dziennie przez 2 minuty.",
+      "saved": "Cel szczotkowania zapisany."
+    },
+    "stats": {
+      "brushed": "Szczotkowania",
+      "ofTarget": "{{count}} z {{target}}",
+      "goalMet": "Cel osiągnięty",
+      "time": "Czas szczotkowania",
+      "atTarget": "{{count}} razy osiągnięto {{time}}",
+      "streak": "Seria",
+      "days": "{{count}} dni",
+      "best": "Najlepiej: {{count}} dni",
+      "other": "Inne zabiegi"
+    },
+    "history": {
+      "title": "Sesje",
+      "subtitle": "Zapisane tutaj lub zsynchronizowane z Apple Health",
+      "empty": "Nic nie zapisano tego dnia"
+    },
+    "source": {
+      "timer": "Timer",
+      "health": "Apple Health"
+    },
+    "coveredBySync": "Rejestrowane także przez Apple Health · liczone raz",
+    "actions": {
+      "edit": "Edytuj",
+      "delete": "Usuń"
+    },
+    "dialog": {
+      "editTitle": "Edytuj sesję",
+      "createTitle": "Zapisz higienę jamy ustnej",
+      "type": "Typ",
+      "customLabel": "Nazwa",
+      "customLabelPlaceholder": "np. irygator wodny",
+      "time": "Czas",
+      "duration": "Czas trwania (opcjonalnie)",
+      "minutes": "Minuty",
+      "minutesShort": "min",
+      "seconds": "Sekundy",
+      "secondsShort": "sek",
+      "notes": "Notatki"
+    },
+    "deleteDialog": {
+      "title": "Usunąć tę sesję?",
+      "description": "Sesja zsynchronizowana z Apple Health wróci przy następnej synchronizacji, chyba że usuniesz ją także w aplikacji Zdrowie."
+    },
+    "errors": {
+      "save": "Nie udało się zapisać sesji.",
+      "delete": "Nie udało się usunąć sesji.",
+      "goal": "Nie udało się zapisać celu."
+    },
+    "report": {
+      "loading": "Wczytywanie higieny jamy ustnej...",
+      "loadError": "Nie udało się wczytać raportu higieny jamy ustnej.",
+      "goalDays": "Cel osiągnięty",
+      "goalDaysValue": "{{met}} z {{total}} dni",
+      "streak": "Obecna seria",
+      "brushesPerDay": "Szczotkowania dziennie",
+      "goalValue": "Cel: {{target}}",
+      "minutesPerDay": "Minuty szczotkowania dziennie",
+      "otherCare": "Inne zabiegi: {{count}}",
+      "clamped": "Pokazano ostatnie 366 dni z zakresu.",
+      "brushesChart": "Szczotkowania dziennie",
+      "goalLine": "Cel",
+      "brushes": "Szczotkowania",
+      "minutesChart": "Minuty szczotkowania dziennie",
+      "minutes": "Minuty",
+      "minutesNote": "Czas liczą tylko szczotkowania zapisane z czasem trwania."
+    },
+    "timer": {
+      "title": "Timer szczotkowania",
+      "subtitle": "{{time}}, ćwierć ust za jednym razem",
+      "startButton": "Uruchom timer",
+      "upperLeft": "Lewa górna",
+      "upperRight": "Prawa górna",
+      "lowerRight": "Prawa dolna",
+      "lowerLeft": "Lewa dolna",
+      "done": "Gotowe! Zapisz szczotkowanie",
+      "ready": "Gotowo",
+      "start": "Start",
+      "pause": "Wstrzymaj",
+      "resume": "Wznów",
+      "mute": "Wyłącz dźwięk",
+      "unmute": "Włącz dźwięk"
+    }
   }
 }

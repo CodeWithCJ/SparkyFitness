@@ -1,1 +1,24 @@
-{}
+{
+  "email": {
+    "passwordReset": {
+      "subject": "Réinitialisation de votre mot de passe SparkyFitness",
+      "intro": "Vous avez demandé la réinitialisation du mot de passe de votre compte SparkyFitness.",
+      "actionPrompt": "Cliquez sur le lien suivant pour réinitialiser votre mot de passe :",
+      "expiry": "Ce lien expirera dans {{expiresInHours}} h.",
+      "ignoreNotice": "Si vous n'avez pas demandé de réinitialisation du mot de passe, ignorez cet e-mail."
+    },
+    "mfaCode": {
+      "subject": "Votre code d'authentification SparkyFitness",
+      "intro": "Votre code d'authentification multifacteur est :",
+      "expiry": "Ce code est valable {{expiresInMinutes}} minutes.",
+      "ignoreNotice": "Si vous n'avez pas demandé ce code, ignorez cet e-mail."
+    },
+    "magicLink": {
+      "subject": "Votre lien de connexion SparkyFitness",
+      "intro": "Vous avez demandé une connexion sans mot de passe à votre compte SparkyFitness.",
+      "actionPrompt": "Cliquez sur le lien suivant pour vous connecter :",
+      "expiry": "Ce lien expirera dans {{expiresInMinutes}} minutes et ne peut être utilisé qu'une seule fois.",
+      "ignoreNotice": "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+    }
+  }
+}

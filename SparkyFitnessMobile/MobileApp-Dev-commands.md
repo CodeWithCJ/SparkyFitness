@@ -61,13 +61,13 @@ The watch app is a separate upload to its own track, and the phone's `production
    ```
 3. Upload the AAB to the Wear OS track. Upload it whenever you ship the phone app, so the two stay in step.
 
-The `create-production-builds.yml` workflow builds the phone, watch and iOS apps together, and submits none of them. To skip the manual upload for one build, add `--auto-submit`:
+The `production-build-submission.yml` workflow builds the phone, watch and iOS apps together and submits each one as its build finishes, so one run (expo.dev → Workflows → Run workflow, or `eas workflow:run production-build-submission.yml`) ships all three. The iOS build is uploaded to App Store Connect; add it to the external `SparkyFitnessExternalTesting` TestFlight group and submit it for Beta App Review by hand. The `submit` job's `groups` only takes internal groups, and the `testflight` job that takes external ones needs a paid EAS plan. Expo's "Build from GitHub" button runs a single build profile, not this workflow. To build and submit only the watch, add `--auto-submit`:
 
 ```bash
 eas build --platform android --profile wearos --auto-submit
 ```
 
-Submitting uses the `eas.json` `submit` profile with the same name as the build profile, so the phone goes to the `alpha` track and the watch to `wear:alpha`. These names must match your tracks in Play Console. Closed testing tracks have names you choose, and a Wear OS one is `wear:<name>`, so `wear:alpha` needs a closed testing track named `alpha` under the dedicated Wear OS track from step 1. Change them in `eas.json` if yours have different names. EAS needs a Google service account key with release access to the app, added once through `eas credentials`. Play reviews the phone and watch releases separately.
+Submitting uses the `eas.json` `submit` profile with the same name as the build profile, so the phone goes to the `alpha` track and the watch to `wear:WearAlpha`. These names must match your tracks in Play Console. The default closed testing track is `alpha` (shown as "Closed testing - Alpha"); other closed tracks use the name they were created with, and a Wear OS one is `wear:<name>`, so the watch's "Closed testing - WearAlpha" is `wear:WearAlpha`. Keep track names to one word: the workflow's `submit` job passes the track to fastlane unquoted, so `wear:WearOS Track` arrives as `wear:WearOS`. A wrong name fails the submit with "Track not found". Change them in `eas.json` if yours have different names. EAS needs a Google service account key with release access to the app, added once through `eas credentials`. Play reviews the phone and watch releases separately.
 
 A watch release build's version code is minutes since the epoch, because Play requires a code that is unique across form factors and rises with each upload. Two builds in the same minute get the same code, so rebuild if Play rejects one. Set `SPARKY_WEAR_VERSION_CODE` to override it, with a number above the one on Play.
 

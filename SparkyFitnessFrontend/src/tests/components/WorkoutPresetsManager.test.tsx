@@ -50,6 +50,10 @@ jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({ weightUnit: 'kg' }),
 }));
 
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user-1' }),
+}));
+
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1' } }),
 }));

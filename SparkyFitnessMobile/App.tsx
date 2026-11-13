@@ -1,6 +1,6 @@
 import './global.css'
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StatusBar, Platform } from 'react-native';
+import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -42,6 +42,7 @@ import {
   SafeOnboarding,
   SafeFoodsLibrary,
   SafeMealsLibrary,
+  SafeRecipeImport,
   SafeMealPlans,
   SafeLabReportImport,
   SafeLabResultAdd,
@@ -190,7 +191,7 @@ import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { addLog } from './src/services/LogService';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { FullWindowOverlay } from 'react-native-screens';
 import type { RootStackParamList } from './src/types/navigation';
@@ -485,6 +486,7 @@ function AppContent() {
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        RecipeImport: 'meals/import-mealie',
         // The Android calorie and macro widgets' fasting shortcut.
         FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
@@ -533,11 +535,23 @@ function AppContent() {
         <LightboxProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
             ? ({ children, route }) => (
               <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
-                {children}
+                {/* View-level safe area: keeps pushed screens clear of the
+                    vertical bar iPhone Duo presents on one side. Not for
+                    Tabs: wrapping the tab controller narrows it and the
+                    system stops presenting its bar vertically; each tab's
+                    own stack insets its screens instead. */}
+                {route.name === 'Tabs' ? (
+                  children
+                ) : (
+                  <SafeAreaView edges={['left', 'right']} style={{ flex: 1 }}>
+                    {children}
+                  </SafeAreaView>
+                )}
               </ActiveWorkoutTransitionScreenLayout>
             )
             : undefined}
@@ -617,6 +631,11 @@ function AppContent() {
             name="MealsLibrary"
             component={SafeMealsLibrary}
             options={createStackScreenOptions(t('screens.meals', { defaultValue: 'Meals' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="RecipeImport"
+            component={SafeRecipeImport}
+            options={createStackScreenOptions(t('recipeImport.title', { defaultValue: 'Import Mealie ingredients' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="MealPlans"
@@ -1535,6 +1554,7 @@ function AppContent() {
             }
           }}
         />
+        </HorizontalInsetsFrame>
         <ActiveWorkoutBar />
         <ActiveWorkoutKeepAwake />
         <MedicationReminderReconciler />
@@ -1556,6 +1576,32 @@ function SafeAreaToast() {
   // bottom sheets escape modal contexts. Android modal layering doesn't have
   // this problem, and FullWindowOverlay is a no-op there.
   return Platform.OS === 'ios' ? <FullWindowOverlay>{toast}</FullWindowOverlay> : toast;
+}
+
+// iPhone Duo's vertical bar strip takes the leading or trailing edge and swaps
+// sides between poses, so keep every screen inside the live left/right insets.
+// Read per render, never cached. Zero on a normal iPhone in portrait.
+//
+// Skipped under native Liquid Glass navigation: there the system presents the
+// tab bar and headers vertically itself, and each tab's screens inset for that
+// bar through ScreenSideInsets (TabsLayout) instead.
+function HorizontalInsetsFrame({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const nativeNav = useNativeIOSTabsActive();
+  // One View in both modes: returning a Fragment for native tabs would change
+  // the element type when the Liquid Glass setting flips and remount the whole
+  // navigator, discarding screen state. Native tabs get zero padding.
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingLeft: nativeNav ? 0 : insets.left,
+        paddingRight: nativeNav ? 0 : insets.right,
+      }}
+    >
+      {children}
+    </View>
+  );
 }
 
 function UniwindInsetsBridge() {

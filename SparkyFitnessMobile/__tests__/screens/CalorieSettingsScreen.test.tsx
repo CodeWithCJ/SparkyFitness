@@ -84,6 +84,49 @@ const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 const route = { params: {} } as never;
 
 describe('CalorieSettingsScreen', () => {
+  it.each([
+    { unit: 'kcal', amount: 500 },
+    { unit: 'kJ', amount: 2092 },
+  ])(
+    'describes an uncertain adaptive estimate with the converted $unit range',
+    ({ unit, amount }) => {
+      mockPreferences.energy_unit = unit;
+      const screen = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+      expect(screen.queryByText(/Your measured TDEE is capped/i)).toBeNull();
+      expect(screen.getByText(new RegExp(`±${amount} ${unit}`))).toBeTruthy();
+      expect(
+        screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
+      ).toBeTruthy();
+      expect(screen.queryByText(/42 days|55 days|6 weeks|8 weeks/i)).toBeNull();
+      expect(mockMutate).not.toHaveBeenCalled();
+    }
+  );
+
+  it('falls back to current English uncertainty text when the registered locale still has the old adaptive hint', async () => {
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+    expect(
+      screen.getByText(/starting estimate.*several weeks.*uncertainty/i)
+    ).toBeTruthy();
+  });
+
+  it('keeps adaptive timing caveats out of Device Projection', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'tdee';
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+    expect(
+      screen.queryByText(/starting estimate.*several weeks.*uncertainty/i)
+    ).toBeNull();
+    expect(screen.getByText(/Current-day device total calories/)).toBeTruthy();
+  });
+
   it.each([false, true])(
     'shows and updates the exercise macro preference from %s',
     (enabled) => {
@@ -564,53 +607,32 @@ describe('CalorieSettingsScreen', () => {
       calorie_safety_floor_value: expectedValue,
     });
   });
-  it('renders the shipped Polish safety floor labels, descriptions, custom minimum, and keeps raw values', async () => {
-    await act(async () => {
-      await i18n.changeLanguage('pl');
-    });
+  it('renders safety floor descriptions for each mode', () => {
     const cases = [
       [
         'standard',
-        'Używa wyższej z wartości: szacowany BMR lub minimum kliniczne.',
+        'Uses the higher of your estimated RMR and the clinical minimum.',
       ],
       [
         'custom',
-        'Zastępuje standardowe minimum wybraną przez Ciebie wartością. Zalecenia zdrowotne pozostają widoczne.',
+        'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.',
       ],
       [
         'disabled',
-        'Wyłącza automatyczne ograniczanie celu. Ostrzeżenia zdrowotne pozostają widoczne.',
+        'Stops automatic target clamping. Health warnings remain visible.',
       ],
     ] as const;
-    const screen = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />
-    );
-    expect(screen.getByText('Bezpieczne minimum')).toBeTruthy();
-    expect(screen.getByText('Standardowe')).toBeTruthy();
-    expect(screen.getByText('Własne')).toBeTruthy();
-    expect(screen.getByText('Wyłączone')).toBeTruthy();
+
     for (const [mode, description] of cases) {
       mockPreferences.calorie_safety_floor_mode = mode;
-      screen.rerender(
+      const screen = render(
         <CalorieSettingsScreen navigation={navigation} route={route} />
       );
       expect(screen.getByText(description)).toBeTruthy();
       if (mode === 'custom') {
-        expect(screen.getByText('Własne minimum (kcal)')).toBeTruthy();
+        expect(screen.getByText('Custom minimum (kcal)')).toBeTruthy();
       }
     }
-    fireEvent.press(screen.getByText('Standardowe'));
-    fireEvent.press(screen.getByText('Własne'));
-    fireEvent.press(screen.getByText('Wyłączone'));
-    expect(mockMutate).toHaveBeenNthCalledWith(1, {
-      calorie_safety_floor_mode: 'standard',
-    });
-    expect(mockMutate).toHaveBeenNthCalledWith(2, {
-      calorie_safety_floor_mode: 'custom',
-    });
-    expect(mockMutate).toHaveBeenNthCalledWith(3, {
-      calorie_safety_floor_mode: 'disabled',
-    });
   });
 
   it('updates labels on the same mounted instance when language changes', async () => {

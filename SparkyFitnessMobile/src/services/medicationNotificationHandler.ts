@@ -1,3 +1,5 @@
+import { AppState } from 'react-native';
+import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -22,8 +24,16 @@ import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEn
 import { addLog, _flushBuffer } from '../services/LogService';
 import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 import { addDays } from '../utils/dateUtils';
+import { getActiveServerConfig } from './storage';
 import { isDoseLogged } from '../utils/medications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  acknowledgeNativeMedicationActionResults,
+  addNativeMedicationResultListener,
+  readNativeMedicationActionResults,
+  isNativeMedicationActionClaimed,
+} from './medicationNativeBridge';
+import { syncNativeMedicationSnoozeMinutes } from './medicationNativeSync';
 import i18n, {
   getDeviceLanguage,
   initializeI18n,
@@ -49,6 +59,8 @@ export interface PendingMedicationNotificationAction {
   doses: { medicationId: string; scheduleId: string | null }[];
   entryDate: string;
   userId?: string | null;
+  /** The saved server the reminder was scheduled for; absent on older reminders. */
+  serverId?: string | null;
   takenAt?: string;
 }
 
@@ -167,6 +179,27 @@ function doesNotificationMatchAction(
   );
 }
 
+/** The id of the saved server the app is signed in to now, or null. */
+async function currentServerId(): Promise<string | null> {
+  try {
+    return (await getActiveServerConfig())?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A reminder stamped with a server is acted on only while that server is the
+ * active one; otherwise it is kept queued until it is. A copy of a server (a
+ * restored backup) has the same user and medication ids but another server id.
+ */
+function belongsToOtherServer(
+  serverId: string | null | undefined,
+  activeServerId: string | null
+): boolean {
+  return Boolean(serverId) && serverId !== activeServerId;
+}
+
 function actionDedupeId(action: {
   key: string | null;
   entryDate: string;
@@ -201,7 +234,7 @@ async function readPendingActions(): Promise<
 
 async function writePendingActions(
   actions: PendingMedicationNotificationAction[]
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (actions.length === 0) {
       await AsyncStorage.removeItem(
@@ -213,20 +246,22 @@ async function writePendingActions(
         JSON.stringify(actions)
       );
     }
+    return true;
   } catch {
-    // ignore storage errors
+    // The caller decides whether a failed write matters.
+    return false;
   }
 }
 
 async function enqueuePendingAction(
   record: PendingMedicationNotificationAction
-): Promise<void> {
-  await withPendingActionsLock(async () => {
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
     const existing = await readPendingActions();
     const id = actionDedupeId(record);
     const filtered = existing.filter((item) => actionDedupeId(item) !== id);
     filtered.push(record);
-    await writePendingActions(filtered);
+    return writePendingActions(filtered);
   });
 }
 
@@ -264,7 +299,7 @@ async function readSnoozedReminders(): Promise<
 
 async function writeSnoozedReminders(
   records: SnoozedMedicationReminderRecord[]
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (records.length === 0) {
       await AsyncStorage.removeItem(SNOOZED_MEDICATION_REMINDERS_KEY);
@@ -274,8 +309,9 @@ async function writeSnoozedReminders(
         JSON.stringify(records)
       );
     }
+    return true;
   } catch {
-    // ignore storage errors
+    return false;
   }
 }
 
@@ -283,12 +319,12 @@ async function recordSnoozedReminder(
   baseKey: string,
   entryDate: string,
   doses: { medicationId: string; scheduleId: string | null }[]
-): Promise<void> {
-  await withPendingActionsLock(async () => {
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
     const existing = await readSnoozedReminders();
     const filtered = existing.filter((item) => item.baseKey !== baseKey);
     filtered.push({ baseKey, entryDate, doses });
-    await writeSnoozedReminders(filtered);
+    return writeSnoozedReminders(filtered);
   });
 }
 
@@ -464,6 +500,7 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
 
   const resolvedIds = new Set<string>();
   let anySucceeded = false;
+  const activeServerId = await currentServerId();
 
   for (const record of pending) {
     const dedupeKey = actionDedupeId(record);
@@ -475,6 +512,10 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
 
     const replayPromise = (async (): Promise<boolean> => {
       try {
+        if (belongsToOtherServer(record.serverId, activeServerId)) {
+          // Made for another saved server; retain it until that server is active.
+          return false;
+        }
         if (
           record.userId &&
           activeUserIds.size > 0 &&
@@ -578,6 +619,19 @@ export async function processMedicationNotificationResponse(
 
   if (!status && !isSnooze) return true;
 
+  // On iOS the native handler takes these buttons so they work with the app
+  // closed. A press it claimed is done or running there; doing it here too
+  // would log the dose twice (entries have no unique constraint on a dose).
+  if (
+    isNativeMedicationActionClaimed(
+      response.notification?.request?.identifier ?? '',
+      actionId
+    )
+  ) {
+    await applyNativeMedicationActionResults();
+    return true;
+  }
+
   const content = response.notification?.request?.content;
   const data = extractNotificationData(content);
   const medicationId = data?.medicationId;
@@ -597,6 +651,7 @@ export async function processMedicationNotificationResponse(
   const notificationId = response.notification.request.identifier;
   const baseKey = data?.baseKey ?? data?.key ?? null;
   const userId = data?.userId ?? null;
+  const serverId = data?.serverId ?? null;
   const dedupeKey = isSnooze
     ? `snooze_${actionDedupeId({ key: baseKey, entryDate, doses, userId })}`
     : actionDedupeId({ key: baseKey, entryDate, doses, userId });
@@ -622,7 +677,8 @@ export async function processMedicationNotificationResponse(
           entryDate,
           notificationId,
           baseKey,
-          userId
+          userId,
+          serverId
         )
   ).finally(() => {
     inFlightActions.delete(dedupeKey);
@@ -777,9 +833,179 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
   }
 );
 
+let applyingNativeResults: Promise<boolean> | null = null;
+let applyNativeResultsAgain = false;
+
+/**
+ * Applies what the iOS native handler did while JavaScript was not looking:
+ * records snoozes, retries writes that failed, and refreshes the caches. A
+ * result is acknowledged (and so forgotten natively) only once it has been
+ * stored, so a failed write here leaves it to be applied again. Applying is
+ * safe to repeat: queue records dedupe, and the retry lists the day first.
+ */
+export function applyNativeMedicationActionResults(): Promise<boolean> {
+  if (applyingNativeResults) {
+    applyNativeResultsAgain = true;
+    return applyingNativeResults;
+  }
+  const run = (async () => {
+    let appliedAny = false;
+    do {
+      applyNativeResultsAgain = false;
+      appliedAny = (await applyNativeResultsOnce()) || appliedAny;
+    } while (applyNativeResultsAgain);
+    return appliedAny;
+  })().finally(() => {
+    applyingNativeResults = null;
+  });
+  applyingNativeResults = run;
+  return run;
+}
+
+async function applyNativeResultsOnce(): Promise<boolean> {
+  const results = readNativeMedicationActionResults();
+  if (results.length === 0) return false;
+
+  const done: string[] = [];
+  let refresh = false;
+  let queuedRetry = false;
+  for (const result of results) {
+    if (result.kind === 'snooze') {
+      const recorded = await recordSnoozedReminder(
+        result.baseKey,
+        result.entryDate,
+        result.doses
+      );
+      if (!recorded) {
+        // Keep it natively: without the record, reconciliation could schedule
+        // repeat reminders for a dose that is snoozed.
+        addLog(
+          '[MedicationNotificationAction] Could not store a native snooze; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
+      addLog(
+        `[MedicationNotificationAction] Snoozed ${result.doses.length} medication(s) for ${result.minutes}m (native)`,
+        'DEBUG'
+      );
+      done.push(result.id);
+    } else if (result.kind === 'snoozeFailed') {
+      addLog(
+        '[MedicationNotificationAction] Native snooze could not be scheduled',
+        'WARNING'
+      );
+      done.push(result.id);
+    } else if (result.failedDoses.length > 0) {
+      const stored = await enqueuePendingAction({
+        key: result.key,
+        notificationId: result.notificationId,
+        status: result.status,
+        doses: result.failedDoses,
+        entryDate: result.entryDate,
+        userId: result.userId,
+        serverId: result.serverId,
+        takenAt: result.takenAt,
+      });
+      if (!stored) {
+        // Keep it natively until it can be stored.
+        addLog(
+          '[MedicationNotificationAction] Could not queue a failed native dose; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
+      addLog(
+        `[MedicationNotificationAction] Native handler could not log ${result.failedDoses.length} medication(s); queued to retry`,
+        'WARNING'
+      );
+      queuedRetry = true;
+      refresh = refresh || result.loggedCount > 0;
+      done.push(result.id);
+    } else {
+      await removePendingAction({
+        key: result.key,
+        entryDate: result.entryDate,
+        doses: result.doses,
+        userId: result.userId,
+      });
+      await removeSnoozedReminder(result.key);
+      addLog(
+        `[MedicationNotificationAction] Logged ${result.loggedCount} medication(s) as ${result.status} (native)`,
+        'DEBUG'
+      );
+      refresh = true;
+      done.push(result.id);
+    }
+  }
+  acknowledgeNativeMedicationActionResults(done);
+  if (refresh) invalidateMedicationEntryCaches(queryClient);
+  // Replay what was just queued now, rather than waiting for the next
+  // reconcile: it stays queued if the server is still unreachable.
+  if (queuedRetry) {
+    await retryPendingMedicationActions();
+  }
+  return done.length > 0;
+}
+
+let retryingPending: Promise<boolean> | null = null;
+let retryAgain = false;
+
+/**
+ * Replays the queued dose writes (see `flushPendingMedicationNotificationActions`),
+ * one run at a time. It does nothing when the queue is empty and leaves the
+ * queue alone when the server is still unreachable.
+ */
+export function retryPendingMedicationActions(): Promise<boolean> {
+  if (retryingPending) {
+    // A run already in progress may have read the queue before this caller's
+    // dose was added: have it go round once more.
+    retryAgain = true;
+    return retryingPending;
+  }
+  const run = (async () => {
+    let any = false;
+    do {
+      retryAgain = false;
+      any =
+        (await flushPendingMedicationNotificationActions().catch(
+          () => false
+        )) || any;
+    } while (retryAgain);
+    return any;
+  })().finally(() => {
+    retryingPending = null;
+  });
+  retryingPending = run;
+  return run;
+}
+
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;
+
+  syncNativeMedicationSnoozeMinutes();
+  void applyNativeMedicationActionResults();
+  addNativeMedicationResultListener(() => {
+    void applyNativeMedicationActionResults();
+  });
+  AppState.addEventListener('change', (state) => {
+    if (state !== 'active') return;
+    void applyNativeMedicationActionResults();
+    void retryPendingMedicationActions();
+  });
+  // A dose that could not be written while offline is replayed when the
+  // connection returns, not only at the next reconcile (which does not run on
+  // reconnect). A missing native module just means no reconnect retries.
+  try {
+    Network.addNetworkStateListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        void retryPendingMedicationActions();
+      }
+    });
+  } catch {
+    // Foreground return still retries.
+  }
 
   if (typeof Notifications.registerTaskAsync === 'function') {
     void Notifications.registerTaskAsync(
@@ -851,7 +1077,8 @@ async function handleNotificationAction(
   entryDate: string,
   notificationId: string,
   key: string | null,
-  userId: string | null = null
+  userId: string | null = null,
+  serverId: string | null = null
 ): Promise<boolean> {
   const takenAt = status === 'taken' ? new Date().toISOString() : undefined;
   try {
@@ -859,6 +1086,69 @@ async function handleNotificationAction(
     // the interacted reminder right away. Sibling delivered and scheduled repeat
     // reminders are cleared only after the entry is confirmed or written.
     await dismissDeliveredNotification(notificationId);
+
+    // A reminder made for another saved server is not written to this one:
+    // keep it queued until that server is active again.
+    if (belongsToOtherServer(serverId, await currentServerId())) {
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        serverId,
+        takenAt,
+      });
+      addLog(
+        '[MedicationNotificationAction] Reminder press belongs to another server; queued for when it is active',
+        'WARNING'
+      );
+      return true;
+    }
+
+    // A reminder can outlive an account switch. Write only doses of medications
+    // the signed-in account owns, whether or not the reminder carries identity
+    // fields; if ownership cannot be checked (offline) the press is queued, and
+    // the replay checks it the same way.
+    const medications = await listMedications();
+    const ownedIds = new Set(medications.map((m) => m.id));
+    const activeUserIds = new Set(
+      medications
+        .map((m) => m.user_id)
+        .filter((id): id is string => Boolean(id))
+    );
+    const otherAccount =
+      userId !== null && activeUserIds.size > 0 && !activeUserIds.has(userId);
+    const ownDoses = otherAccount
+      ? []
+      : doses.filter((d) => ownedIds.has(d.medicationId));
+    if (ownDoses.length === 0) {
+      // Same rule as the replay (`flushPendingMedicationNotificationActions`):
+      // when the reminder's own account is signed in and no longer has the
+      // medication, it was deleted, so drop the press; otherwise keep it queued
+      // to replay when the owning account is signed in again.
+      if (userId && activeUserIds.has(userId)) {
+        await removeSnoozedReminder(key);
+        return true;
+      }
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        serverId,
+        takenAt,
+      });
+      addLog(
+        '[MedicationNotificationAction] Reminder press belongs to another account; queued for when it is signed in',
+        'WARNING'
+      );
+      return true;
+    }
+    doses = ownDoses;
 
     const existing = await listEntries({
       fromDate: entryDate,
@@ -913,6 +1203,7 @@ async function handleNotificationAction(
       doses,
       entryDate,
       userId,
+      serverId,
       takenAt,
     });
     addLog(

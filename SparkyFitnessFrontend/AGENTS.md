@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-12_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -48,6 +48,8 @@ Features are organized by domain, and the same domain folder name appears in `sr
 
 ## Source Map
 
+- Mealie ingredient meals: `pages/Foods/RecipeImportDialog.tsx` browses configured sources, `RecipeImportReview.tsx` reviews whole-recipe amounts and cooked weight, and `RecipeImportIngredientRow.tsx` reuses food search/import/unit selection. `hooks/Foods/useRecipeImport.ts` guards confirmed mappings and batches matching requests (20 rows); `hooks/Foods/useRecipeImportQueries.ts` owns owner-scoped browsing, direct recipe previews, saved-choice management, food lookups and source sync; `RecipeImportSavedMappings.tsx` lists/forgets private suggestions. Browser cards reuse `FoodResultCard` and `useFoodResultNutrientConfig` from normal food search; `api/Foods/recipeImportService.ts` consumes shared RecipeImport contracts. `RecipeImportSourcePanel.tsx` and `RecipeImportSyncConfirmation.tsx` review current nutrition before explicit writeback from saved meals and ordinary meal edit/details; 404 means an ordinary meal, and owner-only panels unmount on profile switches. Recipe unit selection opts into preserving source amounts across compatible units and requires explicit incompatible amounts. Existing quick-food recipe import remains separate.
+
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
 - `src/main.tsx` - app bootstrap; creates the shared `QueryClient` with global `QueryCache`/`MutationCache` handlers that render toasts from query/mutation `meta` (`errorTitle`, `errorMessage`, `successMessage`).
@@ -82,6 +84,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Use `apiCall` (or an existing per-domain client) for backend requests; don't hand-roll `fetch`.
 - Prefer declaring toast text via React Query `meta` on the query/mutation instead of imperative `toast(...)` calls where the global handlers cover it.
 - Use `src/utils/logging.ts` helpers instead of bare `console.*`; verbosity follows the user's logging-level preference.
+- Personal data kept in the browser (`localStorage`) is keyed by the person it belongs to (`activeUserId`), so a browser a family shares never shows one person's data to another: workout playback drafts (`utils/workoutPlayback.ts`), the birth plan and hospital bag (`pages/Cycle/care/BirthPrep.tsx`), Compare recents and the chat conversation id. A page holding such data in state is keyed on `activeUserId`, so another account or profile taking over starts from its own, and the workout player only takes a draft handed over in route state when its `ownerId` is the person on screen. Entries saved before this without an owner are never shown and are removed.
 - Keep `YYYY-MM-DD` values as calendar-day strings; use the shared timezone/day helpers from `@workspace/shared` instead of `toISOString().split('T')[0]`.
 - To learn a database table's shape, read `../shared/src/schemas/database/<Table>.zod.ts` - do not read `../db_schema_backup.sql` or the migrations.
 - Auth flows go through `src/lib/auth-client.ts` and `useAuth`; acting-user (family access) state lives in `ActiveUserContext` and affects most data hooks.
@@ -100,13 +103,16 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 
 ## Quick Routing
 
+- Import Mealie ingredients from the Meals library action in `MealManagement.tsx` or the no-nutrition food-details link. `MealManagement` validates and consumes the provider/recipe query parameters, then opens the ordinary saved-meal editor. Remembered mappings require explicit confirmation for each import. Original ingredient amounts are whole-recipe totals; optional finished cooked grams only define normal meal serving size. AI candidates require explicit review and local food/variant IDs. Saving creates an ordinary meal; source sync has independent pending/error/success state and must preserve a successful local save. Private recipe data and operations stay disabled while acting on behalf.
+
 - Glucose / CGM: `pages/Reports/GlucoseCard.tsx` under Reports → Measurements reads `blood_glucose` samples, separates source streams, uses the account `default_glucose_unit` (Preferences → Glucose Unit) for mmol/L or mg/dL display and leaves gaps over 15 minutes. `hooks/Reports/useGlucoseContext.ts` adds independently selectable day context; exercise and sleep show start/end spans. Setup: `docs/src/features/cgm.md`.
 
 - Barcode source comparison: `components/FoodSearch/BarcodeSearchResult.tsx`, `hooks/Foods/useBarcodeSearchResult.ts`, and `api/Foods/foodService.ts` use the shared barcode API contracts. Normal scans keep the selected/default provider behavior. Local hits remain visible and Other sources loads alternatives on request. Provider credentials belong to the signed-in account; lookup and alternatives cache keys also include the active profile for local matches. Comparison nutrition uses shared `barcodeNutritionPreview`; import retains the selected source's identity and original portions.
 
 - Routing/navigation/permission issue: `src/App.tsx` (router, `PrivateRoute`, `PermissionRoute`) and `src/layouts/MainLayout.tsx`.
+- Main tabs a person can hide (Settings > Profile & Account > Tabs, `pages/Settings/WebTabsSettings.tsx`): the owner's module tabs, their labels, icons and + menu entries come from `constants/webTabs.ts` (`visibleModuleTabs`; cycle still follows `cycle_settings.enabled`). The choice is a Customize layout row (`page_key` `web-tabs`, ids from the shared `WEB_HIDEABLE_TAB_IDS`) read and written by `hooks/Settings/useHiddenWebTabs.ts`: nothing hidden while loading or acting for someone else, the cache is the session's source of truth (no refetch on focus) and saves run one at a time with the whole list. The switches only work once the saved list has loaded (`editState`, with a Retry when the load fails) and never while acting for someone else; only the last queued save may write its answer or reread the list, a tap cancels a reread still in flight, and a save whose cached list was cleared meanwhile (another account took over) never writes its answer. Hiding only changes navigation: the routes stay open, and the Diary links that lead only to a hidden tab (`DailyProgress` Enter Measurements, `RunProgramBanner` Open program) are dropped. Components that call the hook need it mocked in tests rendered without a `QueryClientProvider`.
 - API/error-toast issue: `src/api/api.ts`, then the domain client in `src/api/<Domain>/`, then the query/mutation `meta` in the calling hook.
-- Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages.
+- Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages. Most query keys don't name the account, so `useAuth` clears the whole query cache whenever the account changes: sign-out, an expired session, a profile switch, and a different account taking over without a sign-out (signed in from another browser tab, or a sign-in over another account). The page's first account keeps what was cached before it.
 - Remote MCP OAuth admin, consent, or connected-app issue: `src/pages/Admin/AuthenticationSettings.tsx`, `src/pages/Auth/OAuthConsent.tsx`, `src/pages/Settings/OAuthClientSettings.tsx`, `src/api/Auth/oauth.ts`, and `src/hooks/Auth/useOAuth.ts`.
 - Family-access/acting-user issue: `src/contexts/ActiveUserContext.tsx` and the hooks consuming it.
 - Chat (Sparky) issue: `src/pages/Chat/`, `src/components/ai/`, `src/api/Chatbot/`. Voice controls live in `VoiceInputControl.tsx`; `VoiceInputSettings.tsx` shares server-backed enable/System/AI choices with mobile. `active_voice_ai_service_id: null` means System, never automatic inheritance from Chat. A compatible Chat model is only a suggestion. Cancelling, leaving the page, hiding the tab, or changing voice preferences releases the microphone and aborts uploads.

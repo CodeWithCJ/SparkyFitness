@@ -134,6 +134,20 @@ describe('sparky_review_calorie_target', () => {
     expect(sparse).not.toContain('Targets at this maintenance');
   });
 
+  it('withholds recovery-period target numbers without promising a two-week calibration', async () => {
+    svc.getCalorieTargetReview.mockResolvedValue({
+      ...baseReview,
+      status: 'learning',
+      daysLogged: 27,
+      suggestion: { ...option(0, 2220), changeKcal: -380 },
+    });
+    const learning = (await run({ desired_kg_per_week: 0 })) as string;
+    expect(learning).toContain('still learning');
+    expect(learning).not.toMatch(/two weeks|2 weeks/i);
+    expect(learning).not.toContain('2220');
+    expect(learning).not.toContain('Targets at this maintenance');
+  });
+
   it('blames adherence, not the target, when intake was off', async () => {
     svc.getCalorieTargetReview.mockResolvedValue({
       ...baseReview,

@@ -104,6 +104,7 @@ export const userPreferencesSchema = z.object({
   chart_scale_mode: z.enum(CHART_SCALE_MODES),
   // Manually added (#1560; ts-to-zod precedent: UserWaterContainers.zod.ts).
   adaptive_workout_suggestions: z.boolean(),
+  intervals_push_nutrition: z.boolean(),
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
@@ -209,6 +210,7 @@ export const userPreferencesInitializerSchema = z.object({
     .optional(),
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
+  intervals_push_nutrition: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),
@@ -312,6 +314,7 @@ export const userPreferencesMutatorSchema = z.object({
     .optional(),
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
+  intervals_push_nutrition: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),

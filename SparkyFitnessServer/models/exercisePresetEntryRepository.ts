@@ -4,7 +4,7 @@ import { log } from '../config/logging.js';
 import { clearCalorieLinksForPresetEntryWithClient } from '../services/exerciseCalorieLinkService.js';
 const PRESET_ENTRY_SELECT = `
   SELECT id, user_id, workout_preset_id, name, description, entry_date, created_at,
-         updated_at, created_by_user_id, notes, source, location
+         updated_at, created_by_user_id, notes, source, location, finished_at, revision
   FROM exercise_preset_entries
 `;
 
@@ -36,9 +36,10 @@ async function createExercisePresetEntryWithClient(
   const result = await client.query(
     // workout_format is snapshotted from the preset so later preset edits or
     // deletes don't reclassify this session's sets.
-    `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source, location, workout_format)
+    `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source, location, workout_format, finished_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-             COALESCE((SELECT wp.workout_format FROM workout_presets wp WHERE wp.id = $2), 'standard'))
+             COALESCE((SELECT wp.workout_format FROM workout_presets wp WHERE wp.id = $2), 'standard'),
+             $10)
      RETURNING id`,
     [
       userId,
@@ -50,6 +51,9 @@ async function createExercisePresetEntryWithClient(
       entryData.notes ?? null,
       entryData.source ?? 'manual',
       entryData.location ?? null,
+      // #1995 phase 1: NULL for live starts, stamped when the session is
+      // created already finished.
+      entryData.finished_at ?? null,
     ]
   );
   return getExercisePresetEntryByIdWithClient(
@@ -153,6 +157,29 @@ async function updateExercisePresetEntryWithClient(
         ? updateData.source
         : existingEntry.source,
   };
+  // #1995 phase 1 lifecycle: finished_at is only written when the update
+  // carries it (undefined = ordinary save leaves it alone; a value finishes
+  // the session; NULL reopens a partial one). Every write bumps revision so
+  // stale clients are detectable instead of silently overwriting.
+  const lifecycleColumnSql =
+    updateData.finished_at !== undefined ? ', finished_at = $10' : '';
+  const lifecycleParams =
+    updateData.finished_at !== undefined ? [updateData.finished_at] : [];
+  // #1995 phase 1: when the caller pins the revision it read, this guard
+  // makes the bump atomic. A concurrent writer that slipped in between
+  // the read above and this UPDATE makes the WHERE miss and we return
+  // null, which the service refuses with 409 instead of a silent
+  // last-writer-wins overwrite.
+  const expectedRevision =
+    updateData.expected_revision !== undefined
+      ? Number(updateData.expected_revision)
+      : undefined;
+  const revisionGuardSql =
+    expectedRevision !== undefined
+      ? ` AND revision = $${10 + lifecycleParams.length}`
+      : '';
+  const revisionGuardParams =
+    expectedRevision !== undefined ? [expectedRevision] : [];
   const result = await client.query(
     `UPDATE exercise_preset_entries SET
        workout_preset_id = $1,
@@ -167,8 +194,9 @@ async function updateExercisePresetEntryWithClient(
            THEN COALESCE((SELECT wp.workout_format FROM workout_presets wp WHERE wp.id = $1), 'standard')
          ELSE workout_format
        END,
-       updated_at = now()
-     WHERE id = $8 AND user_id = $9
+       revision = revision + 1,
+       updated_at = now()${lifecycleColumnSql}
+     WHERE id = $8 AND user_id = $9${revisionGuardSql}
      RETURNING id`,
     [
       mergedEntry.workout_preset_id,
@@ -180,6 +208,8 @@ async function updateExercisePresetEntryWithClient(
       mergedEntry.location,
       id,
       userId,
+      ...lifecycleParams,
+      ...revisionGuardParams,
     ]
   );
   if (result.rowCount === 0) {

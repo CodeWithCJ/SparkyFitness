@@ -15,6 +15,7 @@ export * from './schemas/api/CheckInPhotos.api.zod.ts';
 export * from './schemas/api/DailyGoals.api.zod.ts';
 export * from './schemas/api/NutrientGoalPreferences.api.zod.ts';
 export * from './schemas/api/DailySummary.api.zod.ts';
+export * from './schemas/api/AdaptiveTdee.api.zod.ts';
 export * from './schemas/api/ExerciseEntries.api.zod.ts';
 export * from './schemas/api/ExerciseStats.api.zod.ts';
 export * from './schemas/api/ExerciseDashboard.api.zod.ts';
@@ -153,6 +154,7 @@ export * from './constants/calorieConstants.ts';
 export * from './constants/foodVariantNutrients.ts';
 export * from './constants/nutrientGoalDefaults.ts';
 export * from './constants/chatToolCategories.ts';
+export * from './constants/webTabs.ts';
 export * from './features/optionalFeatures.ts';
 export * from './constants/exercise.ts';
 export * from './constants/exerciseTaxonomy.ts';
@@ -259,6 +261,7 @@ export * from './schemas/database/MindfulnessSessions.zod.ts';
 export * from './schemas/database/OralCareSessions.zod.ts';
 export * from './schemas/database/RunPrograms.zod.ts';
 export * from './schemas/database/RunGoals.zod.ts';
+export * from './schemas/database/IntervalsNutritionPushes.zod.ts';
 export * from './schemas/database/Shoes.zod.ts';
 export * from './schemas/database/PlateInventories.zod.ts';
 export * from './schemas/database/ActionTags.zod.ts';
@@ -344,6 +347,12 @@ export * from './schemas/api/BarcodeLookup.api.zod.ts';
 export * from './utils/barcodeNutrition.ts';
 export * from './utils/runGoals.ts';
 export * from './utils/workoutEmojis.ts';
+
+export * from './schemas/api/RecipeImport.api.zod.ts';
+export * from './schemas/database/RecipeImports.zod.ts';
+export * from './schemas/database/RecipeFoodMappings.zod.ts';
+
+export * from './utils/recipeImport.ts';
 export * from './utils/temperatureUnit.ts';
 
 export {

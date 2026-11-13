@@ -53,6 +53,8 @@ import {
   useDisconnectLiftosaurMutation,
   useSyncIntervalsMutation,
   useDisconnectIntervalsMutation,
+  useSetIntervalsNutritionPushMutation,
+  useRemoveIntervalsPushedDataMutation,
   useConnectCorosMutation,
   useDisconnectCorosMutation,
   useManualSyncCorosMutation,
@@ -238,6 +240,12 @@ export const ProviderCard = ({
     mutate: handleDisconnectIntervals,
     isPending: isDisconnectIntervalsPending,
   } = useDisconnectIntervalsMutation();
+  const { mutate: setIntervalsPush, isPending: isSetIntervalsPushPending } =
+    useSetIntervalsNutritionPushMutation();
+  const {
+    mutate: removeIntervalsPushed,
+    isPending: isRemoveIntervalsPushedPending,
+  } = useRemoveIntervalsPushedDataMutation();
 
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
@@ -354,7 +362,9 @@ export const ProviderCard = ({
     isSyncLiftosaurPending ||
     isDisconnectLiftosaurPending ||
     isSyncIntervalsPending ||
-    isDisconnectIntervalsPending;
+    isDisconnectIntervalsPending ||
+    isSetIntervalsPushPending ||
+    isRemoveIntervalsPushedPending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
     try {
@@ -1034,6 +1044,71 @@ export const ProviderCard = ({
               'Activities that Intervals.icu received from Garmin Connect are skipped while Garmin is connected here, so they are not imported twice.'
             )}
           </p>
+        )}
+
+        {provider.provider_type === 'intervals' && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id={`intervals-push-${provider.id}`}
+                checked={!!provider.intervals_push_nutrition}
+                disabled={loading}
+                onCheckedChange={(enabled) => setIntervalsPush(enabled)}
+              />
+              <label
+                htmlFor={`intervals-push-${provider.id}`}
+                className="text-sm"
+              >
+                {t(
+                  'integrations.intervalsPushLabel',
+                  'Push daily nutrition to Intervals.icu'
+                )}
+              </label>
+            </div>
+            {provider.intervals_push_nutrition &&
+              provider.intervals_pushed_since && (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'integrations.intervalsPushingSince',
+                    'Pushing since {{date}}',
+                    {
+                      date: provider.intervals_pushed_since,
+                    }
+                  )}
+                </p>
+              )}
+            {!provider.intervals_push_nutrition &&
+              (provider.intervals_pushed_days ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'integrations.intervalsPushedRemain',
+                    '{{count}} days of pushed data remain',
+                    { count: provider.intervals_pushed_days }
+                  )}
+                </p>
+              )}
+            {(provider.intervals_pushed_days ?? 0) > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading}
+                onClick={() => {
+                  if (
+                    confirm(
+                      t(
+                        'integrations.intervalsRemoveConfirm',
+                        'Turn off pushing and remove the nutrition values SparkyFitness wrote to Intervals.icu? Values another app has changed since are left alone.'
+                      )
+                    )
+                  ) {
+                    removeIntervalsPushed(provider.id);
+                  }
+                }}
+              >
+                {t('integrations.intervalsRemovePushed', 'Remove pushed data')}
+              </Button>
+            )}
+          </div>
         )}
 
         {provider.availability_error && (

@@ -1,3 +1,5 @@
+import { setPendingRecipeImportSelection } from '../services/recipeImportSelection';
+import Button from '../components/ui/Button';
 import AllergenWarning from '../components/AllergenWarning';
 import BarcodeSources from '../components/BarcodeSources';
 import React, {
@@ -21,7 +23,7 @@ import Toast from 'react-native-toast-message';
 import { StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import MarkdownNotesField from '../components/MarkdownNotesField';
@@ -45,7 +47,11 @@ import { isFoodSelectionMode } from '../utils/foodPickerMode';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { prefillEntryTime, userHourMinute } from '@workspace/shared';
+import {
+  prefillEntryTime,
+  userHourMinute,
+  recipeImportInitialQuantity,
+} from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
@@ -58,6 +64,10 @@ import {
   useToggleFavorite,
 } from '../hooks';
 import type { FoodItem } from '../types/foods';
+import {
+  useRecipeImportAccess,
+  observeRecipeImportOwner,
+} from '../hooks/useRecipeImport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
@@ -222,10 +232,44 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
+  const recipeImportTarget = route.params?.recipeImportTarget;
+  const recipeOwnerScope = useRecipeImportAccess();
+  const recipeClient = useQueryClient();
+  const [recipeTargetOwner, setRecipeTargetOwner] = useState(recipeOwnerScope);
+  const recipeOwnerRetained = useRef(true);
+  const recipeOperation = useRef(0);
+  const recipeIdentity = `${recipeOwnerScope}:${route.key}:${item.source}:${item.id}:${JSON.stringify(recipeImportTarget)}`;
+  const recipeIdentityRef = useRef(recipeIdentity);
+  recipeIdentityRef.current = recipeIdentity;
+  const isRecipeImportSelection = !!recipeImportTarget;
+  const recipeSelectionAvailable =
+    !isRecipeImportSelection ||
+    (!!recipeTargetOwner && recipeOwnerScope === recipeTargetOwner);
+  useEffect(() => {
+    if (isRecipeImportSelection) recipeOperation.current += 1;
+  }, [recipeIdentity, isRecipeImportSelection]);
+  useEffect(() => {
+    const owner = observeRecipeImportOwner(recipeClient, () => {
+      recipeOwnerRetained.current = false;
+      setRecipeTargetOwner(null);
+      recipeOperation.current += 1;
+    });
+    return owner.unsubscribe;
+  }, [recipeClient, recipeOwnerScope]);
+  useEffect(() => {
+    const stop = navigation.addListener('blur', () => {
+      recipeOperation.current += 1;
+    });
+    return () => {
+      stop();
+      recipeOperation.current += 1;
+    };
+  }, [navigation]);
   const isMealPlanMode = pickerMode === 'meal-plan';
   const isContainerLinkMode = pickerMode === 'container-link';
   const isActionTagMode = pickerMode === 'action-tag';
-  const isSelectionMode = isFoodSelectionMode(pickerMode);
+  const isSelectionMode =
+    isFoodSelectionMode(pickerMode) || !!recipeImportTarget;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate
@@ -629,6 +673,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   ]);
 
   const initialQuantity = useMemo(() => {
+    if (recipeImportTarget) {
+      if (!activeVariant.servingUnit)
+        return recipeImportTarget.quantity != null &&
+          Number.isFinite(recipeImportTarget.quantity) &&
+          recipeImportTarget.quantity > 0
+          ? recipeImportTarget.quantity
+          : undefined;
+      return recipeImportInitialQuantity(
+        recipeImportTarget.quantity,
+        recipeImportTarget.unit,
+        activeVariant.servingUnit
+      );
+    }
     if (
       activeItem.source === 'local' &&
       'quantity' in activeItem.originalItem &&
@@ -642,9 +699,38 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       }
     }
     return activeVariant.servingSize;
-  }, [activeItem, activeVariant.servingSize]);
+  }, [
+    activeItem,
+    activeVariant.servingSize,
+    activeVariant.servingUnit,
+    recipeImportTarget,
+  ]);
 
-  const [quantityText, setQuantityText] = useState(String(initialQuantity));
+  const [quantityText, setQuantityText] = useState(
+    initialQuantity === undefined ? '' : String(initialQuantity)
+  );
+  const quantityEditedRef = useRef(false);
+  // The draft amount belongs to its current unit, including edits and incomplete input.
+  const recipeUnitRef = useRef(
+    activeVariant.servingUnit || recipeImportTarget?.unit
+  );
+  useEffect(() => {
+    if (
+      !recipeImportTarget ||
+      !activeVariant.servingUnit ||
+      recipeUnitRef.current === activeVariant.servingUnit
+    )
+      return;
+    const previousUnit = recipeUnitRef.current;
+    recipeUnitRef.current = activeVariant.servingUnit;
+    if (!previousUnit && quantityEditedRef.current) return;
+    const amount = recipeImportInitialQuantity(
+      parseDecimalInput(quantityText),
+      previousUnit,
+      activeVariant.servingUnit
+    );
+    setQuantityText(amount === undefined ? '' : String(amount));
+  }, [recipeImportTarget, activeVariant.servingUnit, quantityText]);
   const quantity = parseDecimalInput(quantityText) || 0;
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
@@ -725,7 +811,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       setAdjustedCustomNutrients(adjustedCustomNutrientsFromNav);
     }
 
-    if (nextServingSize !== previousServingSize) {
+    if (!recipeImportTarget && nextServingSize !== previousServingSize) {
       setQuantityText(String(nextServingSize));
     }
 
@@ -735,6 +821,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       adjustedCustomNutrients: undefined,
     });
   }, [
+    recipeImportTarget,
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
     adjustedCustomNutrientsFromNav,
@@ -768,6 +855,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       );
       setSelectedVariantId(resolvedLocalPickerVariantId);
       if (convertedQuantity !== undefined) {
+        if (recipeImportTarget && resolvedVariant)
+          recipeUnitRef.current = resolvedVariant.servingUnit;
         setQuantityText(formatServingSizeDisplay(convertedQuantity));
       }
       return;
@@ -778,12 +867,23 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         localVariantOptions[0] ?? externalVariantOptions[0] ?? null;
       if (firstVariant) {
         setSelectedVariantId(firstVariant.id);
-        setQuantityText(String(firstVariant.servingSize));
+        if (recipeImportTarget && quantityEditedRef.current) return;
+        const amount = recipeImportTarget
+          ? recipeImportInitialQuantity(
+              recipeImportTarget.quantity,
+              recipeImportTarget.unit,
+              firstVariant.servingUnit
+            )
+          : firstVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = firstVariant.servingUnit;
+        setQuantityText(amount === undefined ? '' : String(amount));
       }
     }
   }, [
     externalVariantOptions,
     localVariantOptions,
+    recipeImportTarget,
     quantity,
     resolvedLocalPickerVariantId,
     selectedVariantId,
@@ -800,7 +900,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (localVariant) {
-        setQuantityText(String(localVariant.servingSize));
+        if (
+          recipeImportTarget &&
+          recipeUnitRef.current === localVariant.servingUnit
+        )
+          return;
+        const amount = recipeImportTarget
+          ? recipeImportInitialQuantity(
+              parseDecimalInput(quantityText),
+              recipeUnitRef.current,
+              localVariant.servingUnit
+            )
+          : localVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = localVariant.servingUnit;
+        setQuantityText(amount === undefined ? '' : String(amount));
         return;
       }
 
@@ -808,19 +922,40 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (externalVariant) {
-        setQuantityText(String(externalVariant.servingSize));
+        if (
+          recipeImportTarget &&
+          recipeUnitRef.current === externalVariant.servingUnit
+        )
+          return;
+        const amount = recipeImportTarget
+          ? recipeImportInitialQuantity(
+              parseDecimalInput(quantityText),
+              recipeUnitRef.current,
+              externalVariant.servingUnit
+            )
+          : externalVariant.servingSize;
+        if (recipeImportTarget)
+          recipeUnitRef.current = externalVariant.servingUnit;
+        setQuantityText(amount === undefined ? '' : String(amount));
       }
     },
-    [externalVariantOptions, localVariantOptions]
+    [
+      externalVariantOptions,
+      localVariantOptions,
+      recipeImportTarget,
+      quantityText,
+    ]
   );
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
+      quantityEditedRef.current = true;
       setQuantityText(text);
     }
   };
 
   const clampQuantity = () => {
+    if (recipeImportTarget) return;
     if (quantity <= 0) {
       const minQuantity = displayValues.servingSize * 0.5 || 1;
       setQuantityText(String(minQuantity));
@@ -828,6 +963,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const adjustQuantity = (delta: number) => {
+    quantityEditedRef.current = true;
     setQuantityText(
       String(nextQuantity(quantity, delta, displayValues.servingSize))
     );
@@ -1150,6 +1286,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
+    if (recipeImportTarget) {
+      setPendingRecipeImportSelection(recipeImportTarget, ingredient);
+      navigation.dispatch(StackActions.pop(returnDepth));
+      return;
+    }
     if (isActionTagMode) {
       if (ingredient.food_id && ingredient.variant_id) {
         // The amount picked here is what one tap of the tag logs.
@@ -1200,6 +1341,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const handleSelectionAdd = async () => {
+    const operation = recipeOperation.current;
+    const identity = recipeIdentity;
+    const recipeSelectionCurrent = () =>
+      !recipeImportTarget ||
+      (!!recipeTargetOwner &&
+        recipeOwnerRetained.current &&
+        recipeOwnerScope === recipeTargetOwner &&
+        navigation.isFocused() &&
+        recipeOperation.current === operation &&
+        recipeIdentityRef.current === identity);
+    if (!recipeSelectionCurrent()) return;
     if (quantity <= 0) {
       Toast.show({
         type: 'error',
@@ -1238,6 +1390,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             return;
           }
 
+          if (!recipeSelectionCurrent()) return;
           finishFoodSelection(
             buildDraftFromCurrentValues(
               activeItem.id,
@@ -1247,6 +1400,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             )
           );
         } catch {
+          if (!recipeSelectionCurrent()) return;
           Toast.show({
             type: 'error',
             text1: t('foodEntryAdd.errors.failedToAddFood', {
@@ -1262,7 +1416,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       case 'external': {
         let savedFood;
         try {
-          savedFood = await saveFoodAsync(buildSaveFoodPayload());
+          savedFood = await saveFoodAsync(
+            buildSaveFoodPayload(),
+            undefined,
+            recipeImportTarget ? recipeSelectionCurrent : undefined
+          );
+          if (!recipeSelectionCurrent()) return;
         } catch {
           return;
         }
@@ -1275,6 +1434,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 pendingVariantToPersist
               )
             );
+            if (!recipeSelectionCurrent()) return;
             const createdVariantValues = mergeVariantDisplayValues(
               createdVariant,
               unitVariantToDisplayValues(pendingVariantToPersist)
@@ -1287,9 +1447,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
             await persistExternalVariants(
               savedFood,
-              activeItem.externalVariants
+              activeItem.externalVariants,
+              recipeImportTarget ? recipeSelectionCurrent : undefined
             );
 
+            if (!recipeSelectionCurrent()) return;
             finishFoodSelection(
               buildMealIngredientDraft({
                 foodId: savedFood.id,
@@ -1310,7 +1472,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             );
           }
 
-          await persistExternalVariants(savedFood, activeItem.externalVariants);
+          await persistExternalVariants(
+            savedFood,
+            activeItem.externalVariants,
+            recipeImportTarget ? recipeSelectionCurrent : undefined
+          );
+          if (!recipeSelectionCurrent()) return;
 
           finishFoodSelection(
             buildMealIngredientDraft({
@@ -1324,6 +1491,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             })
           );
         } catch {
+          if (!recipeSelectionCurrent()) return;
           Toast.show({
             type: 'error',
             text1: t('foodEntryAdd.errors.failedToAddFood', {
@@ -1557,7 +1725,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     displayValues,
   ]);
 
-  const showHeaderActions = activeItem.source !== 'meal';
+  const showHeaderActions = activeItem.source !== 'meal' && !recipeImportTarget;
   const showSaveExternalAction = activeItem.source === 'external';
 
   // Favorites: persisted local foods and saved meals can be starred. External
@@ -1699,10 +1867,57 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         className="flex-1"
         contentContainerClassName="px-4 pt-4 pb-4 gap-4"
       >
+        {recipeImportTarget && (
+          <Text className="text-text-secondary">
+            {t('recipeImport.amountRequired', {
+              defaultValue:
+                'Enter the whole-recipe amount in the selected unit. Volume is never automatically treated as mass.',
+            })}
+          </Text>
+        )}
+        {!recipeSelectionAvailable && (
+          <Text accessibilityRole="alert" className="text-danger">
+            {t('recipeImport.reopenReview', {
+              defaultValue:
+                'Reopen the recipe import review and choose this ingredient again.',
+            })}
+          </Text>
+        )}
         <AllergenWarning
           allergens={activeItem.allergens}
           traces={activeItem.traces}
         />
+        {!isRecipeImportSelection &&
+          !isFoodSelectionMode(pickerMode) &&
+          recipeOwnerScope &&
+          activeItem.recipeImportScope === recipeOwnerScope &&
+          activeItem.provider_type === 'mealie' &&
+          activeItem.recipe_has_nutrition === false &&
+          activeItem.recipeProviderId &&
+          activeItem.provider_external_id && (
+            <View className="rounded-xl border border-border-subtle p-3 gap-2">
+              <Text className="text-text-secondary">
+                {t('recipeImport.missingNutritionHint', {
+                  defaultValue:
+                    'This Mealie recipe has no declared nutrition. Calculate it from matched ingredients.',
+                })}
+              </Text>
+              <Button
+                variant="secondary"
+                onPress={() =>
+                  navigation.navigate('RecipeImport', {
+                    providerId: activeItem.recipeProviderId!,
+                    recipeSlug: activeItem.provider_external_id!,
+                    scope: recipeOwnerScope,
+                  })
+                }
+              >
+                {t('recipeImport.importAsMeal', {
+                  defaultValue: 'Import ingredients as a meal',
+                })}
+              </Button>
+            </View>
+          )}
 
         <FoodNutritionHeader
           name={adjustedValues?.name || activeItem.name}
@@ -2018,6 +2233,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         busy={isActionPending}
         disabled={
           isActionPending ||
+          !recipeSelectionAvailable ||
           (!isSelectionMode && !effectiveMealId) ||
           quantity <= 0
         }

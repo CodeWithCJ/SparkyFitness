@@ -1,6 +1,6 @@
 # Database Security & RLS Tiers
 
-*Last updated: 2026-10-20*
+*Last updated: 2026-11-03*
 
 SparkyFitness uses PostgreSQL Row-Level Security (RLS) to enforce strict data isolation between accounts, caregivers, family members, and third-party integrations (API keys). This document covers the security design, context switching mechanism, and the three-tier database table classifications.
 
@@ -15,6 +15,10 @@ PostgreSQL session variables are initialized at the start of every pool client t
 3. **`can_access_user_data(targetUserId, permissionType, authenticatedUserId)`**: Checks whether the authenticated user holds the given logical permission over the target user's data (`diary`, `checkin`, `medications`, `symptoms`, `reports`, and read-only `*_read` variants). Domain helpers such as `has_diary_read_access`, `has_checkin_read_access`, `has_medication_access`, and `has_symptom_access` wrap it. Cycle and pregnancy are owner-only and are **not** delegatable.
 
 ---
+
+## Derived Measurement Caches
+
+Derived measurement responses must respect the authenticated actor before using a cache. `AdaptiveTdeeService` reuses only self-calculations; delegated single-day and range calculations bypass cache reads and writes and read under RLS on every call, including after grant revocation. `/api/adaptive-tdee` also uses the check-in read guard.
 
 ## The Three Security Tiers
 
@@ -35,6 +39,8 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `passkey_registration_tickets` | Short-lived (~60s), single-use tickets bridging the mobile→browser passkey registration handoff (transient session material) | System-Only (RLS on, no policies; `getSystemClient` only) | System-Only |
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
+| `recipe_imports` | Mealie base-recipe provenance, reviewed ingredient mappings, source/local fingerprints and confirmed nutrition sync time; ordinary shared meal snapshots are separate | Owner-Only | Owner-Only |
+| `recipe_food_mappings` | Previously reviewed source-food matches offered as unconfirmed suggestions in later imports; owner-only paginated listing and exact provider/mapping deletion, preserving existing meals and diary snapshots | Owner-Only | Owner-Only |
 | `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
 | `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
 | `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
@@ -55,6 +61,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `pregnancy_checklist_state` | Weekly pregnancy checklist completion/custom items | Owner-Only | Owner-Only |
 | `run_programs` | A person's run program (Beginner 5K), their place in it, its Diary schedule, goal date, AI adjustments and how hard finished workouts felt | Owner-Only | Owner-Only |
 | `run_goals` | A person's running goals: a weekly running distance target and a race (name, day, distance) to count down to | Owner-Only | Owner-Only |
+| `intervals_nutrition_pushes` | Daily nutrition totals last pushed to Intervals.icu (one row per user per day) | Owner-Only | Owner-Only |
 | `custom_run_programs` | A person's own saved run or walk plans (name, activity, workouts) that they can start | Owner-Only | Owner-Only |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): the measurements, the surface (outdoor or treadmill) and incline, the result and the derived training paces, linked to the recorded activity | Owner-Only | Owner-Only |
 | `routes` | A person's saved routes (a simplified track of points, optional turn cues, distance and elevation) that they drew, imported from GPX or saved from a recorded activity | Owner-Only | Owner-Only |
@@ -81,7 +88,7 @@ These tables contain user profiles, layouts, display settings, and custom databa
 | `user_nutrient_display_preferences` | Rearranged nutrient column preferences | **Owner-Only** | Switched Delegate |
 | `user_medication_display_preferences` | Private preference on GLP-1/Medication display | **Owner-Only** | Delegate with `can_manage_medications` or `can_view_reports` |
 | `user_calorie_rule_history` | The `user_preferences` calorie settings in force from `effective_date` on (`-infinity` for the rules before the first recorded change), including `adjust_macros_with_exercise` and the calorie cycling settings, so a past day keeps its calorie and macro targets (#1795). Written only by the `record_calorie_rule_change` trigger on `user_preferences`; same policies as `user_preferences`. | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions | **Owner-Only** | Switched Delegate |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`, whose `hidden` list holds tab ids from the shared `WEB_HIDEABLE_TAB_IDS`; the web does not apply it while acting for someone, whose tabs follow their permissions) | **Owner-Only** | Switched Delegate |
 | `onboarding_data` | Initial user onboarding metrics | **Owner-Only** | Switched Delegate |
 | `onboarding_status` | User onboarding status | **Owner-Only** | Switched Delegate |
 | `meal_types` | Custom breakfast, lunch, dinner, snack layouts | **Owner-Only** | Switched Delegate with `can_manage_diary` or `can_view_reports` |

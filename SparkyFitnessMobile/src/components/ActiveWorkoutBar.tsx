@@ -41,6 +41,7 @@ import {
   normalizeWeightUnit,
 } from '../utils/workoutSession';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import type { RootStackParamList } from '../types/navigation';
 import LiquidGlassSurface, {
   LIQUID_GLASS_VERTICAL_GAP,
@@ -403,9 +404,20 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     getTabBarHeightSnapshot,
     getTabBarHeightSnapshot
   );
-  const tabBarBottomOffset =
-    nativeTabBarHeight ?? TAB_BAR_HEIGHT + Math.max(insets.bottom, 4);
-  const stackBottomOffset = insets.bottom;
+  // With a vertical tab bar (iPhone Duo's side poses) the measured "tab bar
+  // height" is the bar's length along the screen edge, not a bottom strip, so
+  // the bar must not sit above it. It floats above the bottom edge instead and
+  // stays clear of the side bar horizontally.
+  const verticalBar = useVerticalBar();
+  const hasSideBar = usesNativeTabs && verticalBar;
+  const tabBarBottomOffset = hasSideBar
+    ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
+    : (nativeTabBarHeight ?? TAB_BAR_HEIGHT + Math.max(insets.bottom, 4));
+  // With a side bar both kinds of page use the same lift, so the bar does not
+  // change height when navigating between a tab page and a pushed page.
+  const stackBottomOffset = hasSideBar
+    ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
+    : insets.bottom;
   const isClosingToTabs = isClosingToTabsTransition(navInfo, stackTransition);
   const shouldSitAboveTabs =
     usesNativeTabs && (isClosingToTabs || navInfo.isOnTabs);
@@ -1060,8 +1072,18 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   return (
     <Animated.View
       pointerEvents="box-none"
-      className="absolute inset-x-0 z-50"
-      style={positionStyle}
+      className="absolute z-50"
+      style={[
+        positionStyle,
+        {
+          // Always clear the side insets. Height follows the native vertical
+          // bar (`hasSideBar`), but the custom tab bar path pads the app
+          // content while this bar is mounted outside that padding, and a
+          // notched iPhone in landscape has insets with no vertical bar.
+          left: insets.left,
+          right: insets.right,
+        },
+      ]}
     >
       {barBody}
     </Animated.View>

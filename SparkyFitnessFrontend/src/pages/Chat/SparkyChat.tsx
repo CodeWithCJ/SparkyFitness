@@ -28,7 +28,7 @@ const SparkyChat = () => {
   const { t } = useTranslation();
   const { isChatOpen, closeChat } = useChatbotVisibility();
   const { user } = useAuth();
-  const { activeUserId } = useActiveUser();
+  const { activeUserId, isActingOnBehalf } = useActiveUser();
   const { data: services } = useAIServices();
   const { data: activeService } = useActiveAIService(!!user);
   const { data: preferences } = useUserAIPreferences();
@@ -69,6 +69,9 @@ const SparkyChat = () => {
 
   const currentServiceId =
     preferences?.active_ai_service_id || activeService?.id || '';
+  // Chat uses the signed-in person's own AI service, but the picker saves to the
+  // account's preferences, which after a switch are the family member's.
+  const showServicePicker = !isActingOnBehalf && usableServices.length > 1;
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -119,7 +122,7 @@ const SparkyChat = () => {
                 <div className="flex items-center gap-1 shrink-0">
                   {/* Provider switcher + clear history are hidden when minimized
                       to keep the collapsed bar compact. */}
-                  {!isMinimized && usableServices.length > 1 && (
+                  {!isMinimized && showServicePicker && (
                     <Select
                       value={currentServiceId}
                       onValueChange={handleServiceSwitch}

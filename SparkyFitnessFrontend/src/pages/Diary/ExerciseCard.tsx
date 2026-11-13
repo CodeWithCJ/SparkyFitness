@@ -283,6 +283,7 @@ const ExerciseCard = ({
     const routeState = createWorkoutPlaybackRouteState(
       sessionPreset,
       selectedDate,
+      activeUserId,
       `${window.location.pathname}${window.location.search}`
     );
 
@@ -392,6 +393,7 @@ const ExerciseCard = ({
       const routeState = createWorkoutPlaybackRouteStateFromExercise(
         exercise,
         selectedDate,
+        activeUserId,
         `${window.location.pathname}${window.location.search}`
       );
 
@@ -427,6 +429,7 @@ const ExerciseCard = ({
     const routeState = createWorkoutPlaybackRouteState(
       preset,
       selectedDate,
+      activeUserId,
       `${window.location.pathname}${window.location.search}`
     );
 

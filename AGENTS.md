@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-09*
+*Last updated: 2026-11-11*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -39,6 +39,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 - `docs/readme/` - translated copies of the root `README.md` (`README_<lang>.md`), outside the VitePress `srcDir`. The language bar at the top of `README.md` links to them; when the root README changes substantially, the translations go stale.
 - `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
 - `SparkyFitnessTag/` - static site behind `https://tag.sparkyfitness.com` (Cloudflare Workers static assets, deployed from this folder with `wrangler.jsonc`). It serves only Apple's `apple-app-site-association`, Android's `assetlinks.json` and a "get the app" page, so an NFC tag link (`/t/<code>`) opens the mobile app. Holds no secrets and stores no data; a new app ID, Apple team or signing key means editing the two `.well-known` files. Not a `pnpm` workspace package. Do not add a `_redirects` rule for `/t/*`: Cloudflare rejects it as a loop, and `not_found_handling: single-page-application` already serves the page.
+- `SparkyFitnessZeppAuth/` - Cloudflare Worker behind `https://zepp-auth.sparkyfitness.com`, the Zepp (Amazfit) OAuth relay for #301. Zepp grants SparkyFitness one shared client ID, and the token exchange needs a secret that self-hosted servers must not hold, so the relay will keep it; each user's server calls `api-open.zepp.com` directly, so health data never passes through it. Currently registration-only: bare `GET`/`HEAD` on `/api/zepp/oauth/callback` and `/api/zepp/data/callback` return 200, and everything else is refused. Plain JS, deployed with `wrangler deploy` from the folder; not a `pnpm` workspace package. Keep secrets out of `SparkyFitnessTag/`.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.
 - `umbrel/sparkyfitness/` - Umbrel App Store package (manifest, compose, derived secrets), submitted to `getumbrel/umbrel-apps`. See `umbrel/README.md`.
 - `db_schema_backup.sql` - repo-root schema snapshot kept in sync by CI (`.github/workflows/schema-backup.yml`); never hand-edit or regenerate locally.
@@ -68,6 +69,10 @@ Cheap ways to learn things:
 - Database security & permissions: `docs/src/developer/database-security-tiers.md` (security tier, permission type, and RLS rules for every table).
 - API request/response contract: `shared/src/schemas/api/<Name>.api.zod.ts`.
 - Definition of done: CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` (which includes Knip unused export & dead code checks in frontend and mobile) plus the package's CI test script for each changed package. Run those locally before declaring work complete.
+
+## Recipe Ingredient Imports
+
+Mealie ingredient meals use `shared/src/schemas/api/RecipeImport.api.zod.ts` and owner-only `/api/v2/recipe-imports` routes. Preview/suggest never create foods or meals; save accepts confirmed accessible local food/variant IDs and uses authoritative nutrition. External candidates follow existing provider detail/import first. Cooked weight changes only the normal meal serving denominator. Nutrition sync previews current saved-meal totals per current Mealie serving and requires explicit confirmation of that state; diary edits never write back.
 
 ## Cross-Package Rules
 

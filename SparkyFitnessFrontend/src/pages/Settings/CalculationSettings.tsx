@@ -62,6 +62,7 @@ import {
 import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { AdaptiveEstimateEducation } from '@/components/CalorieTargetBreakdown/AdaptiveEstimateEducation';
 import { WeeklyWeightGoalInput } from '@/components/WeeklyWeightGoalInput';
 import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
 import { formatWeeklyGoalRateWithUnit } from '@/utils/weeklyWeightGoal';
@@ -91,6 +92,7 @@ import {
   isAdaptiveEarnBackSuppressed,
   isAdaptiveActivitySeparated,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   ENERGY_DENSITY_KCAL_PER_KG,
   getClinicalCalorieMinimum,
   getRecommendedCalorieSafetyFloor,
@@ -1152,9 +1154,9 @@ const CalculationSettings = () => {
         >
           {calorieGoalAdjustmentMode === 'adaptive' ? (
             <Trans
-              i18nKey="settings.goalMode.adaptiveGoalTheGoldStandard"
+              i18nKey="settings.goalMode.adaptiveGoalMatchedEvidence"
               defaults={
-                "<span>Adaptive Goal:</span> The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
+                '<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.'
               }
               components={{ span: <span className="font-medium" /> }}
             />
@@ -1192,6 +1194,11 @@ const CalculationSettings = () => {
             />
           ) : null}
         </p>
+        {calorieGoalAdjustmentMode === 'adaptive' && (
+          <div className="mt-3" data-testid="adaptive-calculation-limitations">
+            <AdaptiveEstimateEducation />
+          </div>
+        )}
         <div className="mt-3 mb-4 space-y-3">
           {calorieGoalAdjustmentMode === 'percentage' &&
             !adaptiveEarnBackSuppressed && (
@@ -1283,8 +1290,18 @@ const CalculationSettings = () => {
               {calorieGoalAdjustmentMode === 'adaptive' && (
                 <p className="text-sm text-muted-foreground italic mt-[-4px]">
                   {t(
-                    'settings.goalMode.inAdaptiveModeThisIs',
-                    '💡 In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
+                    'settings.goalMode.adaptivePlausibilityBandHint',
+                    '💡 In Adaptive mode this sets the formula baseline and the ±{{band}} {{unit}} plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.',
+                    {
+                      band: Math.round(
+                        convertEnergy(
+                          ADAPTIVE_TDEE_CLAMP_KCAL,
+                          'kcal',
+                          energyUnit
+                        )
+                      ),
+                      unit: getEnergyUnitString(energyUnit),
+                    }
                   )}
                 </p>
               )}
@@ -1465,8 +1482,8 @@ const CalculationSettings = () => {
                         )
                       : calorieGoalAdjustmentMode === 'adaptive'
                         ? t(
-                            'settings.calculationExplanation.adaptiveFootnote',
-                            '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                            'settings.calculationExplanation.adaptiveEstimateFootnote',
+                            '* Gradually adjusts your Daily Goal using estimates from food and weight records. Weight fluctuations and incomplete logs add uncertainty.'
                           )
                         : t(
                             'settings.calculationExplanation.fixedFootnote',
@@ -1561,10 +1578,8 @@ const CalculationSettings = () => {
             </Select>
             {deficitCeilingPercent != null && (
               <p className="text-xs text-muted-foreground mt-1.5">
-                {/* Name the lever that actually sets the ceiling. Activity level
-                    only feeds the baseline while history is insufficient; once
-                    adaptive is calibrated the baseline is measured expenditure
-                    and the setting no longer enters the calculation. */}
+                {/* Name the baseline the goal uses. Activity level also sets the
+                    formula inputs and plausibility band of the gradual estimate. */}
                 {goalMode === 'weekly'
                   ? t('settings.goalMode.weeklyCeilingHintWithUnit', {
                       defaultValue:
@@ -1586,7 +1601,7 @@ const CalculationSettings = () => {
                       )
                     : t(
                         'settings.goalMode.deficitCeilingHintMeasured',
-                        'Based on your measured TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                        'Based on your estimated TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
                         { percent: deficitCeilingPercent.toFixed(0) }
                       )}
               </p>
@@ -2273,11 +2288,11 @@ const CalculationSettings = () => {
                       {previewResult.insufficientHistory
                         ? t(
                             'settings.goalMode.clampAdviceEstimated',
-                            '. To lose faster than that, raise your expenditure through activity, or check that your Activity Level is not understated — it sets this ceiling until you have enough history for a measured baseline.'
+                            '. Check that your Activity Level is not understated: it sets the formula baseline and plausibility limits used throughout Adaptive TDEE’s gradual calculation.'
                           )
                         : t(
                             'settings.goalMode.clampAdviceMeasured',
-                            '. To lose faster than that, raise your actual expenditure rather than cutting intake further; your baseline is measured, so the Activity Level setting no longer affects it.'
+                            '. With Adaptive TDEE, Activity Level still sets the formula baseline and plausibility limits and affects the gradual return to that baseline as evidence ages.'
                           )}
                     </>
                   )}
@@ -2350,23 +2365,22 @@ const CalculationSettings = () => {
                     )}
                   </p>
                   <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
-                    {t('settings.goalMode.calibrationDescription', {
-                      defaultValue:
-                        "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
-                      required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
-                    })}
+                    {t(
+                      'settings.goalMode.adaptiveFallbackDescription',
+                      'Fallback is being used while usable weight and food history is collected. Incomplete days and scale-weight fluctuations still add uncertainty; sufficient logs allow an estimate rather than a direct measurement of metabolism.'
+                    )}
                   </p>
                   <ul className="list-disc pl-4 text-sm text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
                     <li>
                       {t(
-                        'settings.goalMode.calibrationWeightTip',
-                        'Log weight at least 3-4 times per week.'
+                        'settings.goalMode.adaptiveWeightIntervalTip',
+                        'Log actual weights at consistent times, keeping food records across the observed period.'
                       )}
                     </li>
                     <li>
                       {t(
-                        'settings.goalMode.calibrationFoodTip',
-                        'Log food intake daily (>200 kcal/day).'
+                        'settings.goalMode.adaptiveFoodIntervalTip',
+                        'Log food as completely as possible; a qualifying date can still be partial.'
                       )}
                     </li>
                   </ul>

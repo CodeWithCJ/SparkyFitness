@@ -36,6 +36,7 @@ import {
   RUN_PROGRAM_ACTIONS,
   type ManageRunProgramInput,
 } from './schemas/runProgram.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 const VALID_ACTIONS = [...RUN_PROGRAM_ACTIONS];
 
@@ -271,20 +272,24 @@ Every change needs confirmed=true after the user has agreed.`,
         const args: ManageRunProgramInput = parsed.data;
         try {
           if (args.action === 'get_run_program') {
-            const program = await getRunProgram(userId, userId);
+            const program = await getRunProgram(userId, actorUserIdFor(userId));
             return program
               ? `${summarise(program)}${realignHint(program, tz)}`
               : NO_PROGRAM;
           }
 
           if (args.action === 'get_fitness_tests') {
-            const tests = await listFitnessTests(userId, userId, 5);
+            const tests = await listFitnessTests(
+              userId,
+              actorUserIdFor(userId),
+              5
+            );
             return summariseFitnessTests(tests, todayInZone(tz));
           }
 
           if (args.action === 'start_run_program') {
             const programId = args.program_id ?? 'beginner5k';
-            const held = await getRunProgram(userId, userId);
+            const held = await getRunProgram(userId, actorUserIdFor(userId));
             if (args.confirmed !== true) {
               return confirmFirst(
                 held && held.program_id !== programId
@@ -305,7 +310,7 @@ Every change needs confirmed=true after the user has agreed.`,
             return `${formatConfirmation(note)}\n\n${summarise(program)}`;
           }
 
-          const existing = await getRunProgram(userId, userId);
+          const existing = await getRunProgram(userId, actorUserIdFor(userId));
           if (!existing) return NO_PROGRAM;
 
           if (args.action === 'set_run_program_enabled') {

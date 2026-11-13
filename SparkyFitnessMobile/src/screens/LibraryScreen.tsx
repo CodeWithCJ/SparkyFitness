@@ -16,6 +16,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
@@ -64,6 +65,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
+  const verticalBar = useVerticalBar();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } =
@@ -235,6 +237,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       contentContainerStyle={{
         paddingHorizontal: 16,
         ...(!usesNativeTabs ? { paddingTop: 16 } : null),
+        // Room under the large title beside a vertical bar.
+        ...(usesNativeTabs && verticalBar ? { paddingTop: 12 } : null),
         paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
       }}
       scrollEventThrottle={16}
