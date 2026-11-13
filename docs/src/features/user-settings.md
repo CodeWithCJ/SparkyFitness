@@ -6,7 +6,8 @@ The Settings page is organized into four tabs. Each tab contains collapsible sec
 
 - **Profile Information**: profile photo, full name, phone number, date of birth, gender, height, and bio
 - **Preferences**: units (weight, measurement, distance, energy in kcal or kJ), date and time formats, chart scale mode, target bedtime, timezone, and the minimum logging level. See [Preferences](/features/settings/preferences)
-- **Tabs**: choose which main tabs show on the website (Check-In, Medications, Lab results, Reports, Foods, Exercises, Goals). A hidden tab also leaves the + menu and the Diary links that only lead to it. Nothing is deleted, and opening the page by its address still works. Diary and Settings always show, Cycle keeps its own switch in its Wellness settings, and the mobile app has its own dashboard, quick action and watch page settings
+- **Features**: turn whole features on or off. Cycle tracking is the first: its switch applies to the website and the mobile app, and the first time you turn it on, its tab asks a few questions to set it up. Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running. Only the account owner can change these
+- **Tabs**: choose which main tabs show on the website (Check-In, Medications, Lab results, Reports, Foods, Exercises, Goals). A hidden tab also leaves the + menu and the Diary links that only lead to it. Nothing is deleted, and opening the page by its address still works. Diary and Settings always show, Cycle is turned on or off in Features, and the mobile app has its own dashboard, quick action and watch page settings
 - **Family Access**: manage family and friend invitations and their permissions ([Family & Friends Sharing](/features/family-friends-sharing))
 - **Data Import**: bring in a food database or food diary from CSV
 - **Data Export**: download all of your data as CSV (comma or semicolon separator) ([Sharing](/features/sharing))
@@ -27,7 +28,7 @@ The Settings page is organized into four tabs. Each tab contains collapsible sec
 
 ## Wellness
 
-- **Cycle & Pregnancy**: cycle tracking and pregnancy-mode configuration; the full feature lives in the [Cycle Hub](/features/cycle-hub/)
+- **Cycle & Pregnancy**: cycle tracking and pregnancy-mode configuration; the full feature lives in the [Cycle Hub](/features/cycle-hub/). Its on/off switch is the same as in Features, and the rest of its settings show once cycle is on and set up
 - **Guided Workouts**: enable guided mode and pick the voice for coached workout playback ([Guided Workouts](/features/exercises/guided-workouts))
 - **Custom Categories**: create the extra measurement categories (numeric or text, with their own units) that appear on the [Measurements](/features/measurements) tab of Check-In
 

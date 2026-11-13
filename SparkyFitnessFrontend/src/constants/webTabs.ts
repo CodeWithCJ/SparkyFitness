@@ -12,25 +12,29 @@ import {
 } from 'lucide-react';
 import {
   WEB_HIDEABLE_TAB_IDS,
+  filterByFeature,
+  type FeatureKey,
   type SharedCycleSettings,
   type WebHideableTabId,
 } from '@workspace/shared';
 
 /**
  * The owner's module tabs between Diary and Settings, in bar order. Each one
- * the person can hide (Settings > Tabs) is a WEB_HIDEABLE_TAB_IDS id; cycle
- * shows only while `cycle_settings.enabled`. `inPlusMenu` says whether the
- * narrow-screen + menu lists it (Reports is in the bottom bar instead).
+ * the person can hide (Settings > Tabs) is a WEB_HIDEABLE_TAB_IDS id. A tab
+ * that belongs to an optional feature names it in `feature` and shows only
+ * while that feature is on (Settings > Features). `inPlusMenu` says whether
+ * the narrow-screen + menu lists it (Reports is in the bottom bar instead).
  */
 interface ModuleTabDefinition {
   id: WebHideableTabId | 'cycle';
   path: string;
   inPlusMenu: boolean;
+  feature?: FeatureKey;
 }
 
 const MODULE_TABS: readonly ModuleTabDefinition[] = [
   { id: 'checkin', path: '/checkin', inPlusMenu: true },
-  { id: 'cycle', path: '/cycle', inPlusMenu: true },
+  { id: 'cycle', path: '/cycle', inPlusMenu: true, feature: 'cycle' },
   { id: 'medications', path: '/medications', inPlusMenu: true },
   { id: 'labs', path: '/labs', inPlusMenu: true },
   { id: 'reports', path: '/reports', inPlusMenu: false },
@@ -49,10 +53,7 @@ const TAB_ICONS: Record<WebHideableTabId, LucideIcon> = {
   goals: Target,
 };
 
-type CycleTabSettings = Pick<
-  SharedCycleSettings,
-  'enabled' | 'mode' | 'discreet_mode'
->;
+type CycleTabSettings = Pick<SharedCycleSettings, 'mode' | 'discreet_mode'>;
 
 export function webTabLabel(t: TFunction, id: WebHideableTabId): string {
   switch (id) {
@@ -101,28 +102,33 @@ export interface VisibleModuleTab {
   inPlusMenu: boolean;
 }
 
-/** The module tabs to show the owner: cycle while it is on, the rest unless hidden. */
+/**
+ * The module tabs to show the owner: those whose feature is on, less the
+ * ones they hid. Cycle's label and icon follow its settings (discreet mode).
+ */
 export function visibleModuleTabs(
   t: TFunction,
   hidden: ReadonlySet<WebHideableTabId>,
+  isFeatureOn: (key: FeatureKey) => boolean,
   cycleSettings: CycleTabSettings | null | undefined
 ): VisibleModuleTab[] {
-  return MODULE_TABS.flatMap((tab): VisibleModuleTab[] => {
-    if (tab.id === 'cycle') {
-      if (!cycleSettings?.enabled) return [];
+  return filterByFeature(MODULE_TABS, isFeatureOn).flatMap(
+    (tab): VisibleModuleTab[] => {
+      if (tab.id === 'cycle') {
+        return [
+          {
+            ...tab,
+            label: cycleTabLabel(t, cycleSettings),
+            icon: cycleTabIcon(cycleSettings),
+          },
+        ];
+      }
+      if (hidden.has(tab.id)) return [];
       return [
-        {
-          ...tab,
-          label: cycleTabLabel(t, cycleSettings),
-          icon: cycleTabIcon(cycleSettings),
-        },
+        { ...tab, label: webTabLabel(t, tab.id), icon: webTabIcon(tab.id) },
       ];
     }
-    if (hidden.has(tab.id)) return [];
-    return [
-      { ...tab, label: webTabLabel(t, tab.id), icon: webTabIcon(tab.id) },
-    ];
-  });
+  );
 }
 
 /**

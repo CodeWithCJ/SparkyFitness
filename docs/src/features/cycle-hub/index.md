@@ -3,6 +3,8 @@
 The Cycle Hub is a self-hosted, privacy-first suite designed to track, calculate, and analyze menstrual health, fertility, and pregnancy. This document outlines how to utilize the period and cycle features.
 
 ## 1. Onboarding & Settings
+Cycle tracking is off until you turn it on in **Settings -> Features** (or with the switch in **Settings -> Cycle & Pregnancy**, which is the same one). It is one switch for the website and the mobile app. The first time, the Cycle tab asks a few questions to set it up; turning it off later only hides it, and turning it back on brings your history back.
+
 To configure your cycle preferences, navigate to **Settings -> Cycle & Pregnancy**. Here you can set:
 * **Current Mode**: Select between *Standard* (Period Tracking), *TTC* (Trying to Conceive), *Pregnancy*, *Postpartum*, or *Menopause*.
 * **Cycle & Period Length**: Input your average cycle length (e.g. 28 days) and average period duration (e.g. 5 days) as fallbacks.

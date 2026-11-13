@@ -43,6 +43,7 @@ import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
 import { useCycleSettings } from '@/hooks/useCycle';
 import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import { visibleModuleTabs } from '@/constants/webTabs';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
@@ -91,14 +92,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   // Fetch meal types for quick log menu
   const { data: mealTypes } = useMealTypes();
 
-  // Fetch cycle settings to determine tab visibility
+  // Optional features that are on (Settings > Features) and the main tabs the
+  // owner turned off (Settings > Tabs; none while acting for someone else,
+  // whose bar follows their permissions). Cycle settings give its label.
+  const { isEnabled: isFeatureOn } = useWebFeatures();
   const { data: cycleSettings } = useCycleSettings();
-  // Main tabs the owner turned off in Settings > Tabs (none while acting for
-  // someone else, whose bar follows their permissions).
   const { hidden: hiddenWebTabs } = useHiddenWebTabs();
   const moduleTabs = useMemo(
-    () => visibleModuleTabs(t, hiddenWebTabs, cycleSettings),
-    [t, hiddenWebTabs, cycleSettings]
+    () => visibleModuleTabs(t, hiddenWebTabs, isFeatureOn, cycleSettings),
+    [t, hiddenWebTabs, isFeatureOn, cycleSettings]
   );
 
   const handleSignOut = async () => {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCycleSettings } from '@/hooks/useCycle';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import {
   useHiddenWebTabs,
   useSetWebTabHidden,
@@ -27,6 +28,7 @@ export const WebTabsSettings = () => {
   const { hidden, editState, reload } = useHiddenWebTabs();
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
+  const { isEnabled: isFeatureOn } = useWebFeatures();
 
   return (
     <>
@@ -85,7 +87,7 @@ export const WebTabsSettings = () => {
             {cycleTabLabel(t, cycleSettings)}
           </span>
           <span className="text-sm text-muted-foreground">
-            {cycleSettings?.enabled
+            {isFeatureOn('cycle')
               ? t('settings.webTabs.cycleOn', 'On')
               : t('settings.webTabs.cycleOff', 'Off')}
           </span>
@@ -93,7 +95,7 @@ export const WebTabsSettings = () => {
         <p className="text-sm text-muted-foreground">
           {t(
             'settings.webTabs.cycleHint',
-            '{{name}} has its own on/off switch in the Wellness settings tab.',
+            '{{name}} is turned on or off in Features, above.',
             { name: cycleTabLabel(t, cycleSettings) }
           )}
         </p>

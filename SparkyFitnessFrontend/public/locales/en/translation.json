@@ -1972,7 +1972,7 @@
       "title": "Cycle & Pregnancy",
       "description": "Manage reproductive health, menstruation cycles, and pregnancy tracking",
       "enableLabel": "Enable Cycle & Pregnancy Tracking",
-      "enableHint": "Toggle the reproductive health hub. Enabling reveals the sidebar navigation tab.",
+      "enableHint": "Shows the cycle hub on the website and in the mobile app. The first time, you answer a few questions to set it up.",
       "mode": "Tracker Mode",
       "bcMethod": "Birth Control",
       "terminology": "Terminology",
@@ -3418,11 +3418,30 @@
       "description": "Choose which main tabs show on the website",
       "cycleOn": "On",
       "cycleOff": "Off",
-      "cycleHint": "{{name}} has its own on/off switch in the Wellness settings tab.",
+      "cycleHint": "{{name}} is turned on or off in Features, above.",
       "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
       "saveError": "Could not save your tab choice. Please try again.",
       "loadError": "Could not load your tab choices.",
       "actingOnBehalf": "You can only change the tabs on your own account."
+    },
+    "features": {
+      "title": "Features",
+      "description": "Turn whole features on or off on this website",
+      "actingOnBehalf": "Only the account owner can turn features on or off.",
+      "loadError": "Could not load this setting.",
+      "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
+      "groups": {
+        "health": "Health",
+        "nutrition": "Nutrition",
+        "training": "Training",
+        "wellbeing": "Wellbeing"
+      },
+      "cycle": {
+        "description": "Track periods, fertility and pregnancy.",
+        "scope": "One switch for the website and the mobile app.",
+        "setupHint": "Answer a few questions to finish setting it up.",
+        "setupAction": "Set up"
+      }
     }
   },
   "admin": {

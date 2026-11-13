@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import * as cycleService from '@/api/Cycle/cycleService';
 import type {
   SharedCycleSettings,
@@ -69,27 +74,75 @@ export const useCycleLogs = (start: string, end: string) =>
     },
   });
 
+// Settings writes run one at a time, so a quick off and on lands in order.
+const CYCLE_SETTINGS_SCOPE = { id: 'cycle-settings' };
+
+const showSavedCycleSettings = (
+  queryClient: QueryClient,
+  data: SharedCycleSettings
+) => {
+  queryClient.setQueryData(cycleKeys.settings(), data);
+  queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
+  queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+  queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
+};
+
+/** The cached settings query itself, which goes away when the cache is cleared. */
+const findCycleSettingsQuery = (queryClient: QueryClient) =>
+  queryClient
+    .getQueryCache()
+    .find({ queryKey: cycleKeys.settings(), exact: true });
+
 export const useUpsertCycleSettingsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    scope: CYCLE_SETTINGS_SCOPE,
     mutationFn: (
       body: Partial<SharedCycleSettings> & {
         mark_onboarded?: boolean;
         reset_onboarding?: boolean;
       }
     ) => cycleService.putSettings(body),
-    onSuccess: (data) => {
-      queryClient.setQueryData(cycleKeys.settings(), data);
-      queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
-      queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
-      queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
-    },
+    onSuccess: (data) => showSavedCycleSettings(queryClient, data),
     meta: {
       errorMessage: i18n.t(
         'hooks.useCycle.couldNotSaveCycleSettings',
         'Could not save cycle settings.'
       ),
       successMessage: i18n.t('hooks.useCycle.settingsSaved', 'Settings saved.'),
+    },
+  });
+};
+
+/**
+ * Turns cycle tracking on or off: only `enabled`, never `mark_onboarded`, so
+ * the first time cycle is on its tab opens the setup wizard. Cycle is one
+ * switch for the whole account, so this also shows or hides it in the app.
+ *
+ * useAuth clears the cache when the account changes, so a write whose cached
+ * settings are gone by the time it answers was made for an account that is no
+ * longer on screen, and its answer is not shown. What `onMutate` returns
+ * carries that check (`isCurrent`) for callers that act on the answer.
+ */
+export const useSetCycleEnabledMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    scope: CYCLE_SETTINGS_SCOPE,
+    mutationFn: (enabled: boolean) => cycleService.putSettings({ enabled }),
+    onMutate: () => {
+      const startedFrom = findCycleSettingsQuery(queryClient);
+      return {
+        isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
+      };
+    },
+    onSuccess: (data, _enabled, started) => {
+      if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
+    },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotSaveCycleSettings',
+        'Could not save cycle settings.'
+      ),
     },
   });
 };
