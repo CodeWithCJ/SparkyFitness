@@ -3,6 +3,7 @@ import { useRecipeImportAccess } from '../hooks/useRecipeImport';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -14,6 +15,7 @@ import { usableFoodImages } from '../utils/foodImages';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
+import IngredientQuantityModal from '../components/IngredientQuantityModal';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   useDeleteMeal,
@@ -37,92 +39,28 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatLocalizedNumber } from '../localization';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
+import {
+  buildMealDisplayValuesFromFoods,
+  draftToMealFood,
+  ingredientScale,
+} from '../utils/mealNutrition';
+export type { MealFoodNumericField } from '../utils/mealNutrition';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
 type ViewMode = 'perServing' | 'total';
 
-type MealFoodNumericField = keyof Pick<
-  MealFood,
-  | 'calories'
-  | 'protein'
-  | 'carbs'
-  | 'fat'
-  | 'dietary_fiber'
-  | 'saturated_fat'
-  | 'sodium'
-  | 'sugars'
-  | 'trans_fat'
-  | 'potassium'
-  | 'calcium'
-  | 'iron'
-  | 'caffeine_mg'
-  | 'water_ml'
-  | 'alcohol_g'
-  | 'cholesterol'
-  | 'vitamin_a'
-  | 'vitamin_c'
->;
-
-const ingredientScale = (food: MealFood) =>
-  food.serving_size > 0 ? food.quantity / food.serving_size : 0;
-
-const sumMealField = (meal: Meal, field: MealFoodNumericField) =>
-  meal.foods.reduce((sum, food) => {
-    const value = food[field];
-    return typeof value === 'number'
-      ? sum + value * ingredientScale(food)
-      : sum;
-  }, 0);
-
-const hasMealField = (meal: Meal, field: MealFoodNumericField) =>
-  meal.foods.some((food) => food[field] != null);
-
-const divide = (value: number | undefined, divisor: number) =>
-  value == null ? undefined : value / divisor;
-
-// mode='total' shows the full recipe; mode='perServing' divides totals by
-// meal.total_servings and labels the values as one serving's quantity in
-// serving_unit.
 function buildMealDisplayValues(
   meal: Meal,
-  mode: 'total' | 'perServing' = 'total'
+  mode: 'total' | 'perServing' = 'total',
+  overrideFoods?: MealFood[]
 ): FoodDisplayValues {
-  const totalServings = meal.total_servings || 1;
-  const divisor = mode === 'perServing' ? totalServings : 1;
-  const safeDivisor = divisor > 0 ? divisor : 1;
-  const optionalField = (field: MealFoodNumericField) =>
-    hasMealField(meal, field)
-      ? divide(sumMealField(meal, field), safeDivisor)
-      : undefined;
-
-  const servingSize = meal.serving_size || 1;
-
-  return {
-    // Per-serving mode shows one serving's quantity; total mode shows the
-    // whole recipe quantity (serving_size × total_servings).
-    servingSize:
-      mode === 'perServing' ? servingSize : servingSize * totalServings,
-    servingUnit: meal.serving_unit,
-    calories: sumMealField(meal, 'calories') / safeDivisor,
-    protein: sumMealField(meal, 'protein') / safeDivisor,
-    carbs: sumMealField(meal, 'carbs') / safeDivisor,
-    fat: sumMealField(meal, 'fat') / safeDivisor,
-    fiber: optionalField('dietary_fiber'),
-    saturatedFat: optionalField('saturated_fat'),
-    sodium: optionalField('sodium'),
-    sugars: optionalField('sugars'),
-    transFat: optionalField('trans_fat'),
-    potassium: optionalField('potassium'),
-    calcium: optionalField('calcium'),
-    iron: optionalField('iron'),
-    caffeineMg: optionalField('caffeine_mg'),
-    waterMl: optionalField('water_ml'),
-    alcoholG: optionalField('alcohol_g'),
-    cholesterol: optionalField('cholesterol'),
-    vitaminA: optionalField('vitamin_a'),
-    vitaminC: optionalField('vitamin_c'),
-  };
+  return buildMealDisplayValuesFromFoods(
+    overrideFoods ?? meal.foods,
+    meal,
+    mode
+  );
 }
 
 const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
@@ -136,8 +74,15 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const textMuted = useCSSVariable('--color-text-muted') as string;
+  const [textMuted, accentColor] = useCSSVariable([
+    '--color-text-muted',
+    '--color-accent-primary',
+  ]) as [string, string];
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
+  const [stagedFoods, setStagedFoods] = useState<MealFood[] | null>(null);
+  const [editingIngredientIndex, setEditingIngredientIndex] = useState<
+    number | null
+  >(null);
 
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
@@ -147,6 +92,39 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
     enabled: isConnected,
     initialMeal,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      const selection = consumePendingMealIngredientSelection();
+      if (!selection) return;
+      setStagedFoods((current) => {
+        const base = current ?? meal?.foods ?? [];
+        const next = [...base];
+        if (
+          selection.ingredientIndex != null &&
+          selection.ingredientIndex >= 0 &&
+          selection.ingredientIndex < next.length
+        ) {
+          next[selection.ingredientIndex] = draftToMealFood(
+            selection.ingredient,
+            next[selection.ingredientIndex]?.id
+          );
+          return next;
+        }
+        next.push(draftToMealFood(selection.ingredient));
+        return next;
+      });
+    }, [meal?.foods])
+  );
+
+  const effectiveFoods = useMemo(
+    () => stagedFoods ?? meal?.foods ?? [],
+    [stagedFoods, meal?.foods]
+  );
+
+  const openIngredientPicker = useCallback(() => {
+    navigation.push('FoodSearch', { pickerMode: 'meal-builder' });
+  }, [navigation]);
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteMeal({
     mealId,
     onSuccess: () => navigation.goBack(),
@@ -220,12 +198,13 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
     toggleFavorite({ type: 'meal', id: meal.id, isFavorite, meal });
   }, [toggleFavorite, meal, isFavorite]);
   const totalValues = useMemo(
-    () => (meal ? buildMealDisplayValues(meal, 'total') : null),
-    [meal]
+    () => (meal ? buildMealDisplayValues(meal, 'total', effectiveFoods) : null),
+    [meal, effectiveFoods]
   );
   const perServingValues = useMemo(
-    () => (meal ? buildMealDisplayValues(meal, 'perServing') : null),
-    [meal]
+    () =>
+      meal ? buildMealDisplayValues(meal, 'perServing', effectiveFoods) : null,
+    [meal, effectiveFoods]
   );
   const displayValues =
     viewMode === 'perServing' ? perServingValues : totalValues;
@@ -330,7 +309,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
       );
     }
 
-    const foodCount = meal.foods.length;
+    const foodCount = effectiveFoods.length;
 
     return (
       <ScrollView
@@ -390,15 +369,29 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
             <Text className="text-base font-bold text-text-secondary flex-1">
               {t('mealDetail.foodsInMeal', { defaultValue: 'Foods in Meal' })}
             </Text>
+            {stagedFoods !== null ? (
+              <TouchableOpacity
+                onPress={() => setStagedFoods(null)}
+                className="mr-3"
+                accessibilityRole="button"
+                accessibilityLabel={t('mealDetail.resetToTemplate', {
+                  defaultValue: 'Reset to template',
+                })}
+              >
+                <Text className="text-accent-primary text-xs font-semibold">
+                  {t('common.reset', { defaultValue: 'Reset' })}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
             <Text className="text-xs text-text-muted font-medium">
               {t('mealDetail.items', {
                 defaultValue: '{{formattedCount}} items',
-                count: meal.foods.length,
-                formattedCount: formatLocalizedNumber(meal.foods.length),
+                count: foodCount,
+                formattedCount: formatLocalizedNumber(foodCount),
               })}
             </Text>
           </View>
-          {meal.foods.map((food, index) => {
+          {effectiveFoods.map((food, index) => {
             const scale = ingredientScale(food);
             const calories = roundedEnergy(food.calories * scale, energyUnit);
             const protein = Math.round(food.protein * scale);
@@ -463,7 +456,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
             if (isLinkedMeal && food.child_meal_id) {
               return (
                 <TouchableOpacity
-                  key={food.id}
+                  key={food.id || index}
                   activeOpacity={0.7}
                   onPress={() =>
                     navigation.push('MealDetail', {
@@ -481,8 +474,43 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
               );
             }
 
-            return <View key={food.id}>{row}</View>;
+            return (
+              <TouchableOpacity
+                key={`${food.id ?? food.food_id ?? index}-${index}`}
+                activeOpacity={0.7}
+                onPress={() => setEditingIngredientIndex(index)}
+                accessibilityRole="button"
+                accessibilityLabel={t('mealDetail.editIngredientQuantity', {
+                  defaultValue: 'Edit {{name}} quantity: {{quantity}} {{unit}}',
+                  name:
+                    food.food_name ||
+                    t('common.food', { defaultValue: 'Food' }),
+                  quantity: food.quantity,
+                  unit: food.unit,
+                })}
+              >
+                {row}
+              </TouchableOpacity>
+            );
           })}
+
+          <View className="items-center pt-3 border-t border-border-subtle mt-1">
+            <Button
+              variant="ghost"
+              onPress={openIngredientPicker}
+              className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
+              accessibilityLabel={t('mealDetail.addFood', {
+                defaultValue: 'Add Food',
+              })}
+            >
+              <Icon name="add" size={16} color={accentColor} />
+              <Text className="text-accent-primary text-sm font-semibold">
+                {t('mealDetail.addFood', {
+                  defaultValue: 'Add Food',
+                })}
+              </Text>
+            </Button>
+          </View>
         </View>
 
         {/* After the ingredients: the nutrition and the food list are what this
@@ -502,9 +530,14 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
 
         <Button
           variant="primary"
-          onPress={() =>
-            navigation.navigate('FoodEntryAdd', { item: mealToFoodInfo(meal) })
-          }
+          onPress={() => {
+            // The item keeps the saved meal's ingredients so Reset on the
+            // next screen goes back to them; the edits travel separately.
+            navigation.navigate('FoodEntryAdd', {
+              item: mealToFoodInfo(meal),
+              ...(stagedFoods ? { customizedFoods: stagedFoods } : {}),
+            });
+          }}
         >
           <Text className="text-white text-base font-semibold">
             {t('mealDetail.logMeal', { defaultValue: 'Log Meal' })}
@@ -572,6 +605,43 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
               : t('mealDetail.deleteMeal', { defaultValue: 'Delete Meal' })}
           </Button>
         ) : null}
+
+        <IngredientQuantityModal
+          visible={editingIngredientIndex !== null}
+          ingredient={
+            editingIngredientIndex !== null
+              ? (effectiveFoods[editingIngredientIndex] ?? null)
+              : null
+          }
+          onClose={() => setEditingIngredientIndex(null)}
+          onSave={(newQty, updatedFood) => {
+            if (editingIngredientIndex === null) return;
+            setStagedFoods((current) => {
+              const base = current ?? meal.foods;
+              const next = [...base];
+              next[editingIngredientIndex] = {
+                ...next[editingIngredientIndex],
+                quantity: newQty,
+                ...(updatedFood ?? {}),
+              };
+              return next;
+            });
+            setEditingIngredientIndex(null);
+          }}
+          // The last ingredient stays: an empty list would log the template.
+          onRemove={
+            effectiveFoods.length > 1
+              ? () => {
+                  if (editingIngredientIndex === null) return;
+                  setStagedFoods((current) => {
+                    const base = current ?? meal.foods;
+                    return base.filter((_, i) => i !== editingIngredientIndex);
+                  });
+                  setEditingIngredientIndex(null);
+                }
+              : undefined
+          }
+        />
       </ScrollView>
     );
   };

@@ -20,7 +20,7 @@ import {
   ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { StackActions } from '@react-navigation/native';
+import { StackActions, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,12 +30,16 @@ import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import IngredientQuantityModal from '../components/IngredientQuantityModal';
 import {
   FoodNutritionHeader,
   FoodNutrientBreakdown,
 } from '../components/FoodNutritionSummary';
 import { fetchGoalsRange } from '../services/api/goalsApi';
-import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
+import {
+  setPendingMealIngredientSelection,
+  consumePendingMealIngredientSelection,
+} from '../services/mealBuilderSelection';
 import {
   buildMealPlanFoodAssignment,
   buildMealPlanMealAssignment,
@@ -54,7 +58,13 @@ import {
 } from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
-import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import {
+  getMealTypeDisplayLabel,
+  buildMealDisplayValuesFromFoods,
+  draftToMealFood,
+  ingredientScale,
+  mealFoodsToPayload,
+} from '../utils/mealNutrition';
 import { goalsRangeQueryKey } from '../hooks/queryKeys';
 import {
   useFavorites,
@@ -69,6 +79,8 @@ import {
   observeRecipeImportOwner,
 } from '../hooks/useRecipeImport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
   useCreateFoodVariant,
@@ -89,7 +101,7 @@ import {
   buildFormValuesFromVariant,
   hasFoodFormChanges,
 } from './foodForm/persistence';
-import type { Meal, MealIngredientDraft } from '../types/meals';
+import type { Meal, MealFood, MealIngredientDraft } from '../types/meals';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
@@ -284,6 +296,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const timeSheetRef = useRef<TimeSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const { isConnected } = useServerConnection();
+  const energyUnit = useEnergyUnit();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
@@ -336,6 +349,49 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       route.params?.selectedVariantOverride ?? null
     );
   const activeItem = savedFoodOverride ?? item;
+  const isMealItem = activeItem.source === 'meal';
+  // The saved meal's own ingredients: what Reset returns to. Edits made on
+  // MealDetail arrive separately as customizedFoods and start out applied.
+  const initialMealFoods = useMemo(() => {
+    if (!isMealItem) return null;
+    const originalMeal = activeItem.originalItem as Meal | undefined;
+    return originalMeal?.foods ?? null;
+  }, [isMealItem, activeItem.originalItem]);
+
+  const [mealCustomizedFoods, setMealCustomizedFoods] = useState<
+    MealFood[] | null
+  >(route.params?.customizedFoods ?? null);
+  const [editingMealIngredientIndex, setEditingMealIngredientIndex] = useState<
+    number | null
+  >(null);
+
+  const effectiveMealFoods = mealCustomizedFoods ?? initialMealFoods;
+  const mealFoodsDirty = mealCustomizedFoods !== null;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isMealItem) return;
+      const selection = consumePendingMealIngredientSelection();
+      if (!selection) return;
+      setMealCustomizedFoods((current) => {
+        const base = current ?? initialMealFoods ?? [];
+        const next = [...base];
+        if (
+          selection.ingredientIndex != null &&
+          selection.ingredientIndex >= 0 &&
+          selection.ingredientIndex < next.length
+        ) {
+          next[selection.ingredientIndex] = draftToMealFood(
+            selection.ingredient,
+            next[selection.ingredientIndex]?.id
+          );
+          return next;
+        }
+        next.push(draftToMealFood(selection.ingredient));
+        return next;
+      });
+    }, [isMealItem, initialMealFoods])
+  );
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
@@ -592,6 +648,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   ]);
 
   const displayValues = useMemo(() => {
+    if (isMealItem && effectiveMealFoods && effectiveMealFoods.length > 0) {
+      return buildMealDisplayValuesFromFoods(
+        effectiveMealFoods,
+        {
+          serving_size: activeItem.servingSize,
+          serving_unit: activeItem.servingUnit,
+          total_servings: activeItem.mealTotalServings,
+        },
+        'perServing'
+      );
+    }
     if (!adjustedValues) return activeVariant;
     return {
       servingSize:
@@ -617,7 +684,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       vitaminA: parseOptional(adjustedValues.vitaminA),
       vitaminC: parseOptional(adjustedValues.vitaminC),
     };
-  }, [adjustedValues, activeVariant]);
+  }, [
+    adjustedValues,
+    activeVariant,
+    isMealItem,
+    effectiveMealFoods,
+    activeItem.servingSize,
+    activeItem.servingUnit,
+    activeItem.mealTotalServings,
+  ]);
 
   const labelLookupId = selectedVariantOverride
     ? selectedVariantOverride.id
@@ -1112,6 +1187,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       notes: entryNotes.trim() || null,
       quantity,
       unit: displayValues.servingUnit,
+      ...(mealCustomizedFoods && mealCustomizedFoods.length > 0
+        ? { foods: mealFoodsToPayload(mealCustomizedFoods) }
+        : {}),
     };
   };
 
@@ -1731,7 +1809,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   // Favorites: persisted local foods and saved meals can be starred. External
   // (unsaved) foods must be saved to the library first (via the bookmark
   // action) before they gain a stable id to favorite.
-  const isMealItem = activeItem.source === 'meal';
   const canFavorite = isLocalFood || isMealItem;
   const { favoriteFoods, favoriteMeals } = useFavorites({
     enabled: isConnected && canFavorite,
@@ -2175,6 +2252,134 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           </>
         ) : null}
 
+        {isMealItem && effectiveMealFoods && effectiveMealFoods.length > 0 ? (
+          <View className="bg-surface rounded-xl p-4 shadow-sm mt-3 border border-border-subtle">
+            <View className="flex-row items-center mb-3">
+              <Text className="text-base font-bold text-text-secondary flex-1">
+                {t('mealDetail.foodsInMeal', { defaultValue: 'Foods in Meal' })}
+              </Text>
+              {mealFoodsDirty ? (
+                <TouchableOpacity
+                  onPress={() => setMealCustomizedFoods(null)}
+                  className="mr-3"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('mealDetail.resetToTemplate', {
+                    defaultValue: 'Reset to template',
+                  })}
+                >
+                  <Text className="text-accent-primary text-xs font-semibold">
+                    {t('common.reset', { defaultValue: 'Reset' })}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              <Text className="text-xs text-text-muted font-medium">
+                {t('mealDetail.items', {
+                  defaultValue: '{{formattedCount}} items',
+                  count: effectiveMealFoods.length,
+                  formattedCount: formatLocalizedNumber(
+                    effectiveMealFoods.length
+                  ),
+                })}
+              </Text>
+            </View>
+            {effectiveMealFoods.map((food, index) => {
+              const itemScale = ingredientScale(food);
+              const calories = roundedEnergy(
+                food.calories * itemScale,
+                energyUnit
+              );
+              const protein = Math.round(food.protein * itemScale);
+              const carbs = Math.round(food.carbs * itemScale);
+              const fat = Math.round(food.fat * itemScale);
+              const isLinkedMeal = food.item_type === 'meal';
+
+              return (
+                <TouchableOpacity
+                  key={`${food.id ?? food.food_id ?? index}-${index}`}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    !isLinkedMeal && setEditingMealIngredientIndex(index)
+                  }
+                  disabled={isLinkedMeal}
+                  className={`flex-row items-start justify-between gap-3 py-3 ${
+                    index === 0 ? '' : 'border-t border-border-subtle'
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('mealDetail.editIngredientQuantity', {
+                    defaultValue:
+                      'Edit {{name}} quantity: {{quantity}} {{unit}}',
+                    name:
+                      food.food_name ||
+                      t('common.food', { defaultValue: 'Food' }),
+                    quantity: food.quantity,
+                    unit: food.unit,
+                  })}
+                >
+                  <View className="flex-1">
+                    <Text
+                      className={`text-base font-semibold ${
+                        isLinkedMeal
+                          ? 'text-accent-primary'
+                          : 'text-text-primary'
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {isLinkedMeal
+                        ? food.child_meal_name || food.food_name
+                        : food.food_name ||
+                          t('common.food', { defaultValue: 'Food' })}
+                      {food.brand ? (
+                        <Text className="text-text-secondary font-normal">
+                          {' · '}
+                          {food.brand}
+                        </Text>
+                      ) : null}
+                    </Text>
+                    <Text className="text-text-muted text-sm mt-1">
+                      {protein}g{' '}
+                      {t('mealDetail.protein', { defaultValue: 'protein' })} ·{' '}
+                      {carbs}g{' '}
+                      {t('mealDetail.carbs', { defaultValue: 'carbs' })} · {fat}
+                      g {t('mealDetail.fat', { defaultValue: 'fat' })}
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-text-primary text-base font-semibold">
+                      {calories} {energyUnitLabel(energyUnit, t)}
+                    </Text>
+                    <Text className="text-text-muted text-sm mt-1">
+                      {formatLocalizedNumber(food.quantity, {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      {food.unit}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            <View className="items-center pt-3 border-t border-border-subtle mt-1">
+              <Button
+                variant="ghost"
+                onPress={() =>
+                  navigation.push('FoodSearch', { pickerMode: 'meal-builder' })
+                }
+                className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
+                accessibilityLabel={t('mealDetail.addFood', {
+                  defaultValue: 'Add Food',
+                })}
+              >
+                <Icon name="add" size={16} color={accentColor} />
+                <Text className="text-accent-primary text-sm font-semibold">
+                  {t('mealDetail.addFood', {
+                    defaultValue: 'Add Food',
+                  })}
+                </Text>
+              </Button>
+            </View>
+          </View>
+        ) : null}
+
         <FoodNutrientBreakdown
           values={displayValues}
           servings={servings}
@@ -2221,6 +2426,45 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             </View>
           </>
         ) : null}
+
+        <IngredientQuantityModal
+          visible={editingMealIngredientIndex !== null}
+          ingredient={
+            editingMealIngredientIndex !== null && effectiveMealFoods
+              ? (effectiveMealFoods[editingMealIngredientIndex] ?? null)
+              : null
+          }
+          onClose={() => setEditingMealIngredientIndex(null)}
+          onSave={(newQty, updatedFood) => {
+            if (editingMealIngredientIndex === null) return;
+            setMealCustomizedFoods((current) => {
+              const base = current ?? initialMealFoods ?? [];
+              const next = [...base];
+              next[editingMealIngredientIndex] = {
+                ...next[editingMealIngredientIndex],
+                quantity: newQty,
+                ...(updatedFood ?? {}),
+              };
+              return next;
+            });
+            setEditingMealIngredientIndex(null);
+          }}
+          // The last ingredient stays: an empty list would log the template.
+          onRemove={
+            (effectiveMealFoods?.length ?? 0) > 1
+              ? () => {
+                  if (editingMealIngredientIndex === null) return;
+                  setMealCustomizedFoods((current) => {
+                    const base = current ?? initialMealFoods ?? [];
+                    return base.filter(
+                      (_, i) => i !== editingMealIngredientIndex
+                    );
+                  });
+                  setEditingMealIngredientIndex(null);
+                }
+              : undefined
+          }
+        />
       </ScrollView>
 
       {/* Sticky footer */}
