@@ -26,6 +26,7 @@ jest.mock('react-native-gesture-handler', () => {
     GestureHandlerRootView: View,
   };
 });
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
@@ -48,6 +49,18 @@ import {
 
 jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(),
+}));
+const mockUseLiveHeartRate = jest.fn(
+  (_entryId: string | null): number | null => null
+);
+jest.mock('../../src/stores/liveHeartRateStore', () => ({
+  useLiveHeartRate: (entryId: string | null) => mockUseLiveHeartRate(entryId),
+}));
+const mockUseHeartRateZoneColor = jest.fn(
+  (_bpm: number | null): string | null => null
+);
+jest.mock('../../src/hooks/useHeartRateZoneColor', () => ({
+  useHeartRateZoneColor: (bpm: number | null) => mockUseHeartRateZoneColor(bpm),
 }));
 jest.mock('../../src/services/haptics', () => ({
   fireSelectionHaptic: jest.fn(),
@@ -370,6 +383,74 @@ describe('ActiveWorkoutFocusView', () => {
       render(viewElement('b'));
       fireEvent.press(screen.getByLabelText(/^Rest /));
       expect(handlers.onPressRestChip).toHaveBeenCalledWith('b', null);
+    });
+
+    describe('live heart rate', () => {
+      afterEach(() => {
+        mockUseLiveHeartRate.mockReset().mockReturnValue(null);
+        mockUseHeartRateZoneColor.mockReset().mockReturnValue(null);
+      });
+
+      it('shows no chip without a live reading', () => {
+        render(viewElement('a'));
+        expect(screen.queryByTestId('exercise-heart-rate')).toBeNull();
+      });
+
+      it("shows the watch's live reading for the exercise being viewed", () => {
+        mockUseLiveHeartRate.mockImplementation((id) =>
+          id === 'b' ? 141 : null
+        );
+        const { rerender } = render(viewElement('a'));
+        expect(screen.queryByText('141 bpm')).toBeNull();
+
+        rerender(viewElement('b'));
+        expect(screen.getByText('141 bpm')).toBeTruthy();
+        expect(
+          screen.getByLabelText('Current heart rate for Squat')
+        ).toBeTruthy();
+      });
+
+      it('colors the number by the heart rate zone', () => {
+        mockUseLiveHeartRate.mockReturnValue(160);
+        mockUseHeartRateZoneColor.mockImplementation((bpm) =>
+          bpm === 160 ? '#f59e0b' : null
+        );
+        render(viewElement('a'));
+        expect(
+          StyleSheet.flatten(screen.getByText('160 bpm').props.style).color
+        ).toBe('#f59e0b');
+      });
+
+      it('keeps the default heart-rate color until zones are known', () => {
+        mockUseLiveHeartRate.mockReturnValue(160);
+        render(viewElement('a'));
+        expect(
+          StyleSheet.flatten(screen.getByText('160 bpm').props.style).color
+        ).toBeUndefined();
+      });
+
+      it('shows the chip on a one-set cardio exercise, which has no rest chip', () => {
+        mockUseLiveHeartRate.mockReturnValue(130);
+        const cardio = makeExercise('d', 'Running', {
+          exercise_snapshot: {
+            name: 'Running',
+            modality: 'duration_distance',
+            images: [],
+          },
+          sets: [
+            {
+              id: 'd-0',
+              set_number: 1,
+              set_type: 'normal',
+              weight: null,
+              reps: null,
+            },
+          ],
+        });
+        render(viewElement('d', {}, { exercises: [cardio] }));
+        expect(screen.getByText('130 bpm')).toBeTruthy();
+        expect(screen.queryByLabelText(/^Rest /)).toBeNull();
+      });
     });
 
     it('hides the rest chip for a one-set cardio exercise, which logs in a form', () => {
