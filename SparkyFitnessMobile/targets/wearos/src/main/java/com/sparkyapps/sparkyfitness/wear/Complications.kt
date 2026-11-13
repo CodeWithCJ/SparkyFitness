@@ -73,7 +73,14 @@ object ComplicationUpdater {
     val safeGoal = max(1f, goal)
     val pct = ((consumed / safeGoal) * 100f).toInt()
     val text = PlainComplicationText.Builder("${consumed.toInt()}g").build()
-    val desc = PlainComplicationText.Builder("$fullLabel: ${consumed.toInt()} / ${safeGoal.toInt()}g ($pct%)").build()
+    val descText = context.getString(
+      R.string.complication_macro_desc,
+      fullLabel,
+      consumed.toInt(),
+      safeGoal.toInt(),
+      pct
+    )
+    val desc = PlainComplicationText.Builder(descText).build()
     val image = monoIcon(context, iconRes)
 
     return when (type) {
@@ -120,7 +127,14 @@ class EnergyGoalComplicationService : SuspendingComplicationDataSourceService() 
   ): ComplicationData? {
     val pct = ((consumed / max(1f, goal)) * 100f).toInt()
     val text = PlainComplicationText.Builder("${consumed.toInt()}").build()
-    val desc = PlainComplicationText.Builder("Energy: ${consumed.toInt()} / ${goal.toInt()} $energyUnit ($pct%)").build()
+    val descText = getString(
+      R.string.complication_energy_desc,
+      consumed.toInt(),
+      goal.toInt(),
+      energyUnit,
+      pct
+    )
+    val desc = PlainComplicationText.Builder(descText).build()
     val image = ComplicationUpdater.monoIcon(this, R.drawable.ic_complication_calories)
 
     return when (type) {
@@ -143,7 +157,7 @@ class EnergyGoalComplicationService : SuspendingComplicationDataSourceService() 
 
 class ProteinGoalComplicationService : SuspendingComplicationDataSourceService() {
   override fun getPreviewData(type: ComplicationType): ComplicationData? {
-    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_protein, "Protein", 120f, 160f, null)
+    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_protein, getString(R.string.common_protein), 120f, 160f, null)
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
@@ -152,13 +166,13 @@ class ProteinGoalComplicationService : SuspendingComplicationDataSourceService()
     val consumed = (p?.consumed ?: 0.0).toFloat()
     val goal = max(1.0, p?.goal ?: 150.0).toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_protein, "Protein", consumed, goal, tap)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_protein, getString(R.string.common_protein), consumed, goal, tap)
   }
 }
 
 class CarbsGoalComplicationService : SuspendingComplicationDataSourceService() {
   override fun getPreviewData(type: ComplicationType): ComplicationData? {
-    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_carbs, "Carbs", 160f, 220f, null)
+    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_carbs, getString(R.string.common_carbs), 160f, 220f, null)
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
@@ -167,13 +181,13 @@ class CarbsGoalComplicationService : SuspendingComplicationDataSourceService() {
     val consumed = (c?.consumed ?: 0.0).toFloat()
     val goal = max(1.0, c?.goal ?: 200.0).toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_carbs, "Carbs", consumed, goal, tap)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_carbs, getString(R.string.common_carbs), consumed, goal, tap)
   }
 }
 
 class FatGoalComplicationService : SuspendingComplicationDataSourceService() {
   override fun getPreviewData(type: ComplicationType): ComplicationData? {
-    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_fat, "Fat", 48f, 70f, null)
+    return ComplicationUpdater.buildMacroData(this, type, R.drawable.ic_complication_fat, getString(R.string.common_fat), 48f, 70f, null)
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
@@ -182,7 +196,7 @@ class FatGoalComplicationService : SuspendingComplicationDataSourceService() {
     val consumed = (f?.consumed ?: 0.0).toFloat()
     val goal = max(1.0, f?.goal ?: 65.0).toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_fat, "Fat", consumed, goal, tap)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_fat, getString(R.string.common_fat), consumed, goal, tap)
   }
 }
 
@@ -213,7 +227,7 @@ class WaterGoalComplicationService : SuspendingComplicationDataSourceService() {
       else -> "${consumed.toInt()}"
     }
     val text = PlainComplicationText.Builder(displayValue).build()
-    val desc = PlainComplicationText.Builder("Water: $displayValue").build()
+    val desc = PlainComplicationText.Builder(getString(R.string.complication_water_desc, displayValue)).build()
     val image = ComplicationUpdater.monoIcon(this, R.drawable.ic_complication_water)
 
     return when (type) {
@@ -261,9 +275,10 @@ class FastingComplicationService : SuspendingComplicationDataSourceService() {
     isActive: Boolean,
     tap: PendingIntent?
   ): ComplicationData? {
-    val label = if (isActive) String.format(Locale.US, "%.1fh", elapsedHours) else "Idle"
+    val label = if (isActive) String.format(Locale.US, "%.1fh", elapsedHours) else getString(R.string.complication_fasting_idle)
     val text = PlainComplicationText.Builder(label).build()
-    val desc = PlainComplicationText.Builder("Fasting: $label / ${goalHours.toInt()}h").build()
+    val descText = getString(R.string.complication_fasting_desc, label, goalHours.toInt())
+    val desc = PlainComplicationText.Builder(descText).build()
     val image = ComplicationUpdater.monoIcon(this, R.drawable.ic_complication_fasting)
 
     return when (type) {
@@ -306,7 +321,8 @@ class StepsComplicationService : SuspendingComplicationDataSourceService() {
   ): ComplicationData? {
     val shortStr = if (today >= 1000f) String.format(Locale.US, "%.1fk", today / 1000f) else "${today.toInt()}"
     val text = PlainComplicationText.Builder(shortStr).build()
-    val desc = PlainComplicationText.Builder("Steps: ${today.toInt()} / ${goal.toInt()}").build()
+    val descText = getString(R.string.complication_steps_desc, today.toInt(), goal.toInt())
+    val desc = PlainComplicationText.Builder(descText).build()
     val image = ComplicationUpdater.monoIcon(this, R.drawable.ic_complication_steps)
 
     return when (type) {

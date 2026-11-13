@@ -6,6 +6,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
+import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,7 +67,10 @@ class WatchRunSpeaker(context: Context) {
     try {
       tts = TextToSpeech(context.applicationContext) { status ->
         if (status == TextToSpeech.SUCCESS) {
-          tts?.language = Locale.US
+          val res = tts?.setLanguage(Locale.getDefault())
+          if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+            tts?.language = Locale.US
+          }
           ready = true
         }
       }
@@ -552,7 +556,8 @@ class CheckInStore(private val context: Context) {
       .filter { it.state != SyncState.FAILED }
       .map { tap ->
         val name = tap.containerName.ifBlank {
-          _waterContainers.value.firstOrNull { it.id == tap.containerId }?.name ?: "Drink"
+          _waterContainers.value.firstOrNull { it.id == tap.containerId }?.name
+            ?: context.getString(R.string.water_default_drink)
         }
         WaterLogEntry(
           id = "pending_${tap.id}",
@@ -1028,7 +1033,7 @@ class WorkoutSessionStore(private val context: Context) {
       scope.launch {
         if (!delivered) {
           _startingPresetId.value = null
-          _startErrorMessage.value = "Phone isn't reachable. Open SparkyFitness on your phone and try again."
+          _startErrorMessage.value = context.getString(R.string.workout_error_phone_unreachable)
           Haptics.failure()
         }
       }
@@ -1037,7 +1042,7 @@ class WorkoutSessionStore(private val context: Context) {
       delay(12000)
       if (_startingPresetId.value == presetId && _phase.value == Phase.IDLE) {
         _startingPresetId.value = null
-        _startErrorMessage.value = "Couldn't start workout on phone. Make sure SparkyFitness is open."
+        _startErrorMessage.value = context.getString(R.string.workout_error_start_failed)
         Haptics.failure()
       }
     }
@@ -1137,7 +1142,7 @@ class WorkoutSessionStore(private val context: Context) {
     val newPrs = prSetIds.subtract(celebratedPrSetIds)
     if (newPrs.isNotEmpty()) {
       celebratedPrSetIds.addAll(newPrs)
-      _activePrBanner.value = "🏆 New PR!"
+      _activePrBanner.value = context.getString(R.string.workout_new_pr_banner)
       Haptics.success()
       prBannerJob?.cancel()
       prBannerJob = scope.launch {
@@ -1280,7 +1285,7 @@ class WorkoutSessionStore(private val context: Context) {
         val newEntryId = "watch_ex_${UUID.randomUUID()}"
         val newEx = PlannedExercise(
           exerciseEntryId = newEntryId,
-          name = suggested?.name ?: "Exercise",
+          name = suggested?.name ?: context.getString(R.string.workout_default_exercise_name),
           sets = listOf(
             PlannedSet(
               setId = "watch_set_${UUID.randomUUID()}",
@@ -1811,8 +1816,18 @@ class WatchRunStore(private val context: Context) {
       }
     )
 
+    val localizedPlace = if (incoming.place == "indoor") {
+      context.getString(R.string.run_place_indoor)
+    } else {
+      context.getString(R.string.run_place_outdoor)
+    }
+    val localizedKind = if (incoming.kind == "walk") {
+      context.getString(R.string.run_kind_walk)
+    } else {
+      context.getString(R.string.run_kind_run)
+    }
     val startCue = incoming.plan?.startText ?: incoming.plan?.steps?.firstOrNull()?.label
-      ?: "Starting ${incoming.place} ${incoming.kind}"
+      ?: context.getString(R.string.run_cue_starting, localizedPlace, localizedKind)
     emitVoiceCue(startCue)
 
     startTicker()
@@ -1929,7 +1944,7 @@ class WatchRunStore(private val context: Context) {
   }
 
   fun testVoiceCue() {
-    speaker.speak("Voice cues active. Have a great workout!")
+    speaker.speak(context.getString(R.string.run_cue_test))
     Haptics.click()
   }
 
@@ -1942,7 +1957,7 @@ class WatchRunStore(private val context: Context) {
     laps.add(lapDuration)
     lapDistances.add(lapDist)
     _lapCount.value = laps.size
-    emitVoiceCue("Lap ${laps.size}")
+    emitVoiceCue(context.getString(R.string.run_cue_lap, laps.size))
     Haptics.directionUp()
   }
 
@@ -2098,14 +2113,14 @@ class WatchRunStore(private val context: Context) {
       val bpm = _heartRate.value
       if (band != null && bpm != null) {
         if (bpm > band.maxBpm) {
-          val msg = "Heart rate high: ${bpm.toInt()} BPM"
+          val msg = context.getString(R.string.run_alert_hr_high, bpm.toInt())
           _activeAlertBanner.value = msg
           lastAlertAtSec = elapsedSec
           emitVoiceCue(msg)
           Haptics.warning()
           return
         } else if (bpm < band.minBpm) {
-          val msg = "Heart rate low: ${bpm.toInt()} BPM"
+          val msg = context.getString(R.string.run_alert_hr_low, bpm.toInt())
           _activeAlertBanner.value = msg
           lastAlertAtSec = elapsedSec
           emitVoiceCue(msg)
@@ -2120,14 +2135,14 @@ class WatchRunStore(private val context: Context) {
       val paceSecKm = currentPaceSecondsPerKm
       if (band != null && paceSecKm != null) {
         if (paceSecKm > band.maxSecondsPerKm) {
-          val msg = "Pace below target"
+          val msg = context.getString(R.string.run_alert_pace_below)
           _activeAlertBanner.value = msg
           lastAlertAtSec = elapsedSec
           emitVoiceCue(msg)
           Haptics.warning()
           return
         } else if (paceSecKm < band.minSecondsPerKm) {
-          val msg = "Pace above target"
+          val msg = context.getString(R.string.run_alert_pace_above)
           _activeAlertBanner.value = msg
           lastAlertAtSec = elapsedSec
           emitVoiceCue(msg)
@@ -2177,7 +2192,7 @@ class WatchRunStore(private val context: Context) {
           val checkInMins = _settings.value.checkInMinutes
           if (checkInMins != null && checkInMins > 0 && nextElapsed % (checkInMins * 60) == 0) {
             val distKm = _distanceMeters.value / 1000.0
-            emitVoiceCue(String.format(Locale.US, "%d minutes. Distance %.2f kilometers.", nextElapsed / 60, distKm))
+            emitVoiceCue(context.getString(R.string.run_cue_checkin_km, nextElapsed / 60, distKm))
           }
 
           checkPaceAndHrAlerts(nextElapsed)
