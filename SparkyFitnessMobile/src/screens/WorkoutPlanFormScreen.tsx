@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
@@ -82,12 +82,17 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     isError: isPresetsError,
     refetch: refetchPresets,
   } = useWorkoutPresets();
-  const { preferences } = usePreferences();
+  const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   // Set weights are stored in kg; the form reads and writes the user's
   // preferred unit. Workout screens only know kg or lbs, so coerce st_lbs
-  // to lbs instead of handing an unsupported unit to weightToKg.
-  const weightUnit: 'kg' | 'lbs' =
-    preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
+  // to lbs instead of handing an unsupported unit to weightToKg. While the
+  // preference is still loading the unit is unknown, so the weight inputs
+  // stay disabled instead of converting typed values with a guessed unit.
+  const weightUnit: 'kg' | 'lbs' | null = isPreferencesLoading
+    ? null
+    : preferences?.default_weight_unit === 'kg'
+      ? 'kg'
+      : 'lbs';
   const [draft, setDraft] = useState<WorkoutPlanDraft>(() =>
     createWorkoutPlanDraft(today, template)
   );
@@ -168,6 +173,28 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
   } | null>(null);
 
   const [rawSetInputs, setRawSetInputs] = useState<Record<string, string>>({});
+
+  // When the resolved unit changes (e.g. the preference loads after the
+  // presets are cached), drop the retained weight text so each field falls
+  // back to its stored kg value rendered in the new unit. The stored value
+  // itself is never touched by this reconciliation.
+  const prevWeightUnit = useRef<'kg' | 'lbs' | null>(null);
+  useEffect(() => {
+    if (
+      prevWeightUnit.current != null &&
+      weightUnit != null &&
+      prevWeightUnit.current !== weightUnit
+    ) {
+      setRawSetInputs((current) => {
+        const next: Record<string, string> = {};
+        for (const entry of Object.entries(current)) {
+          if (!entry[0].endsWith(':weight')) next[entry[0]] = entry[1];
+        }
+        return next;
+      });
+    }
+    prevWeightUnit.current = weightUnit;
+  }, [weightUnit]);
 
   const clearRawSetInputs = useCallback((key: string) => {
     const prefix = key + ':';
@@ -257,7 +284,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
       // The draft stores kg; the user types in their preferred unit.
       const stored =
         field === 'weight' && numeric != null
-          ? weightToKg(numeric, weightUnit)
+          ? weightToKg(numeric, weightUnit ?? 'kg')
           : numeric;
       setDraft((current) =>
         updateDraftSet(current, key, setIndex, {
@@ -320,9 +347,23 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     if (Object.keys(nextErrors).length > 0) return;
     // A half-typed value (e.g. '22,') is not the same as an empty field;
     // block Save until every raw numeric input parses.
-    const hasInvalidSetInput = Object.values(rawSetInputs).some(
-      (value) =>
-        value.trim() !== '' && Number.isNaN(parseDecimalInput(value))
+    // Only inputs of sets that still exist can block Save: removing a
+    // session or assignment (or clearing them by switching the schedule
+    // type) leaves their stale raw records behind, and those must not trap
+    // the form.
+    const activeSetKeys = new Set<string>();
+    for (const assignment of draft.assignments) {
+      for (let i = 0; i < assignment.sets.length; i++) {
+        activeSetKeys.add(rawSetKey(assignment.key, i, 'reps'));
+        activeSetKeys.add(rawSetKey(assignment.key, i, 'weight'));
+        activeSetKeys.add(rawSetKey(assignment.key, i, 'rest_time'));
+      }
+    }
+    const hasInvalidSetInput = Object.entries(rawSetInputs).some(
+      ([inputKey, value]) =>
+        activeSetKeys.has(inputKey) &&
+        value.trim() !== '' &&
+        Number.isNaN(parseDecimalInput(value))
     );
     if (hasInvalidSetInput) {
       Toast.show({
@@ -557,16 +598,21 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
                   <FormInput
                     className="min-h-9 px-2 py-1"
                     keyboardType="numeric"
+                    editable={weightUnit != null}
                     placeholder={`${t('workoutPlans.weightShort', {
                       defaultValue: 'Weight',
-                    })} (${weightUnit})`}
+                    })} (${weightUnit ?? 'kg'})`}
                     value={
                       rawSetInputs[
                         rawSetKey(assignment.key, setIndex, 'weight')
                       ] ??
                         (set.weight == null
                           ? ''
-                          : String(storedWeightInUnit(set.weight, weightUnit)))
+                          : String(
+                              weightUnit == null
+                                ? set.weight
+                                : storedWeightInUnit(set.weight, weightUnit)
+                            ))
                     }
                     onChangeText={(value) =>
                       changeSetNumber(assignment.key, setIndex, 'weight', value)
