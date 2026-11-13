@@ -1581,9 +1581,12 @@ const options = {
         FeatureChoicesResponse: {
           type: 'object',
           required: ['feature_choices'],
+          additionalProperties: false,
           properties: {
             feature_choices: {
               type: 'object',
+              required: ['web', 'mobile'],
+              additionalProperties: false,
               description:
                 'Optional features the person turned on or off explicitly, one map per platform: web is the website on any screen, mobile is the native app with its watch pages and widgets. A feature not listed is at its default. Read and written only through /user-preferences/features.',
               properties: {
