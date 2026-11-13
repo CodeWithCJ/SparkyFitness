@@ -1585,36 +1585,49 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
       }
     } else {
       item {
+        val resolvedDuration = model.inBedDurationText?.let {
+          stringResource(R.string.tile_sleep_in_bed, it)
+        } ?: model.durationText
+        val resolvedWindow = when (val window = model.window) {
+          is SleepWindow.NoSleepLogged -> stringResource(R.string.tile_sleep_no_logged)
+          is SleepWindow.BedWake -> "${window.bedtime} \u2013 ${window.wakeTime}"
+          is SleepWindow.Naps -> context.resources.getQuantityString(
+            R.plurals.tile_sleep_naps,
+            window.count,
+            window.count,
+            window.durationText
+          )
+          is SleepWindow.InBed -> stringResource(R.string.tile_sleep_in_bed, window.durationText)
+        }
         Column(
           horizontalAlignment = Alignment.CenterHorizontally,
           modifier = Modifier.padding(bottom = 8.dp)
         ) {
           Text(
-            text = model.durationText,
+            text = resolvedDuration,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
           )
-          model.scoreText?.let { score ->
+          model.sleepScore?.let { score ->
             Text(
-              text = score,
+              text = stringResource(R.string.tile_sleep_score, score),
               fontSize = 12.sp,
               fontWeight = FontWeight.SemiBold,
               color = SparkyColors.Purple
             )
           }
-          model.windowText?.let { window ->
-            Text(
-              text = window,
-              fontSize = 11.sp,
-              color = SparkyColors.Muted
-            )
-          }
+          Text(
+            text = resolvedWindow,
+            fontSize = 11.sp,
+            color = SparkyColors.Muted
+          )
         }
       }
 
       if (model.stages.isNotEmpty()) {
         items(model.stages, key = { it.label }) { stage ->
+          val stageLabel = if (stage.labelRes != 0) stringResource(stage.labelRes) else stage.label
           Row(
             modifier = Modifier
               .fillMaxWidth()
@@ -1626,7 +1639,7 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = stage.label,
+              text = stageLabel,
               fontSize = 11.sp,
               fontWeight = FontWeight.SemiBold,
               color = Color.White
