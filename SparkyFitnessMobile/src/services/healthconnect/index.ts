@@ -980,9 +980,15 @@ const EXERCISE_WRITTEN_DAILY_TYPES: ReadonlySet<string> = new Set([
  * twice. Only once something was written, so nobody who never turned exercise
  * write-back on sees a changed query. Health Connect has no "exclude" filter,
  * hence the second pass with the remaining origins.
+ *
+ * An aggregate's `dataOrigins` lists only the apps that contributed after
+ * priority deduplication, so an app whose overlapping data lost to Sparky's is
+ * missing from it. Those apps can only hide inside the windows of Sparky's own
+ * records, so the records there are read to find them.
  */
 const aggregateWithoutOwnWrites = async <B extends { result: unknown }>(
   recordType: string,
+  range: { startTime: string; endTime: string },
   run: (dataOriginFilter?: string[]) => Promise<B[]>
 ): Promise<B[]> => {
   const buckets = await run();
@@ -1005,9 +1011,97 @@ const aggregateWithoutOwnWrites = async <B extends { result: unknown }>(
     }
   }
   if (!origins.has(own)) return buckets;
+  for (const origin of await originsUnderOwnWrites(recordType, range, own)) {
+    origins.add(origin);
+  }
   origins.delete(own);
   if (origins.size === 0) return [];
   return run([...origins]);
+};
+
+// Sparky writes active energy, not total; Health Connect derives the total
+// from it, so the windows of a total come from the active records.
+const OWN_WRITTEN_TYPE: Readonly<Record<string, string>> = {
+  TotalCaloriesBurned: 'ActiveCaloriesBurned',
+};
+const ORIGIN_DISCOVERY_PAGE_LIMIT = 5;
+
+type OriginRecord = {
+  startTime?: string;
+  endTime?: string;
+  metadata?: { dataOrigin?: string };
+};
+
+const readAllPages = async (
+  recordType: string,
+  options: {
+    timeRangeFilter: {
+      operator: 'between';
+      startTime: string;
+      endTime: string;
+    };
+    dataOriginFilter?: string[];
+  }
+): Promise<OriginRecord[]> => {
+  const records: OriginRecord[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < ORIGIN_DISCOVERY_PAGE_LIMIT; page++) {
+    const result = await withClientRecovery(() =>
+      readRecords(
+        recordType as Parameters<typeof readRecords>[0],
+        {
+          ...options,
+          ...(pageToken ? { pageToken } : {}),
+        } as unknown as Parameters<typeof readRecords>[1]
+      )
+    );
+    records.push(...(result.records as OriginRecord[]));
+    pageToken = (result as { pageToken?: string }).pageToken || undefined;
+    if (!pageToken) break;
+  }
+  return records;
+};
+
+/**
+ * The apps with records of `recordType` overlapping this app's own written
+ * records in the range. Read failures give no extra origins (the listed ones
+ * still apply), never a failed day.
+ */
+const originsUnderOwnWrites = async (
+  recordType: string,
+  range: { startTime: string; endTime: string },
+  own: string
+): Promise<Set<string>> => {
+  const found = new Set<string>();
+  try {
+    const ownRecords = await readAllPages(
+      OWN_WRITTEN_TYPE[recordType] ?? recordType,
+      {
+        timeRangeFilter: { operator: 'between', ...range },
+        dataOriginFilter: [own],
+      }
+    );
+    for (const record of ownRecords) {
+      if (!record.startTime || !record.endTime) continue;
+      const others = await readAllPages(recordType, {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: record.startTime,
+          endTime: record.endTime,
+        },
+      });
+      for (const other of others) {
+        const origin = other.metadata?.dataOrigin;
+        if (typeof origin === 'string' && origin !== own) found.add(origin);
+      }
+    }
+  } catch (error) {
+    addLog(
+      `[HealthConnectService] ${recordType} origin discovery failed: ${getErrorMessage(error)}`,
+      'WARNING'
+    );
+  }
+  return found;
 };
 
 /**
@@ -1025,6 +1119,7 @@ const aggregateByDeviceZone = async (
   try {
     buckets = await aggregateWithoutOwnWrites(
       spec.recordType,
+      { startTime: startDate.toISOString(), endTime: endDate.toISOString() },
       async (dataOriginFilter) =>
         (await withClientRecovery(() =>
           aggregateGroupByPeriod({
@@ -1097,6 +1192,10 @@ const aggregateByRecordOffsets = async (
     try {
       buckets = await aggregateWithoutOwnWrites(
         spec.recordType,
+        {
+          startTime: new Date(segment.startMs).toISOString(),
+          endTime: new Date(segment.endMs).toISOString(),
+        },
         async (dataOriginFilter) =>
           (await withClientRecovery(() =>
             aggregateGroupByDuration({

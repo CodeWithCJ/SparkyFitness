@@ -27,6 +27,7 @@ import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
 import {
   WRITEBACK_METRICS,
+  missingRequiredWritebackPermissions,
   writebackMetricPermissions,
   type WritebackMetric,
   type WritebackDateRange,
@@ -467,18 +468,23 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     // (both directions, every metric), so this toggle can never look like it revoked
     // something else. Revert the toggle if denied.
     try {
-      const granted = await requestHealthPermissions([
+      // Only what this metric needs decides the toggle: an optional extra the
+      // person declined (e.g. distance for exercise) leaves it on.
+      const grantedPermissions = await requestGrantedHealthPermissions([
         ...(await loadAllEnabledPermissions()),
         ...(writebackMetricPermissions(metric) as PermissionRequest[]),
       ]);
+      const granted =
+        missingRequiredWritebackPermissions(metric, grantedPermissions)
+          .length === 0;
       if (!granted) {
         Alert.alert(
           t('syncScreen.permissionDenied.title', {
             defaultValue: 'Permission Denied',
           }),
-          t('syncScreen.permissionDenied.write', {
+          t('syncScreen.permissionDenied.writeRequired', {
             defaultValue:
-              'Please grant {{metric}} write permission in {{settings}}.',
+              'Please grant the permissions {{metric}} needs in {{settings}}.',
             metric: getHealthMetricLabel(t, metric),
             settings: healthSettingsName,
           })

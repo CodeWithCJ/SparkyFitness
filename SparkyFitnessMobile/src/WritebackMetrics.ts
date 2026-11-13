@@ -45,7 +45,12 @@ export interface WritebackMetric {
    * and the workout read its duplicate check needs, on Android; iOS expands
    * the workout write itself in healthKitAuthorizationTypes).
    */
-  extraPermissions?: { accessType: 'read' | 'write'; recordType: string }[];
+  extraPermissions?: {
+    accessType: 'read' | 'write';
+    recordType: string;
+    /** The writer works without it (it skips what this permission covers). */
+    optional?: boolean;
+  }[];
   /** Platforms the store has a record type for; absent means both. */
   platforms?: ('android' | 'ios')[];
   icon: ImageSourcePropType;
@@ -99,8 +104,14 @@ const ALL_WRITEBACK_METRICS: WritebackMetric[] = [
     extraPermissions:
       Platform.OS === 'android'
         ? [
-            { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
-            { accessType: 'write', recordType: 'Distance' },
+            // Sessions are still written without energy or distance.
+            {
+              accessType: 'write',
+              recordType: 'ActiveCaloriesBurned',
+              optional: true,
+            },
+            { accessType: 'write', recordType: 'Distance', optional: true },
+            // The duplicate check reads sessions; nothing is written without it.
             { accessType: 'read', recordType: 'ExerciseSession' },
           ]
         : undefined,
@@ -114,8 +125,34 @@ export const writebackMetricPermissions = (
   metric: WritebackMetric
 ): { accessType: 'read' | 'write'; recordType: string }[] => [
   metric.permission,
-  ...(metric.extraPermissions ?? []),
+  ...(metric.extraPermissions ?? []).map(({ accessType, recordType }) => ({
+    accessType,
+    recordType,
+  })),
 ];
+
+/**
+ * The permissions a metric cannot work without that are missing from what was
+ * granted: its own and its non-optional extras. Turning a metric on succeeds
+ * when this is empty, even if an optional extra was declined.
+ */
+export const missingRequiredWritebackPermissions = (
+  metric: WritebackMetric,
+  granted: readonly { accessType?: string; recordType?: string }[]
+): { accessType: 'read' | 'write'; recordType: string }[] =>
+  [
+    metric.permission,
+    ...(metric.extraPermissions ?? []).filter((p) => !p.optional),
+  ]
+    .map(({ accessType, recordType }) => ({ accessType, recordType }))
+    .filter(
+      (required) =>
+        !granted.some(
+          (g) =>
+            g.accessType === required.accessType &&
+            g.recordType === required.recordType
+        )
+    );
 
 /** The writeback metrics this platform's health store can hold. */
 export const WRITEBACK_METRICS: WritebackMetric[] =

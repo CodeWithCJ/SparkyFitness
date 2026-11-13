@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import {
+  authorizationStatusFor,
   deleteObjects,
   queryWorkoutSamples,
   saveWorkoutSample,
@@ -175,6 +176,17 @@ export const buildWorkoutSave = (
   };
 };
 
+// HKAuthorizationStatus.sharingAuthorized; HealthKit reports share status
+// reliably (only read status is hidden).
+const SHARING_AUTHORIZED = 2;
+const isShareAuthorized = (type: SampleTypeIdentifierWriteable): boolean => {
+  try {
+    return authorizationStatusFor(type) === SHARING_AUTHORIZED;
+  } catch {
+    return false;
+  }
+};
+
 const exerciseKeysKey = (date: string): string =>
   `writebackExerciseKeys:${date}`;
 const exerciseSigKey = (date: string): string => `writebackExerciseSig:${date}`;
@@ -190,7 +202,7 @@ const hashString = (value: string): string => {
 };
 
 // Bump when what is written changes shape, so written days are rewritten once.
-const EXERCISE_WRITE_SCHEMA = 'workout-v2'; // v2: gym activities marked indoor
+const EXERCISE_WRITE_SCHEMA = 'workout-v3'; // v2: gym activities marked indoor
 
 /** Delete everything written for one session key, per type. Returns false if any delete failed. */
 const deleteByKey = async (key: string): Promise<boolean> => {
@@ -324,8 +336,22 @@ export const writeExerciseForDate = async (
     }
   }
 
+  // A session's marker (and sync identifier) carries its day, so a workout
+  // moved to another day is never deleted by the old day's worker after the
+  // new day saved it (dates run concurrently). Keys saved before carried no
+  // day; they are still in the tracked lists and are deleted as written.
+  writes = writes.map((write) => ({ ...write, key: `${write.key}@${date}` }));
+
+  // Energy and distance are attached only when sharing them is allowed; a
+  // single denied sample type fails the whole save. The grants are part of
+  // the signature, so a later grant rewrites the day with them.
+  const grantedTypes = exerciseWriteTypes().filter(isShareAuthorized);
   const signature = hashString(
-    [EXERCISE_WRITE_SCHEMA, ...exerciseWritesProjection(writes)].join('|')
+    [
+      EXERCISE_WRITE_SCHEMA,
+      `granted:${grantedTypes.join(',')}`,
+      ...exerciseWritesProjection(writes),
+    ].join('|')
   );
   if (
     signature === (await loadHealthPreference<string>(exerciseSigKey(date)))
@@ -334,6 +360,10 @@ export const writeExerciseForDate = async (
     return;
   }
 
+  // The stored signature stops describing Apple Health once anything below
+  // is deleted, so clear it first: a failed save then leaves the day to be
+  // rewritten next run instead of looking unchanged.
+  await saveHealthPreference(exerciseSigKey(date), null);
   const previous =
     (await loadHealthPreference<string[]>(exerciseKeysKey(date))) ?? [];
   const tracked = new Set<string>();
@@ -347,17 +377,22 @@ export const writeExerciseForDate = async (
 
   for (const write of writes) {
     const save = buildWorkoutSave(write, version, context.timezone);
+    const quantities = save.quantities.filter((q) =>
+      grantedTypes.includes(q.quantityType as SampleTypeIdentifierWriteable)
+    );
     try {
+      // Set before saving: a workout that lands while a later step fails must
+      // already be left out of the daily totals.
+      await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, true);
       await saveWorkoutSample(
         save.activityType as Parameters<typeof saveWorkoutSample>[0],
-        save.quantities,
+        quantities,
         save.start,
         save.end,
         undefined,
         save.metadata
       );
       tracked.add(write.key);
-      await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, true);
     } catch (error) {
       addLog(
         `[Writeback] Failed to save workout "${write.title}" for ${date}: ${message(error)}`,

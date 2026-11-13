@@ -25,7 +25,7 @@ patchedDependencies:
     hash: 70bad47148fa08de18f055300ad7be730dac10a17de1153dd4c4924238cab1ef
     path: patches/@bacons__apple-targets@4.0.7.patch
   '@kingstinct/react-native-healthkit@16.2.0':
-    hash: a582bd180f2622410a147ec64a181d31bb0e56954c82bc3bfed5f5d140f0797a
+    hash: bc06127d1a1d66e8cb9456e5ee5e221fcf1756c7013fd4174e118606255ac3a4
     path: patches/@kingstinct__react-native-healthkit@16.2.0.patch
   expo-camera@57.0.6:
     hash: db36e88db3337e6db970a437170dde6c6be1d6311d3ecfc91f93e63b255c10fa
@@ -399,7 +399,7 @@ importers:
         version: 5.2.14(06ee288e80dbb8c18a02e264c40c8c0d)
       '@kingstinct/react-native-healthkit':
         specifier: ^16.2.0
-        version: 16.2.0(patch_hash=a582bd180f2622410a147ec64a181d31bb0e56954c82bc3bfed5f5d140f0797a)(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+        version: 16.2.0(patch_hash=bc06127d1a1d66e8cb9456e5ee5e221fcf1756c7013fd4174e118606255ac3a4)(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       '@maplibre/maplibre-react-native':
         specifier: ^11.5.0
         version: 11.5.0(@types/geojson@7946.0.16)(@types/react@19.2.18)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -15582,7 +15582,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kingstinct/react-native-healthkit@16.2.0(patch_hash=a582bd180f2622410a147ec64a181d31bb0e56954c82bc3bfed5f5d140f0797a)(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)':
+  '@kingstinct/react-native-healthkit@16.2.0(patch_hash=bc06127d1a1d66e8cb9456e5ee5e221fcf1756c7013fd4174e118606255ac3a4)(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@react-native-healthkit/core': 16.2.0(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       react: 19.2.3

@@ -255,6 +255,26 @@ describe('writeExerciseForDate', () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
+  it('clears the signature before deleting, so a failed insert is retried', async () => {
+    await writeExerciseForDate(DAY, [walk()], 1, context());
+    expect(store[`writebackExerciseSig:${DAY}`]).toEqual(expect.any(String));
+    mockInsert.mockRejectedValueOnce(new Error('quota'));
+    await writeExerciseForDate(
+      DAY,
+      [walk({ distance: 3 })],
+      2,
+      context()
+    ).catch(() => {});
+    expect(mockDelete).toHaveBeenCalled();
+    expect(store[`writebackExerciseSig:${DAY}`]).toBeNull();
+  });
+
+  it('marks own writes for filtering before the first insert', async () => {
+    mockInsert.mockRejectedValueOnce(new Error('quota'));
+    await writeExerciseForDate(DAY, [walk()], 1, context()).catch(() => {});
+    expect(store.writebackExerciseFilterOwn).toBe(true);
+  });
+
   it('still writes the session when energy and distance were declined', async () => {
     await writeExerciseForDate(
       DAY,

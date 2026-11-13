@@ -361,6 +361,15 @@ export const writeExerciseForDate = async (
       byType[type].push(...records[type]);
   }
 
+  // The stored signature stops describing Health Connect once anything below
+  // is deleted, so clear it first: a failed insert then leaves the day to be
+  // rewritten next run instead of looking unchanged.
+  await saveHealthPreference(sigKey(date), null);
+  // Set before inserting: records that land while a later insert fails must
+  // already be left out of the daily totals.
+  if (writes.length > 0) {
+    await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, true);
+  }
   for (const type of EXERCISE_RECORD_TYPES) {
     const previous =
       (await loadHealthPreference<string[]>(idsKey(type, date))) ?? [];
@@ -388,8 +397,6 @@ export const writeExerciseForDate = async (
         .filter((id): id is string => id != null)
     );
   }
-  if (writes.length > 0)
-    await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, true);
   await saveHealthPreference(sigKey(date), signature);
   addLog(
     `[Writeback] Exercise ${date}: wrote ${writes.length} session(s)`,

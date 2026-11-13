@@ -1,5 +1,5 @@
 diff --git a/ios/WorkoutsModule.swift b/ios/WorkoutsModule.swift
-index 7ec89f173182c3f5914bb1af3928a4c3fb4da406..a35438591552ff97630437ab7caf6f8de0ba4b9b 100644
+index 7ec89f173182c3f5914bb1af3928a4c3fb4da406..01ffd808c68e1b2ead841fb42f1f865b844016a4 100644
 --- a/ios/WorkoutsModule.swift
 +++ b/ios/WorkoutsModule.swift
 @@ -35,6 +35,27 @@ func mapLocations(from locations: [LocationForSaving]) -> [CLLocation] {
@@ -56,7 +56,7 @@ index 7ec89f173182c3f5914bb1af3928a4c3fb4da406..a35438591552ff97630437ab7caf6f8d
          let type = try initializeQuantityType(quantity.quantityType.stringValue)
          let unitStr = quantity.unit
          let quantityVal = quantity.quantity
-@@ -131,8 +162,37 @@ class WorkoutsModule: HybridWorkoutsModuleSpec {
+@@ -131,8 +162,39 @@ class WorkoutsModule: HybridWorkoutsModuleSpec {
            quantity: quantity,
            start: quantityStart,
            end: quantityEnd,
@@ -68,8 +68,10 @@ index 7ec89f173182c3f5914bb1af3928a4c3fb4da406..a35438591552ff97630437ab7caf6f8d
 +      // SparkyFitness patch: iOS 17 deprecated the HKWorkout initialisers in
 +      // favour of HKWorkoutBuilder, which also works the totals out from the
 +      // samples (the initialiser path below took the LAST sample of a kind as
-+      // its total). The initialiser path stays for iOS 16.
-+      if #available(iOS 17.0, *) {
++      // its total). The initialiser path stays for iOS 16, and for callers that
++      // pass explicit totals, which only that path applies.
++      let hasTotals = (totals?.distance ?? 0) != 0 || (totals?.energyBurned ?? 0) != 0
++      if #available(iOS 17.0, *), !hasTotals {
 +        let configuration = HKWorkoutConfiguration()
 +        configuration.activityType = type
 +        if let indoor = metadataDeserialized?[HKMetadataKeyIndoorWorkout] as? Bool {

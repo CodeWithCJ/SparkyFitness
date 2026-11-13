@@ -1,4 +1,5 @@
 import {
+  authorizationStatusFor,
   deleteObjects,
   queryWorkoutSamples,
   saveWorkoutSample,
@@ -27,6 +28,7 @@ jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
 const mockSave = saveWorkoutSample as jest.Mock;
 const mockDelete = deleteObjects as jest.Mock;
 const mockQuery = queryWorkoutSamples as jest.Mock;
+const mockAuthStatus = authorizationStatusFor as jest.Mock;
 
 let store: Record<string, unknown> = {};
 beforeEach(() => {
@@ -44,6 +46,7 @@ beforeEach(() => {
   mockQuery.mockResolvedValue([]);
   mockSave.mockResolvedValue({ uuid: 'w1' });
   mockDelete.mockResolvedValue(1);
+  mockAuthStatus.mockReturnValue(2);
 });
 
 const DAY = '2026-06-01';
@@ -139,7 +142,7 @@ describe('writeExerciseForDate', () => {
     await writeExerciseForDate(DAY, [walk()], 1, context);
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(store[`writebackExerciseKeys:${DAY}`]).toEqual([
-      'sparky-exercise-individual-e1',
+      `sparky-exercise-individual-e1@${DAY}`,
     ]);
     expect(store.writebackExerciseFilterOwn).toBe(true);
   });
@@ -162,7 +165,7 @@ describe('writeExerciseForDate', () => {
       expect.objectContaining({
         metadata: {
           withMetadataKey: EXERCISE_WRITEBACK_METADATA_KEY,
-          value: 'sparky-exercise-individual-e1',
+          value: `sparky-exercise-individual-e1@${DAY}`,
         },
       })
     );
@@ -217,8 +220,55 @@ describe('writeExerciseForDate', () => {
     mockDelete.mockRejectedValue(new Error('nope'));
     await writeExerciseForDate(DAY, [], 2, context);
     expect(store[`writebackExerciseKeys:${DAY}`]).toEqual([
-      'sparky-exercise-individual-e1',
+      `sparky-exercise-individual-e1@${DAY}`,
     ]);
+  });
+  it('leaves out a quantity whose sharing is denied and rewrites once granted', async () => {
+    mockAuthStatus.mockImplementation((type: string) =>
+      type === 'HKQuantityTypeIdentifierActiveEnergyBurned' ? 1 : 2
+    );
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    const types = (mockSave.mock.calls[0][1] as { quantityType: string }[]).map(
+      (q) => q.quantityType
+    );
+    expect(types).not.toContain('HKQuantityTypeIdentifierActiveEnergyBurned');
+    expect(types).toContain('HKQuantityTypeIdentifierDistanceWalkingRunning');
+
+    mockSave.mockClear();
+    mockAuthStatus.mockReturnValue(2);
+    await writeExerciseForDate(DAY, [walk()], 2, context);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('scopes the marker to the day, so a move never deletes the new copy', async () => {
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(store[`writebackExerciseKeys:${DAY}`]).toEqual([
+      `sparky-exercise-individual-e1@${DAY}`,
+    ]);
+    await writeExerciseForDate(
+      '2026-06-02',
+      [walk({ entry_date: '2026-06-02' })],
+      1,
+      context
+    );
+    expect(store['writebackExerciseKeys:2026-06-02']).toEqual([
+      'sparky-exercise-individual-e1@2026-06-02',
+    ]);
+  });
+
+  it('clears the signature before deleting, so a failed save is retried', async () => {
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(store[`writebackExerciseSig:${DAY}`]).toEqual(expect.any(String));
+    mockSave.mockRejectedValue(new Error('locked'));
+    await writeExerciseForDate(DAY, [walk({ distance: 3 })], 2, context);
+    expect(mockDelete).toHaveBeenCalled();
+    expect(store[`writebackExerciseSig:${DAY}`]).toBeNull();
+  });
+
+  it('marks own writes for filtering before the save is attempted', async () => {
+    mockSave.mockRejectedValue(new Error('locked'));
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(store.writebackExerciseFilterOwn).toBe(true);
   });
 });
 

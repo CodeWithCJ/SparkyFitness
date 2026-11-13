@@ -1074,7 +1074,8 @@
     "permissionDenied": {
       "title": "Permission Denied",
       "read": "Please grant {{metric}} permission in {{settings}}.",
-      "write": "Please grant {{metric}} write permission in {{settings}}."
+      "write": "Please grant {{metric}} write permission in {{settings}}.",
+      "writeRequired": "Please grant the permissions {{metric}} needs in {{settings}}."
     },
     "removal": {
       "removed": "Removed",

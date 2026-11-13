@@ -3667,6 +3667,52 @@ describe('daily totals leave out exercise write-back records (#1750)', () => {
     expect(result).toEqual([]);
   });
 
+  test('finds an app hidden behind this app by priority deduplication', async () => {
+    await saveHealthPreference('writebackExerciseFilterOwn', true);
+    answer(300, 200, ['com.sparky.app']);
+    const ownStart = '2024-01-15T08:00:00.000Z';
+    mockReadRecords.mockImplementation(
+      async (
+        _recordType: string,
+        options: {
+          dataOriginFilter?: string[];
+          timeRangeFilter?: { startTime?: string };
+        }
+      ) => {
+        if (options.dataOriginFilter?.includes('com.sparky.app')) {
+          return {
+            records: [
+              {
+                startTime: ownStart,
+                endTime: '2024-01-15T08:30:00.000Z',
+                metadata: { dataOrigin: 'com.sparky.app' },
+              },
+            ],
+          };
+        }
+        if (options.timeRangeFilter?.startTime === ownStart) {
+          return {
+            records: [
+              { metadata: { dataOrigin: 'com.sparky.app' } },
+              { metadata: { dataOrigin: 'com.watch.app' } },
+            ],
+          };
+        }
+        return offsetlessProbeResult();
+      }
+    );
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result[0].value).toBe(200);
+    expect(activeCalls()[1]).toMatchObject({
+      dataOriginFilter: ['com.watch.app'],
+    });
+  });
+
   test('drops written sessions before enrichment', async () => {
     const result = await enrichExerciseSessions(
       [
