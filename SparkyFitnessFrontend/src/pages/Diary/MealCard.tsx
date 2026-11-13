@@ -116,6 +116,15 @@ const DEFAULT_MEAL_ICON_STYLE = {
     'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
 };
 
+// Own keys only, so a meal named e.g. "constructor" never resolves to an
+// Object.prototype member.
+const mealIconStyleFor = (key: string) => {
+  const normalized = key.toLowerCase();
+  return Object.hasOwn(MEAL_ICON_STYLES, normalized)
+    ? MEAL_ICON_STYLES[normalized]
+    : undefined;
+};
+
 interface MealCardProps {
   meal: {
     name: string;
@@ -201,8 +210,8 @@ const MealCard = ({
       : t('common.kJUnit', 'kJ');
   };
   const mealIconStyle =
-    MEAL_ICON_STYLES[meal.type.toLowerCase()] ??
-    MEAL_ICON_STYLES[meal.name.toLowerCase()] ??
+    mealIconStyleFor(meal.type) ??
+    mealIconStyleFor(meal.name) ??
     DEFAULT_MEAL_ICON_STYLE;
   const MealIcon = mealIconStyle.Icon;
   const mealStartTime = meal.defaultTime
