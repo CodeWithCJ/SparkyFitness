@@ -61,6 +61,7 @@ import {
   type ActiveWorkoutMetricColumn,
 } from '../stores/appPreferencesStore';
 import {
+  alignPreviousSets,
   plateTargetKg,
   resolveSnapshotModality,
 } from '../utils/workoutSession';
@@ -218,6 +219,11 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     verifiedSourcePresetId
   );
   const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
+  // Warm-ups pair with last time's warm-ups, working sets with its working sets.
+  const previousSets = useMemo(
+    () => alignPreviousSets(exercise.sets, previousSessionSets),
+    [exercise.sets, previousSessionSets]
+  );
   const progressionResult = useLiveProgression(
     exercise,
     previousSessionSets,
@@ -468,6 +474,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         exercise={exercise}
         weightUnit={weightUnit}
         assumedSetValues={assumedSetValues}
+        previousSets={previousSets}
         {...setEditorProps}
       />
     </View>
