@@ -78,7 +78,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { returnKey, replaceFor } = route.params;
+  const { returnKey, replaceFor, focusStyle } = route.params;
   const { t } = useTranslation();
 
   const queryClient = useQueryClient();
@@ -897,6 +897,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
         onSelect={handleSelectAlternative}
         onPreview={handlePreviewAlternative}
         onSearchAll={() => setActiveTab('search')}
+        cards={focusStyle}
       />
     );
   };

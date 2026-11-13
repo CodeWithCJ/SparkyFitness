@@ -400,6 +400,8 @@ export type RootStackParamList = {
     returnKey: string;
     /** Set when replacing an exercise: opens on ranked alternatives. */
     replaceFor?: ExerciseReplaceContext;
+    /** Opened from the focus view: draws the suggestions as the Replace page's cards. */
+    focusStyle?: boolean;
   };
   PresetSearch:
     { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
