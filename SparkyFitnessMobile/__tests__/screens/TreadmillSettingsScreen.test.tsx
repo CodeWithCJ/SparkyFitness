@@ -186,6 +186,12 @@ describe('treadmill correction', () => {
       true
     );
     expect(screen.getByLabelText('Percent the treadmill is off')).toBeTruthy();
+    // No percent yet: the summary asks for one instead of reading About right.
+    expect(
+      screen.getByText('Shows more than you ran. Enter by how much.')
+    ).toBeTruthy();
+    expect(screen.queryByText('About right. Nothing is changed.')).toBeNull();
+    expect(screen.getByText(/Enter how far off it is, up to 25%/)).toBeTruthy();
   });
 
   it('stores a display that shows more as a positive percent and previews it', () => {

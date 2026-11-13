@@ -41,6 +41,7 @@ import {
 import {
   clampTreadmillPercent,
   correctTreadmillDistance,
+  MAX_TREADMILL_PERCENT,
 } from '../utils/treadmillCorrection';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -336,20 +337,30 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
     enabled: true,
     percent: activePercent,
   });
+  // Follows the choice on screen: More or Less with no percent yet asks for
+  // one rather than reading "About right".
   const treadmillSummary =
-    activePercent === 0
+    reading === 'right'
       ? t('treadmillSettings.treadmillSummaryOff', {
           defaultValue: 'About right. Nothing is changed.',
         })
-      : activePercent > 0
-        ? t('treadmillSettings.treadmillSummaryLong', {
-            defaultValue: 'Shows {{percent}} more than you ran',
-            percent: unsignedPercent(activePercent),
-          })
-        : t('treadmillSettings.treadmillSummaryShort', {
-            defaultValue: 'Shows {{percent}} less than you ran',
-            percent: unsignedPercent(activePercent),
-          });
+      : activePercent === 0
+        ? reading === 'long'
+          ? t('treadmillSettings.treadmillSummaryLongUnset', {
+              defaultValue: 'Shows more than you ran. Enter by how much.',
+            })
+          : t('treadmillSettings.treadmillSummaryShortUnset', {
+              defaultValue: 'Shows less than you ran. Enter by how much.',
+            })
+        : activePercent > 0
+          ? t('treadmillSettings.treadmillSummaryLong', {
+              defaultValue: 'Shows {{percent}} more than you ran',
+              percent: unsignedPercent(activePercent),
+            })
+          : t('treadmillSettings.treadmillSummaryShort', {
+              defaultValue: 'Shows {{percent}} less than you ran',
+              percent: unsignedPercent(activePercent),
+            });
 
   const [checkActivity, setCheckActivity] = useState<StepActivity>('run');
   const checkTreadmill = () => {
@@ -638,7 +649,15 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
                 unit: unitLabel,
               })}
             </Text>
-          ) : null}
+          ) : (
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('treadmillSettings.previewNone', {
+                defaultValue:
+                  'Enter how far off it is, up to {{max}}%. At 0 nothing is changed.',
+                max: MAX_TREADMILL_PERCENT,
+              })}
+            </Text>
+          )}
         </>
       ) : null}
 
