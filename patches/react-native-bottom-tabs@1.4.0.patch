@@ -1,9 +1,9 @@
 diff --git a/ios/ProminentTab.swift b/ios/ProminentTab.swift
 new file mode 100644
-index 0000000..ae026b0
+index 0000000..1111111
 --- /dev/null
 +++ b/ios/ProminentTab.swift
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,164 @@
 +import SwiftUI
 +
 +#if !os(macOS)
@@ -26,8 +26,17 @@ index 0000000..ae026b0
 +      #endif
 +    }
 +
-+    static func apply(props: TabViewProps, tabController: UITabBarController) {
++    static func apply(
++      props: TabViewProps, tabController: UITabBarController, onAdd: @escaping (String) -> Void
++    ) {
 +      guard isSupported, #available(iOS 18.0, *) else { return }
++      let addItem = props.items.first { $0.role == .search }
++      SideAddButton.update(
++        controller: tabController,
++        addKey: addItem?.key,
++        title: addItem?.title,
++        onAdd: onAdd)
++
 +      let title = props.filteredItems.first { $0.role == .search }?.title
 +      guard let title else { return }
 +
@@ -47,7 +56,116 @@ index 0000000..ae026b0
 +#else
 +  enum ProminentTab {
 +    static var isSupported: Bool { false }
-+    static func apply(props: TabViewProps, tabController: Any) {}
++    static func apply(props: TabViewProps, tabController: Any, onAdd: @escaping (String) -> Void) {}
++  }
++#endif
++
++#if !os(macOS)
++  /// The system cannot keep its detached Add button in a vertical bar (it lands
++  /// on the last tab after a pushed screen closes), so in a vertical bar the Add
++  /// tab is hidden and this glass button is drawn above the tab pill instead.
++  /// It is laid out from the pill's real frame, not a fixed offset.
++  final class SideAddHost: UIView {
++    static let size: CGFloat = 49
++    static let gap: CGFloat = 8
++    var addKey: String?
++    /// The Add tab's own (translated) title, used as the button's accessibility label.
++    var addTitle: String? {
++      didSet { button.accessibilityLabel = addTitle ?? "Add" }
++    }
++    weak var controller: UITabBarController?
++    var onAdd: ((String) -> Void)?
++    private let glass = UIVisualEffectView(effect: nil)
++    private let button = UIButton(type: .system)
++
++    override init(frame: CGRect) {
++      super.init(frame: frame)
++      autoresizingMask = [.flexibleWidth, .flexibleHeight]
++      backgroundColor = .clear
++      if #available(iOS 26.0, *) {
++        let effect = UIGlassEffect()
++        effect.isInteractive = true
++        glass.effect = effect
++      }
++      glass.clipsToBounds = true
++      glass.layer.cornerRadius = Self.size / 2
++      glass.layer.cornerCurve = .continuous
++      glass.isUserInteractionEnabled = true
++      let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
++      button.setImage(UIImage(systemName: "plus", withConfiguration: config), for: .normal)
++      button.tintColor = .label
++      button.accessibilityLabel = "Add"
++      button.addTarget(self, action: #selector(tapped), for: .touchUpInside)
++      glass.contentView.addSubview(button)
++      addSubview(glass)
++    }
++    required init?(coder: NSCoder) { fatalError() }
++
++    @objc private func tapped() { if let k = addKey { onAdd?(k) } }
++
++    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
++      let v = super.hitTest(point, with: event)
++      return v === self ? nil : v
++    }
++
++    /// The tab pill: the tall narrow view in the bar's column with the lowest bottom.
++    private func pillFrame() -> CGRect? {
++      guard let root = superview, let bar = controller?.tabBar else { return nil }
++      // Only views inside the tab bar's own column count; other tall, narrow
++      // views (cards, buttons in the page) must not be mistaken for the pill.
++      let column = bar.convert(bar.bounds, to: root)
++      var best: CGRect?
++      func walk(_ v: UIView) {
++        if v === self { return }
++        let f = v.convert(v.bounds, to: root)
++        if f.width > 40, f.width < 90, f.height > 120, f.height < root.bounds.height * 0.8,
++          !v.isHidden, v.alpha > 0.01, f.midX >= column.minX, f.midX <= column.maxX
++        {
++          if best == nil || f.maxY > best!.maxY { best = f }
++        }
++        v.subviews.forEach(walk)
++      }
++      root.subviews.forEach(walk)
++      return best
++    }
++
++    override func layoutSubviews() {
++      super.layoutSubviews()
++      guard let root = superview else { return }
++      let barBounds = controller?.tabBar.bounds ?? .zero
++      let vertical = barBounds.height > barBounds.width
++      glass.isHidden = !vertical
++      if !vertical { return }
++      let s = Self.size
++      let pill = pillFrame()
++      let midX = pill?.midX ?? root.bounds.maxX - 48
++      let bottomY = (pill?.minY ?? root.bounds.maxY - 24 - 213) - Self.gap
++      glass.frame = CGRect(x: midX - s / 2, y: max(0, bottomY - s), width: s, height: s)
++      button.frame = glass.bounds
++    }
++  }
++
++  enum SideAddButton {
++    static func update(
++      controller: UITabBarController, addKey: String?, title: String?,
++      onAdd: @escaping (String) -> Void
++    ) {
++      let bar = controller.tabBar
++      let existing = controller.view.subviews.compactMap { $0 as? SideAddHost }.first
++      guard addKey != nil else { existing?.removeFromSuperview(); return }
++      let host = existing ?? {
++        let h = SideAddHost(frame: controller.view.bounds)
++        controller.view.addSubview(h)
++        return h
++      }()
++      host.addKey = addKey
++      host.addTitle = title
++      host.controller = controller
++      host.onAdd = onAdd
++      controller.view.bringSubviewToFront(host)
++      host.setNeedsLayout()
++      DispatchQueue.main.async { host.setNeedsLayout() }
++    }
 +  }
 +#endif
 diff --git a/ios/TabView/NewTabView.swift b/ios/TabView/NewTabView.swift
@@ -86,7 +204,7 @@ index 68053e1..df8cba5 100644
            tabBar = tabController
          #else
            tabBar = tabController.tabBar
-+          ProminentTab.apply(props: props, tabController: tabController)
++          ProminentTab.apply(props: props, tabController: tabController, onAdd: onSelect)
            updateTabBarAppearance(props: props, tabBar: tabController.tabBar)
            updateTabBarItemImages(props: props, tabBar: tabController.tabBar)
            if !props.tabBarHidden {

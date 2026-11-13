@@ -27,7 +27,7 @@
       },
       "ios": {
         "resourceClass": "medium",
-        "image": "macos-tahoe-26.6-xcode-27.0"
+        "image": "macos-tahoe-26.6-xcode-27.2"
       }
     },
     "wearos": {

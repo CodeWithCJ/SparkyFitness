@@ -43,12 +43,18 @@ interface ActiveWorkoutHeaderProps {
   onOpenSettings?: () => void;
   /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
+  /** Side-bar poses: the screen draws back and menu itself, in the strip. */
+  buttonsInStrip?: boolean;
+  /** The header publishes its menu opener here for the strip's menu button. */
+  openMenuRef?: React.MutableRefObject<(() => void) | null>;
+  /** The header sits in the top status row, beside the clock and Wi-Fi cluster. */
+  inStatusRow?: boolean;
 }
 
 /**
  * Header action button. With Liquid Glass active it floats on its own round
  * glass surface, matching the native iOS 26 bar buttons every native-header
- * screen gets; otherwise it stays a flat pressable icon.
+ * screen gets (49 pt, measured on App Settings' back button); otherwise it stays a flat pressable icon.
  */
 function HeaderIconButton({
   icon,
@@ -72,10 +78,10 @@ function HeaderIconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className={
-        usesGlass ? 'h-[38px] w-[38px] items-center justify-center' : 'p-2'
+        usesGlass ? 'h-[49px] w-[49px] items-center justify-center' : 'p-2'
       }
     >
-      <Icon name={icon} size={22} color={color} />
+      <Icon name={icon} size={usesGlass ? 24 : 22} color={color} />
     </Pressable>
   );
 
@@ -90,6 +96,53 @@ function HeaderIconButton({
     >
       {button}
     </LiquidGlassSurface>
+  );
+}
+
+// Status row geometry on the Duo's tall inner pose: the clock and Wi-Fi cluster
+// are centred ~48 pt down and span the last ~120 pt of the row (measured).
+const STATUS_ROW_TOP_PAD = 24;
+const STATUS_CLUSTER_WIDTH = 120;
+
+/**
+ * Back and menu buttons stacked for the status strip (side-bar poses).
+ */
+export function ActiveWorkoutStripButtons({
+  onBack,
+  onMenu,
+}: {
+  onBack: () => void;
+  onMenu: () => void;
+}) {
+  const { t } = useTranslation();
+  const [textPrimary, chromeBorder] = useCSSVariable([
+    '--color-text-primary',
+    '--color-chrome-border',
+  ]) as [string, string];
+  const usesGlass = useNativeIOSTabsActive();
+  return (
+    <View className="items-center gap-2 pb-2">
+      <HeaderIconButton
+        icon="chevron-back"
+        color={textPrimary}
+        usesGlass={usesGlass}
+        chromeBorder={chromeBorder}
+        onPress={onBack}
+        accessibilityLabel={t('activeWorkout.header.back', {
+          defaultValue: 'Back',
+        })}
+      />
+      <HeaderIconButton
+        icon="ellipsis-horizontal"
+        color={textPrimary}
+        usesGlass={usesGlass}
+        chromeBorder={chromeBorder}
+        onPress={onMenu}
+        accessibilityLabel={t('activeWorkout.header.menu', {
+          defaultValue: 'Workout menu',
+        })}
+      />
+    </View>
   );
 }
 
@@ -133,6 +186,9 @@ function ActiveWorkoutHeader({
   onReorder,
   onOpenSettings,
   onClearAllSets,
+  buttonsInStrip = false,
+  openMenuRef,
+  inStatusRow = false,
 }: ActiveWorkoutHeaderProps) {
   const { t } = useTranslation();
   const [
@@ -154,6 +210,9 @@ function ActiveWorkoutHeader({
 
   const menuSheetRef = useRef<ActionSheetRef>(null);
   const openMenu = () => menuSheetRef.current?.present();
+  React.useEffect(() => {
+    if (openMenuRef) openMenuRef.current = openMenu;
+  });
 
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets
@@ -259,18 +318,26 @@ function ActiveWorkoutHeader({
   });
 
   return (
-    <View className="px-3 pb-2 border-b border-border-subtle bg-background">
-      <View className="flex-row items-center">
-        <HeaderIconButton
-          icon="chevron-back"
-          color={textPrimary}
-          usesGlass={usesGlass}
-          chromeBorder={chromeBorder}
-          onPress={onBack}
-          accessibilityLabel={t('activeWorkout.header.back', {
-            defaultValue: 'Back',
-          })}
-        />
+    <View
+      className="px-3 pb-2 border-b border-border-subtle bg-background"
+      style={inStatusRow ? { paddingTop: STATUS_ROW_TOP_PAD } : undefined}
+    >
+      <View
+        className="flex-row items-center"
+        style={inStatusRow ? { marginRight: STATUS_CLUSTER_WIDTH } : undefined}
+      >
+        {!buttonsInStrip && (
+          <HeaderIconButton
+            icon="chevron-back"
+            color={textPrimary}
+            usesGlass={usesGlass}
+            chromeBorder={chromeBorder}
+            onPress={onBack}
+            accessibilityLabel={t('activeWorkout.header.back', {
+              defaultValue: 'Back',
+            })}
+          />
+        )}
 
         <View className="flex-1 items-center">
           <Text
@@ -308,16 +375,18 @@ function ActiveWorkoutHeader({
 
         {/* Glass chrome is monochrome (see resolveHeaderActionColors), so the
             kebab takes the primary tint on that path. */}
-        <HeaderIconButton
-          icon="ellipsis-horizontal"
-          color={usesGlass ? textPrimary : textMuted}
-          usesGlass={usesGlass}
-          chromeBorder={chromeBorder}
-          onPress={openMenu}
-          accessibilityLabel={t('activeWorkout.header.menu', {
-            defaultValue: 'Workout menu',
-          })}
-        />
+        {!buttonsInStrip && (
+          <HeaderIconButton
+            icon="ellipsis-horizontal"
+            color={usesGlass ? textPrimary : textMuted}
+            usesGlass={usesGlass}
+            chromeBorder={chromeBorder}
+            onPress={openMenu}
+            accessibilityLabel={t('activeWorkout.header.menu', {
+              defaultValue: 'Workout menu',
+            })}
+          />
+        )}
       </View>
 
       {!progressInSubtitle && (
