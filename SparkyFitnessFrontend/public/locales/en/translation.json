@@ -6753,6 +6753,11 @@
     "hub": "Cycle & Pregnancy Hub",
     "pregnancyHub": "Pregnancy Hub",
     "hubSubtitle": "Track, understand, and sync with your body.",
+    "off": {
+      "title": "{{name}} is turned off",
+      "description": "Your history is kept. Turn it back on to see it here again.",
+      "turnOn": "Turn on"
+    },
     "tabs": {
       "today": "Today",
       "calendar": "Calendar",
