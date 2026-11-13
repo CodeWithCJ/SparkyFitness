@@ -3226,6 +3226,7 @@
     "preferenceSettings": {
       "mmDdYyyy1225": "MM/dd/yyyy (12/25/2024)",
       "ddMMYyyy2512": "dd/MM/yyyy (25/12/2024)",
+      "ddMMDotYyyy2512": "dd.MM.yyyy (25.12.2024)",
       "ddMMMYyyy25Dec": "dd-MMM-yyyy (25-Dec-2024)",
       "yyyyMMDd202412": "yyyy-MM-dd (2024-12-25)",
       "mmmDdYyyyDec25": "MMM dd, yyyy (Dec 25, 2024)",
@@ -6701,6 +6702,7 @@
       "selectFormat": "Select format",
       "mmDdYyyy1225": "MM/dd/yyyy (12/25/2024)",
       "ddMMYyyy2512": "dd/MM/yyyy (25/12/2024)",
+      "ddMMDotYyyy2512": "dd.MM.yyyy (25.12.2024)",
       "ddMMMYyyy25Dec": "dd-MMM-yyyy (25-Dec-2024)",
       "yyyyMMDd202412": "yyyy-MM-dd (2024-12-25)",
       "mmmDdYyyyDec25": "MMM dd, yyyy (Dec 25, 2024)",
