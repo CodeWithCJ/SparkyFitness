@@ -11,6 +11,7 @@ import { useCSSVariable } from 'uniwind';
 import {
   DEFAULT_WARMUP_PLATE_ROUNDING,
   isBodyweightModality,
+  type ExerciseRecentSessionSet,
 } from '@workspace/shared';
 import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
@@ -39,11 +40,13 @@ import {
 import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import {
   buildWorkingSetNumbers,
+  formatRecentSessionSet,
   getRpeTone,
   isDurationModality,
   isMetricClampedToRpe,
   isWeightDistanceModality,
   isWeightDurationModality,
+  previousSetFillPatch,
   quantizeSetWeightKg,
   resolveSnapshotModality,
   setDistanceUnitLabel,
@@ -76,6 +79,12 @@ interface Props {
    * `exercise.sets`; from `resolveLiveAssumedSetValues`, as in the list.
    */
   assumedSetValues?: (AssumedSetValues | null)[] | null;
+  /**
+   * Last session's sets paired with `exercise.sets` by position (see
+   * `alignPreviousSets`): the Previous column, and what tapping it fills.
+   * Omit to hide the column.
+   */
+  previousSets?: (ExerciseRecentSessionSet | undefined)[];
   onCompleteSet: (setId: string) => void;
   onUncomplete: (setId: string) => void;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
@@ -170,6 +179,8 @@ function useStepperField({
 
   return {
     flush,
+    /** Drops the typed draft, e.g. when a fill has just committed the field. */
+    reset: () => setDraft(null),
     inputProps: {
       value: draft ?? (value != null ? format(value) : ''),
       onChangeText: setDraft,
@@ -187,6 +198,8 @@ interface FocusSetRowProps {
   renderKey: string;
   modality: ReturnType<typeof resolveSnapshotModality>;
   assumed: AssumedSetValues | null;
+  /** This set's counterpart last session; null shows a dash, undefined hides the column. */
+  previousSet?: ExerciseRecentSessionSet | null;
   state: 'done' | 'current' | 'upcoming';
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
@@ -222,6 +235,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   renderKey,
   modality,
   assumed,
+  previousSet,
   state,
   metricColumn,
   weightUnit,
@@ -321,6 +335,19 @@ const FocusSetRow = React.memo(function FocusSetRow({
     onCompleteSet(setId);
   };
 
+  // Tapping Previous writes last session's values, replacing what the row
+  // holds; a typed draft for a filled field is dropped so it cannot overwrite
+  // the fill on blur.
+  const canFillFromPrevious = previousSet != null;
+  const handleFillFromPrevious = () => {
+    if (previousSet == null) return;
+    const patch = previousSetFillPatch(previousSet, modality);
+    if (Object.keys(patch).length === 0) return;
+    if (patch.weight != null) weight.reset();
+    if (patch.reps != null) reps.reset();
+    onCommitField(setId, patch);
+  };
+
   const firstField = showWeight ? 'weight' : 'reps';
   const handleAdvance = () => {
     if (nextSetKey != null) onActivateSet(nextSetKey, firstField);
@@ -412,16 +439,16 @@ const FocusSetRow = React.memo(function FocusSetRow({
         setNumber,
       });
 
+  const longPress = onToggleSetDetail
+    ? () => onToggleSetDetail(renderKey)
+    : onDeleteSet
+      ? () => onDeleteSet(setId)
+      : undefined;
+
   return (
     <Pressable
       testID="focus-set-row"
-      onLongPress={
-        onToggleSetDetail
-          ? () => onToggleSetDetail(renderKey)
-          : onDeleteSet
-            ? () => onDeleteSet(setId)
-            : undefined
-      }
+      onLongPress={longPress}
       accessibilityLabel={
         onDeleteSet && !onToggleSetDetail
           ? t('activeWorkout.setRow.delete', {
@@ -454,6 +481,36 @@ const FocusSetRow = React.memo(function FocusSetRow({
           setIndicator
         )}
       </View>
+      {previousSet !== undefined && (
+        <Pressable
+          onPress={handleFillFromPrevious}
+          onLongPress={longPress}
+          disabled={!canFillFromPrevious}
+          accessibilityRole={canFillFromPrevious ? 'button' : undefined}
+          accessibilityLabel={
+            canFillFromPrevious
+              ? t('activeWorkout.setRow.fillFromPrevious', {
+                  defaultValue: 'Fill set {{setNumber}} from previous',
+                  setNumber,
+                })
+              : undefined
+          }
+          className="min-h-11 w-16 items-center justify-center"
+          style={isDone ? { opacity: 0.62 } : undefined}
+        >
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            className="text-center text-xs text-text-secondary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {previousSet != null
+              ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
+              : '-'}
+          </Text>
+        </Pressable>
+      )}
       {/* Done rows recede; the completion check sits outside this wrapper so
           its green stays vivid. */}
       <View
@@ -584,6 +641,7 @@ function ActiveWorkoutFocusSets({
   weightUnit,
   distanceUnit,
   assumedSetValues,
+  previousSets,
   onCompleteSet,
   onUncomplete,
   onCommitField,
@@ -696,6 +754,11 @@ function ActiveWorkoutFocusSets({
       {stepperRows && (
         <View className="flex-row items-center gap-2 px-2 pb-1">
           <View className="w-9" />
+          {previousSets != null && (
+            <Text className={`w-16 ${headerClass}`}>
+              {t('workout.prev', { defaultValue: 'Prev' })}
+            </Text>
+          )}
           <View className="flex-1 flex-row items-center gap-2">
             {modality !== 'reps_only' && (
               <Text className={`flex-[3] ${headerClass}`}>
@@ -722,6 +785,13 @@ function ActiveWorkoutFocusSets({
           <Text className={`w-9 ${headerClass}`}>
             {t('workout.set', { defaultValue: 'Set' })}
           </Text>
+          {previousSets != null && (
+            <Text
+              className={`${isDurationModality(modality) ? 'flex-1' : 'w-20'} ${headerClass}`}
+            >
+              {t('workout.prev', { defaultValue: 'Prev' })}
+            </Text>
+          )}
           {isDurationModality(modality) ? (
             <>
               <Text className={`flex-1 ${headerClass}`}>
@@ -763,6 +833,10 @@ function ActiveWorkoutFocusSets({
             ? 'current'
             : 'upcoming';
         const assumed = assumedSetValues?.[index] ?? null;
+        // null shows a dash for a set with no counterpart; undefined (no
+        // `previousSets`) hides the column.
+        const previousSet =
+          previousSets != null ? (previousSets[index] ?? null) : undefined;
         const row = stepperRows ? (
           <FocusSetRow
             key={renderKey}
@@ -771,6 +845,7 @@ function ActiveWorkoutFocusSets({
             renderKey={renderKey}
             modality={modality}
             assumed={assumed}
+            previousSet={previousSet}
             state={state}
             metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
@@ -805,6 +880,7 @@ function ActiveWorkoutFocusSets({
             metricColumn={metricColumn === 'rir' ? 'rir' : 'rpe'}
             weightUnit={weightUnit}
             assumed={assumed}
+            previousSet={previousSet}
             onComplete={onCompleteSet}
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}

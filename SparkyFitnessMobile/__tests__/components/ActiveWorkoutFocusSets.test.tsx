@@ -6,6 +6,7 @@ import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
 } from '../../src/stores/appPreferencesStore';
+import type { ExerciseRecentSessionSet } from '@workspace/shared';
 import type {
   AssumedSetValues,
   WorkoutCardExercise,
@@ -68,6 +69,7 @@ interface RenderOptions {
   weightUnit?: 'kg' | 'lbs';
   metricColumn?: 'rpe' | 'rir' | 'volume';
   assumed?: (AssumedSetValues | null)[];
+  previousSets?: (ExerciseRecentSessionSet | undefined)[];
   withDelete?: boolean;
   focusedSetKey?: string | null;
   focusedField?: 'weight' | 'reps' | 'distance' | 'rpe';
@@ -104,6 +106,7 @@ function renderSets(options: RenderOptions = {}) {
       weightUnit={options.weightUnit ?? 'kg'}
       distanceUnit="km"
       assumedSetValues={options.assumed}
+      previousSets={options.previousSets}
       focusedSetKey={options.focusedSetKey ?? null}
       focusedField={options.focusedField ?? 'weight'}
       {...rest}
@@ -705,5 +708,121 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(queryByTestId('focus-set-row')).toBeNull();
     expect(queryByLabelText('Increase weight for set 1')).toBeNull();
     expect(queryByTestId('set-row')).toBeTruthy();
+  });
+
+  describe('Previous column', () => {
+    const prev = (
+      overrides?: Partial<ExerciseRecentSessionSet>
+    ): ExerciseRecentSessionSet => ({
+      setNumber: 1,
+      setType: 'normal',
+      weight: 80,
+      reps: 8,
+      ...overrides,
+    });
+
+    it('shows no Previous column without previousSets', () => {
+      const { queryByText, queryByLabelText } = renderSets();
+      expect(queryByText('Prev')).toBeNull();
+      expect(queryByLabelText('Fill set 1 from previous')).toBeNull();
+    });
+
+    it('shows last session per set, and a dash when a set has no counterpart', () => {
+      const { getByText, queryByLabelText } = renderSets({
+        sets: [
+          makeSet(),
+          makeSet({ id: 102, set_number: 2, weight: 62.5, reps: 8 }),
+        ],
+        previousSets: [prev(), undefined],
+      });
+      expect(getByText('Prev')).toBeTruthy();
+      expect(getByText('80 × 8')).toBeTruthy();
+      expect(getByText('-')).toBeTruthy();
+      expect(queryByLabelText('Fill set 2 from previous')).toBeNull();
+    });
+
+    it('fills weight and reps from the previous session on tap', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        previousSets: [prev()],
+      });
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+        reps: 8,
+      });
+    });
+
+    it('fills only the fields the previous set has', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        previousSets: [prev({ reps: null })],
+      });
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
+    });
+
+    it('does not let a typed draft overwrite the fill on blur', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        previousSets: [prev()],
+      });
+      const input = getByLabelText('Weight for set 1');
+      fireEvent.changeText(input, '70');
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      fireEvent(input, 'blur');
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+        reps: 8,
+      });
+    });
+
+    it('long-pressing the Previous cell opens the set detail like the row', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        previousSets: [prev()],
+        withDetail: true,
+      });
+      fireEvent(getByLabelText('Fill set 1 from previous'), 'longPress');
+      expect(callbacks.onToggleSetDetail).toHaveBeenCalledWith('key-101');
+    });
+
+    it('adds the Previous column to the list-row fallback tables and fills duration', () => {
+      const { getByText, getByLabelText, callbacks } = renderSets({
+        modality: 'duration',
+        sets: [makeSet({ weight: null, reps: null, duration: null })],
+        previousSets: [prev({ weight: null, reps: null, duration: 45 })],
+      });
+      expect(getByText('Prev')).toBeTruthy();
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        duration: 45,
+      });
+    });
+  });
+
+  it('edits the distance of a multi-set cardio table in the focus fallback rows', () => {
+    const { getByText, getAllByLabelText, callbacks } = renderSets({
+      modality: 'duration_distance',
+      sets: [
+        makeSet({ weight: null, reps: null, duration: 600, distance: null }),
+        makeSet({
+          id: 102,
+          set_number: 2,
+          weight: null,
+          reps: null,
+          duration: 600,
+          distance: null,
+        }),
+      ],
+    });
+    expect(getByText('Sec')).toBeTruthy();
+    expect(getByText('km')).toBeTruthy();
+    const [first] = getAllByLabelText('Distance');
+    fireEvent.changeText(first, '2.5');
+    fireEvent(first, 'blur');
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      distance: 2.5,
+    });
   });
 });

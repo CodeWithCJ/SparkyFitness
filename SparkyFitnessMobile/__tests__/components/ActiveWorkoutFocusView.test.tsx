@@ -97,8 +97,13 @@ jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ exercise }: any) => (
-      <Text testID="focus-sets">{`sets:${exercise.id}`}</Text>
+    default: ({ exercise, previousSets }: any) => (
+      <>
+        <Text testID="focus-sets">{`sets:${exercise.id}`}</Text>
+        <Text testID="focus-previous-sets">
+          {JSON.stringify(previousSets?.map((p: any) => p?.weight ?? null))}
+        </Text>
+      </>
     ),
   };
 });
@@ -448,6 +453,27 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('a'));
     expect(screen.getByText('Plan: 2 × 12')).toBeTruthy();
     expect(screen.getByText('Last time: 40×7, 35×9')).toBeTruthy();
+  });
+
+  it("passes last session's sets to the set editor, warm-ups paired with warm-ups", () => {
+    mockUseExerciseStats.mockReturnValue({
+      data: {
+        bestSet: null,
+        recentSessions: [
+          {
+            sets: [
+              { setNumber: 1, setType: 'warmup', weight: 20, reps: 10 },
+              { setNumber: 2, setType: 'normal', weight: 40, reps: 7 },
+            ],
+          },
+        ],
+      },
+    });
+    render(viewElement('a'));
+    // Two working sets today, one working set last time.
+    expect(screen.getByTestId('focus-previous-sets').props.children).toBe(
+      '[40,null]'
+    );
   });
 
   it('reformats the last-time weights when the app language changes', async () => {
