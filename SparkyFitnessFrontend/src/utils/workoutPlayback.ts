@@ -182,9 +182,19 @@ export interface WorkoutPlaybackStats {
 export interface WorkoutPlaybackRouteState {
   returnTo?: string;
   draft?: WorkoutPlaybackDraft | null;
+  /**
+   * Whose draft it is (the active profile when it was made). The player only
+   * takes a draft for the person it is showing.
+   */
+  ownerId?: string | null;
 }
 
-const WORKOUT_PLAYBACK_STORAGE_PREFIX = 'sparky.workoutPlaybackDraft.v1';
+// Drafts are kept in this browser per person (the diary being logged), so a
+// browser a family shares never offers one person's workout to another. The
+// older drafts keyed only by date are never read, and are removed when a draft
+// is loaded.
+const WORKOUT_PLAYBACK_STORAGE_PREFIX = 'sparky.workoutPlaybackDraft.v2';
+const UNSCOPED_DRAFT_PREFIX = 'sparky.workoutPlaybackDraft.v1:';
 
 const DEFAULT_REST_TIMER: WorkoutPlaybackRestTimer = {
   state: 'idle',
@@ -197,8 +207,20 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-export function getWorkoutPlaybackDraftStorageKey(entryDate: string): string {
-  return `${WORKOUT_PLAYBACK_STORAGE_PREFIX}:${entryDate}`;
+export function getWorkoutPlaybackDraftStorageKey(
+  ownerId: string,
+  entryDate: string
+): string {
+  return `${WORKOUT_PLAYBACK_STORAGE_PREFIX}:${ownerId}:${entryDate}`;
+}
+
+function removeUnscopedDrafts(): void {
+  const stale: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (key?.startsWith(UNSCOPED_DRAFT_PREFIX)) stale.push(key);
+  }
+  stale.forEach((key) => window.localStorage.removeItem(key));
 }
 
 function isWorkoutPlaybackDraft(value: unknown): value is WorkoutPlaybackDraft {
@@ -220,15 +242,17 @@ function isWorkoutPlaybackDraft(value: unknown): value is WorkoutPlaybackDraft {
 }
 
 export function loadWorkoutPlaybackDraftFromStorage(
+  ownerId: string | null,
   entryDate: string
 ): WorkoutPlaybackDraft | null {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || !ownerId) {
     return null;
   }
 
-  const storageKey = getWorkoutPlaybackDraftStorageKey(entryDate);
+  const storageKey = getWorkoutPlaybackDraftStorageKey(ownerId, entryDate);
 
   try {
+    removeUnscopedDrafts();
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) {
       return null;
@@ -248,13 +272,17 @@ export function loadWorkoutPlaybackDraftFromStorage(
 }
 
 export function saveWorkoutPlaybackDraftToStorage(
+  ownerId: string | null,
   draft: WorkoutPlaybackDraft
 ): void {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || !ownerId) {
     return;
   }
 
-  const storageKey = getWorkoutPlaybackDraftStorageKey(draft.entry_date);
+  const storageKey = getWorkoutPlaybackDraftStorageKey(
+    ownerId,
+    draft.entry_date
+  );
 
   try {
     window.localStorage.setItem(storageKey, JSON.stringify(draft));
@@ -263,14 +291,17 @@ export function saveWorkoutPlaybackDraftToStorage(
   }
 }
 
-export function clearWorkoutPlaybackDraftFromStorage(entryDate: string): void {
-  if (typeof window === 'undefined') {
+export function clearWorkoutPlaybackDraftFromStorage(
+  ownerId: string | null,
+  entryDate: string
+): void {
+  if (typeof window === 'undefined' || !ownerId) {
     return;
   }
 
   try {
     window.localStorage.removeItem(
-      getWorkoutPlaybackDraftStorageKey(entryDate)
+      getWorkoutPlaybackDraftStorageKey(ownerId, entryDate)
     );
   } catch (error) {
     console.error('Failed to clear workout playback draft from storage', error);
@@ -571,11 +602,13 @@ export function createWorkoutPlaybackDraftFromPreset(
 export function createWorkoutPlaybackRouteState(
   preset: WorkoutPreset,
   entryDate: string,
+  ownerId: string | null,
   returnTo?: string
 ): WorkoutPlaybackRouteState {
   return {
     returnTo,
     draft: createWorkoutPlaybackDraftFromPreset(preset, entryDate),
+    ownerId,
   };
 }
 
@@ -612,11 +645,13 @@ export function createWorkoutPlaybackDraftFromExercise(
 export function createWorkoutPlaybackRouteStateFromExercise(
   exercise: Exercise,
   entryDate: string,
+  ownerId: string | null,
   returnTo?: string
 ): WorkoutPlaybackRouteState {
   return {
     returnTo,
     draft: createWorkoutPlaybackDraftFromExercise(exercise, entryDate),
+    ownerId,
   };
 }
 

@@ -89,10 +89,12 @@ describe('workoutPlayback utils', () => {
     const routeState = createWorkoutPlaybackRouteState(
       createPresetFixture(),
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.entry_date).toBe('2026-04-27');
     expect(routeState.draft?.name).toBe('Upper Body');
   });
@@ -136,38 +138,89 @@ describe('workoutPlayback utils', () => {
     const routeState = createWorkoutPlaybackRouteStateFromExercise(
       exercise,
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.name).toBe('Bicep Curl');
     expect(routeState.draft?.exercises[0]?.exercise_id).toBe('ex-123');
   });
 
-  it('saves, loads, and clears a persisted draft by date', () => {
+  it("saves, loads, and clears a person's persisted draft by date", () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
       createPresetFixture(),
       '2026-04-27'
     );
 
-    saveWorkoutPlaybackDraftToStorage(draft);
+    saveWorkoutPlaybackDraftToStorage('user-1', draft);
     expect(
       window.localStorage.getItem(
-        getWorkoutPlaybackDraftStorageKey('2026-04-27')
+        getWorkoutPlaybackDraftStorageKey('user-1', '2026-04-27')
       )
     ).not.toBeNull();
 
-    const restored = loadWorkoutPlaybackDraftFromStorage('2026-04-27');
+    const restored = loadWorkoutPlaybackDraftFromStorage(
+      'user-1',
+      '2026-04-27'
+    );
 
     expect(restored?.preset_id).toBe('preset-1');
     expect(restored?.entry_date).toBe('2026-04-27');
 
-    clearWorkoutPlaybackDraftFromStorage('2026-04-27');
+    clearWorkoutPlaybackDraftFromStorage('user-1', '2026-04-27');
     expect(
       window.localStorage.getItem(
-        getWorkoutPlaybackDraftStorageKey('2026-04-27')
+        getWorkoutPlaybackDraftStorageKey('user-1', '2026-04-27')
       )
     ).toBeNull();
+  });
+
+  it("never offers one person's draft to another on the same browser", () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    saveWorkoutPlaybackDraftToStorage('user-1', draft);
+
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27')
+    ).toBeNull();
+    clearWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27');
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-1', '2026-04-27')
+    ).not.toBeNull();
+  });
+
+  it('ignores and removes drafts saved before they were kept per person', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    window.localStorage.setItem(
+      'sparky.workoutPlaybackDraft.v1:2026-04-27',
+      JSON.stringify(draft)
+    );
+
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27')
+    ).toBeNull();
+    expect(
+      window.localStorage.getItem('sparky.workoutPlaybackDraft.v1:2026-04-27')
+    ).toBeNull();
+  });
+
+  it('stores and loads nothing without a person', () => {
+    window.localStorage.clear();
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    saveWorkoutPlaybackDraftToStorage(null, draft);
+
+    expect(window.localStorage.length).toBe(0);
+    expect(loadWorkoutPlaybackDraftFromStorage(null, '2026-04-27')).toBeNull();
   });
 
   it('derives rest remaining from the target end timestamp', () => {

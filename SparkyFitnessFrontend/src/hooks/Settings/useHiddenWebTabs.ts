@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { WEB_TABS_PAGE_KEY, type WebHideableTabId } from '@workspace/shared';
 import { dashboardLayoutKeys } from '@/api/keys/dashboardLayouts';
 import {
@@ -13,6 +18,10 @@ import { withWebTabHidden } from '@/constants/webTabs';
 const hiddenWebTabsKey = dashboardLayoutKeys.byPage(WEB_TABS_PAGE_KEY);
 const SAVE_MUTATION_KEY = ['webTabs', 'save'] as const;
 const NONE: ReadonlySet<WebHideableTabId> = new Set();
+
+/** The cached list itself, which goes away when the cache is cleared. */
+const findHiddenWebTabsQuery = (queryClient: QueryClient) =>
+  queryClient.getQueryCache().find({ queryKey: hiddenWebTabsKey, exact: true });
 
 /**
  * Whether the Tabs switches can be used: only once the saved list has loaded
@@ -68,9 +77,14 @@ export function useSetWebTabHidden() {
     mutationKey: SAVE_MUTATION_KEY,
     scope: { id: 'web-tabs' },
     mutationFn: (hidden: WebHideableTabId[]) => saveHiddenWebTabs(hidden),
+    // useAuth clears the cache when the account changes, so a save whose
+    // cached list is gone by the time it answers was made for an account
+    // that is no longer on screen, and its answer must not be written.
+    onMutate: () => findHiddenWebTabsQuery(queryClient),
     // While later saves are queued they carry the newest whole list, so only
     // the last save to settle may write its answer or reread the list.
-    onSuccess: (saved) => {
+    onSuccess: (saved, _hidden, startedFrom) => {
+      if (findHiddenWebTabsQuery(queryClient) !== startedFrom) return;
       if (queryClient.isMutating({ mutationKey: SAVE_MUTATION_KEY }) <= 1) {
         queryClient.setQueryData(hiddenWebTabsKey, saved);
       }

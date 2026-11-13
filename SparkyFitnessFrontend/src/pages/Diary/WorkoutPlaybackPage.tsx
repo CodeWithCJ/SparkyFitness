@@ -18,6 +18,7 @@ import {
   useUpdatePresetSessionMutation,
 } from '@/hooks/Exercises/useExerciseEntries';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
   distributeProgressionReps,
   evaluateProgression,
@@ -114,10 +115,17 @@ function clampRestSeconds(seconds: number): number {
 }
 
 function getInitialDraft(
+  ownerId: string | null,
   requestedDate: string | null,
   routeState: WorkoutPlaybackRouteState | null
 ): WorkoutPlaybackDraft | null {
-  const existingDraft = routeState?.draft ?? null;
+  // A draft handed over by the page that opened the player counts only for the
+  // person it was made for: a resume that finishes after someone else has
+  // taken over must not give them the previous person's workout.
+  const existingDraft =
+    ownerId && routeState?.ownerId === ownerId
+      ? (routeState.draft ?? null)
+      : null;
   if (existingDraft) {
     if (requestedDate && existingDraft.entry_date !== requestedDate) {
       return null;
@@ -130,7 +138,7 @@ function getInitialDraft(
     return null;
   }
 
-  return loadWorkoutPlaybackDraftFromStorage(requestedDate);
+  return loadWorkoutPlaybackDraftFromStorage(ownerId, requestedDate);
 }
 
 function getReturnPath(
@@ -175,7 +183,7 @@ function startRestTimer(
   });
 }
 
-const WorkoutPlaybackPage = () => {
+const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
   const { t } = useTranslation();
   const { weightUnit, timezone } = usePreferences();
   const navigate = useNavigate();
@@ -189,7 +197,7 @@ const WorkoutPlaybackPage = () => {
   const scrubbedRouteStateRef = useRef(false);
   const persistedDraftDateRef = useRef<string | null>(null);
   const [draft, setDraft] = useState<WorkoutPlaybackDraft | null>(() =>
-    getInitialDraft(requestedDate, routeState)
+    getInitialDraft(ownerId, requestedDate, routeState)
   );
   const draftRef = useRef<WorkoutPlaybackDraft | null>(draft);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -499,7 +507,10 @@ const WorkoutPlaybackPage = () => {
   useEffect(() => {
     if (!draft) {
       if (persistedDraftDateRef.current) {
-        clearWorkoutPlaybackDraftFromStorage(persistedDraftDateRef.current);
+        clearWorkoutPlaybackDraftFromStorage(
+          ownerId,
+          persistedDraftDateRef.current
+        );
         persistedDraftDateRef.current = null;
       }
       return;
@@ -510,15 +521,18 @@ const WorkoutPlaybackPage = () => {
         persistedDraftDateRef.current &&
         persistedDraftDateRef.current !== draft.entry_date
       ) {
-        clearWorkoutPlaybackDraftFromStorage(persistedDraftDateRef.current);
+        clearWorkoutPlaybackDraftFromStorage(
+          ownerId,
+          persistedDraftDateRef.current
+        );
       }
 
-      saveWorkoutPlaybackDraftToStorage(draft);
+      saveWorkoutPlaybackDraftToStorage(ownerId, draft);
       persistedDraftDateRef.current = draft.entry_date;
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [draft]);
+  }, [draft, ownerId]);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -1001,13 +1015,13 @@ const WorkoutPlaybackPage = () => {
 
   const handleConfirmDiscard = useCallback(() => {
     if (draft) {
-      clearWorkoutPlaybackDraftFromStorage(draft.entry_date);
+      clearWorkoutPlaybackDraftFromStorage(ownerId, draft.entry_date);
     }
     setDraft(null);
     setSaveError(null);
     setIsDiscardDialogOpen(false);
     navigate(returnPath);
-  }, [draft, navigate, returnPath]);
+  }, [draft, navigate, ownerId, returnPath]);
 
   const handleFinishWorkout = useCallback(async () => {
     if (!draft) return;
@@ -1034,7 +1048,7 @@ const WorkoutPlaybackPage = () => {
           })
         : await createPresetSession(payload);
       const finalStats = getWorkoutPlaybackStats(draft);
-      clearWorkoutPlaybackDraftFromStorage(draft.entry_date);
+      clearWorkoutPlaybackDraftFromStorage(ownerId, draft.entry_date);
       // The summary stays up over the cleared player; closing it returns to
       // the diary the way finishing always has.
       setFinishSummary({
@@ -1078,6 +1092,7 @@ const WorkoutPlaybackPage = () => {
     createPresetSession,
     draft,
     elapsedSeconds,
+    ownerId,
     t,
     timezone,
     totalVolume,
@@ -1235,4 +1250,14 @@ const WorkoutPlaybackPage = () => {
   );
 };
 
-export default WorkoutPlaybackPage;
+// The draft belongs to the diary being logged. When someone else takes over
+// the page (another account, or another profile), it starts again from that
+// person's own stored draft instead of carrying this one over.
+const WorkoutPlaybackRoute = () => {
+  const { activeUserId } = useActiveUser();
+  return (
+    <WorkoutPlaybackPage key={activeUserId ?? ''} ownerId={activeUserId} />
+  );
+};
+
+export default WorkoutPlaybackRoute;

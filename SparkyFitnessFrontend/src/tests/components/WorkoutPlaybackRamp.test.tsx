@@ -4,7 +4,11 @@ import WorkoutPlaybackPage from '@/pages/Diary/WorkoutPlaybackPage';
 import type { WorkoutPreset } from '@/types/workout';
 import { createWorkoutPlaybackDraftFromPreset } from '@/utils/workoutPlayback';
 
-let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
+let mockLocationState: {
+  returnTo?: string;
+  draft?: unknown;
+  ownerId?: string;
+} | null = null;
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -12,8 +16,15 @@ jest.mock('react-i18next', () =>
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => jest.fn(),
-  useLocation: () => ({ state: mockLocationState }),
+  // Route state as the Diary builds it: a draft for the person on screen.
+  useLocation: () => ({
+    state: mockLocationState && { ownerId: 'user-1', ...mockLocationState },
+  }),
   useSearchParams: () => [new URLSearchParams('date=2026-09-25')],
+}));
+
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user-1' }),
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
