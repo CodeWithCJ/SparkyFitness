@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createGlobalExternalDataProvider,
   getActiveMcpServers,
+  getChatMcpServerChoices,
   getExternalDataProviderByUserIdAndProviderName,
   getExternalDataProviderById,
   getExternalDataProviders,
@@ -59,6 +60,22 @@ describe('externalProviderRepository MCP tool servers', () => {
     const [sql, params] = query.mock.calls[0];
     expect(sql).toContain(`edp.provider_type <> $${position}`);
     expect(params[position - 1]).toBe('mcp_server');
+  });
+
+  it('lists only active global MCP choices with allowed tools, without loading secrets', async () => {
+    query.mockResolvedValue({ rows: [{ id: 'server', name: 'Notes' }] });
+    expect(await getChatMcpServerChoices()).toEqual([
+      { id: 'server', name: 'Notes' },
+    ]);
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toContain(
+      'provider_type = $1 AND is_public = TRUE AND is_active = TRUE'
+    );
+    expect(sql).toContain("provider_options->'allowed_tools' <> '[]'::jsonb");
+    expect(sql).toContain('ORDER BY provider_name ASC, id ASC');
+    expect(sql).not.toMatch(/app_key|SELECT \*/);
+    expect(params).toEqual(['mcp_server']);
+    expect(decrypt).not.toHaveBeenCalled();
   });
 
   it('keeps every visibility rule inside the type filter', async () => {

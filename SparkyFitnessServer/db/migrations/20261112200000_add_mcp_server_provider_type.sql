@@ -1,8 +1,8 @@
 -- SparkyFitnessServer/db/migrations/20261112200000_add_mcp_server_provider_type.sql
--- Add the MCP tool server provider type. An admin adds an outside MCP server as
--- a global provider, and chat can use the tools the admin allows from it: a base
--- URL plus an optional bearer token, stored encrypted in
--- external_data_providers.app_key like the other providers' keys.
+-- Add the MCP tool server provider type and per-person chat opt-in. An admin
+-- adds a global provider with a base URL and an optional bearer token, stored
+-- encrypted in external_data_providers.app_key like the other providers' keys.
+-- Each person opts in before chat uses the tools the admin allows.
 --
 -- provider_options holds what a tool server needs beyond that: which tools are
 -- allowed and whether to send the person's ID. It is NULL for every other
@@ -32,3 +32,8 @@ SET categories = ARRAY['other'],
     is_strictly_private = TRUE,
     supports_barcode = FALSE
 WHERE id = 'mcp_server';
+
+-- Each person chooses servers for their own chat, off by default. This adds a
+-- column to the existing user_preferences RLS table, so no RLS change.
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS chat_mcp_server_ids UUID[] NOT NULL DEFAULT '{}';

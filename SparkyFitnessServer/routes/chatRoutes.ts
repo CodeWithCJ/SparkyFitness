@@ -1,3 +1,8 @@
+import { requireSelfActor } from '../middleware/requireSelfMiddleware.js';
+import {
+  getChatMcpServers,
+  updateChatMcpServers,
+} from '../services/chatMcpService.js';
 import express from 'express';
 // @ts-expect-error multer does not ship TypeScript declarations in this package.
 import multer from 'multer';
@@ -15,6 +20,7 @@ import {
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
 import {
+  updateChatMcpServersRequestSchema,
   testAiServiceConnectionRequestSchema,
   listOpenCodeGoModelsRequestSchema,
   normalizeChatToolCategories,
@@ -24,6 +30,83 @@ import {
   voiceTranscriptionRequestSchema,
 } from '@workspace/shared';
 const router = express.Router();
+/**
+ * @swagger
+ * /chat/mcp-servers:
+ *   get:
+ *     summary: List available outside tool servers and the owner's choices
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ *   put:
+ *     summary: Replace the owner's outside tool server choices
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enabled_server_ids]
+ *             properties:
+ *               enabled_server_ids:
+ *                 type: array
+ *                 maxItems: 50
+ *                 uniqueItems: true
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       400:
+ *         description: Invalid server choices.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ */
+router.get(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    try {
+      res.json(await getChatMcpServers(req.userId));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.put(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    const parsed = updateChatMcpServersRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid server choices.' });
+      return;
+    }
+    try {
+      res.json(
+        await updateChatMcpServers(req.userId, parsed.data.enabled_server_ids)
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const voiceUpload = multer({
   storage: multer.memoryStorage(),
   limits: {

@@ -5,6 +5,10 @@ import { renderWithClient } from '../test-utils';
 import { UserPreferencesChat } from '@/types/settings';
 import { AiServiceSettingsResponse } from '@workspace/shared';
 
+jest.mock('@/components/ai/ChatMcpServerSettings', () => ({
+  ChatMcpServerSettings: () => null,
+}));
+
 // Mock react-i18next
 const translations: Record<string, string> = {
   'settings.aiService.userSettings.title': 'AI Service Settings',

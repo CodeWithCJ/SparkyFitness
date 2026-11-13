@@ -55,3 +55,28 @@ export const mcpServerToolsResponseSchema = z.object({
 export type McpServerToolsResponse = z.infer<
   typeof mcpServerToolsResponseSchema
 >;
+
+export const chatMcpServersResponseSchema = z.object({
+  servers: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      enabled: z.boolean(),
+    })
+  ),
+});
+export type ChatMcpServersResponse = z.infer<
+  typeof chatMcpServersResponseSchema
+>;
+
+export const updateChatMcpServersRequestSchema = z
+  .object({
+    enabled_server_ids: z
+      .array(z.uuid())
+      .max(50)
+      .refine((ids) => new Set(ids).size === ids.length),
+  })
+  .strict();
+export type UpdateChatMcpServersRequest = z.infer<
+  typeof updateChatMcpServersRequestSchema
+>;

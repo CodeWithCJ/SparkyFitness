@@ -1,3 +1,4 @@
+import { useChatMcpServers } from '../hooks/useChatMcpServers';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
@@ -47,6 +48,7 @@ function ToggleCard({
 
 const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
   const { t } = useTranslation();
+  const { servers, isSaving, save } = useChatMcpServers();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -97,6 +99,52 @@ const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
+        {servers.length > 0 && (
+          <View testID="chat-mcp-servers-section" className="mb-6">
+            <Text className="text-text-primary text-base font-semibold mb-1">
+              {t('aiSettings.chatMcp.title', {
+                defaultValue: 'Tools from outside servers',
+              })}
+            </Text>
+            <Text className="text-text-secondary text-sm mb-3">
+              {t('aiSettings.chatMcp.description', {
+                defaultValue:
+                  'What chat sends to these tools goes to that server.',
+              })}
+            </Text>
+            {servers.map((server) => {
+              const label = t('aiSettings.chatMcp.allow', {
+                defaultValue: 'Let chat use tools from {{name}}',
+                name: server.name,
+              });
+              return (
+                <View
+                  key={server.id}
+                  className="bg-surface rounded-xl p-3 mb-2 flex-row justify-between items-center"
+                >
+                  <Text className="text-text-primary text-base flex-shrink">
+                    {label}
+                  </Text>
+                  <Switch
+                    testID={`chat-mcp-server-switch-${server.id}`}
+                    accessibilityLabel={label}
+                    value={server.enabled}
+                    disabled={isSaving}
+                    onValueChange={(enabled) =>
+                      save(
+                        servers
+                          .filter((item) =>
+                            item.id === server.id ? enabled : item.enabled
+                          )
+                          .map(({ id }) => id)
+                      )
+                    }
+                  />
+                </View>
+              );
+            })}
+          </View>
+        )}
         <Text className="text-text-primary text-base font-semibold mb-1">
           {t('aiSettings.server.title', { defaultValue: 'Server AI provider' })}
         </Text>

@@ -942,6 +942,28 @@ export interface McpServerRow {
   updated_at: Date;
 }
 
+// Global providers belong to their admin, so the shared catalog needs a system
+// read. The person's settings receive only names and IDs, never credentials.
+export async function getChatMcpServerChoices(): Promise<
+  { id: string; name: string }[]
+> {
+  const client = await getSystemClient();
+  try {
+    const result = (await client.query(
+      `SELECT id, provider_name AS name FROM external_data_providers
+       WHERE provider_type = $1 AND is_public = TRUE AND is_active = TRUE
+         AND base_url IS NOT NULL AND base_url <> ''
+         AND jsonb_typeof(provider_options->'allowed_tools') = 'array'
+         AND provider_options->'allowed_tools' <> '[]'::jsonb
+       ORDER BY provider_name ASC, id ASC`,
+      [MCP_SERVER_PROVIDER_TYPE]
+    )) as { rows: { id: string; name: string }[] };
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 // Every tool server chat may use. They are global rows only an admin can add,
 // and they are not listed to the person chatting, so this reads with the
 // system client. Ordered so the tools reach the model in the same order on

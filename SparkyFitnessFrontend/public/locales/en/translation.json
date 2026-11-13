@@ -1941,6 +1941,13 @@
     "syncFailed_other": "Failed to synchronize {{count}} providers."
   },
   "settings": {
+    "chatMcp": {
+      "title": "Tools from outside servers",
+      "description": "What chat sends to these tools goes to that server.",
+      "allow": "Let chat use tools from {{name}}",
+      "loadError": "Could not load outside tool servers.",
+      "saveError": "Could not save outside tool servers."
+    },
     "profileInformation": {
       "title": "Profile Information",
       "description": "Manage your personal information and profile picture",

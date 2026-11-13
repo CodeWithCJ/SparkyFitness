@@ -51,11 +51,13 @@ This information belongs to the signed-in person and is not shared with family d
 
 An admin can give chat the tools of another MCP server, such as a notes app or a home automation server, so the assistant can use them next to its own.
 
-Whatever the assistant passes to these tools is sent to that server, and what comes back enters the chat. Add only servers you trust.
+Whatever the assistant passes to these tools is sent to that server, and what comes back enters the chat. Add only servers you trust. Admins should add only servers that hold no personal data or that keep each person's data separate.
+
+Each person turns on each server for their own chat in **AI service settings** on the web or **AI** settings in the app, under **Tools from outside servers**. Every server is off by default. Turning on a server lets chat use only the tools the admin allowed.
 
 ### Add a server
 
-1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add one, and it is never offered in a person's own settings.
+1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add or configure one. Each person chooses whether to use it in their own AI settings.
 2. Enter the server's URL, the address of its Streamable HTTP endpoint (for example `https://tools.example.com/mcp`), and a bearer token if the server needs one. When you edit a saved server, leave the token blank to keep the saved one. Changing its URL needs the token entered again and clears the ticked tools. A server that only speaks the older SSE transport, or that needs an OAuth sign-in, cannot be added.
 3. Select **Load tools**. Every tool the server lists is shown. Tick the ones chat may use, up to 20 per server. A tool chat would leave out is listed with the reason and cannot be ticked. A tool you allowed earlier that the server no longer lists is marked, so you can untick it.
 4. Turn on **Tell the server who is chatting** only for a server that keeps data per person (see below).
@@ -74,7 +76,7 @@ A server on your own network works too, since only an admin adds one. Over plain
 
 ### Tell the server who is chatting
 
-With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. With it off, the server is not told who is chatting, so it cannot tell people apart. Either way, after switching to a family member's profile, outside tools refuse to run: that person shared their data with you, not with the outside server. The server should accept the header only together with the token, since SparkyFitness does not sign it.
+With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. With it off, the server is not told who is chatting, so it cannot tell people apart. Either way, chat offers no outside tools after switching to a family member's profile: that person shared their data with you, not with the outside server. The server should accept the header only together with the token, since SparkyFitness does not sign it.
 
 ### Limits and safety
 

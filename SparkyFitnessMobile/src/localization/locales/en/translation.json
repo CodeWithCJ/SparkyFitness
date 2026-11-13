@@ -7446,6 +7446,13 @@
     "saveFailed": "Failed to save category"
   },
   "aiSettings": {
+    "chatMcp": {
+      "title": "Tools from outside servers",
+      "description": "What chat sends to these tools goes to that server.",
+      "allow": "Let chat use tools from {{name}}",
+      "loadError": "Could not load outside tool servers.",
+      "saveError": "Could not save outside tool servers."
+    },
     "server": {
       "title": "Server AI provider",
       "loading": "Checking…",

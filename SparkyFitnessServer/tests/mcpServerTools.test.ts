@@ -1,3 +1,4 @@
+import { getChatMcpServerIds } from '../models/chatMcpPreferenceRepository.js';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   createServer,
@@ -36,6 +37,10 @@ import {
 import { log } from '../config/logging.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
+
+vi.mock('../models/chatMcpPreferenceRepository.js', () => ({
+  getChatMcpServerIds: vi.fn(),
+}));
 
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 vi.mock('../models/externalProviderRepository', () => ({
@@ -456,8 +461,13 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getChatMcpServerIds).mockImplementation(async () =>
+    (await getServers()).map(({ id }) => id)
+  );
+
   isAdmin.mockResolvedValue(true);
   seen = [];
+  guarded.requests = 0;
   elsewhereRequests = 0;
   answerWith500 = false;
   goQuiet = false;
@@ -470,6 +480,50 @@ afterEach(() => {
 });
 
 describe('which tools chat gets', () => {
+  it('contacts no server without opt-in', async () => {
+    getServers.mockResolvedValue([toolServer(['echo'])]);
+    vi.mocked(getChatMcpServerIds).mockResolvedValue([]);
+    expect(await loadMcpServerTools(OWN_ACCOUNT)).toEqual({});
+    expect(guarded.requests).toBe(0);
+    expect(seen).toEqual([]);
+  });
+
+  it('uses only the opted-in active server for the account owner', async () => {
+    const opted = toolServer(['echo'], { provider_name: 'Opted' });
+    const other = toolServer(['whoami'], {
+      provider_name: 'Other',
+      path: '/not-opted-in',
+    });
+    getServers.mockResolvedValue([opted, other]);
+    vi.mocked(getChatMcpServerIds).mockResolvedValue([opted.id]);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    expect(Object.keys(tools)).toEqual(['mcp_opted__echo']);
+    expect(seen.some(({ path }) => path === '/not-opted-in')).toBe(false);
+    expect(vi.mocked(getChatMcpServerIds)).toHaveBeenCalledWith(
+      OWN_ACCOUNT.accountUserId
+    );
+  });
+
+  it('ignores choices for deleted or inactive servers', async () => {
+    getServers.mockResolvedValue([toolServer(['echo'])]);
+    vi.mocked(getChatMcpServerIds).mockResolvedValue(['deleted', 'inactive']);
+    expect(await loadMcpServerTools(OWN_ACCOUNT)).toEqual({});
+    expect(seen).toEqual([]);
+  });
+
+  it('fails closed if preferences cannot be read', async () => {
+    getServers.mockResolvedValue([toolServer(['echo'])]);
+    vi.mocked(getChatMcpServerIds).mockRejectedValue(
+      new Error('database unavailable')
+    );
+    expect(await loadMcpServerTools(OWN_ACCOUNT)).toEqual({});
+    expect(seen).toEqual([]);
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('Could not look up MCP tool servers')
+    );
+  });
+
   it('gets none, and asks nothing, when no server was added', async () => {
     getServers.mockResolvedValue([]);
     await expect(loadMcpServerTools(OWN_ACCOUNT)).resolves.toEqual({});
@@ -724,22 +778,31 @@ describe('what the outside server is told', () => {
     expect(seen.every((request) => request.userId === undefined)).toBe(true);
   });
 
-  it('refuses in a family member’s account when the server is told who is chatting', async () => {
+  it('gives no outside tools in a family member’s account and contacts no server', async () => {
     getServers.mockResolvedValue([
       toolServer(['whoami'], { send_user_id: true }),
     ]);
-    const tools = await loadMcpServerTools(FAMILY_ACCOUNT);
+    expect(await loadMcpServerTools(FAMILY_ACCOUNT)).toEqual({});
+    expect(seen).toEqual([]);
+    expect(vi.mocked(getChatMcpServerIds)).not.toHaveBeenCalled();
+  });
+
+  it('refuses a call once the person turned the server off mid-turn', async () => {
+    getServers.mockResolvedValue([toolServer(['whoami'])]);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    vi.mocked(getChatMcpServerIds).mockResolvedValue([]);
     await expect(run(tools.mcp_household_tools__whoami)).resolves.toBe(
-      "Error [FORBIDDEN]: This only works in the user's own account, not in a family member's."
+      'Error [FORBIDDEN]: The user has not turned this server on for chat. Do not retry.'
     );
     expect(calls('tools/call')).toEqual([]);
   });
 
-  it('refuses in a family member’s account when the server is told nothing', async () => {
+  it('refuses a call when the person’s choice cannot be read', async () => {
     getServers.mockResolvedValue([toolServer(['whoami'])]);
-    const tools = await loadMcpServerTools(FAMILY_ACCOUNT);
+    const tools = await loadMcpServerTools(OWN_ACCOUNT);
+    vi.mocked(getChatMcpServerIds).mockRejectedValue(new Error('db down'));
     await expect(run(tools.mcp_household_tools__whoami)).resolves.toBe(
-      "Error [FORBIDDEN]: This only works in the user's own account, not in a family member's."
+      'Error [FORBIDDEN]: The user has not turned this server on for chat. Do not retry.'
     );
     expect(calls('tools/call')).toEqual([]);
   });

@@ -362,6 +362,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `routes/syncedDataRoutes.ts`, `services/syncedDataService.ts`, and `models/syncedDataRepository.ts` (the `SYNCED_SOURCE_TABLES` whitelist)
 - AI chat or chatbot tool issue:
   inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
+- `routes/chatRoutes.ts` GET/PUT `/chat/mcp-servers` are owner-only opt-in settings. `chatMcpService.ts` returns only names, IDs and enabled states; `chatMcpPreferenceRepository.ts` reads/writes `user_preferences.chat_mcp_server_ids`. `loadMcpServerTools` filters by the account owner's choices before contacting servers and fails closed on lookup errors.
 - Outside MCP server tools missing from chat, or a server skipped:
   inspect `ai/tools/mcpServerTools.ts` (`loadMcpServerTools`, `schemaProblem`, the warn logs naming the server) and the `mcp_server` row's `provider_options`
 - Fasting or mood issue:

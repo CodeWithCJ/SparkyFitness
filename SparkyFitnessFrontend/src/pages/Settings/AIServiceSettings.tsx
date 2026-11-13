@@ -1,3 +1,4 @@
+import { ChatMcpServerSettings } from '@/components/ai/ChatMcpServerSettings';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -618,6 +619,7 @@ const AIServiceSettings = () => {
 
   return (
     <div className="space-y-6">
+      <ChatMcpServerSettings />
       <UserChatPreferences
         key={preferencesData?.auto_clear_history ?? 'inital'}
         defaultPreferences={{

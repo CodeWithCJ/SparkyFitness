@@ -18,6 +18,7 @@ import {
   type McpServerToolChoice,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
+import { getChatMcpServerIds } from '../../models/chatMcpPreferenceRepository.js';
 import externalProviderRepository, {
   type McpServerRow,
 } from '../../models/externalProviderRepository.js';
@@ -662,6 +663,23 @@ async function callServerTool(
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return ERRORS.VALIDATION('The arguments must be a JSON object.');
   }
+  // Read again at each call: the person may have turned the server off while
+  // this turn was running, and nothing goes to it after they have.
+  let stillOn: boolean;
+  try {
+    stillOn = (await getChatMcpServerIds(actorUserId)).includes(server.id);
+  } catch (error) {
+    log(
+      'warn',
+      `MCP tool server ${server.id} (${server.provider_name}): could not check the person's choice before ${listed.name}: ${describeError(error)}`
+    );
+    stillOn = false;
+  }
+  if (!stillOn) {
+    return ERRORS.FORBIDDEN(
+      'The user has not turned this server on for chat. Do not retry.'
+    );
+  }
   const headers = authHeaders(server);
   if (sendUserId) headers[MCP_SERVER_USER_ID_HEADER] = actorUserId;
   const startedAt = Date.now();
@@ -709,13 +727,9 @@ async function callServerTool(
 
 function toChatTool(
   outsideTool: OutsideTool,
-  { actorUserId, accountUserId }: McpServerToolContext
+  { actorUserId }: McpServerToolContext
 ): Tool {
   const { server, listed } = outsideTool;
-  // Family Access shares an account with a person, not with an outside server,
-  // so no outside tool runs in a family member's account: one could read their
-  // data in chat and send it on.
-  const ownAccountOnly = actorUserId !== accountUserId;
   return tool({
     description: withoutToken(
       listed.description?.trim() || `The "${listed.name}" tool.`,
@@ -723,9 +737,7 @@ function toChatTool(
     ).slice(0, DESCRIPTION_MAX_LENGTH),
     inputSchema: jsonSchema(listed.inputSchema),
     execute: async (input: unknown, { abortSignal }) =>
-      ownAccountOnly
-        ? ERRORS.OWN_ACCOUNT_ONLY()
-        : callServerTool(outsideTool, actorUserId, input, abortSignal),
+      callServerTool(outsideTool, actorUserId, input, abortSignal),
   });
 }
 
@@ -795,17 +807,26 @@ export function isMcpServerToolName(name: string): boolean {
 
 /**
  * The chat tools from the outside MCP servers an admin added, for one turn.
- * Only the tools the admin allowed are returned, and a server with none
- * allowed is not contacted. A server that is down, slow or refused is skipped
- * and logged, and chat goes on without it. The result is built fresh for each
- * turn: it closes over the people in `context`, so it must not be cached.
+ * Only servers the account owner opted into and tools the admin allowed are
+ * returned. Other servers are not contacted. A server that is down, slow or
+ * refused is skipped and logged, and chat goes on without it. The result is
+ * built fresh for each turn: it closes over the people in `context`, so it
+ * must not be cached.
  */
 export async function loadMcpServerTools(
   context: McpServerToolContext
 ): Promise<Record<string, Tool>> {
+  // None in a family member's account: Family Access shares the account with a
+  // person, not with an outside server, and the owner's choice covers only the
+  // owner. Even listing would contact the server and show the model its tools.
+  if (context.actorUserId !== context.accountUserId) return {};
   let servers: McpServerRow[];
   try {
-    servers = await externalProviderRepository.getActiveMcpServers();
+    const enabled = new Set(await getChatMcpServerIds(context.accountUserId));
+    if (enabled.size === 0) return {};
+    servers = (await externalProviderRepository.getActiveMcpServers()).filter(
+      (server) => enabled.has(server.id)
+    );
   } catch (error) {
     log('warn', `Could not look up MCP tool servers: ${describeError(error)}`);
     return {};

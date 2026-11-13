@@ -56,6 +56,8 @@ When you switch to someone's profile on the web, the AI assistant works in their
 - The conversation is yours: it is saved in your own chat history, not theirs, and kept apart from your chats in your own profile.
 - It uses your own AI service, as do label scans and other AI features. To change which one, switch back to your own profile.
 
+Outside MCP tool servers are off by default for each person. Each person turns them on for their own chat in AI settings. Family access cannot change these choices, and chat offers no outside tools while acting for a family member.
+
 ---
 
 ## Adaptive Calorie Details
