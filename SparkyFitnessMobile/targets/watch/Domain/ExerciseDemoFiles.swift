@@ -1,7 +1,7 @@
 import Foundation
 
 /// Naming and clean-up rules for the exercise demo pictures the phone sends as
-/// files (`WCSession.transferFile`). Pure Foundation so it runs under
+/// queued payloads (`transferUserInfo`). Pure Foundation so it runs under
 /// `swift test` in `watch-tests/` with the other Domain logic.
 enum ExerciseDemoFiles {
     /// Most pictures kept on disk (two per exercise, about 15 KB each).

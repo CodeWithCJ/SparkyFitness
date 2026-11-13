@@ -738,6 +738,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         case "intervalTiming": handle(intervalTiming: payload)
         case "setTargets": handle(setTargets: payload)
         case "workoutPlanUpdate": handle(workoutPlanUpdate: payload)
+        case "exerciseImage":
+            if ExerciseDemoStore.receive(payload) { ExerciseDemoStore.shared.didChange() }
         case "recordingState":
             if let update = ContextPayloadMapper.recordingUpdate(from: payload) {
                 RecordingStore.shared.apply(update)
@@ -1821,13 +1823,6 @@ extension WatchSessionManager: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         Task { @MainActor in self.route(userInfo) }
-    }
-
-    /// An exercise demo picture from the phone. The file is deleted when this
-    /// returns, so it is moved into the cache here, off the main actor.
-    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
-        guard ExerciseDemoStore.receive(file) else { return }
-        Task { @MainActor in ExerciseDemoStore.shared.didChange() }
     }
 
     nonisolated func session(

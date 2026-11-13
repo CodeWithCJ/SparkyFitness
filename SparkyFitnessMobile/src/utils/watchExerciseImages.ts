@@ -13,7 +13,7 @@ interface DemoSnapshot {
 export interface WatchDemoFields {
   /** Cache key of the exercise's pictures on the watch (the exercise id). */
   imageKey?: string;
-  /** How many pictures follow as files: 1 (a still) or 2 (start and end). */
+  /** How many pictures follow as queued payloads: 1 (a still) or 2 (start and end). */
   imageCount?: number;
   /** Primary muscle, capitalised, for the line under the name. */
   muscle?: string;

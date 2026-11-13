@@ -105,7 +105,7 @@ export function useWatchPlanSync(enabled: boolean): void {
       void watch.updateWorkoutPlan({ ...plan, revision: lastRevision });
     };
 
-    // The exercises' demo pictures follow the plan as files, once per arm
+    // The exercises' demo pictures follow the plan as queued payloads, once per arm
     // and exercise (`sendWatchExerciseImages` remembers what it sent).
     const sendImages = (state: ActiveWorkoutState): void => {
       const { session, watchArmedAt } = state;

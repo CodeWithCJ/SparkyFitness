@@ -1,8 +1,7 @@
 import Foundation
 import UIKit
-import WatchConnectivity
 
-/// The exercise demo pictures the phone sent as files, kept in Application
+/// The exercise demo pictures the phone sent, kept in Application
 /// Support so they survive a relaunch (and are available with the phone out of
 /// range). Two small JPEGs per exercise, named by the exercise's key
 /// (`ExerciseDemoFiles`); the oldest beyond a cap are removed, never those of
@@ -21,26 +20,22 @@ final class ExerciseDemoStore: ObservableObject {
         return base.appendingPathComponent("ExerciseDemo", isDirectory: true)
     }
 
-    /// Moves a received file into the cache. Called on the session's queue
-    /// before the delegate method returns, since the system deletes `file`.
-    nonisolated static func receive(_ file: WCSessionFile) -> Bool {
+    /// Stores a picture the phone sent in an `exerciseImage` payload.
+    static func receive(_ payload: [String: Any]) -> Bool {
         guard
-            let metadata = file.metadata,
-            metadata["type"] as? String == "exerciseImage",
-            let key = metadata["key"] as? String,
-            let index = (metadata["index"] as? NSNumber)?.intValue,
+            let key = payload["key"] as? String,
+            let index = (payload["index"] as? NSNumber)?.intValue,
+            let data = payload["data"] as? Data,
             let name = ExerciseDemoFiles.fileName(key: key, index: index)
         else { return false }
-        return write(from: file.fileURL, named: name)
+        return write(data, named: name)
     }
 
-    nonisolated static func write(from source: URL, named name: String) -> Bool {
+    static func write(_ data: Data, named name: String) -> Bool {
         let fm = FileManager.default
         do {
             try fm.createDirectory(at: directory, withIntermediateDirectories: true)
-            let target = directory.appendingPathComponent(name)
-            if fm.fileExists(atPath: target.path) { try fm.removeItem(at: target) }
-            try fm.copyItem(at: source, to: target)
+            try data.write(to: directory.appendingPathComponent(name), options: .atomic)
             return true
         } catch {
             return false
@@ -90,10 +85,7 @@ final class ExerciseDemoStore: ObservableObject {
     func seed(key: String, jpegs: [Data]) {
         for (index, data) in jpegs.enumerated() {
             guard let name = ExerciseDemoFiles.fileName(key: key, index: index) else { continue }
-            let temp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
-            try? data.write(to: temp)
-            _ = Self.write(from: temp, named: name)
-            try? FileManager.default.removeItem(at: temp)
+            _ = Self.write(data, named: name)
         }
         didChange()
     }

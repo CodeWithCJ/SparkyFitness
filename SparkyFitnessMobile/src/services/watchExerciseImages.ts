@@ -27,8 +27,9 @@ let counter = 0;
 /**
  * Sends the demo pictures of a live workout's exercises to the watch as small
  * JPEGs (240 px wide, quality 0.7, about 15 KB each) through
- * `WCSession.transferFile`: queued and delivered over the phone link even
- * when the watch has no network of its own. The watch caches them by exercise
+ * a watch message (queued with `transferUserInfo` when the watch is not
+ * reachable): delivered over the phone link even when the watch has no
+ * network of its own. The watch caches them by exercise
  * id. Best effort: a failed download or transfer is logged and the watch just
  * has no demo page for that exercise.
  */
@@ -36,8 +37,16 @@ export async function sendWatchExerciseImages(
   exercises: readonly DemoExercise[],
   armedAt: number
 ): Promise<void> {
-  if (!WatchConnectivity?.isSupported() || !WatchConnectivity.sendExerciseImage)
+  if (
+    !WatchConnectivity?.isSupported() ||
+    !WatchConnectivity.sendExerciseImage
+  ) {
+    addLog(
+      'Watch exercise images skipped: native sendExerciseImage unavailable',
+      'WARNING'
+    );
     return;
+  }
   const config = await getActiveServerConfig();
   for (const exercise of exercises) {
     const key = exercise.exercise_snapshot?.id;

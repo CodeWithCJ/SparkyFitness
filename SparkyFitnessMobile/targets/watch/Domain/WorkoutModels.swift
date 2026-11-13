@@ -64,7 +64,7 @@ struct PlannedExercise: Codable, Equatable, Identifiable {
     /// only for an exercise loaded on a bar; nil from an older phone.
     var plates: WatchPlateConfig? = nil
     /// Key of the exercise's demo pictures (`ExerciseDemoFiles`) and how many
-    /// the phone sends (1 or 2: start and end). The pictures arrive as files,
+    /// the phone sends (1 or 2: start and end). The pictures arrive as queued payloads,
     /// separately from the plan; nil from an older phone or an exercise with none.
     var imageKey: String? = nil
     var imageCount: Int? = nil

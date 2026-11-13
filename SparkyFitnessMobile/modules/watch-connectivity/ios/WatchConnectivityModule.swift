@@ -671,21 +671,27 @@ public class WatchConnectivityModule: Module {
         }
 
         /// One exercise demo picture for the watch's demo page: a small JPEG
-        /// sent with `transferFile`, which the system queues and delivers over
-        /// the phone link (no network on the watch needed). The metadata names
-        /// the exercise's cache key and which picture (0 start, 1 end); the
-        /// watch stores it under that name and removes the oldest beyond a cap.
+        /// (about 15 KB) sent as `Data` in a message when the watch is
+        /// reachable (a workout running on it normally is), else queued with
+        /// `transferUserInfo` for when it next is. `transferFile` was not used:
+        /// paired simulators report it delivered but never hand the file to
+        /// the watch. The payload names the exercise's cache key and which
+        /// picture (0 start, 1 end); the watch stores it under that name.
         AsyncFunction("sendExerciseImage") { (image: [String: Any]) -> Void in
             guard WCSession.isSupported(),
                 let key = image["key"] as? String,
                 let index = (image["index"] as? NSNumber)?.intValue,
                 let uri = image["uri"] as? String,
-                let url = URL(string: uri), url.isFileURL
+                let url = URL(string: uri), url.isFileURL,
+                let data = try? Data(contentsOf: url)
             else { return }
-            WCSession.default.transferFile(
-                url,
-                metadata: ["type": "exerciseImage", "key": key, "index": index]
-            )
+            let payload: [String: Any] = ["type": "exerciseImage", "key": key, "index": index, "data": data]
+            let session = WCSession.default
+            if session.isReachable {
+                session.sendMessage(payload, replyHandler: nil) { _ in session.transferUserInfo(payload) }
+            } else {
+                session.transferUserInfo(payload)
+            }
         }
 
         /// The live workout's plan again, after an exercise, superset or set
