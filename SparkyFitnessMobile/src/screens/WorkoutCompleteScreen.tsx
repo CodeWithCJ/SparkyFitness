@@ -196,7 +196,12 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     plannedSetValues,
     assumeSources,
     skipPrompt: focusStyle,
-    onNeedsUpdate: focusStyle ? setPresetOffer : undefined,
+    onNeedsUpdate: focusStyle
+      ? (offer) => {
+          // No card without a change to list.
+          if (offer.changes.length > 0) setPresetOffer(offer);
+        }
+      : undefined,
   });
   const handleUpdatePreset = useCallback(async () => {
     if (presetOffer == null) return;

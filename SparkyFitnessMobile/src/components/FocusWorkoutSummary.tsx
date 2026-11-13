@@ -58,16 +58,20 @@ function Tile({
   color?: string;
 }) {
   return (
-    <View className="flex-1 items-center rounded-2xl bg-raised px-1 py-3">
+    <View className="flex-1 items-center rounded-[14px] bg-raised px-1 py-2.5">
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        className="text-[24px] font-extrabold text-text-primary"
+        maxFontSizeMultiplier={1.1}
+        className="text-[22px] font-bold text-text-primary"
         style={{ fontVariant: ['tabular-nums'], ...(color ? { color } : null) }}
       >
         {value}
       </Text>
-      <Text className="text-[11px] font-extrabold uppercase tracking-wider text-text-secondary">
+      <Text
+        maxFontSizeMultiplier={1.1}
+        className="text-[11px] font-bold uppercase tracking-wide text-text-secondary"
+      >
         {label}
       </Text>
     </View>
@@ -192,7 +196,11 @@ function FocusWorkoutSummary({
               />
             ))}
           </View>
-          <Text className="text-[13px] text-text-secondary">
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            className="flex-1 text-[12px] text-text-secondary"
+          >
             {t('workoutComplete.focus.zoneLegend', {
               defaultValue: 'Heart rate takes its zone colour (Zone 1–5)',
             })}

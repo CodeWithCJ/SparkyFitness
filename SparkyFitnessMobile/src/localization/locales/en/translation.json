@@ -5016,6 +5016,9 @@
     "changes": {
       "added": "{{name}} added.",
       "removed": "{{name}} removed.",
+      "setTypes": "{{name}} set types changed.",
+      "superset": "{{name}} superset changed.",
+      "order": "Exercise order changed.",
       "sets_one": "{{name}} {{count}} set, was {{before}}.",
       "sets_other": "{{name}} {{count}} sets, was {{before}}."
     },
