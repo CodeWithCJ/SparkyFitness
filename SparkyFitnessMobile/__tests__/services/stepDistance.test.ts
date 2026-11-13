@@ -137,6 +137,29 @@ describe('learnFromWatchRun', () => {
     expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, undefined);
   });
 
+  it('teaches two corrections of a run in the order they were made', async () => {
+    // The first Health read is slow; the second correction must still be
+    // the one the stride ends on.
+    let releaseFirst: (steps: number) => void = () => undefined;
+    mockedHealthSteps
+      .mockImplementationOnce(
+        () =>
+          new Promise<number | null>((resolve) => {
+            releaseFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce(5200);
+
+    const first = learnFromWatchRun(window({ activity: 'run' }), 5000, 'e1');
+    const second = learnFromWatchRun(window({ activity: 'run' }), 5300, 'e1');
+    await Promise.resolve();
+    expect(mockedHealthSteps).toHaveBeenCalledTimes(1);
+    releaseFirst(5200);
+    await Promise.all([first, second]);
+
+    expect(mockedLearn.mock.calls.map((call) => call[2])).toEqual([5000, 5300]);
+  });
+
   it('logs why nothing was learned when Health has no steps', async () => {
     mockedHealthSteps.mockResolvedValue(null);
     mockedSteps.mockResolvedValue(null);

@@ -10,6 +10,7 @@ import {
   MIN_CALIBRATION_METERS,
 } from '../utils/stride';
 import type { DiaryActivity } from '../utils/gpsRecording';
+import { createSerialQueue } from '../utils/serialQueue';
 
 /** What a recording needs to turn steps into distance. */
 export interface StepWindow {
@@ -108,11 +109,29 @@ export async function learnFromIndoorEntry(
  * (the person has just acted on the run), never from a background filing. `runId` keeps a run to one sample however often it is taught.
  * Returns whether a stride was learned.
  */
-export async function learnFromWatchRun(
+/**
+ * Watch-run learning, one at a time, Health read included: two corrections of
+ * the same run in quick succession must teach in the order they were made, or
+ * a slow read for the earlier one would replace the later distance.
+ */
+const watchRunLearning = createSerialQueue();
+
+export function learnFromWatchRun(
   window: StepWindow,
   distanceMeters: number,
   runId?: string,
   askForPermission = true
+): Promise<boolean> {
+  return watchRunLearning(() =>
+    learnFromWatchRunNow(window, distanceMeters, runId, askForPermission)
+  );
+}
+
+async function learnFromWatchRunNow(
+  window: StepWindow,
+  distanceMeters: number,
+  runId: string | undefined,
+  askForPermission: boolean
 ): Promise<boolean> {
   if (!isStepActivity(window.activity)) return false;
   const health = await getHealthStepsBetween(

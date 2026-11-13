@@ -1341,6 +1341,38 @@ describe('RecordActivityScreen', () => {
         );
       });
 
+      it('leaves an indoor ride as typed, since the setting is for a treadmill', async () => {
+        correct(4);
+        state(
+          session({
+            activity: 'ride',
+            indoor: true,
+            status: 'finished',
+            finishedAt: Date.now(),
+          })
+        );
+        jest.mocked(useIndoorDistanceEstimate).mockReturnValue(null);
+        jest
+          .mocked(saveRecordedActivity)
+          .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-08' });
+        const screen = await renderScreen();
+
+        fireEvent.changeText(screen.getByLabelText('Distance'), '10');
+        expect(screen.queryByText(/treadmill correction/)).toBeNull();
+        fireEvent.press(screen.getByText('Save activity'));
+
+        await waitFor(() =>
+          expect(saveRecordedActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ activity: 'ride', indoor: true }),
+            [],
+            'km',
+            10,
+            null,
+            false
+          )
+        );
+      });
+
       it('never corrects the step estimate it prefilled', async () => {
         correct(4);
         finishedIndoor();

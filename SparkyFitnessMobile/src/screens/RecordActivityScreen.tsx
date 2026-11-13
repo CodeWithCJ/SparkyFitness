@@ -976,12 +976,20 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     Number.isFinite(indoorDistance)
       ? indoorDistance * unitMeters
       : null;
+  // The correction describes a treadmill, so it is for walks and runs only;
+  // an indoor ride's figure comes from another machine and is kept as typed.
+  const onTreadmill =
+    session?.activity === 'walk' || session?.activity === 'run';
+  const treadmillCorrection = useMemo(
+    () => ({
+      enabled: treadmillCorrectionEnabled && onTreadmill,
+      percent: treadmillCorrectionPercent,
+    }),
+    [onTreadmill, treadmillCorrectionEnabled, treadmillCorrectionPercent]
+  );
   const indoorCorrected =
     typedIndoorMeters !== null
-      ? correctTreadmillDistance(typedIndoorMeters, {
-          enabled: treadmillCorrectionEnabled,
-          percent: treadmillCorrectionPercent,
-        })
+      ? correctTreadmillDistance(typedIndoorMeters, treadmillCorrection)
       : null;
   const indoorDistanceKm =
     indoorCorrected?.applied === true
@@ -1015,10 +1023,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       distanceMeters:
         indoorDistanceKm === null ? null : indoorDistanceKm * METERS_PER_KM,
       timeSeconds: typedTime,
+      // The split is read off the same treadmill as the total, so it takes
+      // the same correction; otherwise the last 20 minutes would mix a
+      // corrected total with a raw split.
       splitMeters:
         splitValue === null || !Number.isFinite(splitValue)
           ? null
-          : splitValue * unitMeters,
+          : correctTreadmillDistance(
+              splitValue * unitMeters,
+              treadmillCorrection
+            ).correctedMeters,
       inclinePercent: inclineInvalid ? null : inclineValue,
       adjustForIncline,
     });
@@ -1033,6 +1047,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testSplitText,
     testTimeText,
     testType,
+    treadmillCorrection,
     unitMeters,
   ]);
   const testMeasurement: FitnessTestMeasurement | null = useMemo(() => {
