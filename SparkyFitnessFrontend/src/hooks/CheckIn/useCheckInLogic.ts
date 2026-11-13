@@ -49,6 +49,10 @@ import {
   calculateAge,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
+import {
+  useWebFeatures,
+  withoutHiddenCategories,
+} from '@/hooks/Settings/useWebFeatures';
 import { useSearchParams } from 'react-router-dom';
 import { addDays, todayInZone } from '@workspace/shared';
 
@@ -188,8 +192,16 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     isUpdatingField ||
     isSavingMoodCheckin;
 
-  const { data: customCategories = [] } = useCustomCategories(
+  const { data: allCustomCategories = [] } = useCustomCategories(
     user?.activeUserId
+  );
+  // The reproductive Health categories leave the check-in while cycle is
+  // turned off (Settings > Features). Saving only touches listed categories,
+  // so their data is kept; Settings > Custom Categories still lists them.
+  const { hiddenCustomCategories } = useWebFeatures();
+  const customCategories = useMemo(
+    () => withoutHiddenCategories(allCustomCategories, hiddenCustomCategories),
+    [allCustomCategories, hiddenCustomCategories]
   );
   // Form values come from what was actually recorded on the selected date;
   // the latest carried-forward values are only shown as input placeholders.
@@ -398,6 +410,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     const allMeasurements: CombinedMeasurement[] = [];
 
     recentCustom.forEach((m) => {
+      if (hiddenCustomCategories.has(m.custom_categories?.name ?? '')) return;
       const category = customCategories.find((c) => c.id === m.category_id);
       allMeasurements.push({
         id: m.id,
@@ -535,6 +548,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     defaultMeasurementUnit,
     formatDateInUserTimezone,
     customCategories,
+    hiddenCustomCategories,
   ]);
 
   const handleDeleteMeasurementClick = async (

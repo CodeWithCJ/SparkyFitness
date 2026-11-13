@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import {
   useSymptomContext,
   useSymptomEntries,
@@ -87,6 +88,7 @@ export default function SymptomsReport({
 }: SymptomsReportProps) {
   const { t } = useTranslation();
   const { timezone, formatTime, formatDateInUserTimezone } = usePreferences();
+  const cycleOff = useWebFeatures().isExplicitlyOff('cycle');
   const [symptom, setSymptom] = useState('all');
   const [tableSize, setTableSize] = useState<number>(10);
 
@@ -208,7 +210,8 @@ export default function SymptomsReport({
         foods_day_of: same?.foods.join('; ') ?? '',
         water_ml_day_before: before?.water_ml ?? '',
         steps_day_before: before?.steps ?? '',
-        cycle_phase: ctx?.cycle?.phase ?? '',
+        // No cycle column while cycle is turned off (Settings > Features).
+        ...(cycleOff ? {} : { cycle_phase: ctx?.cycle?.phase ?? '' }),
       };
     });
     const blob = new Blob([Papa.unparse(rows)], {

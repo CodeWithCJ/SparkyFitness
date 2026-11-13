@@ -120,6 +120,9 @@ describe('WebTabsSettings', () => {
     expect(screen.getByText('Cycle')).toBeInTheDocument();
     expect(screen.getByText('On')).toBeInTheDocument();
     expect(screen.getAllByRole('switch')).toHaveLength(7);
+    expect(
+      screen.getByText('Cycle is turned on or off in Features, above.')
+    ).toBeInTheDocument();
   });
 
   it('calls cycle Wellness in discreet mode', () => {

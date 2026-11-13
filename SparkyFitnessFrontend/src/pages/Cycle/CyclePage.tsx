@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCycleSettings } from '@/hooks/useCycle';
+import { useCycleSwitch } from '@/hooks/Settings/useWebFeatures';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Info } from 'lucide-react';
 import CycleToday from './CycleToday';
@@ -8,13 +9,15 @@ import PregnancyToday from './pregnancy/PregnancyToday';
 import CycleOnboarding from './CycleOnboarding';
 import CycleInsights from './CycleInsights';
 import CareHub from './care/CareHub';
+import { CycleOffNotice } from './CycleOffNotice';
 
 export default function CyclePage() {
   const { t } = useTranslation();
-  const { data: settings, isLoading } = useCycleSettings();
+  const cycle = useCycleSwitch();
+  const { settings } = cycle;
   const [activeTab, setActiveTab] = useState('today');
 
-  if (isLoading) {
+  if (cycle.state === 'loading') {
     return (
       <div className="space-y-4 p-4">
         <div className="h-10 w-full animate-pulse rounded-md bg-muted/40" />
@@ -24,7 +27,33 @@ export default function CyclePage() {
     );
   }
 
-  // If not enabled, or not onboarded, show onboarding wizard.
+  // A failed load is not "never set up": finishing the wizard would
+  // overwrite the settings.
+  if (cycle.state === 'loadFailed') {
+    return (
+      <div className="flex flex-col items-center gap-3 p-6">
+        <p className="text-sm text-destructive">
+          {t('settings.features.loadError', 'Could not load this setting.')}
+        </p>
+        <Button variant="outline" size="sm" onClick={cycle.reload}>
+          {t('common.retry', 'Retry')}
+        </Button>
+      </div>
+    );
+  }
+
+  // Turned off after it was set up: offer to turn it back on as it was.
+  if (settings?.onboarded_at && !cycle.on) {
+    return (
+      <CycleOffNotice
+        settings={settings}
+        onTurnOn={() => cycle.setOn(true)}
+        turningOn={cycle.isPending || cycle.state !== 'ready'}
+      />
+    );
+  }
+
+  // Never set up (or its setup was reset): the wizard, which turns it on.
   if (!settings?.enabled || !settings?.onboarded_at) {
     return <CycleOnboarding />;
   }
