@@ -57,4 +57,26 @@ describe('ExerciseHeartRateChip', () => {
       StyleSheet.flatten(zoned.getByText('141 bpm').props.style).color
     ).toBe('#22c55e');
   });
+
+  it('draws a tag with the zone color on the number only', () => {
+    const { getByTestId, getByText } = render(
+      <ExerciseHeartRateChip
+        pill
+        text="141"
+        color="#22c55e"
+        valueColor="#22c55e"
+        accessibilityLabel="x"
+      />
+    );
+    expect(getByTestId('exercise-heart-rate').props.className).toContain(
+      'rounded-full'
+    );
+    expect(StyleSheet.flatten(getByText('141').props.style).color).toBe(
+      '#22c55e'
+    );
+    // The unit stays in the secondary text color.
+    expect(StyleSheet.flatten(getByText(/bpm/).props.style)?.color).toBe(
+      undefined
+    );
+  });
 });

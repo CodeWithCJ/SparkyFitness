@@ -100,7 +100,11 @@ import {
   isCardioModality,
   isDurationModality,
 } from '../utils/workoutSession';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  getDefaultRestSec,
+  useAppPreferencesStore,
+} from '../stores/appPreferencesStore';
+import { formatRest } from '../components/RestPeriodChip';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
 import { useActiveWorkoutDiscard } from '../hooks/useActiveWorkoutDiscard';
@@ -160,6 +164,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     activeWorkoutView === 'focus' &&
     (workoutFormat ?? 'standard') === 'standard' &&
     !guidedWorkoutEnabled;
+
+  // The exercise on show in the focus view, for the header's "2/6" pill.
+  const [focusIndex, setFocusIndex] = useState(0);
 
   const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
@@ -1058,6 +1065,33 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? null
       : formatSetLoad(activeSetDescription, weightUnit, t);
 
+  // The focus view's Log set button names the rest that follows the set, and
+  // its back button reopens the last logged set so it can be edited in place.
+  const activeRestSec = (() => {
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === activeSetId);
+      if (set) return set.rest_time ?? getDefaultRestSec();
+    }
+    return null;
+  })();
+  const lastLoggedSetId = Object.entries(completedSetIds).reduce<string | null>(
+    (latest, [id, at]) =>
+      latest == null || at > completedSetIds[latest] ? id : latest,
+    null
+  );
+  const focusReady = focusMode
+    ? {
+        restLabel:
+          activeRestSec != null && activeRestSec > 0
+            ? formatRest(activeRestSec)
+            : null,
+        onPreviousSet:
+          lastLoggedSetId != null
+            ? () => handleUncomplete(lastLoggedSetId)
+            : undefined,
+      }
+    : undefined;
+
   const footerButtons = (
     <>
       <Button variant="ghost" onPress={handleAddExercise} className="mt-5 mx-1">
@@ -1194,6 +1228,17 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           startedAt={startedAt}
           progress={progress}
           progressInSubtitle={focusMode}
+          focusBar={
+            focusMode
+              ? {
+                  position:
+                    Math.min(focusIndex, session.exercises.length - 1) + 1,
+                  total: session.exercises.length,
+                  onOpenList:
+                    reorderItemCount >= 2 ? handleOpenReorder : undefined,
+                }
+              : undefined
+          }
           onBack={safeGoBack}
           onDiscard={handleDiscard}
           onEndWorkout={handleConfirmEnd}
@@ -1214,6 +1259,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             scrollRef={scrollRef}
             showRequest={focusShowRequest}
             onDismissKeyboard={handleAccessoryDone}
+            onSelectedIndexChange={setFocusIndex}
+            onOpenPlateCalculator={openPlateCalculator}
             session={session}
             prSetIds={prSetIds}
             activeExerciseId={activeExerciseId}
@@ -1366,6 +1413,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onResume={handleResumeRest}
           onCompleteSet={handleCompleteActiveSet}
           onPressBar={handlePressRestBar}
+          focusReady={focusReady}
         />
       )}
 

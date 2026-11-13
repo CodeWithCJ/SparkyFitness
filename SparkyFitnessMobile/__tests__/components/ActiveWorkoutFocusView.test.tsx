@@ -97,12 +97,14 @@ jest.mock('../../src/components/ActiveWorkoutFocusMedia', () => {
     ),
   };
 });
-jest.mock('../../src/components/PlateBarGraphic', () => {
+jest.mock('../../src/components/FocusPlateStrip', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ targetWeight }: any) => (
-      <Text testID="plate-graphic">{`plates:${targetWeight}`}</Text>
+    default: ({ targetWeight, onOpenCalculator }: any) => (
+      <Text testID="plate-graphic" onPress={onOpenCalculator}>
+        {`plates:${targetWeight}`}
+      </Text>
     ),
   };
 });
@@ -165,6 +167,7 @@ const handlers = {
   onPressSetType: jest.fn(),
   onToggleSetDetail: jest.fn(),
   onCommitExerciseNote: jest.fn(),
+  onOpenPlateCalculator: jest.fn(),
 };
 
 function viewElement(
@@ -229,20 +232,23 @@ describe('ActiveWorkoutFocusView', () => {
     expect(shownName()).toBe('Deadlift');
   });
 
-  it('steps with Previous and Next, disabled at the ends', () => {
+  it('pages through the numbered chips', () => {
     render(viewElement('a'));
-    expect(
-      screen.getByLabelText('Previous').props.accessibilityState.disabled
-    ).toBe(true);
-    fireEvent.press(screen.getByLabelText('Next exercise, Squat'));
+    expect(shownName()).toBe('Bench Press');
+    fireEvent.press(screen.getByLabelText(/^Exercise 2 of 3/));
     expect(shownName()).toBe('Squat');
-    fireEvent.press(screen.getByLabelText('Next exercise, Deadlift'));
+    fireEvent.press(screen.getByLabelText(/^Exercise 3 of 3/));
     expect(shownName()).toBe('Deadlift');
-    expect(
-      screen.getByLabelText('Next').props.accessibilityState.disabled
-    ).toBe(true);
-    fireEvent.press(screen.getByLabelText('Previous exercise, Squat'));
+    fireEvent.press(screen.getByLabelText(/^Exercise 2 of 3/));
     expect(shownName()).toBe('Squat');
+  });
+
+  it('reports the exercise on show for the header pill', () => {
+    const onSelectedIndexChange = jest.fn();
+    render(viewElement('a', { onSelectedIndexChange }));
+    expect(onSelectedIndexChange).toHaveBeenLastCalledWith(0);
+    fireEvent.press(screen.getByLabelText(/^Exercise 3 of 3/));
+    expect(onSelectedIndexChange).toHaveBeenLastCalledWith(2);
   });
 
   it('pages with the swipe gesture: left for next, right for previous, none for a short drag', () => {
@@ -263,7 +269,7 @@ describe('ActiveWorkoutFocusView', () => {
   it('hides the keyboard and clears the focused set on every page change', () => {
     render(viewElement('a'));
     expect(handlers.onDismissKeyboard).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByLabelText('Next exercise, Squat'));
+    fireEvent.press(screen.getByLabelText(/^Exercise 2 of 3/));
     expect(handlers.onDismissKeyboard).toHaveBeenCalledTimes(1);
     fireEvent.press(screen.getByTestId('focus-chip-c'));
     expect(handlers.onDismissKeyboard).toHaveBeenCalledTimes(2);
@@ -351,7 +357,7 @@ describe('ActiveWorkoutFocusView', () => {
       expect(screen.getByTestId('media-state').props.children).toBe(flipped);
 
       // The choice survives moving to another exercise.
-      fireEvent.press(screen.getByLabelText('Next exercise, Squat'));
+      fireEvent.press(screen.getByLabelText(/^Exercise 2 of 3/));
       expect(screen.getByTestId('media-state').props.children).toBe(flipped);
     }
   );
@@ -417,7 +423,7 @@ describe('ActiveWorkoutFocusView', () => {
         );
         render(viewElement('a'));
         expect(
-          StyleSheet.flatten(screen.getByText('160 bpm').props.style).color
+          StyleSheet.flatten(screen.getByText('160').props.style).color
         ).toBe('#f59e0b');
       });
 
@@ -425,7 +431,7 @@ describe('ActiveWorkoutFocusView', () => {
         mockUseLiveHeartRate.mockReturnValue(160);
         render(viewElement('a'));
         expect(
-          StyleSheet.flatten(screen.getByText('160 bpm').props.style).color
+          StyleSheet.flatten(screen.getByText('160').props.style)?.color
         ).toBeUndefined();
       });
 
@@ -523,6 +529,21 @@ describe('ActiveWorkoutFocusView', () => {
       );
     });
 
+    it('opens the plate calculator for the active set from the plate strip', () => {
+      const onOpenPlateCalculator = jest.fn();
+      const withWeight = makeExercise('a', 'Bench Press');
+      withWeight.sets[0].weight = 100;
+      render(
+        viewElement(
+          'a',
+          { onOpenPlateCalculator, activeSetId: 'a-1' },
+          { exercises: [withWeight] }
+        )
+      );
+      fireEvent.press(screen.getByTestId('plate-graphic'));
+      expect(onOpenPlateCalculator).toHaveBeenCalledWith('a-1');
+    });
+
     it('draws no plates for a non-barbell exercise', () => {
       const dumbbell = makeExercise('a', 'Curl');
       dumbbell.exercise_snapshot.equipment = ['dumbbell'];
@@ -530,6 +551,26 @@ describe('ActiveWorkoutFocusView', () => {
       render(viewElement('a', {}, { exercises: [dumbbell] }));
       expect(screen.queryByTestId('plate-graphic')).toBeNull();
     });
+  });
+
+  it('puts the plan under the name when there are no pictures, and Swap and the menu beside the name when there are', () => {
+    const { rerender } = render(viewElement('a'));
+    // No pictures: the preview stays collapsed and the title block stands alone.
+    expect(screen.getAllByLabelText('Swap Bench Press').length).toBeGreaterThan(
+      0
+    );
+    const withPicture = makeExercise('a', 'Bench Press');
+    withPicture.exercise_snapshot.images = ['a.jpg'];
+    rerender(
+      viewElement(
+        'a',
+        { getImageSource: () => ({ uri: 'https://img/a.jpg' }) },
+        { exercises: [withPicture] }
+      )
+    );
+    expect(screen.getAllByLabelText('Swap Bench Press').length).toBeGreaterThan(
+      0
+    );
   });
 
   it('shows the plan and last time lines', () => {
@@ -553,8 +594,8 @@ describe('ActiveWorkoutFocusView', () => {
       },
     });
     render(viewElement('a'));
-    expect(screen.getByText('Plan: 2 × 12')).toBeTruthy();
-    expect(screen.getByText('Last time: 40×7, 35×9')).toBeTruthy();
+    expect(screen.getByText('Plan 2 × 12')).toBeTruthy();
+    expect(screen.getByText('Last time 40×7, 35×9')).toBeTruthy();
   });
 
   it("passes last session's sets to the set editor, warm-ups paired with warm-ups", () => {
@@ -590,7 +631,7 @@ describe('ActiveWorkoutFocusView', () => {
       },
     });
     render(viewElement('a'));
-    expect(screen.getByText('Last time: 42.5×5')).toBeTruthy();
+    expect(screen.getByText('Last time 42.5×5')).toBeTruthy();
 
     try {
       await act(async () => {
@@ -606,8 +647,8 @@ describe('ActiveWorkoutFocusView', () => {
 
   it('omits the context lines without a plan or history', () => {
     render(viewElement('a'));
-    expect(screen.queryByText(/^Plan:/)).toBeNull();
-    expect(screen.queryByText(/^Last time:/)).toBeNull();
+    expect(screen.queryByText(/^Plan /)).toBeNull();
+    expect(screen.queryByText(/^Last time /)).toBeNull();
   });
 
   it('keeps every exercise history tracked, not just the shown one', () => {

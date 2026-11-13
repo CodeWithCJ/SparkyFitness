@@ -17,6 +17,7 @@
       --color-background: hsl(220, 25%, 96%);
       --color-surface: hsl(220, 20%, 98%);
       --color-raised: hsl(0, 0%, 100%);
+      --color-control: hsl(220, 20%, 93%);
       --color-chrome: hsl(0, 0%, 100%);
 
       --color-border: hsl(213, 16%, 90%);
@@ -121,6 +122,7 @@
       --color-background: hsl(220, 20%, 6%);
       --color-surface: hsl(220, 18%, 9%);
       --color-raised: hsl(220, 16%, 13%);
+      --color-control: hsl(220, 14%, 19%);
       --color-chrome: hsl(220, 22%, 7%);
 
       --color-border-subtle: hsl(220, 15%, 14%);
@@ -218,6 +220,7 @@
       --color-background: hsl(0, 0%, 0%);
       --color-surface: hsl(220, 18%, 4%);
       --color-raised: hsl(220, 16%, 8%);
+      --color-control: hsl(220, 14%, 14%);
       --color-chrome: hsla(0, 0%, 0%, 0.9);
 
       --color-border-subtle: hsl(220, 15%, 10%);

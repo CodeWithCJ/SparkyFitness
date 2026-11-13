@@ -32,15 +32,9 @@ import ActiveWorkoutSetRow, {
 } from './ActiveWorkoutSetRow';
 import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
-import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
-import StepperInput from './StepperInput';
-import {
-  SetCellInput,
-  type SetInputField,
-  type SetRowAccessoryHandle,
-} from './SetRowChrome';
-import { withAlpha } from '../utils/colors';
+import { HeroLabel, HeroStepper, TableCellInput } from './FocusSetCells';
+import { type SetInputField, type SetRowAccessoryHandle } from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import {
   parseDecimalInput,
@@ -129,6 +123,8 @@ interface StepperFieldOptions {
   assumed: number | null;
   step: number;
   min: number;
+  /** Upper bound for +/- (RPE and RIR stop at 10). */
+  max?: number;
   format: (value: number) => string;
   parse: (text: string) => number;
   onCommit: (value: number | null) => void;
@@ -150,6 +146,7 @@ function useStepperField({
   assumed,
   step,
   min,
+  max = Infinity,
   format,
   parse,
   onCommit,
@@ -184,7 +181,12 @@ function useStepperField({
     const base = Number.isNaN(typed) ? (value ?? assumed ?? 0) : typed;
     setDraft(null);
     // Round to cents so 0.1 + 0.2 style float residue never reaches the store.
-    onCommit(Math.max(min, Math.round((base + direction * step) * 100) / 100));
+    onCommit(
+      Math.min(
+        max,
+        Math.max(min, Math.round((base + direction * step) * 100) / 100)
+      )
+    );
   };
 
   return {
@@ -231,6 +233,8 @@ interface FocusSetRowProps {
   /** Render key of the following set, for Next Set; null on the last set. */
   nextSetKey: string | null;
   entryId: string;
+  /** Sets in the exercise, for the active-set card's "Set 2 of 4". */
+  setCount: number;
   onActivateSet: (setKey: string, field: Exclude<SetInputField, 'rpe'>) => void;
   onAddSet: (entryId: string) => void;
   onRegisterAccessoryHandle: (
@@ -262,20 +266,43 @@ const FocusSetRow = React.memo(function FocusSetRow({
   activeField,
   nextSetKey,
   entryId,
+  setCount,
   onActivateSet,
   onAddSet,
   onRegisterAccessoryHandle,
 }: FocusSetRowProps) {
   const { t } = useTranslation();
-  const [accentPrimary, textMuted, rpeEasy, rpeModerate, rpeHard, rpeMax] =
-    useCSSVariable([
-      '--color-accent-primary',
-      '--color-text-muted',
-      RPE_TONE_VARS.easy,
-      RPE_TONE_VARS.moderate,
-      RPE_TONE_VARS.hard,
-      RPE_TONE_VARS.max,
-    ]) as [string, string, string, string, string, string];
+  const [
+    accentPrimary,
+    textSecondary,
+    warmupColor,
+    dangerColor,
+    dropColor,
+    rpeEasy,
+    rpeModerate,
+    rpeHard,
+    rpeMax,
+  ] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-secondary',
+    '--color-cat-amber',
+    '--color-icon-danger',
+    '--color-cat-violet',
+    RPE_TONE_VARS.easy,
+    RPE_TONE_VARS.moderate,
+    RPE_TONE_VARS.hard,
+    RPE_TONE_VARS.max,
+  ]) as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
   const rpeToneColors = {
     easy: rpeEasy,
     moderate: rpeModerate,
@@ -328,6 +355,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     assumed: null,
     step: 1,
     min: 0,
+    max: 10,
     format: formatRpe,
     parse: (text) => parseEffort(text) ?? NaN,
     commitKey: effortField,
@@ -420,17 +448,15 @@ const FocusSetRow = React.memo(function FocusSetRow({
 
   const letter = setTypeLetter(set.set_type);
   const isCurrent = state === 'current';
-  const setIndicator = (
-    <Text
-      className="text-sm text-text-muted"
-      style={[
-        { fontVariant: ['tabular-nums'] },
-        isCurrent ? { color: accentPrimary, fontWeight: '700' } : null,
-      ]}
-    >
-      {letter ?? displayNumber}
-    </Text>
-  );
+  const unitLabel =
+    weightUnit === 'kg'
+      ? t('workout.kg', { defaultValue: 'kg' })
+      : t('workout.lbs', { defaultValue: 'lbs' });
+  const weightKeyboard = !bodyweight
+    ? 'decimal-pad'
+    : Platform.OS === 'ios'
+      ? 'numbers-and-punctuation'
+      : 'numeric';
   // Tap the set number to change this set's type; the menu anchors to it.
   const setNumberRef = useRef<ViewInstance>(null);
   const openSetTypeMenu = () => {
@@ -448,12 +474,230 @@ const FocusSetRow = React.memo(function FocusSetRow({
         defaultValue: 'Mark set {{setNumber}} complete',
         setNumber,
       });
+  const weightLabels = {
+    decrement: t('activeWorkout.focus.sets.decreaseWeight', {
+      defaultValue: 'Decrease weight for set {{setNumber}}',
+      setNumber,
+    }),
+    input: t('activeWorkout.focus.sets.weightInput', {
+      defaultValue: 'Weight for set {{setNumber}}',
+      setNumber,
+    }),
+    increment: t('activeWorkout.focus.sets.increaseWeight', {
+      defaultValue: 'Increase weight for set {{setNumber}}',
+      setNumber,
+    }),
+  };
+  const repsLabels = {
+    decrement: t('activeWorkout.focus.sets.decreaseReps', {
+      defaultValue: 'Decrease reps for set {{setNumber}}',
+      setNumber,
+    }),
+    input: t('activeWorkout.focus.sets.repsInput', {
+      defaultValue: 'Reps for set {{setNumber}}',
+      setNumber,
+    }),
+    increment: t('activeWorkout.focus.sets.increaseReps', {
+      defaultValue: 'Increase reps for set {{setNumber}}',
+      setNumber,
+    }),
+  };
+  const effortInputLabel = t('activeWorkout.focus.sets.effortInput', {
+    defaultValue: '{{metric}} for set {{setNumber}}',
+    metric: effortLabel,
+    setNumber,
+  });
 
   const longPress = onToggleSetDetail
     ? () => onToggleSetDetail(renderKey)
     : onDeleteSet
       ? () => onDeleteSet(setId)
       : undefined;
+
+  // The set currently being done opens into a card with big steppers; every
+  // other set is one compact line of the table.
+  if (isCurrent) {
+    const fillText =
+      previousSet != null
+        ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
+        : null;
+    const repsLeft =
+      effortField === 'rpe' && effort != null && effort >= 5 && effort <= 10
+        ? Math.round(10 - effort)
+        : null;
+    return (
+      <View
+        testID="focus-active-set-card"
+        accessibilityLabel={t('activeWorkout.focus.hero.label', {
+          defaultValue: 'Set {{setNumber}} of {{total}}',
+          setNumber: displayNumber,
+          total: setCount,
+        })}
+        className="my-1 gap-2 rounded-[20px] bg-raised p-2.5"
+        style={{ borderWidth: 2, borderColor: accentPrimary }}
+      >
+        <View className="flex-row items-center justify-between">
+          <Pressable
+            onPress={openSetTypeMenu}
+            disabled={!onPressSetType}
+            accessibilityRole={onPressSetType ? 'button' : undefined}
+            accessibilityLabel={t('activeWorkout.setRow.changeType', {
+              defaultValue: 'Change type for set {{setNumber}}',
+              setNumber,
+            })}
+            className="min-h-11 justify-center"
+          >
+            <View ref={setNumberRef} collapsable={false}>
+              <HeroLabel accent>
+                {letter != null
+                  ? t('activeWorkout.focus.hero.typedSet', {
+                      defaultValue: 'Set {{letter}}',
+                      letter,
+                    })
+                  : t('activeWorkout.focus.hero.setOf', {
+                      defaultValue: 'Set {{setNumber}} of {{total}}',
+                      setNumber: displayNumber,
+                      total: setCount,
+                    })}
+              </HeroLabel>
+            </View>
+          </Pressable>
+          {fillText != null && canFillFromPrevious && (
+            <Pressable
+              onPress={handleFillFromPrevious}
+              accessibilityRole="button"
+              accessibilityLabel={t('activeWorkout.focus.hero.fillLabel', {
+                defaultValue: 'Fill set {{setNumber}} with {{value}}',
+                setNumber,
+                value: fillText,
+              })}
+              className="h-11 justify-center rounded-full bg-control px-3.5 active:opacity-70"
+            >
+              <Text
+                className="text-[13px] font-semibold text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {t('activeWorkout.focus.hero.fill', {
+                  defaultValue: 'Fill {{value}}',
+                  value: fillText,
+                })}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+        <View className="flex-row gap-2">
+          {showWeight && (
+            <View className="flex-1 gap-1">
+              <HeroLabel>
+                {t('activeWorkout.focus.sets.weightHeader', {
+                  defaultValue: 'Weight ({{unit}})',
+                  unit: unitLabel,
+                })}
+              </HeroLabel>
+              <HeroStepper
+                {...weight.inputProps}
+                inputRef={weightInputRef}
+                onFocus={() => onActivateSet(renderKey, 'weight')}
+                keyboardType={weightKeyboard}
+                accessibilityLabel={weightLabels.input}
+                decrementLabel={weightLabels.decrement}
+                incrementLabel={weightLabels.increment}
+              />
+              <Text
+                className="text-center text-[13px] text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {t('activeWorkout.focus.hero.step', {
+                  defaultValue: 'step {{step}} {{unit}}',
+                  step: formatFocusWeight(weightStep, weightUnit),
+                  unit: unitLabel,
+                })}
+              </Text>
+            </View>
+          )}
+          <View className="flex-1 gap-1">
+            <HeroLabel>
+              {t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
+            </HeroLabel>
+            <HeroStepper
+              {...reps.inputProps}
+              inputRef={repsInputRef}
+              onFocus={() => onActivateSet(renderKey, 'reps')}
+              keyboardType="number-pad"
+              accessibilityLabel={repsLabels.input}
+              decrementLabel={repsLabels.decrement}
+              incrementLabel={repsLabels.increment}
+            />
+            {previousSet?.reps != null && (
+              <Text
+                className="text-center text-[13px] text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {t('activeWorkout.focus.hero.lastReps', {
+                  defaultValue: 'last {{reps}}',
+                  reps: previousSet.reps,
+                })}
+              </Text>
+            )}
+          </View>
+        </View>
+        {isEffortColumn && (
+          <View className="flex-row items-center gap-1.5 pl-3.5">
+            <View className="min-w-0 flex-1">
+              <HeroLabel accent>{effortLabel}</HeroLabel>
+              <Text className="text-[13px] text-text-secondary">
+                {repsLeft != null
+                  ? t('activeWorkout.focus.hero.optionalRepsLeft', {
+                      defaultValue: 'optional · {{count}} reps left',
+                      count: repsLeft,
+                    })
+                  : t('activeWorkout.focus.hero.optional', {
+                      defaultValue: 'optional',
+                    })}
+              </Text>
+            </View>
+            <View style={{ width: 150 }}>
+              <HeroStepper
+                {...effortInput.inputProps}
+                inputRef={effortInputRef}
+                onFocus={() => onActivateRpe(renderKey)}
+                keyboardType="decimal-pad"
+                accessibilityLabel={effortInputLabel}
+                decrementLabel={t('activeWorkout.focus.hero.decreaseEffort', {
+                  defaultValue: 'Decrease {{metric}} for set {{setNumber}}',
+                  metric: effortLabel,
+                  setNumber,
+                })}
+                incrementLabel={t('activeWorkout.focus.hero.increaseEffort', {
+                  defaultValue: 'Increase {{metric}} for set {{setNumber}}',
+                  metric: effortLabel,
+                  setNumber,
+                })}
+                textColor={effortColor}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  const letterColor =
+    letter === 'W'
+      ? warmupColor
+      : letter === 'F'
+        ? dangerColor
+        : letter === 'D'
+          ? dropColor
+          : textSecondary;
+  const setIndicator = (
+    <Text
+      className="text-[15px] font-bold"
+      style={{ color: letterColor, fontVariant: ['tabular-nums'] }}
+    >
+      {letter ?? displayNumber}
+    </Text>
+  );
 
   return (
     <Pressable
@@ -467,14 +711,9 @@ const FocusSetRow = React.memo(function FocusSetRow({
             })
           : undefined
       }
-      className={`flex-row items-center gap-2 rounded-xl px-2 py-1.5 ${isCurrent ? '' : 'bg-transparent'}`}
-      style={
-        isCurrent
-          ? { backgroundColor: withAlpha(accentPrimary, 0.12) }
-          : undefined
-      }
+      className="flex-row items-center gap-1"
     >
-      <View ref={setNumberRef} collapsable={false} className="w-9 items-center">
+      <View ref={setNumberRef} collapsable={false} style={{ width: 30 }}>
         {onPressSetType ? (
           <Pressable
             onPress={openSetTypeMenu}
@@ -483,12 +722,14 @@ const FocusSetRow = React.memo(function FocusSetRow({
               defaultValue: 'Change type for set {{setNumber}}',
               setNumber,
             })}
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 items-center justify-center"
           >
             {setIndicator}
           </Pressable>
         ) : (
-          setIndicator
+          <View className="h-11 items-center justify-center">
+            {setIndicator}
+          </View>
         )}
       </View>
       {previousSet !== undefined && (
@@ -505,14 +746,14 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 })
               : undefined
           }
-          className="min-h-11 w-16 items-center justify-center"
-          style={isDone ? { opacity: 0.62 } : undefined}
+          className="h-11 items-center justify-center rounded-[14px] border border-dashed border-border-strong"
+          style={{ flex: 62 }}
         >
           <Text
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
-            className="text-center text-xs text-text-secondary"
+            className="text-center text-sm font-semibold text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
             {previousSet != null
@@ -521,94 +762,55 @@ const FocusSetRow = React.memo(function FocusSetRow({
           </Text>
         </Pressable>
       )}
-      {/* Done rows recede; the completion check sits outside this wrapper so
-          its green stays vivid. */}
       <View
         testID="focus-set-values"
-        className="flex-1 flex-row items-center gap-2"
-        style={isDone ? { opacity: 0.62 } : undefined}
+        className="flex-row gap-1"
+        style={{ flex: 198 }}
       >
         {showWeight && (
-          <View className="flex-[3] flex-row">
-            <StepperInput
-              fill
+          <View style={{ flex: 82 }}>
+            <TableCellInput
               {...weight.inputProps}
               inputRef={weightInputRef}
-              inputProps={{ onFocus: () => onActivateSet(renderKey, 'weight') }}
-              keyboardType={
-                !bodyweight
-                  ? 'decimal-pad'
-                  : Platform.OS === 'ios'
-                    ? 'numbers-and-punctuation'
-                    : 'numeric'
-              }
-              accessibilityLabels={{
-                decrement: t('activeWorkout.focus.sets.decreaseWeight', {
-                  defaultValue: 'Decrease weight for set {{setNumber}}',
-                  setNumber,
-                }),
-                input: t('activeWorkout.focus.sets.weightInput', {
-                  defaultValue: 'Weight for set {{setNumber}}',
-                  setNumber,
-                }),
-                increment: t('activeWorkout.focus.sets.increaseWeight', {
-                  defaultValue: 'Increase weight for set {{setNumber}}',
-                  setNumber,
-                }),
-              }}
+              onFocus={() => onActivateSet(renderKey, 'weight')}
+              keyboardType={weightKeyboard}
+              accessibilityLabel={weightLabels.input}
             />
           </View>
         )}
-        <View className="flex-[2] flex-row">
-          <StepperInput
-            fill
+        <View style={{ flex: showWeight ? 68 : 150 }}>
+          <TableCellInput
             {...reps.inputProps}
             inputRef={repsInputRef}
-            inputProps={{ onFocus: () => onActivateSet(renderKey, 'reps') }}
+            onFocus={() => onActivateSet(renderKey, 'reps')}
             keyboardType="number-pad"
-            accessibilityLabels={{
-              decrement: t('activeWorkout.focus.sets.decreaseReps', {
-                defaultValue: 'Decrease reps for set {{setNumber}}',
-                setNumber,
-              }),
-              input: t('activeWorkout.focus.sets.repsInput', {
-                defaultValue: 'Reps for set {{setNumber}}',
-                setNumber,
-              }),
-              increment: t('activeWorkout.focus.sets.increaseReps', {
-                defaultValue: 'Increase reps for set {{setNumber}}',
-                setNumber,
-              }),
-            }}
+            accessibilityLabel={repsLabels.input}
           />
         </View>
-        <View className="w-10">
+        <View style={{ flex: 48 }}>
           {!isEffortColumn ? (
-            <Text
-              className="text-center text-sm text-text-muted"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {weightMetricText(
-                metricColumn,
-                set,
-                modality,
-                bodyWeightKg,
-                weightUnit
-              )}
-            </Text>
+            <View className="h-11 items-center justify-center rounded-[14px] bg-raised">
+              <Text
+                className="text-center text-base text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {weightMetricText(
+                  metricColumn,
+                  set,
+                  modality,
+                  bodyWeightKg,
+                  weightUnit
+                )}
+              </Text>
+            </View>
           ) : (
-            <SetCellInput
+            <TableCellInput
+              {...effortInput.inputProps}
+              placeholder=""
               inputRef={effortInputRef}
-              value={effortInput.inputProps.value}
-              onChangeText={effortInput.inputProps.onChangeText}
-              onBlur={effortInput.flush}
               onFocus={() => onActivateRpe(renderKey)}
               keyboardType="decimal-pad"
-              accessibilityLabel={t('activeWorkout.focus.sets.effortInput', {
-                defaultValue: '{{metric}} for set {{setNumber}}',
-                metric: effortLabel,
-                setNumber,
-              })}
+              accessibilityLabel={effortInputLabel}
               textColor={effortColor}
             />
           )}
@@ -616,22 +818,20 @@ const FocusSetRow = React.memo(function FocusSetRow({
       </View>
       <Pressable
         onPress={isDone ? () => onUncomplete(setId) : handleComplete}
-        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: isDone }}
         accessibilityLabel={checkLabel}
-        className="h-11 w-9 items-center justify-center"
+        className={`h-11 w-11 items-center justify-center rounded-[14px] active:opacity-70 ${
+          isDone ? '' : 'bg-raised'
+        }`}
+        style={isDone ? { backgroundColor: accentPrimary } : undefined}
       >
-        {isDone ? (
-          <CompletionCheck size={28} />
-        ) : isCurrent ? (
-          <LogCircle color={accentPrimary} />
-        ) : (
-          <View
-            className="h-7 w-7 rounded-full border-2"
-            style={{ borderColor: textMuted }}
-          />
-        )}
+        <Icon
+          name="checkmark"
+          size={20}
+          color={isDone ? '#ffffff' : textSecondary}
+          weight="bold"
+        />
       </Pressable>
     </Pressable>
   );
@@ -668,7 +868,10 @@ function ActiveWorkoutFocusSets({
   onRegisterAccessoryHandle,
 }: Props) {
   const { t } = useTranslation();
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
+  const [accentPrimary, textPrimary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string];
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const stepperRows =
     !isDurationModality(modality) &&
@@ -733,7 +936,8 @@ function ActiveWorkoutFocusSets({
     <View
       ref={metricAnchorRef}
       collapsable={false}
-      className={`${stepperRows ? 'w-10' : 'w-14'} items-center`}
+      className={stepperRows ? 'items-center' : 'w-14 items-center'}
+      style={stepperRows ? { flex: 48 } : undefined}
     >
       <Pressable
         onPress={openMetricMenu}
@@ -742,10 +946,10 @@ function ActiveWorkoutFocusSets({
         accessibilityLabel={t('activeWorkout.exercise.changeMetric', {
           defaultValue: 'Change metric column',
         })}
-        className="-my-3.5 min-h-11 flex-row items-center justify-center gap-0.5"
+        className="min-h-11 flex-row items-center justify-center gap-0.5"
       >
         <Text
-          className="text-xs font-medium uppercase"
+          className="text-xs font-bold uppercase"
           style={{ color: accentPrimary }}
         >
           {effortHeader}
@@ -755,7 +959,7 @@ function ActiveWorkoutFocusSets({
     </View>
   );
   const headerClass =
-    'text-center text-xs font-medium uppercase text-text-muted';
+    'text-center text-xs font-bold uppercase text-text-secondary';
 
   // A cardio exercise with one set logs duration and distance in the form the
   // list card shows, in place of a set table.
@@ -800,36 +1004,37 @@ function ActiveWorkoutFocusSets({
   }
 
   return (
-    <View className="rounded-2xl bg-surface p-2">
+    <View className={stepperRows ? 'gap-1.5' : 'rounded-2xl bg-surface p-2'}>
       {bodyweightExercise && (
         <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
       )}
       {stepperRows && (
-        <View className="flex-row items-center gap-2 px-2 pb-1">
-          <View className="w-9" />
+        <View className="flex-row items-center gap-1">
+          <Text className={headerClass} style={{ width: 30 }}>
+            {t('workout.set', { defaultValue: 'Set' })}
+          </Text>
           {previousSets != null && (
-            <Text className={`w-16 ${headerClass}`}>
+            <Text className={headerClass} style={{ flex: 62 }}>
               {t('workout.prev', { defaultValue: 'Prev' })}
             </Text>
           )}
-          <View className="flex-1 flex-row items-center gap-2">
+          <View className="flex-row items-center gap-1" style={{ flex: 198 }}>
             {modality !== 'reps_only' && (
-              <Text className={`flex-[3] ${headerClass}`}>
-                {t('activeWorkout.focus.sets.weightHeader', {
-                  defaultValue: 'Weight ({{unit}})',
-                  unit:
-                    weightUnit === 'kg'
-                      ? t('workout.kg', { defaultValue: 'kg' })
-                      : t('workout.lbs', { defaultValue: 'lbs' }),
-                })}
+              <Text className={headerClass} style={{ flex: 82 }}>
+                {weightUnit === 'kg'
+                  ? t('workout.kg', { defaultValue: 'kg' })
+                  : t('workout.lbs', { defaultValue: 'lbs' })}
               </Text>
             )}
-            <Text className={`flex-[2] ${headerClass}`}>
+            <Text
+              className={headerClass}
+              style={{ flex: modality !== 'reps_only' ? 68 : 150 }}
+            >
               {t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
             </Text>
             {metricTrigger}
           </View>
-          <View className="w-9" />
+          <View className="w-11" />
         </View>
       )}
       {!stepperRows && exercise.sets.length > 0 && (
@@ -917,6 +1122,7 @@ function ActiveWorkoutFocusSets({
               nextSetId != null ? (setRenderKeys[nextSetId] ?? nextSetId) : null
             }
             entryId={exercise.id}
+            setCount={exercise.sets.length}
             onActivateSet={onActivateSet}
             onAddSet={onAddSet}
             onRegisterAccessoryHandle={onRegisterAccessoryHandle}
@@ -977,10 +1183,24 @@ function ActiveWorkoutFocusSets({
             exercise.exercise_snapshot?.name ??
             t('workout.exercise', { defaultValue: 'Exercise' }),
         })}
-        className="mt-1 min-h-11 flex-row items-center justify-center gap-1.5"
+        className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full active:opacity-70 ${
+          stepperRows ? 'mt-1 bg-raised' : 'mt-1'
+        }`}
       >
-        <Icon name="add" size={15} color={accentPrimary} />
-        <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
+        <Icon
+          name="add"
+          size={stepperRows ? 18 : 15}
+          color={stepperRows ? textPrimary : accentPrimary}
+          weight="bold"
+        />
+        <Text
+          className={
+            stepperRows
+              ? 'text-base font-bold text-text-primary'
+              : 'text-sm font-medium'
+          }
+          style={stepperRows ? undefined : { color: accentPrimary }}
+        >
           {t('activeWorkout.exercise.addSetLabel', {
             defaultValue: 'Add set',
           })}

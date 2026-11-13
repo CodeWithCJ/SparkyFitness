@@ -261,6 +261,47 @@ describe('ActiveWorkoutRestBar', () => {
     });
   });
 
+  describe('focus ready bar', () => {
+    it('shows a back button and a Log set button that names the rest', () => {
+      const onPreviousSet = jest.fn();
+      const { getByLabelText, getByText, queryByText, props } = renderBar({
+        state: 'ready',
+        focusReady: { restLabel: '1:30', onPreviousSet },
+      });
+      expect(getByText('Log set')).toBeTruthy();
+      expect(getByText('Rest 1:30')).toBeTruthy();
+      // The on-deck row is replaced.
+      expect(queryByText('Incline DB Press · Set 3')).toBeNull();
+      fireEvent.press(getByLabelText('Log set, rest 1:30'));
+      expect(props.onCompleteSet).toHaveBeenCalledTimes(1);
+      fireEvent.press(getByLabelText('Previous set, edit in place'));
+      expect(onPreviousSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('omits the rest text with no rest and disables back with nothing to reopen', () => {
+      const { getByLabelText, queryByText } = renderBar({
+        state: 'ready',
+        focusReady: { restLabel: null },
+      });
+      expect(queryByText(/^Rest /)).toBeNull();
+      expect(
+        getByLabelText('Previous set, edit in place').props.accessibilityState
+      ).toEqual({ disabled: true });
+    });
+
+    it('is docked even when Liquid Glass tabs are active, and the rest keeps its timer', () => {
+      mockUseNativeIOSTabsActive.mockReturnValue(true);
+      const ready = renderBar({
+        state: 'ready',
+        focusReady: { restLabel: '1:00' },
+      });
+      expect(ready.queryByTestId('rest-bar-glass')).toBeNull();
+      ready.unmount();
+      const resting = renderBar({ focusReady: { restLabel: '1:00' } });
+      expect(resting.getByText('0:45')).toBeTruthy();
+    });
+  });
+
   describe('countdown lead-in', () => {
     beforeEach(() => {
       mockPlayIntervalCue.mockClear();

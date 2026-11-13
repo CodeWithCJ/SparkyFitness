@@ -16,7 +16,7 @@ interface Props {
   getImageSource: GetImageSource;
   expanded: boolean;
   onToggleExpanded: () => void;
-  /** Rendered to the right of the thumbnail when minimized (the title block). */
+  /** Rendered to the right of the thumbnail when minimized (the title block); nothing is drawn for an exercise without pictures. */
   children?: React.ReactNode;
   /**
    * Set while the page shows another exercise than the active one: a "Back to
@@ -25,8 +25,8 @@ interface Props {
   onBackToCurrent?: () => void;
 }
 
-const THUMB_SIZE = 72;
-const MAX_HEIGHT_RATIO = 0.45;
+const THUMB_SIZE = 96;
+const MAX_HEIGHT_RATIO = 0.32;
 // Library photos are mostly 4:3 landscape; the card takes each image's own
 // shape once it loads, within portrait 3:4 and wide 16:9, so a photo fills it
 // instead of sitting between white bands.
@@ -58,8 +58,6 @@ function ActiveWorkoutFocusMedia({
   }, []);
   const openLightbox = useOpenLightbox();
   const reducedMotion = useReducedMotion();
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
-  const textMuted = String(useCSSVariable('--color-text-muted'));
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [paused, setPaused] = useState(false);
 
@@ -73,7 +71,7 @@ function ActiveWorkoutFocusMedia({
         onPress={onBackToCurrent}
         accessibilityRole="button"
         className={`min-h-11 flex-row items-center gap-1 self-start rounded-full px-3 active:opacity-70 ${
-          overPhoto ? 'absolute left-3 top-3 bg-black/55' : 'bg-raised'
+          overPhoto ? 'absolute left-3 top-3 bg-black/70' : 'bg-raised'
         }`}
       >
         <Icon
@@ -93,29 +91,15 @@ function ActiveWorkoutFocusMedia({
       </Pressable>
     );
 
-  if (usable.length === 0) {
-    return (
-      <View className="gap-2">
-        {backToCurrent(false)}
-        <View className="flex-row items-center gap-3">
-          <View
-            testID="focus-media-placeholder"
-            className="bg-raised items-center justify-center rounded-xl"
-            style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-          >
-            <Icon name="exercise-weights" size={36} color={textMuted} />
-          </View>
-          {children}
-        </View>
-      </View>
-    );
-  }
+  // No pictures: the preview stays collapsed, with no placeholder. The page
+  // draws the title itself in that case, so only the way back is left here.
+  if (usable.length === 0) return backToCurrent(false) || null;
 
   const source = getImageSource(usable[index]);
   const openFullScreen = () => openLightbox(usable, index, exerciseName);
   // A dark scrim reads over any photo, whatever the app theme.
   const pillClass =
-    'flex-row items-center gap-1.5 bg-black/55 rounded-full px-3 active:opacity-70';
+    'flex-row items-center gap-1.5 bg-black/70 rounded-full px-3.5 active:opacity-70';
 
   if (!expanded) {
     return (
@@ -137,7 +121,7 @@ function ActiveWorkoutFocusMedia({
             accessibilityState={{ expanded: false }}
           >
             <View
-              className="bg-white rounded-xl overflow-hidden"
+              className="bg-white rounded-2xl overflow-hidden"
               style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
             >
               <SafeImage
@@ -149,8 +133,8 @@ function ActiveWorkoutFocusMedia({
                 fallback={null}
               />
             </View>
-            <View className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-surface/90 border border-border/40 items-center justify-center">
-              <Icon name="expand" size={11} color={textPrimary} />
+            <View className="absolute right-1.5 bottom-1.5 w-6 h-6 rounded-full bg-black/70 items-center justify-center">
+              <Icon name="expand" size={12} color="white" />
             </View>
           </Pressable>
           {children}
@@ -161,10 +145,13 @@ function ActiveWorkoutFocusMedia({
 
   return (
     <View
-      className="w-full bg-white rounded-2xl overflow-hidden"
+      className="w-full bg-white overflow-hidden"
+      // 22 pt corners, as drawn on the boards.
+
       style={{
         aspectRatio: aspect,
         maxHeight: windowHeight * MAX_HEIGHT_RATIO,
+        borderRadius: 22,
       }}
     >
       <Pressable
@@ -199,7 +186,7 @@ function ActiveWorkoutFocusMedia({
         })}
         accessibilityState={{ expanded: true }}
       >
-        <Icon name="chevron-down" size={16} color="white" />
+        <Icon name="contract" size={16} color="white" />
         <Text className="text-sm font-semibold text-white">
           {t('activeWorkout.focus.media.minimize', {
             defaultValue: 'Minimize',

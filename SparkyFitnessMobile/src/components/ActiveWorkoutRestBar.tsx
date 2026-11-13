@@ -4,6 +4,7 @@ import { AppState, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
+import FooterActionBar from './FooterActionBar';
 import Icon from './Icon';
 import LiquidGlassSurface, {
   createLiquidGlassPillStyle,
@@ -49,6 +50,12 @@ interface ActiveWorkoutRestBarProps {
   onCompleteSet: () => void;
   /** Taps on the bar outside its controls (the buttons claim their own). */
   onPressBar?: () => void;
+  /**
+   * The focus view's ready bar: a back button (reopens the last logged set to
+   * edit it) beside a large Log set button that names the rest that follows.
+   * The resting state is unchanged.
+   */
+  focusReady?: { restLabel: string | null; onPreviousSet?: () => void };
 }
 
 /**
@@ -83,16 +90,19 @@ function ActiveWorkoutRestBar({
   onResume,
   onCompleteSet,
   onPressBar,
+  focusReady,
 }: ActiveWorkoutRestBarProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesGlass = useNativeIOSTabsActive();
-  const [accentPrimary, textMuted, trackColor, chromeBorder] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-muted',
-    '--color-progress-track',
-    '--color-chrome-border',
-  ]) as [string, string, string, string];
+  const [accentPrimary, textMuted, trackColor, chromeBorder, textPrimary] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-text-muted',
+      '--color-progress-track',
+      '--color-chrome-border',
+      '--color-text-primary',
+    ]) as [string, string, string, string, string];
 
   const lastCountdownSecRef = useRef<number | null>(null);
 
@@ -118,6 +128,65 @@ function ActiveWorkoutRestBar({
       }
     }
   }, [remainingMs, state]);
+
+  if (state === 'ready' && focusReady != null) {
+    return (
+      <FooterActionBar>
+        <Pressable
+          testID="rest-bar-body"
+          onPress={onPressBar}
+          accessible={false}
+          className="flex-row items-center gap-2.5 pt-2"
+        >
+          <Pressable
+            onPress={focusReady.onPreviousSet}
+            disabled={focusReady.onPreviousSet == null}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: focusReady.onPreviousSet == null }}
+            accessibilityLabel={t('activeWorkout.focus.bar.previousSet', {
+              defaultValue: 'Previous set, edit in place',
+            })}
+            className={`h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70 ${
+              focusReady.onPreviousSet == null ? 'opacity-40' : ''
+            }`}
+          >
+            <Icon name="chevron-back" size={26} color={textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={onCompleteSet}
+            accessibilityRole="button"
+            accessibilityLabel={
+              focusReady.restLabel != null
+                ? t('activeWorkout.focus.bar.logSetRest', {
+                    defaultValue: 'Log set, rest {{duration}}',
+                    duration: focusReady.restLabel,
+                  })
+                : t('activeWorkout.focus.bar.logSet', {
+                    defaultValue: 'Log set',
+                  })
+            }
+            className="h-14 flex-1 flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
+            style={{ backgroundColor: accentPrimary }}
+          >
+            <Text className="text-xl font-bold text-white">
+              {t('activeWorkout.focus.bar.logSet', { defaultValue: 'Log set' })}
+            </Text>
+            {focusReady.restLabel != null && (
+              <Text
+                className="text-base font-semibold text-white"
+                style={{ opacity: 0.75, fontVariant: ['tabular-nums'] }}
+              >
+                {t('restPeriod.rest', {
+                  defaultValue: 'Rest {{duration}}',
+                  duration: focusReady.restLabel,
+                })}
+              </Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </FooterActionBar>
+    );
+  }
 
   const paused = state === 'paused';
   const timerColor = paused ? textMuted : accentPrimary;
