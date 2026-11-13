@@ -69,6 +69,7 @@ interface RenderOptions {
   weightUnit?: 'kg' | 'lbs';
   metricColumn?: 'rpe' | 'rir' | 'volume';
   assumed?: (AssumedSetValues | null)[];
+  distanceUnit?: 'km' | 'miles';
   previousSets?: (ExerciseRecentSessionSet | undefined)[];
   withDelete?: boolean;
   focusedSetKey?: string | null;
@@ -104,7 +105,7 @@ function renderSets(options: RenderOptions = {}) {
       setRenderKeys={{ '101': 'key-101' }}
       metricColumn={options.metricColumn ?? 'rpe'}
       weightUnit={options.weightUnit ?? 'kg'}
-      distanceUnit="km"
+      distanceUnit={options.distanceUnit ?? 'km'}
       assumedSetValues={options.assumed}
       previousSets={options.previousSets}
       focusedSetKey={options.focusedSetKey ?? null}
@@ -823,6 +824,111 @@ describe('ActiveWorkoutFocusSets', () => {
     fireEvent(first, 'blur');
     expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
       distance: 2.5,
+    });
+  });
+
+  describe('cardio effort form', () => {
+    const cardio = (overrides?: Partial<WorkoutCardSet>) =>
+      makeSet({
+        weight: null,
+        reps: null,
+        duration: 1800,
+        distance: 5,
+        ...overrides,
+      });
+
+    it('replaces the set table with the duration and distance form for one-set cardio', () => {
+      const { getByLabelText, getByText, queryByLabelText, queryByTestId } =
+        renderSets({ modality: 'duration_distance', sets: [cardio()] });
+      expect(getByText('Duration (min)')).toBeTruthy();
+      expect(getByText('Distance (km)')).toBeTruthy();
+      expect(
+        getByLabelText('Duration in minutes for Bench Press').props.value
+      ).toBe('30');
+      expect(getByLabelText('Distance in km for Bench Press').props.value).toBe(
+        '5'
+      );
+      expect(queryByTestId('set-row')).toBeNull();
+      expect(queryByTestId('focus-set-row')).toBeNull();
+      expect(queryByLabelText('Add set to Bench Press')).toBeNull();
+    });
+
+    it('labels the distance in miles for a miles user', () => {
+      const { getByText } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio()],
+        distanceUnit: 'miles',
+      });
+      expect(getByText('Distance (mi)')).toBeTruthy();
+    });
+
+    it('commits typed minutes as seconds and distance as km, then logs the set', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio({ duration: null, distance: null })],
+        activeSetId: '101',
+      });
+      const duration = getByLabelText('Duration in minutes for Bench Press');
+      fireEvent.changeText(duration, '20');
+      fireEvent(duration, 'blur');
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        duration: 1200,
+      });
+      const distance = getByLabelText('Distance in km for Bench Press');
+      fireEvent.changeText(distance, '3.5');
+      fireEvent(distance, 'blur');
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        distance: 3.5,
+      });
+      fireEvent.press(getByLabelText('Complete Bench Press'));
+      expect(callbacks.onCompleteSet).toHaveBeenCalledWith('101');
+    });
+
+    it('reports input focus with the set render key', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio()],
+      });
+      fireEvent(getByLabelText('Duration in minutes for Bench Press'), 'focus');
+      expect(callbacks.onActivateSet).toHaveBeenCalledWith(
+        'key-101',
+        'duration'
+      );
+      fireEvent(getByLabelText('Distance in km for Bench Press'), 'focus');
+      expect(callbacks.onActivateSet).toHaveBeenCalledWith(
+        'key-101',
+        'distance'
+      );
+    });
+
+    it('registers the form with the accessory bar under the render key', () => {
+      const { callbacks } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio()],
+      });
+      expect(callbacks.onRegisterAccessoryHandle).toHaveBeenCalledWith(
+        'key-101',
+        expect.objectContaining({ log: expect.any(Function) })
+      );
+    });
+
+    it('un-completes a logged set from the form', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio()],
+        completedSetIds: { '101': 1 },
+      });
+      fireEvent.press(getByLabelText('Mark Bench Press incomplete'));
+      expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
+    });
+
+    it('keeps the set table for multi-set cardio', () => {
+      const { queryByText, getAllByTestId } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio(), cardio({ id: 102, set_number: 2 })],
+      });
+      expect(queryByText('Duration (min)')).toBeNull();
+      expect(getAllByTestId('set-row')).toHaveLength(2);
     });
   });
 });

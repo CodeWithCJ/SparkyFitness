@@ -23,6 +23,7 @@ import ActiveWorkoutSetRow, {
   parseRpeInput,
   weightMetricText,
 } from './ActiveWorkoutSetRow';
+import CardioEffortForm from './CardioEffortForm';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
@@ -48,6 +49,7 @@ import {
   isWeightDurationModality,
   previousSetFillPatch,
   quantizeSetWeightKg,
+  rendersCardioEffortForm,
   resolveSnapshotModality,
   setDistanceUnitLabel,
   setTypeLetter,
@@ -748,6 +750,48 @@ function ActiveWorkoutFocusSets({
   );
   const headerClass =
     'text-center text-xs font-medium uppercase text-text-muted';
+
+  // A cardio exercise with one set logs duration and distance in the form the
+  // list card shows, in place of a set table.
+  if (
+    rendersCardioEffortForm(exercise.exercise_snapshot, exercise.sets.length)
+  ) {
+    const cardioSet = exercise.sets[0] ?? null;
+    const cardioSetId = cardioSet != null ? String(cardioSet.id) : null;
+    return (
+      <View className="rounded-2xl bg-surface p-2">
+        <CardioEffortForm
+          set={cardioSet}
+          exerciseName={
+            exercise.exercise_snapshot?.name ??
+            t('workout.exercise', { defaultValue: 'Exercise' })
+          }
+          mode="live"
+          distanceUnit={distanceUnit}
+          assumed={assumedSetValues?.[0] ?? null}
+          state={
+            cardioSetId == null
+              ? 'upcoming'
+              : completedSetIds[cardioSetId]
+                ? 'done'
+                : cardioSetId === activeSetId
+                  ? 'current'
+                  : 'upcoming'
+          }
+          renderKey={
+            cardioSetId != null
+              ? (setRenderKeys[cardioSetId] ?? cardioSetId)
+              : undefined
+          }
+          onCommitField={onCommitField}
+          onComplete={onCompleteSet}
+          onUncomplete={onUncomplete}
+          onActivateSet={activateSetById}
+          onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+        />
+      </View>
+    );
+  }
 
   return (
     <View className="rounded-2xl bg-surface p-2">

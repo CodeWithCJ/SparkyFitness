@@ -63,6 +63,7 @@ import {
 import {
   alignPreviousSets,
   plateTargetKg,
+  rendersCardioEffortForm,
   resolveSnapshotModality,
 } from '../utils/workoutSession';
 import { storedWeightInUnit } from '../utils/unitConversions';
@@ -250,8 +251,10 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     true
   );
 
+  // One-set cardio logs duration and distance in a form, with no rest between sets.
+  const cardioForm = rendersCardioEffortForm(snapshot, exercise.sets.length);
   const plateEquipment = snapshot?.equipment ?? null;
-  const showPlates = usesBarbell(plateEquipment);
+  const showPlates = usesBarbell(plateEquipment) && !cardioForm;
   const plateTarget = useMemo(
     () =>
       showPlates
@@ -382,14 +385,16 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       {mediaExpanded && titleBlock}
 
       <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-1">
-        <RestPeriodChip
-          largeTarget
-          value={exercise.sets[0]?.rest_time}
-          values={exercise.sets.map((set) => set.rest_time)}
-          onPress={() =>
-            onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
-          }
-        />
+        {!cardioForm && (
+          <RestPeriodChip
+            largeTarget
+            value={exercise.sets[0]?.rest_time}
+            values={exercise.sets.map((set) => set.rest_time)}
+            onPress={() =>
+              onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
+            }
+          />
+        )}
         {showPlates && plateTarget != null && (
           <PlateBarGraphic
             targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
