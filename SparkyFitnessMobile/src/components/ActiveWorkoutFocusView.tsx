@@ -30,6 +30,7 @@ import ActiveWorkoutFocusChips from './ActiveWorkoutFocusChips';
 import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
+import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import PlateBarGraphic from './PlateBarGraphic';
 import RestPeriodChip from './RestPeriodChip';
 import WorkoutNotesField from './WorkoutNotesField';
@@ -39,6 +40,7 @@ import ProgressionHintBanner from './ProgressionHintBanner';
 import type { SupersetBorder } from './ActiveWorkoutRail';
 import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import { useExerciseStats } from '../hooks/useExerciseStats';
+import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import {
   useCaptureLiveHistory,
@@ -50,6 +52,7 @@ import {
 import { useAppLocale } from '../localization';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 import { fireSelectionHaptic } from '../services/haptics';
+import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type {
   ActiveSetPatch,
@@ -203,12 +206,14 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   ...setEditorProps
 }: PageProps) {
   const { t } = useTranslation();
-  const [textMuted, textSecondary, prColor, accent] = useCSSVariable([
-    '--color-text-muted',
-    '--color-text-secondary',
-    '--color-pr',
-    '--color-accent-primary',
-  ]) as [string, string, string, string];
+  const [textMuted, textSecondary, prColor, accent, heartRateColor] =
+    useCSSVariable([
+      '--color-text-muted',
+      '--color-text-secondary',
+      '--color-pr',
+      '--color-accent-primary',
+      '--color-heart-rate',
+    ]) as [string, string, string, string, string];
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
 
   const snapshot = exercise.exercise_snapshot;
@@ -253,6 +258,9 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
 
   // One-set cardio logs duration and distance in a form, with no rest between sets.
   const cardioForm = rendersCardioEffortForm(snapshot, exercise.sets.length);
+  // The watch's newest reading for this exercise, in the person's zone color.
+  const liveBpm = useLiveHeartRate(String(exercise.id));
+  const zoneColor = useHeartRateZoneColor(liveBpm);
   const plateEquipment = snapshot?.equipment ?? null;
   const showPlates = usesBarbell(plateEquipment) && !cardioForm;
   const plateTarget = useMemo(
@@ -384,25 +392,41 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       </ActiveWorkoutFocusMedia>
       {mediaExpanded && titleBlock}
 
-      <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-1">
-        {!cardioForm && (
-          <RestPeriodChip
-            largeTarget
-            value={exercise.sets[0]?.rest_time}
-            values={exercise.sets.map((set) => set.rest_time)}
-            onPress={() =>
-              onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
-            }
-          />
-        )}
-        {showPlates && plateTarget != null && (
-          <PlateBarGraphic
-            targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
-            weightUnit={weightUnit}
-            equipment={plateEquipment}
-          />
-        )}
-      </View>
+      {(!cardioForm || liveBpm != null) && (
+        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-1">
+          {!cardioForm && (
+            <RestPeriodChip
+              largeTarget
+              value={exercise.sets[0]?.rest_time}
+              values={exercise.sets.map((set) => set.rest_time)}
+              onPress={() =>
+                onPressRestChip(
+                  exercise.id,
+                  exercise.sets[0]?.rest_time ?? null
+                )
+              }
+            />
+          )}
+          {showPlates && plateTarget != null && (
+            <PlateBarGraphic
+              targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
+              weightUnit={weightUnit}
+              equipment={plateEquipment}
+            />
+          )}
+          {liveBpm != null && (
+            <ExerciseHeartRateChip
+              text={String(liveBpm)}
+              color={zoneColor ?? heartRateColor}
+              valueColor={zoneColor ?? undefined}
+              accessibilityLabel={t('activeWorkout.exercise.liveHeartRateFor', {
+                defaultValue: 'Current heart rate for {{name}}',
+                name,
+              })}
+            />
+          )}
+        </View>
+      )}
 
       {(!!exercise.notes || noteEditorEntryId === exercise.id) && (
         <WorkoutNotesField

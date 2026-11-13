@@ -30,6 +30,7 @@ import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
 import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
+import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
@@ -1326,8 +1327,9 @@ function ActiveWorkoutExerciseCard({
               </View>
             )}
             {heartRateText != null && (
-              <View
-                className="flex-row items-center"
+              <ExerciseHeartRateChip
+                text={heartRateText}
+                color={heartRateColor}
                 accessibilityLabel={
                   readOnly
                     ? t('activeWorkout.exercise.heartRateFor', {
@@ -1339,18 +1341,7 @@ function ActiveWorkoutExerciseCard({
                         name,
                       })
                 }
-              >
-                <Icon name="heart-rate" size={14} color={heartRateColor} />
-                <Text
-                  className="text-sm text-text-secondary ml-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  {heartRateText}{' '}
-                  {t('activeWorkout.exercise.heartRateUnit', {
-                    defaultValue: 'bpm',
-                  })}
-                </Text>
-              </View>
+              />
             )}
             {showPlates && plateTargetKgValue != null && (
               <PlateBarGraphic
