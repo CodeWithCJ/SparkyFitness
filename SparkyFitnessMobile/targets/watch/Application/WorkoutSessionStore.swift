@@ -187,6 +187,9 @@ final class WorkoutSessionStore: ObservableObject {
     private let holdCues = CountdownCues()
     private let getReadyCues = CountdownCues()
     private var getReadyTimer: Timer?
+    /// Bumped by `cancelGetReady()`, so a countdown's already-queued completion
+    /// task cannot finish a replacement countdown early.
+    private var getReadyGeneration = 0
     private var getReadyHoldSeconds = 0
     /// Whether the countdown plays this rest's or hold's end cue, so the poll
     /// that notices the deadline does not buzz a second time.
@@ -865,9 +868,15 @@ final class WorkoutSessionStore: ObservableObject {
         if let distanceKm { values.distanceKm = distanceKm }
         editedValues[setId] = values
         // Edited after logging: the summary's volume follows the edit.
+        // Only the supplied fields change: later phone targets must not leak
+        // into what was logged.
         if completedSetIds.contains(setId),
            let step = steps.first(where: { $0.plannedSet.setId == setId }) {
-            loggedValues[setId] = self.values(for: step)
+            var logged = loggedValues[setId] ?? self.values(for: step)
+            if let weightKg { logged.weightKg = weightKg }
+            if let reps { logged.reps = reps }
+            if let distanceKm { logged.distanceKm = distanceKm }
+            loggedValues[setId] = logged
         }
         persistSnapshot(reportedEnergyKcal: nil)
         onSetValueEditedHere?(setId, weightKg, reps, distanceKm)
@@ -899,7 +908,7 @@ final class WorkoutSessionStore: ObservableObject {
     func startHold(for setId: String, seconds: Int, startedAt: Date? = nil) {
         guard seconds > 0 else { return }
         if holdSetId == setId, holdEndsAt != nil { return }
-        if getReadySetId == setId { cancelGetReady() }
+        if getReadySetId != nil { cancelGetReady() }
         holdStartedAt = nil
         holdStoppedAt = nil
         holdLoggedHere = false
@@ -941,8 +950,12 @@ final class WorkoutSessionStore: ObservableObject {
             tick: { [weak self] in self?.onCountdownTick?() },
             end: { [weak self] in self?.onRestFinished?() }
         )
+        let generation = getReadyGeneration
         getReadyTimer = Timer(fire: endsAt, interval: 0, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.finishGetReady() }
+            Task { @MainActor in
+                guard self?.getReadyGeneration == generation else { return }
+                self?.finishGetReady()
+            }
         }
         if let getReadyTimer { RunLoop.main.add(getReadyTimer, forMode: .common) }
     }
@@ -965,6 +978,7 @@ final class WorkoutSessionStore: ObservableObject {
     }
 
     private func cancelGetReady() {
+        getReadyGeneration += 1
         getReadyTimer?.invalidate()
         getReadyTimer = nil
         getReadyCues.cancel()
@@ -981,6 +995,7 @@ final class WorkoutSessionStore: ObservableObject {
     /// Starts the stopwatch for a timed set with no planned length.
     func startStopwatch(for setId: String, startedAt: Date? = nil) {
         if holdSetId == setId, holdStartedAt != nil { return }
+        if getReadySetId != nil { cancelGetReady() }
         stopHoldTimer()
         holdSetId = setId
         holdEndsAt = nil

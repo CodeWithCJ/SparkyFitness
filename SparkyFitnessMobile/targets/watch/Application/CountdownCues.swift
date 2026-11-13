@@ -9,6 +9,9 @@ import Foundation
 @MainActor
 final class CountdownCues {
     private var timers: [Timer] = []
+    /// Bumped by every `cancel()`, so a timer's already-queued task from a
+    /// replaced or cancelled schedule plays nothing.
+    private var generation = 0
 
     /// Replaces any scheduled cues with a `tick` for each of the last `seconds`
     /// seconds before `endsAt` that is still ahead, then `end` at `endsAt`.
@@ -17,12 +20,16 @@ final class CountdownCues {
         cancel()
         guard seconds > 0 else { return }
         let now = Date()
+        let scheduled = generation
         for remaining in 0...seconds {
             let fireAt = endsAt.addingTimeInterval(-TimeInterval(remaining))
             guard fireAt > now else { continue }
             let cue = remaining == 0 ? end : tick
-            let timer = Timer(fire: fireAt, interval: 0, repeats: false) { _ in
-                Task { @MainActor in cue() }
+            let timer = Timer(fire: fireAt, interval: 0, repeats: false) { [weak self] _ in
+                Task { @MainActor in
+                    guard self?.generation == scheduled else { return }
+                    cue()
+                }
             }
             RunLoop.main.add(timer, forMode: .common)
             timers.append(timer)
@@ -30,6 +37,7 @@ final class CountdownCues {
     }
 
     func cancel() {
+        generation += 1
         timers.forEach { $0.invalidate() }
         timers.removeAll()
     }

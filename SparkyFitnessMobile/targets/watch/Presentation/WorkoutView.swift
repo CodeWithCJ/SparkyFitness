@@ -370,7 +370,7 @@ private struct ActiveWorkoutView: View {
         guard
             let id = store.currentStep?.exerciseEntryId,
             let exercise = store.plan?.exercises.first(where: { $0.exerciseEntryId == id }),
-            case let images = demos.images(for: exercise.imageKey),
+            case let images = Array(demos.images(for: exercise.imageKey).prefix(exercise.imageCount ?? 2)),
             !images.isEmpty
         else { return nil }
         return (exercise, images)
