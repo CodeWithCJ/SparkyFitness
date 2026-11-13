@@ -5012,6 +5012,28 @@
     "sections": {
       "exercises": "Exercises",
       "volume": "Volume"
+    },
+    "changes": {
+      "added": "{{name}} added.",
+      "sets": "{{name}} {{count}} sets, was {{before}}.",
+      "removed": "{{name}} removed."
+    },
+    "effort": {
+      "easy": "Easy",
+      "moderate": "Moderate",
+      "hard": "Hard",
+      "allOut": "All Out"
+    },
+    "focus": {
+      "niceWork": "Nice work",
+      "setsDone": "{{done}} of {{total}} sets done",
+      "time": "Time",
+      "avgBpm": "Avg bpm",
+      "zoneLegend": "Heart rate takes its zone colour (Zone 1–5)",
+      "howHard": "How hard",
+      "rateEffort": "Rate the workout {{rating}} of 10",
+      "changedTitle": "You changed this workout",
+      "keepOriginal": "Keep original"
     }
   },
   "createFood": {

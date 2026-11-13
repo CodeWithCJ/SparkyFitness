@@ -465,6 +465,8 @@ export type RootStackParamList = {
     intervalRepsCompleted?: number;
     intervalStatus?: 'rx' | 'scaled';
     intervalScalingNotes?: string;
+    /** Finished from the focus view: the summary is drawn as the Phone-Summary board. */
+    focusStyle?: boolean;
   };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
