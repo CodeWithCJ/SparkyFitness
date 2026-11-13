@@ -48,13 +48,16 @@ struct EditPreviousSetView: View {
 
     var body: some View {
         let sets = logged
-        if let shown = shownIndex(in: sets) {
-            content(for: sets[shown], at: shown, count: sets.count)
-        } else {
-            Text(String(localized: "watch.workout.noLoggedSets", defaultValue: "No sets logged yet"))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        Group {
+            if let shown = shownIndex(in: sets) {
+                content(for: sets[shown], at: shown, count: sets.count)
+            } else {
+                Text(String(localized: "watch.workout.noLoggedSets", defaultValue: "No sets logged yet"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .onChange(of: sets.map { $0.plannedSet.setId }) { reconcile(with: logged) }
     }
 
     /// Where the selected set is now, else the stored position when it is still valid.
@@ -62,7 +65,26 @@ struct EditPreviousSetView: View {
         if let selectedId, let found = sets.firstIndex(where: { $0.plannedSet.setId == selectedId }) {
             return found
         }
-        return sets.indices.contains(index) ? index : nil
+        // The selected set was unlogged: stay on a set that remains, the nearest
+        // position, rather than a position past the end.
+        return sets.isEmpty ? nil : min(max(index, 0), sets.count - 1)
+    }
+
+    /// The selected set was unlogged on the phone: drop its draft, so logging
+    /// it again does not bring the old edit back, and move to a remaining set
+    /// or close the editor when none remain.
+    private func reconcile(with sets: [WorkoutStep]) {
+        if let draftSetId, !sets.contains(where: { $0.plannedSet.setId == draftSetId }) {
+            draft = SetValues()
+            self.draftSetId = nil
+        }
+        guard let selectedId, !sets.contains(where: { $0.plannedSet.setId == selectedId }) else { return }
+        guard !sets.isEmpty else {
+            onClose()
+            return
+        }
+        index = min(max(index, 0), sets.count - 1)
+        self.selectedId = sets[index].plannedSet.setId
     }
 
     /// The unsaved edits, only while they belong to `step`.
