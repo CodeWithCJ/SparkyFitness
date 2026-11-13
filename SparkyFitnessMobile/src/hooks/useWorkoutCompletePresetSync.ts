@@ -93,6 +93,12 @@ export function useWorkoutCompletePresetSync({
     onSettledRef.current = onSettled;
     onNeedsUpdateRef.current = onNeedsUpdate;
   });
+  // Alert.alert cannot be dismissed from code: once the watch settles the
+  // question, the phone's open alert must not act on a stale choice.
+  const skipPromptRef = useRef(skipPrompt);
+  useEffect(() => {
+    skipPromptRef.current = skipPrompt;
+  });
   const announcedRef = useRef(false);
 
   useEffect(() => {
@@ -200,13 +206,16 @@ export function useWorkoutCompletePresetSync({
               defaultValue: 'Keep Preset',
             }),
             style: 'cancel',
-            onPress: () => onSettledRef.current?.(),
+            onPress: () => {
+              if (!skipPromptRef.current) onSettledRef.current?.();
+            },
           },
           {
             text: t('workoutComplete.actions.update', {
               defaultValue: 'Update',
             }),
             onPress: () => {
+              if (skipPromptRef.current) return;
               void (async () => {
                 if (await applyUpdate()) {
                   onSettledRef.current?.();

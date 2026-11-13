@@ -32,19 +32,23 @@ describe('buildWatchPlateConfig', () => {
   });
 
   it('uses the saved inventory, its EZ bar for an EZ bar exercise and its collars', () => {
-    const config = buildWatchPlateConfig(['EZ curl bar'], {
-      weight_unit: 'lbs',
-      bars: [
-        { id: 'a', name: null, kind: 'barbell', weight: 45 },
-        { id: 'b', name: null, kind: 'ez', weight: 20 },
-      ],
-      plates: [
-        { weight: 5, pairs: 1 },
-        { weight: 45, pairs: 3 },
-      ],
-      collars_enabled: true,
-      collar_weight: 2.5,
-    });
+    const config = buildWatchPlateConfig(
+      ['EZ curl bar'],
+      {
+        weight_unit: 'lbs',
+        bars: [
+          { id: 'a', name: null, kind: 'barbell', weight: 45 },
+          { id: 'b', name: null, kind: 'ez', weight: 20 },
+        ],
+        plates: [
+          { weight: 5, pairs: 1 },
+          { weight: 45, pairs: 3 },
+        ],
+        collars_enabled: true,
+        collar_weight: 2.5,
+      },
+      'kg'
+    );
     expect(config).toEqual({
       unit: 'lbs',
       barWeight: 20,

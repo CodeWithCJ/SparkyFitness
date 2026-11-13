@@ -104,7 +104,10 @@ function watchPlateFields(equipment: readonly string[] | null | undefined) {
   const plates = buildWatchPlateConfig(
     equipment,
     stored,
-    preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg'
+    preferences?.default_weight_unit === 'lbs' ||
+      preferences?.default_weight_unit === 'st_lbs'
+      ? 'lbs'
+      : 'kg'
   );
   return {
     ...(label ? { equipment: label } : {}),

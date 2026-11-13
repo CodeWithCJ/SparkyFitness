@@ -47,7 +47,16 @@ export async function sendWatchExerciseImages(
     );
     return;
   }
-  const config = await getActiveServerConfig();
+  let config: Awaited<ReturnType<typeof getActiveServerConfig>>;
+  try {
+    config = await getActiveServerConfig();
+  } catch (error) {
+    addLog(
+      `Watch exercise images skipped: server config unavailable: ${String(error)}`,
+      'WARNING'
+    );
+    return;
+  }
   for (const exercise of exercises) {
     const key = exercise.exercise_snapshot?.id;
     const paths = watchDemoImagePaths(exercise.exercise_snapshot);

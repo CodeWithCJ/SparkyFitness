@@ -677,14 +677,16 @@ public class WatchConnectivityModule: Module {
         /// paired simulators report it delivered but never hand the file to
         /// the watch. The payload names the exercise's cache key and which
         /// picture (0 start, 1 end); the watch stores it under that name.
-        AsyncFunction("sendExerciseImage") { (image: [String: Any]) -> Void in
+        AsyncFunction("sendExerciseImage") { (image: [String: Any]) throws -> Void in
+            // Rejects instead of returning, so the caller does not mark the
+            // exercise as sent and retries on the next plan send.
             guard WCSession.isSupported(),
                 let key = image["key"] as? String,
                 let index = (image["index"] as? NSNumber)?.intValue,
                 let uri = image["uri"] as? String,
                 let url = URL(string: uri), url.isFileURL,
                 let data = try? Data(contentsOf: url)
-            else { return }
+            else { throw ExerciseImageError.unreadable }
             let payload: [String: Any] = ["type": "exerciseImage", "key": key, "index": index, "data": data]
             let session = WCSession.default
             if session.isReachable {
@@ -1331,4 +1333,10 @@ private func numberList(_ value: Any?) -> [Double] {
     if let numbers = value as? [NSNumber] { return numbers.map { $0.doubleValue } }
     if let numbers = value as? [Double] { return numbers }
     return []
+}
+
+/// A demo picture the watch could not be handed (unsupported session, bad
+/// payload or an unreadable file).
+private enum ExerciseImageError: Error {
+    case unreadable
 }
