@@ -266,13 +266,16 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
             if (!stats) return exercise;
             const allPreviousSets = stats?.recentSessions?.[0]?.sets ?? [];
 
-            // Exclude warmup sets from prior session to establish true working baseline
+            // Exclude warmup sets from prior session to establish true working baseline.
+            // The stats API sends `setType`; without it every warm-up counted as a
+            // working set and "progressed" the first working sets from warm-up loads.
             const workingPreviousSets = allPreviousSets.filter(
               (s: {
+                setType?: string | null;
                 set_type?: string | null;
                 reps?: number | null;
                 weight?: number | null;
-              }) => !isWarmup(s.set_type)
+              }) => !isWarmup(s.setType ?? s.set_type)
             );
 
             if (workingPreviousSets.length > 0) {
