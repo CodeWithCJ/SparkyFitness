@@ -493,6 +493,12 @@ export interface WatchPlannedSetPayload {
   targetDistanceKm?: number | null;
   /** Rest to run after this set, in seconds — the phone's own `WorkoutStep.restSec`. */
   restSeconds: number;
+  /**
+   * This set's own rest (`rest_time`, else the default rest), which the phone
+   * runs after logging it (`restSecBeforeNextSet`). The watch needs it because
+   * `restSeconds` is the rest before the set. Absent from an older phone.
+   */
+  restAfterSeconds?: number;
   /** `normal` | `warmup` | `drop` … drives the watch's "Warmup 1/2" label. */
   setType?: string | null;
 }

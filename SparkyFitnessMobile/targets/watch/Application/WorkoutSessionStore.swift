@@ -531,7 +531,15 @@ final class WorkoutSessionStore: ObservableObject {
     /// The rest that logging the current set starts: the set `completeCurrentSet`
     /// moves on to, and its rest. Zero when none is left.
     func restAfterCurrentSet() -> Int {
-        nextIncompleteIndex().map { steps[$0].plannedSet.restSeconds } ?? 0
+        guard let step = currentStep else { return 0 }
+        return restAfterCompleting(step)
+    }
+
+    /// The rest the phone runs after `step` is logged (`RestRule`), 0 when no
+    /// set is left to do.
+    private func restAfterCompleting(_ step: WorkoutStep) -> Int {
+        guard let next = nextIncompleteIndex() else { return 0 }
+        return RestRule.restAfter(completed: RestStepFacts(step), next: RestStepFacts(steps[next]))
     }
 
     /// The plan's sets in the order the phone walks them (`setOrder`,
@@ -1147,10 +1155,9 @@ final class WorkoutSessionStore: ObservableObject {
         // may already have been logged on the phone, and landing on it would
         // leave a tick that cannot log anything.
         if let next = nextIncompleteIndex() {
+            let nextRest = RestRule.restAfter(completed: RestStepFacts(step), next: RestStepFacts(steps[next]))
             moveCursor(to: next)
-            // Phone rest is *before the next set* (`nextStep.restSec`). Using
-            // the completed set's rest inverted per-set rest and supersets.
-            let nextRest = steps[next].plannedSet.restSeconds
+            // Same length the phone runs after this set (`RestRule`).
             if nextRest > 0 {
                 startRest(seconds: nextRest)
             }

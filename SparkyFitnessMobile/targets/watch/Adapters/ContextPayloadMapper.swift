@@ -632,6 +632,7 @@ enum ContextPayloadMapper {
                     targetReps: doubleValue(rawSet["targetReps"]),
                     targetWeightKg: doubleValue(rawSet["targetWeightKg"]),
                     restSeconds: intValue(rawSet["restSeconds"]) ?? 0,
+                    restAfterSeconds: intValue(rawSet["restAfterSeconds"]),
                     setType: rawSet["setType"] as? String,
                     targetDurationSec: intValue(rawSet["targetDurationSec"]),
                     previousDurationSec: intValue(rawSet["previousDurationSec"]),

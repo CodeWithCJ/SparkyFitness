@@ -26,7 +26,10 @@ import {
 } from '../utils/watchPlates';
 import { defaultWorkoutName } from './useWorkoutForm';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  getDefaultRestSec,
+  useAppPreferencesStore,
+} from '../stores/appPreferencesStore';
 import { resolveWatchSetTargets } from './useWatchSetTargetsSync';
 import WatchConnectivity, {
   type WatchWorkoutStartPayload,
@@ -177,6 +180,7 @@ export function buildWatchWorkoutStartPayload(
           ...(isWeightDurationModality(modality) ? { weighted: true } : {}),
           targetDistanceKm: target?.distanceKm ?? null,
           restSeconds: restSecBySetId.get(setId) ?? 0,
+          restAfterSeconds: set.rest_time ?? getDefaultRestSec(),
           setType: set.set_type ?? null,
         };
       }),

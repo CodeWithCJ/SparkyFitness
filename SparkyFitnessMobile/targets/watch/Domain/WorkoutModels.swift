@@ -14,10 +14,13 @@ struct PlannedSet: Codable, Equatable, Identifiable {
     /// Always kg, like every other weight value this app moves between watch
     /// and phone — display converts via `CheckInStore`'s `effectiveWeightUnit`.
     let targetWeightKg: Double?
-    /// Rest to run after this set, in seconds — the phone's own
-    /// `WorkoutStep.restSec` (activeWorkoutStore.ts), carried over verbatim so
-    /// the watch's timer agrees with what the phone would have shown.
+    /// Rest *before* this set, in seconds — the phone's own
+    /// `WorkoutStep.restSec` (activeWorkoutStore.ts), carried over verbatim.
+    /// The rest started by logging a set is `RestRule.restAfter`, not this.
     let restSeconds: Int
+    /// This set's own rest, which the phone runs after logging it. Nil from a
+    /// phone that predates it. See `RestRule`.
+    var restAfterSeconds: Int? = nil
     /// `normal`, `warmup`, `drop`… straight from `exercise_entry_sets.set_type`.
     /// Drives the label above the values ("Warmup 1/2" rather than "Set 1/2");
     /// nil or an unrecognised value just reads as a normal set.
@@ -371,4 +374,17 @@ struct HeartRateBatch: Codable, Equatable {
 /// this is purely "stop expecting more" and the signal to flush.
 struct WorkoutStopSignal: Codable, Equatable {
     let sessionId: String
+}
+
+extension RestStepFacts {
+    init(_ step: WorkoutStep) {
+        self.init(
+            exerciseEntryId: step.exerciseEntryId,
+            supersetRun: step.supersetRun,
+            setNumber: step.setNumber,
+            isDrop: step.plannedSet.setType == "drop",
+            ownRestSeconds: step.plannedSet.restAfterSeconds,
+            restBeforeSeconds: step.plannedSet.restSeconds
+        )
+    }
 }
