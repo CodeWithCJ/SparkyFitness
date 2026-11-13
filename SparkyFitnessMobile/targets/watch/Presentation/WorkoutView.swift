@@ -1539,26 +1539,7 @@ private struct CurrentSetView: View {
         crownSeen = min(max(stored ?? 0, floor), maxValue(for: field))
         crownValue = stored ?? 0
         crownField = field
-        takeCrown(for: field)
-    }
-
-    /// Gives the crown to the value row. The row only becomes focusable once
-    /// `crownField` is set, and a focus request made before that has rendered
-    /// is dropped; this page is heavy enough (the vertical scroll, the live top
-    /// line) that the one turn of the run loop that used to be enough on the
-    /// original page is not always, and then the scroll view kept the crown and
-    /// the pages scrolled instead of the value. So ask on the next turn and
-    /// check twice more, re-asking from a cleared state if the row is still
-    /// not the one holding it.
-    private func takeCrown(for field: EditableField) {
-        DispatchQueue.main.async { crownFocused = true }
-        for delay in [0.15, 0.5] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                guard crownField == field, !crownFocused else { return }
-                crownFocused = false
-                DispatchQueue.main.async { crownFocused = true }
-            }
-        }
+        takeCrownFocus($crownFocused) { crownField == field }
     }
 
     /// Each crown event is a step from the stored number. The binding clamps

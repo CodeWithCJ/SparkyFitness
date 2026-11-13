@@ -1202,9 +1202,7 @@ private struct CurrentSetView: View {
         crownSeen = min(max(stored ?? 0, floor), maxValue(for: field))
         crownValue = stored ?? 0
         crownField = field
-        // Next turn of the run loop: the row only becomes focusable once
-        // `crownField` is set, and focus asked for before that is dropped.
-        DispatchQueue.main.async { crownFocused = true }
+        takeCrownFocus($crownFocused) { crownField == field }
     }
 
     /// Each crown event is a step from the stored number. The binding clamps
