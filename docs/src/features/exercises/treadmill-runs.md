@@ -18,7 +18,7 @@ A correction is applied once, when a figure is read from the display. It is neve
 
 ## Treadmill & Stride settings
 
-Open **Settings > Workout > Treadmill & stride**. The screen has three short lists: **Your stride**, **Treadmill** and **Watch**. Each row shows where things stand in one line; tap a stride or the treadmill row to change it. Everything here is kept on your phone only (see [Why it stays on the device](#why-it-stays-on-the-device)).
+Open **Settings > Workout > Treadmill & stride**. The screen has three short lists: **Your stride**, **Is your treadmill accurate?** and **Watch's own estimate**. Each row shows where things stand in one line; tap a stride or the treadmill row to change it. Everything here is kept on your phone only (see [Why it stays on the device](#why-it-stays-on-the-device)).
 
 ### Your stride
 
@@ -30,9 +30,9 @@ Indoors there is no GPS, so the app turns your steps into distance with your str
 
 Tap a stride to change it. Type a new one and tap **Save** (a step shorter than 0.3 m or longer than 2.5 m is refused), or tap **Measure it on a track**: walk or run a distance you know is real, such as laps of a track, then enter the **Steps taken** (from Health, Google Fit or your watch) and the **Real distance**, and tap **Set my stride** (at least 150 steps and 100 m). **Reset** forgets that stride and goes back to the typical one.
 
-### Treadmill
+### Is your treadmill accurate?
 
-This only changes distances you type in from a treadmill's display. Distances worked out from your steps are never changed.
+This is for a treadmill whose own screen is off, for example a belt that shows 5.2 mi when you covered 5.0. It fixes every distance you type in from that screen, on the phone or on the watch. You set it; it never learns by itself. Distances worked out from your steps are never changed. If you have never noticed your treadmill being off, leave it on **About right**.
 
 Tap **Treadmill display** and pick what your treadmill shows compared with what you really ran: **About right** (the default; nothing is changed), **More** or **Less**. For More or Less, enter by how much, up to 25 percent. The screen shows an example: when it shows 5.00 km, 4.81 km is saved.
 
@@ -40,11 +40,11 @@ Not sure by how much? Tap **Not sure? Work it out from your steps**. Walk or run
 
 The correction divides the display figure by one plus the percent, so a display that reads 4 percent long and shows 5.20 km is saved as 5.00 km. The stored distance, and the pace worked out from it, are the corrected ones. Where it matters the screens show both: "Treadmill showed 5.20 km. Saved as 5.00 km with your +4% treadmill correction." Choose **About right** to save figures exactly as typed.
 
-### Watch
+### Watch's own estimate
 
-A watch estimates a treadmill run's distance from your arm swing, and the estimate can be off by a steady amount. Each time you enter what the treadmill showed after a watch run, the app works out how far off the watch was, and the watch applies that to its next treadmill run. Walks and runs are learned separately.
+When you finish a watch treadmill run and keep the watch's distance instead of typing the treadmill's, the watch's own estimate is used. It guesses from your arm swing, and the guess can be off by a steady amount. Each time you do enter what the treadmill showed after a watch run, the app works out how far off the watch was (against the corrected distance, if your treadmill is set as off), and the watch applies that to its next treadmill run. This is automatic, and walks and runs are learned separately.
 
-**Watch** shows how much the watch's distance is raised or lowered (for example "Raised by 9.6%") and how many runs it was learned from. **Reset** forgets it, and the watch goes back to its own estimate. Runs already saved are not changed.
+**Watch's own estimate** shows how much the watch's distance is raised or lowered (for example "Raised by 9.6%") and how many runs it was learned from. **Reset** forgets it, and the watch goes back to its own estimate. Runs already saved are not changed.
 
 ## Cadence and stride on a watch run
 

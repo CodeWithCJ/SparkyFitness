@@ -785,11 +785,11 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
 
         <SettingsRowGroup
           title={t('treadmillSettings.treadmillSection', {
-            defaultValue: 'Treadmill',
+            defaultValue: 'Is your treadmill accurate?',
           })}
           subtitle={t('treadmillSettings.treadmillSectionHint', {
             defaultValue:
-              'Only changes distances you type in from a treadmill. Kept on this phone.',
+              'For a treadmill whose own screen is off. Fixes the distances you type in from it, on the phone or the watch. Kept on this phone.',
           })}
         >
           <View testID="treadmill">
@@ -808,10 +808,12 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
 
         <View testID="watch-scale">
           <SettingsRowGroup
-            title={t('treadmillSettings.watchScale', { defaultValue: 'Watch' })}
+            title={t('treadmillSettings.watchScale', {
+              defaultValue: 'Watch’s own estimate',
+            })}
             subtitle={t('treadmillSettings.watchScaleHint', {
               defaultValue:
-                'The watch guesses treadmill distance from your arm swing. Each time you type in what the treadmill showed after a watch run, it learns how far off it was.',
+                'Used when you keep the watch’s distance instead of typing the treadmill’s. The watch guesses from your arm swing, and each time you do type the treadmill’s number it learns how far off it was. This is automatic.',
             })}
           >
             {ACTIVITIES.map((activity) => {
