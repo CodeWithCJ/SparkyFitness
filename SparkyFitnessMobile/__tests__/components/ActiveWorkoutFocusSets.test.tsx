@@ -831,6 +831,19 @@ describe('ActiveWorkoutFocusSets', () => {
       expect(queryByLabelText('Fill set 2 from previous')).toBeNull();
     });
 
+    it('never auto-shrinks the Previous value; long values step down to 12.5 at most', () => {
+      const { getByText } = renderSets({
+        sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
+        previousSets: [prev(), prev({ weight: 102.5, reps: 12 })],
+      });
+      const short = getByText('80 × 8');
+      expect(short.props.adjustsFontSizeToFit).toBeFalsy();
+      expect(StyleSheet.flatten(short.props.style).fontSize).toBe(15);
+      expect(
+        StyleSheet.flatten(getByText('102.5 × 12').props.style).fontSize
+      ).toBe(12.5);
+    });
+
     it('fills weight and reps from the previous session on tap', () => {
       const { getByLabelText, callbacks } = renderSets({
         previousSets: [prev()],

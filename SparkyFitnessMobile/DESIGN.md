@@ -92,16 +92,17 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 
 Eight balanced hues for things that need a distinct color but no fixed meaning. Seven of them (all but amber) tint Settings row icons, and all eight color workout superset rails and the workout-complete confetti.
 
-| Role            | Token class                    | Light hex | Dark hex | Usage                                                   |
-| --------------- | ------------------------------ | --------- | -------- | ------------------------------------------------------- |
-| Category Slate  | `--color-cat-slate` (JS only)  | #6B7280   | #6E7687  | Neutral settings icons, superset rail                   |
-| Category Pink   | `--color-cat-pink` (JS only)   | #E23670   | #CC6688  | Fat-burning fasting stage, provider badges              |
-| Category Violet | `--color-cat-violet` (JS only) | #8D52E0   | #9166CC  | REM sleep stage, ketosis fasting stage, provider badges |
-| Category Orange | `--color-cat-orange` (JS only) | #F89054   | #D18A61  | Awake sleep stage, hard RPE, catabolic fasting stage    |
-| Category Green  | `--color-cat-green` (JS only)  | #2D9534   | #6AA46F  | Provider badges                                         |
-| Category Blue   | `--color-cat-blue` (JS only)   | #236EE7   | #6992D3  | Light sleep stage, provider badges                      |
-| Category Teal   | `--color-cat-teal` (JS only)   | #1E868A   | #5AADAF  | Deep sleep stage, provider badges                       |
-| Category Amber  | `--color-cat-amber` (JS only)  | #CE8E0D   | #D4A954  | Favorite star, moderate RPE, provider badges            |
+| Role            | Token class                    | Light hex | Dark hex | Usage                                                                                                       |
+| --------------- | ------------------------------ | --------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| Category Slate  | `--color-cat-slate` (JS only)  | #6B7280   | #6E7687  | Neutral settings icons, superset rail                                                                       |
+| Category Pink   | `--color-cat-pink` (JS only)   | #E23670   | #CC6688  | Fat-burning fasting stage, provider badges                                                                  |
+| Category Violet | `--color-cat-violet` (JS only) | #8D52E0   | #9166CC  | REM sleep stage, ketosis fasting stage, provider badges                                                     |
+| Category Orange | `--color-cat-orange` (JS only) | #F89054   | #D18A61  | Awake sleep stage, hard RPE, catabolic fasting stage                                                        |
+| Category Green  | `--color-cat-green` (JS only)  | #2D9534   | #6AA46F  | Provider badges                                                                                             |
+| Category Blue   | `--color-cat-blue` (JS only)   | #236EE7   | #6992D3  | Light sleep stage, provider badges                                                                          |
+| Category Teal   | `--color-cat-teal` (JS only)   | #1E868A   | #5AADAF  | Deep sleep stage, provider badges                                                                           |
+| Category Amber  | `--color-cat-amber` (JS only)  | #CE8E0D   | #D4A954  | Favorite star, moderate RPE, provider badges                                                                |
+| Superset Lilac  | `--color-superset` (JS only)   | #9739C6   | #CC86EA  | Focus view superset group (first run; later runs use the category colors from Orange on, as the watch does) |
 
 ### Progress tracks
 

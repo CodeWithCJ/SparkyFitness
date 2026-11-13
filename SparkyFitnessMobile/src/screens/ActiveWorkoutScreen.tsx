@@ -93,6 +93,7 @@ import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
   describeActiveSet,
+  FOCUS_SUPERSET_PALETTE_VARS,
   firstSetInputField,
   formatSetLoad,
   rendersCardioEffortForm,
@@ -401,6 +402,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const { runs: supersetRuns, borders: supersetBorders } =
     useSupersetBorders(exercisesForBorders);
+  // The focus view draws supersets in the watch's lilac group colour.
+  const { borders: focusSupersetBorders } = useSupersetBorders(
+    exercisesForBorders,
+    FOCUS_SUPERSET_PALETTE_VARS
+  );
 
   const [userExpandedIds, setUserExpandedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>()
@@ -1264,7 +1270,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             session={session}
             prSetIds={prSetIds}
             activeExerciseId={activeExerciseId}
-            supersetBorders={supersetBorders}
+            supersetBorders={focusSupersetBorders}
             sessionId={sessionId}
             verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
             historyScopeSettled={historyScopeSettled}

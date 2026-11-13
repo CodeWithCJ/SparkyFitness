@@ -59,6 +59,7 @@
       --color-cat-blue: hsl(217, 80%, 52%);
       --color-cat-teal: hsl(182, 64%, 33%);
       --color-cat-amber: hsl(40, 88%, 43%);
+      --color-superset: hsl(280, 55%, 50%);
 
       --color-progress-track: hsl(218, 29%, 92%);
       --color-progress-rail: hsl(218, 29%, 95%);
@@ -145,6 +146,7 @@
       --color-cat-blue: hsl(217, 55%, 62%);
       --color-cat-teal: hsl(182, 35%, 52%);
       --color-cat-amber: hsl(40, 60%, 58%);
+      --color-superset: hsl(282, 70%, 72%);
 
       --color-progress-track: hsl(218, 41%, 23%);
       --color-progress-rail: hsl(218, 41%, 16%);
@@ -226,6 +228,7 @@
       --color-cat-blue: hsl(217, 55%, 62%);
       --color-cat-teal: hsl(182, 35%, 52%);
       --color-cat-amber: hsl(40, 60%, 58%);
+      --color-superset: hsl(282, 70%, 72%);
 
       --color-progress-track: hsl(218, 41%, 15%);
       --color-progress-rail: hsl(218, 41%, 9%);
