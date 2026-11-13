@@ -40,7 +40,11 @@ import {
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
-import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
+import type {
+  ActiveSetPatch,
+  CompletedSetMap,
+  PrSetMap,
+} from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
@@ -1194,6 +1198,40 @@ export function alignPreviousSets<T extends { setType?: string | null }>(
       ? warmups[warmupIndex++]
       : working[workingIndex++]
   );
+}
+
+/**
+ * What tapping a set's PREVIOUS cell writes: last session's values for the
+ * fields this modality shows. A field the previous set lacks (a weight-only
+ * set, say) is left out so the fill never clears what the row holds. Shared by
+ * the list's set row and the focus view's rows. Empty when there is nothing to
+ * fill.
+ */
+export function previousSetFillPatch(
+  previousSet: ExerciseRecentSessionSet,
+  modality: ExerciseModality
+): ActiveSetPatch {
+  const patch: ActiveSetPatch = {};
+  if (isDurationModality(modality)) {
+    const seconds = effectiveSetDurationSec(
+      { duration: previousSet.duration ?? null, reps: previousSet.reps },
+      modality
+    );
+    if (seconds != null) patch.duration = seconds;
+    if (modality === 'duration_distance' && previousSet.distance != null) {
+      patch.distance = previousSet.distance;
+    }
+    return patch;
+  }
+  if (previousSet.weight != null) patch.weight = previousSet.weight;
+  if (isWeightDurationModality(modality)) {
+    if (previousSet.duration != null) patch.duration = previousSet.duration;
+  } else if (isWeightDistanceModality(modality)) {
+    if (previousSet.distance != null) patch.distance = previousSet.distance;
+  } else if (previousSet.reps != null) {
+    patch.reps = previousSet.reps;
+  }
+  return patch;
 }
 
 export function resolveAssumedSetValues(

@@ -44,6 +44,7 @@ import {
   isDurationModality,
   isWeightDistanceModality,
   isWeightDurationModality,
+  previousSetFillPatch,
   quantizeSetWeightKg,
   setDistanceFromKm,
   setDistanceToKm,
@@ -72,6 +73,17 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   hard: '--color-cat-orange',
   max: '--color-icon-danger',
 };
+
+/** A stored distance (km) as the draft text of its cell, to two decimals. */
+function formatDistanceDraft(
+  km: number,
+  distanceUnit: 'km' | 'miles',
+  modality: ExerciseModality
+): string {
+  return String(
+    parseFloat(setDistanceFromKm(km, distanceUnit, modality).toFixed(2))
+  );
+}
 
 export function formatDisplayWeight(
   weightKg: number | null,
@@ -345,6 +357,9 @@ function ActiveWorkoutSetRow({
   // in place of reps.
   const weightDuration = isWeightDurationModality(modality);
   const weightDistance = isWeightDistanceModality(modality);
+  // A multi-set cardio row logs a distance next to its duration. Only a live
+  // row edits it; view rows show it as text and edit rows keep the duration cell.
+  const cardioDistance = isLive && modality === 'duration_distance';
   // Legacy-aware display seconds: `duration` modality falls back to
   // reps-as-seconds for pre-modality isometric rows (see
   // effectiveSetDurationSec). Editing writes `duration`; reps stay untouched.
@@ -366,11 +381,7 @@ function ActiveWorkoutSetRow({
   const [durationDraft, setDurationDraft] = useState(durationSeedText);
   const distanceSeedText =
     set.distance != null
-      ? String(
-          parseFloat(
-            setDistanceFromKm(set.distance, distanceUnit, modality).toFixed(2)
-          )
-        )
+      ? formatDistanceDraft(set.distance, distanceUnit, modality)
       : '';
   const [distanceDraft, setDistanceDraft] = useState(distanceSeedText);
   // Whether the user typed in each value draft since it was last committed or
@@ -563,79 +574,33 @@ function ActiveWorkoutSetRow({
   const canFillFromPrevious = previousSet != null;
   const handleFillFromPrevious = useCallback(() => {
     if (previousSet == null) return;
-    if (durationLike) {
-      const seconds = effectiveSetDurationSec(
-        { duration: previousSet.duration ?? null, reps: previousSet.reps },
-        modality
-      );
-      if (seconds == null) return;
-      onCommitField?.(setId, { duration: seconds });
-      setDurationDraft(String(seconds));
-      setEdited((previous) => ({ ...previous, duration: false }));
-      return;
-    }
-    const patch: ActiveSetPatch = {};
-    if (previousSet.weight != null) patch.weight = previousSet.weight;
-    if (weightDuration) {
-      if (previousSet.duration != null) patch.duration = previousSet.duration;
-    } else if (weightDistance) {
-      if (previousSet.distance != null) patch.distance = previousSet.distance;
-    } else if (previousSet.reps != null) {
-      patch.reps = previousSet.reps;
-    }
+    const patch = previousSetFillPatch(previousSet, modality);
     if (Object.keys(patch).length === 0) return;
     onCommitField?.(setId, patch);
     // A focused row skips the store-driven re-seed (drafts win under the
     // keyboard), so mirror the fill into the drafts here; on an unfocused row
     // the re-seed writes the same values. The fill is committed above, so
     // it is not an edit left to write back.
-    const filled: { [K in keyof typeof edited]?: string } = {};
-    if (previousSet.weight != null) {
-      filled.weight = formatDisplayWeight(previousSet.weight, weightUnit);
+    if (patch.weight != null) {
+      setWeightDraft(formatDisplayWeight(patch.weight, weightUnit));
     }
-    if (weightDuration) {
-      if (previousSet.duration != null) {
-        filled.duration = String(previousSet.duration);
-      }
-    } else if (weightDistance) {
-      if (previousSet.distance != null) {
-        filled.distance = String(
-          parseFloat(
-            setDistanceFromKm(
-              previousSet.distance,
-              distanceUnit,
-              modality
-            ).toFixed(2)
-          )
-        );
-      }
-    } else if (previousSet.reps != null) {
-      filled.reps = String(previousSet.reps);
+    if (patch.duration != null) setDurationDraft(String(patch.duration));
+    if (patch.distance != null) {
+      setDistanceDraft(
+        formatDistanceDraft(patch.distance, distanceUnit, modality)
+      );
     }
-    if (filled.weight != null) setWeightDraft(filled.weight);
-    if (filled.duration != null) setDurationDraft(filled.duration);
-    if (filled.distance != null) setDistanceDraft(filled.distance);
-    if (filled.reps != null) setRepsDraft(filled.reps);
+    if (patch.reps != null) setRepsDraft(String(patch.reps));
     // What the fill wrote is committed, so a field typed in before the fill is
     // no longer an unwritten edit. Fields the fill did not touch keep theirs.
     setEdited((previous) => ({
-      weight: filled.weight != null ? false : previous.weight,
-      reps: filled.reps != null ? false : previous.reps,
-      duration: filled.duration != null ? false : previous.duration,
-      distance: filled.distance != null ? false : previous.distance,
+      weight: patch.weight != null ? false : previous.weight,
+      reps: patch.reps != null ? false : previous.reps,
+      duration: patch.duration != null ? false : previous.duration,
+      distance: patch.distance != null ? false : previous.distance,
       effort: previous.effort,
     }));
-  }, [
-    previousSet,
-    durationLike,
-    weightDuration,
-    weightDistance,
-    distanceUnit,
-    modality,
-    onCommitField,
-    setId,
-    weightUnit,
-  ]);
+  }, [previousSet, modality, distanceUnit, onCommitField, setId, weightUnit]);
 
   // Commit the parsed+clamped value on every keystroke — including empty → null
   // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
@@ -830,6 +795,7 @@ function ActiveWorkoutSetRow({
   const writeDrafts = useCallback(() => {
     if (durationLike) {
       writeDuration(durationDraft);
+      if (cardioDistance) writeDistance(distanceDraft);
     } else if (weightDuration) {
       writeWeight(weightDraft);
       writeDuration(durationDraft);
@@ -843,6 +809,7 @@ function ActiveWorkoutSetRow({
     if (isEffortColumn) commitRpeValue(rpeDraft);
   }, [
     durationLike,
+    cardioDistance,
     weightDuration,
     weightDistance,
     writeWeight,
@@ -893,6 +860,7 @@ function ActiveWorkoutSetRow({
   const handleLog = useCallback(() => {
     if (durationLike) {
       commitDuration(durationDraft);
+      if (cardioDistance) commitDistance(distanceDraft);
     } else if (weightDuration) {
       commitWeight(weightDraft);
       commitDuration(durationDraft);
@@ -907,6 +875,7 @@ function ActiveWorkoutSetRow({
     onComplete?.(setId);
   }, [
     durationLike,
+    cardioDistance,
     weightDuration,
     weightDistance,
     commitWeight,
@@ -1313,13 +1282,7 @@ function ActiveWorkoutSetRow({
   );
   const assumedDistanceText =
     isLive && set.distance == null && assumed?.distance != null
-      ? String(
-          parseFloat(
-            setDistanceFromKm(assumed.distance, distanceUnit, modality).toFixed(
-              2
-            )
-          )
-        )
+      ? formatDistanceDraft(assumed.distance, distanceUnit, modality)
       : null;
   const distanceInputCell = (
     <View className="flex-1 items-center">
@@ -1503,6 +1466,11 @@ function ActiveWorkoutSetRow({
             <>
               {durationCellText}
               {modality === 'duration_distance' && distanceCellText}
+            </>
+          ) : cardioDistance ? (
+            <>
+              {durationInputCell}
+              {distanceInputCell}
             </>
           ) : (
             durationInputCell

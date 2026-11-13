@@ -348,6 +348,23 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(utils.queryByText('Km')).toBeNull();
     });
 
+    it('adds a distance column to the live multi-set cardio table', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.getByText('km')).toBeTruthy();
+    });
+
+    it('keeps the live plain duration table without a distance column', () => {
+      const utils = renderCard(true, { exercise: withModality('duration') });
+      expect(utils.queryByText('km')).toBeNull();
+    });
+
     it('adds a distance column to the view-mode cardio table', () => {
       const base = withModality('duration_distance');
       const utils = renderCard(true, {

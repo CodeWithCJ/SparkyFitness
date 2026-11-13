@@ -723,9 +723,16 @@ function ActiveWorkoutFocusSets({
             {t('workout.set', { defaultValue: 'Set' })}
           </Text>
           {isDurationModality(modality) ? (
-            <Text className={`flex-1 ${headerClass}`}>
-              {t('workout.sec', { defaultValue: 'Sec' })}
-            </Text>
+            <>
+              <Text className={`flex-1 ${headerClass}`}>
+                {t('workout.sec', { defaultValue: 'Sec' })}
+              </Text>
+              {modality === 'duration_distance' && (
+                <Text className={`flex-1 ${headerClass}`}>
+                  {setDistanceUnitLabel(distanceUnit, modality)}
+                </Text>
+              )}
+            </>
           ) : (
             <>
               <Text className={`flex-1 ${headerClass}`}>
