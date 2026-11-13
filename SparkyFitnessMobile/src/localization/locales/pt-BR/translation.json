@@ -6840,7 +6840,11 @@
     "setScreenMetricsTitle": "Métricas na tela da série",
     "setScreenMetricsSubtitle": "Tempo decorrido, frequência cardíaca e calorias. Desligado, eles vão para uma página própria acima da tela da série: deslize para baixo para vê-los.",
     "upNextTitle": "Página A seguir",
-    "upNextSubtitle": "Uma página a um deslize para cima da tela da série, com o próximo exercício, a meta dele e um botão Trocar para fazer outro exercício antes."
+    "upNextSubtitle": "Uma página a um deslize para cima da tela da série, com o próximo exercício, a meta dele e um botão Trocar para fazer outro exercício antes.",
+    "largerTextTitle": "Texto maior no relógio",
+    "largerTextSubtitle": "Letras maiores e os layouts novos em todo o relógio: Metas, Água, o treino, Jejum, Passos e mais. Desativado, mantém o visual original.",
+    "classicWorkoutTitle": "Página de treino original",
+    "classicWorkoutSubtitle": "Mantém a tela de treino original enquanto o texto maior vale no resto. Com o texto maior desativado, o treino sempre usa essa tela."
   },
   "progressPhotos": {
     "card": {

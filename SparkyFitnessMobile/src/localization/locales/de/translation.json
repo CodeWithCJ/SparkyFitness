@@ -6772,7 +6772,11 @@
     "setScreenMetricsTitle": "Messwerte auf dem Satzbildschirm",
     "setScreenMetricsSubtitle": "Verstrichene Zeit, Herzfrequenz und Kalorien. Aus verschiebt sie auf eine eigene Seite nach dem Satzbildschirm (nach „Als Nächstes“, wenn diese Seite aktiv ist).",
     "upNextTitle": "Seite „Als Nächstes“",
-    "upNextSubtitle": "Eine Seite, einmal nach oben gewischt vom Satzbildschirm, mit der nächsten Übung, ihrem Ziel und einer Tauschen-Schaltfläche, um zuerst eine andere Übung zu machen."
+    "upNextSubtitle": "Eine Seite, einmal nach oben gewischt vom Satzbildschirm, mit der nächsten Übung, ihrem Ziel und einer Tauschen-Schaltfläche, um zuerst eine andere Übung zu machen.",
+    "largerTextTitle": "Größere Schrift auf der Uhr",
+    "largerTextSubtitle": "Größere Schrift und die neueren Layouts auf der ganzen Uhr: Ziele, Wasser, Training, Fasten, Schritte und mehr. Aus behält den ursprünglichen Look.",
+    "classicWorkoutTitle": "Ursprüngliche Trainingsseite",
+    "classicWorkoutSubtitle": "Behalte den ursprünglichen Trainingsbildschirm, während überall sonst größere Schrift aktiv ist. Ist größere Schrift aus, nutzt das Training ihn immer."
   },
   "exerciseStatistics": {
     "title": "Übungsstatistiken",

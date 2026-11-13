@@ -6898,7 +6898,11 @@
     "setScreenMetricsTitle": "Metryki na ekranie serii",
     "setScreenMetricsSubtitle": "Czas trwania, tętno i kalorie. Po wyłączeniu trafiają na własną stronę za ekranem serii (za „Następne”, gdy ta strona jest włączona).",
     "upNextTitle": "Strona „Następne”",
-    "upNextSubtitle": "Strona jedno przesunięcie nad ekranem serii z następnym ćwiczeniem, jego celem i przyciskiem Zamień, aby najpierw zrobić inne ćwiczenie."
+    "upNextSubtitle": "Strona jedno przesunięcie nad ekranem serii z następnym ćwiczeniem, jego celem i przyciskiem Zamień, aby najpierw zrobić inne ćwiczenie.",
+    "largerTextTitle": "Większy tekst na zegarku",
+    "largerTextSubtitle": "Większa czcionka i nowsze układy na zegarku: Cele, Woda, trening, Post, Kroki i więcej. Po wyłączeniu zachowany zostaje pierwotny wygląd.",
+    "classicWorkoutTitle": "Pierwotna strona treningu",
+    "classicWorkoutSubtitle": "Zachowaj pierwotny ekran treningu, gdy większy tekst jest włączony wszędzie indziej. Po wyłączeniu większego tekstu trening zawsze go używa."
   },
   "progressPhotos": {
     "card": {
