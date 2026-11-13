@@ -308,6 +308,12 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
           <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${labelForOption(
+              options,
+              value,
+              t('workout.selectValue', { defaultValue: 'Select…' })
+            )}`}
             className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
             style={{ height: 44 }}
           >

@@ -587,8 +587,35 @@ async function searchExercisesPaginated(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createExercise(exerciseData: any) {
+/**
+ * What createExercise and updateExercise read from their callers (routes,
+ * CSV and provider imports, AI tools). The JSON-array columns accept a
+ * string or an array; both writers normalise them right before encoding.
+ */
+interface ExerciseWriteData {
+  // Strava's processor still annotates its (uuid) user id as a number.
+  user_id?: string | number | null;
+  source?: string | null;
+  source_id?: string | null;
+  name?: string;
+  force?: string | null;
+  level?: string | null;
+  mechanic?: string | null;
+  equipment?: unknown;
+  primary_muscles?: unknown;
+  secondary_muscles?: unknown;
+  instructions?: unknown;
+  images?: unknown;
+  category?: string | null;
+  calories_per_hour?: number | null;
+  description?: string | null;
+  is_custom?: boolean | null;
+  shared_with_public?: boolean | null;
+  is_quick_exercise?: unknown;
+  modality?: string | null;
+  health_activity_type?: unknown;
+}
+async function createExercise(exerciseData: ExerciseWriteData) {
   const client = await getClient(exerciseData.user_id);
   try {
     log(
@@ -653,8 +680,11 @@ async function createExercise(exerciseData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateExercise(id: any, userId: any, updateData: any) {
+async function updateExercise(
+  id: string,
+  userId: string,
+  updateData: ExerciseWriteData
+) {
   const client = await getClient(userId);
   const healthActivityTypeUpdate = healthActivityTypeWrite(
     updateData.health_activity_type

@@ -17,19 +17,25 @@ const CREATE_PARAM = 18;
 const UPDATE_PROVIDED_PARAM = 17;
 const UPDATE_VALUE_PARAM = 18;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lastQuery(mockClient: any): [string, unknown[]] {
-  return mockClient.query.mock.calls[mockClient.query.mock.calls.length - 1];
+interface MockClient {
+  query: ReturnType<typeof vi.fn>;
+  release: ReturnType<typeof vi.fn>;
+}
+
+function lastQuery(mockClient: MockClient): [string, unknown[]] {
+  return mockClient.query.mock.calls[
+    mockClient.query.mock.calls.length - 1
+  ] as [string, unknown[]];
 }
 
 describe('exercise health_activity_type writers', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockClient;
 
   beforeEach(() => {
     mockClient = { query: vi.fn(), release: vi.fn() };
-    // @ts-expect-error mock typing
-    getClient.mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
   });
 
   afterEach(() => {

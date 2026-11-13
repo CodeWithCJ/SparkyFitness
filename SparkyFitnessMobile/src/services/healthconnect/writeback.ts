@@ -423,9 +423,10 @@ export const removeWrittenData = async (
     : { operator: 'before' as const, endTime: new Date().toISOString() };
 
   // Exercise write-back writes sessions plus energy and distance records.
-  let ok = WRITEBACK_METRICS.some((m) => m.id === 'exercise')
+  const exerciseRemoved = WRITEBACK_METRICS.some((m) => m.id === 'exercise')
     ? await removeExerciseData(filter)
     : true;
+  let ok = exerciseRemoved;
   for (const recordType of recordTypes) {
     try {
       await deleteRecordsByTimeRange(recordType, filter);
@@ -439,7 +440,13 @@ export const removeWrittenData = async (
   }
 
   const keys = await AsyncStorage.getAllKeys();
-  const toClear = trackingKeysToClear(keys, range);
+  // When removing written workouts failed, keep their per-day id lists: they
+  // are what the next sync deletes before rewriting a day, so dropping them
+  // would leave the surviving records beside new copies. Signatures are still
+  // cleared, so that sync re-checks the day.
+  const toClear = trackingKeysToClear(keys, range).filter(
+    (k) => exerciseRemoved || !/writebackExercise\w+Ids:/.test(k)
+  );
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
   if (!range) {

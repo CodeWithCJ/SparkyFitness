@@ -178,7 +178,9 @@ export const HEALTH_ACTIVITY_TYPE_TARGETS = {
   },
   stretching: { healthKit: 62, healthConnect: 71, indoor: true },
   hiit: { healthKit: 63, healthConnect: 36, indoor: true },
-  jump_rope: { healthKit: 64, healthConnect: 41 },
+  // Health Connect has no jump rope session type any more; androidx files it
+  // under HIIT (the jump rope segment is separate).
+  jump_rope: { healthKit: 64, healthConnect: 36 },
   kickboxing: { healthKit: 65, healthConnect: 11, indoor: true },
   pilates: { healthKit: 66, healthConnect: 48, indoor: true },
   snowboarding: {
@@ -282,6 +284,11 @@ const NAME_RULES: readonly [RegExp, (name: string) => HealthActivityType][] = [
     (n) => (/\brun/.test(n) ? 'wheelchair_run_pace' : 'wheelchair_walk_pace'),
   ],
   [/\bhand ?cycl/, () => 'hand_cycling'],
+  // Before the broad rules they would otherwise lose to: "Horse riding" is
+  // not cycling, "Inline hockey" not skating, "Disc golf" not golf.
+  [/\b(equestrian|horse)/, () => 'equestrian_sports'],
+  [/\b(roller hockey|inline hockey)/, () => 'roller_hockey'],
+  [/\b(frisbee|disc golf|ultimate)/, () => 'disc_sports'],
   [
     /\b(walk|stroll)/,
     (n) => (INDOOR.test(n) ? 'walking_treadmill' : 'walking'),
@@ -367,15 +374,12 @@ const NAME_RULES: readonly [RegExp, (name: string) => HealthActivityType][] = [
   [/\bcricket/, () => 'cricket'],
   [/\brugby/, () => 'rugby'],
   [/\blacrosse/, () => 'lacrosse'],
-  [/\b(roller hockey|inline hockey)/, () => 'roller_hockey'],
   [/\bhockey/, () => 'ice_hockey'],
   [/\bfencing/, () => 'fencing'],
   [/\bgymnast/, () => 'gymnastics'],
   [/\barchery/, () => 'archery'],
   [/\bbowling/, () => 'bowling'],
   [/\bcurling/, () => 'curling'],
-  [/\b(equestrian|horse)/, () => 'equestrian_sports'],
-  [/\b(frisbee|disc golf|ultimate)/, () => 'disc_sports'],
   [/\bparaglid/, () => 'paragliding'],
   [/\b(weightlift|olympic lift)/, () => 'weightlifting'],
   [/\b(strength|weight|lifting|resistance)/, () => 'strength_training'],

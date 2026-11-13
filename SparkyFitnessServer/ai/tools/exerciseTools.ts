@@ -210,6 +210,8 @@ interface ExerciseCopySource {
   name: string;
   category?: string | null;
   modality?: ExerciseModality | null;
+  /** Health activity type override (#1750); a copy keeps it. */
+  health_activity_type?: string | null;
   calories_per_hour?: number | null;
   description?: string | null;
   level?: string | null;
@@ -1025,6 +1027,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
                 name: args.name ?? `${original.name} (copy)`,
                 category: original.category ?? 'general',
                 modality: original.modality ?? undefined,
+                health_activity_type: original.health_activity_type ?? null,
                 calories_per_hour: original.calories_per_hour ?? 0,
                 description: original.description ?? null,
                 level: original.level ?? null,

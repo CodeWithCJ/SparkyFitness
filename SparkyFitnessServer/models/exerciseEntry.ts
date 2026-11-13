@@ -902,6 +902,9 @@ async function _updateExerciseEntryWithClient(
         ? updateData.water_estimated
         : currentEntry.water_estimated,
   };
+  // The entry's copy of the Health activity type (#1750) changes only when the
+  // entry is moved to another exercise, like its other snapshot fields.
+  let refreshedHealthActivityType: string | null | undefined;
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
     updateData.exercise_id &&
@@ -927,6 +930,7 @@ async function _updateExerciseEntryWithClient(
     mergedData.secondary_muscles = exercise.secondary_muscles;
     mergedData.instructions = exercise.instructions;
     mergedData.images = exercise.images;
+    refreshedHealthActivityType = exercise.health_activity_type ?? null;
   }
   // Telemetry columns: prefer an explicitly-provided updateData value, otherwise keep
   // whatever is already on the row. Using a raw object spread for these would let an
@@ -989,6 +993,11 @@ async function _updateExerciseEntryWithClient(
       ${telemetrySetClause},
       record_timezone = $${32 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length},
       manual_fields = $${33 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text[],
+      health_activity_type = CASE
+        WHEN $${34 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::boolean
+          THEN $${35 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text
+        ELSE health_activity_type
+      END,
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -1028,6 +1037,8 @@ async function _updateExerciseEntryWithClient(
       mergedData.record_timezone ?? null,
       // NULL while nothing is marked, so an untouched row keeps its shape.
       manualFields.length > 0 ? manualFields : null,
+      refreshedHealthActivityType !== undefined,
+      refreshedHealthActivityType ?? null,
     ]
   );
   // The row can be deleted by a competing writer between the existence check
@@ -1120,14 +1131,13 @@ async function acquireExerciseEntrySyncLockWithClient(
 }
 
 async function _createExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
+  client: PoolClient,
+  userId: string,
+  // Still untyped: a dozen create paths (manual, presets, plans, Garmin,
+  // FIT, Liftosaur, health-data) pass different entry shapes.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
+  createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
   options: { skipDuplicateCheck?: boolean } = {}

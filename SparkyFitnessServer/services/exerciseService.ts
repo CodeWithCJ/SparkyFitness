@@ -2539,10 +2539,8 @@ async function getExercisesNeedingReview(authenticatedUserId: any) {
 }
 
 async function updateExerciseEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any
+  authenticatedUserId: string,
+  exerciseId: string
 ) {
   try {
     // Fetch the latest exercise details

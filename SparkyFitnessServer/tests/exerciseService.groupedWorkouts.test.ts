@@ -2325,6 +2325,50 @@ describe('_updateExerciseEntryWithClient snapshot round-trip', () => {
     expect(update!.params[22]).toBe('["Leg_Press/0.jpg"]');
   });
 
+  // #1750: the entry's copy of the Health activity type follows a move to
+  // another exercise and is otherwise left as stored.
+  const healthActivityTypeParams = (params: unknown[]) => params.slice(-2);
+
+  it("copies the new exercise's activity type when the entry changes exercise", async () => {
+    vi.mocked(exerciseDb.getExerciseById).mockResolvedValueOnce({
+      id: 'ex-2',
+      name: 'Walking',
+      category: 'Cardio',
+      modality: 'duration_distance',
+      health_activity_type: 'walking',
+    });
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { exercise_id: 'ex-2' },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update!.sql).toContain('health_activity_type = CASE');
+    expect(healthActivityTypeParams(update!.params)).toEqual([true, 'walking']);
+  });
+
+  it('leaves the stored activity type alone on an ordinary edit', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { duration_minutes: 12 },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(healthActivityTypeParams(update!.params)).toEqual([false, null]);
+  });
+
   it('encodes array snapshot values from updateData exactly once', async () => {
     const client = makeClient();
     await updateEntry(

@@ -29,9 +29,9 @@ If you use SparkyFitness on an iPhone and an Android phone with the same account
 
 ## Duplicates
 
-Apple Health and Health Connect merge overlapping data from different apps when they work out daily totals, using the app order in their settings, so a value written by SparkyFitness does not double a daily total there. SparkyFitness itself skips what it wrote when it reads from Apple Health or Health Connect again, so nothing comes back as a second entry.
+For activity data, such as active energy and distance, Apple Health and Health Connect merge overlapping values from different apps when they work out daily totals, using the app order in their settings, so a workout written by SparkyFitness does not double a daily total there. Food and drink are not merged that way: if the same meal or drink reaches the store from two apps (for example you log it in SparkyFitness and in another food app), both count. Log each food or drink in one place, or turn off writing in one of the apps.
 
-If you log something in SparkyFitness that another app or device also records (for example the same drink in two apps), both copies are kept, as they would be with any two apps.
+SparkyFitness itself skips what it wrote when it reads from Apple Health or Health Connect again, so nothing comes back as a second entry.
 
 ## In the Health app
 

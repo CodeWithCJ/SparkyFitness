@@ -9,11 +9,15 @@ import {
 // Apple's deprecated HKWorkoutActivityType values and the two that need
 // multisport activities this app cannot write.
 const HK_NEVER = new Set([14, 15, 30, 82, 83, 2998, 2999]);
-// Health Connect single-movement types deprecated in favour of segments.
-const HC_NEVER = new Set([
-  1, 3, 6, 7, 12, 15, 17, 18, 19, 20, 21, 22, 23, 24, 30, 40, 42, 43, 49, 67,
-  77,
-]);
+// Every Health Connect ExerciseSessionRecord EXERCISE_TYPE_* constant in
+// androidx-main (single movements such as bench press, jump rope and plank
+// are no longer session types; they are segments).
+const HC_ALL = [
+  0, 2, 4, 5, 8, 9, 10, 11, 13, 14, 16, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
+  36, 37, 38, 39, 44, 46, 47, 48, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+  61, 62, 63, 64, 65, 66, 68, 69, 70, 71, 72, 73, 74, 75, 76, 78, 79, 80, 81,
+  82, 83,
+];
 // Every HKWorkoutActivityType raw value that can be a session target.
 const HK_ALL = [
   ...Array.from({ length: 84 }, (_, i) => i + 1).filter(
@@ -21,17 +25,13 @@ const HK_ALL = [
   ),
   3000,
 ];
-// Every Health Connect exercise type that can be a session target.
-const HC_ALL = Array.from({ length: 84 }, (_, i) => i).filter(
-  (v) => v !== 45 && !HC_NEVER.has(v)
-);
 
 describe('health activity type targets (#1750)', () => {
   it('never targets a deprecated or unwritable type', () => {
     for (const key of HEALTH_ACTIVITY_TYPES) {
       const target = HEALTH_ACTIVITY_TYPE_TARGETS[key];
       expect(HK_NEVER.has(target.healthKit), key).toBe(false);
-      expect(HC_NEVER.has(target.healthConnect), key).toBe(false);
+      expect(HC_ALL.includes(target.healthConnect), key).toBe(true);
     }
   });
 
@@ -111,6 +111,11 @@ describe('resolveHealthActivityType', () => {
     ['HIIT', 'hiit'],
     ['Pickleball', 'pickleball'],
     ['Hiking', 'hiking'],
+    ['Horse riding', 'equestrian_sports'],
+    ['Inline hockey', 'roller_hockey'],
+    ['Disc golf', 'disc_sports'],
+    ['Inline skating', 'skating'],
+    ['Road cycling', 'cycling'],
   ])('guesses %s as %s', (name, expected) => {
     expect(guessHealthActivityType({ name, modality: 'duration' })).toBe(
       expected

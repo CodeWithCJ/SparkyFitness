@@ -405,6 +405,22 @@ describe('ExerciseFormScreen — create mode', () => {
     });
   });
 
+  it('announces each picker as a button with its field and value', () => {
+    const route = {
+      key: 'ExerciseForm-key',
+      name: 'ExerciseForm' as const,
+      params: { mode: 'create-exercise' as const },
+    };
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <ExerciseFormScreen navigation={navigation} route={route as any} />
+      </SafeAreaProvider>
+    );
+    expect(
+      screen.getByRole('button', { name: /^Health activity type: Automatic/ })
+    ).toBeTruthy();
+  });
+
   it('follows the category-derived modality until the picker is touched', async () => {
     const createExerciseAsync = jest.fn().mockResolvedValue(baseExercise);
     mockUseCreateExercise.mockReturnValue({
