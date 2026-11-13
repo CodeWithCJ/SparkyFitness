@@ -324,3 +324,19 @@ it('cards a nested delete mode', () => {
     })
   ).toBe(true);
 });
+it('does not let nested data replace a destructive outer action', () => {
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      action: 'delete_entry',
+      entry_id: 'entry',
+      custom_fields: { action: 'log_food' },
+    })
+  ).toBe(true);
+  expect(
+    isDestructiveToolCall('sparky_manage_medications', {
+      action: 'update_entry',
+      notes: null,
+      custom_fields: { notes: 'keep' },
+    })
+  ).toBe(true);
+});

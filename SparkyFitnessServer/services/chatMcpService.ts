@@ -11,9 +11,10 @@ export async function getChatMcpServers(
   const servers = await getChatMcpServerChoices();
   const enabled = new Set(await getChatMcpServerIds(userId));
   return {
-    servers: servers.map(({ id, name }) => ({
+    servers: servers.map(({ id, name, send_user_id }) => ({
       id,
       name,
+      send_user_id,
       enabled: enabled.has(id),
     })),
   };
@@ -28,9 +29,10 @@ export async function updateChatMcpServers(
   const enabled = new Set(ids.filter((id) => available.has(id)));
   await saveChatMcpServerIds(userId, [...enabled]);
   return {
-    servers: servers.map(({ id, name }) => ({
+    servers: servers.map(({ id, name, send_user_id }) => ({
       id,
       name,
+      send_user_id,
       enabled: enabled.has(id),
     })),
   };

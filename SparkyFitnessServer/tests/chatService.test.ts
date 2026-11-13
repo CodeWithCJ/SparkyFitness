@@ -1,3 +1,7 @@
+import { getChatApprovalSummary } from '../ai/chatApprovalSummary.js';
+vi.mock('../ai/chatApprovalSummary.js', () => ({
+  getChatApprovalSummary: vi.fn(async () => undefined),
+}));
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
 import { APICallError } from 'ai';
@@ -29,6 +33,7 @@ vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../ai/tools/mcpServerTools.js')>()),
   loadMcpServerTools: vi.fn(async () => ({})),
   getChatToolServerNames: vi.fn(() => ({ mcp_notes__search: 'Notes server' })),
+  getChatToolTitles: vi.fn(() => ({ mcp_notes__search: 'search_notes' })),
 }));
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
@@ -1787,6 +1792,10 @@ describe('chatService', () => {
         ).toBe(false);
       });
       it('streams and saves row-owned outside names and approval provenance', async () => {
+        vi.mocked(getChatApprovalSummary).mockResolvedValueOnce({
+          text: 'Eggs, breakfast, Nov 13',
+          kind: 'delete',
+        });
         scripted([
           callStep('mcp_notes__search', 'outside'),
           callStep('sparky_test_write', 'write'),
@@ -1801,6 +1810,13 @@ describe('chatService', () => {
                   outsideSource: {
                     servers: ['Notes server'],
                     toolServers: { mcp_notes__search: 'Notes server' },
+                    toolTitles: { mcp_notes__search: 'search_notes' },
+                    approvalSummaries: {
+                      write: {
+                        text: 'Eggs, breakfast, Nov 13',
+                        kind: 'delete',
+                      },
+                    },
                     approvalSources: { write: ['Notes server'] },
                   },
                 }),
@@ -1814,7 +1830,12 @@ describe('chatService', () => {
         expect(saved?.metadata).toMatchObject({
           custom: {
             savedMessageId: saved?.id,
-            outsideSource: { servers: ['Notes server'] },
+            outsideSource: {
+              servers: ['Notes server'],
+              approvalSummaries: {
+                write: { text: 'Eggs, breakfast, Nov 13', kind: 'delete' },
+              },
+            },
           },
         });
         expect(chunks.at(-1)).toMatchObject({

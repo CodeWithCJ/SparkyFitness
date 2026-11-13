@@ -257,22 +257,82 @@
     },
     "approval": {
       "title": "Allow this step?",
-      "run": "After reading <bold>{{server}}</bold>, Sparky wants to run <bold>{{tool}}{{action}}</bold>.",
-      "send": "After reading <bold>{{server}}</bold>, Sparky wants to send <bold>{{tool}}</bold> to <bold>{{otherServer}}</bold>.",
+      "run": "After reading <bold>{{server}}</bold>, Sparky wants to run <bold>{{tool}}</bold>.",
+      "send": "After reading <bold>{{server}}</bold>, Sparky wants to use <bold>{{tool}}</bold> from <bold>{{otherServer}}</bold>.",
       "details": "Details",
       "allow": "Allow",
       "deny": "Deny",
       "allowed": "Allowed",
       "denied": "Denied",
       "failed": "Could not save your answer. Please try again.",
-      "runPlain": "Sparky wants to run <bold>{{tool}}{{action}}</bold>."
+      "runPlain": "Sparky wants to run <bold>{{tool}}</bold>.",
+      "delete": "Sparky wants to delete <bold>{{summary}}</bold>.",
+      "deleteAfter": "After reading <bold>{{server}}</bold>, Sparky wants to delete <bold>{{summary}}</bold>.",
+      "change": "Sparky wants to make this change: <bold>{{summary}}</bold>.",
+      "changeAfter": "After reading <bold>{{server}}</bold>, Sparky wants to make this change: <bold>{{summary}}</bold>.",
+      "working": "Working on it…",
+      "done": "Done",
+      "notRun": "Not run",
+      "cancelled": "You sent a new message first.",
+      "nothingChanged": "Nothing was changed.",
+      "toolFailed": "Allowed, but it didn't work",
+      "otherPending": "Answer the other step to continue.",
+      "composerHint": "Answer the step above first, or keep typing to skip it.",
+      "announce": "Sparky needs your answer: Allow this step?",
+      "runCompleted": "After reading <bold>{{server}}</bold>, Sparky ran <bold>{{tool}}</bold>.",
+      "runPlainCompleted": "Sparky ran <bold>{{tool}}</bold>.",
+      "sendCompleted": "After reading <bold>{{server}}</bold>, Sparky ran <bold>{{tool}}</bold>.",
+      "deleteCompleted": "You allowed Sparky to delete <bold>{{summary}}</bold>.",
+      "deleteAfterCompleted": "After Sparky read <bold>{{server}}</bold>, you allowed it to delete <bold>{{summary}}</bold>.",
+      "changeCompleted": "You allowed Sparky to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterCompleted": "After Sparky read <bold>{{server}}</bold>, you allowed it to make this change: <bold>{{summary}}</bold>.",
+      "runFailed": "After reading <bold>{{server}}</bold>, Sparky tried to run <bold>{{tool}}</bold>.",
+      "runPlainFailed": "Sparky tried to run <bold>{{tool}}</bold>.",
+      "sendFailed": "After reading <bold>{{server}}</bold>, Sparky tried to run <bold>{{tool}}</bold>.",
+      "deleteFailed": "Sparky tried to delete <bold>{{summary}}</bold>.",
+      "deleteAfterFailed": "After reading <bold>{{server}}</bold>, Sparky tried to delete <bold>{{summary}}</bold>.",
+      "changeFailed": "Sparky tried to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterFailed": "After reading <bold>{{server}}</bold>, Sparky tried to make this change: <bold>{{summary}}</bold>.",
+      "runUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to run <bold>{{tool}}</bold>.",
+      "runPlainUnused": "Sparky wanted to run <bold>{{tool}}</bold>.",
+      "sendUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to use <bold>{{tool}}</bold> from <bold>{{otherServer}}</bold>.",
+      "deleteUnused": "Sparky wanted to delete <bold>{{summary}}</bold>.",
+      "deleteAfterUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to delete <bold>{{summary}}</bold>.",
+      "changeUnused": "Sparky wanted to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to make this change: <bold>{{summary}}</bold>."
     },
     "outsideSource": {
       "line": "Used <bold>{{servers}}</bold>. Something look wrong?",
       "delete": "Delete this message",
-      "or": "or",
-      "clear": "clear the chat",
-      "failed": "Could not delete this message. Please try again."
+      "clear": "Clear chat",
+      "failed": "Could not delete this message. Please try again.",
+      "deleteTitle": "Delete this reply?",
+      "deleteBody": "This removes the reply from your chat. It does not undo anything Sparky already changed.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "deleting": "Deleting…"
+    },
+    "tools": {
+      "generic": "Tool",
+      "outside": "an outside tool",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})",
+      "runProgram": "Run program",
+      "food": "Food",
+      "exercise": "Exercise",
+      "checkin": "Check-in",
+      "goals": "Goals",
+      "lookedUp": "Looked up {{name}}"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} did not answer. Try again later.",
+      "turnedOff": "{{server}} is turned off for you in AI settings."
+    },
+    "clearConfirm": {
+      "title": "Clear chat?",
+      "body": "This permanently deletes your Sparky chat history. This cannot be undone.",
+      "cancel": "Cancel",
+      "clear": "Clear"
     }
   },
   "workoutLaps": {
@@ -1961,11 +2021,15 @@
   },
   "settings": {
     "chatMcp": {
-      "title": "Tools from outside servers",
-      "description": "What chat sends to these tools goes to that server.",
-      "allow": "Let chat use tools from {{name}}",
-      "loadError": "Could not load outside tool servers.",
-      "saveError": "Could not save outside tool servers."
+      "title": "Outside tools",
+      "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
+      "allow": "Let Sparky use {{name}}",
+      "loadError": "Could not load outside tools.",
+      "saveError": "Could not save. Please try again.",
+      "accountId": "Sees your account ID.",
+      "familyOff": "Outside tools are off while you view someone else's profile.",
+      "retry": "Try again",
+      "loading": "Loading outside tools…"
     },
     "profileInformation": {
       "title": "Profile Information",
@@ -3315,7 +3379,7 @@
       "tokenKeepPlaceholder": "Leave blank to keep the saved token",
       "loadTools": "Load tools",
       "loadingTools": "Loading tools...",
-      "allowedCount": "Chat may use {{count}} of at most {{max}} tools.",
+      "allowedCount": "{{count}} of {{max}} tools ticked.",
       "noTools": "The server lists no tools.",
       "toolChanged": "Changed since it was saved. Tick it again to allow this version.",
       "tokenUrlChanged": "Enter the token again when you change the server URL.",
@@ -3332,7 +3396,24 @@
       "toolGone": "The server no longer lists this tool.",
       "sendUserIdLabel": "Tell the server who is chatting",
       "sendUserIdHelp": "Sends the signed-in person's user ID in the {{header}} header, for a server that keeps data per person.",
-      "details": "Details"
+      "details": "Details",
+      "urlHelp": "Changing the URL clears the ticked tools.",
+      "urlCleared": "Ticked tools were cleared because the URL changed. Load tools and tick them again.",
+      "limit": "You have ticked the most tools allowed ({{max}}). Untick one to add another.",
+      "noneTicked": "No tools are ticked yet, so Sparky cannot use this server.",
+      "changedSummary_one": "{{count}} tool changed since you saved and was unticked. Review it below.",
+      "changedSummary_other": "{{count}} tools changed since you saved and were unticked. Review them below.",
+      "goneSummary_one": "{{count}} tool is no longer on the server.",
+      "goneSummary_other": "{{count}} tools are no longer on the server.",
+      "detailsFor": "Details for {{name}}",
+      "problem": "Chat cannot use this tool: {{reason}}",
+      "loadError": {
+        "auth": "The server refused the token. Check the bearer token.",
+        "timeout": "The server did not answer within {{seconds}} seconds.",
+        "unreachable": "Could not reach the server. Check the URL.",
+        "policy": "This address is not allowed by the network policy.",
+        "other": "The server did not list its tools ({{reason}})."
+      }
     },
     "providerSpecificFields": {
       "appURL": "App URL",
@@ -9641,7 +9722,11 @@
     "update": "Update"
   },
   "toolfallback": {
-    "result": "Result:"
+    "result": "Result:",
+    "used": "Used tool",
+    "cancelled": "Cancelled tool",
+    "error": "Error:",
+    "cancelledReason": "Cancelled reason:"
   },
   "ui": {
     "confirmationDialog": {

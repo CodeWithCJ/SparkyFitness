@@ -31,6 +31,8 @@ import {
 } from '@workspace/shared';
 import {
   getChatToolServerNames,
+  getChatToolTitles,
+  mcpServerListErrorCode,
   listToolsForAdmin,
   mcpToolFingerprint,
   loadMcpServerTools,
@@ -516,6 +518,9 @@ describe('which tools chat gets', () => {
     expect(
       getChatToolServerNames({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
     ).toEqual({ mcp_opted__echo: 'Opted' });
+    expect(
+      getChatToolTitles({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
+    ).toEqual({ mcp_opted__echo: 'echo' });
     expect(seen.some(({ path }) => path === '/not-opted-in')).toBe(false);
     expect(vi.mocked(getChatMcpServerIds)).toHaveBeenCalledWith(
       OWN_ACCOUNT.accountUserId
@@ -1498,3 +1503,17 @@ it('keeps rejected deep definitions serializable for the admin picker', async ()
   expect(typeof tools[0]?.inputSchema).toBe('string');
   expect(() => JSON.stringify(tools)).not.toThrow();
 });
+
+it.each([
+  [new Error('HTTP 401'), 'auth'],
+  [new Error('HTTP 403'), 'auth'],
+  [new Error('request timed out'), 'timeout'],
+  [new Error('ENOTFOUND'), 'unreachable'],
+  [new Error('blocked address'), 'policy'],
+  [new Error('unknown'), 'other'],
+])(
+  'classifies admin errors without exposing server response text',
+  (error, code) => {
+    expect(mcpServerListErrorCode(error)).toBe(code);
+  }
+);

@@ -1,10 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import i18n from 'i18next';
+import translations from '../../../../public/locales/en/translation.json';
+beforeAll(() =>
+  i18n.addResourceBundle('en', 'translation', translations, true, true)
+);
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SparkyChat from '@/pages/Chat/SparkyChat';
 
-jest.mock('react-i18next', () =>
-  jest.requireActual('@/tests/mocks/reactI18next')
-);
 jest.mock('@/pages/Chat/SparkyChatInterface', () => ({
   __esModule: true,
   default: () => null,
@@ -12,8 +14,9 @@ jest.mock('@/pages/Chat/SparkyChatInterface', () => ({
 jest.mock('@/contexts/ChatbotVisibilityContext', () => ({
   useChatbotVisibility: () => ({ isChatOpen: true, closeChat: jest.fn() }),
 }));
+const mockClear = jest.fn();
 jest.mock('@/hooks/AI/useSparkyChat', () => ({
-  useClearChatHistoryMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useClearChatHistoryMutation: () => ({ mutate: mockClear, isPending: false }),
 }));
 jest.mock('@/utils/chatConversationId', () => ({
   rotateChatConversationId: jest.fn(),
@@ -64,4 +67,17 @@ describe('SparkyChat provider picker', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.getByText('Sparky AI Coach')).toBeInTheDocument();
   });
+});
+
+it('confirms before clearing chat history and supports cancel', () => {
+  render(<SparkyChat />);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear chat history' }));
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  expect(screen.getByText('Clear chat?')).toBeInTheDocument();
+  expect(mockClear).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Cancel'));
+  expect(mockClear).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear chat history' }));
+  fireEvent.click(screen.getByText('Clear'));
+  expect(mockClear).toHaveBeenCalledWith('all', expect.anything());
 });

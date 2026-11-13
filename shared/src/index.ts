@@ -380,3 +380,5 @@ export {
 } from './glucose/context.ts';
 
 export * from './schemas/api/Chat.api.zod.ts';
+
+export * from './utils/chatTools.ts';

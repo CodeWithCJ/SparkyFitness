@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,7 +48,9 @@ const SparkyChat = () => {
   const { mutate: clearHistory, isPending: isClearing } =
     useClearChatHistoryMutation();
 
-  const handleClearHistory = () => {
+  const [confirmClear, setConfirmClear] = useState(false);
+  const handleClearHistory = () => setConfirmClear(true);
+  const clearConfirmed = () => {
     clearHistory('all', {
       onSuccess: async () => {
         await rotateChatConversationId(activeUserId ?? '');
@@ -80,135 +92,159 @@ const SparkyChat = () => {
   };
 
   return (
-    // modal={false} keeps the rest of the app interactive while the chat is
-    // open (no focus trap, no pointer-events lockout) and we deliberately omit
-    // the overlay so the diary/dashboard behind stays usable — the "chat widget"
-    // behaviour the user expects instead of a blocking dialog.
-    <DialogPrimitive.Root
-      open={isChatOpen}
-      onOpenChange={handleOpenChange}
-      modal={false}
-    >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Content
-          // Clicking or focusing the main app must NOT close the panel.
-          onInteractOutside={(e) => e.preventDefault()}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          className={cn(
-            'fixed z-50 flex flex-col bg-background shadow-2xl border transition-all duration-300 ease-in-out',
-            'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-            isMinimized
-              ? 'bottom-4 right-4 h-14 w-[calc(100%-2rem)] sm:w-80 rounded-lg overflow-hidden'
-              : 'inset-y-0 right-0 w-full sm:w-[500px] sm:max-w-[500px] border-l p-0'
-          )}
-        >
-          <div className="flex flex-col h-full">
-            <div className="p-4 border-b flex flex-col space-y-2 text-left">
-              <div className="flex items-center justify-between gap-2">
-                <DialogPrimitive.Title
-                  className="flex items-center gap-2 shrink-0 text-lg font-semibold text-foreground cursor-pointer"
-                  onClick={() => isMinimized && setIsMinimized(false)}
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  {t('chat.sparkyChat.sparkyAICoach', 'Sparky AI Coach')}
-                </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="sr-only">
-                  {t(
-                    'chat.sparkyChat.yourPersonalAINutritionAnd',
-                    'Your personal AI nutrition and fitness coach.'
-                  )}
-                </DialogPrimitive.Description>
+    <>
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('chat.clearConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('chat.clearConfirm.body')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t('chat.clearConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground"
+              disabled={isClearing}
+              onClick={clearConfirmed}
+            >
+              {t('chat.clearConfirm.clear')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* The chat stays open while the person uses the diary behind it. */}
+      <DialogPrimitive.Root
+        open={isChatOpen}
+        onOpenChange={handleOpenChange}
+        modal={false}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Content
+            // Clicking or focusing the main app must NOT close the panel.
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            className={cn(
+              'fixed z-50 flex flex-col bg-background shadow-2xl border transition-all duration-300 ease-in-out',
+              'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+              isMinimized
+                ? 'bottom-4 right-4 h-14 w-[calc(100%-2rem)] sm:w-80 rounded-lg overflow-hidden'
+                : 'inset-y-0 right-0 w-full sm:w-[500px] sm:max-w-[500px] border-l p-0'
+            )}
+          >
+            <div className="flex flex-col h-full">
+              <div className="p-4 border-b flex flex-col space-y-2 text-left">
+                <div className="flex items-center justify-between gap-2">
+                  <DialogPrimitive.Title
+                    className="flex items-center gap-2 shrink-0 text-lg font-semibold text-foreground cursor-pointer"
+                    onClick={() => isMinimized && setIsMinimized(false)}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    {t('chat.sparkyChat.sparkyAICoach', 'Sparky AI Coach')}
+                  </DialogPrimitive.Title>
+                  <DialogPrimitive.Description className="sr-only">
+                    {t(
+                      'chat.sparkyChat.yourPersonalAINutritionAnd',
+                      'Your personal AI nutrition and fitness coach.'
+                    )}
+                  </DialogPrimitive.Description>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* Provider switcher + clear history are hidden when minimized
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Provider switcher + clear history are hidden when minimized
                       to keep the collapsed bar compact. */}
-                  {!isMinimized && showServicePicker && (
-                    <Select
-                      value={currentServiceId}
-                      onValueChange={handleServiceSwitch}
-                    >
-                      <SelectTrigger
-                        id="ai-provider-select"
-                        className="h-8 text-xs max-w-[160px]"
+                    {!isMinimized && showServicePicker && (
+                      <Select
+                        value={currentServiceId}
+                        onValueChange={handleServiceSwitch}
                       >
-                        <SelectValue
-                          placeholder={t(
-                            'chat.sparkyChat.selectProvider',
-                            'Select provider'
-                          )}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {usableServices.map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            {service.service_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                        <SelectTrigger
+                          id="ai-provider-select"
+                          className="h-8 text-xs max-w-[160px]"
+                        >
+                          <SelectValue
+                            placeholder={t(
+                              'chat.sparkyChat.selectProvider',
+                              'Select provider'
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {usableServices.map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.service_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
 
-                  {!isMinimized && (
+                    {!isMinimized && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleClearHistory}
+                        disabled={isClearing}
+                        aria-label={t(
+                          'chat.sparkyChat.clearChatHistory',
+                          'Clear chat history'
+                        )}
+                        className="shrink-0"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={handleClearHistory}
-                      disabled={isClearing}
-                      aria-label={t(
-                        'chat.sparkyChat.clearChatHistory',
-                        'Clear chat history'
-                      )}
+                      onClick={() => setIsMinimized((prev) => !prev)}
+                      aria-label={
+                        isMinimized
+                          ? t('chat.sparkyChat.expandChat', 'Expand chat')
+                          : t('chat.sparkyChat.minimizeChat', 'Minimize chat')
+                      }
                       className="shrink-0"
                     >
-                      <Trash2 className="h-5 w-5" />
+                      {isMinimized ? (
+                        <ChevronUp className="h-5 w-5" />
+                      ) : (
+                        <Minus className="h-5 w-5" />
+                      )}
                     </Button>
-                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsMinimized((prev) => !prev)}
-                    aria-label={
-                      isMinimized
-                        ? t('chat.sparkyChat.expandChat', 'Expand chat')
-                        : t('chat.sparkyChat.minimizeChat', 'Minimize chat')
-                    }
-                    className="shrink-0"
-                  >
-                    {isMinimized ? (
-                      <ChevronUp className="h-5 w-5" />
-                    ) : (
-                      <Minus className="h-5 w-5" />
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={closeChat}
-                    aria-label={t('chat.sparkyChat.closeChat', 'Close chat')}
-                    className="shrink-0"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={closeChat}
+                      aria-label={t('chat.sparkyChat.closeChat', 'Close chat')}
+                      className="shrink-0"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Keep the interface mounted when minimized so the conversation
+              {/* Keep the interface mounted when minimized so the conversation
                 (and any in-flight streaming) is preserved on restore. */}
-            <div
-              className={cn('flex-1 overflow-hidden', isMinimized && 'hidden')}
-            >
-              <SparkyChatInterface
-                onClearChat={handleClearHistory}
-                key={resetKey}
-              />
+              <div
+                className={cn(
+                  'flex-1 overflow-hidden',
+                  isMinimized && 'hidden'
+                )}
+              >
+                <SparkyChatInterface
+                  onClearChat={handleClearHistory}
+                  key={resetKey}
+                />
+              </div>
             </div>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </>
   );
 };
 

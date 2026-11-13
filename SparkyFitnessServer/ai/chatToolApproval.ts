@@ -30,37 +30,50 @@ export const CHAT_APPROVAL_EXEMPT_TOOLS = new Set([
   'sparky_daily_checkin_wizard', // Returns a fixed question; persists nothing and makes no requests.
 ]);
 
-const DESTRUCTIVE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  sparky_manage_allergens: ['remove_allergen'],
-  sparky_manage_custom_nutrients: ['delete_custom_nutrient'],
-  sparky_manage_exercise: ['delete_exercise_entry', 'delete_workout_preset'],
-  sparky_manage_favorites: ['remove_favorite'],
-  sparky_manage_food: ['delete_entry', 'delete_food'],
-  sparky_food_assistant_state: ['forget_preference'],
-  sparky_manage_meal_plans: ['delete_meal_plan'],
-  sparky_manage_medications: [
-    'delete_entry',
-    'delete_medication',
-    'delete_schedule',
-  ],
-  sparky_manage_progress_photos: ['delete_photo'],
-  sparky_manage_run_program: ['start_run_program', 'realign_run_program'],
-  sparky_manage_symptoms: ['delete_definition'],
-  sparky_manage_water_containers: ['delete_water_container'],
-  sparky_manage_workout_plans: ['delete_workout_plan'],
-};
+export const DESTRUCTIVE_ACTIONS: Readonly<Record<string, readonly string[]>> =
+  {
+    sparky_manage_allergens: ['remove_allergen'],
+    sparky_manage_custom_nutrients: ['delete_custom_nutrient'],
+    sparky_manage_exercise: ['delete_exercise_entry', 'delete_workout_preset'],
+    sparky_manage_favorites: ['remove_favorite'],
+    sparky_manage_food: ['delete_entry', 'delete_food'],
+    sparky_food_assistant_state: ['forget_preference'],
+    sparky_manage_meal_plans: ['delete_meal_plan'],
+    sparky_manage_medications: [
+      'delete_entry',
+      'delete_medication',
+      'delete_schedule',
+    ],
+    sparky_manage_progress_photos: ['delete_photo'],
+    sparky_manage_run_program: ['start_run_program', 'realign_run_program'],
+    sparky_manage_symptoms: ['delete_definition'],
+    sparky_manage_water_containers: ['delete_water_container'],
+    sparky_manage_workout_plans: ['delete_workout_plan'],
+  };
 
 export function isDestructiveToolCall(name: string, input: unknown): boolean {
   if (!Object.hasOwn(DESTRUCTIVE_ACTIONS, name)) return false;
   if (!input || typeof input !== 'object') return false;
   const args: Record<string, unknown> = { ...input };
-  // normalizeActionArgs lifts { some_action: { ... } } into the call and that
-  // key wins over `action`, so a nested delete is a delete. Arrays (workout
-  // sets, plan items) are never lifted.
+  // Only action wrappers are lifted by the handlers. Ordinary nested data must
+  // not replace the outer action and bypass a destructive-call approval.
   for (const [key, value] of Object.entries(input)) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       if (DESTRUCTIVE_ACTIONS[name].includes(key)) return true;
-      Object.assign(args, value);
+      const nested: Record<string, unknown> = { ...value };
+      if (nested.mode === 'delete' || nested.mode === 'delete_with_history')
+        return true;
+      if (
+        [
+          'set_food_notes',
+          'update_entry',
+          'update_medication',
+          'set_run_program_schedule',
+        ].includes(key)
+      ) {
+        Object.assign(args, nested);
+        args.action = key;
+      }
     }
   }
   if (args.mode === 'delete' || args.mode === 'delete_with_history')

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveProviderFetchEndpoint } from '../services/providerEndpoint.js';
 import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
-import { createGuardedFetch } from '../utils/outboundUrlPolicy.js';
+import {
+  createGuardedFetch,
+  resolveHostnameForOutboundConnection,
+} from '../utils/outboundUrlPolicy.js';
 
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 vi.mock('../utils/adminCheck', () => ({ resolveIsAdminByUserId: vi.fn() }));
@@ -80,4 +83,19 @@ describe('resolveProviderFetchEndpoint', () => {
     ).resolves.toBeNull();
     expect(createGuardedFetch).not.toHaveBeenCalled();
   });
+});
+
+it('reports DNS failures to callers that need to explain a failed tool listing', async () => {
+  isAdmin.mockResolvedValue(false);
+  const error = Object.assign(new Error('getaddrinfo ENOTFOUND'), {
+    code: 'ENOTFOUND',
+  });
+  vi.mocked(resolveHostnameForOutboundConnection).mockRejectedValueOnce(error);
+  const onFailure = vi.fn();
+  await expect(
+    resolveProviderFetchEndpoint(row('https://missing.example/mcp'), 'Test', {
+      onFailure,
+    })
+  ).resolves.toBeNull();
+  expect(onFailure).toHaveBeenCalledWith(error);
 });

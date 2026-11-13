@@ -793,7 +793,10 @@ describe('listing an MCP tool server’s tools', () => {
 
   it('answers 502 with the reason when the server fails', async () => {
     vi.mocked(listToolsForAdmin).mockRejectedValue(
-      new McpServerListError('The server did not list its tools: HTTP 401')
+      new McpServerListError(
+        'The server did not list its tools: HTTP 401',
+        'auth'
+      )
     );
 
     const response = await request(app)
@@ -803,6 +806,7 @@ describe('listing an MCP tool server’s tools', () => {
     expect(response.statusCode).toBe(502);
     expect(response.body).toEqual({
       error: 'The server did not list its tools: HTTP 401',
+      code: 'auth',
     });
   });
 

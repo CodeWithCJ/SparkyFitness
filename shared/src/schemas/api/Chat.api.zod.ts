@@ -7,6 +7,13 @@ export const chatApprovalCapabilitySchema = z.object({
 export const chatOutsideSourceSchema = z.object({
   servers: z.array(z.string()),
   toolServers: z.record(z.string(), z.string()),
+  toolTitles: z.record(z.string(), z.string()).default({}),
+  approvalSummaries: z
+    .record(
+      z.string(),
+      z.object({ text: z.string(), kind: z.enum(['delete', 'change']) })
+    )
+    .default({}),
   approvalSources: z.record(z.string(), z.array(z.string())),
 });
 
@@ -18,7 +25,13 @@ export function readChatOutsideSource(metadata: unknown): ChatOutsideSource {
     .safeParse(metadata);
   return wrapper.success
     ? wrapper.data.custom.outsideSource
-    : { servers: [], toolServers: {}, approvalSources: {} };
+    : {
+        servers: [],
+        toolServers: {},
+        toolTitles: {},
+        approvalSummaries: {},
+        approvalSources: {},
+      };
 }
 
 export function savedChatMessageMetadata(metadata: unknown, id: string) {

@@ -20,10 +20,7 @@ export function useChatMcpServers() {
     enabled: !!user && user.isDemo === false && !isActingOnBehalf,
     staleTime: 0,
     meta: {
-      errorMessage: t(
-        'settings.chatMcp.loadError',
-        'Could not load outside tool servers.'
-      ),
+      errorMessage: t('settings.chatMcp.loadError'),
     },
   });
   const mutation = useMutation({
@@ -58,10 +55,7 @@ export function useChatMcpServers() {
         client.setQueryData(queryKey, data);
     },
     meta: {
-      errorMessage: t(
-        'settings.chatMcp.saveError',
-        'Could not save outside tool servers.'
-      ),
+      errorMessage: t('settings.chatMcp.saveError'),
     },
   });
   return {

@@ -40,7 +40,8 @@ export interface ProviderFetchEndpoint {
 // operator allows it.
 async function checkProviderUrl(
   row: ProviderRow,
-  label: string
+  label: string,
+  onFailure?: (error: unknown) => void
 ): Promise<{ url: string; policy: AiNetworkPolicy } | null> {
   const stored = row.base_url.trim();
   // A scheme-less URL is accepted when it is saved (and read as https), but
@@ -50,6 +51,7 @@ async function checkProviderUrl(
     !/^https?:\/\//i.test(stored)
   ) {
     log('warn', `${label} ${row.id} is not usable: not an http(s) URL`);
+    onFailure?.(new TypeError('not an http(s) URL'));
     return null;
   }
   const url = /^https?:\/\//i.test(stored) ? stored : `https://${stored}`;
@@ -62,6 +64,7 @@ async function checkProviderUrl(
   } catch (error) {
     // Only the message: the provider row can carry an API key.
     log('warn', `${label} ${row.id} is not usable: ${describeError(error)}`);
+    onFailure?.(error);
     return null;
   }
 }
@@ -92,9 +95,10 @@ export async function resolveProviderEndpoint(
  */
 export async function resolveProviderFetchEndpoint(
   row: ProviderRow,
-  label: string
+  label: string,
+  options?: { onFailure?: (error: unknown) => void }
 ): Promise<ProviderFetchEndpoint | null> {
-  const checked = await checkProviderUrl(row, label);
+  const checked = await checkProviderUrl(row, label, options?.onFailure);
   if (!checked) return null;
   return { url: checked.url, fetch: createGuardedFetch(checked.policy) };
 }

@@ -1,3 +1,25 @@
+import i18n from '../../../src/localization/i18n';
+import translations from '../../../src/localization/locales/en/translation.json';
+beforeAll(() =>
+  i18n.addResourceBundle('en', 'translation', translations, true, true)
+);
+jest.mock('@assistant-ui/react-native', () => ({
+  useAuiState: (select: (state: unknown) => unknown) =>
+    select({
+      message: {
+        metadata: {
+          custom: {
+            outsideSource: {
+              servers: ['Demo Notes'],
+              toolServers: { mcp_notes: 'Demo Notes' },
+              toolTitles: { mcp_notes: 'read_note' },
+              approvalSources: {},
+            },
+          },
+        },
+      },
+    }),
+}));
 import React from 'react';
 import { ActivityIndicator } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
@@ -134,7 +156,7 @@ it.each([false, true])(
         }}
       />
     );
-    fireEvent.press(getByText('Mcp notes'));
+    fireEvent.press(getByText('Demo Notes: read note'));
     expect(getByTestId('outside-tool-output').props.children).toBe(output);
     expect(
       getByTestId('outside-tool-output').props.style.fontFamily
@@ -142,3 +164,22 @@ it.each([false, true])(
     expect(queryByTestId('enriched-markdown')).toBeNull();
   }
 );
+
+it('shows an alert for wrapped Error results, cleans tags and suggestions', () => {
+  const screen = render(
+    <ToolCallCard
+      part={{
+        ...baseFoodPart,
+        toolName: 'mcp_notes',
+        result:
+          '<outside_tool_result server="Demo Notes" tool="read_note">\nError [EXTERNAL_TOOL_UNAVAILABLE]: offline\n\nSuggestion: retry\n</outside_tool_result>',
+      }}
+    />
+  );
+  expect(screen.getByTestId('icon-alert-circle')).toBeTruthy();
+  expect(screen.queryByTestId('icon-checkmark-circle')).toBeNull();
+  fireEvent.press(screen.getByText('Demo Notes: read note'));
+  expect(
+    screen.getByText('Demo Notes did not answer. Try again later.')
+  ).toBeTruthy();
+});

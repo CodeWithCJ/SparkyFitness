@@ -1,3 +1,8 @@
+import i18n from '../../src/localization/i18n';
+import translations from '../../src/localization/locales/en/translation.json';
+beforeAll(() =>
+  i18n.addResourceBundle('en', 'translation', translations, true, true)
+);
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -90,8 +95,8 @@ describe('AiSettingsScreen', () => {
 });
 
 const outsideServers = [
-  { id: 'notes', name: 'Notes', enabled: false },
-  { id: 'tasks', name: 'Tasks', enabled: true },
+  { id: 'notes', name: 'Notes', send_user_id: false, enabled: false },
+  { id: 'tasks', name: 'Tasks', send_user_id: true, enabled: true },
 ];
 it('hides outside tools when no servers are available', async () => {
   jest.mocked(fetchChatMcpServers).mockResolvedValue({ servers: [] });
@@ -124,7 +129,11 @@ it('saves all choices and disables switches while saving', async () => {
     screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
   ).toBe(true);
   finish({
-    servers: outsideServers.map((server) => ({ ...server, enabled: true })),
+    servers: outsideServers.map((server) => ({
+      ...server,
+      send_user_id: true,
+      enabled: true,
+    })),
   });
   await waitFor(() =>
     expect(
@@ -154,5 +163,23 @@ it('reverts outside tool choices on a failed save', async () => {
   );
   expect(screen.getByTestId('chat-mcp-server-switch-notes').props.value).toBe(
     false
+  );
+});
+
+it('shows account ID sharing only when configured by the admin', async () => {
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValue({ servers: outsideServers });
+  const screen = renderScreen();
+  expect(await screen.findAllByText('Sees your account ID.')).toHaveLength(1);
+});
+it('shows a load failure and retries', async () => {
+  jest.mocked(fetchChatMcpServers).mockRejectedValueOnce(new Error('offline'));
+  const screen = renderScreen();
+  expect(await screen.findByText('Could not load outside tools.')).toBeTruthy();
+  fireEvent.press(screen.getByText('Try again'));
+  await waitFor(() => expect(fetchChatMcpServers).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(screen.queryByText('Could not load outside tools.')).toBeNull()
   );
 });

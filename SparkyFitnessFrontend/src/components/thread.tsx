@@ -190,6 +190,18 @@ const ThreadSuggestionItem: FC<{ prompt: string }> = ({ prompt }) => {
 const Composer: FC = () => {
   const { t, i18n } = useTranslation();
   const aui = useAui();
+  const pendingApproval = useAuiState(
+    (state) =>
+      state.thread.messages
+        .at(-1)
+        ?.content.some(
+          (part) =>
+            part.type === 'tool-call' &&
+            part.approval &&
+            part.approval.approved === undefined &&
+            !part.approval.resolution
+        ) ?? false
+  );
   const running = useAuiState((state) => state.thread.isRunning);
   const { data: preferences } = useUserAIPreferences();
   const voiceEnabled =
@@ -214,6 +226,11 @@ const Composer: FC = () => {
         }
       }}
     >
+      {pendingApproval && (
+        <p className="text-sm text-muted-foreground px-3">
+          {t('chat.approval.composerHint')}
+        </p>
+      )}
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"

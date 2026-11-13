@@ -23,3 +23,5 @@ export const MCP_SERVER_TOOL_PROBLEMS = [
   'name_too_long',
   'name_blank_or_padded',
 ] as const;
+
+export const MCP_SERVER_LIST_TIMEOUT_MS = 5_000;

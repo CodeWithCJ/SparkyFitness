@@ -50,13 +50,16 @@ export function useChatMcpServers() {
       Toast.show({
         type: 'error',
         text1: t('aiSettings.chatMcp.saveError', {
-          defaultValue: 'Could not save outside tool servers.',
+          defaultValue: 'Could not save. Please try again.',
         }),
       });
     },
   });
   return {
     servers: query.data?.servers ?? [],
+    isError: query.isError,
+    isLoading: query.isLoading,
+    refetch: query.refetch,
     isSaving: mutation.isPending,
     save: mutation.mutate,
   };

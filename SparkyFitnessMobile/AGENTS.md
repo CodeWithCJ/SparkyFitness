@@ -29,7 +29,7 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 
 ## Localization contract
 
-English (`en`) is the canonical source locale and the deterministic fallback. Feature developers must add/update the English catalog, use semantic static keys, provide explicit English fallback/defaultValue text, use count-based i18next pluralization, use app-locale date/number/unit formatters, and avoid user-facing hardcoded text. Custom, user, and server content stays literal.
+English (`en`) is the canonical source locale and the deterministic fallback. Feature developers must add/update the English catalog, use semantic static keys, provide explicit English fallback/defaultValue text (a literal or a property chain on a default import of the canonical English JSON), use count-based i18next pluralization, use app-locale date/number/unit formatters, and avoid user-facing hardcoded text. Custom, user, and server content stays literal.
 
 Feature developers do not need to know or translate Polish or any future language, and do not need to wait for Weblate. Translators/Weblate own Polish and future translations and linguistic QA. Missing translation content is non-blocking and falls back to English; existing translated content remains structurally validated.
 
@@ -95,6 +95,8 @@ npx expo prebuild --clean
 - Most screens are wrapped with `withErrorBoundary(...)`; `SettingsScreen` also uses section-level recovery so settings remain reachable.
 
 ## Source Map
+
+- Chat display labels, outside-result cleanup, argument previews and approval result states are shared in `../shared/src/utils/chatTools.ts`. Server-owned tool titles and destructive approval summaries travel in `metadata.custom.outsideSource`; `SparkyFitnessServer/ai/chatApprovalSummary.ts` from the repo root reads targets under the user's context before approval is requested.
 
 - Chat approvals use the assistant-ui tool approval response API and shared `chatApprovalResponsesReady` predicate, with `joinStrategy: none` to preserve saved row IDs. `ApprovalCard` and `OutsideSourceLine` render server-owned source metadata; single-message deletion removes the row from the runtime and cached history.
 
@@ -426,7 +428,7 @@ When reviewing an API issue, trace screen/hook -> API client -> server route -> 
 
 - React UI gets `t` from `useTranslation()`; user-facing utility helpers accept an injected `TFunction` and never hide singleton `i18n.t()` fallbacks.
 - Pass `t` through every presentation helper and include it in `useMemo` / `useCallback` dependencies when the derived result contains localized text; this keeps mounted UI correct after a runtime language switch.
-- Translation keys are semantic and statically analyzable. Every static `defaultValue` is the English source fallback and must exactly match the EN catalog entry.
+- Translation keys are semantic and statically analyzable. Every static `defaultValue` (including canonical English JSON import references) is the English source fallback and must exactly match the EN catalog entry.
 - A key used with `count` is a plural family: EN requires `_one` and `_other`; PL requires `_one`, `_few`, `_many`, and `_other`. Use grammatically correct forms rather than duplicating suffixes blindly.
 - Apple Watch Swift text (`targets/watch`, `targets/watch-widget`) must use `String(localized: "watch.<key>", defaultValue: ...)` with the key in that target's `en.lproj/Localizable.strings` (each target is its own bundle; `%@`/`%lld` for interpolations, and a static `defaultValue` must match the English entry). `pnpm run i18n:audit:watch` (tested by `__tests__/scripts/watchI18nAudit.test.ts`) fails on bare `Text("...")`/`Button("...")`/`Label("...")`-style literals, missing catalog keys, and mismatched defaults; add `// i18n-ignore` for literals that must stay.
 - Run `pnpm run i18n:audit` after localization work. `pnpm run validate` includes typecheck, lint with zero warnings, and this audit.

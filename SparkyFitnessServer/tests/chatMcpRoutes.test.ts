@@ -54,8 +54,8 @@ describe('/api/chat/mcp-servers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getChatMcpServerChoices).mockResolvedValue([
-      { id: first, name: 'Notes' },
-      { id: second, name: 'Tasks' },
+      { id: first, name: 'Notes', send_user_id: true },
+      { id: second, name: 'Tasks', send_user_id: false },
     ]);
     vi.mocked(getChatMcpServerIds).mockResolvedValue([second]);
     vi.mocked(saveChatMcpServerIds).mockResolvedValue(undefined);
@@ -65,15 +65,18 @@ describe('/api/chat/mcp-servers', () => {
       {
         id: first,
         name: 'Notes',
+        send_user_id: true,
         base_url: 'https://private.example',
         app_key: 'secret',
         provider_options: { allowed_tools: ['echo'] },
-      } as { id: string; name: string },
+      } as { id: string; name: string; send_user_id: boolean },
     ]);
     const result = await request(app).get('/api/chat/mcp-servers');
     expect(result.status).toBe(200);
     expect(result.body).toEqual({
-      servers: [{ id: first, name: 'Notes', enabled: false }],
+      servers: [
+        { id: first, name: 'Notes', send_user_id: true, enabled: false },
+      ],
     });
     expect(getChatMcpServerIds).toHaveBeenCalledWith('owner');
   });
@@ -85,8 +88,8 @@ describe('/api/chat/mcp-servers', () => {
     expect(saveChatMcpServerIds).toHaveBeenCalledWith('owner', [first]);
     expect(result.body).toEqual({
       servers: [
-        { id: first, name: 'Notes', enabled: true },
-        { id: second, name: 'Tasks', enabled: false },
+        { id: first, name: 'Notes', send_user_id: true, enabled: true },
+        { id: second, name: 'Tasks', send_user_id: false, enabled: false },
       ],
     });
   });

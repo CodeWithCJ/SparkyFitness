@@ -56,6 +56,8 @@ _Last updated: 2026-11-13_
 
 ## Cross-Package Contract Rules
 
+- Chat display labels, outside-result cleanup, argument previews and approval result states are shared in `src/utils/chatTools.ts`. Server-owned tool titles and destructive approval summaries travel in `metadata.custom.outsideSource`; `SparkyFitnessServer/ai/chatApprovalSummary.ts` from the repo root reads targets under the user's context before approval is requested.
+
 - Changes to `src/schemas/api/` usually affect server routes and both frontend/mobile API clients.
 - Changes to `src/schemas/database/` require matching server migrations and RLS policies when changing the stored schema. CI regenerates the schema backup after merge; never hand-edit or regenerate it locally. Mirroring existing columns missing from a Zod schema does not require another migration.
 - Timezone/day-string helpers prevent bugs; prefer them over `toISOString().split('T')[0]`.

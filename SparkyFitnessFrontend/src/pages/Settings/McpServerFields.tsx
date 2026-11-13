@@ -4,9 +4,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useListMcpServerToolsMutation } from '@/hooks/Settings/useExternalProviderSettings';
+import {
+  useListMcpServerToolsMutation,
+  mcpServerToolsErrorCode,
+} from '@/hooks/Settings/useExternalProviderSettings';
 import {
   MCP_SERVER_MAX_TOOLS,
+  MCP_SERVER_LIST_TIMEOUT_MS,
   MCP_SERVER_USER_ID_HEADER,
   type McpServerOptions,
   type McpServerToolChoice,
@@ -58,6 +62,7 @@ export const McpServerFields = ({
   onOptionsChange,
 }: McpServerFieldsProps) => {
   const { t } = useTranslation();
+  const [urlCleared, setUrlCleared] = useState(false);
   const current = options ?? EMPTY_OPTIONS;
   const urlChanged =
     !!providerId && (baseUrl ?? '').trim() !== (savedBaseUrl ?? '').trim();
@@ -160,7 +165,16 @@ export const McpServerFields = ({
       setResult({
         inputs: asked,
         tools: null,
-        error: error instanceof Error ? error.message : String(error),
+        error: t(
+          `settings.mcpServer.loadError.${mcpServerToolsErrorCode(error)}`,
+          {
+            reason: (error instanceof Error
+              ? error.message
+              : String(error)
+            ).replace(/^The server did not list its tools:\s*/, ''),
+            seconds: MCP_SERVER_LIST_TIMEOUT_MS / 1000,
+          }
+        ),
       });
     }
   };
@@ -177,6 +191,13 @@ export const McpServerFields = ({
         gone: loaded !== null,
       })),
   ];
+  rows.sort(
+    (a, b) =>
+      Number(b.gone || !!shown?.changedNames?.includes(b.name)) -
+      Number(a.gone || !!shown?.changedNames?.includes(a.name))
+  );
+  const changedCount = shown?.changedNames?.length ?? 0;
+  const goneCount = rows.filter((row) => row.gone).length;
   const full = allowed.size >= MCP_SERVER_MAX_TOOLS;
 
   const setAllowed = ({ name, fingerprint }: ToolRow, on: boolean) => {
@@ -206,6 +227,8 @@ export const McpServerFields = ({
             onChange={(e) => {
               const value = e.target.value;
               if (value.trim() !== (baseUrl ?? '').trim()) {
+                if (providerId && current.allowed_tools.length)
+                  setUrlCleared(true);
                 onOptionsChange({ ...current, allowed_tools: [] });
               }
               onBaseUrlChange(value);
@@ -213,6 +236,14 @@ export const McpServerFields = ({
             placeholder="https://tools.example.com/mcp"
             autoComplete="off"
           />
+          <p className="text-sm text-muted-foreground">
+            {t('settings.mcpServer.urlHelp')}
+          </p>
+          {urlCleared && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t('settings.mcpServer.urlCleared')}
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor={`${idPrefix}_mcp_app_key`}>
@@ -264,6 +295,26 @@ export const McpServerFields = ({
             )}
           </span>
         </div>
+        {full && (
+          <p className="text-sm text-muted-foreground">
+            {t('settings.mcpServer.limit', { max: MCP_SERVER_MAX_TOOLS })}
+          </p>
+        )}
+        {allowed.size === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {t('settings.mcpServer.noneTicked')}
+          </p>
+        )}
+        {changedCount > 0 && (
+          <p role="alert" className="text-sm text-destructive">
+            {t('settings.mcpServer.changedSummary', { count: changedCount })}
+          </p>
+        )}
+        {goneCount > 0 && (
+          <p role="alert" className="text-sm text-destructive">
+            {t('settings.mcpServer.goneSummary', { count: goneCount })}
+          </p>
+        )}
         {loadError && (
           <p role="alert" className="text-sm text-destructive">
             {loadError}
@@ -275,7 +326,7 @@ export const McpServerFields = ({
           </p>
         )}
         {rows.length > 0 && (
-          <ul className="space-y-2 rounded-md border p-3">
+          <ul aria-busy={isPending} className="space-y-2 rounded-md border p-3">
             {rows.map((row) => {
               const checked = allowed.has(row.name);
               const id = `${idPrefix}_mcp_tool_${row.name}`;
@@ -299,7 +350,12 @@ export const McpServerFields = ({
                     )}
                     {row.inputSchema !== undefined && (
                       <details>
-                        <summary className="text-sm cursor-pointer">
+                        <summary
+                          aria-label={t('settings.mcpServer.detailsFor', {
+                            name: row.name,
+                          })}
+                          className="text-sm cursor-pointer"
+                        >
                           {t('settings.mcpServer.details', 'Details')}
                         </summary>
                         <pre className="max-h-64 overflow-auto font-mono text-xs">
@@ -317,7 +373,9 @@ export const McpServerFields = ({
                     )}
                     {row.problem && (
                       <p className="text-sm text-destructive">
-                        {problemText[row.problem]}
+                        {t('settings.mcpServer.problem', {
+                          reason: problemText[row.problem],
+                        })}
                       </p>
                     )}
                     {shown?.changedNames?.includes(row.name) && (

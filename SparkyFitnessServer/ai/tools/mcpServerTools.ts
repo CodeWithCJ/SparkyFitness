@@ -1,3 +1,4 @@
+import { MCP_SERVER_LIST_TIMEOUT_MS } from '@workspace/shared';
 import { createHash } from 'node:crypto';
 import { Ajv } from 'ajv';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -108,8 +109,8 @@ interface OutsideTool {
 }
 
 // Bounds on one server, so a slow or broken one cannot hold up a chat turn.
-const CONNECT_TIMEOUT_MS = 5_000;
-const LIST_TIMEOUT_MS = 5_000;
+const CONNECT_TIMEOUT_MS = MCP_SERVER_LIST_TIMEOUT_MS;
+const LIST_TIMEOUT_MS = MCP_SERVER_LIST_TIMEOUT_MS;
 const CALL_TIMEOUT_MS = 30_000;
 const END_SESSION_TIMEOUT_MS = 2_000;
 const MAX_LIST_PAGES = 10;
@@ -809,6 +810,20 @@ async function callServerTool(
 
 // Actor wrappers spread tool objects; a symbol preserves the row name without sending it to the model.
 const chatToolServerName = Symbol('chatToolServerName');
+const chatToolTitle = Symbol('chatToolTitle');
+
+export function getChatToolTitles(
+  tools: Record<string, Tool>
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(tools).flatMap(([name, current]) => {
+      const title = (current as Tool & { [chatToolTitle]?: string })[
+        chatToolTitle
+      ];
+      return title ? [[name, title]] : [];
+    })
+  );
+}
 
 export function getChatToolServerNames(
   tools: Record<string, Tool>
@@ -837,12 +852,50 @@ function toChatTool(
     execute: async (input: unknown, { abortSignal }) =>
       callServerTool(outsideTool, actorUserId, input, abortSignal),
   });
-  return Object.assign(result, { [chatToolServerName]: server.provider_name });
+  return Object.assign(result, {
+    [chatToolServerName]: server.provider_name,
+    [chatToolTitle]: listed.name,
+  });
 }
 
 /** Why an admin could not get a server's tool list, in this app's words. */
 export class McpServerListError extends Error {
   override name = 'McpServerListError';
+  constructor(
+    message: string,
+    readonly code:
+      'auth' | 'timeout' | 'unreachable' | 'policy' | 'other' = 'other'
+  ) {
+    super(message);
+  }
+}
+
+export function mcpServerListErrorCode(
+  error: unknown
+): 'auth' | 'timeout' | 'unreachable' | 'policy' | 'other' {
+  if (error instanceof Error && /hostname did not resolve/i.test(error.message))
+    return 'unreachable';
+  if (isOutboundUrlBlockedError(error)) return 'policy';
+  if (error instanceof NoAnswerError) return 'timeout';
+  const value =
+    error instanceof Error
+      ? `${error.message} ${failureReason(error)}`
+      : String(error);
+  const status =
+    error && typeof error === 'object' && 'code' in error
+      ? String(error.code)
+      : '';
+  if (/\b(401|403)\b/.test(`${value} ${status}`)) return 'auth';
+  if (/timeout|timed out|ETIMEDOUT|abort/i.test(`${value} ${status}`))
+    return 'timeout';
+  if (
+    /ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|DNS|not an http|Invalid URL/i.test(
+      `${value} ${status}`
+    )
+  )
+    return 'unreachable';
+  if (/policy|not allowed|blocked address/i.test(value)) return 'policy';
+  return 'other';
 }
 
 /**
@@ -853,13 +906,20 @@ export class McpServerListError extends Error {
 export async function listToolsForAdmin(
   server: McpServerRow
 ): Promise<McpServerToolChoice[]> {
+  let endpointError: unknown;
   const endpoint = await resolveProviderFetchEndpoint(
     server,
-    'MCP tool server'
+    'MCP tool server',
+    {
+      onFailure: (error) => {
+        endpointError = error;
+      },
+    }
   );
   if (!endpoint) {
     throw new McpServerListError(
-      'This server URL is not valid or not allowed.'
+      'This server URL is not valid or not allowed.',
+      endpointError ? mcpServerListErrorCode(endpointError) : 'policy'
     );
   }
   try {
@@ -905,7 +965,8 @@ export async function listToolsForAdmin(
     );
   } catch (error) {
     throw new McpServerListError(
-      `The server did not list its tools: ${failureReason(error)}`
+      `The server did not list its tools: ${failureReason(error)}`,
+      mcpServerListErrorCode(error)
     );
   }
 }

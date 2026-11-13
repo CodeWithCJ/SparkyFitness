@@ -1,3 +1,7 @@
+import {
+  getChatApprovalSummary,
+  type ApprovalSummary,
+} from '../ai/chatApprovalSummary.js';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
@@ -114,6 +118,7 @@ import {
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import {
   getChatToolServerNames,
+  getChatToolTitles,
   isMcpServerToolName,
   loadMcpServerTools,
 } from '../ai/tools/mcpServerTools.js';
@@ -3168,6 +3173,10 @@ async function processChatMessageStream(
       ...storedSource.toolServers,
       ...getChatToolServerNames(tools),
     };
+    const toolTitles = {
+      ...storedSource.toolTitles,
+      ...getChatToolTitles(tools),
+    };
     const outsideServers = new Set<string>(storedSource.servers);
     const approvalSources: Record<string, string[]> = {
       ...storedSource.approvalSources,
@@ -3186,9 +3195,14 @@ async function processChatMessageStream(
         }
       }
     }
+    const approvalSummaries: Record<string, ApprovalSummary> = {
+      ...storedSource.approvalSummaries,
+    };
     const outsideSource = () => ({
       servers: [...outsideServers],
       toolServers,
+      toolTitles,
+      approvalSummaries,
       approvalSources: { ...approvalSources },
     });
     const approvalGate = createChatApprovalGate(messages);
@@ -3245,7 +3259,22 @@ async function processChatMessageStream(
           ),
         };
       },
-      toolApproval: approvals ? approvalGate.toolApproval : undefined,
+      toolApproval: approvals
+        ? async (options) => {
+            const decision = await approvalGate.toolApproval(options);
+            if (decision === 'user-approval') {
+              const summary = await getChatApprovalSummary(
+                options.toolCall.toolName,
+                options.toolCall.input,
+                userId,
+                authenticatedUserId
+              );
+              if (summary)
+                approvalSummaries[options.toolCall.toolCallId] = summary;
+            }
+            return decision;
+          }
+        : undefined,
       providerOptions: chatProviderOptions,
       // Low temperature only for small local models (core profile); cloud and
       // full-profile Ollama keep provider defaults, and models that reject the

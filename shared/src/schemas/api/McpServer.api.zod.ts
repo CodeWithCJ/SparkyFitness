@@ -63,6 +63,7 @@ export const chatMcpServersResponseSchema = z.object({
       id: z.uuid(),
       name: z.string(),
       enabled: z.boolean(),
+      send_user_id: z.boolean().default(false),
     })
   ),
 });

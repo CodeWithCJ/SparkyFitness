@@ -8,6 +8,7 @@ import {
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import { withFixedActor } from '../../db/poolManager.js';
+import { OWN_ACCOUNT_ONLY_TOOLS } from './ownAccountOnlyTools.js';
 import { ERRORS, isPermissionDenied } from './errors.js';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
@@ -248,19 +249,6 @@ function stripNullValues(value: unknown): unknown {
   }
   return value;
 }
-
-// Tools for things that only work in your own account: run programs and
-// fitness tests (their routes refuse a switched user), the Compare report
-// (likewise), Sparky's saved food preferences and tasks, which belong to the
-// signed-in person, and the profile and settings, which the web hides after a
-// switch. In a family member's account they say so, instead of failing on
-// row-level security or reporting the data as empty.
-const OWN_ACCOUNT_ONLY_TOOLS = new Set([
-  'sparky_manage_profile',
-  'sparky_manage_run_program',
-  'sparky_compare_metrics',
-  'sparky_food_assistant_state',
-]);
 
 // Chat can work in a family member's account, so every tool runs with the
 // signed-in person fixed as the actor. Each tool is replaced rather than edited

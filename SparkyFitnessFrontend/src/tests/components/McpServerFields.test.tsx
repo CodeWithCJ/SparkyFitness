@@ -1,3 +1,8 @@
+import i18n from 'i18next';
+import translations from '../../../public/locales/en/translation.json';
+beforeAll(() =>
+  i18n.addResourceBundle('en', 'translation', translations, true, true)
+);
 import { useState } from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -5,10 +10,6 @@ import { apiCall, HttpApiError } from '@/api/api';
 import { McpServerFields } from '@/pages/Settings/McpServerFields';
 import type { McpServerOptions } from '@workspace/shared';
 import { renderWithClient } from '../test-utils';
-
-jest.mock('react-i18next', () =>
-  jest.requireActual('@/tests/mocks/reactI18next')
-);
 
 jest.mock('@/api/api', () => ({
   ...jest.requireActual('@/api/api'),
@@ -94,9 +95,7 @@ describe('McpServerFields', () => {
         }),
       })
     );
-    expect(
-      screen.getByText('Chat may use 1 of at most 20 tools.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('1 of 20 tools ticked.')).toBeInTheDocument();
   });
 
   it('drops the loaded tools once the server URL changes', async () => {
@@ -205,7 +204,9 @@ describe('McpServerFields', () => {
       expect(
         await screen.findByRole('checkbox', { name: 'unusable' })
       ).toBeDisabled();
-      expect(screen.getByText(reason)).toBeInTheDocument();
+      expect(
+        screen.getByText(`Chat cannot use this tool: ${reason}`)
+      ).toBeInTheDocument();
     }
   );
 
@@ -274,7 +275,9 @@ describe('McpServerFields', () => {
       await screen.findByRole('checkbox', { name: 'broken' })
     ).toBeDisabled();
     expect(
-      screen.getByText('Its input schema is malformed.')
+      screen.getByText(
+        'Chat cannot use this tool: Its input schema is malformed.'
+      )
     ).toBeInTheDocument();
   });
 
@@ -301,14 +304,18 @@ describe('McpServerFields', () => {
     jest
       .mocked(apiCall)
       .mockRejectedValue(
-        new HttpApiError('The server did not list its tools: HTTP 401', 502)
+        new HttpApiError(
+          'The server did not list its tools: HTTP 401',
+          502,
+          'auth'
+        )
       );
     renderWithClient(<Harness />);
 
     loadTools();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The server did not list its tools: HTTP 401'
+      'The server refused the token. Check the bearer token.'
     );
   });
 
@@ -340,6 +347,12 @@ describe('McpServerFields', () => {
       await screen.findByRole('checkbox', { name: 'one_more' })
     ).toBeDisabled();
     expect(screen.getByRole('checkbox', { name: 'tool_0' })).toBeEnabled();
+    expect(
+      screen.getByText(
+        'You have ticked the most tools allowed (20). Untick one to add another.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('20 of 20 tools ticked.')).toBeInTheDocument();
   });
 
   it('keeps a tool the server no longer lists, so the admin can remove it', async () => {
@@ -391,6 +404,14 @@ describe('McpServerFields', () => {
         'Changed since it was saved. Tick it again to allow this version.'
       )
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '1 tool changed since you saved and was unticked. Review it below.'
+      )
+    ).toHaveAttribute('role', 'alert');
+    expect(
+      screen.getByText('1 tool is no longer on the server.')
+    ).toHaveAttribute('role', 'alert');
     expect(latest?.allowed_tools).toEqual([
       { name: 'retired', fingerprint: 'd'.repeat(64) },
     ]);

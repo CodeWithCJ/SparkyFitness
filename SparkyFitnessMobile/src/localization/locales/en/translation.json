@@ -4946,7 +4946,11 @@
       "checkin": "Check-in",
       "goals": "Goals",
       "lookedUp": "Looked up {{name}}",
-      "runProgram": "Run program"
+      "runProgram": "Run program",
+      "generic": "Tool",
+      "outside": "an outside tool",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})"
     },
     "typing": "Sparky is typing",
     "voice": {
@@ -4974,22 +4978,70 @@
     },
     "approval": {
       "title": "Allow this step?",
-      "run": "After reading <bold>{{server}}</bold>, Sparky wants to run <bold>{{tool}}{{action}}</bold>.",
-      "send": "After reading <bold>{{server}}</bold>, Sparky wants to send <bold>{{tool}}</bold> to <bold>{{otherServer}}</bold>.",
+      "run": "After reading <bold>{{server}}</bold>, Sparky wants to run <bold>{{tool}}</bold>.",
+      "send": "After reading <bold>{{server}}</bold>, Sparky wants to use <bold>{{tool}}</bold> from <bold>{{otherServer}}</bold>.",
       "details": "Details",
       "allow": "Allow",
       "deny": "Deny",
       "allowed": "Allowed",
       "denied": "Denied",
       "failed": "Could not save your answer. Please try again.",
-      "runPlain": "Sparky wants to run <bold>{{tool}}{{action}}</bold>."
+      "runPlain": "Sparky wants to run <bold>{{tool}}</bold>.",
+      "delete": "Sparky wants to delete <bold>{{summary}}</bold>.",
+      "deleteAfter": "After reading <bold>{{server}}</bold>, Sparky wants to delete <bold>{{summary}}</bold>.",
+      "change": "Sparky wants to make this change: <bold>{{summary}}</bold>.",
+      "changeAfter": "After reading <bold>{{server}}</bold>, Sparky wants to make this change: <bold>{{summary}}</bold>.",
+      "working": "Working on it…",
+      "done": "Done",
+      "notRun": "Not run",
+      "cancelled": "You sent a new message first.",
+      "nothingChanged": "Nothing was changed.",
+      "toolFailed": "Allowed, but it didn't work",
+      "otherPending": "Answer the other step to continue.",
+      "composerHint": "Answer the step above first, or keep typing to skip it.",
+      "announce": "Sparky needs your answer: Allow this step?",
+      "runCompleted": "After reading <bold>{{server}}</bold>, Sparky ran <bold>{{tool}}</bold>.",
+      "runPlainCompleted": "Sparky ran <bold>{{tool}}</bold>.",
+      "sendCompleted": "After reading <bold>{{server}}</bold>, Sparky ran <bold>{{tool}}</bold>.",
+      "deleteCompleted": "You allowed Sparky to delete <bold>{{summary}}</bold>.",
+      "deleteAfterCompleted": "After Sparky read <bold>{{server}}</bold>, you allowed it to delete <bold>{{summary}}</bold>.",
+      "changeCompleted": "You allowed Sparky to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterCompleted": "After Sparky read <bold>{{server}}</bold>, you allowed it to make this change: <bold>{{summary}}</bold>.",
+      "runFailed": "After reading <bold>{{server}}</bold>, Sparky tried to run <bold>{{tool}}</bold>.",
+      "runPlainFailed": "Sparky tried to run <bold>{{tool}}</bold>.",
+      "sendFailed": "After reading <bold>{{server}}</bold>, Sparky tried to run <bold>{{tool}}</bold>.",
+      "deleteFailed": "Sparky tried to delete <bold>{{summary}}</bold>.",
+      "deleteAfterFailed": "After reading <bold>{{server}}</bold>, Sparky tried to delete <bold>{{summary}}</bold>.",
+      "changeFailed": "Sparky tried to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterFailed": "After reading <bold>{{server}}</bold>, Sparky tried to make this change: <bold>{{summary}}</bold>.",
+      "runUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to run <bold>{{tool}}</bold>.",
+      "runPlainUnused": "Sparky wanted to run <bold>{{tool}}</bold>.",
+      "sendUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to use <bold>{{tool}}</bold> from <bold>{{otherServer}}</bold>.",
+      "deleteUnused": "Sparky wanted to delete <bold>{{summary}}</bold>.",
+      "deleteAfterUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to delete <bold>{{summary}}</bold>.",
+      "changeUnused": "Sparky wanted to make this change: <bold>{{summary}}</bold>.",
+      "changeAfterUnused": "After reading <bold>{{server}}</bold>, Sparky wanted to make this change: <bold>{{summary}}</bold>."
     },
     "outsideSource": {
       "line": "Used <bold>{{servers}}</bold>. Something look wrong?",
       "delete": "Delete this message",
-      "or": "or",
-      "clear": "clear the chat",
-      "failed": "Could not delete this message. Please try again."
+      "clear": "Clear chat",
+      "failed": "Could not delete this message. Please try again.",
+      "deleteTitle": "Delete this reply?",
+      "deleteBody": "This removes the reply from your chat. It does not undo anything Sparky already changed.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "deleting": "Deleting…"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} did not answer. Try again later.",
+      "turnedOff": "{{server}} is turned off for you in AI settings."
+    },
+    "clearConfirm": {
+      "title": "Clear chat?",
+      "body": "This permanently deletes your Sparky chat history. This cannot be undone.",
+      "cancel": "Cancel",
+      "clear": "Clear"
     }
   },
   "foodImagePicker": {
@@ -7466,11 +7518,15 @@
   },
   "aiSettings": {
     "chatMcp": {
-      "title": "Tools from outside servers",
-      "description": "What chat sends to these tools goes to that server.",
-      "allow": "Let chat use tools from {{name}}",
-      "loadError": "Could not load outside tool servers.",
-      "saveError": "Could not save outside tool servers."
+      "title": "Outside tools",
+      "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
+      "allow": "Let Sparky use {{name}}",
+      "loadError": "Could not load outside tools.",
+      "saveError": "Could not save. Please try again.",
+      "accountId": "Sees your account ID.",
+      "familyOff": "Outside tools are off while you view someone else's profile.",
+      "retry": "Try again",
+      "loading": "Loading outside tools…"
     },
     "server": {
       "title": "Server AI provider",
@@ -10393,5 +10449,11 @@
     "daysCount_one": "{{count}} day",
     "daysCount_other": "{{count}} days",
     "otherCare": "Flossing, mouthwash and other"
+  },
+  "toolfallback": {
+    "used": "Used tool",
+    "cancelled": "Cancelled tool",
+    "error": "Error:",
+    "cancelledReason": "Cancelled reason:"
   }
 }

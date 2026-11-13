@@ -1126,7 +1126,7 @@ router.post(
       return res.status(200).json({ tools });
     } catch (error) {
       if (error instanceof McpServerListError) {
-        return res.status(502).json({ error: error.message });
+        return res.status(502).json({ error: error.message, code: error.code });
       }
       next(error);
     }

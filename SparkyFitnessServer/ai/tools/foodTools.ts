@@ -1,3 +1,7 @@
+import {
+  findFoodByExactName,
+  NAME_RESOLUTION_WINDOW,
+} from './foodNameResolution.js';
 import { tool } from 'ai';
 import { z } from 'zod';
 import {
@@ -104,11 +108,6 @@ const COUNT_BASED_UNITS = [
   'item',
   'pack',
 ];
-
-// Window for tool-layer exact-name matching over the server's substring
-// search. An exact match could fall outside it only when more than this many
-// foods contain the searched name as a substring.
-const NAME_RESOLUTION_WINDOW = 500;
 
 // One detail read while the chat waits on a lookup; the OpenFoodFacts default
 // (10 s) is for user-initiated requests.
@@ -790,32 +789,6 @@ async function searchFoodInternal(
     foodRepository.countFoods(foodName, null, userId),
   ]);
   return buildPaginatedResult(rows.map(projectFoodItem), totalCount, offset);
-}
-
-// Case-insensitive exact name lookup (MCP's `name ILIKE $1` without
-// wildcards). Returns the raw catalog row including default_variant.
-async function findFoodByExactName(userId: string, name: string) {
-  const rows = await foodRepository.getFoodsWithPagination(
-    name,
-    null,
-    userId,
-    NAME_RESOLUTION_WINDOW,
-    0,
-    null
-  );
-  const matches = rows.filter(
-    (r: { name: unknown }) =>
-      String(r.name).toLowerCase() === name.toLowerCase()
-  );
-  // In a family member's account the search also returns the signed-in
-  // person's own foods; one of the account owner's wins a tie by name.
-  if (actorUserIdFor(userId) !== userId) {
-    const owned = matches.find(
-      (r: { user_id?: string | null }) => r.user_id === userId
-    );
-    if (owned) return owned;
-  }
-  return matches[0];
 }
 
 // Per-day nutrition totals with the user's energy-unit conversion applied —

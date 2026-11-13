@@ -1,3 +1,10 @@
+import {
+  chatToolLabel,
+  readChatOutsideSource,
+  outsideToolResult,
+  chatResultText,
+} from '@workspace/shared';
+import { useAuiState } from '@assistant-ui/react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,11 +20,7 @@ import { useCSSVariable } from 'uniwind';
 import type { ToolCallMessagePart } from '@assistant-ui/react-native';
 import Icon from '../Icon';
 import MarkdownMessage from './MarkdownMessage';
-import {
-  getLocalizedToolLabel,
-  getToolDisplay,
-  isLookupTool,
-} from '../../constants/chat';
+import { getToolDisplay, isLookupTool } from '../../constants/chat';
 import { syncAfterAssistantChange } from '../../services/runProgramService';
 
 /**
@@ -33,7 +36,7 @@ import { syncAfterAssistantChange } from '../../services/runProgramService';
 type ToolStatus = 'running' | 'complete' | 'error';
 
 function deriveStatus(part: ToolCallMessagePart): ToolStatus {
-  if (part.isError) return 'error';
+  if (part.isError || outsideToolResult(part.result).isError) return 'error';
   if (part.result === undefined) return 'running';
   return 'complete';
 }
@@ -58,8 +61,16 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
   useEffect(() => {
     if (finishedRunProgramCall) syncAfterAssistantChange(part.toolCallId);
   }, [finishedRunProgramCall, part.toolCallId]);
-  const { labelKey, defaultLabel, icon } = getToolDisplay(part.toolName);
-  const label = getLocalizedToolLabel(t, labelKey, defaultLabel);
+  const metadata = useAuiState((s) => s.message.metadata);
+  const sources = readChatOutsideSource(metadata);
+  const { icon } = getToolDisplay(part.toolName);
+  const label = chatToolLabel(t, part.toolName, sources, part.args.action);
+  const cleaned = chatResultText(
+    t,
+    part.result,
+    sources.toolServers[part.toolName] ??
+      t('chat.tools.outside', { defaultValue: 'an outside tool' })
+  );
   const hasResult = part.result !== undefined;
   const resultIsString = typeof part.result === 'string';
 
@@ -116,13 +127,14 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
                     <Text
                       selectable
                       testID="outside-tool-output"
-                      className="text-text-secondary text-xs"
+                      className={
+                        status === 'error'
+                          ? 'text-icon-danger text-xs'
+                          : 'text-text-secondary text-xs'
+                      }
                       style={{ fontFamily: MONO_FONT }}
                     >
-                      {(resultIsString
-                        ? String(part.result)
-                        : JSON.stringify(part.result, null, 2)
-                      ).slice(0, 8000)}
+                      {cleaned.slice(0, 8000)}
                     </Text>
                   </ScrollView>
                 ) : resultIsString ? (

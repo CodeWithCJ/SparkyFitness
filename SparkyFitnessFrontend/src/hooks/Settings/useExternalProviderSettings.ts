@@ -1,3 +1,4 @@
+import { HttpApiError } from '@/api/api';
 import { exerciseSearchKeys } from '@/api/keys/exercises';
 import { barcodeKeys } from '@/api/keys/barcodes';
 import {
@@ -239,3 +240,10 @@ export const useDeleteGlobalProvider = () => {
     },
   });
 };
+
+export function mcpServerToolsErrorCode(error: unknown): string {
+  return error instanceof HttpApiError &&
+    ['auth', 'timeout', 'unreachable', 'policy'].includes(error.code ?? '')
+    ? error.code!
+    : 'other';
+}

@@ -1048,6 +1048,18 @@ function Composer({
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [pickerBusy, setPickerBusy] = useState(false);
+  const pendingApproval = useAuiState(
+    (state) =>
+      state.thread.messages
+        .at(-1)
+        ?.content.some(
+          (part) =>
+            part.type === 'tool-call' &&
+            part.approval &&
+            part.approval.approved === undefined &&
+            !part.approval.resolution
+        ) ?? false
+  );
   const running = useAuiState((state) => state.thread.isRunning);
   const voiceLevel = useSharedValue(0);
   const handleVoiceVolume = useCallback(
@@ -1090,6 +1102,14 @@ function Composer({
         gap: 8,
       }}
     >
+      {pendingApproval && (
+        <Text className="text-text-secondary text-sm px-3">
+          {t('chat.approval.composerHint', {
+            defaultValue:
+              'Answer the step above first, or keep typing to skip it.',
+          })}
+        </Text>
+      )}
       <ComposerAttachmentStrip onOpenLightbox={onOpenLightbox} />
       <View
         style={{
@@ -1512,7 +1532,9 @@ export default function ChatScreen({
 
   const handleClear = useCallback(() => {
     Alert.alert(
-      t('chat.clearTitle', { defaultValue: 'Clear chat' }),
+      t('chat.clearConfirm.title', {
+        defaultValue: 'Clear chat?',
+      }),
       t('chat.clearMessage', {
         defaultValue:
           'This permanently deletes your Sparky chat history. This cannot be undone.',

@@ -89,6 +89,22 @@ async function createEntry(userId: string, data: CreateMedicationEntryBody) {
   }
 }
 
+export async function getEntryById(
+  userId: string,
+  id: string
+): Promise<Record<string, unknown> | null> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ${ENTRY_COLS} FROM medication_entries WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
 async function listEntries(
   userId: string,
   opts: { fromDate?: string; toDate?: string; medicationId?: string } = {}
