@@ -28,9 +28,11 @@ import {
 import {
   distanceFromKm,
   weightFromKg,
+  storedWeightInUnit,
   weightToKg,
 } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
+import { formatFocusWeight } from '../utils/focusView';
 import {
   effectiveSetDurationSec,
   epley1RmKg,
@@ -76,9 +78,7 @@ export function formatDisplayWeight(
   unit: 'kg' | 'lbs'
 ): string {
   if (weightKg == null) return '';
-  return formatLocalizedNumber(weightFromKg(weightKg, unit), {
-    maximumFractionDigits: 1,
-  });
+  return formatFocusWeight(storedWeightInUnit(weightKg, unit), unit);
 }
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
@@ -384,6 +384,7 @@ function ActiveWorkoutSetRow({
     reps: false,
     duration: false,
     distance: false,
+    effort: false,
   });
   const handleWeightTyped = useCallback((text: string) => {
     setWeightDraft(text);
@@ -417,12 +418,17 @@ function ActiveWorkoutSetRow({
   const [rpeDraft, setRpeDraft] = useState(() =>
     effortValue != null ? formatRpe(effortValue) : ''
   );
+  const handleEffortTyped = useCallback((text: string) => {
+    setRpeDraft(text);
+    setEdited((previous) => ({ ...previous, effort: true }));
+  }, []);
 
   // Re-seed drafts when the underlying set's VALUES change (unit change or an
   // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
   // this row's instance alive across an autosave that only reassigns the id, so
   // keying the re-seed on the id would wipe in-progress text under a still-open
   // keyboard.
+  const [prevEffortField, setPrevEffortField] = useState(effortField);
   const signature = `${set.weight}|${set.reps}|${set.duration}|${set.distance}|${set.rpe}|${set.rir}|${effortField}|${weightUnit}|${distanceUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
   // A store change (an autosave echo normalizing a value, or a set edited on
@@ -439,14 +445,30 @@ function ActiveWorkoutSetRow({
   const justGainedFocus = !wasFocused && isFocusedRow;
   if (wasFocused !== isFocusedRow) setWasFocused(isFocusedRow);
   if (justGainedFocus) {
-    setEdited({ weight: false, reps: false, duration: false, distance: false });
+    setEdited({
+      weight: false,
+      reps: false,
+      duration: false,
+      distance: false,
+      effort: false,
+    });
   }
   const liveEdited = justGainedFocus
-    ? { weight: false, reps: false, duration: false, distance: false }
+    ? {
+        weight: false,
+        reps: false,
+        duration: false,
+        distance: false,
+        effort: false,
+      }
     : edited;
   if (signature !== prevSignature) {
     setPrevSignature(signature);
     const keepEdits = isFocusedRow || justLostFocus;
+    // A metric switch never keeps the effort draft: it was flushed to the old
+    // field (see effortFlushRef) and the new field starts from its own value.
+    const effortSwitched = effortField !== prevEffortField;
+    if (effortSwitched) setPrevEffortField(effortField);
     const fromStore = {
       weight: formatDisplayWeight(set.weight, weightUnit),
       reps: set.reps != null ? String(set.reps) : '',
@@ -458,6 +480,7 @@ function ActiveWorkoutSetRow({
       reps: keepEdits && liveEdited.reps,
       duration: keepEdits && liveEdited.duration,
       distance: keepEdits && liveEdited.distance,
+      effort: keepEdits && liveEdited.effort && !effortSwitched,
     };
     if (!kept.weight) setWeightDraft(fromStore.weight);
     if (!kept.reps) setRepsDraft(fromStore.reps);
@@ -468,14 +491,18 @@ function ActiveWorkoutSetRow({
       reps: kept.reps,
       duration: kept.duration,
       distance: kept.distance,
+      effort: kept.effort,
     });
     // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
     // mid-typing: leave the draft alone while its parse already matches the
     // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
-    // under the user's cursor). Blur still snaps the text via commitRpe. Its
-    // draft is never re-seeded under the keyboard: a live row only commits it
-    // on blur, so a draft being typed has no flag to tell it from a stale one.
-    if (!isFocusedRow && parseEffortInput(rpeDraft) !== effortValue) {
+    // under the user's cursor). Blur still snaps the text via commitRpe. A
+    // draft the user typed is kept while focused; an untouched one follows the
+    // store even under the keyboard, so a watch edit shows and is not undone.
+    if (
+      !kept.effort &&
+      (effortSwitched || parseEffortInput(rpeDraft) !== effortValue)
+    ) {
       setRpeDraft(effortValue != null ? formatRpe(effortValue) : '');
     }
   }
@@ -596,6 +623,7 @@ function ActiveWorkoutSetRow({
       reps: filled.reps != null ? false : previous.reps,
       duration: filled.duration != null ? false : previous.duration,
       distance: filled.distance != null ? false : previous.distance,
+      effort: previous.effort,
     }));
   }, [
     previousSet,
@@ -616,10 +644,10 @@ function ActiveWorkoutSetRow({
   // in rpeDraft for display; blur still echoes the snapped value via commitRpe.
   const handleEditRpeChange = useCallback(
     (text: string) => {
-      setRpeDraft(text);
+      handleEffortTyped(text);
       onCommitField?.(setId, effortPatch(parseEffortInput(text)));
     },
-    [onCommitField, setId, effortPatch, parseEffortInput]
+    [handleEffortTyped, onCommitField, setId, effortPatch, parseEffortInput]
   );
 
   // Advance past this row: activate the next set's first value cell, or add a
@@ -764,12 +792,21 @@ function ActiveWorkoutSetRow({
   // landed it) is unchanged too.
   const commitRpeValue = useCallback(
     (text: string) => {
+      // Never typed here: the store may have moved on under it (a watch edit).
+      if (!edited.effort) return;
       if (text === (effortValue != null ? formatRpe(effortValue) : '')) return;
       const value = parseEffortInput(text);
       if (value === effortValue) return;
       onCommitField?.(setId, effortPatch(value));
     },
-    [onCommitField, setId, effortValue, effortPatch, parseEffortInput]
+    [
+      onCommitField,
+      setId,
+      effortValue,
+      effortPatch,
+      parseEffortInput,
+      edited.effort,
+    ]
   );
 
   // Blur handler: commit, then snap the visible text to the committed form
@@ -830,6 +867,19 @@ function ActiveWorkoutSetRow({
   // once on the way out. It reads the latest writers through a ref so the
   // cleanup runs on unmount only, not on every keystroke, and goes through
   // the same edited / unchanged guards: an untouched draft writes nothing.
+  // A draft typed for RPE is committed to RPE when the column switches to RIR
+  // (and vice versa): the previous render's writer still targets the field the
+  // draft was typed for, like FocusSetRow's useStepperField commitKey flush.
+  const effortFlushRef = useRef({ field: effortField, flush: () => {} });
+  useEffect(() => {
+    const previous = effortFlushRef.current;
+    if (previous.field !== effortField) previous.flush();
+    effortFlushRef.current = {
+      field: effortField,
+      flush: () => commitRpeValue(rpeDraft),
+    };
+  });
+
   const unmountFlushRef = useRef<() => void>(() => {});
   useEffect(() => {
     unmountFlushRef.current = isLive && isFocusedRow ? writeDrafts : () => {};
@@ -1407,7 +1457,7 @@ function ActiveWorkoutSetRow({
       <SetCellInput
         inputRef={rpeInputRef}
         value={rpeDraft}
-        onChangeText={isEdit ? handleEditRpeChange : setRpeDraft}
+        onChangeText={isEdit ? handleEditRpeChange : handleEffortTyped}
         onBlur={() => commitRpe(rpeDraft)}
         onFocus={() => onActivateRpe?.(setId)}
         keyboardType="decimal-pad"

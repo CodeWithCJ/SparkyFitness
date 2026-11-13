@@ -436,6 +436,70 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
     });
 
+    it('commits an effort draft to the metric it was typed for when the column switches', () => {
+      const base = { state: 'current' as const, isFocused: true };
+      const { getByLabelText, queryByLabelText, callbacks, rerenderRow } =
+        renderRow({ ...base, metricColumn: 'rpe', set: { rpe: null } });
+      fireEvent.changeText(getByLabelText('RPE'), '8');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+      rerenderRow({ ...base, metricColumn: 'rir', set: { rpe: null } });
+
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+      expect(queryByLabelText('RPE')).toBeNull();
+      expect(getByLabelText('RIR').props.value).toBe('');
+    });
+
+    it('does not write an effort value it was never typed back over a watch edit', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        isFocused: true,
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        set: { rpe: 8 },
+      });
+      expect(getByLabelText('RPE').props.value).toBe('8');
+
+      // The watch sets RPE 7 while the row is focused.
+      rerenderRow({ ...base, set: { rpe: 7 } });
+      expect(getByLabelText('RPE').props.value).toBe('7');
+
+      rerenderRow({ ...base, isFocused: false, set: { rpe: 7 } });
+      fireEvent(getByLabelText('RPE'), 'blur');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
+    it('keeps an effort value typed on the phone over a later store change while focused', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        isFocused: true,
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        set: { rpe: 8 },
+      });
+      fireEvent.changeText(getByLabelText('RPE'), '9');
+      rerenderRow({ ...base, set: { rpe: 7 } });
+      expect(getByLabelText('RPE').props.value).toBe('9');
+
+      rerenderRow({ ...base, isFocused: false, set: { rpe: 7 } });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 9 });
+    });
+
+    it('shows kg to two decimals and lbs to one in the row', () => {
+      const kg = renderRow({ set: { weight: 61.25 }, weightUnit: 'kg' });
+      expect(kg.getByLabelText('Weight').props.value).toBe('61.25');
+      kg.unmount();
+
+      // 61.25 kg is 135.03 lb; the list shows what a lb lifter would type.
+      const lbs = renderRow({ set: { weight: 61.25 }, weightUnit: 'lbs' });
+      expect(lbs.getByLabelText('Weight').props.value).toBe('135');
+    });
+
     it('commits typed drafts when a focused live row unmounts without a blur', () => {
       // The focus view pages to another exercise with the keyboard up.
       const { getByLabelText, callbacks, unmount } = renderRow({
