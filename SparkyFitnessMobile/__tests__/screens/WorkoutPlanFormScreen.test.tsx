@@ -24,6 +24,9 @@ import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
 
 jest.mock('../../src/hooks', () => ({
   useCreateWorkoutPlan: jest.fn(),
+  usePreferences: jest.fn(() => ({
+    preferences: { default_weight_unit: 'kg' },
+  })),
   useUpdateWorkoutPlan: jest.fn(),
   useWorkoutPresets: jest.fn(),
 }));

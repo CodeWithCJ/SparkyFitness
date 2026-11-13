@@ -15,6 +15,7 @@ import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
 jest.mock('../../src/hooks', () => ({
   useDeleteWorkoutPlan: jest.fn(),
   usePreferences: jest.fn(),
+  useServerConnection: jest.fn(() => ({ isConnected: true })),
   useUpdateWorkoutPlan: jest.fn(),
   useWorkoutPlans: jest.fn(),
 }));
@@ -42,6 +43,8 @@ const mockNavigation = {
   navigate: jest.fn(),
   goBack: jest.fn(),
   setOptions: jest.fn(),
+  isFocused: jest.fn(() => true),
+  addListener: jest.fn(() => jest.fn()),
 };
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),

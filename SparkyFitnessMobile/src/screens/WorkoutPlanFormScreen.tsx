@@ -18,6 +18,7 @@ import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
 import {
   useCreateWorkoutPlan,
+  usePreferences,
   useUpdateWorkoutPlan,
   useWorkoutPresets,
 } from '../hooks';
@@ -31,6 +32,11 @@ import type {
   WorkoutPlanValidationErrors,
 } from '../types/workoutPlans';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { parseDecimalInput } from '../utils/numericInput';
+import {
+  storedWeightInUnit,
+  weightToKg,
+} from '../utils/unitConversions';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import {
   addDraftSet,
@@ -76,6 +82,12 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     isError: isPresetsError,
     refetch: refetchPresets,
   } = useWorkoutPresets();
+  const { preferences } = usePreferences();
+  // Set weights are stored in kg; the form reads and writes the user's
+  // preferred unit. Workout screens only know kg or lbs, so coerce st_lbs
+  // to lbs instead of handing an unsupported unit to weightToKg.
+  const weightUnit: 'kg' | 'lbs' =
+    preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
   const [draft, setDraft] = useState<WorkoutPlanDraft>(() =>
     createWorkoutPlanDraft(today, template)
   );
@@ -237,15 +249,23 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
         ...current,
         [rawSetKey(key, setIndex, field)]: value,
       }));
-      const parsed = value.trim() === '' ? null : Number(value);
-      const numeric = parsed != null && Number.isFinite(parsed) ? parsed : null;
+      // Locale-aware parsing: decimal-comma keyboards produce '22,5',
+      // which Number() silently turns into NaN (and a saved empty value).
+      const parsed = value.trim() === '' ? null : parseDecimalInput(value);
+      const numeric =
+        parsed != null && Number.isFinite(parsed) ? parsed : null;
+      // The draft stores kg; the user types in their preferred unit.
+      const stored =
+        field === 'weight' && numeric != null
+          ? weightToKg(numeric, weightUnit)
+          : numeric;
       setDraft((current) =>
         updateDraftSet(current, key, setIndex, {
-          [field]: numeric,
+          [field]: stored,
         } as DraftSetPatch)
       );
     },
-    []
+    [weightUnit]
   );
 
   const moveAssignment = useCallback((key: string, direction: -1 | 1) => {
@@ -298,6 +318,22 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     const nextErrors = validateWorkoutPlanDraft(draft);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
+    // A half-typed value (e.g. '22,') is not the same as an empty field;
+    // block Save until every raw numeric input parses.
+    const hasInvalidSetInput = Object.values(rawSetInputs).some(
+      (value) =>
+        value.trim() !== '' && Number.isNaN(parseDecimalInput(value))
+    );
+    if (hasInvalidSetInput) {
+      Toast.show({
+        type: 'error',
+        text1: t('workoutPlans.invalidSetValues', {
+          defaultValue: 'Some set values are incomplete',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
+      return;
+    }
     try {
       const currentClientDate = toLocalDateString(new Date());
       const payload = buildWorkoutPlanPayload(draft);
@@ -359,6 +395,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     createWorkoutPlanAsync,
     draft,
     navigation,
+    rawSetInputs,
     t,
     template,
     updateWorkoutPlanAsync,
@@ -520,13 +557,16 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
                   <FormInput
                     className="min-h-9 px-2 py-1"
                     keyboardType="numeric"
-                    placeholder={t('workoutPlans.weightShort', {
+                    placeholder={`${t('workoutPlans.weightShort', {
                       defaultValue: 'Weight',
-                    })}
+                    })} (${weightUnit})`}
                     value={
                       rawSetInputs[
                         rawSetKey(assignment.key, setIndex, 'weight')
-                      ] ?? (set.weight == null ? '' : String(set.weight))
+                      ] ??
+                        (set.weight == null
+                          ? ''
+                          : String(storedWeightInUnit(set.weight, weightUnit)))
                     }
                     onChangeText={(value) =>
                       changeSetNumber(assignment.key, setIndex, 'weight', value)

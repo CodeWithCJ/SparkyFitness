@@ -3,7 +3,9 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Icon from '../components/Icon';
+import ServerGate from '../components/ServerGate';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
@@ -13,6 +15,7 @@ import {
   useUpdateWorkoutPlan,
   useWorkoutPlans,
 } from '../hooks';
+import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -36,6 +39,8 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const { runNavigationAction } = useNavigationActionGuard(navigation);
   const { preferences } = usePreferences();
   const { workoutPlans } = useWorkoutPlans();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
@@ -214,7 +219,11 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
                   defaultValue: 'Workout plan deleted',
                 }),
               });
-              navigation.goBack();
+              // The user can press Back while the delete request is still in
+              // flight; only pop when this screen is still in front.
+              if (navigation.isFocused()) {
+                navigation.goBack();
+              }
             } catch {
               Toast.show({
                 type: 'error',
@@ -234,6 +243,7 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
 
   const header = useScreenHeader({
     title: plan.plan_name,
+    nativeTitle: plan.plan_name,
     left: { kind: 'back' },
     right: {
       kind: 'icon',
@@ -242,7 +252,10 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
       accessibilityLabel: t('workoutPlans.editTitle', {
         defaultValue: 'Edit workout plan',
       }),
-      onPress: () => navigation.navigate('WorkoutPlanForm', { template: plan }),
+      onPress: () =>
+        runNavigationAction(() =>
+          navigation.navigate('WorkoutPlanForm', { template: plan })
+        ),
     },
   });
 
@@ -334,11 +347,12 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
+      <ServerGate>
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: insets.bottom + 16,
+          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
       >
         <View className="bg-surface rounded-xl px-4 py-4 border border-border-subtle">
@@ -454,6 +468,7 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
           {t('workoutPlans.deletePlan', { defaultValue: 'Delete plan' })}
         </Button>
       </ScrollView>
+      </ServerGate>
     </View>
   );
 };

@@ -203,7 +203,9 @@ let setIdCounter = 0;
 function nextDraftSet(setNumber: number): WorkoutPresetSet {
   setIdCounter += 1;
   return {
-    id: setIdCounter,
+    // Negative ids keep draft rows disjoint from saved set ids, which the
+    // form rows also use as React keys.
+    id: -setIdCounter,
     set_number: setNumber,
     set_type: null,
     reps: null,
