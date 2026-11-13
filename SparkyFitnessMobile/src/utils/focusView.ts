@@ -192,6 +192,8 @@ export function describePresetChanges(
       lines.push(
         t('workoutComplete.changes.sets', {
           defaultValue: '{{name}} {{count}} sets, was {{before}}.',
+          defaultValue_one: '{{name}} {{count}} set, was {{before}}.',
+          defaultValue_other: '{{name}} {{count}} sets, was {{before}}.',
           name,
           count: exercise.sets.length,
           before,
