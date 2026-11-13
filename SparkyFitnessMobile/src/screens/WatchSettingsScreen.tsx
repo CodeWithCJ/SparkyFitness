@@ -60,6 +60,10 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const setWatchUpNextPage = useAppPreferencesStore(
     (s) => s.setWatchUpNextPage
   );
+  const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
+  const setWatchLargerText = useAppPreferencesStore(
+    (s) => s.setWatchLargerText
+  );
   const watchNewWorkout = useAppPreferencesStore((s) => s.watchNewWorkout);
   const setWatchNewWorkout = useAppPreferencesStore(
     (s) => s.setWatchNewWorkout
@@ -278,12 +282,29 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               </>
             )}
             <SettingsRow
+              title={t('watchSettings.largerTextTitle', {
+                defaultValue: 'Larger text on the watch',
+              })}
+              subtitle={t('watchSettings.largerTextSubtitle', {
+                defaultValue:
+                  'Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-larger-text-switch"
+                  value={watchLargerText}
+                  onValueChange={setWatchLargerText}
+                />
+              }
+            />
+            <SettingsRow
               title={t('watchSettings.newWorkoutTitle', {
                 defaultValue: 'New workout view',
               })}
               subtitle={t('watchSettings.newWorkoutSubtitle', {
                 defaultValue:
-                  'The new workout layout and larger text on every watch page: a Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original look.',
+                  'A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={

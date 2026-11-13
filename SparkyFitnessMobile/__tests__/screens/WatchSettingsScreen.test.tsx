@@ -104,6 +104,7 @@ describe('WatchSettingsScreen', () => {
     expect(prefs().watchSetScreenMetrics).toBe(true);
     expect(prefs().watchUpNextPage).toBe(false);
     expect(prefs().watchNewWorkout).toBe(false);
+    expect(prefs().watchLargerText).toBe(false);
 
     fireEvent(
       screen.getByTestId('watch-set-screen-metrics-switch'),
@@ -119,6 +120,15 @@ describe('WatchSettingsScreen', () => {
 
     expect(prefs().watchSetScreenMetrics).toBe(false);
     expect(prefs().watchUpNextPage).toBe(true);
+    expect(prefs().watchNewWorkout).toBe(true);
+    // Larger text is its own switch: the new view does not move it.
+    expect(prefs().watchLargerText).toBe(false);
+    fireEvent(
+      screen.getByTestId('watch-larger-text-switch'),
+      'valueChange',
+      true
+    );
+    expect(prefs().watchLargerText).toBe(true);
     expect(prefs().watchNewWorkout).toBe(true);
   });
 

@@ -85,6 +85,7 @@ enum ContextPayloadMapper {
             exerciseDoNow: payload["exerciseDoNow"] as? Bool,
             setScreenMetrics: payload["setScreenMetrics"] as? Bool ?? previous.setScreenMetrics,
             upNextPage: payload["upNextPage"] as? Bool ?? previous.upNextPage,
+            largerText: payload["largerText"] as? Bool ?? previous.largerText,
             newWorkout: payload["newWorkout"] as? Bool ?? previous.newWorkout,
             workoutCountdown: (payload["workoutCountdown"] as? NSNumber)?.intValue ?? previous.workoutCountdown,
             holdCountdown: payload["holdCountdown"] as? Bool ?? previous.holdCountdown,

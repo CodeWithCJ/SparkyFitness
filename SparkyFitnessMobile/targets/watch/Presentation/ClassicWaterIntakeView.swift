@@ -1,8 +1,8 @@
 import SwiftUI
 import WatchKit
 
-// The original layout of this page, shown while Settings → Apple Watch → "New
-// workout view" is off; `WaterIntakeView` is the larger one. `ContentView` picks.
+// The original layout of this page, shown while Settings → Apple Watch → "Larger
+// text on the watch" is off; `WaterIntakeView` is the larger one. `ContentView` picks.
 
 /// The Water page
 ///

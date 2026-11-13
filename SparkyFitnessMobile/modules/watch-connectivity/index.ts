@@ -388,6 +388,8 @@ export interface WatchContextPayload {
   setScreenMetrics?: boolean;
   /** The Up Next page after the set screen. Absent means off. */
   upNextPage?: boolean;
+  /** Larger text and the newer layouts on every watch page. Absent means off. */
+  largerText?: boolean;
   /** Use the new workout view on the watch. Absent means off. */
   newWorkout?: boolean;
   /** Seconds of audible countdown before a rest or hold ends: 0, 3 or 5. Absent means off. */

@@ -323,40 +323,57 @@ describe('appPreferencesStore', () => {
     });
   });
 
-  describe('the retired larger text and original workout page settings', () => {
-    const persist = async (state: Record<string, unknown>) => {
+  describe('larger text and the retired original workout page setting', () => {
+    const persist = async (state: Record<string, unknown>, version = 1) => {
       await AsyncStorage.setItem(
         '@SparkyFitness/app-preferences',
         JSON.stringify({
           state: { ...PREFERENCE_DEFAULTS, ...state },
-          version: 1,
+          version,
         })
       );
       await useAppPreferencesStore.persist.rehydrate();
     };
 
-    it('turns the new workout view on for anyone who had larger text on', async () => {
+    it('keeps larger text as its own setting and turns the new view on for the larger text workout page', async () => {
       await persist({ watchLargerText: true, watchClassicWorkout: false });
-      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(true);
-      await persist({ watchLargerText: true, watchClassicWorkout: true });
-      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(true);
+      const state = useAppPreferencesStore.getState();
+      expect(state.watchLargerText).toBe(true);
+      expect(state.watchNewWorkout).toBe(true);
     });
 
-    it('leaves it off when larger text was off', async () => {
+    it('leaves the new view off when the original page was kept or larger text was off', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: true });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
       await persist({ watchLargerText: false, watchClassicWorkout: false });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(false);
       expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
     });
 
-    it('drops both old keys on the next write', async () => {
+    it('restores larger text from the new view switch for a build that had tied them', async () => {
+      const { watchLargerText: _omit, ...without } = PREFERENCE_DEFAULTS;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...without, watchNewWorkout: true },
+          version: 2,
+        })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
+    });
+
+    it('drops the old original page key on the next write and keeps larger text', async () => {
       await persist({ watchLargerText: true, watchClassicWorkout: false });
       useAppPreferencesStore.getState().setWatchWorkoutCountdown(3);
       const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
       const parsed = JSON.parse(raw!);
       expect(parsed.state).not.toHaveProperty('watchClassicWorkout');
-      expect(parsed.state).not.toHaveProperty('watchLargerText');
+      expect(parsed.state.watchLargerText).toBe(true);
       expect(parsed.state.watchNewWorkout).toBe(true);
       expect(parsed.state.watchWorkoutCountdown).toBe(3);
-      expect(parsed.version).toBe(2);
+      expect(parsed.version).toBe(3);
     });
   });
 

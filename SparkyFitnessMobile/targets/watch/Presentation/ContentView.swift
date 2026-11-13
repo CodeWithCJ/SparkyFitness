@@ -62,7 +62,8 @@ struct ContentView: View {
                 .id(pages)
             }
         }
-        .environment(\.watchLargeText, store.context.effectiveNewWorkout)
+        .environment(\.watchLargeText, store.context.effectiveLargerText)
+        .environment(\.watchLargerTextSetting, store.context.effectiveLargerText)
         #if DEBUG
         .modifier(ForcedDimming())
         #endif
@@ -158,13 +159,13 @@ struct ContentView: View {
     private func view(for page: WatchPage) -> some View {
         switch page {
         case .goals:
-            if store.context.effectiveNewWorkout {
+            if store.context.effectiveLargerText {
                 GoalSummaryView()
             } else {
                 ClassicGoalSummaryView()
             }
         case .water:
-            if store.context.effectiveNewWorkout {
+            if store.context.effectiveLargerText {
                 WaterIntakeView()
             } else {
                 ClassicWaterIntakeView()
@@ -181,7 +182,9 @@ struct ContentView: View {
             TrendView()
         case .workout:
             if store.context.effectiveNewWorkout {
+                // The new view has its own sizing, whatever Larger text says.
                 WorkoutView()
+                    .environment(\.watchLargeText, true)
                     .environment(\.workoutPageActive, selectedPage == .workout)
             } else {
                 ClassicWorkoutView()
