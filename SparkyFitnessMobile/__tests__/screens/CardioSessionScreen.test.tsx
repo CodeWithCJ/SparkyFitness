@@ -6,11 +6,24 @@ import type { ExerciseActivityQueryItem } from '@workspace/shared';
 import CardioSessionScreen from '../../src/screens/CardioSessionScreen';
 import { useCardioSessionDetail } from '../../src/hooks/useCardioSessionDetail';
 import { shareRouteAsGpx } from '../../src/services/gpxExport';
+import { saveActivityAsRoute } from '../../src/services/routeService';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
+jest.mock('../../src/services/fitnessTestService', () => ({
+  useFitnessTests: jest.fn(() => ({
+    tests: [],
+    latest: null,
+    loaded: true,
+    isLoading: false,
+    refetch: jest.fn(),
+  })),
+}));
 jest.mock('../../src/services/gpxExport', () => ({
   shareRouteAsGpx: jest.fn(() => Promise.resolve(true)),
+}));
+jest.mock('../../src/services/routeService', () => ({
+  saveActivityAsRoute: jest.fn(),
 }));
 jest.mock('react-native-toast-message', () => ({
   __esModule: true,
@@ -21,6 +34,10 @@ jest.mock('react-native-toast-message', () => ({
 jest.mock('../../src/components/recording/ProgramWorkoutBadge', () => ({
   __esModule: true,
   default: () => null,
+}));
+const mockTemperatureUnit = jest.fn(() => 'celsius');
+jest.mock('../../src/hooks/useTemperatureUnit', () => ({
+  useTemperatureUnit: () => mockTemperatureUnit(),
 }));
 jest.mock('../../src/hooks/useCardioSessionDetail', () => ({
   useCardioSessionDetail: jest.fn(),
@@ -42,6 +59,11 @@ jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',
   useUniwind: () => ({ theme: 'light' }),
+}));
+// The shoe picker reads the shoe list and the entry; it has its own tests.
+jest.mock('../../src/components/ShoePickerCard', () => ({
+  __esModule: true,
+  default: () => null,
 }));
 // The chart draws with Skia; its data handling is covered by the hook tests.
 jest.mock('../../src/components/exerciseStats/HeartRateChart', () => {
@@ -151,6 +173,16 @@ describe('CardioSessionScreen', () => {
     elevationGainMeters: 181.9,
   } as ExerciseActivityQueryItem;
 
+  const RUN_WITH_FORM = {
+    ...STAIRS,
+    id: 'run-form',
+    exerciseName: 'Running',
+    floorsClimbed: null,
+    elevationGainMeters: null,
+    avgCadence: 168,
+    strideLengthCm: 104.3,
+  } as ExerciseActivityQueryItem;
+
   it('shows floors climbed and elevation gain for a stair workout', () => {
     mockDetail.mockReturnValue(detail({ route: [] }));
     const screen = render(<CardioSessionScreen {...props(STAIRS)} />);
@@ -160,7 +192,7 @@ describe('CardioSessionScreen', () => {
     expect(screen.getByText('Elevation gain')).toBeTruthy();
     expect(screen.getByText('182 m')).toBeTruthy();
     expect(screen.getByText('157 bpm')).toBeTruthy();
-    expect(screen.getByText('219 Cal')).toBeTruthy();
+    expect(screen.getByText('219 kcal')).toBeTruthy();
   });
 
   it('shows elevation in feet when the distance unit is miles', () => {
@@ -179,6 +211,35 @@ describe('CardioSessionScreen', () => {
     expect(screen.getByText('597 ft')).toBeTruthy();
   });
 
+  it('shows cadence and stride length for a run that has them', () => {
+    mockDetail.mockReturnValue(detail());
+    const run = {
+      ...RUN_WITH_FORM,
+    } as ExerciseActivityQueryItem;
+    const screen = render(<CardioSessionScreen {...props(run)} />);
+
+    expect(screen.getByText('Avg cadence')).toBeTruthy();
+    expect(screen.getByText('168 spm')).toBeTruthy();
+    expect(screen.getByText('Stride length')).toBeTruthy();
+    expect(screen.getByText('1.04 m')).toBeTruthy();
+  });
+
+  it('shows stride length in feet when the distance unit is miles', () => {
+    mockDetail.mockReturnValue(detail());
+    const imperial = {
+      ...props(RUN_WITH_FORM),
+      route: {
+        key: 'CardioSession',
+        name: 'CardioSession',
+        params: { session: RUN_WITH_FORM, distanceUnit: 'miles' },
+      },
+    } as unknown as RootStackScreenProps<'CardioSession'>;
+    const screen = render(<CardioSessionScreen {...imperial} />);
+
+    // 104.3 cm is 3.42 ft.
+    expect(screen.getByText('3.42 ft')).toBeTruthy();
+  });
+
   it('says "1 floor" for a single floor', () => {
     mockDetail.mockReturnValue(detail({ route: [] }));
     const screen = render(
@@ -188,6 +249,84 @@ describe('CardioSessionScreen', () => {
     );
 
     expect(screen.getByText('1 floor')).toBeTruthy();
+  });
+
+  describe('weather', () => {
+    const withWeather = (extra: Partial<ExerciseActivityQueryItem>) =>
+      ({ ...STAIRS, ...extra }) as ExerciseActivityQueryItem;
+    const imperial = (session: ExerciseActivityQueryItem) =>
+      ({
+        ...props(session),
+        route: {
+          key: 'CardioSession',
+          name: 'CardioSession',
+          params: { session, distanceUnit: 'miles' },
+        },
+      }) as unknown as RootStackScreenProps<'CardioSession'>;
+
+    it('shows Celsius with the Celsius setting even with miles', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...imperial(
+            withWeather({ weatherTempCelsius: 10, weatherCondition: 'Clear' })
+          )}
+        />
+      );
+
+      expect(screen.getByText('10°C · Clear')).toBeTruthy();
+    });
+
+    it('shows the temperature and conditions at the start', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...props(
+            withWeather({
+              weatherTempCelsius: 9.4,
+              weatherCondition: 'Light rain',
+            })
+          )}
+        />
+      );
+
+      expect(screen.getByText('Weather')).toBeTruthy();
+      expect(screen.getByText('9°C · Light rain')).toBeTruthy();
+    });
+
+    it('shows Fahrenheit with the Fahrenheit setting', () => {
+      mockTemperatureUnit.mockReturnValueOnce('fahrenheit');
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...imperial(
+            withWeather({ weatherTempCelsius: 10, weatherCondition: 'Clear' })
+          )}
+        />
+      );
+
+      expect(screen.getByText('50°F · Clear')).toBeTruthy();
+    });
+
+    it('treats 0° as a reading, not as missing', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...props(
+            withWeather({ weatherTempCelsius: 0, weatherCondition: null })
+          )}
+        />
+      );
+
+      expect(screen.getByText('0°C')).toBeTruthy();
+    });
+
+    it('leaves the tile out when there is no weather', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(<CardioSessionScreen {...props(STAIRS)} />);
+
+      expect(screen.queryByText('Weather')).toBeNull();
+    });
   });
 
   it('leaves out floors and elevation when the workout has none', () => {
@@ -283,6 +422,22 @@ describe('CardioSessionScreen', () => {
     expect(screen.queryByText('Heart Rate Zones')).toBeNull();
   });
 
+  it('leaves out the route card for a duration-only workout', () => {
+    // A jump rope covers no distance, so it can never have a route.
+    const jumpRope = {
+      ...SESSION,
+      id: 'jump-rope-1',
+      exerciseName: 'Jump Rope',
+      distanceFormatted: null,
+      formattedPace: null,
+      modality: 'duration',
+    } as ExerciseActivityQueryItem;
+    mockDetail.mockReturnValue(detail({ route: [] }));
+    const screen = render(<CardioSessionScreen {...props(jumpRope)} />);
+    expect(screen.queryByText(/No GPS route stored/)).toBeNull();
+    expect(screen.getByTestId('heart-rate-chart')).toBeTruthy();
+  });
+
   it('falls back to the stored average without samples', () => {
     mockDetail.mockReturnValue(detail({ heartRate: [] }));
     const screen = render(<CardioSessionScreen {...props()} />);
@@ -321,6 +476,58 @@ describe('CardioSessionScreen', () => {
         expect.objectContaining({ type: 'error' })
       )
     );
+  });
+
+  it('saves the route and opens it', async () => {
+    jest
+      .mocked(saveActivityAsRoute)
+      .mockResolvedValueOnce({ id: 'r1' } as never);
+    const navigate = jest.fn();
+    mockDetail.mockReturnValue(detail());
+    const screen = render(
+      <CardioSessionScreen
+        {...({
+          ...props(),
+          navigation: { navigate },
+        } as unknown as RootStackScreenProps<'CardioSession'>)}
+      />
+    );
+    fireEvent.press(screen.getByTestId('save-as-route'));
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('RouteDetail', { id: 'r1' })
+    );
+    // The server names the route after the activity.
+    expect(saveActivityAsRoute).toHaveBeenCalledWith('run-1');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' })
+    );
+  });
+
+  it('says so when the route cannot be saved', async () => {
+    jest.mocked(saveActivityAsRoute).mockRejectedValueOnce(new Error('404'));
+    const navigate = jest.fn();
+    mockDetail.mockReturnValue(detail());
+    const screen = render(
+      <CardioSessionScreen
+        {...({
+          ...props(),
+          navigation: { navigate },
+        } as unknown as RootStackScreenProps<'CardioSession'>)}
+      />
+    );
+    fireEvent.press(screen.getByTestId('save-as-route'));
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('offers no way to save a route without one', () => {
+    mockDetail.mockReturnValue(detail({ route: [] }));
+    const screen = render(<CardioSessionScreen {...props()} />);
+    expect(screen.queryByTestId('save-as-route')).toBeNull();
   });
 
   it('offers no export without a route', () => {

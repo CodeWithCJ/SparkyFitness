@@ -83,13 +83,17 @@ A pause you make yourself is never undone automatically; only an auto-pause resu
 
 Turn on **Voice cues** before you start and the phone speaks as you go: your total time and the time of the last kilometer or mile each time you complete one, and "Paused", "Auto paused" or "Resumed" when that happens. It also says your distance and time when you finish. Cues use the distance unit from your settings and the app language, and they're spoken with the screen locked and the phone's silent switch on. If you're playing music it keeps playing, and it dips while a cue is spoken when **Lower music during cues** is on.
 
+**Suggested ranges.** When a plan is chosen, the Record screen offers starting pace and heart-rate ranges for its fast and easy stretches and for its warm-up and cool-down, with a **Use these** button. The warm-up and cool-down range is wider and easier than the easy one (about 50 to 65 percent of your estimated maximum heart rate, and a pace range that reaches down to a walk), so a gentle start does not trigger "pick it up" alerts. For a run, the pace comes from your [pace zones](#pace-zones): fast stretches use the Interval zone and easy ones the Easy zone. For a walk it comes from your last few outdoor walks of the past two months, so you need at least two of a kilometer or more. The heart rate, with a paired watch, comes from a maximum estimated from your age (set your birth date in Profile). They are only starting points, and nothing is switched on until you tap the button.
+
+If you follow a [training program](#training-programs) and rate your workouts, the suggested paces follow how they felt: two hard ratings in a row slow every zone by 3%, and two easy ratings in a row speed them up by 1.5%. Your pace zones themselves, shown in Exercise Statistics, are not changed by ratings.
 **Program calendar.** On the training programs screen, **Open the program calendar** shows every workout of your program on a month calendar: a green dot on the days you finished one and an accent dot on the one due and the ones coming, on the days your schedule puts them (a missed workout moves the rest along). Tap a day to see its workouts, or find any workout in the **All workouts** list, and tap one to open it. A finished workout shows the day, how hard it felt and a link to the run you did; the next and later ones show the date and their steps, and you can repeat a finished workout or make a later one the next.
 **Your own plans.** At the bottom of the training programs screen, **Your plans** lists plans you wrote yourself. Tap **Customize this program** on any built-in program copies its workouts into a new plan of your own (named "… (my copy)", each workout titled with its week and run) that you can change freely; the original stays as it was. Or tap **Create a plan**, name it, choose run or walk, then add workouts: each is a list of timed steps (warm up, run or brisk walk, easy, cool down) that you can lengthen or shorten, add to, copy, reorder or remove, and you can give a workout a name. Work and easy steps can also have a pace range (minutes and seconds per kilometre) and a heart-rate range, which the phone and watch coach you to hold like any interval target. With voice cues on, the coach says "Workout 4. 30 minutes." as it begins and "Workout 4 of 12 done. Next up, workout 5." at the end. A plan can hold up to 364 workouts and you can keep 30 plans. **Start program** follows it like any other: the calendar, Diary days, how-hard ratings and the voice coach all work the same. Editing a plan you are following changes it from where you are, and deleting it leaves the copy you are following alone.
 
-**Plan a race.** Tap **Plan a race** on the training programs screen, pick a distance (5K, 10K, half marathon or marathon), your level, the race date, and the days you can run. The app builds a week-by-week plan that ends on race day: easy runs, a tempo run and intervals, a weekly long run, a taper in the last weeks and a race-day workout at an easy pace. It is saved as one of your own plans and scheduled on your chosen days, so you can edit it like any other plan. If you already follow a program, you are asked before it is replaced. Plans use timed steps, and the length of each run is an estimate from your level. If you fall behind and the plan would no longer end by your goal date or race day, the program screen offers to skip the fewest of the next workouts (up to three) so it still does; the last workout is never skipped. Further behind than that, it tells you how many workouts will not fit so you can add run days or move the date.
+**Plan a race.** Tap **Plan a race** on the training programs screen, pick a distance (5K, 10K, half marathon or marathon), your level, the race date, and the days you can run. With a [fitness test](/features/exercises/fitness-tests), **Plan from my latest test** takes your level and the race-day pace from it instead. The app builds a week-by-week plan that ends on race day: easy runs, a tempo run and intervals, a weekly long run, a taper in the last weeks and a race-day workout at an easy pace. It is saved as one of your own plans and scheduled on your chosen days, so you can edit it like any other plan. If you already follow a program, you are asked before it is replaced. Plans use timed steps, and the length of each run is an estimate from your level. If you fall behind and the plan would no longer end by your goal date or race day, the program screen offers to skip the fewest of the next workouts (up to three) so it still does; the last workout is never skipped. For more than that, or for a fuller rebuild, use **Realign your plan** (below).
 
 
-**Suggested ranges.** When a plan is chosen, the Record screen offers starting pace and heart-rate ranges for its fast and easy stretches, with a **Use these** button. The pace comes from your last few outdoor runs (or walks) of the past two months, so you need at least two of a kilometer or more; the heart rate, with a paired watch, comes from a maximum estimated from your age (set your birth date in Profile). They are only starting points, and nothing is switched on until you tap the button.
+
+**Your race pace.** If you have a [fitness test](/features/exercises/fitness-tests), the suggested ranges come from your latest test instead and the card says which test; the race time below is used when you have none. Under **Training programs → Your race pace** you can enter a recent 5K, 10K, half marathon or marathon time (kept on your device). The Record screen then works the suggested pace ranges out from it instead of from your recent runs: easy runs, intervals (about 5K pace), tempo, marathon pace and strides each get their own range, and the card says which race it used. A stride, tempo or marathon-pace stretch in a plan is held to its own range, and hill repeats get none because pace means little uphill. The ranges come from Riegel's formula with typical training ratios, so treat them as estimates: heat, hills or a tired week change them, and effort wins when the two disagree. On an iPhone with an Apple Watch, **Also use on my Apple Watch** puts the same ranges on the program workout offered in the watch's plan list, so the watch alerts you the way the phone does (runs only).
 
 **Coaching.** With voice cues on, the phone also coaches a plan workout: ten seconds before a step of 30 seconds or more ends it says what comes next ("Ten seconds. Next, Fast."), then counts you in with "Three. Two. One." for the last three seconds, and it calls halfway and the last minute of a workout that is long enough. Outdoors it also marks 5K, 10K, a half marathon and a marathon when you pass them, in the same breath as a split if one lands at the same moment. **Spoken updates** (off, or every 5, 10 or 15 minutes) read out your time, distance and average pace, or just the time indoors; you can change it while recording. For a training-program workout the phone also introduces it ("Week 2, run 3. 25 minutes.", with "Eased for today." when you eased it) and, once you have run every step for its full length, closes it with your progress and what is next ("Workout 4 of 27 done. Next up, Week 2, run 4."). Each split also says how much faster or slower it was than the one before. Runs recorded on the watch speak the same coaching, in English, through the watch or your headphones; the spoken-updates choice is sent to the watch when you start (or, for a run begun on the wrist, the last one you chose).
 
@@ -126,11 +130,27 @@ Training programs are optional and off by default. Open **Library → Training p
 | Program | For | Length |
 | --- | --- | --- |
 | **Walk for fitness** | Not running yet. Brisk walks alternating with easy ones, building to 30 minutes of brisk walking. Recorded as a walk. | 8 weeks, 3 walks a week |
+| **Brisk walk 10K** | You walk regularly and want a bigger goal. Brisk walks and a long walk building to about 1¾ hours (a 10K walk). Recorded as a walk. | 10 weeks, 3 walks a week |
+| **Return to running** | Coming back after a break. One-minute runs building to about 20 minutes of running. Leave a day or two between runs and keep the pace easy; if you are returning from an injury, check with a physio or doctor first. | 4 weeks, 3 runs a week |
+| **Gentle 5K** | Starting to run, slowly. Very short runs between long walks, building to 30 minutes of running. | 12 weeks, 3 runs a week |
 | **Beginner 5K** | Starting to run. Alternating running and walking, building to 30 minutes of running. | 9 weeks, 3 runs a week |
 | **5K to 10K** | You can run 30 minutes. Steady runs and a long run building to 65 minutes, with an easier week every fourth. | 8 weeks, 3 runs a week |
+| **Zone 2 base** | You can run 30 minutes and want easy aerobic volume. Easy runs held to your [Zone 2 heart rate](/features/exercises/zone-2-program) (or the talk test), a long run building to 70 minutes and a zone check every few weeks. | 10 weeks, 3 or 4 runs a week (your choice) |
 | **Faster 5K** | You already run 5K. Interval sessions, easy runs and tempo runs. | 6 weeks, 3 runs a week |
-| **Half marathon** | You run 30 minutes comfortably. Long runs building to about 2 hours, with a taper. | 12 weeks, 3 runs a week |
+| **Beginner 10K** | Starting from walking. Run/walk building to continuous running, then runs of up to an hour. | 12 weeks, 3 runs a week |
+| **Faster 10K** | You already run 10K. Interval sessions, easy runs and tempo runs of up to 30 minutes. | 8 weeks, 3 runs a week |
+| **10K to half marathon** | You can run 10K. Long runs building from 65 to 115 minutes, with easier weeks and a taper. | 10 weeks, 3 or 4 runs a week (your choice) |
+| **Half marathon** | You run 30 minutes comfortably. Long runs building to about 2 hours, with a taper. | 12 weeks, 3 or 4 runs a week (your choice) |
+| **Faster half marathon** | You have run a half marathon. Interval sessions, tempo runs and long runs building to 110 minutes, with a taper. | 10 weeks, 3 or 4 runs a week (your choice) |
+| **Beginner marathon** | You can run 10K. Long runs building to 2½ hours, an easier week every fourth and a three-week taper. | 18 weeks, 3 or 4 runs a week (your choice) |
 | **Marathon** | You already run regularly. Long runs building to about 2¾ hours, an easier week every fourth and a taper. | 16 weeks, 3 to 4 runs a week |
+| **Advanced marathon** | You run five days a week. Speed or tempo work, middle runs and long runs building to 3 hours, with a taper. | 16 weeks, 3 to 5 runs a week |
+
+For the Zone 2 base, half marathon, 10K to half marathon, faster half marathon and beginner marathon programs you can choose **3 runs a week** or **4 runs a week** before you start. The four-run version adds a short easy run, so the long run is a smaller share of your week.
+
+The faster 5K, faster 10K, faster half marathon and advanced marathon plans also use **strides** (six quick 20 second efforts at the end of an easy run), **tempo runs** (a steady, comfortably hard stretch of 15 to 35 minutes), **hill repeats** (hard 45 to 75 second efforts uphill with an easy walk or jog back down) and, in the advanced marathon, **marathon-pace blocks** of 40 to 50 minutes inside the long run in the later weeks.
+
+The Zone 2 base holds its runs to a heart rate range instead of a pace, shows it on the Record screen with an above or below cue, and falls back to the talk test without a heart rate reading. See [Zone 2 Base Program](/features/exercises/zone-2-program).
 
 Each workout is a timed plan (a warm-up, the run, a cool-down) that follows the same steps, cues and laps as an interval plan. Runs in the longer programs are timed by minutes, not distance, and the easy runs are meant to be at a pace you could chat at. **Change program** (on the Training programs screen) switches to another one and starts it at week 1.
 
@@ -149,6 +169,16 @@ On the program card you choose when the workouts show up in your Diary. **Days i
 
 **Schedule and goal date.** Under the program card a **Schedule** list shows the date of each remaining workout, the day you finish, and, if you set a **Goal date** (for example a race day), whether the program fits before it. If it does not, add a run day or move the date. Nothing is scheduled after the goal date. The Diary card stops when you switch the program off or finish it.
 
+**Realign your plan.** With run days and a goal date (a race day, say), the program screen shows a **Realign your plan** card when the rest of the plan no longer fits the days you have left, for example after missing a couple of weeks. It rebuilds what is left so the last workout still lands on your goal date, and shows you the before and after first: how many workouts are left and the day you would finish, then each workout it drops, folds or repeats, in plain words. Nothing changes until you tap **Realign plan**; **Not now** leaves the plan as it is.
+
+- **Never skipped:** the taper and the final workout (the race, in a race plan).
+- **What goes first:** a workout that repeats another in its week, then the shortest easy run of a week, then the long run of a lighter week is folded into the next. The long runs that build up your longest run are kept, and if you run three or more days a week you keep at least two a week.
+- **A limit:** it drops at most six workouts at once. If your goal needs more, or too few weeks are left for the distance (the distance is read from your longest run), the card says so honestly instead of squeezing the plan, and offers: **move your goal** to the day the whole plan would end, **plan a shorter race**, or **continue anyway**, which shows what dropping as many workouts as needed would look like before you accept. If there is no room even for the taper, there is no continue option.
+- **More time than workouts:** if you started early or moved the goal later and there is at least a week to spare, it offers to repeat your first base weeks (up to two whole weeks plus single runs, eight workouts at most) so you reach race week on time. Anything left over stays empty.
+- **Coming back after a gap:** after two weeks away the next two workouts are eased by 15%, after four weeks the next three by 25% (the same rule as **Ease back in**), and those workouts are never the ones dropped, so you do not jump straight back to where you left off.
+
+Ask Sparky can do the same in chat: it explains what would change and only realigns after you agree. API keys that are read-only cannot realign (reading the program is still allowed).
+
 **Runs logged some other way.** If you logged a run today that was not recorded as the program workout (from your watch, an import or typed in), the Diary card offers **Count it**, which counts that run as today's workout. It is only a suggestion based on the activity's name and length, and nothing is counted until you tap it.
 
 **Seeing it later.** A run or walk that counted as a program workout says so when you open it from the Diary: a card under the date reads **Part of your training program** with the program and workout, such as "Beginner 5K · Week 3, run 2".
@@ -162,6 +192,17 @@ Your place in the program is saved to your SparkyFitness server (only you can se
 **Ask Sparky to adjust it.** The AI assistant can see your program and your recent runs. Ask "How am I doing on my 5K program?" or tell it things like "my knee hurt this week" or "that last run was too hard", and it can suggest a change: repeat a week, move you to a different workout, or ease the running time in your next workouts by up to 30% (or lengthen it by at most 10% at a time). However many times it adjusts, running time in a workout never ends up more than 30% below or 10% above the original plan. It can also change your schedule: "run Monday, Wednesday and Saturday", "start the program next Monday" or "my race is on December 6". It only changes workouts you have not done yet, always asks you to confirm first, and keeps a short log of what it changed. For two weeks after a change, the program card on the Training programs screen says what changed and when.
 
 This is a common beginner structure, not medical advice: if you are unsure about starting to run, check with your doctor first.
+
+---
+
+## Running goals
+
+At the top of **Library → Training programs** the **Running goals** card holds two optional goals. They are separate from the training program, so you can set either, both, or use them without a program.
+
+- **Weekly distance.** Type the distance you want to run each week, in kilometers or miles to match your distance setting. The card shows how far you have run this week, a progress bar, and how much a day the rest of the week needs to reach the goal (or that you have reached it). The week starts on the day set in your preferences. Only runs count: walks, rides, gym cardio and entries with no distance are left out. A run is recognized by its activity name, the same way personal records do it, so a run logged as "Morning workout" will not count until it is named as a run.
+- **Race.** Give a race a day, and optionally a name and a distance. The card counts down the days ("31 days to go", "Race day is today") and, once the day has passed, says how long ago it was. Choosing **Remove race** clears the name, distance and day together.
+
+Goals belong to your account and sync between devices. They are private: they are not shared with family or friends you delegate access to. Sparky's AI assistant does not read or change them yet.
 
 ---
 
@@ -210,6 +251,12 @@ A watch-only recording buzzes at every completed kilometre or mile, and speaks i
 
 ---
 
+## Pace zones
+
+Exercise Statistics > Cardio shows five training paces above your session list, easy to hard: **Easy**, **Steady** (about marathon pace), **Threshold**, **Interval** and **Repetition**, in your distance unit.
+
+If you have run a [fitness test](/features/exercises/fitness-tests), the zones are built from your latest test and the card says so. Otherwise they are built around your threshold pace, the pace you could hold for about an hour. The best outdoor run of 3 to 25 km in the past 90 days sets it (the effort is carried to an hour with Riegel's formula, so a faster 5K gives faster zones). With no run in that range, the zones are estimated from the average of your recent runs and the card says they are less precise. Treadmill and other runs without a GPS track are not used. They are estimates, not a lab test, and they refresh as you run.
+
 ## How the numbers are worked out
 
 - Fixes with a poor accuracy radius, impossible jumps and standing-still jitter are filtered out.
@@ -220,7 +267,15 @@ A watch-only recording buzzes at every completed kilometre or mile, and speaks i
 
 ## Maps on Android
 
-The route map uses Apple Maps on iOS. On Android it uses Google Maps when the build was made with a Google Maps API key; without one, Android shows the route as a plain line instead. See [Environment Variables](/install/environment-variables) for `GOOGLE_MAPS_ANDROID_API_KEY`.
+The route map uses Apple Maps on iOS. On Android it uses OpenStreetMap (drawn natively with MapLibre) unless the build was made with a Google Maps API key, in which case it keeps Google Maps. The OpenStreetMap path needs no key, billing account or Google Play Services; see [Environment Variables](/install/environment-variables) for `GOOGLE_MAPS_ANDROID_API_KEY`. Its tiles come from OpenFreeMap and need a network connection; when they cannot load, the map area stays blank while the rest of the screen works normally.
+
+## Weather
+
+A GPS-recorded activity can carry the weather at its start: temperature, conditions, wind and humidity. The temperature and conditions show as a **Weather** tile on the activity's detail screen (in your temperature unit, set under **Settings → Preferences → Temperature Unit** on the web), and the web shows the full set in the activity report. Activities imported from Garmin already carry theirs, and it is never replaced.
+
+It is off until a weather provider is available to you. In **Settings → External Providers** add a provider of the type **Weather (Open-Meteo compatible)**, or use one the admin made public or a family member shared with you. Nothing is pre-filled: you enter the server URL yourself. `https://api.open-meteo.com` is Open-Meteo's public server (its archive for older activities is served from `archive-api.open-meteo.com`, which the server uses on its own); a self-hosted Open-Meteo serves both under one URL. Open-Meteo's free service is for **non-commercial use only**; for commercial use enter `https://customer-api.open-meteo.com` and the API key you bought (sent as `apikey`), or run your own server.
+
+Once you have a provider, the server looks the weather up after the route is saved. It sends the time the activity started and its start place, rounded to two decimals (about 1 km), to that server. Nothing is sent from your phone, and the server needs outbound internet access. Activities from the last 7 days are looked up on the forecast service, older ones on the archive. Saving the activity never waits on the lookup, and if there is no provider, the address is not allowed, or the lookup fails, the activity simply has no weather. As for other providers, a non-admin cannot point it at a private or internal address unless the operator allows it. Indoor sessions have no route, so they get none.
 
 ## VO2 max trend
 
@@ -231,20 +286,34 @@ If your Apple Watch or Health Connect source records **VO2 max**, turn on VO2 ma
 ## Not included yet
 
 - Live Activity and lock-screen stats.
-- Tracking with the watch's own GPS, on Apple Watch or Wear OS, so the phone can stay behind.
-- Wear OS controls and heart rate.
 
 After a program workout is saved, the summary asks how hard it was, from 1 (very easy) to 10 (all out), and keeps your answer with the program. A rating of 8 or more offers to repeat the workout, and 3 or less offers to skip the next one. Two hard or two easy workouts in a row get a note, and Sparky can see your recent ratings when you ask how your program is going. Nothing in the program changes unless you tap the button or agree to something Sparky suggests.
+
+## Cadence and stride length
+
+For a run, the app also works out your **cadence** (steps per minute while you were moving) and **stride length** (distance divided by steps) from your phone's step count, so you can check your form. They show on the activity in your diary and on the summary screen after you save, in steps per minute (spm) and metres, or feet with the miles setting. Treadmill runs count as well as outdoor ones.
+
+- **Phone recordings** use the steps over the recording. A paused outdoor recording shows cadence but no stride, because its GPS distance and step window do not line up.
+- **Runs recorded on the Apple Watch** use the steps the watch counted, then the steps Apple Health has for the run, then the steps your phone counted if you carried it. A run the watch had to pick back up part-way through (for example after the app was closed) does not use the watch's count, because it only covers the part after the restart. If the steps are too few, or too few for the distance covered, nothing is shown. The app never asks for Motion & Fitness access just to do this: if you have not allowed it, the run is saved without them.
+- **After correcting a treadmill distance** (see below), the stride length is worked out again from the corrected distance.
+
+**Library → Exercise statistics → Cardio** has a **Running form** card showing your latest cadence and stride length, the average for the range, how the latest run compares with the earlier ones, and a bar for each recent run. It follows the range chosen at the top of the screen.
 
 ## Personal records
 
 **Library → Personal records** lists your best efforts at 1 km, 1 mile, 5 km, 10 km, 15 km, the half marathon and the marathon, grouped by sport (running, walking, cycling and so on). Records come from your recorded and imported cardio activities, are only compared within one sport, and are the same ones the web Reports page shows.
 
-When a run you just saved set one or more of them, the summary screen shows a **New personal record** card with the distance and time, and a link to the full list. A run recorded on the watch shows it too.
+A record is the time for exactly that distance. For an activity with a GPS track (or the distance series of an indoor run), SparkyFitness finds the fastest stretch of that distance inside it, so your fastest 5 km within a 10 km run counts as a 5 km record. An activity with no track only counts when its distance is within about 2% under to 5% over the standard, and its time is scaled to the exact distance by its average pace. A 5.8 km run with no track is not a 5 km record.
+
+A time faster than the sport allows never counts, because the activity's time or distance must be wrong: for example a test stopped after a few seconds but saved with its full distance, or an import with a bad value. The limit is 12 metres a second for running (so no 5 km under about 7 minutes), 7 for walking and hiking, 30 for cycling and 5 for swimming; a treadmill run counts as running and an exercise bike as cycling. Other sports, such as rowing, ellipticals, stair climbers or skiing, hold no distance records, so they have no limit. If the fastest stretch of a distance inside a GPS track or distance series is over the limit (a jump in the recorded distance), that track or series gives no time for that distance at all, not even from its slower stretches; the activity's own pace can still count when its distance nearly matches the standard. If an activity's own time or distance is wrong, correct it and it can count again. Correcting an indoor run's distance (see [Correcting a treadmill distance](#correcting-a-treadmill-distance)) also rescales its distance series, which can bring a refused stretch under the limit, although the jump itself stays; a GPS track cannot be corrected this way.
+
+When none of your activities holds a record yet, the list shows a single **Best Effort** card with your longest activity over 0.5 km instead, passing over any that is faster than its sport allows.
+
+When a run you just saved set one or more records, or became your Best Effort, the summary screen shows a **New personal record** card with the distance and time, and a link to the full list. A run recorded on the watch shows it too.
 
 ## Correcting a treadmill distance
 
-A run recorded on the watch indoors has no route, so its distance is the watch's estimate from your arm and step motion, which can be off. On the summary screen (tap the "Run from your watch saved" message) a **Treadmill distance** card lets you enter what the machine showed. The distance, pace and lap distances update, and heart rate and calories are kept. Runs with a GPS route get their distance from the route and cannot be changed this way.
+A run recorded on the watch indoors has no route, so its distance is the watch's estimate from your arm and step motion, which can be off. On the summary screen (tap the "Run from your watch saved" message) a **Treadmill distance** card lets you enter what the machine showed. The distance, pace, lap distances and stride length update, and heart rate and calories are kept. Runs with a GPS route get their distance from the route and cannot be changed this way.
 
 ## Following a watch run on the phone
 

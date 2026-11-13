@@ -1,6 +1,4 @@
-BEGIN;
 
 ALTER TABLE water_intake
 ALTER COLUMN water_ml TYPE NUMERIC(10, 3);
 
-COMMIT;

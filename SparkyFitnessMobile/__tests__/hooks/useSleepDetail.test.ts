@@ -55,6 +55,27 @@ describe('useSleepDetail', () => {
     expect(result.current.isError).toBe(false);
   });
 
+  test('tells the night from a nap on the same day', async () => {
+    mockFetchSleepEntries.mockResolvedValue([
+      buildSleepEntry({ id: ENTRY_ID }),
+      buildSleepEntry({
+        id: 'nap',
+        bedtime: '2026-08-23T13:00:00.000Z',
+        wake_time: '2026-08-23T13:40:00.000Z',
+        duration_in_seconds: 40 * 60,
+        time_asleep_in_seconds: 35 * 60,
+      }),
+    ]);
+
+    const night = renderDetail();
+    await waitFor(() => expect(night.result.current.entry).not.toBeNull());
+    expect(night.result.current.isMainSleep).toBe(true);
+
+    const nap = renderDetail('nap');
+    await waitFor(() => expect(nap.result.current.entry).not.toBeNull());
+    expect(nap.result.current.isMainSleep).toBe(false);
+  });
+
   test('a failing entry fetch surfaces isError', async () => {
     mockFetchSleepEntries.mockRejectedValue(
       new Error('Network request failed')

@@ -40,6 +40,18 @@ function describeDbError(error: unknown): string | null {
   return null;
 }
 
+/**
+ * True for Postgres's permission refusal (SQLSTATE 42501), which row-level
+ * security raises when a family member's grant doesn't cover a write.
+ */
+export function isPermissionDenied(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    (error as { code?: unknown }).code === '42501'
+  );
+}
+
 // Standard error builders
 export const ERRORS = {
   INVALID_DATE: (val: string) =>
@@ -76,6 +88,7 @@ export const ERRORS = {
    * what actually broke is to grep the server log.
    */
   DB_ERROR: (error?: unknown) => {
+    if (isPermissionDenied(error)) return ERRORS.NOT_ALLOWED();
     const detail = describeDbError(error);
     return toolError(
       'DB_ERROR',
@@ -93,6 +106,13 @@ export const ERRORS = {
     toolError('UNAUTHORIZED', 'Authentication required. Please reconnect.'),
 
   FORBIDDEN: (reason: string) => toolError('FORBIDDEN', reason),
+
+  NOT_ALLOWED: () =>
+    toolError(
+      'FORBIDDEN',
+      "The user's access to this account doesn't allow that.",
+      "Do NOT retry. Tell the user their access doesn't cover it, and stop."
+    ),
 
   INVALID_ACTION: (action: string, validActions: string[]) =>
     toolError(
@@ -116,14 +136,30 @@ export function isToolErrorText(text: string): boolean {
 
 /**
  * Renders a zod parse failure as a chat-visible VALIDATION error,
- * formatted as "path: message; path2: message2".
+ * formatted as "path: message; path2: message2". `fieldNames` renames path
+ * keys, for a tool that validates with a shared schema whose fields it
+ * publishes under other names.
  */
-export function formatZodError(error: ZodError): string {
+export function formatZodError(
+  error: ZodError,
+  fieldNames: Readonly<Record<string, string>> = {}
+): string {
+  // Unrecognized-keys issues first: they name the real offender (a key the
+  // action doesn't accept), while field-type issues elsewhere (e.g.
+  // "exercises: Invalid input") otherwise mask them and send the model
+  // off to "fix" the wrong parameter.
+  const sorted = [
+    ...error.issues.filter((i) => i.code === 'unrecognized_keys'),
+    ...error.issues.filter((i) => i.code !== 'unrecognized_keys'),
+  ];
   return ERRORS.VALIDATION(
-    error.issues
-      .map((i) =>
-        i.path.length > 0 ? `${i.path.join('.')}: ${i.message}` : i.message
-      )
+    sorted
+      .map((i) => {
+        const path = i.path.map((key) =>
+          typeof key === 'string' ? (fieldNames[key] ?? key) : key
+        );
+        return path.length > 0 ? `${path.join('.')}: ${i.message}` : i.message;
+      })
       .join('; ')
   );
 }

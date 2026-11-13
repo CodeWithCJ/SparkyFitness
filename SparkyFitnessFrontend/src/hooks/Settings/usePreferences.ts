@@ -1,6 +1,9 @@
 import { apiCall } from '@/api/api';
 import { preferencesKeys } from '@/api/keys/settings';
 import { upsertUserPreferences } from '@/api/Settings/preferences';
+import { dailyProgressKeys, diaryReportKeys } from '@/api/keys/diary';
+import { goalKeys } from '@/api/keys/goals';
+import { reportKeys } from '@/api/keys/reports';
 import {
   useQueryClient,
   useMutation,
@@ -35,8 +38,27 @@ export const useUpdatePreferencesMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: upsertUserPreferences,
-    onSuccess: (data) => {
+    onMutate: async (preferences) => {
+      if (preferences.adaptive_activity_separate === undefined) return;
+      // An inactive pre-save request can otherwise finish after invalidation
+      // and make the old calorie target fresh again until the next reload.
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: dailyProgressKeys.all }),
+        queryClient.cancelQueries({ queryKey: goalKeys.all }),
+        queryClient.cancelQueries({ queryKey: diaryReportKeys.all }),
+        queryClient.cancelQueries({ queryKey: reportKeys.all }),
+      ]);
+    },
+    onSuccess: async (data, preferences) => {
       queryClient.setQueryData(preferencesKeys.user(), data);
+      if (preferences.adaptive_activity_separate !== undefined) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all }),
+          queryClient.invalidateQueries({ queryKey: goalKeys.all }),
+          queryClient.invalidateQueries({ queryKey: diaryReportKeys.all }),
+          queryClient.invalidateQueries({ queryKey: reportKeys.all }),
+        ]);
+      }
     },
   });
 };

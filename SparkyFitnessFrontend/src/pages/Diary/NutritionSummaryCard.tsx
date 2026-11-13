@@ -49,6 +49,7 @@ interface NutritionSummaryCardProps {
   selectedDate: string;
   dayTotals?: DayTotals;
   goals: ExpandedGoals;
+  calorieBudget?: number;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
     value: number,
@@ -62,6 +63,7 @@ const NutritionSummaryCard = ({
   selectedDate,
   dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
   goals,
+  calorieBudget,
   energyUnit,
   convertEnergy,
   customNutrients = [],
@@ -152,7 +154,10 @@ const NutritionSummaryCard = ({
               nutrient === 'carbs' && showNetCarbs
                 ? getNetCarbsValue(dayTotals.carbs, dayTotals.dietary_fiber)
                 : total;
-            const rawGoal = goals[nutrient as keyof ExpandedGoals];
+            const rawGoal =
+              nutrient === 'calories' && calorieBudget !== undefined
+                ? calorieBudget
+                : goals[nutrient as keyof ExpandedGoals];
             const goal =
               typeof rawGoal === 'number'
                 ? rawGoal

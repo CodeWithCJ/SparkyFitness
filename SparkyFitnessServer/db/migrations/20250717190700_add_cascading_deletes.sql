@@ -1,6 +1,5 @@
 -- Migration to add cascading deletes and clean up orphaned records
 
-BEGIN;
 
 -- Phase 1: Clean up existing orphaned records
 
@@ -80,4 +79,3 @@ ALTER TABLE public.exercise_entries
 ADD CONSTRAINT fk_exercise_entries_exercise_id
 FOREIGN KEY (exercise_id) REFERENCES public.exercises(id) ON DELETE CASCADE;
 
-COMMIT;

@@ -13,6 +13,7 @@ import {
   METERS_PER_MILE,
 } from '../utils/gpsRecording';
 import { programSummary } from '../utils/runProgramSummary';
+import type { WatchRunForm } from './stepDistance';
 import type { WatchRunPayload } from '../utils/watchRun';
 import { watchRunSummary } from '../utils/watchRunSummary';
 
@@ -26,7 +27,8 @@ export function announceWatchRun(
   payload: WatchRunPayload,
   distanceUnit: 'km' | 'miles',
   t: TFunction,
-  entryId?: string
+  entryId?: string,
+  form?: WatchRunForm | null
 ): void {
   const stored =
     queryClient.getQueryData<RunProgramResponse>(runProgramQueryKey);
@@ -42,7 +44,8 @@ export function announceWatchRun(
           payload.program.index
         )
       : null,
-    entryId
+    entryId,
+    form
   );
   const unitMeters = distanceUnit === 'miles' ? METERS_PER_MILE : METERS_PER_KM;
   const unit =
@@ -63,13 +66,24 @@ export function announceWatchRun(
         ? t('runSummary.watchWalkSaved', {
             defaultValue: 'Walk from your watch saved',
           })
-        : t('runSummary.watchRunSaved', {
-            defaultValue: 'Run from your watch saved',
-          }),
-    text2: `${distance} · ${formatClock(summary.activeSeconds)}\n${t(
-      'runSummary.tapForSummary',
-      { defaultValue: 'Tap to see the summary' }
-    )}`,
+        : payload.kind === 'jumpRope'
+          ? t('runSummary.watchJumpRopeSaved', {
+              defaultValue: 'Jump Rope from your watch saved',
+            })
+          : t('runSummary.watchRunSaved', {
+              defaultValue: 'Run from your watch saved',
+            }),
+    // A jump rope covers no distance, so only the clock is worth showing.
+    text2:
+      payload.kind === 'jumpRope'
+        ? `${formatClock(summary.activeSeconds)}\n${t(
+            'runSummary.tapForSummary',
+            { defaultValue: 'Tap to see the summary' }
+          )}`
+        : `${distance} · ${formatClock(summary.activeSeconds)}\n${t(
+            'runSummary.tapForSummary',
+            { defaultValue: 'Tap to see the summary' }
+          )}`,
     visibilityTime: 8000,
     onPress: () => {
       Toast.hide();

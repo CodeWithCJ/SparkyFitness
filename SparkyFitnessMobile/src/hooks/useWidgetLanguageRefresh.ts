@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
-import i18n from '../localization/i18n';
+import i18n, {
+  normalizeLanguage,
+  type SupportedLanguage,
+} from '../localization/i18n';
 import type { LanguagePreference } from '../localization';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { CalorieWidgetBridge } from '../services/CalorieWidgetBridge';
@@ -9,7 +12,7 @@ import { addLog } from '../services/LogService';
 
 type WidgetSyncState = {
   preference: LanguagePreference;
-  effectiveLanguage: 'en' | 'pl';
+  effectiveLanguage: SupportedLanguage;
 };
 
 /**
@@ -19,10 +22,10 @@ type WidgetSyncState = {
  * also receives the effective i18next language and commits it as a rendering
  * cache before reload. That cache is not a preference or locale authority; it
  * only bridges the live-process configuration-change window deterministically.
- * Android <=12 continues to use the widget-only en/pl override.
+ * Android <=12 continues to use the widget-only override.
  *
  * Runs are serialized and deduped by {preference, effectiveLanguage}. Locale
- * preparation must complete before either widget reload. Any preparation or
+ * preparation must complete before any widget reload. Any preparation or
  * partial reload failure leaves the state unapplied so a later signal retries.
  */
 export function useWidgetLanguageRefresh(): void {
@@ -37,8 +40,7 @@ export function useWidgetLanguageRefresh(): void {
 
     const runSync = async (): Promise<void> => {
       const preference = useAppPreferencesStore.getState().languagePreference;
-      const effectiveLanguage: 'en' | 'pl' =
-        i18n.resolvedLanguage === 'pl' ? 'pl' : 'en';
+      const effectiveLanguage = normalizeLanguage(i18n.resolvedLanguage);
       const desired: WidgetSyncState = { preference, effectiveLanguage };
 
       if (
@@ -66,9 +68,10 @@ export function useWidgetLanguageRefresh(): void {
       const results = await Promise.allSettled([
         CalorieWidgetBridge.reloadWidget(),
         CalorieWidgetBridge.reloadMacroWidget(),
+        CalorieWidgetBridge.reloadWaterWidget(),
       ]);
 
-      const [calorieResult, macroResult] = results;
+      const [calorieResult, macroResult, waterResult] = results;
       let fullyApplied = true;
       if (calorieResult.status === 'rejected') {
         void addLog(
@@ -80,6 +83,13 @@ export function useWidgetLanguageRefresh(): void {
       if (macroResult.status === 'rejected') {
         void addLog(
           '[useWidgetLanguageRefresh] Macro widget reload failed',
+          'ERROR'
+        );
+        fullyApplied = false;
+      }
+      if (waterResult.status === 'rejected') {
+        void addLog(
+          '[useWidgetLanguageRefresh] Water widget reload failed',
           'ERROR'
         );
         fullyApplied = false;

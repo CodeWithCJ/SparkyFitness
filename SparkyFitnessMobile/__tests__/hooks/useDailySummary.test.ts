@@ -276,7 +276,7 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.fiber.consumed).toBe(4);
     });
 
-    test('preserves the server-computed calorie balance', async () => {
+    test('preserves server calorie totals and normalizes older progress', async () => {
       const serverBalance = makeCalorieBalance({
         eaten: 1600,
         burned: 1200,
@@ -326,7 +326,10 @@ describe('useDailySummary', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.summary?.calorieBalance).toEqual(serverBalance);
+      expect(result.current.summary?.calorieBalance).toEqual({
+        ...serverBalance,
+        progress: 47,
+      });
     });
 
     test('includes water intake from API', async () => {
@@ -417,6 +420,8 @@ describe('useDailySummary', () => {
       });
 
       expect(result.current.summary?.waterFromFood).toBe(250);
+      // What a "remove a drink" can take off, sent to the Android widget.
+      expect(result.current.summary?.waterManual).toBe(500);
     });
 
     test('waterFromFood defaults to 0 on a server that predates the breakdown', async () => {
@@ -433,6 +438,8 @@ describe('useDailySummary', () => {
       });
 
       expect(result.current.summary?.waterFromFood).toBe(0);
+      // Unknown, not 0: the widget then leaves − on and the server decides.
+      expect(result.current.summary?.waterManual).toBeNull();
     });
 
     test('includes server-computed stepCalories from daily summary response', async () => {

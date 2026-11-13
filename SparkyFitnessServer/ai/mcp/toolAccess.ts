@@ -39,8 +39,9 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
     'list_workout_plans',
     'get_workout_plan',
     'get_active_workout_plan',
+    'propose_plan_changes',
   ],
-  sparky_manage_run_program: ['get_run_program'],
+  sparky_manage_run_program: ['get_run_program', 'get_fitness_tests'],
   // food
   sparky_manage_food: [
     'search_food',
@@ -60,6 +61,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_food_usage: 'read',
   sparky_manage_favorites: ['list_favorites'],
   sparky_manage_meal_plans: ['list_meal_plans', 'get_meal_plan'],
+  sparky_food_assistant_state: ['list_preferences', 'list_tasks', 'get_task'],
   sparky_manage_custom_nutrients: [
     'list_custom_nutrients',
     'get_custom_nutrient',
@@ -78,6 +80,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
     'get_fasting_status',
     'get_biometrics_history',
     'get_custom_metrics_history',
+    'get_oral_care_summary',
   ],
   sparky_manage_progress_photos: ['list_photo_dates', 'list_photos'],
   // recalculate_baseline stores a new baseline, so it stays out.
@@ -105,6 +108,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_30_day_trends: 'read',
   sparky_detect_patterns: 'read',
   sparky_generate_coaching_plan: 'read',
+  sparky_review_calorie_target: 'read',
   sparky_check_engagement: 'read',
   sparky_get_logging_streak: 'read',
   sparky_get_contextual_nudge: 'read',
@@ -120,6 +124,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_report: 'read',
   sparky_get_daily_report: 'read',
   sparky_get_dashboard: 'read',
+  sparky_compare_metrics: 'read',
   // medications
   sparky_manage_medications: [
     'list_medications',

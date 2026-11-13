@@ -11,6 +11,7 @@ import BottomSheetPicker, {
 } from '../BottomSheetPicker';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
+import ZoneCheckNote from './ZoneCheckNote';
 import type { ProgramScheduleChange } from '../../services/runProgramService';
 import { toLocalDateString } from '../../utils/dateUtils';
 import { formatDayLabel } from '../../utils/dayLabel';
@@ -20,6 +21,8 @@ import {
   planMinutes,
   programOutline,
   RUN_PROGRAMS,
+  runMinutes,
+  type IntervalPlan,
   type ProgramStatus,
   type ProgramWorkout,
   type RunProgram,
@@ -29,6 +32,11 @@ import {
 /** A program's name: the person's own for a custom one, else the built-in's. */
 export function programTitle(t: TFunction, program: RunProgram): string {
   return program.custom?.name || programName(t, program.id);
+}
+
+/** Walking programs quote brisk time; run programs quote the whole workout. */
+function workoutMinutes(program: RunProgram, plan: IntervalPlan): number {
+  return program.activity === 'walk' ? runMinutes(plan) : planMinutes(plan);
 }
 
 /** "Workout 4" or the person's own name for a workout of a custom program. */
@@ -59,6 +67,14 @@ export function programName(t: TFunction, id: string): string {
       return t('recordActivity.program.name.fiveToTenK', {
         defaultValue: '5K to 10K',
       });
+    case 'zone2Base':
+      return t('recordActivity.program.name.zone2Base', {
+        defaultValue: 'Zone 2 base',
+      });
+    case 'zone2Base4':
+      return t('recordActivity.program.name.zone2Base4', {
+        defaultValue: 'Zone 2 base (4 runs a week)',
+      });
     case 'faster5k':
       return t('recordActivity.program.name.faster5k', {
         defaultValue: 'Faster 5K',
@@ -70,6 +86,58 @@ export function programName(t: TFunction, id: string): string {
     case 'marathon':
       return t('recordActivity.program.name.marathon', {
         defaultValue: 'Marathon',
+      });
+    case 'walk10k':
+      return t('recordActivity.program.name.walk10k', {
+        defaultValue: 'Brisk walk 10K',
+      });
+    case 'returnToRunning':
+      return t('recordActivity.program.name.returnToRunning', {
+        defaultValue: 'Return to running',
+      });
+    case 'gentle5k':
+      return t('recordActivity.program.name.gentle5k', {
+        defaultValue: 'Gentle 5K',
+      });
+    case 'beginner10k':
+      return t('recordActivity.program.name.beginner10k', {
+        defaultValue: 'Beginner 10K',
+      });
+    case 'faster10k':
+      return t('recordActivity.program.name.faster10k', {
+        defaultValue: 'Faster 10K',
+      });
+    case 'tenKToHalf':
+      return t('recordActivity.program.name.tenKToHalf', {
+        defaultValue: '10K to half marathon',
+      });
+    case 'fasterHalf':
+      return t('recordActivity.program.name.fasterHalf', {
+        defaultValue: 'Faster half marathon',
+      });
+    case 'beginnerMarathon':
+      return t('recordActivity.program.name.beginnerMarathon', {
+        defaultValue: 'Beginner marathon',
+      });
+    case 'advancedMarathon':
+      return t('recordActivity.program.name.advancedMarathon', {
+        defaultValue: 'Advanced marathon',
+      });
+    case 'halfMarathon4':
+      return t('recordActivity.program.name.halfMarathon4', {
+        defaultValue: 'Half marathon (4 runs a week)',
+      });
+    case 'tenKToHalf4':
+      return t('recordActivity.program.name.tenKToHalf4', {
+        defaultValue: '10K to half marathon (4 runs a week)',
+      });
+    case 'fasterHalf4':
+      return t('recordActivity.program.name.fasterHalf4', {
+        defaultValue: 'Faster half marathon (4 runs a week)',
+      });
+    case 'beginnerMarathon4':
+      return t('recordActivity.program.name.beginnerMarathon4', {
+        defaultValue: 'Beginner marathon (4 runs a week)',
       });
     default:
       return id;
@@ -108,6 +176,81 @@ export function programDescription(t: TFunction, id: string): string {
       return t('recordActivity.program.marathonDescription', {
         defaultValue:
           'Marathon: sixteen weeks, four runs a week, with long runs building to about 2¾ hours and a taper. For people who already run regularly.',
+      });
+    case 'walk10k':
+      return t('recordActivity.program.walk10kDescription', {
+        defaultValue:
+          'Brisk walk 10K: ten weeks, three walks a week, with no running. You build up to a 10K walk of about an hour and three quarters.',
+      });
+    case 'returnToRunning':
+      return t('recordActivity.program.returnToRunningDescription', {
+        defaultValue:
+          'Return to running: four weeks, three runs a week, for easing back in after a break. You build from one-minute runs to about 20 minutes of running. Leave a day or two between runs and keep the pace easy. If you are coming back from an injury, check with a physio or doctor first.',
+      });
+    case 'gentle5k':
+      return t('recordActivity.program.gentle5kDescription', {
+        defaultValue:
+          'Gentle 5K: twelve weeks, three runs a week. A slower start than Beginner 5K, with very short runs between long walks, building to 30 minutes of running.',
+      });
+    case 'beginner10k':
+      return t('recordActivity.program.beginner10kDescription', {
+        defaultValue:
+          'Beginner 10K: twelve weeks, three runs a week, starting from walking. You build up to running for an hour.',
+      });
+    case 'faster10k':
+      return t('recordActivity.program.faster10kDescription', {
+        defaultValue:
+          'Faster 10K: eight weeks of speed sessions, easy runs and tempo runs, for when you already run 10K.',
+      });
+    case 'tenKToHalf':
+      return t('recordActivity.program.tenKToHalfDescription', {
+        defaultValue:
+          '10K to half marathon: ten weeks, three runs a week, for when you can run 10K. Long runs build from 65 to 115 minutes.',
+      });
+    case 'fasterHalf':
+      return t('recordActivity.program.fasterHalfDescription', {
+        defaultValue:
+          'Faster half marathon: ten weeks of speed sessions, easy runs and long runs with tempo work, for when you have run a half marathon before.',
+      });
+    case 'beginnerMarathon':
+      return t('recordActivity.program.beginnerMarathonDescription', {
+        defaultValue:
+          'Beginner marathon: eighteen weeks, three runs a week, with long runs building to 2½ hours and a taper. For when you can run 10K.',
+      });
+    case 'advancedMarathon':
+      return t('recordActivity.program.advancedMarathonDescription', {
+        defaultValue:
+          'Advanced marathon: sixteen weeks, five runs a week, with speed or tempo work and long runs building to three hours. For experienced runners.',
+      });
+    case 'zone2Base':
+      return t('recordActivity.program.zone2BaseDescription', {
+        defaultValue:
+          'Zone 2 base: ten weeks, three easy runs a week held to your Zone 2 heart rate (or the talk test), building time in zone with a long run of up to 70 minutes. For when you can run 30 minutes.',
+      });
+    case 'zone2Base4':
+      return t('recordActivity.program.zone2Base4Description', {
+        defaultValue:
+          'Zone 2 base: ten weeks, four easy runs a week held to your Zone 2 heart rate (or the talk test), building time in zone with a long run of up to 70 minutes. For when you can run 30 minutes.',
+      });
+    case 'halfMarathon4':
+      return t('recordActivity.program.halfMarathon4Description', {
+        defaultValue:
+          'Half marathon: twelve weeks, four runs a week, with long runs building to about two hours. For when you run 30 minutes comfortably.',
+      });
+    case 'tenKToHalf4':
+      return t('recordActivity.program.tenKToHalf4Description', {
+        defaultValue:
+          '10K to half marathon: ten weeks, four runs a week, with long runs building to about two hours. For when you can run 10K.',
+      });
+    case 'beginnerMarathon4':
+      return t('recordActivity.program.beginnerMarathon4Description', {
+        defaultValue:
+          'Beginner marathon: eighteen weeks, four runs a week, with long runs building to 2½ hours and a taper. For when you can run 10K.',
+      });
+    case 'fasterHalf4':
+      return t('recordActivity.program.fasterHalf4Description', {
+        defaultValue:
+          'Faster half marathon: ten weeks, four runs a week, with a speed session, easy runs and a long run. For when you have run a half marathon before.',
       });
     default:
       return id;
@@ -186,9 +329,13 @@ interface Props {
   lastAdjustment?: RunProgramAdjustment | null;
   /** Epoch ms "now", from the screen, to judge whether a change is recent. */
   now: number;
+  /** Today in the account timezone, for the race day comparison; defaults to the device day. */
+  accountToday?: string;
   /** The days the workout shows in the Diary, and the first day it does. */
   schedule: RunSchedule;
   onSchedule: (change: ProgramScheduleChange) => void;
+  /** The race day from the person's running goals (YYYY-MM-DD), if one is set. */
+  raceDay?: string | null;
   /** Jump to any workout in the program (0-based index). */
   onPickWorkout: (index: number) => void;
   status: ProgramStatus | null;
@@ -218,9 +365,11 @@ const SectionHeading: React.FC<{ children: React.ReactNode }> = ({
 const InlineLink: React.FC<{
   onPress: () => void;
   children: string;
-}> = ({ onPress, children }) => (
+  testID?: string;
+}> = ({ onPress, children, testID }) => (
   <Pressable
     accessibilityRole="button"
+    testID={testID}
     onPress={onPress}
     hitSlop={8}
     className="mr-5"
@@ -236,8 +385,10 @@ const RunProgramCard: React.FC<Props> = ({
   onChooseProgram,
   lastAdjustment = null,
   now,
+  accountToday,
   schedule,
   onSchedule,
+  raceDay = null,
   onPickWorkout,
   status,
   loaded,
@@ -347,7 +498,7 @@ const RunProgramCard: React.FC<Props> = ({
                       weekOne: outline.firstWeek.join(', '),
                       peak: outline.peakRunMinutes,
                       defaultValue:
-                        'Week 1: workouts of {{weekOne}} minutes. Builds to {{peak}} minutes of running.',
+                        'Week 1: workouts of {{weekOne}} minutes. Builds to {{peak}} minutes of effort.',
                     })}
               </Text>
             );
@@ -370,20 +521,20 @@ const RunProgramCard: React.FC<Props> = ({
           label: status.program.custom
             ? t('recordActivity.program.pickOptionCustom', {
                 title: customWorkoutTitle(t, workout),
-                minutes: planMinutes(workout.plan),
+                minutes: workoutMinutes(status.program, workout.plan),
                 mark: index < status.done ? '✓ ' : '',
                 defaultValue: '{{mark}}{{title}} · {{minutes}} min',
               })
             : status.program.activity === 'walk'
               ? t('recordActivity.program.pickOptionWalk', {
                   walk: workout.day + 1,
-                  minutes: planMinutes(workout.plan),
+                  minutes: workoutMinutes(status.program, workout.plan),
                   mark: index < status.done ? '✓ ' : '',
                   defaultValue: '{{mark}}Walk {{walk}} · {{minutes}} min',
                 })
               : t('recordActivity.program.pickOption', {
                   run: workout.day + 1,
-                  minutes: planMinutes(workout.plan),
+                  minutes: workoutMinutes(status.program, workout.plan),
                   mark: index < status.done ? '✓ ' : '',
                   defaultValue: '{{mark}}Run {{run}} · {{minutes}} min',
                 }),
@@ -404,6 +555,8 @@ const RunProgramCard: React.FC<Props> = ({
       })
     : '';
   const today = toLocalDateString(new Date(now));
+  // Goal dates (the race day) are judged in the account timezone.
+  const goalToday = accountToday ?? today;
   const hasStart = !!schedule.startDay;
   const futureStart = hasStart && (schedule.startDay as string) > today;
   const dayLabel = (day: string): string => formatDayLabel(day);
@@ -428,11 +581,14 @@ const RunProgramCard: React.FC<Props> = ({
           : t('recordActivity.program.progress', {
               done: status.done,
               total: status.total,
-              minutes: status.workout ? planMinutes(status.workout.plan) : 0,
+              minutes: status.workout
+                ? workoutMinutes(status.program, status.workout.plan)
+                : 0,
               defaultValue:
                 'Workout {{done}} of {{total}} done · {{minutes}} min today',
             })}
       </Text>
+      <ZoneCheckNote program={status.program} workout={status.workout} />
       {recentChange ? (
         <Text className="text-text-secondary text-xs mt-2">
           {recentChange.source === 'assistant'
@@ -583,7 +739,7 @@ const RunProgramCard: React.FC<Props> = ({
                     'Optional, for example a race day. The schedule below says whether the program fits before it.',
                 })}
           </Text>
-          <View className="flex-row mt-2">
+          <View className="flex-row flex-wrap mt-2">
             <InlineLink onPress={() => goalCalendarRef.current?.present()}>
               {schedule.endDay
                 ? t('recordActivity.program.goalChange', {
@@ -593,6 +749,20 @@ const RunProgramCard: React.FC<Props> = ({
                     defaultValue: 'Set a goal date',
                   })}
             </InlineLink>
+            {raceDay &&
+            raceDay > goalToday &&
+            (!schedule.startDay || raceDay >= schedule.startDay) &&
+            schedule.endDay !== raceDay ? (
+              <InlineLink
+                testID="run-program-use-race-day"
+                onPress={() => onSchedule({ endDay: raceDay })}
+              >
+                {t('recordActivity.program.goalUseRaceDay', {
+                  date: dayLabel(raceDay),
+                  defaultValue: 'Use race day ({{date}})',
+                })}
+              </InlineLink>
+            ) : null}
             {schedule.endDay ? (
               <InlineLink onPress={() => onSchedule({ endDay: null })}>
                 {t('recordActivity.program.goalClear', {
@@ -669,9 +839,9 @@ const RunProgramCard: React.FC<Props> = ({
       </View>
       <CalendarSheet
         ref={goalCalendarRef}
-        selectedDate={schedule.endDay ?? addDays(today, 28)}
+        selectedDate={schedule.endDay ?? addDays(goalToday, 28)}
         onSelectDate={(day) =>
-          onSchedule({ endDay: day <= today ? null : day })
+          onSchedule({ endDay: day <= goalToday ? null : day })
         }
       />
       <CalendarSheet

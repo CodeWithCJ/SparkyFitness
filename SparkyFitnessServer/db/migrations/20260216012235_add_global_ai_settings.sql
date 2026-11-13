@@ -2,7 +2,6 @@
 -- Description: Adds is_global column to ai_service_settings table to support global (organization-wide) AI configurations
 -- Date: 2026-02-16
 
-BEGIN;
 
 -- First, make user_id nullable to support global settings
 -- This allows global settings (is_global = TRUE) to have user_id = NULL
@@ -39,4 +38,3 @@ UPDATE public.ai_service_settings
 SET is_global = FALSE 
 WHERE is_global IS NULL OR is_global IS NOT FALSE;
 
-COMMIT;

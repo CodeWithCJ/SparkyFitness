@@ -9,15 +9,50 @@ import {
   CreateExerciseEntryRequest,
   CreatePresetSessionRequest,
   UpdateExerciseEntryRequest,
+  UpdatePresetSessionRequest,
   exerciseProgressResponseSchema,
   ExerciseProgressResponse,
-  exerciseSnapshotResponseSchema,
-  ExerciseSnapshotResponse,
   PresetSessionResponse,
   presetSessionResponseSchema,
+  calorieLinkSuggestionsResponseSchema,
+  CalorieLinkSuggestionsResponse,
+  SetCalorieLinkRequest,
 } from '@workspace/shared';
 import z from 'zod';
-import { parseJsonArray } from './exerciseService';
+
+/** Synced workouts that may be the same session as this logged workout. */
+export const fetchCalorieLinkSuggestions = async (
+  entryId: string
+): Promise<CalorieLinkSuggestionsResponse> => {
+  const data = await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link/suggestions`,
+    { method: 'GET' }
+  );
+  return calorieLinkSuggestionsResponseSchema.parse(data);
+};
+
+export const setCalorieLink = async (
+  entryId: string,
+  body: SetCalorieLinkRequest
+): Promise<void> => {
+  await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    {
+      method: 'PUT',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+};
+
+export const clearCalorieLink = async (entryId: string): Promise<void> => {
+  await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    {
+      method: 'DELETE',
+    }
+  );
+};
 
 /** The user's own previously logged workout locations, most recent first. */
 export const fetchWorkoutLocations = async (): Promise<string[]> => {
@@ -47,7 +82,11 @@ export const fetchExerciseEntries = async (
 };
 
 export const createExerciseEntry = async (
-  payload: CreateExerciseEntryRequest & { imageFile: File | null }
+  payload: Omit<CreateExerciseEntryRequest, 'calories_burned'> & {
+    // Optional: when omitted the server estimates calories from the exercise.
+    calories_burned?: number;
+    imageFile: File | null;
+  }
 ): Promise<void> => {
   const { imageFile, ...entryData } = payload;
 
@@ -108,6 +147,26 @@ export const createPresetSession = async (
     body: JSON.stringify(payload),
     headers: { 'Content-Type': 'application/json' },
   });
+};
+
+/**
+ * Updates a grouped workout session (#1995 phase 1). Carries the lifecycle
+ * writes: a finished_at timestamp ends the session, null reopens a partial
+ * one. Pass the revision the client last saw; a mismatch is answered with
+ * 409 instead of silently overwriting edits made from another device.
+ */
+export const updatePresetSession = async (
+  presetEntryId: string,
+  payload: UpdatePresetSessionRequest
+): Promise<PresetSessionResponse> => {
+  return apiCall(
+    `/exercise-preset-entries/${encodeURIComponent(presetEntryId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 };
 
 /**
@@ -179,6 +238,11 @@ export const updateExerciseEntry = async (
       formData.append('distance', '');
     }
 
+    // And for calories_applied: null means "count the estimate again".
+    if (entryData.calories_applied === null) {
+      formData.append('calories_applied', '');
+    }
+
     return apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: formData,
@@ -231,29 +295,6 @@ export const getExerciseHistory = async (
     }
   );
   return response;
-};
-
-export const fetchExerciseDetails = async (
-  exerciseId: string
-): Promise<ExerciseSnapshotResponse> => {
-  const response = await apiCall(`/exercises/${exerciseId}`, {
-    method: 'GET',
-  });
-
-  const parsedResponse = { ...response };
-  const arrayFields = [
-    'images',
-    'primary_muscles',
-    'secondary_muscles',
-    'equipment',
-    'instructions',
-  ];
-
-  arrayFields.forEach((field) => {
-    parsedResponse[field] = parseJsonArray(parsedResponse[field]) || [];
-  });
-
-  return exerciseSnapshotResponseSchema.parse(parsedResponse);
 };
 
 export const fetchExerciseEntryById = async (

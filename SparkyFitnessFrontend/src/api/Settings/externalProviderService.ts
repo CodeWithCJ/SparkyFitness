@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall, HttpApiError } from '@/api/api';
 import { DataProvider } from '@/types/settings';
@@ -50,6 +51,8 @@ export const createExternalProvider = async (
         'wger',
         'usda',
         'norish',
+        'valhalla',
+        'open_meteo',
       ].includes(payload.provider_type)
         ? null
         : payload.app_id || null,
@@ -61,6 +64,8 @@ export const createExternalProvider = async (
         'free-exercise-db',
         'yazio',
         'norish',
+        'valhalla',
+        'open_meteo',
         'openfoodfacts',
         'coros_mcp',
       ].includes(payload.provider_type)
@@ -75,6 +80,7 @@ export const createExternalProvider = async (
         'strava',
         'polar',
         'coros_mcp',
+        'hevy',
       ].includes(payload.provider_type)
         ? payload.sync_frequency
         : null,
@@ -160,17 +166,32 @@ export const handleDisconnectGarmin = async () => {
   }
 };
 
+/**
+ * A manual Garmin sync answers 200 even when phases failed; `failedPhases`
+ * names them and `serviceUnreachable` says the Garmin microservice was down.
+ */
+export interface GarminManualSyncResponse {
+  health: Record<string, unknown> | null;
+  activities: Record<string, unknown> | null;
+  nutrition: Record<string, unknown> | null;
+  failedPhases: string[];
+  serviceUnreachable: boolean;
+}
+
 export const handleManualSyncGarmin = async (
   startDate?: string,
   endDate?: string,
   mock?: SyncMockOptions
-) => {
+): Promise<GarminManualSyncResponse> => {
   try {
     // Call the simplified sync endpoint.
-    await apiCall(`/integrations/garmin/sync`, {
-      method: 'POST',
-      body: JSON.stringify({ startDate, endDate, ...mock }),
-    });
+    return await apiCall<GarminManualSyncResponse>(
+      `/integrations/garmin/sync`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ startDate, endDate, ...mock }),
+      }
+    );
   } catch (error: unknown) {
     console.error('Error initiating manual Garmin sync:', error);
     throw error;
@@ -229,9 +250,13 @@ export const handleManualSyncFitbit = async (
 
 export const handleConnectOura = async () => {
   try {
-    const response = await apiCall(`/integrations/oura/authorize`, {
-      method: 'GET',
-    });
+    const redirectUri = `${window.location.origin}/oura/callback`;
+    const response = await apiCall(
+      `/integrations/oura/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`,
+      {
+        method: 'GET',
+      }
+    );
     if (response && response.authUrl) {
       window.location.href = response.authUrl;
     } else {
@@ -560,8 +585,13 @@ const fetchBaseProviders = async (): Promise<ExternalDataProvider[]> => {
 
 export interface GarminStatusResponse {
   isLinked: boolean;
+  /** When the provider row last changed; use lastSyncAt for the last sync. */
   lastUpdated: string;
+  /** Last completed sync; null if the account never synced. */
+  lastSyncAt?: string | null;
   tokenExpiresAt: string;
+  /** Whether the Garmin microservice answered; only sent while linked. */
+  serviceReachable?: boolean;
 }
 
 export const fetchGarminStatus = async (): Promise<GarminStatusResponse> => {
@@ -642,6 +672,42 @@ export const handleDisconnectLiftosaur = async (providerId?: string) => {
   }
 };
 
+const fetchIntervalsStatus = async (
+  providerId: string
+): Promise<{
+  connected: boolean;
+  lastSyncAt: string | null;
+  pushNutrition: boolean;
+  pushedDays: number;
+  pushedSince: string | null;
+}> => {
+  return apiCall(
+    `/integrations/intervals/status?providerId=${encodeURIComponent(providerId)}`
+  );
+};
+
+export const handleDisconnectIntervals = async (providerId?: string) => {
+  if (
+    !confirm(
+      i18n.t(
+        'integrations.intervalsDisconnectConfirm',
+        'Are you sure you want to disconnect from Intervals.icu? This will deactivate the integration until you re-enable it.'
+      )
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/intervals/disconnect`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId }),
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Intervals.icu:', error);
+    throw error;
+  }
+};
+
 const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/strava/status');
 };
@@ -666,7 +732,8 @@ export const getEnrichedProviders = async (): Promise<
             enriched.garmin_connect_status = status.isLinked
               ? 'linked'
               : 'disconnected';
-            enriched.garmin_last_status_check = status.lastUpdated;
+            enriched.garmin_last_status_check = status.lastSyncAt ?? null;
+            enriched.garmin_service_reachable = status.serviceReachable ?? null;
             enriched.garmin_token_expires = status.tokenExpiresAt;
             enriched.has_token = status.isLinked;
             break;
@@ -719,6 +786,17 @@ export const getEnrichedProviders = async (): Promise<
             enriched.liftosaur_last_sync_at = status.lastSyncAt;
             break;
           }
+          case 'intervals': {
+            const status = await fetchIntervalsStatus(provider.id);
+            enriched.intervals_connect_status = status.connected
+              ? 'connected'
+              : 'disconnected';
+            enriched.intervals_last_sync_at = status.lastSyncAt;
+            enriched.intervals_push_nutrition = status.pushNutrition;
+            enriched.intervals_pushed_days = status.pushedDays;
+            enriched.intervals_pushed_since = status.pushedSince;
+            break;
+          }
           case 'strava': {
             if (provider.has_token) {
               const status = await fetchStravaStatus();
@@ -745,6 +823,7 @@ export const getEnrichedProviders = async (): Promise<
         if (provider.provider_type === 'garmin') {
           enriched.garmin_connect_status = 'disconnected';
           enriched.garmin_last_status_check = null;
+          enriched.garmin_service_reachable = null;
           enriched.garmin_token_expires = null;
           enriched.has_token = false;
         }
@@ -753,6 +832,9 @@ export const getEnrichedProviders = async (): Promise<
         }
         if (provider.provider_type === 'liftosaur') {
           enriched.liftosaur_connect_status = 'disconnected';
+        }
+        if (provider.provider_type === 'intervals') {
+          enriched.intervals_connect_status = 'disconnected';
         }
       }
 

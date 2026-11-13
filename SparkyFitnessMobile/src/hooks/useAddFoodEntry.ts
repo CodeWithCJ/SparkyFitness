@@ -17,7 +17,7 @@ import { invalidateFoodCache } from './invalidateFoodCache';
 import { invalidateMealUsageCaches } from './useMeals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { ExternalFoodVariant } from '../types/externalFoods';
-import type { FoodVariantDetail } from '../types/foods';
+import type { FoodItem, FoodVariantDetail } from '../types/foods';
 import {
   baseServingVariantKey,
   hasDistinctMetricServingContext,
@@ -27,6 +27,8 @@ import { persistExternalVariants } from '../utils/persistExternalVariants';
 
 export interface AddFoodEntryInput {
   saveFoodPayload?: SaveFoodPayload;
+  /** Reuse the food saved by this form's earlier attempt without another POST. */
+  savedFood?: FoodItem;
   /**
    * Photos to upload with the food being created. Without this, a food created
    * from the diary saves with no picture even though the user attached one.
@@ -44,6 +46,7 @@ export interface AddFoodEntryInput {
 }
 
 interface UseAddFoodEntryOptions {
+  onFoodSaved?: (food: FoodItem) => void;
   onSuccess?: (entry: FoodEntry) => void;
 }
 
@@ -60,7 +63,7 @@ const SELECTED_VARIANT_RESOLUTION_ERROR =
  * encoded unit; only fall back to one legacy unencoded unit. The server-returned
  * default is safe only when its normalized identity exactly matches selection.
  */
-async function resolveSelectedVariant(
+export async function resolveSelectedVariant(
   foodId: string,
   selectedServingSize: number,
   selectedServingUnit: string,
@@ -122,10 +125,10 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
   const mutation = useMutation({
     mutationFn: async (input: AddFoodEntryInput) => {
       if (input.saveFoodPayload) {
-        const saved = await saveFood(
-          input.saveFoodPayload,
-          input.saveFoodImages
-        );
+        const saved =
+          input.savedFood ??
+          (await saveFood(input.saveFoodPayload, input.saveFoodImages));
+        if (!input.savedFood) options?.onFoodSaved?.(saved);
 
         let variantId = saved.default_variant?.id;
         let unit = input.createEntryPayload.unit;

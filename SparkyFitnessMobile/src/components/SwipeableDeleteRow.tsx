@@ -11,6 +11,9 @@ interface SwipeableDeleteRowProps {
   onConfirmDelete: () => void;
   /** Extra classes for the row body (padding, separators, layout). */
   className?: string;
+  /** Makes the row itself tappable. Pressing here, not in a child, keeps the long-press menu reachable. */
+  onPress?: () => void;
+  accessibilityLabel?: string;
   children: React.ReactNode;
 }
 
@@ -54,6 +57,8 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
   title,
   onConfirmDelete,
   className = '',
+  onPress,
+  accessibilityLabel,
   children,
 }) => {
   const { t } = useTranslation();
@@ -108,7 +113,10 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
       rightThreshold={40}
     >
       <Pressable
+        onPress={onPress}
         onLongPress={handleLongPress}
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={accessibilityLabel}
         className={`bg-surface ${className}`}
       >
         {children}

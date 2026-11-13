@@ -29,12 +29,12 @@ const VOLUME_TO_ML: Record<string, number> = {
   // Fluid ounce, distinct from the WEIGHT 'oz' above. Two spellings are
   // recognized for parsing/provider-import purposes; only 'fl oz' is exposed
   // in STANDARD_UNIT_GROUPS as the canonical picker/storage form.
-  "fl oz": 29.5735,
+  'fl oz': 29.5735,
   floz: 29.5735,
   fl_oz: 29.5735,
 };
 
-export type UnitCategory = "weight" | "volume";
+export type UnitCategory = 'weight' | 'volume';
 
 export interface StandardUnitGroup {
   label: string;
@@ -44,34 +44,34 @@ export interface StandardUnitGroup {
 /** Weight + volume groups used by the AI gate and the picker's standard-unit list. */
 export const STANDARD_UNIT_GROUPS: StandardUnitGroup[] = [
   {
-    label: "Weight",
-    units: ["g", "kg", "mg", "oz", "lb", "lbs"],
+    label: 'Weight',
+    units: ['g', 'kg', 'mg', 'oz', 'lb', 'lbs'],
   },
   {
-    label: "Volume",
-    units: ["ml", "l", "cup", "cups", "tbsp", "tsp", "fl oz"],
+    label: 'Volume',
+    units: ['ml', 'l', 'cup', 'cups', 'tbsp', 'tsp', 'fl oz'],
   },
 ];
 
 /** Quantity-style units that always require a manual conversion factor. */
 export const SERVING_UNIT_GROUP: StandardUnitGroup = {
-  label: "Quantity",
+  label: 'Quantity',
   units: [
-    "piece",
-    "slice",
-    "serving",
-    "portion",
-    "can",
-    "bottle",
-    "packet",
-    "bag",
-    "bowl",
-    "plate",
-    "handful",
-    "scoop",
-    "bar",
-    "stick",
-    "whole",
+    'piece',
+    'slice',
+    'serving',
+    'portion',
+    'can',
+    'bottle',
+    'packet',
+    'bag',
+    'bowl',
+    'plate',
+    'handful',
+    'scoop',
+    'bar',
+    'stick',
+    'whole',
   ],
 };
 
@@ -93,8 +93,8 @@ export const ALL_STANDARD_UNITS: string[] = ALL_CONVERSION_UNITS;
 /** Returns the measurement category for a unit, or null if not a standard unit. */
 export function getUnitCategory(unit: string): UnitCategory | null {
   const normalizedUnit = unit.toLowerCase().trim();
-  if (WEIGHT_TO_GRAMS[normalizedUnit] !== undefined) return "weight";
-  if (VOLUME_TO_ML[normalizedUnit] !== undefined) return "volume";
+  if (WEIGHT_TO_GRAMS[normalizedUnit] !== undefined) return 'weight';
+  if (VOLUME_TO_ML[normalizedUnit] !== undefined) return 'volume';
   return null;
 }
 
@@ -106,7 +106,7 @@ export function getUnitCategory(unit: string): UnitCategory | null {
  */
 export function getConversionFactor(
   baseUnit: string,
-  targetUnit: string,
+  targetUnit: string
 ): number | null {
   const from = baseUnit.toLowerCase().trim();
   const to = targetUnit.toLowerCase().trim();
@@ -120,7 +120,7 @@ export function getConversionFactor(
     return null;
   }
 
-  if (fromCategory === "weight") {
+  if (fromCategory === 'weight') {
     return WEIGHT_TO_GRAMS[to]! / WEIGHT_TO_GRAMS[from]!;
   }
 
@@ -151,7 +151,7 @@ export const STANDARD_UNIT_KEYS: readonly string[] = Object.freeze([
  * each other, so they cannot share a name.
  */
 export function foodVolumeToMl(value: number, unit: string): number | null {
-  return getUnitCategory(unit) === "volume"
-    ? value * getConversionFactor("ml", unit)!
+  return getUnitCategory(unit) === 'volume'
+    ? value * getConversionFactor('ml', unit)!
     : null;
 }

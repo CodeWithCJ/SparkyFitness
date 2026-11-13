@@ -65,6 +65,32 @@ describe('apiCall gateway interception handling', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
+  it('suppressErrorToast still throws but shows no toast for an HTTP or network error', async () => {
+    jest
+      .mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeResponse({ status: 500, body: '{"error":"Server exploded"}' })
+      );
+    await expect(
+      apiCall('/v2/reports/compare', { suppressErrorToast: true })
+    ).rejects.toThrow('Server exploded');
+
+    jest.mocked(global.fetch).mockRejectedValueOnce(new TypeError('offline'));
+    await expect(
+      apiCall('/v2/reports/compare', { suppressErrorToast: true })
+    ).rejects.toThrow('offline');
+
+    expect(mockToast).not.toHaveBeenCalled();
+
+    jest
+      .mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeResponse({ status: 500, body: '{"error":"Server exploded"}' })
+      );
+    await expect(apiCall('/v2/reports/compare')).rejects.toThrow();
+    expect(mockToast).toHaveBeenCalledTimes(1);
+  });
+
   it('returns parsed JSON on a normal success response without reloading', async () => {
     jest
       .mocked(global.fetch)

@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
+import { z } from 'zod';
+import { exerciseModalitySchema } from './Exercises.api.zod.ts';
 
 /**
  * `GET /v2/exercises/:exerciseId/alternatives` — ranked substitutes for an
@@ -8,8 +8,8 @@ import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
  */
 
 export const EXERCISE_ALTERNATIVE_MODES = [
-  "similar",
-  "different_equipment",
+  'similar',
+  'different_equipment',
 ] as const;
 export const exerciseAlternativeModeSchema = z.enum(EXERCISE_ALTERNATIVE_MODES);
 export type ExerciseAlternativeMode = z.infer<
@@ -22,10 +22,10 @@ const commaList = z
   .transform((value) =>
     value
       ? value
-          .split(",")
+          .split(',')
           .map((item) => item.trim())
           .filter(Boolean)
-      : [],
+      : []
   );
 
 export const exerciseAlternativesQuerySchema = z
@@ -35,7 +35,7 @@ export const exerciseAlternativesQuerySchema = z
      * returns exercises that use none of the source's equipment (busy
      * machine, no barbell at home, a grip that aggravates an injury).
      */
-    mode: exerciseAlternativeModeSchema.default("similar"),
+    mode: exerciseAlternativeModeSchema.default('similar'),
     /** Only suggest exercises that need nothing beyond this equipment. */
     equipment: commaList,
     /** Never suggest exercises that work any of these muscles (injury). */
@@ -44,9 +44,9 @@ export const exerciseAlternativesQuerySchema = z
     excludeIds: commaList,
     /** Include not-yet-imported Free Exercise DB exercises. */
     includeCatalog: z
-      .enum(["true", "false"])
+      .enum(['true', 'false'])
       .optional()
-      .transform((value) => value !== "false"),
+      .transform((value) => value !== 'false'),
     limit: z.coerce.number().int().min(1).max(50).default(20),
     // RN's fetch appends `_=<timestamp>` for `cache: 'no-store'`.
     _: z.string().optional(),
@@ -58,16 +58,16 @@ export type ExerciseAlternativesQuery = z.input<
 
 /** Why an alternative was suggested; clients render each as a short label. */
 export const EXERCISE_ALTERNATIVE_REASONS = [
-  "same_primary_muscles",
-  "shares_primary_muscle",
-  "same_equipment",
-  "different_equipment",
-  "same_movement",
-  "recently_performed",
-  "in_library",
+  'same_primary_muscles',
+  'shares_primary_muscle',
+  'same_equipment',
+  'different_equipment',
+  'same_movement',
+  'recently_performed',
+  'in_library',
 ] as const;
 export const exerciseAlternativeReasonSchema = z.enum(
-  EXERCISE_ALTERNATIVE_REASONS,
+  EXERCISE_ALTERNATIVE_REASONS
 );
 export type ExerciseAlternativeReason = z.infer<
   typeof exerciseAlternativeReasonSchema
@@ -80,7 +80,7 @@ export const exerciseAlternativeSchema = z
      * `catalog` — a Free Exercise DB exercise not in the library yet (`id`
      * is its catalog id); import it with `POST /freeexercisedb/add` first.
      */
-    origin: z.enum(["library", "catalog"]),
+    origin: z.enum(['library', 'catalog']),
     id: z.string(),
     name: z.string(),
     source: z.string().nullable(),

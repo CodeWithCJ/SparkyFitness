@@ -1,7 +1,6 @@
 -- Migration: Add Swedish Food Agency (Livsmedelsverket) provider type
 -- File: SparkyFitnessServer/db/migrations/20261014220000_add_livsmedelsverket_provider_type.sql
 
-BEGIN;
 
 -- 1. Insert 'livsmedelsverket' into external_provider_types lookup table
 INSERT INTO public.external_provider_types (id, display_name, description)
@@ -91,4 +90,3 @@ BEGIN
   END IF;
 END $$;
 
-COMMIT;

@@ -1,12 +1,19 @@
 import type {
   ExerciseActivityQueryItem,
   ExerciseEntryHrZones,
+  StoredZoneMethod,
   GpsTrackPoint,
   IndividualSessionResponse,
   WorkoutHeartRatePoint,
 } from '@workspace/shared';
 import { canEditGroupedWorkout } from '@workspace/shared';
-import { haversineMeters } from './gpsRecording';
+import {
+  computeSplits,
+  haversineMeters,
+  withSplitHeartRate,
+  type RecordedPoint,
+  type RecordedSplit,
+} from './gpsRecording';
 import { toFiniteNumber } from './numericInput';
 import { distanceFromKm } from './unitConversions';
 
@@ -89,16 +96,25 @@ export function routeRegion(
   };
 }
 
+export interface LongitudeArc {
+  center: number;
+  span: number;
+  west: number;
+  east: number;
+}
+
 /**
  * The shortest arc of longitude holding every point. Sorted around the
  * circle, the points leave one widest empty gap; the route is the rest. For
  * an ordinary route that gap is the one across ±180°, which gives the plain
  * min-to-max span; for a route over the date line it is somewhere else.
  */
-function longitudeSpan(lons: readonly number[]): {
-  center: number;
-  span: number;
-} {
+export function longitudeSpan(lons: readonly number[]): LongitudeArc {
+  if (lons.length === 0) return { center: 0, span: 0, west: 0, east: 0 };
+  if (lons.length === 1) {
+    const lon = lons[0] ?? 0;
+    return { center: lon, span: 0, west: lon, east: lon };
+  }
   const sorted = [...lons].sort((a, b) => a - b);
   const last = sorted.length - 1;
   // The gap after sorted[i] up to the next point, wrapping after the last.
@@ -111,11 +127,12 @@ function longitudeSpan(lons: readonly number[]): {
       gapIndex = i;
     }
   }
-  const start = sorted[(gapIndex + 1) % sorted.length] ?? 0;
+  const west = sorted[(gapIndex + 1) % sorted.length] ?? 0;
+  const east = sorted[gapIndex] ?? 0;
   const span = 360 - widestGap;
-  let center = start + span / 2;
+  let center = west + span / 2;
   if (center >= 180) center -= 360;
-  return { center, span };
+  return { center, span, west, east };
 }
 
 /**
@@ -201,6 +218,12 @@ export interface HeartRateZoneRow {
   seconds: number;
   /** Share of the time spent across all zones, 0-1. */
   share: number;
+  /**
+   * How the zone bounds were worked out when the workout was stored; null for
+   * workouts stored before methods were recorded, 'mixed' when the entries of
+   * one workout disagree.
+   */
+  method: StoredZoneMethod | 'mixed' | null;
 }
 
 export function heartRateZoneRows(
@@ -221,7 +244,13 @@ export function combinedHeartRateZoneRows(
 ): HeartRateZoneRow[] {
   const byZone = new Map<
     number,
-    { lowerBpm: number | null; upperBpm: number | null; seconds: number }
+    {
+      lowerBpm: number | null;
+      upperBpm: number | null;
+      seconds: number;
+      method: StoredZoneMethod | 'mixed' | null;
+      methodSeen: boolean;
+    }
   >();
   for (const zones of zonesPerEntry) {
     for (const zone of zones) {
@@ -229,8 +258,17 @@ export function combinedHeartRateZoneRows(
         lowerBpm: null,
         upperBpm: null,
         seconds: 0,
+        method: null,
+        methodSeen: false,
       };
       row.seconds += Math.max(0, zone.seconds_in_zone);
+      const method = zone.zone_method ?? null;
+      row.method = !row.methodSeen
+        ? method
+        : row.method === method
+          ? method
+          : 'mixed';
+      row.methodSeen = true;
       if (zone.zone_lower_bpm != null) {
         row.lowerBpm =
           row.lowerBpm == null
@@ -255,6 +293,7 @@ export function combinedHeartRateZoneRows(
       upperBpm: row.upperBpm,
       seconds: row.seconds,
       share: total > 0 ? row.seconds / total : 0,
+      method: row.method,
     }));
 }
 
@@ -286,6 +325,14 @@ export function cardioSessionFromDiaryEntry(
   // matching the server's activity item, so a walk shows no "0 floors".
   const floors = toFiniteNumber(session.floors_climbed);
   const elevationGain = toFiniteNumber(session.elevation_gain_meters);
+  // Unlike the counts above, 0 °C is a real reading; only a missing value is null.
+  const rawWeatherTemp: unknown = session.weather_temp_celsius;
+  const weatherTemp =
+    rawWeatherTemp == null ||
+    (typeof rawWeatherTemp === 'string' && rawWeatherTemp.trim() === '') ||
+    !Number.isFinite(Number(rawWeatherTemp))
+      ? null
+      : Number(rawWeatherTemp);
   return {
     id: session.id,
     userId: '',
@@ -308,9 +355,12 @@ export function cardioSessionFromDiaryEntry(
     avgHeartRate: session.avg_heart_rate,
     floorsClimbed: floors > 0 ? floors : null,
     elevationGainMeters: elevationGain > 0 ? elevationGain : null,
+    weatherTempCelsius: weatherTemp,
+    weatherCondition: session.weather_condition ?? null,
     source: session.source,
     notes: session.notes,
     hasGpsTrack: false,
+    modality: session.exercise_snapshot?.modality ?? null,
   };
 }
 
@@ -417,4 +467,39 @@ function paceSeriesFromSamples(
   if (insertAt === -1) kept.push(fastestPoint);
   else kept.splice(insertAt, 0, fastestPoint);
   return kept;
+}
+
+/**
+ * Per-km or per-mile splits for a stored workout, cut from its GPS track the
+ * way a recording is. Heart rate per split comes from the readings that fall
+ * inside it, when there are any. A stored track has no pause marks, so any
+ * stop counts as time in the split.
+ */
+export function splitsFromTrack(
+  points: readonly GpsTrackPoint[],
+  unitMeters: number,
+  heartRate: readonly { timestamp: number; bpm: number }[] = []
+): RecordedSplit[] {
+  const fixes: RecordedPoint[] = [];
+  for (const point of points) {
+    const t = Date.parse(point.t);
+    if (!Number.isFinite(t)) continue;
+    // Out of order or repeated: keep the first.
+    if (fixes.length > 0 && t <= fixes[fixes.length - 1].t) continue;
+    fixes.push({
+      t,
+      lat: point.lat,
+      lon: point.lon,
+      alt: typeof point.alt === 'number' ? point.alt : null,
+      hacc: null,
+      vacc: null,
+      speed: null,
+      course: null,
+      seg: 0,
+    });
+  }
+  return withSplitHeartRate(
+    computeSplits(fixes, unitMeters),
+    heartRate.map((sample) => ({ t: sample.timestamp, bpm: sample.bpm }))
+  );
 }

@@ -4,6 +4,7 @@ import { log } from '../config/logging.js';
 import {
   performBackup,
   performRestore,
+  RestoreInProgressError,
   BACKUP_DIR,
   BACKUP_FILE_PATTERN,
   listBackups,
@@ -68,6 +69,7 @@ async function ensureTempUploadDirectory() {
   }
 }
 ensureTempUploadDirectory(); // Call once on startup
+
 /**
  * @swagger
  * tags:
@@ -110,9 +112,7 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
         fileName: result.fileName,
       });
     } else {
-      const errorMessage = result.error
-        ? result.error.message || result.error
-        : 'Unknown backup error.';
+      const errorMessage = result.error || 'Unknown backup error.';
       res.status(500).json({ message: 'Backup failed.', error: errorMessage });
     }
   } catch (error) {
@@ -158,8 +158,12 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
  *                   type: string
  *       400:
  *         description: No backup file uploaded.
+ *       409:
+ *         description: Another restore is already running.
  *       500:
  *         description: Server error during restore.
+ *       503:
+ *         description: Another restore is already running (refused before the upload, with Retry-After); the restore was not started.
  */
 router.post(
   '/restore',
@@ -184,9 +188,11 @@ router.post(
       'info',
       `Uploaded backup file: ${originalFileName} -> ${safeFileName} at ${uploadedFilePath}`
     );
+    // Assigned before the copy so a partial copy is removed as well.
+    let finalBackupPath: string | undefined;
     try {
       // Move the uploaded file to the designated backup directory for processing
-      const finalBackupPath = path.join(BACKUP_DIR, safeFileName);
+      finalBackupPath = path.join(BACKUP_DIR, safeFileName);
       await fs.copyFile(uploadedFilePath, finalBackupPath);
       await fs.unlink(uploadedFilePath);
       log('info', `Moved uploaded file to: ${finalBackupPath}`);
@@ -200,6 +206,9 @@ router.post(
           .json({ message: 'Restore failed.', error: result.error });
       }
     } catch (error) {
+      if (error instanceof RestoreInProgressError) {
+        return res.status(409).json({ message: error.message });
+      }
       log('error', 'Error during restore:', error);
       res.status(500).json({
         message: 'Internal server error during restore.',
@@ -217,6 +226,17 @@ router.post(
           `Failed to clean up temporary uploaded file ${uploadedFilePath}:`,
           cleanupError
         );
+      }
+      if (finalBackupPath) {
+        try {
+          await fs.rm(finalBackupPath, { force: true });
+        } catch (cleanupError) {
+          log(
+            'warn',
+            `Failed to remove restore archive ${finalBackupPath}:`,
+            cleanupError
+          );
+        }
       }
     }
   }

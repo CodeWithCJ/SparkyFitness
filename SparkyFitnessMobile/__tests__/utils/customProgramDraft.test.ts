@@ -89,7 +89,7 @@ describe('customProgramDraft', () => {
     const input = draftToInput(draft);
     expect(input.name).toBe('Mine');
     expect(input.workouts[0].title).toBe('Easy');
-    expect(input.workouts[0].plan.style).toBe('fastEasy');
+    expect(input.workouts[0].plan.style).toBe('briskWalk');
     expect(workoutSeconds(draft.workouts[0])).toBe(1800);
     const back = draftFromProgram({
       id: 'id',

@@ -34,6 +34,21 @@ While a live, interactive OpenAPI documentation (like Swagger UI) might be avail
 
 ## Detailed API Endpoints
 
+### Food Assistant State
+
+These additive routes are authenticated and owner-only, using the signed-in actor rather than a selected family diary. The shared `FoodAssistant.api.zod.ts` and `FoodAssistant.zod.ts` contracts define their bodies and responses.
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/v2/food-assistant/preferences` | GET / PUT | Read lasting preferences or create/edit one with its expected version |
+| `/api/v2/food-assistant/preferences/:key?version=N` | DELETE | Forget a preference only if its version still matches |
+| `/api/v2/food-assistant/tasks` | GET / POST | List recent tasks or create a task with a stable UUID request ID |
+| `/api/v2/food-assistant/tasks/:id` | GET / PATCH | Read a full checkpoint or save one with an operation ID and expected version |
+| `/api/v2/food-assistant/tasks/:id/operations` | GET | Read committed before/after operation records |
+| `/api/v2/food-assistant/tasks/:id/:action` | POST | Cancel or resume remaining work; `action` is `cancel` or `resume` |
+
+Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and attempts to change a completed or cancelled task return HTTP 409. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
+
 ### Authentication
 
 *   **API Key**: Used for specific endpoints like `/api/health-data`. The API Key should be sent in the `Authorization` header as `Bearer <API_KEY>` or in the `X-API-Key` header. The API Key must have the necessary permissions (e.g., `health_data_write`).
@@ -146,7 +161,7 @@ Example Error Response:
     *   **`gps_points[]`** (optional): the GPS track, written to `exercise_entry_gps_points`. Each point is `{ "t": ISO 8601, "lat": number, "lon": number }` plus optional `alt` (m), `speed` (m/s), `hr` (bpm), `cad`, `power` (W), `dist` (cumulative **metres**), `hacc`/`vacc` (m), `course` (degrees). Points missing `t`, `lat` or `lon` are dropped.
     *   **`hr_samples[]`** (optional): the heart-rate series as `{ "t": ISO 8601, "bpm": number }`. Written to `health_metric_samples` under metric `heart_rate`, linked to the workout, and merged into the day's existing samples rather than replacing them. Send this in addition to any `hr` on `gps_points` so indoor workouts without GPS still produce a chart.
     *   **`laps[]`** (optional): lap windows as `{ "lap_index": number, "start_time": ISO 8601, "end_time": ISO 8601 }`, written to `exercise_entry_laps`. Send only the windows; per-lap distance, heart rate, speed, cadence, power and elevation are computed server-side from the series.
-    *   **Heart-rate zones** are always derived server-side from the heart-rate series (using max HR estimated from the profile date of birth) and written to `exercise_entry_hr_zones`. There is no field to supply them directly.
+    *   **Heart-rate zones** are derived server-side from the heart-rate series, using the person's own heart rate zone settings (`GET`/`PUT /api/v2/heart-rate-zones`: max and resting heart rate, zone method, custom floors) and falling back to a max HR estimated from the profile date of birth. They are written to `exercise_entry_hr_zones` together with the method used. A workout that already carries Apple's heart-rate zone group sends it as `hr_zones` (health sync) or `appleZones` (watch telemetry). Those seconds are stored with method `device` and the series is not bucketed again. Any other source still has no field for its own zones.
     *   Clients should downsample before uploading. The reverse proxy caps request bodies at 10 MB; roughly 2000 GPS points and 1200 heart-rate samples per workout keeps a session near 250 KB.
     *   **Example**:
         ```json
@@ -246,6 +261,36 @@ Example Error Response:
           "error": "Forbidden: API Key does not have health_data_write permission"
         }
         ```
+
+#### 1a. `/api/generic-health/samples`
+
+*   **Path**: `/api/generic-health/samples`
+*   **Method**: `POST`
+*   **Description**: Stores passive readings (all-day heart rate, stress, SpO2, HRV, respiration, body battery, skin temperature, blood glucose) from a source that has no server-side integration, in the same table `GET /api/generic-health/samples` reads. Each sample lands on the user's calendar day of its timestamp. A write only touches rows of the posted `source`, so readings from Garmin, Polar or a watch on the same day stay as they are.
+*   **Authentication**: Session or API key with write access; requires the `checkin` permission when acting for another user.
+*   **Request Body**:
+    *   `metric` (required): one of `heart_rate`, `hrv`, `respiration`, `spo2`, `stress`, `body_battery`, `skin_temperature`, `blood_glucose`.
+    *   `source` (required, string, 1–64 characters): stored as the provider name. The names the server writes samples under (`manual`, `garmin`, `polar`, `intervals`, `intervals.icu`, `SparkyFitness Watch`, `HealthKit`, `apple_health`, `Health Connect`) are refused, compared without case, spaces, dots, dashes and underscores. A passive write replaces the stored samples of its `source` (inside `window` for `merge`, the whole day for `replace`), except samples linked to a workout or sleep session (`ex`, `sl`), such as the heart rate a workout sent to `/health-data` stored under the same source. Those are kept in both modes.
+    *   `device_name` (optional, string).
+    *   `mode` (optional): `merge` (default) replaces only this source's stored samples inside `window`, on every day the window touches, and keeps the rest of those days, so sending the same window again replaces instead of duplicating; `replace` overwrites every day the samples touch.
+    *   `window` (required for `merge`): `{ "start": ISO 8601, "end": ISO 8601 }`, at most 31 days. Every sample must lie inside it.
+    *   `samples` (required, up to 50000; empty only in `merge` mode, which then clears this source's samples inside `window`, for a window with no readings left): `{ "t": ISO 8601 with offset, ... }` with the field of the metric: `bpm` (heart_rate), `percentage` (spo2), `level` (stress, body_battery), `brpm` (respiration), `rmssd_ms`/`sdnn_ms` (hrv), `celsius` (skin_temperature), `mmol_l` (blood_glucose). For `blood_glucose`, both `t` and `mmol_l` are required; `mmol_l` is a number greater than 0 and at most 100, always in mmol/L. `source_bundle_id` is optional. Convert mg/dL to mmol/L before uploading; account display units do not affect storage. Links to workouts or sleep (`ex`, `sl`) are not accepted.
+*   **Example Request Body**:
+    ```json
+    {
+      "metric": "heart_rate",
+      "source": "xiaomi",
+      "window": { "start": "2026-10-28T00:00:00+01:00", "end": "2026-10-29T00:00:00+01:00" },
+      "samples": [
+        { "t": "2026-10-28T06:00:00+01:00", "bpm": 58 },
+        { "t": "2026-10-28T06:01:00+01:00", "bpm": 61 }
+      ]
+    }
+    ```
+*   **Responses**:
+    *   `200 OK`: `{ "metric": "heart_rate", "source": "xiaomi", "mode": "merge", "days_written": 1, "samples_written": 2 }`
+    *   `400 Bad Request`: the body failed validation; `issues` names the field.
+    *   `403 Forbidden`: no `checkin` permission for the active user, or a read-only API key.
 
 #### 2. `/api/measurements/check-in`
 
@@ -395,7 +440,7 @@ Progress photos attached to a calendar day. Every route below requires the `chec
 
 *   **Path**: `/api/measurements/check-in-photos`
 *   **Method**: `GET`
-*   **Description**: Every photo the caller has, newest day first, each paired with the weight logged on the same calendar day. Backs the mobile gallery, side-by-side comparison and time-lapse in one request. The weight is joined on `(user_id, entry_date)` rather than the stored `check_in_measurement_id`, so a photo taken before that day's weight was entered still reports it.
+*   **Description**: Every photo the caller has, newest day first, each paired with the weight logged on the same calendar day. Backs the mobile gallery and the side-by-side comparison and time-lapse on both mobile and web, in one request. The weight is joined on `(user_id, entry_date)` rather than the stored `check_in_measurement_id`, so a photo taken before that day's weight was entered still reports it.
 *   **Authentication**: JWT Token.
 *   **Responses**:
     *   `200 OK`: ordered by `entry_date DESC, photo_type ASC`. `weight` is in kilograms and is `null` when the day has no check-in measurement or that measurement carries no weight. `file_path` is omitted on purpose — image bytes come from `/file/{id}`, so the on-disk layout stays a server detail.
@@ -447,3 +492,26 @@ Progress photos attached to a calendar day. Every route below requires the `chec
 *   **Authentication**: JWT Token.
 *   **Responses**:
     *   `204 No Content`:
+
+
+#### Timestamped custom measurement timelines
+
+`GET /api/measurements/custom-entries/{date}?byTimestamp=true` reads the half-open midnight-to-midnight interval in the account timezone, using `entry_timestamp` instead of the imported `entry_date`. The read remains protected by the existing `checkin` permission and row-level security, and retains source/category metadata. Omit `byTimestamp` (or use `false`) to keep the existing calendar-date diary behavior; other values return HTTP 400. The interval follows daylight-saving changes.
+
+Example passive glucose sample upload (the existing source/window rules also apply):
+
+```json
+{
+  "metric": "blood_glucose",
+  "source": "dexcom-api",
+  "mode": "merge",
+  "window": { "start": "2026-11-03T10:00:00Z", "end": "2026-11-03T10:05:00Z" },
+  "samples": [
+    {
+      "t": "2026-11-03T10:00:00Z",
+      "mmol_l": 5.5,
+      "source_bundle_id": "com.dexcom.g7"
+    }
+  ]
+}
+```

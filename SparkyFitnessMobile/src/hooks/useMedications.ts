@@ -1,6 +1,11 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import {
@@ -42,6 +47,11 @@ interface QueryOptions {
   enabled?: boolean;
 }
 
+interface EntriesQueryOptions extends QueryOptions {
+  /** Keep the previous filter's entries on screen while a new range loads. */
+  keepPrevious?: boolean;
+}
+
 export function useMedications(opts?: { activeOnly?: boolean } & QueryOptions) {
   const { enabled, ...filters } = opts ?? {};
   const query = useQuery({
@@ -68,13 +78,14 @@ export function useMedicationEntries(
     fromDate?: string;
     toDate?: string;
     medicationId?: string;
-  } & QueryOptions
+  } & EntriesQueryOptions
 ) {
-  const { enabled, ...filters } = opts ?? {};
+  const { enabled, keepPrevious, ...filters } = opts ?? {};
   const query = useQuery({
     queryKey: medicationEntriesQueryKey(filters),
     queryFn: () => listEntries(filters),
     enabled: enabled ?? true,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
   useRefetchOnFocus(query.refetch, enabled ?? true);
   return query;

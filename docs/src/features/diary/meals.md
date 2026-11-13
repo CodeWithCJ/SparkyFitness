@@ -9,7 +9,9 @@ This section provides an overview of meal-related features in SparkyFitness.
 SparkyFitness dynamically suggests the appropriate meal category (e.g., Breakfast, Lunch, Dinner, Snacks, or custom categories) when you log food based on your current time of day.
 
 ### How Suggested Times Work
+
 Each meal category can have a **Default Time** assigned to it:
+
 - When you log food, the app finds the meal category whose `default_time` is the **latest time that is less than or equal to your current time** ($\le \text{now}$).
 - Each meal category's default time defines the start of its window until the next scheduled meal.
 - For example, if **Snacks** is set to `5:00 PM` (`17:00`) and **Dinner** is set to `7:00 PM` (`19:00`):
@@ -17,11 +19,14 @@ Each meal category can have a **Default Time** assigned to it:
   - Logging food at or after `7:00 PM` will automatically suggest **Dinner**.
 
 ### Customizing Default Times
+
 You can customize the target start time for any meal category on both Web and Mobile:
+
 - **Web**: Go to **Settings → Meal Categories** and edit the **Default Time** (`HH:MM`) for any category.
 - **Mobile**: Go to **Settings → Food Settings → Suggested Meal Times** and adjust the target times (`HH:MM`).
 
 ### Deleting a Custom Meal Category
+
 Custom meal categories can be deleted from **Settings → Meal Categories** on Web. System defaults (Breakfast, Lunch, Dinner, Snacks) cannot be deleted, only hidden.
 
 If the category has never been used, it is removed immediately. If anything still references it, a dialog shows exactly what is affected — diary entries, logged meals, planned items, and meal plan template items — and offers two choices:
@@ -45,3 +50,11 @@ Meal Management:
 
 Adding a meal:
 ![image](https://github.com/user-attachments/assets/827cc881-5472-461f-94e4-3f86023b58c1)
+
+### Importing a Mealie recipe
+
+Choose **Import Mealie ingredients** in your meals library to turn a recipe into a normal editable meal. Review the ingredient-to-food matches and the amounts used for the whole dish. See [Mealie ingredient meals](/features/settings/external-providers#mealie-ingredient-meals) for setup, optional AI suggestions and nutrition sync.
+
+You can portion an imported meal by servings or by its finished cooked weight. For example, a whole dish containing **2,400 kcal** that weighs **1,800 g** after cooking provides **600 kcal** for a **450 g** portion. Enter the cooked whole-dish weight without the pot during import; enter the grams you actually ate when logging it. Cooking water changes the weight used for portioning, while ingredient nutrition determines the total calories.
+
+Adjust the ingredient amounts or swap a food in the meal editor for your next cooking session. Previously logged diary entries retain their saved nutrition. These local changes do not automatically update the original Mealie recipe.

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { log } from '../config/logging.js';
 import { getSystemClient } from '../db/poolManager.js';
 import type { ImageDomain } from '../utils/imageDownloader.js';
+import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,7 @@ const ALLOWED_MIME_TYPES = new Set([
  * `<uploads>/<domain>/<entityId>/` once the row has been written.
  */
 function stagingDirFor(uploadId: string): string {
-  return path.join(baseUploadsDir, '_staging', uploadId);
+  return path.join(baseUploadsDir, UPLOAD_STAGING_DIR, uploadId);
 }
 
 function entityDirFor(domain: ImageDomain, entityId: string): string {

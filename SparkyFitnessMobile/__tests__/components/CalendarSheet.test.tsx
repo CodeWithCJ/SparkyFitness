@@ -31,6 +31,8 @@ const pickerProps: {
   onYearChange?: (year: number) => void;
   initialView?: string;
   components?: { Day?: (day: unknown) => React.ReactNode };
+  minDate?: unknown;
+  maxDate?: unknown;
 } = {};
 let mockMountedInitialView: string | undefined;
 let mockMountCount = 0;
@@ -86,6 +88,8 @@ jest.mock('react-native-ui-datepicker', () => {
     pickerProps.onMonthChange = props.onMonthChange;
     pickerProps.onYearChange = props.onYearChange;
     pickerProps.initialView = mockMountedInitialView;
+    pickerProps.minDate = props.minDate;
+    pickerProps.maxDate = props.maxDate;
     pickerProps.components = props.components as {
       Day?: (day: unknown) => React.ReactNode;
     };
@@ -125,6 +129,8 @@ describe('CalendarSheet', () => {
     pickerProps.onMonthChange = undefined;
     pickerProps.onYearChange = undefined;
     pickerProps.initialView = undefined;
+    pickerProps.minDate = undefined;
+    pickerProps.maxDate = undefined;
     mockMountedInitialView = undefined;
     mockMountCount = 0;
     mockAppLocale = 'en';
@@ -185,6 +191,27 @@ describe('CalendarSheet', () => {
       )
     );
     expect(pickerProps).toMatchObject({ month: 0, year: 2027 });
+  });
+
+  it('passes optional bounds to the picker as local days', () => {
+    render(
+      <CalendarSheet
+        selectedDate="2026-08-23"
+        onSelectDate={jest.fn()}
+        minDate="2024-10-22"
+        maxDate="2026-10-21"
+      />
+    );
+    expect(pickerProps.minDate).toEqual(new Date(2024, 9, 22));
+    expect(pickerProps.maxDate).toEqual(new Date(2026, 9, 21));
+  });
+
+  it('leaves the picker unbounded without them', () => {
+    render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />
+    );
+    expect(pickerProps.minDate).toBeUndefined();
+    expect(pickerProps.maxDate).toBeUndefined();
   });
 
   it('navigates using the custom month controls', () => {

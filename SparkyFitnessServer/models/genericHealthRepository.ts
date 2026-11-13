@@ -8,6 +8,10 @@ import {
   DailyHealthMetrics,
   DailyHealthMetricsInitializer,
 } from '@workspace/shared';
+import {
+  pickDeviceTotalPerDay,
+  type DeviceTotalCaloriesSourceRow,
+} from '../utils/deviceTotalCalories.js';
 
 /** Minimal client surface needed to run a parameterised statement within a caller-owned transaction. */
 export interface HealthMetricSamplesDbClient {
@@ -171,14 +175,15 @@ export async function bulkUpsertVitals(
     for (const entry of entries) {
       const res = (await client.query(
         `INSERT INTO vitals_entries
-          (user_id, entry_date, timestamp, systolic_mmhg, diastolic_mmhg, blood_glucose_mgdl, body_temperature_celsius, meal_context, source_provider, device_name, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          (user_id, entry_date, timestamp, systolic_mmhg, diastolic_mmhg, blood_glucose_mgdl, body_temperature_celsius, pulse_bpm, meal_context, source_provider, device_name, external_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (user_id, source_provider, timestamp)
          DO UPDATE SET
            systolic_mmhg = COALESCE(EXCLUDED.systolic_mmhg, vitals_entries.systolic_mmhg),
            diastolic_mmhg = COALESCE(EXCLUDED.diastolic_mmhg, vitals_entries.diastolic_mmhg),
            blood_glucose_mgdl = COALESCE(EXCLUDED.blood_glucose_mgdl, vitals_entries.blood_glucose_mgdl),
            body_temperature_celsius = COALESCE(EXCLUDED.body_temperature_celsius, vitals_entries.body_temperature_celsius),
+           pulse_bpm = COALESCE(EXCLUDED.pulse_bpm, vitals_entries.pulse_bpm),
            meal_context = COALESCE(EXCLUDED.meal_context, vitals_entries.meal_context),
            device_name = COALESCE(EXCLUDED.device_name, vitals_entries.device_name),
            external_id = COALESCE(EXCLUDED.external_id, vitals_entries.external_id)
@@ -191,6 +196,9 @@ export async function bulkUpsertVitals(
           entry.diastolic_mmhg ?? null,
           entry.blood_glucose_mgdl ?? null,
           entry.body_temperature_celsius ?? null,
+          entry.pulse_bpm === null || entry.pulse_bpm === undefined
+            ? null
+            : Math.round(entry.pulse_bpm),
           entry.meal_context || null,
           entry.source_provider,
           entry.device_name || null,
@@ -535,38 +543,33 @@ export async function getDailyHealthMetrics(
   }
 }
 
-export interface HealthConnectTotalCaloriesRow {
-  entry_date: string;
-  total_calories: number;
-  captured_at?: Date | string | null;
-}
-
 /**
- * Returns Health Connect's cumulative total-energy summary for each requested day.
- * The Android client has already applied Health Connect's native source priority
- * before upload, so this value must not be combined with other providers here.
+ * Returns one device total-energy figure per requested day, from whichever source
+ * `pickDeviceTotalPerDay` chooses (Health Connect, Garmin, Polar).
+ * Each value is already that source's own full total, so sources are never
+ * combined.
  */
-export async function getHealthConnectTotalCaloriesByDateRange(
+export async function getDeviceTotalCaloriesByDateRange(
   userId: string,
   actingUserId: string,
   startDate: string,
   endDate: string
-): Promise<HealthConnectTotalCaloriesRow[]> {
+): Promise<DeviceTotalCaloriesSourceRow[]> {
   const client = await getClient(actingUserId);
   try {
     const res = await client.query(
       `SELECT entry_date::text,
+              source_provider,
               total_calories::float8,
               COALESCE(total_calories_captured_at, updated_at, created_at) AS captured_at
        FROM daily_health_metrics
        WHERE user_id = $1
-         AND source_provider = 'health_connect'
          AND total_calories IS NOT NULL
          AND entry_date BETWEEN $2 AND $3
        ORDER BY entry_date ASC`,
       [userId, startDate, endDate]
     );
-    return res.rows as HealthConnectTotalCaloriesRow[];
+    return pickDeviceTotalPerDay(res.rows as DeviceTotalCaloriesSourceRow[]);
   } finally {
     client.release();
   }

@@ -1,7 +1,9 @@
 import type React from 'react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatTimeWithPreference } from '@/utils/timeFormatters';
 import {
   Tooltip,
   TooltipContent,
@@ -59,6 +61,7 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({
   targetEndTime,
 }) => {
   const { t } = useTranslation();
+  const { timeFormat } = usePreferences();
   // Determine current zone index
   const currentZoneIndex = ZONES.findIndex((z) => hoursFasted < z.end);
   const activeIndex =
@@ -71,11 +74,11 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({
           {startTime ? (
             <span>
               {t('fasting.startedAt', 'Started {{time}}', {
-                time: format(
+                time: formatTimeWithPreference(
                   typeof startTime === 'string'
                     ? parseISO(startTime)
                     : startTime,
-                  'h:mm a'
+                  timeFormat
                 ),
               })}
             </span>
@@ -85,11 +88,11 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({
           {targetEndTime ? (
             <span>
               {t('fasting.targetAt', 'Target {{time}}', {
-                time: format(
+                time: formatTimeWithPreference(
                   typeof targetEndTime === 'string'
                     ? parseISO(targetEndTime)
                     : targetEndTime,
-                  'h:mm a'
+                  timeFormat
                 ),
               })}
             </span>

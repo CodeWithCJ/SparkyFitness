@@ -73,7 +73,7 @@ https://developer.apple.com/documentation/healthkit/protecting-user-privacy
     You can sync your wearable data from Gadgetbridge to Android's **Health Connect** first, and then use the SparkyFitness mobile app to sync those metrics into SparkyFitness. For detailed instructions, refer to the [Gadgetbridge Health Connect Integration Guide](https://gadgetbridge.org/basics/integrations/health-connect/).
 
 *   **Do you have a smartwatch companion app (Apple Watch or Wear OS)?**
-    A dedicated smartwatch companion app is on our development roadmap/To-Do list.
+    Yes. There is a companion app for Apple Watch (watchOS) and for Wear OS watches. It shows your goals, water, weight, fasting, medications and steps, runs workouts and walks or runs from the wrist, and adds watch face complications. See [Watch Apps](/mobile-app/watch-apps).
 
 ---
 

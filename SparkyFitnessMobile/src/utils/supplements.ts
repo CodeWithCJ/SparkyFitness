@@ -21,19 +21,6 @@ export const SUPPLEMENT_FORMS = [
   'liquid',
 ] as const;
 
-export type MedSubtype = 'all' | 'meds' | 'supplements';
-
-/** Splits the medication list for the All | Meds | Supplements filter. */
-export function filterMedsBySubtype<T extends { is_supplement?: boolean }>(
-  meds: T[],
-  subtype: MedSubtype
-): T[] {
-  if (subtype === 'all') return meds;
-  return meds.filter((med) =>
-    subtype === 'supplements' ? Boolean(med.is_supplement) : !med.is_supplement
-  );
-}
-
 /** One nutrient line in the supplement editor. */
 export interface NutrientRow {
   /** Unique within the editor. */

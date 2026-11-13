@@ -13,6 +13,7 @@ import type {
   MedicationPen,
   InjectionEntry,
   LogInjectionInput,
+  UpdateInjectionInput,
   TitrationStep,
   UpdateTitrationStepInput,
   SerumCurveResponse,
@@ -263,6 +264,18 @@ export const logInjection = (
     serviceName: SERVICE_NAME,
     operation: 'log injection',
     method: 'POST',
+    body,
+  });
+
+export const updateInjection = (
+  id: string,
+  body: UpdateInjectionInput
+): Promise<InjectionEntry> =>
+  apiFetch<InjectionEntry>({
+    endpoint: `/api/v2/medications/injections/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'update injection',
+    method: 'PUT',
     body,
   });
 

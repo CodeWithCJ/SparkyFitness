@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Two clients (web, mobile) hand-roll these request/response shapes today
 // (SparkyFitnessFrontend/src/api/Diary/waterIntakteService.ts). Phase 4
@@ -11,9 +11,7 @@ export const upsertWaterIntakeBodySchema = z.object({
   change_drinks: z.number(),
   container_id: z.number().nullable(),
 });
-export type UpsertWaterIntakeBody = z.infer<
-  typeof upsertWaterIntakeBodySchema
->;
+export type UpsertWaterIntakeBody = z.infer<typeof upsertWaterIntakeBodySchema>;
 
 // The day-totals endpoint returns a single aggregated object. `manual_ml`,
 // `ledger_ml` and `food_ml` are the breakdown added in Phase 4; they are

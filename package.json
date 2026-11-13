@@ -9,9 +9,12 @@
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
-    "prettier": "3.9.6"
+    "prettier": "3.9.10"
   },
   "lint-staged": {
+    "shared/**/*.{ts,json}": [
+      "npx prettier --write --log-level warn --ignore-path shared/.prettierignore"
+    ],
     "SparkyFitnessFrontend/**/*.{ts,tsx}": [
       "npx prettier --write --log-level warn --ignore-path SparkyFitnessFrontend/.prettierignore"
     ],

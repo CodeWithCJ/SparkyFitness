@@ -1,4 +1,3 @@
-BEGIN;
 
 -- 1. Add 'is_visible' to the main table (Safe/Idempotent check)
 DO $$
@@ -33,4 +32,3 @@ CREATE TABLE IF NOT EXISTS "public"."user_meal_visibilities" (
     PRIMARY KEY ("user_id", "meal_type_id")
 );
 
-COMMIT;

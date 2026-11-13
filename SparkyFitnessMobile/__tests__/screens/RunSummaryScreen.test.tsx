@@ -10,7 +10,10 @@ import {
   rateProgramWorkout,
   setProgramPosition,
 } from '../../src/services/runProgramService';
-import { setExerciseEntryDistance } from '../../src/services/api/exerciseApi';
+import {
+  setExerciseEntryDistance,
+  setExerciseEntryStrideLength,
+} from '../../src/services/api/exerciseApi';
 import { usePersonalRecords } from '../../src/hooks/usePersonalRecords';
 import type { RunSummaryParams } from '../../src/utils/runSummary';
 
@@ -23,6 +26,7 @@ jest.mock('../../src/services/runProgramService', () => ({
 }));
 jest.mock('../../src/services/api/exerciseApi', () => ({
   setExerciseEntryDistance: jest.fn(() => Promise.resolve()),
+  setExerciseEntryStrideLength: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../src/hooks/usePersonalRecords', () => ({
   usePersonalRecords: jest.fn(() => ({ records: [] })),
@@ -83,9 +87,9 @@ it('shows the headline figures and the splits', () => {
   expect(screen.getByText('Run saved')).toBeTruthy();
   expect(screen.getByText('2.50')).toBeTruthy();
   expect(screen.getByText('12:30')).toBeTruthy();
-  expect(screen.getByText('5:00')).toBeTruthy();
+  expect(screen.getAllByText('5:00').length).toBeGreaterThan(0);
   expect(screen.getByText('Splits')).toBeTruthy();
-  expect(screen.getByText(/Fastest/)).toBeTruthy();
+  expect(screen.getByTestId('splits-table')).toBeTruthy();
   expect(screen.queryByText('Avg heart rate')).toBeNull();
   expect(screen.queryByText(/Workout \d+ of/)).toBeNull();
 });
@@ -333,4 +337,121 @@ describe('treadmill distance', () => {
     fireEvent.press(screen.getByText('Update'));
     expect(setExerciseEntryDistance).not.toHaveBeenCalled();
   });
+});
+
+describe('running form', () => {
+  it('shows nothing when the phone could not measure it', () => {
+    renderScreen(params());
+    expect(screen.queryByText('Avg cadence')).toBeNull();
+    expect(screen.queryByText('Stride length')).toBeNull();
+  });
+
+  it('shows cadence in spm and stride in metres', () => {
+    renderScreen(params({ form: { avgCadence: 168, strideLengthCm: 112.5 } }));
+    expect(screen.getByText('Avg cadence')).toBeTruthy();
+    expect(screen.getByText('168 spm')).toBeTruthy();
+    expect(screen.getByText('Stride length')).toBeTruthy();
+    expect(screen.getByText('1.13 m')).toBeTruthy();
+  });
+
+  it('shows stride in feet with the miles setting', () => {
+    renderScreen(
+      params({
+        distanceUnit: 'miles',
+        form: { avgCadence: 168, strideLengthCm: 112.5 },
+      })
+    );
+    expect(screen.getByText('3.69 ft')).toBeTruthy();
+  });
+
+  it('shows cadence alone when there is no stride', () => {
+    renderScreen(params({ form: { avgCadence: 160, strideLengthCm: null } }));
+    expect(screen.getByText('160 spm')).toBeTruthy();
+    expect(screen.queryByText('Stride length')).toBeNull();
+  });
+
+  describe('after the treadmill distance is corrected', () => {
+    // 3000 steps in 20 minutes.
+    const treadmill = () =>
+      params({
+        entryId: 'entry-1',
+        editableDistance: true,
+        distanceMeters: 4000,
+        activeSeconds: 1200,
+        form: { avgCadence: 150, strideLengthCm: 133.3, steps: 3000 },
+      });
+    const correct = async (km: string) => {
+      fireEvent.changeText(
+        screen.getByLabelText('Distance from the treadmill in km'),
+        km
+      );
+      fireEvent.press(screen.getByText('Update'));
+      await screen.findByText('Distance updated.');
+    };
+
+    it('works the stride out again and updates the entry', async () => {
+      renderScreen(treadmill());
+      await correct('3');
+
+      expect(setExerciseEntryStrideLength).toHaveBeenCalledWith('entry-1', 100);
+      expect(screen.getByText('1 m')).toBeTruthy();
+      expect(screen.getByText('150 spm')).toBeTruthy();
+    });
+
+    it('clears a stride the new distance cannot support', async () => {
+      renderScreen(treadmill());
+      // 20 km in 3000 steps is a 6.7 m stride.
+      await correct('20');
+
+      expect(setExerciseEntryStrideLength).toHaveBeenCalledWith(
+        'entry-1',
+        null
+      );
+      expect(screen.queryByText('Stride length')).toBeNull();
+    });
+
+    it('keeps the correction when the stride update fails', async () => {
+      jest
+        .mocked(setExerciseEntryStrideLength)
+        .mockRejectedValueOnce(new Error('offline'));
+      renderScreen(treadmill());
+      await correct('3');
+
+      expect(screen.getByText('3.00')).toBeTruthy();
+    });
+
+    it('leaves the stride alone when the steps are not known', async () => {
+      renderScreen(
+        params({
+          entryId: 'entry-1',
+          editableDistance: true,
+          distanceMeters: 4000,
+          activeSeconds: 1200,
+          form: { avgCadence: 150, strideLengthCm: 133.3 },
+        })
+      );
+      await correct('3');
+
+      expect(setExerciseEntryStrideLength).not.toHaveBeenCalled();
+    });
+  });
+});
+
+it('drops distance and pace for a jump rope, and shows its measured calories', () => {
+  renderScreen(
+    params({
+      activity: 'jumpRope',
+      distanceMeters: 0,
+      activeSeconds: 600,
+      activeEnergyKcal: 84,
+      avgHeartRate: 121,
+    })
+  );
+  expect(screen.getByText('Jump Rope saved')).toBeTruthy();
+  expect(screen.getByText('10:00')).toBeTruthy();
+  expect(screen.getByText('84')).toBeTruthy();
+  expect(screen.getByText('121')).toBeTruthy();
+  expect(screen.queryByText('Distance')).toBeNull();
+  expect(screen.queryByText('Avg pace')).toBeNull();
+  expect(screen.queryByText('Treadmill distance')).toBeNull();
 });

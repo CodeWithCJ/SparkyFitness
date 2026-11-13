@@ -1,6 +1,7 @@
 import {
   initHealthConnect,
   requestHealthPermissions,
+  requestGrantedHealthPermissions,
   ensureHistoryReadPermission,
   getSyncStartDate,
   readHealthRecords,
@@ -208,6 +209,27 @@ describe('initHealthConnect', () => {
     const result = await initHealthConnect();
 
     expect(result).toBe(false);
+  });
+});
+
+describe('requestGrantedHealthPermissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns only the requested permissions that came back granted', async () => {
+    mockRequestPermission.mockResolvedValue([
+      { recordType: 'Steps', accessType: 'read' },
+      { recordType: 'Weight', accessType: 'write' },
+    ] as GrantedPermission[]);
+
+    const granted = await requestGrantedHealthPermissions([
+      { recordType: 'Steps', accessType: 'read' },
+      { recordType: 'Steps', accessType: 'read' },
+      { recordType: 'HeartRate', accessType: 'read' },
+    ]);
+
+    expect(granted).toEqual([{ recordType: 'Steps', accessType: 'read' }]);
   });
 });
 
@@ -1576,6 +1598,178 @@ describe('enrichExerciseSessions', () => {
     });
   });
 
+  test.each([
+    'ActiveCaloriesBurned',
+    'TotalCaloriesBurned',
+    'BasalMetabolicRate',
+  ])('rejects an asynchronous %s calorie read failure', async (failedType) => {
+    const failure = new Error('Binder transaction failed');
+    mockAggregateRecord.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === failedType) return Promise.reject(failure);
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve({
+            ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+          });
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+        }
+        if (recordType === 'BasalMetabolicRate') {
+          return Promise.resolve({
+            BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+          });
+        }
+        return Promise.resolve({});
+      }
+    );
+
+    await expect(
+      enrichExerciseSessions([makeSession()], createTelemetryRunContext())
+    ).rejects.toBe(failure);
+  });
+
+  test.each([
+    ['ActiveCaloriesBurned', 'API call quota exceeded'],
+    ['TotalCaloriesBurned', 'Health Connect client is not initialized'],
+  ])(
+    'rejects an asynchronous fallback %s failure',
+    async (failedType, message) => {
+      const failure = new Error(message);
+      mockAggregateRecord.mockImplementation(
+        ({
+          recordType,
+          dataOriginFilter,
+        }: {
+          recordType: string;
+          dataOriginFilter?: string[];
+        }) => {
+          if (!dataOriginFilter && recordType === failedType) {
+            return Promise.reject(failure);
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      await expect(
+        enrichExerciseSessions([makeSession()], createTelemetryRunContext())
+      ).rejects.toBe(failure);
+    }
+  );
+
+  test.each<[string, string, number]>([
+    ['ActiveCaloriesBurned', 'Permission denied', 225],
+    ['TotalCaloriesBurned', 'Record type is not supported', 200],
+    ['BasalMetabolicRate', 'SecurityException: permission denied', 200],
+  ])(
+    'keeps the optional %s fallback when access is unavailable',
+    async (unavailableType, message, expectedCalories) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === unavailableType) {
+            return Promise.reject(new Error(message));
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext()
+      );
+      expect(result[0]).toMatchObject({
+        energy: { inKilocalories: expectedCalories },
+      });
+    }
+  );
+
+  test.each([
+    'PERMISSION_ERROR',
+    'AGGREGATION_NOT_SUPPORTED',
+    'SDK_VERSION_ERROR',
+  ])(
+    'keeps active calories when optional basal access fails with code %s',
+    async (code) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.reject(
+              Object.assign(new Error('Native read failed'), { code })
+            );
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext()
+      );
+      expect(result[0]).toMatchObject({ energy: { inKilocalories: 200 } });
+    }
+  );
+
+  test('keeps valid calories when optional distance and step reads fail', async () => {
+    mockAggregateRecord.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'Distance' || recordType === 'Steps') {
+          return Promise.reject(new Error('Binder transaction failed'));
+        }
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve({
+            ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+          });
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+        }
+        return Promise.resolve({
+          BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+        });
+      }
+    );
+
+    const result = await enrichExerciseSessions(
+      [makeSession()],
+      createTelemetryRunContext()
+    );
+    expect(result[0]).toMatchObject({ energy: { inKilocalories: 225 } });
+  });
+
   test('leaves record untouched when both calorie aggregates return 0', async () => {
     mockAggregateRecord.mockImplementation(
       ({ recordType }: { recordType: string }) => {
@@ -1816,7 +2010,38 @@ describe('enrichExerciseSessions', () => {
     );
   });
 
-  test('keeps the legacy total fallback when basal consumes the total', async () => {
+  test.each([75, 80])(
+    'preserves zero active energy for 75 kcal total and basal %s within the resting-rate cap',
+    async (basal) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: basal },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession({ exerciseType: 70 })],
+        createTelemetryRunContext()
+      );
+
+      expect(result[0]).toMatchObject({ energy: { inKilocalories: 0 } });
+    }
+  );
+
+  test('keeps the legacy total fallback when basal exceeds the resting-rate cap', async () => {
     mockAggregateRecord.mockImplementation(
       ({ recordType }: { recordType: string }) => {
         if (recordType === 'ActiveCaloriesBurned') {
@@ -3121,6 +3346,183 @@ describe('dead Health Connect client is reconnected, not abandoned (#2191)', () 
 
     expect(mockInitialize).not.toHaveBeenCalled();
     expect(getClientUnavailableCount()).toBe(0);
+  });
+
+  test('reconnects and retries when aggregateGroupByPeriod hits a dead client', async () => {
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
+    mockAggregateGroupByPeriod
+      .mockRejectedValueOnce(deadClient())
+      .mockResolvedValueOnce([
+        periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
+      ]);
+
+    const result = await getAggregatedStepsByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0].value).toBe(5000);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('surfaces aggregateGroupByPeriod error and tracks count when client remains dead after reconnect', async () => {
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
+    mockAggregateGroupByPeriod.mockRejectedValue(deadClient());
+
+    const result = await getAggregatedStepsByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+    expect(getClientUnavailableCount()).toBe(1);
+    expect(result.records).toHaveLength(0);
+    expect(result.error).toContain('client is not initialized');
+  });
+
+  describe('record-offset aggregation recovery', () => {
+    const start = localMidnight(2024, 1, 15);
+    const end = localEndOfDay(2024, 1, 15);
+    const probeInstant = new Date(2024, 0, 15, 12);
+    const offset = deviceOffsetMinutesAt(probeInstant) + 120;
+    const anchor = midnightAtOffset(2024, 1, 15, offset);
+
+    beforeEach(() => {
+      mockProbeTimeline([{ start: probeInstant, offsetMinutes: offset }]);
+      mockAggregateGroupByDuration.mockReset();
+    });
+
+    test('retries the same segment and preserves the record day and offset', async () => {
+      mockAggregateGroupByDuration
+        .mockRejectedValueOnce(deadClient())
+        .mockResolvedValueOnce([durationBucket(anchor, { COUNT_TOTAL: 5000 })]);
+
+      const result = await getAggregatedStepsByDateDetailed(start, end);
+
+      expect(result).toEqual({
+        records: [
+          {
+            date: '2024-01-15',
+            value: 5000,
+            type: 'step',
+            record_utc_offset_minutes: offset,
+          },
+        ],
+      });
+      expect(mockInitialize).toHaveBeenCalledTimes(1);
+      expect(getClientUnavailableCount()).toBe(1);
+      expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(2);
+      const expectedQuery = {
+        recordType: 'Steps',
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: new Date(anchor).toISOString(),
+          endTime: localMidnight(2024, 1, 16).toISOString(),
+        },
+        timeRangeSlicer: { duration: 'DAYS', length: 1 },
+      };
+      expect(mockAggregateGroupByDuration).toHaveBeenNthCalledWith(
+        1,
+        expectedQuery
+      );
+      expect(mockAggregateGroupByDuration).toHaveBeenNthCalledWith(
+        2,
+        expectedQuery
+      );
+      expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
+    });
+
+    test('returns the retry error without further attempts', async () => {
+      mockAggregateGroupByDuration
+        .mockRejectedValueOnce(deadClient())
+        .mockRejectedValueOnce(new Error('permission revoked'));
+
+      const result = await getAggregatedStepsByDateDetailed(start, end);
+
+      expect(result).toEqual({ records: [], error: 'permission revoked' });
+      expect(mockInitialize).toHaveBeenCalledTimes(1);
+      expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(2);
+    });
+
+    test('preserves the original error when reconnection fails', async () => {
+      mockInitialize.mockResolvedValue(false);
+      mockAggregateGroupByDuration.mockRejectedValue(deadClient());
+
+      const result = await getAggregatedStepsByDateDetailed(start, end);
+
+      expect(result).toEqual({
+        records: [],
+        error: 'Health Connect client is not initialized',
+      });
+      expect(mockInitialize).toHaveBeenCalledTimes(1);
+      expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not reconnect for an unrelated aggregation error', async () => {
+      mockAggregateGroupByDuration.mockRejectedValue(
+        new Error('quota exceeded')
+      );
+
+      const result = await getAggregatedStepsByDateDetailed(start, end);
+
+      expect(result).toEqual({ records: [], error: 'quota exceeded' });
+      expect(mockInitialize).not.toHaveBeenCalled();
+      expect(getClientUnavailableCount()).toBe(0);
+      expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
+    });
+
+    test('shares the reconnect budget with device-zone aggregation', async () => {
+      mockReadRecords.mockResolvedValue(offsetlessProbeResult());
+      mockAggregateGroupByPeriod
+        .mockRejectedValueOnce(deadClient())
+        .mockResolvedValueOnce([]);
+      await getAggregatedStepsByDateDetailed(start, end);
+      mockProbeTimeline([{ start: probeInstant, offsetMinutes: offset }]);
+      mockAggregateGroupByDuration.mockRejectedValue(deadClient());
+
+      const result = await getAggregatedStepsByDateDetailed(start, end);
+
+      expect(result.error).toBe('Health Connect client is not initialized');
+      expect(mockInitialize).toHaveBeenCalledTimes(1);
+      expect(getClientUnavailableCount()).toBe(2);
+      expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('concurrent aggregate reads share the in-flight reconnect attempt', async () => {
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
+    let resolveInit!: (val: boolean) => void;
+    const initPromise = new Promise<boolean>((resolve) => {
+      resolveInit = resolve;
+    });
+    mockInitialize.mockImplementation(() => initPromise);
+    mockAggregateGroupByPeriod
+      .mockRejectedValueOnce(deadClient())
+      .mockRejectedValueOnce(deadClient())
+      .mockResolvedValueOnce([periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 })])
+      .mockResolvedValueOnce([
+        periodBucket(2024, 1, 16, { COUNT_TOTAL: 7000 }),
+      ]);
+
+    const stepsPromise = getAggregatedStepsByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+    const stepsPromise2 = getAggregatedStepsByDateDetailed(
+      localMidnight(2024, 1, 16),
+      localEndOfDay(2024, 1, 16)
+    );
+
+    await new Promise((r) => setTimeout(r, 10));
+    resolveInit(true);
+
+    const [steps1, steps2] = await Promise.all([stepsPromise, stepsPromise2]);
+
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+    expect(steps1.records[0].value).toBe(5000);
+    expect(steps2.records[0].value).toBe(7000);
   });
 });
 

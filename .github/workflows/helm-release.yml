@@ -1,30 +1,45 @@
 name: Release Helm Chart
 
+# Runs after Publish Docker Images, not on release: published, because that
+# workflow waits for approval in the release environment and the chart must not
+# point at image tags that do not exist yet.
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   release-chart:
     name: Package and push Helm chart
     runs-on: ubuntu-latest
+    # workflow_run fires on failure too, and for manual rebuilds of the images,
+    # which are not a new release.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'release')
+    # GHCR_TOKEN lives in this environment, which only main and v* tags can use
+    # and which waits for a maintainer's approval, so a dispatch from another
+    # branch cannot push a chart.
+    environment: release
+    # Pushes to GHCR with GHCR_TOKEN, not GITHUB_TOKEN.
     permissions:
-      packages: write
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
       - name: Get release tag
         id: release_tag
+        env:
+          # For a release run, head_branch is the release's tag.
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            TAG="$RUN_TAG"
+            if ! [[ "$TAG" =~ ^v?[0-9]+(\.[0-9]+)+$ ]]; then
+              echo "::error::Unexpected release tag: $TAG"
+              exit 1
+            fi
           else
             TAG="0.0.0-dev"
           fi
@@ -44,19 +59,37 @@ jobs:
           echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
           echo "app_version=$TAG" >> "$GITHUB_OUTPUT"
 
+      # The release's tag, checked out by name once it has been validated. Only
+      # the app and admins can create v* tags (the Release tags ruleset), and
+      # the images were built from it.
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && format('refs/tags/{0}', steps.release_tag.outputs.app_version) || github.sha }}
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+        env:
+          # A classic PAT with only write:packages. The chart package gives this
+          # repository's Actions no write access, so GITHUB_TOKEN cannot push it.
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "$GITHUB_REPOSITORY_OWNER" --password-stdin
 
       - name: Fetch chart dependencies
         run: helm dependency update helm/chart
 
       - name: Package Helm chart
-        run: |
-          helm package helm/chart \
-            --version "${{ steps.release_tag.outputs.chart_version }}" \
-            --app-version "${{ steps.release_tag.outputs.app_version }}"
+        env:
+          CHART_VERSION: ${{ steps.release_tag.outputs.chart_version }}
+          APP_VERSION: ${{ steps.release_tag.outputs.app_version }}
+        run: helm package helm/chart --version "$CHART_VERSION" --app-version "$APP_VERSION"
 
       - name: Push Helm chart to GHCR
+        env:
+          CHART_VERSION: ${{ steps.release_tag.outputs.chart_version }}
         run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${OWNER_LC}/charts
+          OWNER_LC=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          helm push "sparkyfitness-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER_LC}/charts"

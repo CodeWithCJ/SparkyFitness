@@ -12,7 +12,7 @@
  *   width regardless of when it happened. Gaps are invisible, which reads
  *   better for sparse or irregularly logged series.
  */
-export const CHART_SCALE_MODES = ["time", "point"] as const;
+export const CHART_SCALE_MODES = ['time', 'point'] as const;
 
 export type ChartScaleMode = (typeof CHART_SCALE_MODES)[number];
 
@@ -20,4 +20,4 @@ export type ChartScaleMode = (typeof CHART_SCALE_MODES)[number];
  * Time-proportional is the honest default: an evenly spaced axis over unevenly
  * spaced entries visually flattens plateaus and exaggerates streaks.
  */
-export const DEFAULT_CHART_SCALE_MODE: ChartScaleMode = "time";
+export const DEFAULT_CHART_SCALE_MODE: ChartScaleMode = 'time';

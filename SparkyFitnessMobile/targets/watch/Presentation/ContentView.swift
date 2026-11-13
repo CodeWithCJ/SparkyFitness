@@ -62,6 +62,7 @@ struct ContentView: View {
                 .id(pages)
             }
         }
+        .environment(\.watchLargeText, store.context.effectiveLargerText)
         .onAppear {
             store.pruneStaleDayData()
             // Cheap, local, and works with the phone out of range — unlike
@@ -154,9 +155,17 @@ struct ContentView: View {
     private func view(for page: WatchPage) -> some View {
         switch page {
         case .goals:
-            GoalSummaryView()
+            if store.context.effectiveLargerText {
+                GoalSummaryView()
+            } else {
+                ClassicGoalSummaryView()
+            }
         case .water:
-            WaterIntakeView()
+            if store.context.effectiveLargerText {
+                WaterIntakeView()
+            } else {
+                ClassicWaterIntakeView()
+            }
         case .medications:
             MedicationsView()
         case .fasting:
@@ -168,8 +177,13 @@ struct ContentView: View {
         case .trend:
             TrendView()
         case .workout:
-            WorkoutView()
-                .environment(\.workoutPageActive, selectedPage == .workout)
+            if !store.context.usesClassicWorkout {
+                WorkoutView()
+                    .environment(\.workoutPageActive, selectedPage == .workout)
+            } else {
+                ClassicWorkoutView()
+                    .environment(\.workoutPageActive, selectedPage == .workout)
+            }
         case .nowPlaying:
             NowPlayingPage()
         case .recording:
@@ -222,18 +236,18 @@ struct FirstRunEntryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 6) {
-                Text("First check-in")
-                    .font(.caption)
+                Text(String(localized: "watch.checkin.first.title", defaultValue: "First check-in"))
+                    .watchFont(.footnote, classic: .caption)
                     .foregroundStyle(.secondary)
-                Text("Type today's numbers once — after this the Digital Crown starts from your last value.")
-                    .font(.caption2)
+                Text(String(localized: "watch.checkin.first.body", defaultValue: "Type today's numbers once — after this the Digital Crown starts from your last value."))
+                    .watchFont(.footnote, classic: .caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                TextField("Weight \(unit.suffix)", text: $weightText)
-                TextField("Body fat % (optional)", text: $bodyFatText)
+                TextField(String(localized: "watch.checkin.weightPlaceholder", defaultValue: "Weight \(unit.suffix)"), text: $weightText)
+                TextField(String(localized: "watch.checkin.bodyFatOptional", defaultValue: "Body fat % (optional)"), text: $bodyFatText)
 
-                Button("Save") {
+                Button(String(localized: "watch.common.save", defaultValue: "Save")) {
                     guard let weight = parse(weightText) else { return }
                     Haptics.tap()
                     onSave(unit.toKg(weight), parse(bodyFatText))

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  saveCategorySample,
   saveCorrelationSample,
   saveQuantitySample,
   deleteObjects,
@@ -23,6 +24,9 @@ jest.mock('../../../src/services/api/dailySummaryApi', () => ({
 }));
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   fetchWaterIntakeLog: jest.fn(),
+}));
+jest.mock('../../../src/services/api/oralCareApi', () => ({
+  fetchOralCareSessions: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../../src/utils/loggedMealCollapse', () => ({
   resolveCollapsedFoodEntries: jest.fn((_date: string, entries: unknown) =>
@@ -521,5 +525,91 @@ describe('removeWrittenData (cleanup)', () => {
     mockDeleteObjects.mockRejectedValueOnce(new Error('denied'));
     const result = await removeWrittenData(null);
     expect(result).toEqual({ ok: false });
+  });
+});
+
+describe('toothbrushing writeback', () => {
+  const {
+    fetchOralCareSessions,
+  } = require('../../../src/services/api/oralCareApi');
+  const mockSessions = fetchOralCareSessions as jest.Mock;
+  const mockSaveCategory = saveCategorySample as jest.Mock;
+  const BRUSH = 'HKCategoryTypeIdentifierToothbrushingEvent';
+  const session = (overrides: Record<string, unknown>) => ({
+    id: 's1',
+    care_type: 'brushing',
+    provider: 'manual',
+    start_time: '2026-06-01T08:00:00.000Z',
+    duration_seconds: 120,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    mockSaveCategory.mockResolvedValue({ uuid: 'brush-1' });
+  });
+
+  it('writes only brushes logged in Sparky that have a duration', async () => {
+    prefs({ writebackToothbrushingEnabled: true });
+    mockSessions.mockResolvedValue([
+      session({ id: 'manual' }),
+      session({
+        id: 'timer',
+        provider: 'timer',
+        start_time: '2026-06-01T21:00:00.000Z',
+      }),
+      session({ id: 'synced', provider: 'HealthKit' }),
+      session({ id: 'untimed', duration_seconds: null }),
+      session({ id: 'floss', care_type: 'flossing' }),
+    ]);
+
+    await writebackPhase(['2026-06-01']);
+
+    expect(mockSaveCategory).toHaveBeenCalledTimes(2);
+    expect(mockSaveCategory).toHaveBeenCalledWith(
+      BRUSH,
+      0,
+      new Date('2026-06-01T08:00:00.000Z'),
+      new Date('2026-06-01T08:02:00.000Z'),
+      expect.objectContaining({ SparkyWritebackVersion: expect.any(Number) })
+    );
+    // Toothbrushing alone never needs the diary summary.
+    expect(mockSummary).not.toHaveBeenCalled();
+  });
+
+  it('replaces the brushes it wrote before and skips an unchanged day', async () => {
+    prefs({
+      writebackToothbrushingEnabled: true,
+      'writebackToothbrushingUuids:2026-06-01': ['old-brush'],
+    });
+    mockSessions.mockResolvedValue([session({})]);
+
+    await writebackPhase(['2026-06-01']);
+    expect(mockDeleteObjects).toHaveBeenCalledWith(BRUSH, {
+      uuids: ['old-brush'],
+    });
+    expect(store['writebackToothbrushingUuids:2026-06-01']).toEqual([
+      'brush-1',
+    ]);
+
+    mockSaveCategory.mockClear();
+    await writebackPhase(['2026-06-01']);
+    expect(mockSaveCategory).not.toHaveBeenCalled();
+  });
+
+  it('skips toothbrushing when its write permission is not granted', async () => {
+    prefs({ writebackToothbrushingEnabled: true });
+    mockAuthStatus.mockImplementation((type: string) =>
+      type === BRUSH ? SHARING_DENIED : SHARING_AUTHORIZED
+    );
+    mockSessions.mockResolvedValue([session({})]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockSaveCategory).not.toHaveBeenCalled();
+  });
+
+  it('removes written brushes with the rest of the written data', async () => {
+    prefs({});
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
+    await removeWrittenData(null);
+    expect(mockDeleteObjects).toHaveBeenCalledWith(BRUSH, expect.anything());
   });
 });

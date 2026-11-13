@@ -3,8 +3,14 @@
 // across timezones and DST boundaries. All functions are side-effect free and
 // unit-tested from the server package.
 
-import { addDays, compareDays, daysBetween } from "../utils/timezone.ts";
-import { isPeriodEvidenceFlow, isHormonalBc, CYCLE_DEFAULTS, DAILY_INSIGHTS, PRODUCT_CAPACITY_ML } from "./constants.ts";
+import { addDays, compareDays, daysBetween } from '../utils/timezone.ts';
+import {
+  isPeriodEvidenceFlow,
+  isHormonalBc,
+  CYCLE_DEFAULTS,
+  DAILY_INSIGHTS,
+  PRODUCT_CAPACITY_ML,
+} from './constants.ts';
 import type {
   CyclePhase,
   CyclePrediction,
@@ -17,8 +23,7 @@ import type {
   SharedCycleSettings,
   SharedCycleDailyLog,
   FlowLevel,
-} from "./types.ts";
-
+} from './types.ts';
 
 /** True if a day is period evidence: any bleed flow OR any product used. */
 export function isPeriodDay(ev: DayEvidence): boolean {
@@ -106,10 +111,10 @@ function stdDev(values: number[], mean: number): number {
 }
 
 function regularityFromSd(sd: number, sampleSize: number): RegularityLabel {
-  if (sampleSize < 2) return "unknown";
-  if (sd <= 3) return "regular";
-  if (sd <= 5) return "somewhat";
-  return "irregular";
+  if (sampleSize < 2) return 'unknown';
+  if (sd <= 3) return 'regular';
+  if (sd <= 5) return 'somewhat';
+  return 'irregular';
 }
 
 /**
@@ -118,13 +123,13 @@ function regularityFromSd(sd: number, sampleSize: number): RegularityLabel {
  */
 export function computeCycleStats(cycles: DerivedCycle[]): CycleStats {
   const completed = cycles.filter(
-    (c) => typeof c.cycle_length === "number" && c.cycle_length! > 0,
+    (c) => typeof c.cycle_length === 'number' && c.cycle_length! > 0
   );
   const recent = completed.slice(-CYCLE_DEFAULTS.statsWindow);
   const cycleLengths = recent.map((c) => c.cycle_length!);
   const periodLengths = recent
     .map((c) => c.period_length)
-    .filter((p): p is number => typeof p === "number" && p > 0);
+    .filter((p): p is number => typeof p === 'number' && p > 0);
 
   if (cycleLengths.length === 0) {
     return {
@@ -132,9 +137,11 @@ export function computeCycleStats(cycles: DerivedCycle[]): CycleStats {
       medianCycleLength: CYCLE_DEFAULTS.cycleLength,
       cycleLengthSd: 0,
       avgPeriodLength: periodLengths.length
-        ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
+        ? Math.round(
+            periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
+          )
         : CYCLE_DEFAULTS.periodLength,
-      regularity: "unknown",
+      regularity: 'unknown',
       sampleSize: 0,
     };
   }
@@ -146,7 +153,9 @@ export function computeCycleStats(cycles: DerivedCycle[]): CycleStats {
     medianCycleLength: Math.round(median(cycleLengths)),
     cycleLengthSd: Math.round(sd * 10) / 10,
     avgPeriodLength: periodLengths.length
-      ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
+      ? Math.round(
+          periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
+        )
       : CYCLE_DEFAULTS.periodLength,
     regularity: regularityFromSd(sd, cycleLengths.length),
     sampleSize: cycleLengths.length,
@@ -154,9 +163,10 @@ export function computeCycleStats(cycles: DerivedCycle[]): CycleStats {
 }
 
 function confidenceFrom(stats: CycleStats): PredictionConfidence {
-  if (stats.sampleSize >= 3 && stats.regularity === "regular") return "high";
-  if (stats.sampleSize >= 2 && stats.regularity !== "irregular") return "medium";
-  return "low";
+  if (stats.sampleSize >= 3 && stats.regularity === 'regular') return 'high';
+  if (stats.sampleSize >= 2 && stats.regularity !== 'irregular')
+    return 'medium';
+  return 'low';
 }
 
 /**
@@ -168,19 +178,23 @@ export function predictNextCycles(
   lastPeriodStart: string,
   settings: Pick<
     SharedCycleSettings,
-    | "avg_cycle_length_override"
-    | "avg_period_length_override"
-    | "luteal_phase_length"
-    | "birth_control_method"
-    | "show_fertile_window"
-    | "mode"
+    | 'avg_cycle_length_override'
+    | 'avg_period_length_override'
+    | 'luteal_phase_length'
+    | 'birth_control_method'
+    | 'show_fertile_window'
+    | 'mode'
   >,
-  count = 3,
+  count = 3
 ): CyclePrediction {
   const cycleLength =
-    settings.avg_cycle_length_override ?? stats.avgCycleLength ?? CYCLE_DEFAULTS.cycleLength;
+    settings.avg_cycle_length_override ??
+    stats.avgCycleLength ??
+    CYCLE_DEFAULTS.cycleLength;
   const periodLength =
-    settings.avg_period_length_override ?? stats.avgPeriodLength ?? CYCLE_DEFAULTS.periodLength;
+    settings.avg_period_length_override ??
+    stats.avgPeriodLength ??
+    CYCLE_DEFAULTS.periodLength;
   const luteal = settings.luteal_phase_length ?? CYCLE_DEFAULTS.lutealLength;
 
   // Fertile-window UI is suppressed on hormonal BC, when the user hides it, and
@@ -188,9 +202,9 @@ export function predictNextCycles(
   const suppressFertility =
     isHormonalBc(settings.birth_control_method) ||
     settings.show_fertile_window === false ||
-    settings.mode === "pregnant" ||
-    settings.mode === "postpartum" ||
-    settings.mode === "menopause";
+    settings.mode === 'pregnant' ||
+    settings.mode === 'postpartum' ||
+    settings.mode === 'menopause';
 
   const cycles: PredictedCycle[] = [];
   let start = lastPeriodStart;
@@ -219,10 +233,10 @@ export function predictNextCycles(
   return {
     cycles,
     basis: isHormonalBc(settings.birth_control_method)
-      ? "bc-bleed"
+      ? 'bc-bleed'
       : stats.sampleSize > 0
-        ? "history"
-        : "settings",
+        ? 'history'
+        : 'settings',
     confidence,
   };
 }
@@ -240,31 +254,31 @@ export interface PhaseResult {
 export function phaseForDay(
   day: string,
   cycles: DerivedCycle[],
-  prediction: CyclePrediction,
+  prediction: CyclePrediction
 ): PhaseResult {
   // Find the most recent cycle start on or before `day`.
   const started = cycles
     .filter((c) => compareDays(c.start_date, day) <= 0)
     .sort((a, b) => compareDays(a.start_date, b.start_date));
   const current = started[started.length - 1];
-  if (!current) return { phase: "unknown", cycleDay: null };
+  if (!current) return { phase: 'unknown', cycleDay: null };
 
   const cycleDay = daysBetween(current.start_date, day) + 1;
   const periodLen = current.period_length ?? CYCLE_DEFAULTS.periodLength;
 
-  if (cycleDay <= periodLen) return { phase: "menstrual", cycleDay };
+  if (cycleDay <= periodLen) return { phase: 'menstrual', cycleDay };
 
   // Overlay fertile/ovulation from the prediction whose window contains `day`.
   for (const p of prediction.cycles) {
     if (p.ovulation && compareDays(day, p.ovulation) === 0)
-      return { phase: "ovulation", cycleDay };
+      return { phase: 'ovulation', cycleDay };
     if (
       p.fertileStart &&
       p.fertileEnd &&
       compareDays(day, p.fertileStart) >= 0 &&
       compareDays(day, p.fertileEnd) <= 0
     )
-      return { phase: "fertile", cycleDay };
+      return { phase: 'fertile', cycleDay };
   }
 
   // Determine this cycle's ovulation so post-fertile days resolve to luteal
@@ -274,27 +288,25 @@ export function phaseForDay(
   // the current start + expected cycle length. The last two cover the current
   // (open) cycle where no prediction ovulation exists (e.g. hormonal BC).
   const nextStart = cycles.find(
-    (c) => compareDays(c.start_date, day) > 0,
+    (c) => compareDays(c.start_date, day) > 0
   )?.start_date;
   const luteal = CYCLE_DEFAULTS.lutealLength;
   const ovulation =
     prediction.cycles[0]?.ovulation ??
     (nextStart
       ? addDays(nextStart, -luteal)
-      : addDays(
-          current.start_date,
-          CYCLE_DEFAULTS.cycleLength - luteal,
-        ));
+      : addDays(current.start_date, CYCLE_DEFAULTS.cycleLength - luteal));
 
-  if (compareDays(day, ovulation) === 0) return { phase: "ovulation", cycleDay };
+  if (compareDays(day, ovulation) === 0)
+    return { phase: 'ovulation', cycleDay };
   if (
     compareDays(day, addDays(ovulation, -CYCLE_DEFAULTS.fertileBefore)) >= 0 &&
     compareDays(day, addDays(ovulation, CYCLE_DEFAULTS.fertileAfter)) <= 0
   )
-    return { phase: "fertile", cycleDay };
-  if (compareDays(day, ovulation) > 0) return { phase: "luteal", cycleDay };
+    return { phase: 'fertile', cycleDay };
+  if (compareDays(day, ovulation) > 0) return { phase: 'luteal', cycleDay };
 
-  return { phase: "follicular", cycleDay };
+  return { phase: 'follicular', cycleDay };
 }
 
 export interface LatePeriodStatus {
@@ -305,7 +317,7 @@ export interface LatePeriodStatus {
 /** How many days past the next predicted period start `today` is. */
 export function latePeriodStatus(
   today: string,
-  prediction: CyclePrediction,
+  prediction: CyclePrediction
 ): LatePeriodStatus {
   const next = prediction.cycles[0];
   if (!next) return { isLate: false, daysLate: 0 };
@@ -320,26 +332,26 @@ export function latePeriodStatus(
 export function selectDailyInsight(
   day: string,
   phase: CyclePhase,
-  settings: Pick<SharedCycleSettings, "mode">,
+  settings: Pick<SharedCycleSettings, 'mode'>
 ): string {
   const candidates = DAILY_INSIGHTS.filter(
     (r) =>
-      (r.phase === phase || r.phase === "any") &&
-      (!r.mode || r.mode === settings.mode),
+      (r.phase === phase || r.phase === 'any') &&
+      (!r.mode || r.mode === settings.mode)
   ).sort((a, b) => b.priority - a.priority);
-  if (candidates.length === 0) return "generic_log";
+  if (candidates.length === 0) return 'generic_log';
 
   // Take the highest-priority tier, then rotate within it by a date seed.
   const topPriority = candidates[0]!.priority;
   const top = candidates.filter((c) => c.priority === topPriority);
-  const seed = Math.abs(daysBetween("2000-01-01", day));
+  const seed = Math.abs(daysBetween('2000-01-01', day));
   return top[seed % top.length]!.key;
 }
 
 export interface DecoratedDay {
   date: string; // YYYY-MM-DD
   day: number; // 1-31
-  type: "period" | "predicted-period" | "fertile" | "ovulation" | "none";
+  type: 'period' | 'predicted-period' | 'fertile' | 'ovulation' | 'none';
   loggedFlow?: FlowLevel | null;
   hasNotes: boolean;
   hasSymptoms: boolean;
@@ -351,37 +363,53 @@ export function buildCalendarMonth(
   month: string, // YYYY-MM
   _cycles: DerivedCycle[],
   logs: SharedCycleDailyLog[],
-  prediction: CyclePrediction,
+  prediction: CyclePrediction
 ): DecoratedDay[] {
-  const parts = month.split("-");
+  const parts = month.split('-');
   const year = Number(parts[0]);
   const mIndex = Number(parts[1]) - 1; // 0-11
   const daysInMonth = new Date(Date.UTC(year, mIndex + 1, 0)).getUTCDate();
 
   const days: DecoratedDay[] = [];
-  const logMap = new Map<string, SharedCycleDailyLog>(logs.map((l) => [l.entry_date, l]));
+  const logMap = new Map<string, SharedCycleDailyLog>(
+    logs.map((l) => [l.entry_date, l])
+  );
 
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(mIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dateStr = `${year}-${String(mIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const log = logMap.get(dateStr);
-    const isPeriod = log ? isPeriodDay({ date: dateStr, flow_level: log.flow_level, product_usage: log.product_usage }) : false;
+    const isPeriod = log
+      ? isPeriodDay({
+          date: dateStr,
+          flow_level: log.flow_level,
+          product_usage: log.product_usage,
+        })
+      : false;
 
-    let type: DecoratedDay["type"] = "none";
+    let type: DecoratedDay['type'] = 'none';
     if (isPeriod) {
-      type = "period";
+      type = 'period';
     } else {
       // Check prediction cycles
       for (const p of prediction.cycles) {
-        if (compareDays(dateStr, p.periodStart) >= 0 && compareDays(dateStr, p.periodEnd) <= 0) {
-          type = "predicted-period";
+        if (
+          compareDays(dateStr, p.periodStart) >= 0 &&
+          compareDays(dateStr, p.periodEnd) <= 0
+        ) {
+          type = 'predicted-period';
           break;
         }
         if (p.ovulation && compareDays(dateStr, p.ovulation) === 0) {
-          type = "ovulation";
+          type = 'ovulation';
           break;
         }
-        if (p.fertileStart && p.fertileEnd && compareDays(dateStr, p.fertileStart) >= 0 && compareDays(dateStr, p.fertileEnd) <= 0) {
-          type = "fertile";
+        if (
+          p.fertileStart &&
+          p.fertileEnd &&
+          compareDays(dateStr, p.fertileStart) >= 0 &&
+          compareDays(dateStr, p.fertileEnd) <= 0
+        ) {
+          type = 'fertile';
           break;
         }
       }
@@ -410,11 +438,12 @@ export interface AccuracyDetail {
   deltaDays: number;
 }
 
-export function predictionAccuracy(
-  cycles: DerivedCycle[],
-): { avgError: number; details: AccuracyDetail[] } {
+export function predictionAccuracy(cycles: DerivedCycle[]): {
+  avgError: number;
+  details: AccuracyDetail[];
+} {
   const completed = cycles.filter(
-    (c) => typeof c.cycle_length === "number" && c.cycle_length! > 0,
+    (c) => typeof c.cycle_length === 'number' && c.cycle_length! > 0
   );
   if (completed.length < 2) return { avgError: 0, details: [] };
 
@@ -429,9 +458,9 @@ export function predictionAccuracy(
       avg_cycle_length_override: null,
       avg_period_length_override: null,
       luteal_phase_length: 14,
-      birth_control_method: "none",
+      birth_control_method: 'none',
       show_fertile_window: true,
-      mode: "standard" as const,
+      mode: 'standard' as const,
     };
     const pred = predictNextCycles(stats, lastStart, settings, 1);
     const nextPred = pred.cycles[0];
@@ -449,16 +478,29 @@ export function predictionAccuracy(
   }
 
   return {
-    avgError: details.length > 0 ? Math.round((sumError / details.length) * 10) / 10 : 0,
+    avgError:
+      details.length > 0
+        ? Math.round((sumError / details.length) * 10) / 10
+        : 0,
     details,
   };
 }
 
 export function symptomPhaseMatrix(
-  symptomEntries: Array<{ entry_date: string; symptom_name_snapshot: string; severity: number }>,
-  cycles: DerivedCycle[],
-): Record<string, Record<CyclePhase, { count: number; totalSeverity: number }>> {
-  const matrix: Record<string, Record<CyclePhase, { count: number; totalSeverity: number }>> = {};
+  symptomEntries: Array<{
+    entry_date: string;
+    symptom_name_snapshot: string;
+    severity: number;
+  }>,
+  cycles: DerivedCycle[]
+): Record<
+  string,
+  Record<CyclePhase, { count: number; totalSeverity: number }>
+> {
+  const matrix: Record<
+    string,
+    Record<CyclePhase, { count: number; totalSeverity: number }>
+  > = {};
 
   const stats = computeCycleStats(cycles);
   const lastCycle = cycles[cycles.length - 1];
@@ -466,13 +508,13 @@ export function symptomPhaseMatrix(
     avg_cycle_length_override: null,
     avg_period_length_override: null,
     luteal_phase_length: 14,
-    birth_control_method: "none",
+    birth_control_method: 'none',
     show_fertile_window: true,
-    mode: "standard" as const,
+    mode: 'standard' as const,
   };
   const prediction = lastCycle
     ? predictNextCycles(stats, lastCycle.start_date, settings, 3)
-    : { cycles: [], basis: "settings" as const, confidence: "low" as const };
+    : { cycles: [], basis: 'settings' as const, confidence: 'low' as const };
 
   for (const entry of symptomEntries) {
     const dayStr = entry.entry_date;
@@ -499,8 +541,11 @@ export function symptomPhaseMatrix(
 }
 
 export function forecastSymptoms(
-  matrix: Record<string, Record<CyclePhase, { count: number; totalSeverity: number }>>,
-  prediction: CyclePrediction,
+  matrix: Record<
+    string,
+    Record<CyclePhase, { count: number; totalSeverity: number }>
+  >,
+  prediction: CyclePrediction
 ): Record<string, string[]> {
   const forecasts: Record<string, string[]> = {};
   const activeSymptoms: Array<{ name: string; phase: CyclePhase }> = [];
@@ -520,18 +565,28 @@ export function forecastSymptoms(
     const projectionDays = CYCLE_DEFAULTS.cycleLength;
     for (let offset = 0; offset < projectionDays; offset++) {
       const dayStr = addDays(pc.periodStart, offset);
-      let phase: CyclePhase = "follicular";
-      if (compareDays(dayStr, pc.periodStart) >= 0 && compareDays(dayStr, pc.periodEnd) <= 0) {
-        phase = "menstrual";
+      let phase: CyclePhase = 'follicular';
+      if (
+        compareDays(dayStr, pc.periodStart) >= 0 &&
+        compareDays(dayStr, pc.periodEnd) <= 0
+      ) {
+        phase = 'menstrual';
       } else if (pc.ovulation && compareDays(dayStr, pc.ovulation) === 0) {
-        phase = "ovulation";
-      } else if (pc.fertileStart && pc.fertileEnd && compareDays(dayStr, pc.fertileStart) >= 0 && compareDays(dayStr, pc.fertileEnd) <= 0) {
-        phase = "fertile";
+        phase = 'ovulation';
+      } else if (
+        pc.fertileStart &&
+        pc.fertileEnd &&
+        compareDays(dayStr, pc.fertileStart) >= 0 &&
+        compareDays(dayStr, pc.fertileEnd) <= 0
+      ) {
+        phase = 'fertile';
       } else if (pc.ovulation && compareDays(dayStr, pc.ovulation) > 0) {
-        phase = "luteal";
+        phase = 'luteal';
       }
 
-      const match = activeSymptoms.filter((s) => s.phase === phase).map((s) => s.name);
+      const match = activeSymptoms
+        .filter((s) => s.phase === phase)
+        .map((s) => s.name);
       if (match.length > 0) {
         forecasts[dayStr] = match;
       }
@@ -553,7 +608,7 @@ export interface ProductStatsResult {
 
 export function productStats(
   cycles: DerivedCycle[],
-  logs: SharedCycleDailyLog[],
+  logs: SharedCycleDailyLog[]
 ): ProductStatsResult {
   const completed = cycles.filter((c) => c.period_length != null);
   if (completed.length === 0) {
@@ -606,11 +661,13 @@ export function productStats(
     }
   }
 
-  const padsCount = productCounts["pad"] ?? 0;
-  const tamponsCount = productCounts["tampon"] ?? 0;
+  const padsCount = productCounts['pad'] ?? 0;
+  const tamponsCount = productCounts['tampon'] ?? 0;
   const avgPads = padsCount / numPeriods;
   const avgTampons = tamponsCount / numPeriods;
-  const costWasteYearlySpend = Math.round((avgPads * 0.25 + avgTampons * 0.25) * 13);
+  const costWasteYearlySpend = Math.round(
+    (avgPads * 0.25 + avgTampons * 0.25) * 13
+  );
 
   return {
     avgVolumeMl,
@@ -625,7 +682,7 @@ export function productStats(
 
 export interface AnomalyAlert {
   key: string;
-  severity: "info" | "attention";
+  severity: 'info' | 'attention';
   message: string;
   /** Structured numeric parameters referenced by the message (e.g. cycle length). */
   params?: Record<string, number>;
@@ -634,10 +691,12 @@ export interface AnomalyAlert {
 export function detectAnomalies(
   cycles: DerivedCycle[],
   logs: SharedCycleDailyLog[],
-  _settings?: Pick<SharedCycleSettings, "birth_control_method">,
+  _settings?: Pick<SharedCycleSettings, 'birth_control_method'>
 ): AnomalyAlert[] {
   const anomalies: AnomalyAlert[] = [];
-  const completed = cycles.filter((c) => c.period_length != null && c.cycle_length != null);
+  const completed = cycles.filter(
+    (c) => c.period_length != null && c.cycle_length != null
+  );
 
   if (completed.length >= 3) {
     const cycleLengths = completed.map((c) => c.cycle_length!);
@@ -645,9 +704,10 @@ export function detectAnomalies(
     const sd = stdDev(cycleLengths, avg);
     if (sd > 5) {
       anomalies.push({
-        key: "irregular_cycles",
-        severity: "attention",
-        message: "Your cycle lengths have varied by more than a few days recently. If this is new for you, it may be worth mentioning to a clinician.",
+        key: 'irregular_cycles',
+        severity: 'attention',
+        message:
+          'Your cycle lengths have varied by more than a few days recently. If this is new for you, it may be worth mentioning to a clinician.',
       });
     }
   }
@@ -655,8 +715,8 @@ export function detectAnomalies(
   for (const c of completed) {
     if (c.cycle_length && c.cycle_length < 21) {
       anomalies.push({
-        key: "short_cycle",
-        severity: "info",
+        key: 'short_cycle',
+        severity: 'info',
         params: { cycleLength: c.cycle_length },
         message: `You had a short cycle of ${c.cycle_length} days. Cycles shorter than 21 days are worth tracking.`,
       });
@@ -664,8 +724,8 @@ export function detectAnomalies(
     }
     if (c.cycle_length && c.cycle_length > 45) {
       anomalies.push({
-        key: "long_cycle",
-        severity: "info",
+        key: 'long_cycle',
+        severity: 'info',
         params: { cycleLength: c.cycle_length },
         message: `You had a long cycle of ${c.cycle_length} days. Cycles longer than 45 days are worth tracking.`,
       });
@@ -676,9 +736,10 @@ export function detectAnomalies(
   const statsProd = productStats(cycles, logs);
   if (statsProd.isHeavyBleeding) {
     anomalies.push({
-      key: "heavy_bleeding",
-      severity: "attention",
-      message: "Your recent logs show heavier flow than usual or periods lasting longer than 7 days. If this continues, consider mentioning it to a clinician.",
+      key: 'heavy_bleeding',
+      severity: 'attention',
+      message:
+        'Your recent logs show heavier flow than usual or periods lasting longer than 7 days. If this continues, consider mentioning it to a clinician.',
     });
   }
 
@@ -691,9 +752,10 @@ export function detectAnomalies(
   }
   if (hasUnusualDischarge) {
     anomalies.push({
-      key: "unusual_discharge",
-      severity: "info",
-      message: "You have logged unusual discharge. Consider noting color, odor, or texture changes.",
+      key: 'unusual_discharge',
+      severity: 'info',
+      message:
+        'You have logged unusual discharge. Consider noting color, odor, or texture changes.',
     });
   }
 
@@ -702,7 +764,7 @@ export function detectAnomalies(
 
 export interface CycleAlert {
   key: string;
-  severity: "info" | "attention";
+  severity: 'info' | 'attention';
   message: string;
   /** Structured numeric parameters referenced by the message (e.g. days late). */
   params?: Record<string, number>;
@@ -711,7 +773,7 @@ export interface CycleAlert {
 export function buildCycleAlerts(
   today: string,
   prediction: CyclePrediction,
-  anomalies: AnomalyAlert[],
+  anomalies: AnomalyAlert[]
 ): CycleAlert[] {
   const alerts: CycleAlert[] = [];
 
@@ -720,31 +782,31 @@ export function buildCycleAlerts(
     const diff = daysBetween(next.periodStart, today);
     if (diff > 0) {
       alerts.push({
-        key: "late_period",
-        severity: "attention",
+        key: 'late_period',
+        severity: 'attention',
         params: { days: diff },
-        message: `Your period is expected and is ${diff} day${diff > 1 ? "s" : ""} late.`,
+        message: `Your period is expected and is ${diff} day${diff > 1 ? 's' : ''} late.`,
       });
     } else if (diff === 0) {
       alerts.push({
-        key: "upcoming_period_today",
-        severity: "info",
-        message: "Period is expected today.",
+        key: 'upcoming_period_today',
+        severity: 'info',
+        message: 'Period is expected today.',
       });
     } else if (diff >= -3) {
       alerts.push({
-        key: "upcoming_period",
-        severity: "info",
+        key: 'upcoming_period',
+        severity: 'info',
         params: { days: Math.abs(diff) },
-        message: `Period is expected in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? "s" : ""}.`,
+        message: `Period is expected in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''}.`,
       });
     }
 
     if (next.ovulation && compareDays(today, next.ovulation) === 0) {
       alerts.push({
-        key: "ovulation_today",
-        severity: "info",
-        message: "Ovulation is predicted to occur today.",
+        key: 'ovulation_today',
+        severity: 'info',
+        message: 'Ovulation is predicted to occur today.',
       });
     }
   }

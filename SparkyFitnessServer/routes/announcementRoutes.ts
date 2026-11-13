@@ -1,5 +1,6 @@
 import express from 'express';
 import announcementService from '../services/announcementService.js';
+import { publicErrorMessage } from '../utils/errors.js';
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ router.get('/current', async (req, res) => {
     console.error('Error fetching announcement:', error);
     res.status(500).json({
       error: 'Failed to fetch announcement',
-      details: (error as Error).message,
+      details: publicErrorMessage(error),
     });
   }
 });

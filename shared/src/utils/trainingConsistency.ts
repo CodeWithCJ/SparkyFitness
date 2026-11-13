@@ -1,9 +1,9 @@
-import type { TrainingConsistency } from "../schemas/api/TrainingConsistency.api.zod.ts";
-import { addDays, dayOfWeek } from "./timezone.ts";
+import type { TrainingConsistency } from '../schemas/api/TrainingConsistency.api.zod.ts';
+import { addDays, dayOfWeek } from './timezone.ts';
 import {
   calculateMuscleGroupSets,
   type MuscleEntry,
-} from "./exerciseMuscleAggregates.ts";
+} from './exerciseMuscleAggregates.ts';
 
 export type TrainingConsistencyEntry = MuscleEntry & { entry_date?: string };
 
@@ -32,7 +32,7 @@ export function buildTrainingConsistency(
   entries: readonly TrainingConsistencyEntry[],
   today: string,
   weekCount: number = TRAINING_CONSISTENCY_WEEKS,
-  firstDayOfWeek: number = 1,
+  firstDayOfWeek: number = 1
 ): TrainingConsistency {
   const currentWeekStart = weekStartOf(today, firstDayOfWeek);
   const firstWeekStart = addDays(currentWeekStart, -7 * (weekCount - 1));

@@ -35,12 +35,19 @@ jobs:
   submit:
     name: Submit to the Umbrel App Store
     runs-on: ubuntu-latest
+    # UMBREL_APPS_TOKEN lives in this environment, which only main and v* tags
+    # can use and which waits for a maintainer's approval, so a workflow pushed
+    # on another branch cannot read it.
+    environment: release
     # Authenticates with UMBREL_APPS_TOKEN; needs no scope on this repository.
     permissions: {}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Nothing here pushes with git, so no token stays in .git/config.
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v4

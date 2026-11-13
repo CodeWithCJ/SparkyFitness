@@ -9,7 +9,7 @@ export interface SharedScheduleRule {
   cycle_on_days?: number | null;
   cycle_off_days?: number | null;
   start_date?: string | null; // YYYY-MM-DD
-  end_date?: string | null;   // YYYY-MM-DD
+  end_date?: string | null; // YYYY-MM-DD
   active?: boolean;
   dose_amount?: number | null;
   with_meal?: string | null;
@@ -19,7 +19,10 @@ export interface SharedScheduleRule {
 /**
  * Returns true if a schedule is due on a given calendar day (YYYY-MM-DD format).
  */
-export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: string): boolean {
+export function isScheduleDueOnDate(
+  schedule: SharedScheduleRule,
+  dateString: string
+): boolean {
   if (schedule.active === false) return false;
 
   // Check date ranges if present
@@ -33,7 +36,8 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
   }
 
   if (type === 'weekly' || type === 'specific_days') {
-    if (!schedule.days_of_week || schedule.days_of_week.length === 0) return false;
+    if (!schedule.days_of_week || schedule.days_of_week.length === 0)
+      return false;
     const dow = dayOfWeek(dateString);
     return schedule.days_of_week.includes(dow);
   }
@@ -115,7 +119,10 @@ export function getDueDosesForDate<M extends SharedMedication>(
   medication: M;
   schedule: SharedScheduleRule & { id: string };
 }> {
-  const result: Array<{ medication: M; schedule: SharedScheduleRule & { id: string } }> = [];
+  const result: Array<{
+    medication: M;
+    schedule: SharedScheduleRule & { id: string };
+  }> = [];
   for (const med of medications) {
     if (!med.is_active) continue;
     if (!med.schedules || med.schedules.length === 0) continue;
@@ -133,15 +140,21 @@ export function getDueDosesForDate<M extends SharedMedication>(
       if (isScheduleDueOnDate(sched, dateString)) {
         result.push({
           medication: med,
-          schedule: sched
+          schedule: sched,
         });
       }
     }
   }
   // Stable sort: same-time slots keep their medication order.
   result.sort((a, b) => {
-    const aTime = a.schedule.time_of_day != null && a.schedule.time_of_day !== '' ? a.schedule.time_of_day : null;
-    const bTime = b.schedule.time_of_day != null && b.schedule.time_of_day !== '' ? b.schedule.time_of_day : null;
+    const aTime =
+      a.schedule.time_of_day != null && a.schedule.time_of_day !== ''
+        ? a.schedule.time_of_day
+        : null;
+    const bTime =
+      b.schedule.time_of_day != null && b.schedule.time_of_day !== ''
+        ? b.schedule.time_of_day
+        : null;
     if (aTime === null && bTime === null) return 0;
     if (aTime === null) return 1;
     if (bTime === null) return -1;

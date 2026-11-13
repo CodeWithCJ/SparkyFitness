@@ -44,8 +44,6 @@
       "categoryGeneral": "Generale",
       "categoryStrength": "Forza",
       "categoryCardio": "Cardio",
-      "caloriesPerHourLabel": "Calorie/Ora",
-      "caloriesPerHourHint": "Lasciare vuoto per utilizzare le calorie calcolate dal sistema all'ora ({{newExerciseCalories}} cal/ora).",
       "descriptionLabel": "Descrizione",
       "sourceLabel": "Fonte",
       "forceLabel": "Tipologia esercizio",
@@ -126,7 +124,6 @@
       "exerciseLabel": "Esercizio fisico",
       "unknownExercise": "Esercizio sconosciuto",
       "addSetButton": "Aggiungi Impostazione",
-      "caloriesBurnedOptionalLabel": "Calorie bruciate (opzionale)",
       "caloriesBurnedPlaceholder": "Inserisci le calorie bruciate per sovrascrivere il calcolo",
       "caloriesBurnedHint": "Le calorie verranno calcolate automaticamente al momento del salvataggio se lasciate in bianco.",
       "distanceLabel": "Distanza",
@@ -506,7 +503,7 @@
     },
     "calculationSettings": {
       "title": "Impostazioni di calcolo",
-      "description": "Gestisci le preferenze di calcolo del metabolismo basale (BMR) e del grasso corporeo"
+      "description": "Gestisci le preferenze di calcolo del metabolismo basale (BMR) e del grasso corporeo."
     },
     "familyAccess": {
       "title": "Accesso famiglia",
@@ -1121,7 +1118,6 @@
     "searchFoodsToYour": "Cerca gli alimenti da aggiungere alla tua dieta"
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Come ti senti oggi?",
     "neutral": "Neutro",
     "anyThoughtsOrFeelings": "Hai qualche pensiero o sensazione che vorresti aggiungere?",
     "sleepTracking": "Monitoraggio del sonno",
@@ -2327,7 +2323,33 @@
     "errorClearingHistory": "Impossibile cancellare la cronologia della chat.",
     "errorLoadingHistory": "Impossibile caricare la cronologia della chat.",
     "errorLoadingPreferences": "Impossibile caricare le preferenze della chat.",
-    "successClearingHistory": "La cronologia della chat è stata cancellata con successo."
+    "successClearingHistory": "La cronologia della chat è stata cancellata con successo.",
+    "voice": {
+      "start": "Detta il messaggio",
+      "stop": "Interrompi la dettatura",
+      "cancel": "Annulla la dettatura",
+      "listening": "Ascoltando…",
+      "starting": "Avvio in corso…",
+      "processing": "Trascrizione in corso…",
+      "unsupported": "Questa modalità vocale non è supportata da questo browser. Seleziona la trascrizione tramite IA nelle impostazioni vocali oppure prova un altro browser. L'IA non viene mai attivata automaticamente.",
+      "permission": "Consenti l'accesso al microfono nelle impostazioni del browser per dettare un messaggio.",
+      "tooLarge": "La registrazione supera i 10 MB. Prova un messaggio più breve.",
+      "noSpeech": "Non è stata riconosciuta alcuna parola. La tua bozza non è stata modificata.",
+      "failed": "L’inserimento vocale non è riuscito. La tua bozza non è stata modificata. Controlla la connessione e le impostazioni vocali, quindi riprova."
+    },
+    "sparkyChat": {
+      "sparkyAICoach": "Sparky – Coach IA",
+      "yourPersonalAINutritionAnd": "Il tuo coach personale IA per l’alimentazione e il fitness.",
+      "selectProvider": "Seleziona fornitore",
+      "clearChatHistory": "Cancella la cronologia della chat",
+      "expandChat": "Espandi la chat",
+      "minimizeChat": "Riduci la chat",
+      "closeChat": "Chiudi la chat"
+    },
+    "sparkyChatInterface": {
+      "chatError": "Errore chat",
+      "failedToProcessMessagePlease": "Impossibile elaborare il messaggio. Controlla le impostazioni del servizio IA."
+    }
   },
   "foodCsvImport": {
     "title": "Importa dati alimentari",
@@ -2370,7 +2392,9 @@
     "showAllRows": "Mostra tutte le righe ({{count}})"
   },
   "layout": {
-    "welcome": "Benvenuto {{activeUserName}}"
+    "welcome": "Benvenuto {{activeUserName}}",
+    "docs": "Documenti",
+    "translate": "Traduci"
   },
   "workoutLaps": {
     "title": "Intervalli e giri nell'allenamento a blocchi",
@@ -2397,11 +2421,58 @@
     "fitnessAge": "Età fisica: {{val}}",
     "readiness": "Preparazione",
     "recHours": "Rec: {{val}}",
-    "trainingLoad": "Carico allenante"
+    "trainingLoad": "Carico allenante",
+    "acute": "acuto",
+    "ratio": "Rapporto: {{val}}",
+    "chronic": "Cronico: {{val}}",
+    "empty": "Nessun dato dei dispositivi indossabili sincronizzato per questo giorno.",
+    "skinTemp": "Temperatura Cutanea",
+    "weekly": "settimanale",
+    "low2": "(minimo: {{val}})"
   },
   "foods": {
     "providerVerified": "Alimenti certificati",
-    "removeNutrient": "Rimuovi {{nutrient}}"
+    "removeNutrient": "Rimuovi {{nutrient}}",
+    "aliasChipInput": {
+      "remove": "Rimuovi {{alias}}"
+    },
+    "customNutrientDialog": {
+      "nutrientNameAndUnitAre": "Il nome del nutriente e l’unità di misura sono obbligatori.",
+      "customNutrientCreated": "Nutriente personalizzato creato",
+      "failedToCreateCustomNutrient": "Impossibile creare il nutriente personalizzato. Riprova.",
+      "addCustomNutrient": "Aggiungi nutriente personalizzato",
+      "setTheDisplayUnitAnd": "Imposta l’unità di misura da visualizzare e i nomi usati dai fornitori (alias) da associare a questo nutriente durante l’importazione.",
+      "nutrientName": "Nome del nutriente",
+      "eGMagnesium": "ad es., magnesio",
+      "unit": "Unità",
+      "eGMgGIU": "ad es., mg, µg, UI",
+      "providerAliases": "Alias dei fornitori",
+      "typeANamePressEnter": "Digita un nome e premi Invio",
+      "adding": "Aggiunta in corso…",
+      "nutrientAdded": "\"{{name}}\" è stato aggiunto."
+    },
+    "deleteFoodDialog": {
+      "view": "Visualizza",
+      "otherUser": "altro utente"
+    },
+    "openMenu": "Apri menu",
+    "mealManagement": {
+      "openMenu": "Apri menu"
+    },
+    "mealUnitSelector": {
+      "selectTheQuantityForThis": "Seleziona la quantità di questo pasto nel tuo piano alimentare.",
+      "quantity": "Quantità",
+      "unit": "Unità",
+      "nutritionFor": "Valori nutrizionali per {{quantity}} {{displayUnit}}:",
+      "updateMeal": "Aggiorna pasto",
+      "addToMealPlan": "Aggiungi al piano alimentare",
+      "gProtein2": "{{protein}} g di proteine",
+      "gCarbs2": "{{carbs}} g di carboidrati",
+      "gFat2": "{{fat}} g di grassi",
+      "editMeal": "Modifica {{name}}",
+      "addMealToPlan": "Aggiungi {{name}} al piano alimentare",
+      "editQuantityFor": "Modifica la quantità di {{name}}."
+    }
   },
   "medications": {
     "tabs": {
@@ -2443,7 +2514,7 @@
       "tooltipSkipped": "Saltate: {{count}}",
       "tooltipPrn": "Assunte al bisogno: {{count}}",
       "tooltipTaken": "Assunte: {{count}}",
-      "sideEffect": "Sintomo da effetto collaterale",
+      "sideEffect": "Sintomo da effetto-collaterale",
       "snoozedOnly": "Solo posticipate",
       "skipped": "Saltate",
       "maxSeverity": "Massima gravità: {{n}}"
@@ -2454,7 +2525,8 @@
       "logging": "Registrazione…",
       "reset": "Azzera",
       "custom": "Personalizzato",
-      "clear": "Cancella"
+      "clear": "Cancella",
+      "inactive": "Inattivo"
     },
     "today": {
       "medicationsTitle": "Farmaci di oggi",
@@ -2489,16 +2561,73 @@
       "take": "Preso",
       "adherenceTitle": "Panoramica assunzioni",
       "editLogged": "Modifica dose salvata",
-      "takenAt": "Presa alle"
+      "takenAt": "Presa alle",
+      "ring14Day": "14-giorni",
+      "noScheduledToday": "Nessuna dose programmata per oggi.",
+      "noScheduledDay": "Nessuna dose programmata per questa giornata.",
+      "loggedToday": "{{completed}} dosi su {{total}} registrate oggi.",
+      "loggedDay": "{{completed}} dosi su {{total}} registrate per questo giorno.",
+      "loggedActivity": "Registrate oggi",
+      "loggedActivityDescription": "Tutte le dosi assunte o saltate in questa data.",
+      "loadingHistory": "caricamento cronologia…",
+      "addNote": "aggiungi note...",
+      "note": "Note:",
+      "injectionDueToday": "Iniezione di {{name}} — prevista per oggi",
+      "injectionScheduled": "Iniezione di {{name}} — programmata",
+      "scheduledAt": "Programmata alle {{time}}",
+      "anyTimeToday": "In qualsiasi momento oggi",
+      "logShot": "Registra iniezione",
+      "taken": "Assunto",
+      "prnTaken": "Assunto al bisogno",
+      "editEntryTime": "Modifica l'orario della registrazione",
+      "removeEntry": "Rimuovi la registrazione",
+      "note2": "Note: {{notes}}"
     },
     "insights": {
-      "title": "Effetti collaterali e indicazioni"
+      "title": "Effetti collaterali e indicazioni",
+      "subtitle": "Correlazioni farmacocinetiche sovrapposte agli orari delle ultime dosi",
+      "disclaimer": "Le analisi vengono calcolate su un periodo mobile di 30 giorni. Si tratta di stime a scopo informativo, non di consigli medici.",
+      "symptomCorrelation": "Correlazione con {{symptom}}"
     },
     "schedule": {
-      "everyNDays": "Ogni N giorni"
+      "everyNDays": "Ogni N giorni",
+      "withMeal": "Durante il pasto"
     },
     "mealRelation": {
       "awayFromMeals": "Lontano dai pasti"
+    },
+    "cabinet": {
+      "nutrientCount_one": "{{count}} nutriente",
+      "nutrientCount_many": "{{count}} nutrienti",
+      "nutrientCount_other": "{{count}} nutrienti"
+    },
+    "reports": {
+      "logTableTitle": "Tabella del registro dei farmaci",
+      "logTableDesc": "Numero e orari delle dosi per ciascun giorno nel periodo {{start}}–{{end}}, inclusi i sintomi dello stesso giorno.",
+      "logTableEmpty": "Nessuna dose di farmaco registrata in questo intervallo di date.",
+      "dosesLogged": "{{count}} dosi registrate",
+      "dosesTaken": "Dosi assunte",
+      "times": "Orari",
+      "symptomsColumn": "Sintomi",
+      "injectionAbbrev": "iniez.",
+      "adherenceTrend": "Andamento dell’aderenza giornaliera alla terapia (%)",
+      "adherenceTrendDesc": "Mostra nel grafico la percentuale giornaliera di aderenza alla terapia (percentuale delle dosi programmate effettivamente assunte).",
+      "configDesc": "Mostra o nascondi specifici grafici e widget di correlazione.",
+      "configTitle": "Attiva/Disattiva visualizzazioni",
+      "corrDose": "Dose di GLP-1 e intensità della nausea",
+      "corrHydration": "Idratazione e stitichezza",
+      "corrProtein": "Apporto di proteine e nausea",
+      "corrSleep": "Durata del sonno e stanchezza",
+      "correlationsDisclaimer": "Nota: le correlazioni sono calcoli puramente descrittivi relativi all’intervallo di date selezionato e non implicano un rapporto di causa-effetto sul piano clinico.",
+      "correlationsTitle": "Correlazioni relative a sintomi ed effetti collaterali a scopo informativo",
+      "customize": "Personalizza grafici",
+      "downloadCSV": "Scarica i dati in formato CSV",
+      "exportDesc": "Scarica un resoconto organico da condividere con il tuo medico, che includa dettagli sui farmaci, registrazioni delle assunzioni, schemi di somministrazione, sintomi e dati sul peso.",
+      "exportTitle": "Esportazione dei dati pronti da condividere con il medico",
+      "failedToLoadPrefs": "Impossibile caricare le preferenze di visualizzazione dei farmaci."
+    },
+    "types": {
+      "drops": "goccie"
     }
   },
   "openFoodFactsContribution": {
@@ -2571,5 +2700,87 @@
     "distance": "Distanza",
     "calories": "Calorie",
     "reps": "Ripetizioni"
+  },
+  "barcodeLookup": {
+    "retry": "Riprova",
+    "notFound": "Nessun prodotto trovato. Controlla altre fonti o aggiungi un alimento manualmente.",
+    "fat": "Grassi: {{value}} g",
+    "protein": "Proteine: {{value}} g",
+    "carbs": "Carboidrati: {{value}} g",
+    "yourFoods": "I tuoi alimenti",
+    "sourceFailed": "Non è stato possibile raggiungere questa risorsa.",
+    "title": "Risultati dei codici a barre",
+    "fallback": "opzione di riserva",
+    "basis": "Per {{quantity}} {{unit}}",
+    "sourceNotFound": "Nessun prodotto trovato in questa fonte.",
+    "useFood": "Usa alimento",
+    "otherSources": "Altre fonti",
+    "loading": "Controllo altre fonti…",
+    "alternativesFailed": "Impossibile caricare altre fonti.",
+    "noAlternatives": "Non sono disponibili altre fonti.",
+    "useSource": "Usa questa fonte"
+  },
+  "auth": {
+    "warning": "Attenzione",
+    "resetPassword": {
+      "setYourNewPassword": "Imposta la tua nuova password.",
+      "newPassword": "Nuova Password",
+      "enterNewPassword": "Inserisci nuova Password",
+      "confirmNewPassword": "Conferma nuova Password",
+      "confirmNewPassword2": "Conferma nuova Password"
+    },
+    "password": "Password",
+    "demoLoginSuccess": "Benvenuto su SparkyFitness Demo!",
+    "createAPassword": "Crea una Password",
+    "creatingAccount": "Creazione account...",
+    "forgotPasswordPage": {
+      "email": "Email",
+      "enterYourEmail": "Inserisci la tua email",
+      "sending": "Invio..."
+    },
+    "email": "Email",
+    "enterYourEmail": "Inserisci la tua email",
+    "enterYourPassword": "Inserisci la tua password",
+    "forgotPassword": "Password dimenticata?",
+    "signingIn": "Accesso in corso...",
+    "orSignInWith": "Oppure accedi con",
+    "signInWithPasskey": "Accedi con Passkey",
+    "signInWithOIDC": "Accedi con OIDC",
+    "fullName": "Nome e Cognome",
+    "enterYourFullName": "Inserisci il tuo Nome e Cognome",
+    "magicLinkRequestDialog": {
+      "email": "Email",
+      "enterYourEmail": "Inserisci la tua email",
+      "sending": "Invio in corso..."
+    },
+    "mfaChallenge": {
+      "aVerificationCodeHasBeen": "Il codice di verifica è stato inviato alla tua email.",
+      "failedToSendCode": "Invio del codice fallito.",
+      "codeSent": "Codice inviato"
+    },
+    "viewLicense": "Visualizza Licenza",
+    "passkeyErrorTitle": "Errore Passkey",
+    "passkeyGenericError": "Accesso tramite Passkey non riuscito. Assicurati che il tuo dispositivo la supporti.",
+    "passkeySecureContextError": "L'autenticazione tramite passkey richiede un contesto sicuro (HTTPS o localhost). Si prega di accedere utilizzando e-mail e password.",
+    "passkeySuccess": "Accesso effettuato con Passkey!",
+    "passwordResetError": "Impossibile reimpostare la password. Il link potrebbe essere scaduto.",
+    "passwordResetSuccess": "La password è stata reimpostata correttamente. Ora puoi effettuare l'accesso.",
+    "registerError": "Si è verificato un errore imprevisto durante la registrazione.",
+    "registerSuccess": "Account creato correttamente!",
+    "resetEmailError": "Impossibile richiedere la reimpostazione della password.",
+    "resetEmailSent": "Se esiste un account, è stata inviata un'email per la reimpostazione della password.",
+    "signedOut": "Disconnessione effettuata con successo",
+    "signOutFailed": "Disconnessione fallita",
+    "signOut": "Disconnetti",
+    "almostThere": "Ci siamo quasi!",
+    "builtForFamiliesPoweredBy": "Pensato per le famiglie. Basato sull'intelligenza artificiale. Monitorate insieme alimentazione, attività fisica, idratazione e salute.",
+    "authenticationFailed": "Autenticazione Fallita",
+    "signIn": "Accedi",
+    "signUp": "Registrati",
+    "registrationIsCurrentlyDisabled": "La registrazione è attualmente disabilitata."
+  },
+  "numericInput": {
+    "mathHint": "Supporta +, -, , / e parentesi, ad esempio 305.",
+    "invalidExpression": "Inserisci un calcolo valido entro l'intervallo consentito."
   }
 }

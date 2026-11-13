@@ -1,10 +1,10 @@
-import type { RunProgramEffort } from "../schemas/api/RunProgram.api.zod.ts";
+import type { RunProgramEffort } from '../schemas/api/RunProgram.api.zod.ts';
 
 /** Ratings at or above this felt hard; at or below `EASY_RATING`, easy. */
 export const HARD_RATING = 8;
 export const EASY_RATING = 3;
 
-export type EffortSuggestion = "ease" | "advance";
+export type EffortSuggestion = 'ease' | 'advance';
 
 /**
  * What the last two rated workouts say about the next one: two hard in a row
@@ -14,13 +14,13 @@ export type EffortSuggestion = "ease" | "advance";
  */
 export function suggestFromEffort(
   log: readonly RunProgramEffort[],
-  nextIndex: number,
+  nextIndex: number
 ): EffortSuggestion | null {
   const byIndex = new Map(log.map((entry) => [entry.index, entry.rating]));
   const last = byIndex.get(nextIndex - 1);
   const before = byIndex.get(nextIndex - 2);
   if (last === undefined || before === undefined) return null;
-  if (last >= HARD_RATING && before >= HARD_RATING) return "ease";
-  if (last <= EASY_RATING && before <= EASY_RATING) return "advance";
+  if (last >= HARD_RATING && before >= HARD_RATING) return 'ease';
+  if (last <= EASY_RATING && before <= EASY_RATING) return 'advance';
   return null;
 }

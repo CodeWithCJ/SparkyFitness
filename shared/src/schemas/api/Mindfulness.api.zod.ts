@@ -1,14 +1,14 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const mindfulnessSessionTypeSchema = z.enum([
-  "meditation",
-  "breathwork",
-  "reflection",
-  "walking",
-  "yoga",
-  "guided",
-  "unguided",
-  "other",
+  'meditation',
+  'breathwork',
+  'reflection',
+  'walking',
+  'yoga',
+  'guided',
+  'unguided',
+  'other',
 ]);
 export type MindfulnessSessionType = z.infer<
   typeof mindfulnessSessionTypeSchema
@@ -20,8 +20,8 @@ export const createMindfulnessSessionBodySchema = z.object({
   start_time: z.string().nullable().optional(),
   end_time: z.string().nullable().optional(),
   duration_seconds: z.number().int().positive(),
-  session_type: z.string().default("meditation"),
-  provider: z.string().default("manual"),
+  session_type: z.string().default('meditation'),
+  provider: z.string().default('manual'),
   external_id: z.string().nullable().optional(),
   heart_rate_avg: z.number().nullable().optional(),
   heart_rate_start: z.number().int().nullable().optional(),
@@ -37,13 +37,10 @@ export type CreateMindfulnessSessionBody = z.infer<
 >;
 
 export const updateMindfulnessSessionBodySchema =
-  createMindfulnessSessionBodySchema
-    .partial()
-    .omit({ user_id: true })
-    .extend({
-      session_type: z.string().optional(),
-      provider: z.string().optional(),
-    });
+  createMindfulnessSessionBodySchema.partial().omit({ user_id: true }).extend({
+    session_type: z.string().optional(),
+    provider: z.string().optional(),
+  });
 export type UpdateMindfulnessSessionBody = z.infer<
   typeof updateMindfulnessSessionBodySchema
 >;

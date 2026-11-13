@@ -185,10 +185,11 @@ export function buildSymptomTools(userId: string, tz: string) {
                 {
                   severity: input.severity,
                   at: input.at || new Date().toISOString(),
+                  ...(input.impact ? { impact: input.impact } : {}),
                 }
               );
               return formatConfirmation(
-                `Recorded severity ${input.severity} for episode. Current peak severity: ${updated.peak_severity}.`
+                `Recorded severity ${input.severity}${input.impact ? ` and impact ${input.impact}` : ''} for episode. Current peak severity: ${updated.peak_severity}.`
               );
             }
 

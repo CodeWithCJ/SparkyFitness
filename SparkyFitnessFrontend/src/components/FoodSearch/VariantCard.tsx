@@ -73,6 +73,7 @@ const COMMON_ALLERGENS = [
 interface VariantCardProps {
   index: number;
   variant: FormFoodVariant & { equivalents?: EquivalentUnit[] };
+  nutritionReadOnly?: boolean;
   variantError: string;
   visibleNutrients: string[];
   energyUnit: 'kcal' | 'kJ';
@@ -130,6 +131,7 @@ interface VariantCardProps {
 export function VariantCard({
   index,
   variant,
+  nutritionReadOnly = false,
   variantError,
   visibleNutrients,
   energyUnit,
@@ -588,16 +590,25 @@ export function VariantCard({
         )}
       </h4>
 
-      {/* Pass the array straight through */}
-      <NutrientGrid
-        variantIndex={index}
-        variant={variant}
-        visibleNutrients={visibleNutrients}
-        energyUnit={energyUnit}
-        convertEnergy={convertEnergy}
-        customNutrients={customNutrients}
-        onUpdate={onUpdate}
-      />
+      {nutritionReadOnly && (
+        <p className="mb-3 text-sm text-muted-foreground">
+          {t(
+            'customFoodForm.portionNutritionCalculated',
+            'Nutrition is calculated from the reference unit. Edit that unit to change nutrition.'
+          )}
+        </p>
+      )}
+      <fieldset disabled={nutritionReadOnly}>
+        <NutrientGrid
+          variantIndex={index}
+          variant={variant}
+          visibleNutrients={visibleNutrients}
+          energyUnit={energyUnit}
+          convertEnergy={convertEnergy}
+          customNutrients={customNutrients}
+          onUpdate={onUpdate}
+        />
+      </fieldset>
 
       <div className="mt-4 space-y-2">
         <Label>{t('foodSearch.variantCard.allergens', 'Allergens')}</Label>

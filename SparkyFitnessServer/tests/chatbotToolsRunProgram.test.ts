@@ -1,18 +1,28 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../models/runProgramRepository.js', () => ({
   getRunProgram: vi.fn(),
   upsertRunProgram: vi.fn(),
   adjustRunProgram: vi.fn(),
 }));
+vi.mock('../models/fitnessTestRepository.js', () => ({
+  listFitnessTests: vi.fn(),
+}));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
-import { findProgram, type RunProgramResponse } from '@workspace/shared';
+import {
+  evaluateFitnessTest,
+  addDays,
+  dayOfWeek,
+  findProgram,
+  type RunProgramResponse,
+} from '@workspace/shared';
 import {
   adjustRunProgram,
   getRunProgram,
   upsertRunProgram,
 } from '../models/runProgramRepository.js';
+import { listFitnessTests } from '../models/fitnessTestRepository.js';
 import { buildRunProgramTools } from '../ai/tools/runProgramTools.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
@@ -164,6 +174,24 @@ describe('sparky_manage_run_program', () => {
     expect(text).toContain('Run program started');
   });
 
+  it('starts the Zone 2 base with four runs a week by id', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(null);
+    vi.mocked(upsertRunProgram).mockResolvedValue(
+      program({ program_id: 'zone2Base4', next_index: 0 })
+    );
+    const text = await run({
+      action: 'start_run_program',
+      program_id: 'zone2Base4',
+      confirmed: true,
+    });
+    expect(upsertRunProgram).toHaveBeenCalledWith(
+      'user-1',
+      { program_id: 'zone2Base4', enabled: true },
+      'user-1'
+    );
+    expect(text).toContain('Run program started');
+  });
+
   it('warns that switching to another program replaces the current one and its adjustments', async () => {
     vi.mocked(getRunProgram).mockResolvedValue(program());
     const text = await run({
@@ -185,6 +213,7 @@ describe('sparky_manage_run_program', () => {
         workouts: findProgram('marathon')!.workouts,
         next: 0,
         programId: 'marathon',
+        program: program(),
       };
       expect(() => change(state)).not.toThrow();
       return program();
@@ -301,5 +330,189 @@ describe('sparky_manage_run_program', () => {
       });
       expect(text).toContain('not following a run program');
     });
+  });
+});
+
+describe('sparky_manage_run_program get_fitness_tests', () => {
+  it('says there is no test rather than guessing paces', async () => {
+    vi.mocked(listFitnessTests).mockResolvedValue([]);
+    expect(await run({ action: 'get_fitness_tests' })).toContain(
+      'has not run a fitness test'
+    );
+  });
+
+  it('lists the tests and the latest paces', async () => {
+    const outcome = evaluateFitnessTest({
+      type: '5k',
+      distanceMeters: 5000,
+      durationSeconds: 1500,
+    })!;
+    vi.mocked(listFitnessTests).mockResolvedValue([
+      {
+        id: 't1',
+        test_type: '5k',
+        test_date: '2020-01-01',
+        distance_meters: 5000,
+        duration_seconds: 1500,
+        split_distance_meters: null,
+        result_value: 1500,
+        exercise_entry_id: null,
+        surface: 'outdoor',
+        incline_percent: null,
+        incline_adjusted: false,
+        paces: outcome.paces,
+        created_at: '2020-01-01T10:00:00.000Z',
+      },
+    ]);
+    const text = await run({ action: 'get_fitness_tests' });
+    expect(text).toContain('5K time trial (outdoors), 5K in 25:00');
+    expect(text).toContain('Equivalent 5K time: 25:00');
+    expect(text).toContain('- easy:');
+    expect(text).toContain('retest is overdue');
+  });
+
+  it('takes no other fields and reads nothing when they are sent', async () => {
+    await run({ action: 'get_fitness_tests', confirmed: true });
+    expect(listFitnessTests).not.toHaveBeenCalled();
+  });
+
+  it('says when a test was run on a treadmill, and whether it was adjusted', async () => {
+    const outcome = evaluateFitnessTest({
+      type: 'cooper',
+      distanceMeters: 3000,
+      durationSeconds: 720,
+      inclinePercent: 3,
+    })!;
+    vi.mocked(listFitnessTests).mockResolvedValue([
+      {
+        id: 't1',
+        test_type: 'cooper',
+        test_date: '2026-10-17',
+        distance_meters: 3000,
+        duration_seconds: 720,
+        split_distance_meters: null,
+        result_value: outcome.resultValue,
+        exercise_entry_id: null,
+        surface: 'indoor',
+        incline_percent: 3,
+        incline_adjusted: true,
+        paces: outcome.paces,
+        created_at: '2026-10-17T10:00:00.000Z',
+      },
+    ]);
+    expect(await run({ action: 'get_fitness_tests' })).toContain(
+      '(on a treadmill at 3% incline, adjusted for incline)'
+    );
+  });
+});
+
+describe('sparky_manage_run_program: realign_run_program', () => {
+  // A Monday, three workout days a week.
+  const today = '2026-11-02';
+  const endForSlots = (slots: number): string => {
+    let seen = 0;
+    for (let d = today; ; d = addDays(d, 1)) {
+      if ([1, 3, 5].includes(dayOfWeek(d)) && ++seen === slots) return d;
+    }
+  };
+  const behind = (slots: number) =>
+    program({
+      program_id: 'halfMarathon',
+      workouts: findProgram('halfMarathon')!.workouts,
+      next_index: 3,
+      run_days: [1, 3, 5],
+      end_date: endForSlots(slots),
+    });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(`${today}T09:00:00Z`));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('lists what it would change and changes nothing without confirmed', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(behind(30));
+    const text = await run({ action: 'realign_run_program' });
+    expect(text).toContain('Confirm with the user first');
+    expect(text).toContain('confirmed=true');
+    expect(text).toContain('Nothing was changed');
+    expect(text).toContain('Realigned to the goal day: dropped 3 workouts');
+    expect(text).toContain('- drop week');
+    expect(text).toContain('33 workouts left become 30');
+    expect(adjustRunProgram).not.toHaveBeenCalled();
+  });
+
+  it('applies the realignment under the lock once confirmed, as the assistant', async () => {
+    const held = behind(30);
+    vi.mocked(getRunProgram).mockResolvedValue(held);
+    vi.mocked(adjustRunProgram).mockImplementation(
+      async (_u, source, change) => {
+        expect(source).toBe('assistant');
+        const result = change({
+          workouts: held.workouts,
+          next: held.next_index,
+          programId: held.program_id,
+          program: held,
+        });
+        expect(result.workouts).toHaveLength(held.workouts.length - 3);
+        expect(result.next).toBe(3);
+        return {
+          ...held,
+          adjustment_log: [
+            { at: '2026-11-02T09:00:00.000Z', summary: result.summary, source },
+          ],
+        };
+      }
+    );
+    const text = await run({ action: 'realign_run_program', confirmed: true });
+    expect(adjustRunProgram).toHaveBeenCalledTimes(1);
+    expect(text).toContain('Realigned to the goal day');
+  });
+
+  it('refuses to push through an unrealistic goal and offers the choices', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(behind(24));
+    const text = await run({ action: 'realign_run_program', confirmed: true });
+    expect(text).toContain('not realistic');
+    expect(text).toContain('Nothing was changed');
+    expect(text).toContain('a later goal day');
+    expect(text).toContain('a shorter race (10k');
+    expect(text).toContain('force=true');
+    expect(adjustRunProgram).not.toHaveBeenCalled();
+  });
+
+  it('goes ahead past the cap only with force, and still asks first', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(behind(24));
+    const text = await run({ action: 'realign_run_program', force: true });
+    expect(text).toContain('Confirm with the user first');
+    expect(text).toContain('dropped 9 workouts');
+  });
+
+  it('says when the plan already fits or there is no goal day', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(
+      program({
+        program_id: 'halfMarathon',
+        workouts: findProgram('halfMarathon')!.workouts,
+        next_index: 0,
+        run_days: [1, 3, 5],
+        end_date: endForSlots(36),
+      })
+    );
+    expect(await run({ action: 'realign_run_program' })).toContain(
+      'already fits'
+    );
+    vi.mocked(getRunProgram).mockResolvedValue(program({ end_date: null }));
+    expect(await run({ action: 'realign_run_program' })).toContain(
+      'no goal day'
+    );
+  });
+
+  it('tells the assistant when a plan has drifted from the goal day', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(behind(30));
+    const text = await run({ action: 'get_run_program' });
+    expect(text).toContain('realign_run_program');
+    vi.mocked(getRunProgram).mockResolvedValue(program());
+    expect(await run({ action: 'get_run_program' })).not.toContain(
+      'realign_run_program'
+    );
   });
 });

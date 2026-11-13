@@ -9,6 +9,7 @@ import {
 } from '@workspace/shared';
 import preferenceRepository from '../models/preferenceRepository.js';
 import reportRepository from '../models/reportRepository.js';
+import { firstDayOfWeekOf } from '../utils/firstDayOfWeek.js';
 
 /**
  * Computes weekly alcohol rollup for the 7-day window containing `date`, aligned
@@ -22,10 +23,7 @@ export async function getAlcoholWeek(
   date: string
 ): Promise<AlcoholWeekResponse> {
   const prefs = await preferenceRepository.getUserPreferences(userId);
-  const firstDayOfWeek =
-    prefs?.first_day_of_week !== null && prefs?.first_day_of_week !== undefined
-      ? Number(prefs.first_day_of_week)
-      : 0;
+  const firstDayOfWeek = firstDayOfWeekOf(prefs);
   const standardDrinkGrams =
     prefs?.standard_drink_grams !== null &&
     prefs?.standard_drink_grams !== undefined

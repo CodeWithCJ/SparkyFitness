@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const caffeineDoseSchema = z.object({
   at: z.string(),
@@ -21,7 +21,7 @@ export const caffeineActiveResponseSchema = z.object({
    * time cannot separate "room all evening" from "already over the threshold",
    * and those two need opposite advice.
    */
-  cutoff_state: z.enum(["anytime", "by", "passed", "over"]),
+  cutoff_state: z.enum(['anytime', 'by', 'passed', 'over']),
   /** Room left under the threshold at bedtime; negative once already over. */
   bedtime_headroom_mg: z.number(),
   /** The dose the cutoff was computed for, so a client can label it honestly. */

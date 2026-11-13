@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import type { CustomMeasurementsResponse } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import foodRepository from './foodMisc.js';
@@ -69,6 +70,7 @@ const ALLOWED_CHECK_IN_COLUMNS = [
   'bone_mass_kg',
   'body_water_percentage',
   'bmr',
+  'resting_heart_rate',
 ];
 // Column types for the batch-UPDATE unnest casts in bulkUpsertCheckInMeasurements.
 const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
@@ -83,6 +85,7 @@ const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
   bone_mass_kg: 'numeric',
   body_water_percentage: 'numeric',
   bmr: 'numeric',
+  resting_heart_rate: 'integer',
 };
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
@@ -636,6 +639,7 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          -- Exact date, like steps: a measured BMR applies to the day it was taken
          -- and no other, so days without a reading fall back to the user's formula.
          (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 AND bmr IS NOT NULL AND bmr > 0 LIMIT 1) as bmr,
+         (SELECT resting_heart_rate FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND resting_heart_rate IS NOT NULL AND resting_heart_rate > 0 ORDER BY entry_date DESC LIMIT 1) as resting_heart_rate,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,
@@ -1111,6 +1115,34 @@ async function getCustomMeasurementsByDateRange(
     client.release();
   }
 }
+/**
+ * Serializes writes to Daily and Hourly readings of each category and day
+ * until the surrounding transaction ends, so two overlapping writes for one
+ * slot cannot both find it empty and both insert. A unique index cannot do
+ * this: frequency belongs to the category, and the readings of an "All"
+ * category legitimately share a day. Locks are taken in one fixed order so
+ * two overlapping batches cannot deadlock.
+ */
+async function lockCustomMeasurementDaysWithClient(
+  client: PoolClient,
+  userId: string,
+  categoryIds: string[],
+  entryDates: string[]
+): Promise<void> {
+  // The date is cast in SQL so every spelling of a day takes the same lock.
+  await client.query(
+    `SELECT pg_advisory_xact_lock(lock_key)
+     FROM (
+       SELECT DISTINCT hashtext(
+                'custom-measurement:' || $1 || ':' || category_id || ':' || entry_date
+              ) AS lock_key
+       FROM unnest($2::uuid[], $3::date[]) AS slot(category_id, entry_date)
+       ORDER BY lock_key
+     ) ordered`,
+    [userId, categoryIds, entryDates]
+  );
+}
+
 async function upsertCustomMeasurement(
   userId: string,
   actingUserId: string,
@@ -1125,6 +1157,7 @@ async function upsertCustomMeasurement(
   userTimezone?: string | null
 ) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
+  let inTransaction = false;
   try {
     let query;
     let values;
@@ -1181,6 +1214,14 @@ async function upsertCustomMeasurement(
         source,
       ];
     } else {
+      await client.query('BEGIN');
+      inTransaction = true;
+      await lockCustomMeasurementDaysWithClient(
+        client,
+        userId,
+        [categoryId],
+        [entryDate]
+      );
       // For 'Daily' and 'Hourly', check if an entry already exists for the given user, category, date, hour (if applicable) and source
       let existingEntryQuery = `
         SELECT id FROM custom_measurements
@@ -1242,7 +1283,11 @@ async function upsertCustomMeasurement(
       }
     }
     const result = await client.query(query, values);
+    if (inTransaction) await client.query('COMMIT');
     return result.rows[0];
+  } catch (error) {
+    if (inTransaction) await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }
@@ -1355,6 +1400,12 @@ async function bulkUpsertCustomMeasurements(
     // JS (mirrors the per-record existence SELECT semantics).
     const existingByKey = new Map<string, Record<string, unknown>>();
     if (keyedWinnerIndexes.length > 0) {
+      await lockCustomMeasurementDaysWithClient(
+        client,
+        userId,
+        keyedWinnerIndexes.map((i) => prepared[i].categoryId),
+        keyedWinnerIndexes.map((i) => prepared[i].entryDate)
+      );
       const categoryIds = [
         ...new Set(keyedWinnerIndexes.map((i) => prepared[i].categoryId)),
       ];
@@ -1714,6 +1765,7 @@ export { getCheckInMeasurementsByDateRange };
 export { getCustomMeasurementsByDateRange };
 export { getCustomCategoryOwnerId };
 export { upsertCustomMeasurement };
+export { lockCustomMeasurementDaysWithClient };
 export { deleteCustomMeasurement };
 export { getCustomMeasurementOwnerId };
 export { getLatestMeasurement };
@@ -2219,6 +2271,33 @@ async function getWaterTotalsByDateRange(
   }
 }
 
+/** Reads observed instants in one half-open local-day window, retaining source metadata. */
+async function getCustomMeasurementTimelineEntries(
+  userId: string,
+  authenticatedUserId: string,
+  start: Date,
+  end: Date
+): Promise<CustomMeasurementsResponse[]> {
+  const client: PoolClient = await getClient(userId, authenticatedUserId);
+  try {
+    const result = await client.query<CustomMeasurementsResponse>(
+      `SELECT cm.*, json_build_object(
+         'name', cc.name, 'display_name', cc.display_name,
+         'measurement_type', cc.measurement_type, 'frequency', cc.frequency,
+         'data_type', cc.data_type
+       ) AS custom_categories
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1 AND cm.entry_timestamp >= $2 AND cm.entry_timestamp < $3
+       ORDER BY cm.entry_timestamp, cm.id`,
+      [userId, start, end]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -2250,6 +2329,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getCustomMeasurementTimelineEntries,
   getCustomMeasurementEntriesByDateRange,
   getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,

@@ -73,7 +73,7 @@ export function localDateToDay(date: Date): string {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;
   const d = date.getDate();
-  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
 /** Whole-day count from `a` to `b` (b - a). Negative if b precedes a. */
@@ -84,6 +84,14 @@ export function daysBetween(a: string, b: string): number {
   const ua = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
   const ub = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
   return Math.round((ub - ua) / 86_400_000);
+}
+
+/** Every day from `start` to `end` inclusive; empty when `end` precedes `start`. */
+export function daysInRange(start: string, end: string): string[] {
+  const days: string[] = [];
+  const count = daysBetween(start, end);
+  for (let i = 0; i <= count; i++) days.push(addDays(start, i));
+  return days;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,19 +126,19 @@ export function todayInZone(tz: string): string {
  */
 export function instantToDay(ts: Date | string | number, tz: string): string {
   const date = ts instanceof Date ? ts : new Date(ts);
-  const parts = Intl.DateTimeFormat("en-US", {
+  const parts = Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).formatToParts(date);
-  let year = "";
-  let month = "";
-  let day = "";
+  let year = '';
+  let month = '';
+  let day = '';
   for (const p of parts) {
-    if (p.type === "year") year = p.value;
-    if (p.type === "month") month = p.value;
-    if (p.type === "day") day = p.value;
+    if (p.type === 'year') year = p.value;
+    if (p.type === 'month') month = p.value;
+    if (p.type === 'day') day = p.value;
   }
   return `${year}-${month}-${day}`;
 }
@@ -150,26 +158,26 @@ export function userHourMinute(tz: string): { hour: number; minute: number } {
  */
 export function clockInZone(tz: string): string {
   const { hour, minute } = userHourMinute(tz);
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 /** Returns the hour and minute of an instant in the given timezone. */
 export function instantHourMinute(
   ts: Date | string | number,
-  tz: string,
+  tz: string
 ): { hour: number; minute: number } {
   const date = ts instanceof Date ? ts : new Date(ts);
-  const parts = Intl.DateTimeFormat("en-US", {
+  const parts = Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    hour: "numeric",
-    minute: "numeric",
+    hour: 'numeric',
+    minute: 'numeric',
     hour12: false,
   }).formatToParts(date);
   let hour = 0;
   let minute = 0;
   for (const p of parts) {
-    if (p.type === "hour") hour = Number(p.value);
-    if (p.type === "minute") minute = Number(p.value);
+    if (p.type === 'hour') hour = Number(p.value);
+    if (p.type === 'minute') minute = Number(p.value);
   }
   // hour12:false can return 24 for midnight in some engines
   if (hour === 24) hour = 0;
@@ -188,7 +196,7 @@ export function instantHourMinute(
  */
 export function dayToUtcRange(
   day: string,
-  tz: string,
+  tz: string
 ): { start: Date; end: Date } {
   const start = midnightUtcInstant(day, tz);
   const nextDay = addDays(day, 1);
@@ -200,7 +208,7 @@ export function dayToUtcRange(
 export function dayRangeToUtcRange(
   startDay: string,
   endDay: string,
-  tz: string,
+  tz: string
 ): { start: Date; end: Date } {
   const start = midnightUtcInstant(startDay, tz);
   const end = midnightUtcInstant(addDays(endDay, 1), tz);
@@ -214,7 +222,7 @@ export function dayRangeToUtcRange(
 /** Converts an instant to a YYYY-MM-DD string using a fixed UTC offset in minutes. */
 export function instantToDayWithOffset(
   ts: Date | string | number,
-  offsetMinutes: number,
+  offsetMinutes: number
 ): string {
   const date = ts instanceof Date ? ts : new Date(ts);
   const localMs = date.getTime() + offsetMinutes * 60_000;
@@ -224,7 +232,7 @@ export function instantToDayWithOffset(
 /** Returns the hour and minute of an instant using a fixed UTC offset in minutes. */
 export function instantHourMinuteWithOffset(
   ts: Date | string | number,
-  offsetMinutes: number,
+  offsetMinutes: number
 ): { hour: number; minute: number } {
   const date = ts instanceof Date ? ts : new Date(ts);
   const localMs = date.getTime() + offsetMinutes * 60_000;
@@ -246,8 +254,7 @@ const MAX_UTC_OFFSET_MINUTES = 14 * 60;
  * 1h skew on one endpoint — accepted trade-off.
  */
 export type RecordZone =
-  | { kind: "tz"; tz: string }
-  | { kind: "offset"; minutes: number };
+  { kind: 'tz'; tz: string } | { kind: 'offset'; minutes: number };
 
 /**
  * Resolves per-record timezone metadata with the standard precedence:
@@ -263,21 +270,21 @@ export type RecordZone =
  */
 export function resolveRecordZone(
   recordTimezone: string | null | undefined,
-  recordUtcOffsetMinutes: number | null | undefined,
+  recordUtcOffsetMinutes: number | null | undefined
 ): RecordZone | null {
   if (
-    typeof recordTimezone === "string" &&
-    recordTimezone !== "" &&
+    typeof recordTimezone === 'string' &&
+    recordTimezone !== '' &&
     isValidTimeZone(recordTimezone)
   ) {
-    return { kind: "tz", tz: recordTimezone };
+    return { kind: 'tz', tz: recordTimezone };
   }
   if (
-    typeof recordUtcOffsetMinutes === "number" &&
+    typeof recordUtcOffsetMinutes === 'number' &&
     Number.isInteger(recordUtcOffsetMinutes) &&
     Math.abs(recordUtcOffsetMinutes) <= MAX_UTC_OFFSET_MINUTES
   ) {
-    return { kind: "offset", minutes: recordUtcOffsetMinutes };
+    return { kind: 'offset', minutes: recordUtcOffsetMinutes };
   }
   return null;
 }
@@ -285,9 +292,9 @@ export function resolveRecordZone(
 /** Returns the hour and minute of an instant in a record zone (IANA or fixed offset). */
 export function instantHourMinuteInZone(
   ts: Date | string | number,
-  zone: RecordZone,
+  zone: RecordZone
 ): { hour: number; minute: number } {
-  return zone.kind === "tz"
+  return zone.kind === 'tz'
     ? instantHourMinute(ts, zone.tz)
     : instantHourMinuteWithOffset(ts, zone.minutes);
 }
@@ -302,12 +309,12 @@ export function instantHourMinuteInZone(
  * string (e.g. free-text from a chat model) is not a zone claim.
  */
 export function utcOffsetMinutesFromIsoString(
-  timeStr: string | null | undefined,
+  timeStr: string | null | undefined
 ): number | null {
-  if (typeof timeStr !== "string") return null;
+  if (typeof timeStr !== 'string') return null;
   const m =
     /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?([+-])(\d{2}):?(\d{2})$/.exec(
-      timeStr.trim(),
+      timeStr.trim()
     );
   if (!m) return null;
   const hours = Number(m[2]);
@@ -317,8 +324,8 @@ export function utcOffsetMinutesFromIsoString(
   if (total > MAX_UTC_OFFSET_MINUTES) return null;
   // RFC 3339 §4.3: "-00:00" declares the local offset unknown — like `Z`,
   // not a zone claim. "+00:00" is a genuine UTC claim and stays 0.
-  if (m[1] === "-" && total === 0) return null;
-  return m[1] === "-" ? -total : total;
+  if (m[1] === '-' && total === 0) return null;
+  return m[1] === '-' ? -total : total;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +336,7 @@ function formatUtcDate(d: Date): string {
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
-  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**
@@ -351,13 +358,13 @@ function midnightUtcInstant(day: string, tz: string): Date {
   const month = Number(m[2]);
   const dayNum = Number(m[3]);
 
-  const fmt = Intl.DateTimeFormat("en-US", {
+  const fmt = Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
     hour12: false,
   });
 
@@ -370,14 +377,14 @@ function midnightUtcInstant(day: string, tz: string): Date {
       const p = parts.find((p) => p.type === type);
       return p ? Number(p.value) : 0;
     };
-    let h = pv("hour");
+    let h = pv('hour');
     if (h === 24) h = 0;
     const localAsUtcMs = Date.UTC(
-      pv("year"),
-      pv("month") - 1,
-      pv("day"),
+      pv('year'),
+      pv('month') - 1,
+      pv('day'),
       h,
-      pv("minute"),
+      pv('minute')
     );
     return localAsUtcMs - utcMs;
   }
@@ -396,14 +403,14 @@ function midnightUtcInstant(day: string, tz: string): Date {
   // Verify: the result should map to the target day in the target tz.
   // If DST spring-forward skips midnight, adjust forward to the first valid instant.
   const checkParts = fmt.formatToParts(new Date(resultMs));
-  const checkDay = Number(checkParts.find((p) => p.type === "day")!.value);
-  const checkMonth = Number(checkParts.find((p) => p.type === "month")!.value);
+  const checkDay = Number(checkParts.find((p) => p.type === 'day')!.value);
+  const checkMonth = Number(checkParts.find((p) => p.type === 'month')!.value);
 
   if (checkDay !== dayNum || checkMonth !== month) {
     for (let bump = 15 * 60_000; bump <= 120 * 60_000; bump += 15 * 60_000) {
       const tryParts = fmt.formatToParts(new Date(resultMs + bump));
-      const tryDay = Number(tryParts.find((p) => p.type === "day")!.value);
-      const tryMonth = Number(tryParts.find((p) => p.type === "month")!.value);
+      const tryDay = Number(tryParts.find((p) => p.type === 'day')!.value);
+      const tryMonth = Number(tryParts.find((p) => p.type === 'month')!.value);
       if (tryDay === dayNum && tryMonth === month) {
         resultMs = resultMs + bump;
         break;
@@ -424,20 +431,20 @@ export function calculateAge(dob: string, tz?: string): number {
   const targetTz =
     tz && isValidTimeZone(tz)
       ? tz
-      : typeof Intl !== "undefined"
+      : typeof Intl !== 'undefined'
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
-        : "UTC";
+        : 'UTC';
 
   const todayStr = todayInZone(targetTz);
-  const todayParts = todayStr.split("-");
-  const todayYear = parseInt(todayParts[0] || "0", 10);
-  const todayMonth = parseInt(todayParts[1] || "0", 10);
-  const todayDay = parseInt(todayParts[2] || "0", 10);
+  const todayParts = todayStr.split('-');
+  const todayYear = parseInt(todayParts[0] || '0', 10);
+  const todayMonth = parseInt(todayParts[1] || '0', 10);
+  const todayDay = parseInt(todayParts[2] || '0', 10);
 
-  const dobParts = dob.split("-");
-  const dobYear = parseInt(dobParts[0] || "0", 10);
-  const dobMonth = parseInt(dobParts[1] || "0", 10);
-  const dobDay = parseInt(dobParts[2] || "0", 10);
+  const dobParts = dob.split('-');
+  const dobYear = parseInt(dobParts[0] || '0', 10);
+  const dobMonth = parseInt(dobParts[1] || '0', 10);
+  const dobDay = parseInt(dobParts[2] || '0', 10);
 
   let age = todayYear - dobYear;
   if (todayMonth < dobMonth || (todayMonth === dobMonth && todayDay < dobDay)) {
@@ -450,11 +457,11 @@ export function calculateAge(dob: string, tz?: string): number {
  * Parses a local datetime string (e.g. "YYYY-MM-DDTHH:mm") in a given timezone and returns a UTC Date.
  */
 export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
-  const [datePart, timePart] = localDateTimeStr.split("T");
+  const [datePart, timePart] = localDateTimeStr.split('T');
   if (!datePart || !timePart) return new Date(localDateTimeStr);
 
-  const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
   if (
     year == null ||
     month == null ||
@@ -465,13 +472,13 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
     return new Date(localDateTimeStr);
   }
 
-  const fmt = Intl.DateTimeFormat("en-US", {
+  const fmt = Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
     hour12: false,
   });
 
@@ -483,27 +490,54 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
       const p = parts.find((p) => p.type === type);
       return p ? Number(p.value) : 0;
     };
-    let h = pv("hour");
+    let h = pv('hour');
     if (h === 24) h = 0;
     const localAsUtcMs = Date.UTC(
-      pv("year"),
-      pv("month") - 1,
-      pv("day"),
+      pv('year'),
+      pv('month') - 1,
+      pv('day'),
       h,
-      pv("minute"),
+      pv('minute')
     );
     return localAsUtcMs - utcMs;
   }
 
-  const offset1 = offsetAt(targetLocalUtcMs);
-  let resultMs = targetLocalUtcMs - offset1;
-
-  const offset2 = offsetAt(resultMs);
-  if (offset2 !== offset1) {
-    resultMs = targetLocalUtcMs - offset2;
-  }
+  // The offsets a day either side cover any clock change near the target.
+  // Each gives a candidate instant; a candidate is real when it reads back as
+  // the target wall-clock time. The same rule then holds east and west of UTC:
+  // - repeated hour (clocks go back): both are real, take the later one, the
+  //   second occurrence;
+  // - missing hour (clocks go forward): neither is, use the offset from before
+  //   the change, which lands the same distance after it (02:30 -> 03:30).
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const offsetBefore = offsetAt(targetLocalUtcMs - DAY_MS);
+  const offsetAfter = offsetAt(targetLocalUtcMs + DAY_MS);
+  const candidates = [
+    targetLocalUtcMs - offsetBefore,
+    targetLocalUtcMs - offsetAfter,
+  ];
+  const real = candidates.filter(
+    (ms) => ms + offsetAt(ms) === targetLocalUtcMs
+  );
+  const resultMs =
+    real.length > 0 ? Math.max(...real) : targetLocalUtcMs - offsetBefore;
 
   return new Date(resultMs);
+}
+
+/**
+ * The instant to stamp on something logged for `day` without a time of its
+ * own: `now` when `day` is today in `tz`, otherwise local noon of `day`. Either
+ * way the instant falls on `day` in `tz`, which `now` alone would not for a
+ * backdated entry.
+ */
+export function instantForDay(
+  day: string,
+  tz: string,
+  now: Date = new Date()
+): Date {
+  if (instantToDay(now, tz) === day) return now;
+  return localDateTimeToUtc(`${day}T12:00`, tz);
 }
 
 /**
@@ -513,23 +547,23 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
  */
 export function utcToLocalDateTimeInput(iso: string, tz: string): string {
   try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
+    const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
     }).formatToParts(new Date(iso));
     const get = (type: string) =>
-      parts.find((p) => p.type === type)?.value ?? "";
-    const date = `${get("year")}-${get("month")}-${get("day")}`;
-    const time = `${get("hour")}:${get("minute")}`;
-    return date.includes("NaN") || time.includes("NaN")
-      ? ""
+      parts.find((p) => p.type === type)?.value ?? '';
+    const date = `${get('year')}-${get('month')}-${get('day')}`;
+    const time = `${get('hour')}:${get('minute')}`;
+    return date.includes('NaN') || time.includes('NaN')
+      ? ''
       : `${date}T${time}`;
   } catch {
-    return "";
+    return '';
   }
 }

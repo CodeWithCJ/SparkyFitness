@@ -1,4 +1,4 @@
-import type { RecordingActivity } from './gpsRecording';
+import type { DiaryActivity } from './gpsRecording';
 
 /**
  * Stride maths for estimating distance from steps, which is how a phone
@@ -11,7 +11,7 @@ import type { RecordingActivity } from './gpsRecording';
 export type StepActivity = 'walk' | 'run';
 
 export function isStepActivity(
-  activity: RecordingActivity
+  activity: DiaryActivity
 ): activity is StepActivity {
   return activity === 'walk' || activity === 'run';
 }
@@ -102,4 +102,46 @@ export function activeShare(
 ): number {
   if (!(windowSeconds > 0)) return 0;
   return Math.min(1, Math.max(0, activeSeconds / windowSeconds));
+}
+
+/** Running form worked out from a step count over a stretch of moving time. */
+export interface FormMetrics {
+  /** Steps per minute. */
+  avgCadence: number;
+  /** Centimetres per step; null when the distance is not trustworthy. */
+  strideLengthCm: number | null;
+}
+
+/** A cadence outside this is a stalled or double-counting sensor, not a gait. */
+const MIN_PLAUSIBLE_CADENCE = 40;
+const MAX_PLAUSIBLE_CADENCE = 260;
+
+/**
+ * Cadence and stride length for a session, or null when there are too few
+ * steps or too little time to say anything. Stride is left out (null) when
+ * `distanceMeters` is null or gives an implausible stride.
+ */
+export function computeFormMetrics(
+  steps: number,
+  activeSeconds: number,
+  distanceMeters: number | null
+): FormMetrics | null {
+  if (!Number.isFinite(steps) || !Number.isFinite(activeSeconds)) return null;
+  if (steps < MIN_CALIBRATION_STEPS || activeSeconds <= 0) return null;
+  const cadence = steps / (activeSeconds / 60);
+  if (cadence < MIN_PLAUSIBLE_CADENCE || cadence > MAX_PLAUSIBLE_CADENCE) {
+    return null;
+  }
+  const stride =
+    distanceMeters != null && distanceMeters >= MIN_CALIBRATION_METERS
+      ? distanceMeters / steps
+      : null;
+  const strideOk =
+    stride != null &&
+    stride >= MIN_PLAUSIBLE_STRIDE_METERS &&
+    stride <= MAX_PLAUSIBLE_STRIDE_METERS;
+  return {
+    avgCadence: Math.round(cadence),
+    strideLengthCm: strideOk ? Math.round(stride * 1000) / 10 : null,
+  };
 }

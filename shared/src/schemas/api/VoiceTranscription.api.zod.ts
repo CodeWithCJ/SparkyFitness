@@ -1,15 +1,15 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const MAX_VOICE_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export const voiceAudioMimeTypeSchema = z.enum([
-  "audio/mp4",
-  "audio/m4a",
-  "audio/aac",
-  "audio/mpeg",
-  "audio/wav",
-  "audio/webm",
-  "audio/ogg",
+  'audio/mp4',
+  'audio/m4a',
+  'audio/aac',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/webm',
+  'audio/ogg',
 ]);
 
 export const voiceTranscriptionRequestSchema = z.object({
@@ -23,16 +23,16 @@ export const voiceTranscriptionResponseSchema = z.object({
 });
 
 const VOICE_SERVICE_TYPES = new Set([
-  "google",
-  "openai",
-  "openai_compatible",
-  "custom",
-  "mistral",
+  'google',
+  'openai',
+  'openai_compatible',
+  'custom',
+  'mistral',
 ]);
 
 /** Supported transport only; each model configuration must also opt in to audio. */
 export function supportsVoiceTranscriptionServiceType(
-  serviceType: string | undefined,
+  serviceType: string | undefined
 ): boolean {
   return !!serviceType && VOICE_SERVICE_TYPES.has(serviceType);
 }
@@ -58,17 +58,17 @@ export type VoiceInputPreferences = z.infer<typeof voiceInputPreferencesSchema>;
 /** Suggest the chat configuration first, but never select it implicitly. */
 export function getVoiceServiceOptions<T extends VoiceServiceOption>(
   services: readonly T[],
-  chatServiceId?: string | null,
+  chatServiceId?: string | null
 ): T[] {
   return services
     .filter(
       (service) =>
         service.is_active &&
         service.supports_audio_input &&
-        supportsVoiceTranscriptionServiceType(service.service_type),
+        supportsVoiceTranscriptionServiceType(service.service_type)
     )
     .sort(
-      (a, b) => Number(b.id === chatServiceId) - Number(a.id === chatServiceId),
+      (a, b) => Number(b.id === chatServiceId) - Number(a.id === chatServiceId)
     );
 }
 

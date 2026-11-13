@@ -6,6 +6,7 @@ import {
   heartRateAlertCue,
   paceAlertCue,
   intervalCue,
+  intervalStepName,
   intervalToGoCue,
   spokenDuration,
   splitCue,
@@ -116,6 +117,13 @@ describe('distance steps', () => {
         style: 'fastEasy',
       })
     ).toBe('Fast. 400 meters.');
+  });
+
+  it('calls a brisk walk Brisk and Easy, never Run', () => {
+    expect(intervalStepName(tt, 'work', 'briskWalk')).toBe('Brisk');
+    expect(intervalStepName(tt, 'recovery', 'briskWalk')).toBe('Easy');
+    expect(intervalStepName(tt, 'work', 'runWalk')).toBe('Run');
+    expect(intervalStepName(tt, 'work', 'fastEasy')).toBe('Fast');
   });
 
   it('says the last tenth of a mile on a step set in miles', () => {
@@ -261,5 +269,21 @@ describe('countdown and milestone cues', () => {
     expect(milestoneCue(tt, 10000)).toBe('10K done. Strong effort.');
     expect(milestoneCue(tt, 21097.5)).toBe('Half marathon distance. Amazing.');
     expect(milestoneCue(tt, 42195)).toBe('Marathon distance. Incredible.');
+  });
+});
+
+describe('a Zone 2 step', () => {
+  it('is named Zone 2 run in the spoken cue and the step name, other work steps are not', () => {
+    const step = {
+      kind: 'work' as const,
+      seconds: 1800,
+      effort: 'zone2' as const,
+    };
+    expect(intervalStepName(tt, 'work', 'runWalk', 'zone2')).toBe('Zone 2 run');
+    expect(intervalStepName(tt, 'work', 'runWalk')).toBe('Run');
+    expect(intervalStepName(tt, 'recovery', 'runWalk', 'zone2')).toBe('Walk');
+    expect(intervalCue(tt, { step, style: 'runWalk' })).toBe(
+      'Zone 2 run. 30 minutes.'
+    );
   });
 });

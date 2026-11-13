@@ -1,0 +1,12 @@
+{
+  "src/cycle/constants.ts": 4,
+  "src/cycle/content.ts": 37,
+  "src/cycle/predictions.ts": 5,
+  "src/cycle/pregnancyContent.ts": 12,
+  "src/medications/glp1.ts": 14,
+  "src/nutrients/alcoholUnits.ts": 3,
+  "src/symptoms/bodyRegions.ts": 11,
+  "src/symptoms/builtIns.ts": 1,
+  "src/utils/parseCsv.ts": 1,
+  "src/utils/progressionEngine.ts": 2
+}

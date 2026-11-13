@@ -53,6 +53,8 @@ describe('ReportsScreen', () => {
     ['measurements', 'MeasurementsReport'],
     ['mood', 'MoodReport'],
     ['exercise', 'ExerciseStatistics'],
+    ['heartRate', 'HeartRateReport'],
+    ['compare', 'CompareReport'],
   ])('opens the %s report', (key, route) => {
     const { getByTestId } = render(<ReportsScreen {...props} />);
     fireEvent.press(getByTestId(`reports-link-${key}`));
@@ -80,7 +82,26 @@ describe('ReportsScreen', () => {
       'hydration',
       'substances',
       'measurements',
+      'heartRate',
+      'oralCare',
+      'compare',
     ]);
     expect(queryByTestId('reports-link-sleep')).toBeNull();
+  });
+
+  it('still lists Compare when the saved order predates it', () => {
+    useAppPreferencesStore.setState({
+      reportOrder: [
+        'nutrition',
+        'hydration',
+        'substances',
+        'sleep',
+        'measurements',
+        'mood',
+        'exercise',
+      ],
+    });
+    const { getByTestId } = render(<ReportsScreen {...props} />);
+    expect(getByTestId('reports-link-compare')).toBeTruthy();
   });
 });

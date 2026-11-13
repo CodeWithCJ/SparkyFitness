@@ -1,4 +1,4 @@
-import { vi, describe, expect, it } from 'vitest';
+import { beforeEach, vi, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supe... Remove this comment to see the full error message
 import request from 'supertest';
 import express from 'express';
@@ -27,7 +27,11 @@ vi.mock('../middleware/authMiddleware', () => ({
 const app = express();
 app.use(express.json());
 app.use('/admin/global-settings', globalSettingsRoutes);
+
 describe('Global Settings Routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   describe('GET /admin/global-settings', () => {
     it('should return global settings', async () => {
       const mockSettings = { id: 1, allow_user_ai_config: false };
@@ -68,6 +72,60 @@ describe('Global Settings Routes', () => {
         inputSettings
       );
     });
+    it.each([
+      'https://client.example/callback:*',
+      'http://localhost:**',
+      'http://client.example/callback',
+      'https://localhost/callback',
+      'not a URI',
+    ])(
+      'rejects an unsupported OAuth redirect allowlist entry: %s',
+      async (entry) => {
+        const res = await request(app)
+          .put('/admin/global-settings')
+          .send({ mcp_oauth_allowed_redirect_uris: [entry] });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.message).toBe('Invalid global settings');
+        expect(saveGlobalSettingsWithOpenFoodFactsSync).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(['https://client.example', [123]])(
+      'rejects an invalid OAuth redirect allowlist shape',
+      async (value) => {
+        const res = await request(app)
+          .put('/admin/global-settings')
+          .send({ mcp_oauth_allowed_redirect_uris: value });
+
+        expect(res.statusCode).toBe(400);
+        expect(saveGlobalSettingsWithOpenFoodFactsSync).not.toHaveBeenCalled();
+      }
+    );
+
+    it('accepts exact redirect URIs and supported loopback patterns', async () => {
+      const inputSettings = {
+        mcp_oauth_allowed_redirect_uris: [
+          'https://client.example/callback',
+          'http://127.0.0.1:49152/callback',
+          'http://127.0.0.1:*',
+        ],
+      };
+      vi.mocked(saveGlobalSettingsWithOpenFoodFactsSync).mockResolvedValue({
+        id: 1,
+        ...inputSettings,
+      });
+
+      const res = await request(app)
+        .put('/admin/global-settings')
+        .send(inputSettings);
+
+      expect(res.statusCode).toBe(200);
+      expect(saveGlobalSettingsWithOpenFoodFactsSync).toHaveBeenCalledWith(
+        inputSettings
+      );
+    });
+
     it('should handle repository errors during save', async () => {
       vi.mocked(saveGlobalSettingsWithOpenFoodFactsSync).mockRejectedValue(
         new Error('Update failed')

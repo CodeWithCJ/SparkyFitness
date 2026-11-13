@@ -8,7 +8,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,26 +29,21 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCheckInPhotoGallery } from '../hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
-import { addDays, compareDays } from '@workspace/shared';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import {
+  framesForAngle,
+  framesInRange,
+  type CustomRange,
+  type TimelapseRange,
+} from '@workspace/shared';
 import { formatShortDate, getTodayDate } from '../utils/dateUtils';
 import { type WeightDisplayMode } from '../utils/unitConversions';
-import type { PhotoType, ProgressPhotoDay } from '../types/checkInPhotos';
+import type { PhotoType } from '../types/checkInPhotos';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ProgressPhotoTimelapse'>;
 
 type Speed = 'slow' | 'normal' | 'fast';
-
-/** How far back the playback reaches. */
-type Range = '30d' | '3m' | 'all' | 'custom';
-
-const PRESET_DAYS: Record<'30d' | '3m', number> = { '30d': 30, '3m': 92 };
-
-/** Inclusive YYYY-MM-DD bounds, or null for an unbounded end. */
-type Bounds = { from: string | null; to: string | null };
-
-/** A user-picked range always has both ends. */
-type CustomRange = { from: string; to: string };
 
 /**
  * How long each frame is held, and how long the cross-fade between two frames
@@ -81,6 +75,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -95,75 +90,32 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   const weightMode: WeightDisplayMode =
     preferences?.default_weight_unit ?? 'kg';
 
-  const [range, setRange] = useState<Range>('3m');
+  const [range, setRange] = useState<TimelapseRange>('3m');
   const [custom, setCustom] = useState<CustomRange | null>(null);
   const rangeSheetRef = useRef<DateRangeSheetRef>(null);
 
   // Oldest → newest: the whole point is watching the change accumulate.
-  const allFrames = useMemo<ProgressPhotoDay[]>(
-    () =>
-      days
-        .filter((day) => day.photos[angle])
-        .slice()
-        .reverse(),
-    [days, angle]
-  );
+  const allFrames = useMemo(() => framesForAngle(days, angle), [days, angle]);
 
   const markedDays = useMemo(
     () => allFrames.map((day) => day.entry_date),
     [allFrames]
   );
 
-  // Every window is expressed as absolute bounds, presets included: a preset is
-  // just "N days back from today", so one filter serves both and a custom range
-  // needs no second code path.
-  const boundsFor = useCallback(
-    (window: Range): Bounds => {
-      if (window === 'all') return { from: null, to: null };
-      if (window === 'custom') {
-        return custom ?? { from: null, to: null };
-      }
-      const today = getTodayDate();
-      return { from: addDays(today, -PRESET_DAYS[window]), to: today };
-    },
-    [custom]
+  // The window rules (presets as absolute day bounds, a sparse preset widening
+  // to all time, a custom range never widening) live in @workspace/shared and
+  // are the web player's too. Memoized so the identity only changes with the
+  // frame set: the prefetch effect below lists `frames` as a dependency.
+  const today = getTodayDate();
+  const { frames, widened } = useMemo(
+    () => framesInRange(allFrames, range, today, custom),
+    [allFrames, range, today, custom]
   );
-
-  const framesIn = useCallback(
-    (window: Range): ProgressPhotoDay[] => {
-      const { from, to } = boundsFor(window);
-      if (from == null && to == null) return allFrames;
-      return allFrames.filter(
-        (day) =>
-          (from == null || compareDays(day.entry_date, from) >= 0) &&
-          (to == null || compareDays(day.entry_date, to) <= 0)
-      );
-    },
-    [allFrames, boundsFor]
-  );
-
-  // A default window that happens to be empty would show "add two photos" to
-  // someone whose whole history is older than it, so fall back to everything
-  // rather than to a dead screen. Derived, so a later pick still wins.
-  //
-  // A custom range is exempt: the dates were chosen deliberately, and quietly
-  // playing the whole history instead would misreport what is in them.
-  // Memoized so the identity only changes with the frame set: the prefetch
-  // effect below lists `frames` as a dependency, and an inline filter would
-  // hand it a fresh array on every render.
-  const keepsEmptyWindow = range === 'all' || range === 'custom';
-  const { frames, widened } = useMemo(() => {
-    const windowed = framesIn(range);
-    if (windowed.length >= 2 || keepsEmptyWindow) {
-      return { frames: windowed, widened: false };
-    }
-    return { frames: allFrames, widened: true };
-  }, [framesIn, range, keepsEmptyWindow, allFrames]);
 
   // What is actually playing, which is not always what the menu has selected.
   // The counter reads from this: labelling a widened run with the preset the
   // user picked would claim their whole history fits in the last 30 days.
-  const playingRange: Range = widened ? 'all' : range;
+  const playingRange: TimelapseRange = widened ? 'all' : range;
 
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -172,7 +124,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   const { holdMs, fadeMs } = SPEEDS[speed];
 
   const rangeLabel = useCallback(
-    (window: Range): string => {
+    (window: TimelapseRange): string => {
       switch (window) {
         case '30d':
           return t('progressPhotos.range30d', {
@@ -211,14 +163,16 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
           label: t('progressPhotos.rangeSection', {
             defaultValue: 'Play back',
           }),
-          items: (['30d', '3m', 'all', 'custom'] as Range[]).map((window) => ({
-            label: rangeLabel(window),
-            selected: range === window,
-            onPress: () =>
-              window === 'custom'
-                ? rangeSheetRef.current?.present()
-                : setRange(window),
-          })),
+          items: (['30d', '3m', 'all', 'custom'] as TimelapseRange[]).map(
+            (window) => ({
+              label: rangeLabel(window),
+              selected: range === window,
+              onPress: () =>
+                window === 'custom'
+                  ? rangeSheetRef.current?.present()
+                  : setRange(window),
+            })
+          ),
         },
       ],
       identifier: 'timelapse-range',
@@ -437,7 +391,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   return (
     <View
       className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
       <View className="pt-2">{body()}</View>

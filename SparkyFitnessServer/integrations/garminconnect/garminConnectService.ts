@@ -14,7 +14,19 @@ import {
   GarminTokenPayload,
   GarminLoginResponseDto,
 } from '../../types/garmin.js';
+import {
+  openGarminMfaState,
+  sealGarminMfaState,
+  type GarminMfaState,
+} from './garminMfaState.js';
 import { addDays } from '@workspace/shared';
+
+/** The Garmin service's login reply; a pending sign-in arrives unsealed. */
+interface GarminServiceLoginResponse {
+  status?: string;
+  tokens?: GarminTokenPayload;
+  client_state?: GarminMfaState;
+}
 
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
@@ -104,13 +116,29 @@ function formatGarminMicroserviceError(error: unknown): {
   return { detail, errorData: errorData ?? codeDetail ?? detail };
 }
 
+/**
+ * Rethrows a Garmin service failure with its message, keeping a 4xx status
+ * (a wrong password or code is 401, Garmin's rate limit 429) so the error
+ * handler answers with it instead of a 500.
+ */
+function garminServiceError(message: string, error: unknown): Error {
+  const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+  return Object.assign(
+    new Error(message, { cause: error }),
+    status !== undefined && status >= 400 && status < 500
+      ? { statusCode: status }
+      : {}
+  );
+}
+
 async function garminLogin(
   userId: string,
   email: string,
   password: string
 ): Promise<GarminLoginResponseDto> {
+  let data: GarminServiceLoginResponse;
   try {
-    const response = await postWithRetry<GarminLoginResponseDto>(
+    const response = await postWithRetry<GarminServiceLoginResponse>(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/login`,
       {
         user_id: userId,
@@ -118,12 +146,19 @@ async function garminLogin(
         password: password,
       }
     );
-    return response.data; // Should contain tokens or MFA status
+    data = response.data;
   } catch (error: unknown) {
     const { detail, errorData } = formatGarminMicroserviceError(error);
     log('error', `Error during Garmin login for user ${userId}:`, errorData);
-    throw new Error(`Failed to login to Garmin: ${detail}`, { cause: error });
+    throw garminServiceError(`Failed to login to Garmin: ${detail}`, error);
   }
+  if (data.status === 'needs_mfa' && data.client_state) {
+    return {
+      status: 'needs_mfa',
+      client_state: await sealGarminMfaState(userId, data.client_state),
+    };
+  }
+  return { status: data.status, tokens: data.tokens };
 }
 
 async function garminResumeLogin(
@@ -131,22 +166,24 @@ async function garminResumeLogin(
   clientState: string,
   mfaCode: string
 ): Promise<GarminLoginResponseDto> {
+  const state = await openGarminMfaState(userId, clientState);
   try {
+    // No retries: the code may already have reached Garmin, and sending it
+    // again cannot succeed.
     const response = await postWithRetry<GarminLoginResponseDto>(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/resume_login`,
       {
         user_id: userId,
-        client_state: clientState,
+        client_state: state,
         mfa_code: mfaCode,
-      }
+      },
+      0
     );
     return response.data; // Should contain tokens
   } catch (error: unknown) {
     const { detail, errorData } = formatGarminMicroserviceError(error);
     log('error', `Error during Garmin MFA for user ${userId}:`, errorData);
-    throw new Error(`Failed to complete Garmin MFA: ${detail}`, {
-      cause: error,
-    });
+    throw garminServiceError(`Failed to complete Garmin MFA: ${detail}`, error);
   }
 }
 
@@ -638,6 +675,42 @@ async function fetchGarminNutritionDiary(
   return aggregatedResult;
 }
 
+const GARMIN_HEALTH_CHECK_TIMEOUT_MS = 3000;
+
+let healthCheckInFlight: Promise<boolean> | null = null;
+
+/**
+ * Whether the Garmin microservice answers its root route. Concurrent callers
+ * share one running check; the result is not kept once it finishes.
+ */
+function checkGarminMicroserviceHealth(): Promise<boolean> {
+  if (!healthCheckInFlight) {
+    healthCheckInFlight = requestGarminMicroserviceHealth().finally(() => {
+      healthCheckInFlight = null;
+    });
+  }
+  return healthCheckInFlight;
+}
+
+/**
+ * One request to the microservice's root route. Never throws: any failure,
+ * including a timeout, reads as unreachable.
+ */
+async function requestGarminMicroserviceHealth(): Promise<boolean> {
+  try {
+    await axios.get(`${GARMIN_MICROSERVICE_URL}/`, {
+      timeout: GARMIN_HEALTH_CHECK_TIMEOUT_MS,
+    });
+    return true;
+  } catch (error: unknown) {
+    log(
+      'warn',
+      `Garmin microservice health check failed: ${formatGarminMicroserviceError(error).detail}`
+    );
+    return false;
+  }
+}
+
 export {
   garminLogin,
   garminResumeLogin,
@@ -650,6 +723,7 @@ export {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };
 
 export default {
@@ -664,4 +738,5 @@ export default {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };

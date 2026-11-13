@@ -104,6 +104,34 @@ describe('decideAdaptiveAdjustment', () => {
     ).toBe(NO_ADAPTIVE_ADJUSTMENT);
   });
 
+  it('low logged effort adds a step only when there is no explicit answer', () => {
+    expect(decideAdaptiveAdjustment(signal({ avg_rpe: 7 }))).toMatchObject({
+      kind: 'increase',
+      addIncrement: true,
+      reason: 'low_effort',
+    });
+    expect(decideAdaptiveAdjustment(signal({ avg_rpe: 6 })).reason).toBe(
+      'low_effort'
+    );
+    expect(decideAdaptiveAdjustment(signal({ avg_rir: 3 })).reason).toBe(
+      'low_effort'
+    );
+    // Just above the line, and anything the lifter answered, change nothing.
+    expect(decideAdaptiveAdjustment(signal({ avg_rpe: 7.5 }))).toBe(
+      NO_ADAPTIVE_ADJUSTMENT
+    );
+    expect(
+      decideAdaptiveAdjustment(
+        signal({ avg_rpe: 6, last_difficulty: 'too_hard' })
+      ).reason
+    ).toBe('too_hard');
+    expect(
+      decideAdaptiveAdjustment(
+        signal({ avg_rpe: 6, last_difficulty: 'just_right' })
+      )
+    ).toBe(NO_ADAPTIVE_ADJUSTMENT);
+  });
+
   it('too easy needs two in a row before adding load', () => {
     expect(
       decideAdaptiveAdjustment(

@@ -64,6 +64,28 @@ test("offers today's workout with a Start button", () => {
   expect(onStart).toHaveBeenCalled();
 });
 
+test('a Zone 2 program names its workout and notes the zone check on the check run only', () => {
+  // Week 4, run 2 is the first zone check.
+  mockedProgram.mockReturnValue(
+    program({ status: programStatus({ programId: 'zone2Base', next: 10 })! })
+  );
+  const { rerender } = render(
+    <RunProgramBanner date={today} exerciseEntries={[]} onStart={jest.fn()} />
+  );
+  expect(screen.getByText(/Zone 2 base •/)).toBeTruthy();
+  expect(screen.getByText(/Week 4, run 2 ·/)).toBeTruthy();
+  expect(screen.getByTestId('zone-check-note')).toBeTruthy();
+
+  mockedProgram.mockReturnValue(
+    program({ status: programStatus({ programId: 'zone2Base', next: 9 })! })
+  );
+  rerender(
+    <RunProgramBanner date={today} exerciseEntries={[]} onStart={jest.fn()} />
+  );
+  expect(screen.getByText(/Week 4, run 1 ·/)).toBeTruthy();
+  expect(screen.queryByTestId('zone-check-note')).toBeNull();
+});
+
 test('waits for the start day', () => {
   mockedProgram.mockReturnValue(
     program({ schedule: { days: [], startDay: '2999-01-01', endDay: null } })

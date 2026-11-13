@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import NutritionMacroCard from '../../src/components/NutritionMacroCard';
 
 jest.mock('../../src/components/MacroCompositionRing', () => {
@@ -122,6 +122,50 @@ describe('NutritionMacroCard', () => {
       );
       expect(getByTestId('macro-composition-ring')).toBeTruthy();
       expect(queryByTestId('progress-ring')).toBeNull();
+    });
+  });
+
+  describe('onMacroPress', () => {
+    const goalProps = {
+      ...baseProps,
+      calorieGoal: 2000,
+      proteinGoal: 150,
+      goalPercentages: { calories: 30, protein: 20, carbs: 20, fat: 30 },
+    };
+
+    it('makes each macro row tappable and reports its key, label and goal', () => {
+      const onMacroPress = jest.fn();
+      const { getByTestId } = render(
+        <NutritionMacroCard {...goalProps} onMacroPress={onMacroPress} />
+      );
+      fireEvent.press(getByTestId('macro-row-protein'));
+      expect(onMacroPress).toHaveBeenCalledWith({
+        key: 'protein',
+        label: 'Protein',
+        goal: 150,
+      });
+      fireEvent.press(getByTestId('macro-row-fat'));
+      expect(onMacroPress).toHaveBeenLastCalledWith(
+        expect.objectContaining({ key: 'fat' })
+      );
+    });
+
+    it('renders no tappable rows without the handler', () => {
+      const { queryByTestId } = render(<NutritionMacroCard {...goalProps} />);
+      expect(queryByTestId('macro-row-protein')).toBeNull();
+    });
+
+    it('does not make the net carbs row tappable', () => {
+      const { queryByTestId, getByTestId } = render(
+        <NutritionMacroCard
+          {...goalProps}
+          showNetCarbs
+          fiber={5}
+          onMacroPress={jest.fn()}
+        />
+      );
+      expect(queryByTestId('macro-row-carbs')).toBeNull();
+      expect(getByTestId('macro-row-protein')).toBeTruthy();
     });
   });
 });

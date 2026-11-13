@@ -107,7 +107,7 @@ describe('RunProgramEditScreen', () => {
     expect(input.workouts).toHaveLength(1);
     // The remaining one is the second, with its added step.
     expect(input.workouts[0].plan.steps).toHaveLength(4);
-    expect(input.workouts[0].plan.style).toBe('fastEasy');
+    expect(input.workouts[0].plan.style).toBe('briskWalk');
     await waitFor(() => expect(goBack).toHaveBeenCalled());
   });
 

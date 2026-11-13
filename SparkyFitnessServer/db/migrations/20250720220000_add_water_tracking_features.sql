@@ -1,4 +1,3 @@
-BEGIN;
 
 -- Create a new table for user-defined water containers
 CREATE TABLE user_water_containers (
@@ -44,4 +43,3 @@ WHERE water_goal IS NOT NULL;
 ALTER TABLE user_goals
 DROP COLUMN water_goal;
 
-COMMIT;

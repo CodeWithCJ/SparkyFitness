@@ -1,7 +1,7 @@
 import {
   isWarmupOrDropSetType,
   type DropSetWeightUnit,
-} from "./dropSetCalculator.ts";
+} from './dropSetCalculator.ts';
 
 const KG_PER_LB = 0.45359237;
 
@@ -42,11 +42,11 @@ export const DEFAULT_WARMUP_DUMBBELL_ROUNDING = { kg: 1, lbs: 2 } as const;
 
 /** Whether an exercise's equipment list includes dumbbells. */
 export function usesDumbbells(
-  equipment: readonly string[] | string | null | undefined,
+  equipment: readonly string[] | string | null | undefined
 ): boolean {
   if (equipment == null) return false;
-  const list = typeof equipment === "string" ? [equipment] : equipment;
-  return list.some((item) => item.toLowerCase().includes("dumbbell"));
+  const list = typeof equipment === 'string' ? [equipment] : equipment;
+  return list.some((item) => item.toLowerCase().includes('dumbbell'));
 }
 
 /**
@@ -59,7 +59,7 @@ export function normalizeWarmupMethod(raw: unknown): WarmupMethodStep[] {
   if (!Array.isArray(raw)) return DEFAULT_WARMUP_METHOD.map((s) => ({ ...s }));
   const steps: WarmupMethodStep[] = [];
   for (const item of raw) {
-    if (item == null || typeof item !== "object") continue;
+    if (item == null || typeof item !== 'object') continue;
     const percent = Math.round(Number((item as WarmupMethodStep).percent));
     const reps = Math.round(Number((item as WarmupMethodStep).reps));
     if (
@@ -104,10 +104,10 @@ export interface WarmupOptions {
 export function calculateWarmupSets(
   workingWeightKg: number,
   unit: DropSetWeightUnit,
-  options: WarmupOptions = {},
+  options: WarmupOptions = {}
 ): WarmupSet[] {
   if (!Number.isFinite(workingWeightKg) || workingWeightKg <= 0) return [];
-  const working = unit === "kg" ? workingWeightKg : workingWeightKg / KG_PER_LB;
+  const working = unit === 'kg' ? workingWeightKg : workingWeightKg / KG_PER_LB;
   const method = options.method ?? DEFAULT_WARMUP_METHOD;
   const step =
     options.increment != null && options.increment > 0
@@ -123,7 +123,7 @@ export function calculateWarmupSets(
   }
   return sets.map(({ weight, reps }) => ({
     weightKg:
-      unit === "kg" ? weight : Math.round(weight * KG_PER_LB * 10000) / 10000,
+      unit === 'kg' ? weight : Math.round(weight * KG_PER_LB * 10000) / 10000,
     reps,
   }));
 }
@@ -141,7 +141,7 @@ export interface WarmupBaseCandidate {
  */
 export function findWarmupBaseIndex<T extends WarmupBaseCandidate>(
   sets: readonly T[],
-  effectiveWeight: (set: T) => number | null | undefined = (set) => set.weight,
+  effectiveWeight: (set: T) => number | null | undefined = (set) => set.weight
 ): number {
   const index = sets.findIndex((set) => !isWarmupOrDropSetType(set.set_type));
   if (index < 0) return -1;

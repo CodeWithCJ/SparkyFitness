@@ -375,7 +375,6 @@
     },
     "dailyProgress": {
       "remaining": "gjenstår",
-      "bmrSourceMeasured": "Målt",
       "dailyBurn": "Enhetsberegning",
       "dailyEnergyGoal": "Daglig energimål",
       "summaryUnavailableDesc": "Kunne ikke laste inn din daglige energioppsummering. Prøv å oppdatere siden."
@@ -1186,7 +1185,6 @@
     "failedToLoadRecentCustom": "Kunne ikke laste inn nylige egendefinerte målinger.",
     "failedToLoadRecentStandard": "Kunne ikke laste inn nylige standardmålinger.",
     "failedToSaveCustomMeasurement": "Kunne ikke lagre egendefinert måling.",
-    "failedToSaveMood": "Kunne ikke lagre humør.",
     "tabs": {
       "photos": "Bilder",
       "sleep": "Søvn",
@@ -1213,9 +1211,7 @@
     "boneMass": "Benmasse",
     "couldNotLoadUserProfileOrPrefs": "Kunne ikke laste inn brukerprofil eller preferanser for beregning.",
     "failedToCreateCategory": "Kunne ikke opprette kategori.",
-    "failedToUpdateMeasurement": "Kunne ikke oppdatere måling.",
-    "moodSaved": "Humøret er lagret",
-    "saveMood": "Lagre humør"
+    "failedToUpdateMeasurement": "Kunne ikke oppdatere måling."
   },
   "sleepTimelineEditor": {
     "light": "Lys",
@@ -1931,7 +1927,6 @@
     "failedToDelete": "Kunne ikke slette humøroppføring.",
     "failedToLoadCustom": "Kunne ikke laste inn humør.",
     "failedToLoadEntries": "Kunne ikke laste inn humøroppføringer.",
-    "failedToLoadEntry": "Kunne ikke laste inn humøroppføring.",
     "failedToSave": "Kunne ikke lagre humøroppføring.",
     "dailyMood": "Daglig humør",
     "failedDeleteCustom": "Kunne ikke fjerne humør.",

@@ -1,1 +1,18 @@
-{}
+{
+  "common": {
+    "add": "Lägg till",
+    "cancel": "Avbryt",
+    "back": "Tillbaka",
+    "close": "Stäng",
+    "date": "Datum",
+    "yes": "Ja",
+    "no": "Nej",
+    "delete": "Ta bort",
+    "edit": "Redigera",
+    "error": "Fel",
+    "loading": "Läser in...",
+    "next": "Nästa",
+    "save": "Spara",
+    "success": "Klart"
+  }
+}

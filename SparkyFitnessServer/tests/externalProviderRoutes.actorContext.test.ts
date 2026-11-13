@@ -75,6 +75,26 @@ describe('external provider list actor context', () => {
     ).toHaveBeenCalledWith(DELEGATE_ID, OWNER_ID);
   });
 
+  it('returns 403 Forbidden when externalProviderService throws Forbidden', async () => {
+    vi.mocked(
+      externalProviderService.getExternalDataProvidersForUser
+    ).mockRejectedValue(
+      new Error(
+        'Forbidden: You do not have permission to access external data providers for this user.'
+      )
+    );
+
+    const response = await request(app).get(
+      `/external-providers/user/${OWNER_ID}`
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body).toEqual({
+      error:
+        'Forbidden: You do not have permission to access external data providers for this user.',
+    });
+  });
+
   it('creates personal providers only for the logged-in actor', async () => {
     const body = { provider_name: 'OFF', provider_type: 'openfoodfacts' };
 

@@ -194,6 +194,25 @@ describe('notifications service', () => {
       );
     });
 
+    it('creates a dedicated mood check-in Android channel before medication reminders', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
+      await initNotifications();
+      const ids = mockSetChannel.mock.calls.map((call) => call[0]);
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'mood-checkin',
+        expect.objectContaining({
+          name: 'Mood check-ins',
+          importance: Notifications.AndroidImportance.HIGH,
+        })
+      );
+      expect(ids.indexOf('mood-checkin')).toBeLessThan(
+        ids.indexOf('medication-reminders')
+      );
+    });
+
     it('registers the rest-complete category with a background Complete Set action', async () => {
       await initNotifications();
       expect(mockSetCategory).toHaveBeenCalledWith('rest-complete', [
@@ -220,6 +239,17 @@ describe('notifications service', () => {
       ({
         request: { content: { categoryIdentifier } },
       }) as Notifications.Notification;
+
+    it('shows a banner for mood check-in reminders', async () => {
+      const handler = await getHandler();
+      const result = await handler({
+        request: {
+          content: { categoryIdentifier: null, data: { kind: 'mood-checkin' } },
+        },
+      } as unknown as Notifications.Notification);
+      expect(result.shouldShowBanner).toBe(true);
+      expect(result.shouldShowList).toBe(true);
+    });
 
     it('mutes the rest ping sound while the rest chime is enabled', async () => {
       const handler = await getHandler();

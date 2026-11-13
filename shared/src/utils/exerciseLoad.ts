@@ -1,7 +1,7 @@
 import {
   isBodyweightModality,
   type ExerciseModality,
-} from "../constants/exercise.ts";
+} from '../constants/exercise.ts';
 
 /**
  * The weight a set actually moved, in kg: the one number volume, estimated
@@ -21,7 +21,7 @@ import {
 export function effectiveLoadKg(
   weightKg: number | null | undefined,
   modality: ExerciseModality,
-  bodyWeightKg: number | null | undefined,
+  bodyWeightKg: number | null | undefined
 ): number {
   const weight = Number(weightKg) || 0;
   if (!isBodyweightModality(modality)) return weight;
@@ -33,12 +33,20 @@ export function effectiveLoadKg(
 export function setVolumeKg(
   set: { weight?: number | null; reps?: number | null },
   modality: ExerciseModality,
-  bodyWeightKg: number | null | undefined,
+  bodyWeightKg: number | null | undefined
 ): number {
   return (
     effectiveLoadKg(set.weight, modality, bodyWeightKg) *
     (Number(set.reps) || 0)
   );
+}
+
+export const KG_PER_LB = 0.45359237;
+
+/** A kilogram figure in the lifter's unit, rounded to one decimal. */
+export function kgInUnit(kg: number, unit: 'kg' | 'lbs'): number {
+  const value = unit === 'lbs' ? kg / KG_PER_LB : kg;
+  return Math.round(value * 10) / 10;
 }
 
 /**
@@ -47,12 +55,30 @@ export function setVolumeKg(
  */
 export function epleyOneRepMaxKg(
   loadKg: number | null | undefined,
-  reps: number | null | undefined,
+  reps: number | null | undefined
 ): number {
   const load = Number(loadKg) || 0;
   const count = Number(reps) || 0;
   if (load <= 0 || count <= 0) return 0;
   return load * (1 + count / 30);
+}
+
+/**
+ * Epley estimate that counts the reps left in the tank. An RPE of 8 means
+ * about two more reps were possible, so 100 kg for 5 reps at RPE 8 is judged
+ * as 100 kg for 7. With no RPE, or one outside 6 to 10 (more than four reps
+ * left is too loose a guess to count), it is plain Epley.
+ */
+export function effortAdjustedOneRepMaxKg(
+  loadKg: number | null | undefined,
+  reps: number | null | undefined,
+  rpe: number | null | undefined
+): number {
+  const count = Number(reps) || 0;
+  const effort = Number(rpe);
+  const repsLeft =
+    Number.isFinite(effort) && effort >= 6 && effort <= 10 ? 10 - effort : 0;
+  return epleyOneRepMaxKg(loadKg, count > 0 ? count + repsLeft : count);
 }
 
 /**
@@ -63,7 +89,7 @@ export function epleyOneRepMaxKg(
  */
 export function bodyWeightOnDay(
   readings: readonly { date: string; weightKg: number | null | undefined }[],
-  day: string,
+  day: string
 ): number | null {
   let before: { date: string; weightKg: number } | null = null;
   let after: { date: string; weightKg: number } | null = null;

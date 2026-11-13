@@ -19,8 +19,8 @@ export const createAuthClient = () =>
 export const magicLinkClient = noop;
 export const twoFactorClient = noop;
 export const adminClient = noop;
-export const emailOTPClient = noop;
 export const apiKeyClient = noop;
+export const oauthProviderClient = noop;
 export const ssoClient = noop;
 export const passkeyClient = noop;
 

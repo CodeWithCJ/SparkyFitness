@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SymptomEntryResponse, SymptomScaleType } from '@workspace/shared';
+import type {
+  SymptomEntryResponse,
+  SymptomImpact,
+  SymptomScaleType,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
@@ -24,11 +28,15 @@ import {
   useUpdateSymptomEntryMutation,
 } from '@/hooks/useSymptoms';
 import type { MedicationDetail } from '@/types/medications';
+import { cn } from '@/lib/utils';
 import SeverityControl from './SeverityControl';
 import TreatmentsEditor from './TreatmentsEditor';
 import { fromDatetimeLocal, toDatetimeLocal } from './symptomHelpers';
 import {
+  buildSymptomChoices,
   minutesAgo,
+  slugifySymptomName,
+  SYMPTOM_IMPACT_LEVELS,
   TIME_OFFSET_CHIPS,
   draftsFromEntry,
   draftsToInputs,
@@ -41,6 +49,24 @@ function useScaleFor(entry: SymptomEntryResponse): SymptomScaleType {
   return (
     definitions.find((d) => d.id === entry.symptom_id)?.scale_type ?? '1-10'
   );
+}
+
+/**
+ * Whether a new reading asks about the effect on the day: when the episode
+ * already has a value for it, or its symptom's sections include it.
+ */
+function useAsksImpact(entry: SymptomEntryResponse): boolean {
+  const { data: definitions = [] } = useCustomSymptoms();
+  if (entry.impact != null || (entry.impact_timeline?.length ?? 0) > 0) {
+    return true;
+  }
+  const choices = buildSymptomChoices(definitions);
+  const choice = entry.symptom_id
+    ? choices.find((c) => c.definitionId === entry.symptom_id)
+    : choices.find(
+        (c) => c.name === slugifySymptomName(entry.symptom_name_snapshot)
+      );
+  return choice?.sections.impact ?? false;
 }
 
 interface EpisodeButtonProps {
@@ -56,12 +82,26 @@ export function UpdateSeverityButton({
 }) {
   const { t } = useTranslation();
   const scale = useScaleFor(entry);
+  const asksImpact = useAsksImpact(entry);
   const addSeverity = useAddSeverityMutation();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<number | null>(entry.severity);
+  // Starts at the latest value, so an unchanged effect needs no tap.
+  const [impact, setImpact] = useState<SymptomImpact | null>(entry.impact);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        // Each opening starts from the episode as it is now, so a reading or
+        // effect saved since the last opening is not sent back as the old one.
+        if (next) {
+          setValue(entry.severity);
+          setImpact(entry.impact);
+        }
+        setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button type="button" size="sm" variant="outline">
           {t('symptoms.episode.updateSeverity', 'Update severity')}
@@ -74,6 +114,30 @@ export function UpdateSeverityButton({
           value={value}
           onChange={setValue}
         />
+        {asksImpact && (
+          <div
+            className="flex w-full rounded-lg bg-muted p-0.5"
+            role="group"
+            aria-label={t('symptoms.sections.impact', 'Effect on your day')}
+          >
+            {SYMPTOM_IMPACT_LEVELS.map((level) => (
+              <button
+                key={level}
+                type="button"
+                aria-pressed={impact === level}
+                onClick={() => setImpact(impact === level ? null : level)}
+                className={cn(
+                  'flex-1 rounded-md px-2 py-1.5 text-xs capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  impact === level
+                    ? 'bg-background font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {t(`symptoms.impact.${level}`, level)}
+              </button>
+            ))}
+          </div>
+        )}
         <Button
           type="button"
           size="sm"
@@ -82,7 +146,9 @@ export function UpdateSeverityButton({
           onClick={() => {
             if (value == null) return;
             addSeverity.mutate(
-              { id: entry.id, severity: value },
+              asksImpact && impact
+                ? { id: entry.id, severity: value, impact }
+                : { id: entry.id, severity: value },
               { onSuccess: () => setOpen(false) }
             );
           }}
@@ -215,12 +281,11 @@ export function EndEpisodeButton({ entry, meds }: EpisodeButtonProps) {
                 </Button>
               ))}
             </div>
-            <Input
-              type="datetime-local"
+            <DateTimeInput
               aria-label={t('symptoms.episode.endedWhen', 'It ended')}
               value={toDatetimeLocal(endedAt)}
-              onChange={(e) => {
-                const iso = fromDatetimeLocal(e.target.value);
+              onChange={(value) => {
+                const iso = fromDatetimeLocal(value);
                 if (iso) setEndedAt(iso);
               }}
               className="max-w-xs"

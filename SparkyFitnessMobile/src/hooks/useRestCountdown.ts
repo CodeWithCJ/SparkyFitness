@@ -12,15 +12,16 @@ export interface RestCountdown {
 
 /**
  * Rest-timer display state shared by every surface that renders the countdown
- * (the workout HUD and the active-workout screen). `remainingMs` reads
- * `Date.now()` fresh at render time so the first render after a rest starts is
- * never stale; the hook's 1s interval exists only to force re-renders. The
- * resting → ready transition itself is owned by the store's deadline timer,
- * not by consumers of this hook.
+ * (the workout HUD, the active-workout rest bar and the keyboard bar's compact
+ * rest row). `remainingMs` reads `Date.now()` fresh at render time so the
+ * first render after a rest starts is never stale; the hook's 1s interval
+ * exists only to force re-renders. The resting → ready transition itself is
+ * owned by the store's deadline timer, not by consumers of this hook.
  *
  * Pass `selfTick: false` when the calling component already re-renders at
- * least once per second (the active-workout screen's elapsed clock) so a
- * second interval isn't stacked on top of it.
+ * least once per second (the active-workout rest bar and the compact rest row,
+ * on the shared `useClockTick` clock) so a second interval isn't stacked on
+ * top of it.
  */
 export function useRestCountdown(opts?: { selfTick?: boolean }): RestCountdown {
   const selfTick = opts?.selfTick ?? true;

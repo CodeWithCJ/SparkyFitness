@@ -105,7 +105,7 @@ struct FastingComplicationView: View {
                         ProgressView(value: entry.progress)
                             .tint(.orange)
                     } else {
-                        Text("No fast")
+                        Text(String(localized: "watch.fasting.noFast", defaultValue: "No fast"))
                     }
                 }
         case .accessoryRectangular:
@@ -121,7 +121,7 @@ struct FastingComplicationView: View {
                         ProgressView(value: entry.progress).tint(.orange)
                     }
                 } else {
-                    Text("Not fasting")
+                    Text(String(localized: "watch.fasting.notFasting", defaultValue: "Not fasting"))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -133,7 +133,7 @@ struct FastingComplicationView: View {
                     Image(systemName: "timer")
                 }
             } else {
-                Label("No fast", systemImage: "timer")
+                Label(String(localized: "watch.fasting.noFast", defaultValue: "No fast"), systemImage: "timer")
             }
         default:
             Gauge(value: entry.progress) {

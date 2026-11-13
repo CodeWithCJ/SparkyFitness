@@ -21,6 +21,8 @@ import {
   readHealthRecordsDetailed,
   readEarliestRecordDetailed,
   enrichExerciseSessions,
+  enrichSleepSessions,
+  keepMostDetailedSleepSessions,
   resetClientUnavailableState,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
@@ -87,16 +89,26 @@ export const readMinMaxAvgByDay = async (
  * are enriched with active/total calories and distance via native aggregateRecord
  * over the session window. Reads start at the session's data origin; incomplete
  * or implausible calorie pairs retry across origins so Health Connect can apply
- * source priority. Distance always stays scoped to the session origin.
+ * source priority. Distance always stays scoped to the session origin. Sleep
+ * sessions keep one per night when two apps recorded it, then gain overnight HRV
+ * and resting heart rate when those reads succeed.
  */
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
   records: unknown[],
   telemetry: TelemetryRunContext
-): Promise<unknown[]> =>
-  metric.recordType === 'ExerciseSession'
-    ? enrichExerciseSessions(records, telemetry)
-    : records;
+): Promise<unknown[]> => {
+  if (metric.recordType === 'ExerciseSession') {
+    return enrichExerciseSessions(records, telemetry);
+  }
+  if (metric.recordType === 'SleepSession') {
+    return enrichSleepSessions(
+      keepMostDetailedSleepSessions(records),
+      telemetry
+    );
+  }
+  return records;
+};
 
 /**
  * Resolves per-session route-consent dialogs before the timed metric reads. A

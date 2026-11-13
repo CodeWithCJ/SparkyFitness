@@ -52,8 +52,6 @@
       "categoryStrength": "Spēks",
       "categoryCardio": "Kardiotreniņš",
       "categoryYoga": "Joga",
-      "caloriesPerHourLabel": "Kalorijas stundā",
-      "caloriesPerHourHint": "Atstājiet lauku tukšu, lai izmantotu sistēmas aprēķināto kaloriju daudzumu stundā ({{newExerciseCalories}} kcal/stundā).",
       "descriptionLabel": "Apraksts",
       "sourceLabel": "Avots",
       "forceLabel": "Spēks",
@@ -149,8 +147,6 @@
       "summaryUnavailableTitle": "Dienas kopsavilkums nav pieejams",
       "updateProfile": "Atjaunināt profilu",
       "weightTrend": "Svara tendence",
-      "bmrSourceMeasured": "Izmērīts",
-      "bmrSourceAlgorithm": "Algoritms",
       "goalModeTarget": "Mērķa režīma mērķis",
       "healthConnectProjectionSource": "Health Connect kopējās kalorijas",
       "fallbackProjectionSource": "BMR + aktīvo kaloriju rezerves aprēķins",
@@ -171,7 +167,6 @@
       "exerciseLabel": "Fiziskās aktivitātes",
       "unknownExercise": "Nezināms vingrinājums",
       "addSetButton": "Pievienot atkārtojumu",
-      "caloriesBurnedOptionalLabel": "Patērētās kalorijas (pēc izvēles)",
       "caloriesBurnedPlaceholder": "Ievadiet patērēto kaloriju skaitu, lai pārrakstītu aprēķinu",
       "caloriesBurnedHint": "Kaloriju daudzums tiks automātiski aprēķināts, kad dati tiks saglabāti, ja atstāsiet šo lauku tukšu.",
       "distanceLabel": "Attālums",
@@ -1288,7 +1283,6 @@
       "title": "Alerģiju preferences"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dinamiski pielāgo jūsu dienas mērķi, pamatojoties uz jūsu faktisko metabolismu. Nepieciešama regulāra pārtikas un svara izsekošana augstai precizitātei.",
       "burnedActivity": "Aktivitāte (tikai vingrojumi un soļi)",
       "burnedBmr": "Aktivitāte + BMR (jūsu pamata metabolisms)",
       "burnedTitle": "Nodedzinātās kalorijas",
@@ -1426,7 +1420,6 @@
       "safetyFloorStandardHint": "Izmanto lielāko vērtību starp jūsu aprēķināto pamatmetabolismu un klīnisko minimumu (1200 kcal sievietēm, 1500 kcal vīriešiem).",
       "safetyFloorValueLabel": "Pielādots minimums",
       "awaitingCalibrationTitle": "Gaida Adaptīvā TDEE kalibrēšanu",
-      "modeUnreachableSuffix": "nav pieejams",
       "customPercentageUnreachable": "Dziļāks par ~{{percent}}%, ko atļauj jūsu drošības līmenis; mērķa vērtība tiks palielināta līdz šim līmenim.",
       "deficitCeilingHintEstimated": "Pie jūsu pašreizējā aktivitātes līmeņa, maksimālais sasniedzamais deficīts ir aptuveni {{percent}}%. Vēl dziļāki režīmi tiek pielāgoti, lai nodrošinātu jūsu drošību.",
       "deficitCeilingHintMeasured": "Pamatojoties uz jūsu aprēķināto TDEE, maksimālais iespējamais deficīts ir aptuveni {{percent}}%. Vēl lielāki deficīta līmeņi tiek koriģēti, lai nodrošinātu jūsu drošību.",
@@ -1450,9 +1443,6 @@
       "unsafeGainText": "Svara pieaugums, kas pārsniedz 0,5 % nedēļā, nozīmē, ka lielākā daļa no pieņemtajā svara būs tauki, nevis muskuļi. Lēnāks svara pieaugums nodrošina līdzīgu muskuļu apjomu, bet ar daudz mazāku tauku uzkrāšanos.",
       "unsafeLossTitle": "Pārāk ātrs svara zuduma ātrums",
       "unsafeLossText": "Svara zudēšana, kas pārsniedz 1,5% nedēļā, tiek uzskatīta par pārmērīgu. Šāda ātra svara zudēšana ievērojami palielina risku saslimt ar nopietnām muskuļu zudēšanas, letarģijas, hormonālo nelīdzsvarotību un uzturvielu deficīta problēmām. Lūdzu, izvēlieties mazāk agresīvu mērķa režīmu.",
-      "calibrationDescription": "Sparky adaptīvajam TDEE aprēķināšanas rīkam ir nepieciešams vismaz {{required}} dienu ilgs konsekvents datu ievadīšanas periods, lai precīzi aprēķinātu jūsu vielmaiņu (šobrīd tiek izmantoti standarta aprēķini). Lai paātrinātu kalibrēšanu:",
-      "calibrationWeightTip": "Reģistrējiet savu svaru vismaz 3–4 reizes nedēļā.",
-      "calibrationFoodTip": "Katru dienu reģistrējiet uzņemto ēdienu (>200 kcal/dienā).",
       "livePreviewSavedNote": "BMR un ķermeņa tauku saturs atjauninās, mainot iestatījumus. Iztēriņš tiek aprēķināts serverī, izmantojot jūsu saglabātos iestatījumus, tāpēc tas un galīgais mērķis mainīsies tikai pēc saglabāšanas."
     },
     "mfa": {
@@ -2084,7 +2074,6 @@
       "calorieLogRequirement": "• Kaloriju žurnāls TDEE aprēķināšanai (7+ dienas ≥ 200 kcal)",
       "daysMissing": "❌ Trūkst ({{days}}/{{required}} reģistrētas dienas)",
       "daysMet": "✓ Sasniegts ({{dienas}}/{{nepieciešamais}} reģistrēto dienu skaits)",
-      "stabilityRequirement": "• Kaloriju žurnāls, lai nodrošinātu mērķa budžeta stabilitāti ({{required}}+ dienas ≥ 200 kcal)",
       "daysWarning": "⚠️ Trūkst ({{days}}/{{required}} reģistrētas dienas)",
       "usingFallbackBmr": "Izmantojot rezerves BMR × aktivitātes koeficientu:",
       "fallbackMath": "Aprēķins: BMR ({{bmr}} kcal) × aktivitātes koeficients ({{multiplier}}) = {{result}} {{unit}}",
@@ -2270,7 +2259,6 @@
     "editingTemporarilyUnavailable": "Ēdiena detaļu rediģēšana uz laiku nav pieejama datu struktūras izmaiņu dēļ."
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Kā tu šodien jūties?",
     "neutral": "Neitrāls",
     "anyThoughtsOrFeelings": "Vai vēlaties pievienot kādas papildu domas vai atsauksmes?",
     "sleepTracking": "Miega uzraudzība",
@@ -2350,17 +2338,13 @@
     "failedToLoadRecentCustom": "Neizdevās ielādēt nesenos pielāgotos mērījumus.",
     "failedToLoadRecentStandard": "Neizdevās ielādēt nesenos standarta mērījumus.",
     "failedToSaveCustomMeasurement": "Neizdevās saglabāt pielāgoto mērījumu.",
-    "failedToSaveMood": "Neizdevās saglabāt noskaņojumu.",
     "failedToUpdateMeasurement": "Neizdevās atjaunināt mērījumu.",
     "level": "līmenis",
     "measurementUpdatedSuccessfully": "Mērījums veiksmīgi atjaunināts.",
-    "moodSaved": "Noskaņojums saglabāts",
-    "moodSavedSuccessfully": "Noskaņojums veiksmīgi saglabāts.",
     "muscleMass": "Muskuļu masa",
     "recentFasts": "Nesenie gavēņi",
     "recentFastsDescription": "Jūsu jaunākie gavēņu žurnāli un statuss.",
     "recentMeasurementsDescription": "Jūsu jaunākie žurnāli, tostarp mērījumi, pabeigti gavēņi un sinhronizēti veselības dati.",
-    "saveMood": "Saglabāt noskaņojumu",
     "stressLevel": "Stresa līmenis",
     "tabs": {
       "fasting": "Gavēnis un noskaņojums",
@@ -4362,7 +4346,6 @@
       "prnReason": "Iemesls (nav obligāti)",
       "prnReasonPlaceholder": "piem., Sāpes",
       "prnMax": "Maks. devas / dienā",
-      "supplementDoseScalingCalories": "Katrs ieraksts veido {{dose}} porcijas: {{dose}} x {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Katrs ieraksts veido {{dose}} porcijas, tātad {{dose}} reizes vairāk par ievadīto uzturvērtību uz porciju.",
       "servingUnit": "porcija",
       "servingsPerLog": "Porcijas uz ierakstu",
@@ -5297,7 +5280,6 @@
   "mood": {
     "dailyMood": "Ikdienas noskaņojums",
     "date": "Datums",
-    "deletedSuccessfully": "Noskaņojuma ieraksts veiksmīgi dzēsts.",
     "failedAddCustom": "Neizdevās pievienot noskaņojumu.",
     "failedDeleteCustom": "Neizdevās noņemt noskaņojumu.",
     "failedLoadPrefs": "Neizdevās ielādēt noskaņojuma preferences.",
@@ -5305,17 +5287,13 @@
     "failedToDelete": "Neizdevās dzēst noskaņojuma ierakstu.",
     "failedToLoadCustom": "Neizdevās ielādēt noskaņojumus.",
     "failedToLoadEntries": "Neizdevās ielādēt noskaņojuma ierakstus.",
-    "failedToLoadEntry": "Neizdevās ielādēt noskaņojuma ierakstu.",
     "failedToSave": "Neizdevās saglabāt noskaņojuma ierakstu.",
     "failedToUpdate": "Neizdevās atjaunināt noskaņojuma ierakstu.",
     "intensityTrend": "Kopējais noskaņojums laika gaitā",
     "mood": "Noskaņojums",
     "moodValue": "Noskaņojuma vērtība",
     "mostCommon": "Biežākie noskaņojumi",
-    "noMoodData": "Šim periodam nav pieejamu noskaņojuma datu.",
-    "notes": "Piezīmes: ",
-    "savedSuccessfully": "Noskaņojuma ieraksts veiksmīgi saglabāts.",
-    "updatedSuccessfully": "Noskaņojuma ieraksts veiksmīgi atjaunināts."
+    "noMoodData": "Šim periodam nav pieejamu noskaņojuma datu."
   },
   "preferences": {
     "resetError": "Neizdevās atiestatīt preferences"

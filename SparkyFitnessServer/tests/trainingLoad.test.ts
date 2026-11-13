@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeTrainingLoad,
-  estimateMaxHeartRate,
+  percentMaxFloors,
   sessionLoad,
 } from '@workspace/shared';
 
@@ -12,41 +12,34 @@ const run = (day: string, minutes: number, hr: number | null = null) => ({
   avgHeartRate: hr,
 });
 
-describe('estimateMaxHeartRate', () => {
-  it('uses 220 minus age, with a default for none or nonsense', () => {
-    expect(estimateMaxHeartRate(40)).toBe(180);
-    expect(estimateMaxHeartRate(null)).toBe(190);
-    expect(estimateMaxHeartRate(3)).toBe(190);
-    expect(estimateMaxHeartRate(95)).toBe(150);
-  });
-});
+const FLOORS_190 = percentMaxFloors(190);
 
 describe('sessionLoad', () => {
   it('weights minutes by how hard the heart worked', () => {
-    expect(sessionLoad({ durationMinutes: 30, avgHeartRate: 100 }, 190)).toBe(
-      30
-    );
-    expect(sessionLoad({ durationMinutes: 30, avgHeartRate: 150 }, 190)).toBe(
-      90
-    );
-    expect(sessionLoad({ durationMinutes: 30, avgHeartRate: 185 }, 190)).toBe(
-      150
-    );
+    expect(
+      sessionLoad({ durationMinutes: 30, avgHeartRate: 100 }, FLOORS_190)
+    ).toBe(30);
+    expect(
+      sessionLoad({ durationMinutes: 30, avgHeartRate: 150 }, FLOORS_190)
+    ).toBe(90);
+    expect(
+      sessionLoad({ durationMinutes: 30, avgHeartRate: 185 }, FLOORS_190)
+    ).toBe(150);
   });
 
   it('counts a session with no heart rate as moderate', () => {
-    expect(sessionLoad({ durationMinutes: 30, avgHeartRate: null }, 190)).toBe(
-      60
-    );
+    expect(
+      sessionLoad({ durationMinutes: 30, avgHeartRate: null }, FLOORS_190)
+    ).toBe(60);
   });
 
   it('caps a forgotten stop and ignores negative time', () => {
     expect(
-      sessionLoad({ durationMinutes: 5000, avgHeartRate: null }, 190)
+      sessionLoad({ durationMinutes: 5000, avgHeartRate: null }, FLOORS_190)
     ).toBe(1200);
-    expect(sessionLoad({ durationMinutes: -5, avgHeartRate: null }, 190)).toBe(
-      0
-    );
+    expect(
+      sessionLoad({ durationMinutes: -5, avgHeartRate: null }, FLOORS_190)
+    ).toBe(0);
   });
 });
 

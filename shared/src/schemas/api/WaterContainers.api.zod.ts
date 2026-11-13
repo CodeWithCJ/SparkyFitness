@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Consumed by fetchWaterContainers (mobile measurementsApi.ts) and
 // getWaterContainers (web waterContainerService.ts) -- both clients read
@@ -12,7 +12,7 @@ export const waterContainerResponseSchema = z.object({
   user_id: z.string(),
   name: z.string(),
   volume: z.number(),
-  unit: z.enum(["ml", "oz", "liter"]),
+  unit: z.enum(['ml', 'oz', 'liter']),
   is_primary: z.boolean().nullable(),
   servings_per_container: z.number(),
   created_at: z.string(),
@@ -48,7 +48,7 @@ export const createWaterContainerBodySchema = z.object({
   // linked food instead. Unlinked containers must still carry a real volume,
   // which the service enforces.
   volume: z.number().min(0).max(9999.999),
-  unit: z.enum(["ml", "oz", "liter"]),
+  unit: z.enum(['ml', 'oz', 'liter']),
   is_primary: z.boolean().optional(),
   servings_per_container: z.number().int().min(1).optional(),
   hydration_factor: hydrationFactorSchema.optional(),
@@ -66,7 +66,7 @@ export type CreateWaterContainerBody = z.infer<
 export const updateWaterContainerBodySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   volume: z.number().min(0).max(9999.999).optional(),
-  unit: z.enum(["ml", "oz", "liter"]).optional(),
+  unit: z.enum(['ml', 'oz', 'liter']).optional(),
   is_primary: z.boolean().optional(),
   servings_per_container: z.number().int().min(1).optional(),
   hydration_factor: hydrationFactorSchema.optional(),
@@ -94,4 +94,3 @@ export const reorderWaterContainersBodySchema = z.object({
 export type ReorderWaterContainersBody = z.infer<
   typeof reorderWaterContainersBodySchema
 >;
-

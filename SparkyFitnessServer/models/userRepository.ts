@@ -77,6 +77,39 @@ async function findUserById(userId: string) {
     client.release();
   }
 }
+/**
+ * Loads only identity fields needed to establish an authenticated request.
+ * Unlike findUserById, this deliberately excludes MFA secrets and recovery
+ * codes so bearer-token middleware never carries credential material.
+ */
+async function findAuthIdentityById(userId: string) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT id, email, email_verified, name, image, role, banned,
+              ban_reason, ban_expires, two_factor_enabled,
+              mfa_totp_enabled, mfa_email_enabled, last_login_at,
+              created_at, updated_at
+         FROM "user"
+        WHERE id = $1`,
+      [userId]
+    );
+    const user = result.rows[0];
+    if (!user) return null;
+    const banExpiresAt = user.ban_expires
+      ? new Date(user.ban_expires).getTime()
+      : null;
+    if (
+      user.banned === true &&
+      (banExpiresAt === null || banExpiresAt > Date.now())
+    ) {
+      return null;
+    }
+    return user;
+  } finally {
+    client.release();
+  }
+}
 async function findUserIdByEmail(email: string) {
   const client = await getSystemClient(); // System client for finding user ID by email (authentication)
   try {
@@ -119,6 +152,12 @@ async function getAccessibleUsers(userId: string) {
     client.release();
   }
 }
+/** The profile fields sleep scoring reads (age and gender). */
+export interface SleepUserProfile {
+  date_of_birth?: string | null;
+  gender?: string | null;
+}
+
 async function getUserProfile(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -199,18 +238,6 @@ async function updateAuthUserProfile(
       [userId, name, email, image]
     );
     return result.rows[0];
-  } finally {
-    client.release();
-  }
-}
-async function updateUserPassword(userId: string, hashedPassword: string) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      'UPDATE "account" SET password = $1, updated_at = now() WHERE user_id = $2 AND provider_id = \'credential\' RETURNING user_id',
-      [hashedPassword, userId]
-    );
-    return result.rowCount > 0;
   } finally {
     client.release();
   }
@@ -591,13 +618,13 @@ export { createUser };
 export { createOidcUser };
 export { findUserByEmail };
 export { findUserById };
+export { findAuthIdentityById };
 export { findUserIdByEmail };
 export { getAccessibleUsers };
 export { getUserProfile };
 export { updateUserProfile };
 export { getAuthUserProfile };
 export { updateAuthUserProfile };
-export { updateUserPassword };
 export { getCredentialPasswordHash };
 export { updateUserEmail };
 export { getUserRole };
@@ -622,13 +649,13 @@ export default {
   createOidcUser,
   findUserByEmail,
   findUserById,
+  findAuthIdentityById,
   findUserIdByEmail,
   getAccessibleUsers,
   getUserProfile,
   updateUserProfile,
   getAuthUserProfile,
   updateAuthUserProfile,
-  updateUserPassword,
   getCredentialPasswordHash,
   updateUserEmail,
   getUserRole,

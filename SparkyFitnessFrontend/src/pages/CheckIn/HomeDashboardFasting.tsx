@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -8,9 +9,9 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
-import { Play, Timer, Square, Sparkles } from 'lucide-react';
+import { Play, Timer, Square, Sparkles, Utensils } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -28,8 +29,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatTimeWithPreference } from '@/utils/timeFormatters';
 import { FASTING_PRESETS } from '@/constants/fastingPresets';
-import { parseISO, addHours, differenceInMinutes, format } from 'date-fns';
+import { parseISO, addHours, differenceInMinutes } from 'date-fns';
 import EndFastDialog from '../Fasting/EndFastDialog';
 import FastingZoneBar from '../Fasting/FastingZoneBar';
 import EatingWindowBar from '../Fasting/EatingWindowBar';
@@ -41,7 +44,9 @@ import {
 } from '@/hooks/Fasting/useFasting';
 
 const HomeDashboardFasting = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
+  const { timeFormat } = usePreferences();
 
   const [showStartDialog, setShowStartDialog] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('16-8');
@@ -174,10 +179,13 @@ const HomeDashboardFasting = () => {
           {activeFast
             ? activeFast.is_eating_window
               ? t('fasting.eatingWindowDescription', {
-                  defaultValue: `Eating window open · ${Math.floor((activeFast.eating_window_remaining_minutes ?? 0) / 60)}h ${(activeFast.eating_window_remaining_minutes ?? 0) % 60}m remaining (closes at ${activeFast.target_end_time ? format(parseISO(activeFast.target_end_time), 'h:mm a') : ''})`,
+                  defaultValue: `Eating window open · ${Math.floor((activeFast.eating_window_remaining_minutes ?? 0) / 60)}h ${(activeFast.eating_window_remaining_minutes ?? 0) % 60}m remaining (closes at ${activeFast.target_end_time ? formatTimeWithPreference(parseISO(activeFast.target_end_time), timeFormat) : ''})`,
                   remaining: `${Math.floor((activeFast.eating_window_remaining_minutes ?? 0) / 60)}h ${(activeFast.eating_window_remaining_minutes ?? 0) % 60}m`,
                   endTime: activeFast.target_end_time
-                    ? format(parseISO(activeFast.target_end_time), 'h:mm a')
+                    ? formatTimeWithPreference(
+                        parseISO(activeFast.target_end_time),
+                        timeFormat
+                      )
                     : '',
                 })
               : activeFast.is_auto_calculated && activeFast.start_meal_name
@@ -287,6 +295,18 @@ const HomeDashboardFasting = () => {
               <Square className="w-4 h-4 mr-2 fill-current" />
               {t('fasting.endFast', 'End Fast')}
             </Button>
+
+            {activeFast.is_auto_calculated && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/')}
+                className="w-full gap-2 text-xs text-muted-foreground -mt-3"
+              >
+                <Utensils className="w-3.5 h-3.5 mr-1" />
+                {t('fasting.logMealToEnd', 'Log Meal to End Fast')}
+              </Button>
+            )}
           </>
         )}
 
@@ -332,11 +352,13 @@ const HomeDashboardFasting = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{t('homeFasting.startTime', 'Start Time')}</Label>
-              <Input
-                type="datetime-local"
+              <Label id="home-fast-start-label">
+                {t('homeFasting.startTime', 'Start Time')}
+              </Label>
+              <DateTimeInput
+                aria-labelledby="home-fast-start-label"
                 value={startLocal}
-                onChange={(e) => setStartLocal(e.target.value)}
+                onChange={setStartLocal}
               />
             </div>
             <div className="space-y-2">

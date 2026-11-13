@@ -29,6 +29,8 @@ import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { cardioSessionFromDiaryEntry } from '../utils/cardioSession';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
@@ -69,9 +71,12 @@ import {
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 
@@ -129,6 +134,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -162,6 +168,26 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  // A History row opens the workout it came from, the way the diary does.
+  const openHistorySession = (session: ExerciseSessionResponse) => {
+    if (session.type === 'preset') {
+      if (useActiveWorkoutStore.getState().sessionId === session.id) {
+        navigation.navigate('ActiveWorkout');
+        return;
+      }
+      navigation.navigate('WorkoutDetail', { session });
+      return;
+    }
+    const cardioSession = cardioSessionFromDiaryEntry(session, distanceUnit);
+    if (cardioSession) {
+      navigation.navigate('CardioSession', {
+        session: cardioSession,
+        distanceUnit,
+      });
+      return;
+    }
+    navigation.navigate('ActivityDetail', { session });
+  };
   // Same UUID guard as hydration: the stats and history routes 400 on non-UUID
   // ids (e.g. external-provider exercises), so those get no History tab.
   const historyAvailable = isConnected && UUID_REGEX.test(item.id);
@@ -710,6 +736,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
               distanceUnit={distanceUnit}
               modality={resolveSnapshotModality(exercise)}
               bestSet={bestSet}
+              onOpenSession={openHistorySession}
             />
           ) : resolvedTab === 'how-to' ? (
             <>
@@ -823,10 +850,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
                   ) : null}
                   {exercise.calories_per_hour > 0 ? (
                     <StatTile
-                      label={t('exerciseDetail.caloriesPerHour', {
-                        defaultValue: 'Cal / hour',
+                      label={t('exerciseDetail.caloriesPerHourWithUnit', {
+                        defaultValue: '{{unit}} / hour',
+                        unit: energyUnitLabel(energyUnit, t),
                       })}
-                      value={String(exercise.calories_per_hour)}
+                      value={String(
+                        roundedEnergy(exercise.calories_per_hour, energyUnit)
+                      )}
                     />
                   ) : null}
                 </View>

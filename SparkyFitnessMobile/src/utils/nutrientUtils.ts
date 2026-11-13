@@ -98,3 +98,27 @@ export function dayCustomNutrient(
     goal: goal && goal > 0 ? goal : undefined,
   };
 }
+
+/**
+ * Applies a nutrient display preference to a list of rows: rows whose
+ * `preferenceKey` is not in `visible` are dropped, and the rest are reordered
+ * to follow `visible`. Rows without a key (derived rows such as Total Carbs)
+ * stay where they are, and the kept rows reorder among the slots the keyed
+ * rows occupied. With no preference the list is returned unchanged.
+ */
+export function applyNutrientDisplayPreference<
+  T extends { preferenceKey?: string },
+>(items: T[], visible: readonly string[] | undefined): T[] {
+  if (!visible) return items;
+  const rank = new Map(visible.map((key, index) => [key, index]));
+  const kept = items.filter(
+    (item) => item.preferenceKey === undefined || rank.has(item.preferenceKey)
+  );
+  const ordered = kept
+    .filter((item) => item.preferenceKey !== undefined)
+    .sort((a, b) => rank.get(a.preferenceKey!)! - rank.get(b.preferenceKey!)!);
+  let next = 0;
+  return kept.map((item) =>
+    item.preferenceKey === undefined ? item : ordered[next++]!
+  );
+}

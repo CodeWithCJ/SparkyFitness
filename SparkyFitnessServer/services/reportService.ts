@@ -3,11 +3,14 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import goalService from './goalService.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import bmrService from './bmrService.js';
 import sleepAnalyticsService from './sleepAnalyticsService.js';
 import customNutrientService from './customNutrientService.js';
 import medicationRepository from '../models/medicationRepository.js';
 import medicationEntryRepository from '../models/medicationEntryRepository.js';
+import sleepScienceRepository from '../models/sleepScienceRepository.js';
 import symptomRepository from '../models/symptomRepository.js';
 import injectionRepository from '../models/injectionRepository.js';
 import titrationRepository from '../models/titrationRepository.js';
@@ -28,15 +31,26 @@ import {
   resolveExerciseModality,
   buildTrainingConsistency,
   computeTrainingLoad,
-  estimateMaxHeartRate,
+  computeFitnessFatigue,
+  computeRunningEstimates,
+  classifyActivitySport,
+  VO2_WINDOW_DAYS,
+  type RunningEstimates,
+  computeReadiness,
+  CURVE_DAYS,
+  WARMUP_DAYS,
+  type FitnessFatigue,
+  type Readiness,
   LOAD_WEEKS,
   type TrainingLoad,
   weekStartOf,
   TRAINING_CONSISTENCY_WEEKS,
   type TrainingConsistency,
 } from '@workspace/shared';
-import { userAge } from '../utils/dateHelpers.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import heartRateZoneService from './heartRateZoneService.js';
+import { loadFirstDayOfWeek } from '../utils/firstDayOfWeek.js';
 import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
 
 interface CustomNutrientDefinition {
@@ -156,6 +170,7 @@ async function getReportsData(
       customCategoriesResult,
       userProfile,
       userPreferences,
+      calorieRuleHistory,
       sleepAnalyticsData,
       medications,
       medicationEntries,
@@ -180,6 +195,11 @@ async function getReportsData(
       measurementRepository.getCustomCategories(targetUserId),
       userRepository.getUserProfile(targetUserId),
       preferenceRepository.getUserPreferences(targetUserId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        targetUserId,
+        startDate,
+        endDate
+      ),
       sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
       medicationRepository.listMedications(targetUserId),
       medicationEntryRepository.listEntries(targetUserId, {
@@ -299,11 +319,19 @@ async function getReportsData(
     );
     // BMR Calculation
     if (userProfile && userPreferences) {
-      const tz = userPreferences?.timezone || 'UTC';
-      const age = userAge(userProfile.date_of_birth, tz);
       const gender = userProfile.gender;
-      const bmrAlgorithm = userPreferences.bmr_algorithm;
       nutritionData.forEach((day: Record<string, unknown>) => {
+        // The settings in force on that day, not today's (#1795).
+        const dayPreferences = preferencesOnDay(
+          userPreferences,
+          calorieRuleHistory,
+          String(day.date).slice(0, 10)
+        );
+        const bmrAlgorithm = dayPreferences.bmr_algorithm;
+        const age = ageOnDay(
+          userProfile.date_of_birth,
+          String(day.date).slice(0, 10)
+        );
         // Find the most recent measurement on or before the current day
         const relevantMeasurements = (measurementData as MeasurementEntry[])
           .filter(
@@ -365,12 +393,12 @@ async function getReportsData(
         // own formula estimate; with no estimate to compare, the absolute bounds
         // decide on their own.
         day.bmr =
-          userPreferences?.use_external_bmr &&
+          dayPreferences.use_external_bmr &&
           isUsableMeasuredBmr(measuredBmr, formulaBmr)
             ? Number(measuredBmr)
             : formulaBmr;
         day.include_bmr_in_net_calories =
-          userPreferences.include_bmr_in_net_calories;
+          dayPreferences.include_bmr_in_net_calories;
       });
     }
     const exerciseEntries = exerciseEntriesRaw.map((entry: WorkoutEntry) => ({
@@ -933,14 +961,7 @@ async function getTrainingConsistency(
   try {
     const timezone = await loadUserTimezone(targetUserId);
     const today = todayInZone(timezone);
-    // The account's first day of the week (0 = Sunday), like the calendars.
-    const preferences =
-      await preferenceRepository.getUserPreferences(targetUserId);
-    const rawFirstDay = preferences?.first_day_of_week;
-    const firstDayOfWeek =
-      rawFirstDay !== null && rawFirstDay !== undefined
-        ? Number(rawFirstDay)
-        : 0;
+    const firstDayOfWeek = await loadFirstDayOfWeek(targetUserId);
     const startDate = addDays(
       weekStartOf(today, firstDayOfWeek),
       -7 * (TRAINING_CONSISTENCY_WEEKS - 1)
@@ -976,8 +997,8 @@ export { getNutritionTrendsWithGoals };
 export { getExerciseDashboardData };
 /**
  * Acute against chronic training load over the last four weeks, from every
- * logged workout (cardio and strength). Max heart rate comes from the profile's
- * age when there is one.
+ * logged workout (cardio and strength). Intensity is judged against the person's
+ * heart rate zones (their own settings, else their date of birth).
  */
 async function getTrainingLoad(
   authenticatedUserId: string,
@@ -986,18 +1007,15 @@ async function getTrainingLoad(
   try {
     const timezone = await loadUserTimezone(targetUserId);
     const today = todayInZone(timezone);
-    const [sessions, profile] = await Promise.all([
+    const [sessions, zones] = await Promise.all([
       reportRepository.getTrainingLoadSessions(
         targetUserId,
         addDays(today, -(LOAD_WEEKS * 7 - 1)),
         today
       ),
-      userRepository.getUserProfile(targetUserId),
+      heartRateZoneService.resolveZonesForUser(targetUserId),
     ]);
-    const age = profile?.date_of_birth
-      ? userAge(profile.date_of_birth, timezone)
-      : null;
-    return computeTrainingLoad(sessions, today, estimateMaxHeartRate(age));
+    return computeTrainingLoad(sessions, today, zones.floors);
   } catch (error) {
     log(
       'error',
@@ -1008,8 +1026,126 @@ async function getTrainingLoad(
   }
 }
 
+/** How far back the resting heart rate and HRV baseline reaches. */
+const READINESS_BASELINE_DAYS = 14;
+
+/**
+ * The fitness / fatigue / form curve over the last 90 days and today's
+ * readiness score, which blends that form with last night's sleep and, when a
+ * watch recorded them, resting heart rate and HRV against the person's recent
+ * average. Intensity uses the person's resolved heart rate zones, the same as
+ * the training load.
+ */
+async function getFitnessFatigue(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<{ fitnessFatigue: FitnessFatigue; readiness: Readiness }> {
+  try {
+    const timezone = await loadUserTimezone(targetUserId);
+    const today = todayInZone(timezone);
+    const yesterday = addDays(today, -1);
+    const [sessions, zones, vitals, sleepNeed] = await Promise.all([
+      reportRepository.getTrainingLoadSessions(
+        targetUserId,
+        addDays(today, -(CURVE_DAYS + WARMUP_DAYS - 1)),
+        today
+      ),
+      heartRateZoneService.resolveZonesForUser(targetUserId),
+      reportRepository.getReadinessVitals(
+        targetUserId,
+        today,
+        yesterday,
+        addDays(yesterday, -READINESS_BASELINE_DAYS)
+      ),
+      sleepScienceRepository.getDailyNeed(targetUserId, today),
+    ]);
+    const fitnessFatigue = computeFitnessFatigue(sessions, today, zones.floors);
+    const readiness = computeReadiness({
+      fitnessFatigue,
+      ...vitals,
+      sleepNeedHours: sleepNeed?.total_need
+        ? Number(sleepNeed.total_need)
+        : null,
+    });
+    return { fitnessFatigue, readiness };
+  } catch (error) {
+    log(
+      'error',
+      `Error building fitness and fatigue for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+/**
+ * VO2 max and average running power estimated from recent runs: the runs are
+ * the cardio entries sport detection calls running, the resting heart rate is
+ * the person's recent average from sleep (else the one in their heart rate zone
+ * settings, else 60), the maximum is their resolved heart rate zone maximum and
+ * the weight is the latest check-in on or before today. Both figures are estimates from a model, not measurements.
+ */
+async function getRunningEstimates(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<RunningEstimates> {
+  try {
+    const timezone = await loadUserTimezone(targetUserId);
+    const today = todayInZone(timezone);
+    const yesterday = addDays(today, -1);
+    const [candidates, zones, vitals, weights] = await Promise.all([
+      reportRepository.getRunCandidates(
+        targetUserId,
+        addDays(today, -(VO2_WINDOW_DAYS - 1)),
+        today
+      ),
+      heartRateZoneService.resolveZonesForUser(targetUserId),
+      reportRepository.getReadinessVitals(
+        targetUserId,
+        today,
+        yesterday,
+        addDays(yesterday, -READINESS_BASELINE_DAYS)
+      ),
+      reportRepository.getBodyWeightReadings(
+        targetUserId,
+        addDays(today, -365),
+        today
+      ),
+    ]);
+    const runs = candidates.filter(
+      (candidate) =>
+        classifyActivitySport({
+          exerciseName: candidate.exerciseName,
+          category: candidate.category,
+          notes: candidate.notes,
+          providerName: candidate.providerName,
+          detailData: candidate.detailData,
+          exerciseSourceId: candidate.exerciseSourceId,
+        }).sport === 'running'
+    );
+    return computeRunningEstimates(runs, today, {
+      restingHeartRate: vitals.restingHeartRateBaseline ?? zones.restingHr,
+      maxHeartRate: zones.maxHr,
+      // bodyWeightOnDay falls back to a later reading; power only wants one on or before today.
+      bodyWeightKg: bodyWeightOnDay(
+        weights.filter((reading) => reading.date <= today),
+        today
+      ),
+    });
+  } catch (error) {
+    log(
+      'error',
+      `Error building running estimates for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
 export { getTrainingConsistency };
 export { getTrainingLoad };
+export { getFitnessFatigue };
+export { getRunningEstimates };
 export default {
   getReportsData,
   getMiniNutritionTrends,
@@ -1017,4 +1153,6 @@ export default {
   getExerciseDashboardData,
   getTrainingConsistency,
   getTrainingLoad,
+  getFitnessFatigue,
+  getRunningEstimates,
 };

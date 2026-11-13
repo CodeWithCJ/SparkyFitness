@@ -10,7 +10,9 @@ import {
 } from '../../src/services/api/authService';
 import { clearServerConfigCache } from '../../src/services/storage';
 import { clearBackgroundWater } from '../../src/services/backgroundWater';
+import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyncService';
 import { addLog } from '../../src/services/LogService';
+import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
 import type { QueryClient } from './queryTestUtils';
@@ -38,6 +40,10 @@ jest.mock('expo-image', () => ({
 
 jest.mock('../../src/services/backgroundWater', () => ({
   clearBackgroundWater: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/androidWidgetSyncService', () => ({
+  clearAndroidWidgetSnapshots: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -136,6 +142,73 @@ describe('useAuth', () => {
     });
 
     expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
+  });
+
+  test("identity changed callback forgets the previous account's guided check-in in progress", async () => {
+    useGuidedCheckInStore.getState().saveProgress({
+      date: '2026-10-26',
+      step: 'MeasurementsAdd',
+      flags: {
+        saved: true,
+        offerReminders: true,
+        moodCheckin: { id: 'checkin-1', date: '2026-10-26' },
+      },
+    });
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(useGuidedCheckInStore.getState().progress).toBeNull();
+  });
+
+  test('identity changed callback erases the widget snapshots once the cache is gone', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    queryClient.setQueryData(['dailySummary', '2026-01-01'], {
+      calories: 1800,
+    });
+    let queriesLeftAtClear: number | null = null;
+    (clearAndroidWidgetSnapshots as jest.Mock).mockImplementationOnce(
+      async () => {
+        queriesLeftAtClear = queryClient.getQueryCache().getAll().length;
+      }
+    );
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    // The Quick Settings tile shows the calorie figure on the lock screen, and
+    // the snapshot carries no account. Cleared after the cache, so a summary of
+    // the previous account cannot be pushed again behind it.
+    expect(clearAndroidWidgetSnapshots).toHaveBeenCalledTimes(1);
+    expect(queriesLeftAtClear).toBe(0);
+  });
+
+  test('a failed widget snapshot clear is logged and the rest still runs', async () => {
+    (clearAndroidWidgetSnapshots as jest.Mock).mockRejectedValueOnce(
+      new Error('no module')
+    );
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockAddLog).toHaveBeenCalledWith(
+      expect.stringContaining('widget snapshots'),
+      'WARNING'
+    );
+    expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback drops the image caches', async () => {

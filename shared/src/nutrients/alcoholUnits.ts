@@ -1,7 +1,7 @@
 import {
   foodVolumeToMl,
   getConversionFactor,
-} from "../utils/servingSizeConversions.ts";
+} from '../utils/servingSizeConversions.ts';
 
 export const ETHANOL_DENSITY_G_PER_ML = 0.789;
 /** Exported for documentation and tooltips. NEVER used in a calorie sum. */
@@ -15,12 +15,12 @@ export interface StandardDrinkPreset {
 }
 
 export const STANDARD_DRINK_PRESETS: readonly StandardDrinkPreset[] = [
-  { code: "US", label: "United States", grams: 14 },
-  { code: "UK", label: "United Kingdom (1 unit)", grams: 8 },
-  { code: "AU", label: "Australia", grams: 10 },
-  { code: "EU", label: "Most of Europe", grams: 10 },
-  { code: "CA", label: "Canada", grams: 13.45 },
-  { code: "JP", label: "Japan", grams: 20 },
+  { code: 'US', label: 'United States', grams: 14 },
+  { code: 'UK', label: 'United Kingdom (1 unit)', grams: 8 },
+  { code: 'AU', label: 'Australia', grams: 10 },
+  { code: 'EU', label: 'Most of Europe', grams: 10 },
+  { code: 'CA', label: 'Canada', grams: 13.45 },
+  { code: 'JP', label: 'Japan', grams: 20 },
 ] as const;
 
 /**
@@ -29,13 +29,13 @@ export const STANDARD_DRINK_PRESETS: readonly StandardDrinkPreset[] = [
  */
 export function alcoholGramsFromAbv(
   volumeMl: number,
-  abvPercent: number,
+  abvPercent: number
 ): number {
   if (!volumeMl || !abvPercent || volumeMl < 0 || abvPercent < 0) {
     return 0;
   }
   return Number(
-    (volumeMl * (abvPercent / 100) * ETHANOL_DENSITY_G_PER_ML).toFixed(3),
+    (volumeMl * (abvPercent / 100) * ETHANOL_DENSITY_G_PER_ML).toFixed(3)
   );
 }
 
@@ -57,7 +57,7 @@ export function alcoholGramsFromAbv(
 export function alcoholGramsForServing(
   servingSize: number,
   servingUnit: string,
-  abvPercent: number,
+  abvPercent: number
 ): number {
   if (!Number.isFinite(servingSize) || servingSize <= 0) return 0;
 
@@ -70,7 +70,7 @@ export function alcoholGramsForServing(
   // it read 1 oz of spirits as 1 ml and understated the alcohol ~28x. Going
   // through grams keeps the documented "within 1% for beer and wine" behaviour
   // for `g` and makes `oz`/`lb` land in the same place.
-  const grams = servingSize * (getConversionFactor("g", servingUnit) ?? 0);
+  const grams = servingSize * (getConversionFactor('g', servingUnit) ?? 0);
   if (grams > 0) return alcoholGramsFromAbv(grams, abvPercent);
 
   // Neither a volume nor a weight (a `piece`, a `serving`): the number carries
@@ -87,7 +87,7 @@ export function abvFromAlcoholGrams(grams: number, volumeMl: number): number {
     return 0;
   }
   return Number(
-    ((grams / (volumeMl * ETHANOL_DENSITY_G_PER_ML)) * 100).toFixed(2),
+    ((grams / (volumeMl * ETHANOL_DENSITY_G_PER_ML)) * 100).toFixed(2)
   );
 }
 
@@ -97,7 +97,7 @@ export function abvFromAlcoholGrams(grams: number, volumeMl: number): number {
  */
 export function standardDrinks(
   grams: number,
-  standardDrinkGrams: number = DEFAULT_STANDARD_DRINK_GRAMS,
+  standardDrinkGrams: number = DEFAULT_STANDARD_DRINK_GRAMS
 ): number {
   if (!grams || grams <= 0 || !standardDrinkGrams || standardDrinkGrams <= 0) {
     return 0;

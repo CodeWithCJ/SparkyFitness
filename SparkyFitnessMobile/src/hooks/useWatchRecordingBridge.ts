@@ -8,16 +8,22 @@ import WatchConnectivity, {
 } from '../../modules/watch-connectivity';
 import {
   addHeartRateSamples,
+  clearAppleWorkoutZones,
+  clearSavedRecordingEntryId,
   elapsedSeconds,
   finishRecording,
   hydrate,
   markLap,
+  noteAppleWorkoutZones,
   noteLiveHeartRate,
   pauseRecording,
+  peekAppleWorkoutZones,
   resumeRecording,
+  savedRecordingEntryId,
   useGpsRecording,
   type RecordingSnapshot,
 } from '../services/gpsRecordingService';
+import { attachExerciseEntryWatchTelemetry } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
 import { useLiveHeartRateStore } from '../stores/liveHeartRateStore';
 import { notificationText } from '../utils/recordingNotification';
@@ -32,7 +38,7 @@ import {
   METERS_PER_MILE,
   summarizeRecording,
 } from '../utils/gpsRecording';
-import { intervalPosition } from '@workspace/shared';
+import { intervalPosition, appleWorkoutZonesFromWire } from '@workspace/shared';
 import { usePreferences } from './usePreferences';
 
 /** How often the watch's distance and pace are refreshed while recording. */
@@ -128,7 +134,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           : intervalStepName(
               translate,
               position.step.kind,
-              session.intervals.plan.style
+              session.intervals.plan.style,
+              position.step.effort
             );
         // The watch counts time down on its own between updates; a distance
         // step has nothing to count, so its metres left ride in the label
@@ -142,7 +149,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           state.intervalNext = `${intervalStepName(
             translate,
             position.next.kind,
-            session.intervals.plan.style
+            session.intervals.plan.style,
+            position.next.effort
           )} ${stepLengthText(translate, position.next)}`;
         }
       }
@@ -233,11 +241,24 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           t: Date.parse(sample.t),
           bpm: sample.bpm,
         }));
-        void addHeartRateSamples(
-          payload.sessionId,
-          payload.clientId,
-          readings
-        ).catch((error: unknown) => logError('store heart rate', error));
+        if (readings.length > 0) {
+          void addHeartRateSamples(
+            payload.sessionId,
+            payload.clientId,
+            readings
+          ).catch((error: unknown) => logError('store heart rate', error));
+        }
+        const zones = appleWorkoutZonesFromWire(payload.appleZones);
+        if (!zones) return;
+        noteAppleWorkoutZones(payload.sessionId, zones);
+        const entryId = savedRecordingEntryId(payload.sessionId);
+        if (!entryId || !peekAppleWorkoutZones(payload.sessionId)) return;
+        void attachExerciseEntryWatchTelemetry(entryId, { appleZones: zones })
+          .then(() => {
+            clearAppleWorkoutZones(payload.sessionId);
+            clearSavedRecordingEntryId(payload.sessionId);
+          })
+          .catch((error: unknown) => logError('store apple zones', error));
       }
     );
     // The wrist's current reading, display only. The batches above are what

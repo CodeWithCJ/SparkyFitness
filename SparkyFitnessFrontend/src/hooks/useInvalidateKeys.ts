@@ -20,11 +20,28 @@ import { userAiConfigKeys } from '@/api/keys/admin';
 import { goalKeys } from '@/api/keys/goals';
 import { reportKeys } from '@/api/keys/reports';
 import { fastingKeys } from '@/api/keys/fasting';
+import { runProgramKeys } from '@/api/keys/runPrograms';
+import { externalProviderKeys } from '@/api/keys/settings';
+import { garminKeys } from '@/api/keys/integrations';
+
+/**
+ * After a Garmin sync: the provider list carries the Garmin status (last sync,
+ * whether the Garmin service answered), and so does useGarminStatus.
+ */
+export const useGarminStatusInvalidation = () => {
+  const queryClient = useQueryClient();
+
+  return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: externalProviderKeys.lists() });
+    queryClient.invalidateQueries({ queryKey: garminKeys.status });
+  }, [queryClient]);
+};
 
 export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
@@ -44,6 +61,7 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: reportKeys.all });
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     queryClient.invalidateQueries({ queryKey: fastingKeys.all });
+    queryClient.invalidateQueries({ queryKey: runProgramKeys.all });
   }, [queryClient]);
 };
 
@@ -61,6 +79,7 @@ export const useFoodEntryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
@@ -101,6 +120,7 @@ export const useDailyProgressInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({
       queryKey: dailyProgressKeys.all,
     });
@@ -111,13 +131,32 @@ export const useExerciseInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    queryClient.invalidateQueries({ queryKey: goalKeys.all });
     queryClient.invalidateQueries({ queryKey: diaryReportKeys.all });
     queryClient.invalidateQueries({ queryKey: reportKeys.all });
+    queryClient.invalidateQueries({ queryKey: runProgramKeys.all });
+  }, [queryClient]);
+};
+
+/**
+ * A run program change moves the workout the Diary offers, and a completion
+ * can be linked to a diary entry, so the program, workout plan, diary progress
+ * and exercise entry families refresh together.
+ */
+export const useRunProgramInvalidation = () => {
+  const queryClient = useQueryClient();
+
+  return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: runProgramKeys.all });
+    queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
+    queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
   }, [queryClient]);
 };
 

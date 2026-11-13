@@ -10,6 +10,7 @@ import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
 import { createTestQueryClient } from '../hooks/queryTestUtils';
 
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useCustomNutrients: jest.fn(() => ({
     customNutrients: [],

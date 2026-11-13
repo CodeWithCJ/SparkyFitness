@@ -28,6 +28,7 @@ export interface WatchCheckInPayload {
    * fat value the day already had.
    */
   bodyFatPercentage: number | null;
+  ownerId?: string;
 }
 
 /** One day of history relayed to the watch for its trend chart. */
@@ -46,6 +47,7 @@ export interface WatchWaterIntakePayload {
   /** Calendar day (`yyyy-MM-dd`) in the wearer's local timezone. */
   entryDate: string;
   containerId: number;
+  ownerId?: string;
 }
 
 /** A request from the watch to delete one logged drink. */
@@ -54,6 +56,7 @@ export interface WatchWaterDeletePayload {
   clientId: string;
   /** The `water_intake_entries` row id, as relayed in `waterLog` below. */
   entryId: string;
+  ownerId?: string;
 }
 
 /** A dose ticked, or un-ticked after a mistaken tap, on the Apple Watch. */
@@ -66,6 +69,13 @@ export interface WatchMedicationTakenPayload {
   scheduleId: string;
   /** False when the wearer un-ticked the dose; absent from older watch builds, which only ever tick. */
   taken?: boolean;
+  /**
+   * True when the wearer marked the dose skipped. Only sent once the phone
+   * has said it understands it (`medicationSkip` in the context), because an
+   * older phone would read the `taken: false` that rides with it as an un-tick.
+   */
+  skipped?: boolean;
+  ownerId?: string;
 }
 
 /** One of today's scheduled dose slots, relayed to the watch's Medications page. */
@@ -80,6 +90,8 @@ export interface WatchMedicationDosePayload {
   /** Pre-formatted time of day in the account's 12/24-hour convention, empty when untimed. */
   time: string;
   status: 'pending' | 'taken' | 'skipped';
+  /** A supplement rather than a medication, so the watch can draw its icon. */
+  supplement?: boolean;
 }
 
 /**
@@ -109,6 +121,47 @@ export interface WatchContainerPayload {
   servingVolumeMl: number;
   /** Display only — `ml` | `oz` | `liter`. `servingVolumeMl` is always ml. */
   unit: string;
+}
+
+/** Today's sleep snapshot relayed to the watch for its Sleep Health tile. */
+export interface WatchSleepSnapshotPayload {
+  day: string;
+  /** Total time asleep in seconds (main sleep + naps). */
+  totalSeconds: number;
+  /** Main sleep bedtime-to-waketime span in seconds. */
+  timeInBedSeconds: number;
+  sleepScore: number | null;
+  /** Pre-formatted bedtime in the user's time format, or empty. */
+  bedtime: string;
+  /** Pre-formatted wake time in the user's time format, or empty. */
+  wakeTime: string;
+  deepSeconds: number | null;
+  remSeconds: number | null;
+  lightSeconds: number | null;
+  awakeSeconds: number | null;
+  restingHeartRate: number | null;
+  hrvMs: number | null;
+  spo2: number | null;
+  napCount: number;
+  napSeconds: number;
+}
+
+/** One logged exercise session relayed in `WatchExerciseSummaryPayload`. */
+export interface WatchExerciseSessionPayload {
+  name: string;
+  durationMinutes: number;
+  calories: number;
+}
+
+/** Today's exercise summary relayed to the watch for its Exercise tile. */
+export interface WatchExerciseSummaryPayload {
+  day: string;
+  minutes: number;
+  minutesGoal: number;
+  calories: number;
+  caloriesGoal: number;
+  sessionCount: number;
+  sessions: WatchExerciseSessionPayload[];
 }
 
 /** Seed values, history and acknowledgements pushed to the watch. */
@@ -152,6 +205,11 @@ export interface WatchContextPayload {
    */
   distanceUnit?: 'km' | 'miles' | null;
   /**
+   * The phone's energy unit. Every energy number in the context stays in
+   * kcal; the watch shows it in kJ when this is `kJ`. Missing reads as `kcal`.
+   */
+  energyUnit?: 'kcal' | 'kJ' | null;
+  /**
    * The phone's Settings → Haptics switch. The watch plays button haptics
    * and the rest-end buzz only while this is on. Missing reads as on.
    */
@@ -174,6 +232,12 @@ export interface WatchContextPayload {
    * speaks each completed km or mile while this is on. Missing reads as off.
    */
   runVoiceCues?: boolean | null;
+  /**
+   * The app's language as a BCP 47 tag. The watch speaks cue text the phone
+   * wrote (plan step names, route wording) with a voice for it when the phone
+   * cannot relay the cue. Missing reads as unknown.
+   */
+  appLanguage?: string | null;
   /** The phone's Auto-pause switch: the default for a run begun on the wrist. */
   runAutoPause?: boolean | null;
   /** Minutes between spoken check-ins: the default for a run begun on the wrist; 0 is off. */
@@ -316,6 +380,24 @@ export interface WatchContextPayload {
    */
   medications?: WatchMedicationDosePayload[] | null;
   /**
+   * This phone handles `skipped` on a `medicationTaken` message. The watch
+   * offers Skipped only while it is true.
+   */
+  medicationSkip?: boolean;
+  /** Elapsed time, heart rate and calories on the set screen. Absent means on. */
+  setScreenMetrics?: boolean;
+  /** The Up Next page after the set screen. Absent means off. */
+  upNextPage?: boolean;
+  /** The larger-text layout of the Goals and Water pages. Absent means off. */
+  largerText?: boolean;
+  /** Keep the original workout page while larger text is on. Absent means off. */
+  classicWorkout?: boolean;
+  /**
+   * This phone handles the `doExerciseNow` workout edit. The watch offers
+   * Swap only while it is true.
+   */
+  exerciseDoNow?: boolean;
+  /**
    * Saved workouts the wearer can start from the wrist. Names and ids only;
    * the phone still builds and arms the session. Absent on an older phone.
    */
@@ -359,6 +441,10 @@ export interface WatchContextPayload {
   steps?: { day: string; count: number } | null;
   /** Daily step goal the Steps page and complication measure against. */
   stepGoal?: number | null;
+  /** Today's sleep health snapshot for the watch's Sleep Health tile. */
+  sleep?: WatchSleepSnapshotPayload | null;
+  /** Today's exercise summary for the watch's Exercise tile. */
+  exerciseSummary?: WatchExerciseSummaryPayload | null;
 }
 
 /** One target set the watch shows for a planned exercise. */
@@ -573,6 +659,16 @@ export interface WatchHeartRateBatchPayload {
    */
   durationMinutes?: number;
   /**
+   * Apple's time-in-zone for the whole workout. Present only on the batch
+   * sent after HealthKit finishes it. Five zones, each with `seconds`.
+   */
+  appleZones?: Array<{
+    index?: number;
+    minimumBpm?: number;
+    maximumBpm?: number;
+    seconds: number;
+  }>;
+  /**
    * Server config that was active when the phone received this batch. The
    * phone only applies a batch whose owner is the active config; a batch for
    * another config stays queued and is not posted or acked. Absent when no
@@ -616,6 +712,12 @@ export interface WatchSetTimerStartedPayload {
   armedAt?: number;
 }
 
+/** How hard the wearer rated a finished strength workout, 1 to 10. */
+export interface WatchWorkoutEffortPayload {
+  sessionId: string;
+  rating: number;
+}
+
 export interface WatchWorkoutStopPayload {
   sessionId: string;
 }
@@ -634,15 +736,42 @@ export interface WatchWorkoutEditPayload {
   sessionId: string;
   clientId: string;
   action:
-    'addSet' | 'deleteSet' | 'setSetType' | 'addExercise' | 'deleteExercise';
-  /** For `addSet` and `deleteExercise`. */
+    | 'addSet'
+    | 'deleteSet'
+    | 'setSetType'
+    | 'addExercise'
+    | 'deleteExercise'
+    | 'doExerciseNow'
+    | 'setValues';
+  /** For `addSet`, `deleteExercise` and `doExerciseNow`. */
   exerciseEntryId?: string;
+  /**
+   * For `doExerciseNow`: the exercise the watch is on, which the picked one
+   * goes in front of. Absent from an older watch: the phone's cursor is used.
+   */
+  anchorEntryId?: string;
   /** For `deleteSet` and `setSetType`. */
   setId?: string;
   /** For `addExercise`: the library exercise to add. */
   exerciseId?: string;
   /** For `setSetType`: `normal`, `warmup`, `drop` or `failure`. */
   setType?: string;
+  /**
+   * For `setValues`: what the wearer just typed on the watch for `setId`,
+   * before logging it. Only the fields that were edited are present. Weight
+   * and a carry's distance are in kg and km, as in a logged set.
+   */
+  weightKg?: number;
+  reps?: number;
+  distanceKm?: number;
+  /** For `setValues`: epoch ms of the edit, so a late copy of an older one is dropped. */
+  at?: number;
+  /**
+   * For `setValues`: epoch ms of the arm the edit was made in. A saved workout
+   * can be armed again under the same id, and an edit queued from the earlier
+   * arm is dropped. Absent from an older watch.
+   */
+  armedAt?: number;
 }
 
 /** The wearer's answer to the watch's "update this workout?" question, asked
@@ -720,6 +849,13 @@ export interface WatchRecordingHeartRatePayload {
   /** Dedupes a re-delivered queued batch. */
   clientId: string;
   samples: WatchHeartRateSamplePayload[];
+  /** Apple's zone group for the finished recording, when HealthKit had one. */
+  appleZones?: Array<{
+    index?: number;
+    minimumBpm?: number;
+    maximumBpm?: number;
+    seconds: number;
+  }>;
 }
 
 /** The wearer asked to start a fast from the watch's Fasting page. */
@@ -727,11 +863,13 @@ export interface WatchFastStartRequestPayload {
   /** `FASTING_PRESETS` id, e.g. "16-8". */
   presetId: string;
   clientId: string;
+  ownerId?: string;
 }
 
 /** The wearer asked to end the running fast from the watch. */
 export interface WatchFastEndRequestPayload {
   clientId: string;
+  ownerId?: string;
 }
 
 /**
@@ -741,6 +879,8 @@ export interface WatchFastEndRequestPayload {
  */
 export interface WatchRunFinishedPayload {
   clientId: string;
+  /** Server config id that was active when the run arrived on the phone. */
+  ownerId?: string;
   kind: string;
   place: string;
   startedAt: number;
@@ -767,6 +907,13 @@ export interface WatchRunFinishedPayload {
   distanceScale?: number;
   /** What the watch showed before a treadmill distance was entered on the wrist. */
   estimatedDistanceMeters?: number;
+  /** Apple's heart-rate zone group, when the finished workout had one. */
+  appleZones?: Array<{
+    index?: number;
+    minimumBpm?: number;
+    maximumBpm?: number;
+    seconds: number;
+  }>;
 }
 
 /**
@@ -780,6 +927,18 @@ export interface WatchRunCuePayload {
   text: string;
   /** Say it now rather than after the cue being spoken. */
   interrupt: boolean;
+  /**
+   * BCP 47 tag of the language the text is written in (the watch's). Empty
+   * when the sender does not say, as Wear OS does not; the app language then
+   * applies.
+   */
+  language?: string;
+}
+
+/** How hard the wearer rated a finished watch run, 1 to 10. Matches a run by `clientId`. */
+export interface WatchRunEffortPayload {
+  clientId: string;
+  rating: number;
 }
 
 export interface WatchRunLivePayload {
@@ -821,6 +980,58 @@ export interface WatchRunStartPlanStep {
   hrMax?: number;
 }
 
+/**
+ * A saved route for the watch to follow. `points` is flat
+ * `[lat, lon, lat, lon, …]` in millionths of a degree (integers keep the
+ * property list small: ~20 KB for the 2000-point maximum). `cues` are turn
+ * instructions anchored to a point index; the watch words them from `kind`
+ * unless `text` is given. See `toWatchRoutePayload` in `src/utils/watchRoute.ts`.
+ */
+export interface WatchRoutePayload {
+  id: string;
+  name: string;
+  points: number[];
+  cues: {
+    index: number;
+    kind:
+      | 'depart'
+      | 'straight'
+      | 'slight_left'
+      | 'left'
+      | 'sharp_left'
+      | 'slight_right'
+      | 'right'
+      | 'sharp_right'
+      | 'uturn'
+      | 'arrive';
+    text?: string;
+  }[];
+}
+
+/**
+ * A saved route for the watch's own library (`routeSync`). Same wire shape as
+ * the route of a `runStart`; `updatedAt` is the route's `updatedAt` in epoch
+ * ms, which the watch uses to keep the newest copy.
+ */
+export interface WatchRouteSyncPayload {
+  route: WatchRoutePayload;
+  updatedAt: number;
+}
+
+/**
+ * What the watch's route library holds (`routeLibrary`): each stored route
+ * with the `updatedAt` it was stored at, the ids it turned away (`full` when
+ * the library is at `capacity`, `storage` when the file could not be written)
+ * and the cap.
+ */
+export interface WatchRouteLibraryPayload {
+  routes: { id: string; updatedAt: number }[];
+  rejected: { id: string; reason: string }[];
+  capacity: number;
+  /** Epoch ms on the watch when it was sent; a stale queued copy is ignored. */
+  sentAt: number;
+}
+
 /** Asks the watch to start recording a walk or run itself. */
 export interface WatchRunStartPayload {
   requestId: string;
@@ -849,6 +1060,8 @@ export interface WatchRunStartPayload {
     doneText?: string;
     steps: WatchRunStartPlanStep[];
   };
+  /** An outdoor run only: a saved route to follow. Rides this one request, so it reaches the watch exactly when the run does. */
+  route?: WatchRoutePayload;
 }
 
 export type WatchRunControlAction =
@@ -888,6 +1101,7 @@ export type WatchConnectivityEvents = {
   onHeartRateBatch: (payload: WatchHeartRateBatchPayload) => void;
   onLiveHeartRate: (payload: WatchLiveHeartRatePayload) => void;
   onWorkoutStop: (payload: WatchWorkoutStopPayload) => void;
+  onWorkoutEffort: (payload: WatchWorkoutEffortPayload) => void;
   onWorkoutDiscard: (payload: WatchWorkoutDiscardPayload) => void;
   onWorkoutStartRequested: (payload: WatchWorkoutStartRequestedPayload) => void;
   onWorkoutEdit: (payload: WatchWorkoutEditPayload) => void;
@@ -899,6 +1113,8 @@ export type WatchConnectivityEvents = {
   onRunLive: (payload: WatchRunLivePayload) => void;
   onRunCue: (payload: WatchRunCuePayload) => void;
   onRunFinished: (payload: WatchRunFinishedPayload) => void;
+  onRunEffort: (payload: WatchRunEffortPayload) => void;
+  onRouteLibrary: (payload: WatchRouteLibraryPayload) => void;
 };
 
 declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivityEvents> {
@@ -918,6 +1134,14 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
   /** Starts a walk or run on the watch and opens its app. */
   startRun(request: WatchRunStartPayload): Promise<void>;
+  /**
+   * Puts a route in the watch's library (queued, delivered once). The watch
+   * answers with `onRouteLibrary`, which is how the caller learns it arrived
+   * or that the library was full.
+   */
+  sendRoute(sync: WatchRouteSyncPayload): Promise<void>;
+  /** Takes a route out of the watch's library (queued). */
+  removeRoute(routeId: string): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
   sendRunControl(control: WatchRunControlPayload): Promise<void>;
   /** Tells the watch the phone is saying cue `id`, so it stays quiet. */
@@ -1010,6 +1234,11 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    * `ackWatchRuns` says the phone has stored them.
    */
   pendingWatchRuns(): Promise<WatchRunFinishedPayload[]>;
+  /**
+   * The newest `routeLibrary` report received this launch, or null. For a
+   * report that arrived before `onRouteLibrary` had a listener. iOS only.
+   */
+  latestRouteLibrary?(): Promise<WatchRouteLibraryPayload | null>;
   ackWatchRuns(clientIds: string[]): Promise<void>;
   /**
    * Server config that owns batches received after this call. Persisted
@@ -1023,13 +1252,15 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    * malformed) since the last call. Resets to zero.
    */
   takeDroppedHeartRateBatchCount(): Promise<number>;
+  setServerCredentials?(
+    baseUrl: string,
+    headers: Record<string, string>
+  ): Promise<void>;
+  clearServerCredentials?(): Promise<void>;
 }
 
-// iOS-only: WatchConnectivity has no Android equivalent, so this resolves to
-// null there and every caller must guard on it. Prefer the guarded hook in
-// src/hooks/useWatchCheckInBridge.ts over importing this module directly.
 const WatchConnectivityModule: WatchConnectivityModuleType | null =
-  Platform.OS === 'ios'
+  Platform.OS === 'ios' || Platform.OS === 'android'
     ? requireOptionalNativeModule<WatchConnectivityModuleType>(
         'WatchConnectivity'
       )

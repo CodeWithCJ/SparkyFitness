@@ -20,7 +20,10 @@ import Button from '../components/ui/Button';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
-import { useSetEditAccessoryBar } from '../components/SetRowChrome';
+import {
+  SET_ACCESSORY_BAR_HEIGHT,
+  useSetEditAccessoryBar,
+} from '../components/SetRowChrome';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
 import ActionSheet, {
   type ActionSheetItem,
@@ -38,7 +41,9 @@ import {
   canReorderDraftExercises,
   exerciseFromSnapshot,
   parseSetWeight,
+  summarizeWorkoutEffort,
   summarizeWorkoutHeartRate,
+  getWorkoutSessionStatusLabel,
 } from '../utils/workoutSession';
 import { formatLocalizedNumber } from '../localization';
 import {
@@ -49,6 +54,10 @@ import {
   promptForActiveWorkoutConflict,
   armWatchForActiveSession,
 } from '../hooks/useStartLiveWorkout';
+import { getWorkout, updateWorkout } from '../services/api/exerciseApi';
+import { ApiError } from '../services/api/errors';
+import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
+
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -57,6 +66,9 @@ import {
   getWorkoutDraftSubmission,
 } from '../hooks/useWorkoutForm';
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
+import LinkSyncedWorkoutSheet, {
+  type LinkSyncedWorkoutSheetRef,
+} from '../components/LinkSyncedWorkoutSheet';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
@@ -90,6 +102,8 @@ import type { UpdatePresetSessionRequest } from '@workspace/shared';
 import {
   canEditGroupedWorkout,
   effectiveLoadKg,
+  entryCaloriesCounted,
+  isAppLoggedWorkoutSource,
   isBodyweightModality,
   resolveExerciseModality,
 } from '@workspace/shared';
@@ -97,11 +111,26 @@ import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
 import WorkoutFeedbackCard from '../components/WorkoutFeedbackCard';
 import HeartRateZones from '../components/exerciseStats/HeartRateZones';
 import { useWorkoutHeartRateZones } from '../hooks/useWorkoutHeartRateZones';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { formatEnergy, formatEnergyNumber } from '../utils/energyUnit';
+
+/**
+ * Derived lifecycle status of a session (#1995 phase 1), as a badge color and
+ * English fallback label. The server derives the status from set completion
+ * plus finished_at; see deriveWorkoutSessionStatus in @workspace/shared.
+ */
+const SESSION_STATUS_COLORS: Record<string, string> = {
+  planned: '#64748B',
+  in_progress: '#2563EB',
+  partial: '#D97706',
+  completed: '#059669',
+};
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -117,13 +146,16 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const linkSheetRef = useRef<LinkSyncedWorkoutSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
-  const [accentPrimary, heartRateColor, activeEnergyColor] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-heart-rate',
-    '--color-active-energy',
-  ]) as [string, string, string];
+  const [accentPrimary, heartRateColor, activeEnergyColor, textMuted] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-heart-rate',
+      '--color-active-energy',
+      '--color-text-muted',
+    ]) as [string, string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   // Superset display (view mode only): grouped members get a flat left rail
@@ -173,6 +205,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const sourceLabel = getSourceLabel(session.source);
   const canEdit = canEditGroupedWorkout(session.source);
+  // Linking works on the whole session, so any of its exercises will do. Only
+  // a workout logged in the app can be linked to a synced one.
+  const linkEntryId =
+    session.exercises.length > 0 &&
+    isAppLoggedWorkoutSource(session.exercises[0].source)
+      ? session.exercises[0].id
+      : null;
+  const isLinked = session.exercises.some((ex) => !!ex.calorie_link_resolution);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
@@ -390,6 +430,90 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const handleStartWorkout = () => beginWorkout();
+
+  // #1995 phase 1: partial (or never-finished live) sessions resume in
+  // place. The Start button becomes Resume and reopens the session
+  // server-side (finished_at null, guarded by the revision this screen last
+  // saw) before seeding the live store, so the status flips back to in
+  // progress on every device.
+  const [isResumingWorkout, setIsResumingWorkout] = useState(false);
+  const isResumableSession =
+    session.status === 'partial' || session.status === 'in_progress';
+
+  const resumeWorkout = useCallback(async () => {
+    if (isResumingWorkout) return;
+    setIsResumingWorkout(true);
+    try {
+      const reopened = await updateWorkout(session.id, {
+        finished_at: null,
+        ...(session.revision != null
+          ? { revision: Number(session.revision) }
+          : {}),
+      });
+      const resumedEntryDate = reopened.entry_date ?? session.entry_date;
+      if (resumedEntryDate != null) {
+        invalidateExerciseCache(queryClient, normalizeDate(resumedEntryDate));
+      }
+      void ensureNotificationPermission().then(() =>
+        maybePromptForExactAlarmPermission()
+      );
+      const store = useActiveWorkoutStore.getState();
+      store.startWorkout(reopened);
+      armWatchForActiveSession(t);
+      navigation.replace('ActiveWorkout');
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 409) {
+        // Retrying with the same revision would fail again: pull the
+        // server's current session into this screen so the next Resume
+        // presents the fresh revision.
+        try {
+          const fresh = await getWorkout(session.id);
+          setSession(fresh);
+          const freshEntryDate = fresh.entry_date ?? session.entry_date;
+          if (freshEntryDate != null) {
+            invalidateExerciseCache(queryClient, normalizeDate(freshEntryDate));
+          }
+        } catch {
+          // Best-effort refresh; the toast below still tells the user.
+        }
+        Toast.show({
+          type: 'error',
+          text1: t('workout.resumeConflictTitle', {
+            defaultValue: 'Workout changed elsewhere',
+          }),
+          text2: t('workout.resumeConflictMessage', {
+            defaultValue:
+              'This workout was updated on another device or tab. Reload it and try again.',
+          }),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('workout.resumeFailedTitle', {
+            defaultValue: 'Could not resume workout',
+          }),
+          text2: t('workout.resumeFailedMessage', {
+            defaultValue: 'Please try again.',
+          }),
+        });
+      }
+    } finally {
+      setIsResumingWorkout(false);
+    }
+  }, [isResumingWorkout, navigation, queryClient, session, t]);
+
+  const beginResumeWorkout = useCallback(() => {
+    const prompted = promptForActiveWorkoutConflict(
+      queryClient,
+      {
+        onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
+        onClearAndStart: () => void resumeWorkout(),
+      },
+      t
+    );
+    if (prompted) return;
+    void resumeWorkout();
+  }, [queryClient, navigation, resumeWorkout, t]);
 
   // Long-pressing a set opens a menu-style bottom sheet (same ActionSheet the
   // live/edit exercise ⋮ menus use). Gated on canEdit like the Start button:
@@ -670,10 +794,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const totalCalories = isEditing
       ? formState.exercises.reduce((sum, ex) => {
           const cal = parseDecimalInput(ex.calories ?? '');
-          return sum + (isNaN(cal) ? 0 : cal);
+          const saved = session.exercises.find(
+            (entry) => entry.id === ex.serverId
+          );
+          return (
+            sum +
+            entryCaloriesCounted({
+              calories_burned: isNaN(cal) ? 0 : cal,
+              calories_applied: saved?.calories_applied,
+            })
+          );
         }, 0)
       : session.exercises.reduce(
-          (sum, ex) => sum + (ex.calories_burned ?? 0),
+          (sum, ex) => sum + entryCaloriesCounted(ex),
           0
         );
 
@@ -707,10 +840,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     if (totalCalories > 0) {
       summaryItems.push({
-        value: formatLocalizedNumber(Math.round(totalCalories)),
-        label: t('workoutDetail.summary.calories', {
-          defaultValue: 'Calories',
-        }),
+        value:
+          energyUnit === 'kJ'
+            ? formatEnergy(totalCalories, energyUnit, t)
+            : formatEnergyNumber(totalCalories, energyUnit),
+        label:
+          energyUnit === 'kJ'
+            ? t('workoutDetail.summary.energy', { defaultValue: 'Energy' })
+            : t('workoutDetail.summary.calories', { defaultValue: 'Calories' }),
         icon: { name: 'flame', color: activeEnergyColor },
       });
     }
@@ -736,6 +873,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           defaultValue: 'Max HR',
         }),
         icon: { name: 'heart-rate', color: heartRateColor },
+      });
+    }
+    // The person's own rating (from the watch's prompt or Apple Health), so
+    // it is shown from the saved session even while editing.
+    const effort = summarizeWorkoutEffort(session.exercises);
+    if (effort != null) {
+      summaryItems.push({
+        value: t('workoutEffort.value', {
+          defaultValue: '{{rating}}/10',
+          rating: formatLocalizedNumber(effort),
+        }),
+        label: t('workoutDetail.summary.effort', { defaultValue: 'Effort' }),
       });
     }
     if (summaryItems.length === 0) return null;
@@ -888,7 +1037,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={{
           paddingBottom: insets.bottom + 20 + activeWorkoutBarPadding,
         }}
-        bottomOffset={20}
+        // Clear of the set-entry bar riding on top of the keyboard.
+        bottomOffset={SET_ACCESSORY_BAR_HEIGHT + 16}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior={
           usesNativeHeader ? 'automatic' : undefined
@@ -922,6 +1072,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </FadeView>
           ) : null}
           <View className="flex-row items-center">
+            {!isEditing && session.status != null && (
+              <View
+                className="rounded-full px-1.5 py-0.5 mr-1.5"
+                style={{
+                  backgroundColor: `${SESSION_STATUS_COLORS[session.status]}20`,
+                }}
+              >
+                <Text
+                  className="text-xs font-medium"
+                  style={{ color: SESSION_STATUS_COLORS[session.status] }}
+                >
+                  {getWorkoutSessionStatusLabel(t, session.status)}
+                </Text>
+              </View>
+            )}
             <Text className="text-sm text-text-muted">{sourceLabel}</Text>
             <Text className="text-sm text-text-muted mx-2">{'\u2022'}</Text>
             {isEditing ? (
@@ -962,15 +1127,43 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         ) : null}
 
-        {/* Start Workout button */}
+        {/* Start / Resume Workout button. Partial and unfinished live
+            sessions resume the same diary entry instead of starting a new
+            one (#1995 phase 1). */}
         {!isEditing && canEdit && !isWorkoutActive && (
           <Button
             variant="primary"
-            onPress={handleStartWorkout}
+            onPress={
+              isResumableSession ? beginResumeWorkout : handleStartWorkout
+            }
             className="mt-4"
           >
-            {t('workout.startWorkout', { defaultValue: 'Start Workout' })}
+            {isResumableSession
+              ? t('workout.resumeWorkout', { defaultValue: 'Resume Workout' })
+              : t('workout.startWorkout', { defaultValue: 'Start Workout' })}
           </Button>
+        )}
+
+        {!isEditing && linkEntryId && (
+          <TouchableOpacity
+            className="bg-surface rounded-xl px-4 py-3 mt-4 shadow-sm flex-row items-center"
+            onPress={() => linkSheetRef.current?.present()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            testID="link-synced-workout"
+          >
+            <Icon name="link" size={16} color={accentPrimary} />
+            <Text className="flex-1 ml-2 text-base text-text-primary">
+              {isLinked
+                ? t('calorieLink.linked', {
+                    defaultValue: 'Linked to a synced workout',
+                  })
+                : t('calorieLink.action', {
+                    defaultValue: 'Link a synced workout',
+                  })}
+            </Text>
+            <Icon name="chevron-forward" size={16} color={textMuted} />
+          </TouchableOpacity>
         )}
 
         {/* Pull back part of the scroll container's px-4 so the cards sit at
@@ -1103,6 +1296,24 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         selectedDate={isEditing ? formState.entryDate : normalizedDate}
         onSelectDate={setFormDate}
       />
+
+      {linkEntryId && (
+        <LinkSyncedWorkoutSheet
+          ref={linkSheetRef}
+          entryId={linkEntryId}
+          entryDate={normalizedDate}
+          onLinkChange={(resolution, applied) =>
+            setSession((current) => ({
+              ...current,
+              exercises: current.exercises.map((exercise) => ({
+                ...exercise,
+                calorie_link_resolution: resolution,
+                calories_applied: applied[exercise.id] ?? null,
+              })),
+            }))
+          }
+        />
+      )}
 
       <MetricColumnMenu
         anchor={metricMenu?.anchor ?? null}

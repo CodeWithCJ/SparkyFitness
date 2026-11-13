@@ -16,8 +16,11 @@ const at = (time: string): string => `${DAY}T${time}.000Z`;
 
 interface StoredSample {
   t: string;
-  bpm: number;
+  bpm?: number;
   ex?: string;
+  sl?: string;
+  site?: string;
+  celsius?: number;
 }
 
 const incoming = (time: string, bpm: number): FlatHealthSample => ({
@@ -108,6 +111,83 @@ describe('upsertSamplesByDay', () => {
     ]);
   });
 
+  it("keeps another site's samples inside the window and replaces its own", async () => {
+    // Fields are checked against the metric's schema, so this uses celsius.
+    // Wrist and body temperature share the provider's day row. Syncing only the
+    // wrist must not delete the body readings in the same span; a stored sample
+    // with no site predates the field and is replaced.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+          site: 'wrist',
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+        site: 'wrist',
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:15:00'), celsius: 35, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+    ]);
+  });
+
+  it('a write with no site replaces only untagged samples', async () => {
+    // An older app sends skin temperature without a site; it must not delete
+    // the wrist and body readings a newer one stored in the same span.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:15:00'), celsius: 35 },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+    ]);
+  });
+
   it("keeps another entry's samples that sit inside the window", async () => {
     stored = [
       { t: at('08:00:00'), bpm: 60 },
@@ -176,6 +256,67 @@ describe('upsertSamplesByDay', () => {
     expect(writtenSamples()).toEqual([{ t: at('09:00:00'), bpm: 105 }]);
   });
 
+  describe('keepLinked', () => {
+    it('keeps workout and sleep samples inside the window in merge mode', async () => {
+      stored = [
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('09:00:30'), bpm: 90 },
+        { t: at('09:00:40'), bpm: 55, sl: 'night-1' },
+        { t: at('12:00:00'), bpm: 70 },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [incoming('09:00:00', 58), incoming('09:01:00', 59)],
+        {
+          mode: 'merge',
+          window: {
+            startMs: Date.parse(at('09:00:00')),
+            endMs: Date.parse(at('09:01:00')),
+          },
+          keepLinked: true,
+        }
+      );
+
+      expect(writtenSamples()).toEqual([
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:00'), bpm: 58 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('09:00:40'), bpm: 55, sl: 'night-1' },
+        { t: at('09:01:00'), bpm: 59 },
+        { t: at('12:00:00'), bpm: 70 },
+      ]);
+    });
+
+    it('keeps workout and sleep samples of the day in replace mode', async () => {
+      stored = [
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('23:30:00'), bpm: 52, sl: 'night-1' },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [incoming('10:00:00', 72)],
+        { mode: 'replace', keepLinked: true }
+      );
+
+      expect(wasReadForUpdate()).toBe(true);
+      expect(writtenSamples()).toEqual([
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('10:00:00'), bpm: 72 },
+        { t: at('23:30:00'), bpm: 52, sl: 'night-1' },
+      ]);
+    });
+  });
+
   it('acquires multi-day merge locks in chronological order regardless of input order', async () => {
     // A multi-day workout (or a batch straddling midnight) can hand
     // upsertSamplesByDay its later day's samples before its earlier day's.
@@ -215,5 +356,172 @@ describe('upsertSamplesByDay', () => {
       return key.split(':')[2]; // `${userId}:${metric}:${entry_date}:${sourceProvider}`
     });
     expect(lockedDays).toEqual([day1, day2]);
+  });
+
+  describe('listed days without incoming samples', () => {
+    const day1 = '2026-08-03';
+    const day2 = '2026-08-04';
+    /** Rows the mocked `SELECT ... FOR UPDATE` reports, by entry_date. */
+    let storedByDay: Record<string, StoredSample[]>;
+
+    beforeEach(() => {
+      storedByDay = {};
+      mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+        if (sql.includes('FOR UPDATE')) {
+          const day = String(params?.[2]);
+          const samples = storedByDay[day];
+          return Promise.resolve({
+            rows: samples
+              ? [
+                  {
+                    id: `hms-${day}`,
+                    user_id: 'user-1',
+                    metric: 'heart_rate',
+                    entry_date: day,
+                    source_provider: 'xiaomi',
+                    device_name: null,
+                    samples,
+                  },
+                ]
+              : [],
+          });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+    });
+
+    /** entry_date -> samples of every upsert that was issued. */
+    function writtenByDay(): Record<string, StoredSample[]> {
+      const out: Record<string, StoredSample[]> = {};
+      for (const call of mockQuery.mock.calls) {
+        if (!String(call[0]).includes('INSERT INTO health_metric_samples')) {
+          continue;
+        }
+        const params = call[1] as unknown[];
+        out[String(params[2])] = JSON.parse(
+          String(params[5])
+        ) as StoredSample[];
+      }
+      return out;
+    }
+
+    const window = {
+      startMs: Date.parse(`${day1}T00:00:00.000Z`),
+      endMs: Date.parse(`${day2}T23:59:59.000Z`),
+    };
+
+    it('clears the window on a listed day the resend no longer covers', async () => {
+      // A first write stored readings on both days; the resend of the same
+      // window only carries day 1, so day 2's old readings must go too.
+      storedByDay[day1] = [{ t: `${day1}T09:00:00.000Z`, bpm: 60 }];
+      storedByDay[day2] = [{ t: `${day2}T09:00:00.000Z`, bpm: 61 }];
+
+      const written = await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [
+          {
+            entry_date: day1,
+            timestamp: new Date(`${day1}T10:00:00.000Z`),
+            bpm: 70,
+          },
+        ],
+        { mode: 'merge', window, days: [day1, day2] }
+      );
+
+      expect(written).toBe(2);
+      expect(writtenByDay()).toEqual({
+        [day1]: [{ t: `${day1}T10:00:00.000Z`, bpm: 70 }],
+        [day2]: [],
+      });
+    });
+
+    it('clears every listed day when the resend carries no samples at all', async () => {
+      // The client read the window and found nothing left, for example after
+      // the readings were deleted on the device.
+      storedByDay[day1] = [{ t: `${day1}T09:00:00.000Z`, bpm: 60 }];
+      storedByDay[day2] = [{ t: `${day2}T09:00:00.000Z`, bpm: 61 }];
+
+      const written = await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [],
+        { mode: 'merge', window, days: [day1, day2] }
+      );
+
+      expect(written).toBe(2);
+      expect(writtenByDay()).toEqual({ [day1]: [], [day2]: [] });
+    });
+
+    it('does not create a row for a listed day with nothing stored', async () => {
+      const written = await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [
+          {
+            entry_date: day1,
+            timestamp: new Date(`${day1}T10:00:00.000Z`),
+            bpm: 70,
+          },
+        ],
+        { mode: 'merge', window, days: [day1, day2] }
+      );
+
+      expect(written).toBe(1);
+      expect(Object.keys(writtenByDay())).toEqual([day1]);
+    });
+
+    it('keeps only linked samples on a listed day the resend no longer covers', async () => {
+      storedByDay[day2] = [
+        { t: `${day2}T09:00:00.000Z`, bpm: 61 },
+        { t: `${day2}T18:00:00.000Z`, bpm: 140, ex: 'workout-1' },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [
+          {
+            entry_date: day1,
+            timestamp: new Date(`${day1}T10:00:00.000Z`),
+            bpm: 70,
+          },
+        ],
+        { mode: 'merge', window, days: [day1, day2], keepLinked: true }
+      );
+
+      expect(writtenByDay()[day2]).toEqual([
+        { t: `${day2}T18:00:00.000Z`, bpm: 140, ex: 'workout-1' },
+      ]);
+    });
+
+    it('ignores listed days in replace mode', async () => {
+      storedByDay[day2] = [{ t: `${day2}T09:00:00.000Z`, bpm: 61 }];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'garmin',
+        [
+          {
+            entry_date: day1,
+            timestamp: new Date(`${day1}T10:00:00.000Z`),
+            bpm: 70,
+          },
+        ],
+        { mode: 'replace', days: [day1, day2] }
+      );
+
+      expect(Object.keys(writtenByDay())).toEqual([day1]);
+    });
   });
 });

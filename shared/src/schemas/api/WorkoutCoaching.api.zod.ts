@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from 'zod';
 import {
   WORKOUT_FEEDBACK_PAIN_NOTE_MAX_LENGTH,
   workoutFeedbackDifficultySchema,
-} from "../database/WorkoutFeedback.zod.ts";
+} from '../database/WorkoutFeedback.zod.ts';
 
 /**
  * `/v2/workout-coaching` — session feedback and the adaptive-suggestions
@@ -45,8 +45,8 @@ export const workoutFeedbackInputSchema = z
   })
   .strict()
   .refine((value) => value.pain || value.pain_note == null, {
-    message: "pain_note requires pain",
-    path: ["pain_note"],
+    message: 'pain_note requires pain',
+    path: ['pain_note'],
   });
 export type WorkoutFeedbackInput = z.input<typeof workoutFeedbackInputSchema>;
 
@@ -65,8 +65,8 @@ export const workoutExerciseFeedbackInputSchema = z
   })
   .strict()
   .refine((value) => value.pain || value.pain_note == null, {
-    message: "pain_note requires pain",
-    path: ["pain_note"],
+    message: 'pain_note requires pain',
+    path: ['pain_note'],
   });
 
 /**
@@ -84,7 +84,7 @@ export const updateWorkoutSessionFeedbackRequestSchema = z
     (value) =>
       new Set(value.exercises.map((e) => e.exercise_entry_id)).size ===
       value.exercises.length,
-    { message: "exercise_entry_id must be unique", path: ["exercises"] },
+    { message: 'exercise_entry_id must be unique', path: ['exercises'] }
   );
 export type UpdateWorkoutSessionFeedbackRequest = z.input<
   typeof updateWorkoutSessionFeedbackRequestSchema
@@ -139,9 +139,9 @@ export const workoutCoachingSignalsQuerySchema = z
       .string()
       .transform((value) =>
         value
-          .split(",")
+          .split(',')
           .map((item) => item.trim())
-          .filter(Boolean),
+          .filter(Boolean)
       )
       .pipe(z.array(z.string().uuid()).min(1).max(100)),
     excludePresetEntryId: z.string().uuid().optional(),
@@ -166,7 +166,7 @@ export const exerciseCoachingSignalSchema = z
      * `exercise` — pain was felt in this exercise. `session` — pain was
      * reported for the session without naming exercises.
      */
-    last_pain: z.enum(["exercise", "session"]).nullable(),
+    last_pain: z.enum(['exercise', 'session']).nullable(),
     too_easy_streak: z.number().int().min(0),
     too_hard_streak: z.number().int().min(0),
     pain_streak: z.number().int().min(0),

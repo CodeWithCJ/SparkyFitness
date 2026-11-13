@@ -111,7 +111,7 @@ struct EnergyGoalProvider: TimelineProvider {
 
 /// Mirror of `GoalPalette` in targets/watch — separate compiled targets can't
 /// share a constant, so if one changes, change both.
-private enum ComplicationPalette {
+enum ComplicationPalette {
     /// #8992DC, sampled off the phone's calorie ring. Sitting outside the
     /// macro hues entirely is deliberate: the inner calorie ring sits right
     /// against the outer macro ring here, and the previous `.green` was a
@@ -266,10 +266,11 @@ struct EnergyGoalComplicationEntryView: View {
             .widgetURL(ComplicationLink.goals.url)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-                "Calories \(percentText(entry.snapshot.calorieGoalProgress)) of goal. "
-                    + "Fat \(percentText(entry.snapshot.fatGoalProgress)), "
-                    + "carbs \(percentText(entry.snapshot.carbsGoalProgress)), "
-                    + "protein \(percentText(entry.snapshot.proteinGoalProgress)) of their goals."
+                String(
+                    localized: "watch.energy.accessibility",
+                    defaultValue:
+                        "Calories \(percentText(entry.snapshot.calorieGoalProgress)) of goal. Fat \(percentText(entry.snapshot.fatGoalProgress)), carbs \(percentText(entry.snapshot.carbsGoalProgress)), protein \(percentText(entry.snapshot.proteinGoalProgress)) of their goals."
+                )
             )
     }
 }

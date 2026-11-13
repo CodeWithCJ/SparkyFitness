@@ -298,7 +298,9 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     supersetWith,
     ungroupExercise,
     reorderExercises,
-  } = useDraftExerciseActions(dispatch, state.exercises);
+  } = useDraftExerciseActions(dispatch, state.exercises, {
+    preserveSetsOnReplace: true,
+  });
 
   const { clearPersistedDraft } = useDraftPersistence({
     state,

@@ -14,14 +14,14 @@
  */
 
 export const BodyFatAlgorithm = {
-  US_NAVY: "U.S. Navy",
-  BMI: "BMI Method",
+  US_NAVY: 'U.S. Navy',
+  BMI: 'BMI Method',
 } as const;
 
 export type BodyFatAlgorithm =
   (typeof BodyFatAlgorithm)[keyof typeof BodyFatAlgorithm];
 
-export type BodyFatGender = "male" | "female";
+export type BodyFatGender = 'male' | 'female';
 
 /** Constants for centimeter to inch conversion. */
 const CM_TO_INCH = 1 / 2.54;
@@ -40,12 +40,12 @@ export const calculateBodyFatNavy = (
   height: number, // in cm
   waist: number, // in cm
   neck: number, // in cm
-  hips?: number, // in cm, required for females
+  hips?: number // in cm, required for females
 ): number => {
-  if (gender === "male") {
+  if (gender === 'male') {
     if (!height || !waist || !neck)
       throw new Error(
-        "Height, waist, and neck measurements are required for males.",
+        'Height, waist, and neck measurements are required for males.'
       );
 
     const heightIn = height * CM_TO_INCH;
@@ -58,10 +58,10 @@ export const calculateBodyFatNavy = (
     const bfp =
       86.01 * Math.log10(logValue) - 70.041 * Math.log10(heightIn) + 36.76;
     return parseFloat(bfp.toFixed(1));
-  } else if (gender === "female") {
+  } else if (gender === 'female') {
     if (!height || !waist || !neck || !hips)
       throw new Error(
-        "Height, waist, neck, and hips measurements are required for females.",
+        'Height, waist, neck, and hips measurements are required for females.'
       );
 
     const heightIn = height * CM_TO_INCH;
@@ -88,18 +88,18 @@ export const calculateBodyFatBmi = (
   weight: number, // in kg
   height: number, // in cm
   age: number, // in years
-  gender: BodyFatGender,
+  gender: BodyFatGender
 ): number => {
   if (!weight || !height || !age || !gender) {
     throw new Error(
-      "Weight, height, age, and gender are required for BMI body fat calculation.",
+      'Weight, height, age, and gender are required for BMI body fat calculation.'
     );
   }
   const heightInMeters = height / 100;
   const bmi = weight / (heightInMeters * heightInMeters);
 
   let bfp: number;
-  if (gender === "male") {
+  if (gender === 'male') {
     bfp = 1.2 * bmi + 0.23 * age - 16.2;
   } else {
     // female

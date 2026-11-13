@@ -13,6 +13,8 @@ import { cancelFastGoalNotification } from './useFasting';
 import { fastingRootQueryKey } from './queryKeys';
 import { queryClient } from './queryClient';
 import { addLog } from '../services/LogService';
+import { getActiveServerConfigId } from '../services/storage';
+import { isPayloadForActiveServer } from '../services/watchServerCredentials';
 
 /**
  * Starts or ends a fast when the wearer asks from the watch's Fasting page.
@@ -32,12 +34,19 @@ export function useWatchFastingBridge(enabled: boolean): void {
     };
 
     const onStart = async (payload: WatchFastStartRequestPayload) => {
+      if (!(await isPayloadForActiveServer(payload))) return;
+      const expectedOwnerId =
+        payload.ownerId ?? (await getActiveServerConfigId()) ?? undefined;
       if (handledRef.current.has(payload.clientId)) return;
       handledRef.current.add(payload.clientId);
       try {
         const preset = FASTING_PRESETS.find((p) => p.id === payload.presetId);
         if (!preset) throw new Error(`Unknown preset ${payload.presetId}`);
         const current = await fetchCurrentFast();
+        if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
+          handledRef.current.delete(payload.clientId);
+          return;
+        }
         // A fast the server worked out from the user's meals is not a manual
         // one: it is always "current" while auto-calculation is on, so it must
         // not stop the wrist from starting a real fast.
@@ -61,10 +70,17 @@ export function useWatchFastingBridge(enabled: boolean): void {
     };
 
     const onEnd = async (payload: WatchFastEndRequestPayload) => {
+      if (!(await isPayloadForActiveServer(payload))) return;
+      const expectedOwnerId =
+        payload.ownerId ?? (await getActiveServerConfigId()) ?? undefined;
       if (handledRef.current.has(payload.clientId)) return;
       handledRef.current.add(payload.clientId);
       try {
         const current = await fetchCurrentFast();
+        if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
+          handledRef.current.delete(payload.clientId);
+          return;
+        }
         // A calculated fast has no row to end (the server cannot find its id), so
         // there is nothing to do; it ends by itself when the next meal is logged.
         if (current && !current.is_auto_calculated) {

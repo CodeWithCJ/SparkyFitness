@@ -5,7 +5,12 @@ import { useMedications, useMedicationEntries } from '../hooks/useMedications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getTodayDate } from '../utils/dateUtils';
 import { reconcileMedicationReminders } from '../services/medicationReminderService';
-import { maybePromptForExactAlarmPermission } from '../services/notifications';
+import {
+  maybePromptForExactAlarmPermission,
+  registerLocalizedNotificationPresentation,
+} from '../services/notifications';
+import { syncMedicationActiveUser } from '../services/backgroundWater';
+import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeSync';
 import { addLog } from '../services/LogService';
 import i18n from '../localization/i18n';
 
@@ -24,6 +29,9 @@ const MedicationReminderReconciler: React.FC = () => {
   );
   const medicationReminderConsolidate = useAppPreferencesStore(
     (s) => s.medicationReminderConsolidate
+  );
+  const medicationReminderSnoozeMinutes = useAppPreferencesStore(
+    (s) => s.medicationReminderSnoozeMinutes
   );
   const remindersActive = medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);
@@ -44,6 +52,27 @@ const MedicationReminderReconciler: React.FC = () => {
     toDate: today,
     enabled: remindersActive,
   });
+
+  useEffect(() => {
+    syncNativeMedicationSnoozeMinutes();
+  }, [medicationReminderSnoozeMinutes]);
+
+  // The iOS native handler logs a reminder's Taken / Skip only for the account
+  // the device is signed in to; the medications' owner is the only identity
+  // available here.
+  const activeUserId = medications?.find((m) => m.user_id)?.user_id ?? null;
+  useEffect(() => {
+    if (activeUserId) void syncMedicationActiveUser(activeUserId);
+  }, [activeUserId, medications]);
+
+  useEffect(() => {
+    void registerLocalizedNotificationPresentation().catch((error) => {
+      addLog(
+        `Failed to update notification categories: ${(error as Error).message}`,
+        'WARNING'
+      );
+    });
+  }, [medicationReminderSnoozeMinutes, languageRevision]);
 
   useEffect(() => {
     if (remindersActive && (isLoadingMeds || isLoadingEntries)) return;

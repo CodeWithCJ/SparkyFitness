@@ -2,7 +2,7 @@ manifestVersion: 1
 id: sparkyfitness
 category: files
 name: SparkyFitness
-version: "v1.8.0"
+version: "v1.12.1"
 tagline: Self-hosted nutrition, exercise, and body metrics tracker
 description: >-
   🥗 SparkyFitness is a self-hosted alternative to MyFitnessPal for tracking
@@ -40,31 +40,11 @@ description: >-
   Online food databases and AI features are off until you add your own
   credentials in the app's settings; nothing is sent anywhere by default.
 releaseNotes: >-
-  - Refresh food information from data provider API
+  - **adaptive-tdee:** isolate delegated caches and guard details ([#3497](https://github.com/CodeWithCJ/SparkyFitness/issues/3497)) ([80418b5](https://github.com/CodeWithCJ/SparkyFitness/commit/80418b52c0791b422911ccad8d986d12e138683e))
 
-  - Add Umbrel App Store package and release automation
+  - **mobile:** stop Calorie Settings crashing on iOS ([#3505](https://github.com/CodeWithCJ/SparkyFitness/issues/3505)) ([ef3c824](https://github.com/CodeWithCJ/SparkyFitness/commit/ef3c824e89c9a23873659bbdff345fecc379c39a))
 
-  - Draw cardio routes over a map
-
-  - Let one instance run the scheduled jobs when scaled out
-
-  - Run scheduled jobs on one replica when server.replicas > 1
-
-  - Add Calories graph to Health Trends and make Sleep graph consistent with other graphs
-
-  - Rest chime through silent mode, wrist buzz at rest end
-
-  - Derive versions from Conventional Commits with release-please
-
-  - Share sign-in rate limits across server instances
-
-  - Open the watch app on the workout page when a workout starts
-
-  - Tap feedback on every watch button
-
-  - Let admins turn off passkey login
-
-  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.8.0
+  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.12.1
 
 developer: CodeWithCJ
 website: https://codewithcj.github.io/SparkyFitness/

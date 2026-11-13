@@ -36,6 +36,7 @@ jest.mock('@/utils/logging', () => ({
 jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
 
 jest.mock('lucide-react', () => ({
+  ...jest.requireActual('lucide-react'),
   Trash2: () => <span data-testid="icon-delete" />,
   Edit: () => <span data-testid="icon-edit" />,
   Save: () => <span data-testid="icon-save" />,

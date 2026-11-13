@@ -8,6 +8,7 @@ import type {
   SymptomEntryResponse,
   SymptomEpisodeContext,
   SymptomFreeDayResponse,
+  SymptomImpact,
   SymptomOptionKind,
   SymptomOptionResponse,
   SymptomPhotoResponse,
@@ -23,6 +24,11 @@ export interface SymptomEntryFilters {
   medicationId?: string;
   source?: string;
   episodesOnly?: boolean;
+  /**
+   * Also return episodes that overlap the range without being logged in it,
+   * such as one that started the month before. Older servers ignore it.
+   */
+  overlapping?: boolean;
 }
 
 // --- Definitions -------------------------------------------------------------
@@ -89,11 +95,13 @@ export const endSymptomEpisode = (
 
 export const addSymptomSeverity = (
   id: string,
-  severity: number
+  severity: number,
+  impact?: SymptomImpact
 ): Promise<SymptomEntryResponse> =>
   apiCall(`/v2/symptoms/entries/${id}/severity`, {
     method: 'POST',
-    body: { severity },
+    // Impact goes along only when chosen, so the reading alone stays as before.
+    body: impact ? { severity, impact } : { severity },
   });
 
 export const deleteSymptomEntry = (id: string): Promise<void> =>

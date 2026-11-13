@@ -5,7 +5,6 @@ import logging
 import math
 import os
 import re
-import time
 from datetime import date, timedelta
 
 logging.basicConfig(level=logging.DEBUG)
@@ -99,10 +98,6 @@ def project_daily_calorie_metrics(summary_data, current_date, requested_metrics)
     }
 
 
-MFA_STATE_STORE: dict[str, dict] = {}
-MFA_TTL_SECONDS = 5 * 60  # 5 minutes
-
-
 def safe_convert(value, conversion_func):
     """Safely apply a conversion function to a value, returning None if the value is None."""
     return conversion_func(value) if value is not None else None
@@ -121,15 +116,6 @@ def meters_to_km(m):
 def seconds_to_minutes(s):
     """Convert seconds to minutes."""
     return s / 60.0
-
-
-def _cleanup_mfa_cache():
-    now = time.time()
-    to_delete = [
-        token for token, v in MFA_STATE_STORE.items() if now - v["ts"] > MFA_TTL_SECONDS
-    ]
-    for t in to_delete:
-        MFA_STATE_STORE.pop(t, None)
 
 
 def get_dates_in_range(start_date_str, end_date_str):
@@ -176,8 +162,7 @@ def clean_garmin_data(data):
             return None
         return cleaned_dict
     elif isinstance(data, list):
-        cleaned_list = [clean_garmin_data(item) for item in data]
-        return [item for item in cleaned_list if item is not None]
+        return [clean_garmin_data(item) for item in data]
     elif isinstance(data, str):
         # Attempt to parse string as JSON, handling non-standard escapes
         try:

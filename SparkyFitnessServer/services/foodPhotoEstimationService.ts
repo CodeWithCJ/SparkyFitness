@@ -1,4 +1,5 @@
 import chatRepository from '../models/chatRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import {
   dispatchAiRequest,
@@ -52,7 +53,7 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
           name: {
             type: 'string',
             description:
-              "Specific food name, e.g. 'grilled chicken thigh', 'white jasmine rice', 'steamed broccoli'",
+              "Specific food name only, as it would appear on a label or in a diary entry (never a full sentence or photo description), e.g. 'grilled chicken thigh', 'white jasmine rice', 'steamed broccoli'",
           },
           canonical_name: {
             type: 'string',
@@ -301,12 +302,34 @@ const DISPATCH_ERROR_TO_CODE = {
   parse_error: 'PARSE_ERROR',
 } satisfies Record<DispatchErrorCategory, FoodPhotoEstimateErrorCode>;
 
+const languageDisplayNames = new Intl.DisplayNames(['en'], {
+  type: 'language',
+});
+
+function resolveLanguageLabel(rawLanguage?: string | null): string {
+  const trimmed = rawLanguage?.trim();
+  if (!trimmed) return 'English';
+  const tag = trimmed.replaceAll('_', '-');
+  if (/^en(?:-[a-z0-9]+)*$/i.test(tag)) return 'English';
+  try {
+    const displayName = languageDisplayNames.of(tag);
+    if (displayName && displayName.toLowerCase() !== tag.toLowerCase()) {
+      return `${displayName} (${tag})`;
+    }
+  } catch {
+    // Fall through to English when Intl.DisplayNames rejects a non-BCP47 tag.
+  }
+  return 'English';
+}
+
 function buildPrompt(
   description: string,
   weight: string,
-  imageCount: number
+  imageCount: number,
+  language?: string | null
 ): string {
   const multiImage = imageCount > 1;
+  const languageLabel = resolveLanguageLabel(language);
   const intro = multiImage
     ? `You are a nutrition estimation assistant. Analyze the ${imageCount} provided photos and return
 structured nutrition data. The photos all show ONE meal, not separate meals. They may include
@@ -331,9 +354,19 @@ Rules:
     proportionally to your visual estimate, then recalculate nutrition.
   - Break mixed dishes into component ingredients when reasonable (e.g. a
     burrito → tortilla, rice, beans, meat, cheese, salsa).
+  - The "name" field must be ONLY the food name, as it would appear on a label
+    or in a diary entry — never a sentence or a description of the ${visualSource}.
+    Include the brand only when it is printed on the food's own packaging (not on
+    mugs, plates, or restaurant decor). Put plating details and context in
+    "portion_description" and "assumptions" instead.
   - Give every item a canonical_name as well as its display name: the plain
     generic food noun, with preparation adjectives, brands, and quantities
     removed. It is used to look the item up in a food database.
+  - Write all user-facing text fields ("meal_summary", "confidence_reason",
+    item "name", "canonical_name", "portion_description", "preparation",
+    "assumptions", "user_weight_reconciliation", and "clarifying_questions")
+    in ${languageLabel}, including foods whose common name you know in English.
+    Keep enum fields ("overall_confidence" and "item_confidence") in English ("high", "medium", "low").
   - Populate the micronutrients (saturated/poly/mono/trans fat, cholesterol,
     sodium, potassium, calcium, iron, vitamin A, vitamin C) from the typical
     composition of each food. Estimate them; do not default them to 0 just
@@ -534,7 +567,7 @@ function titleCaseFoodName(value: string): string {
       wordIndex += 1;
       // A word the model already capitalised (a brand, an acronym) is left
       // exactly as written.
-      if (/[A-Z]/.test(part)) return part;
+      if (/\p{Lu}/u.test(part)) return part;
       if (
         !isFirstWord &&
         TITLE_CASE_MINOR_WORDS.has(part.replace(/[^a-z]/g, ''))
@@ -543,7 +576,7 @@ function titleCaseFoodName(value: string): string {
       }
       // Capitalise after a hyphen or slash too: "sun-dried" -> "Sun-Dried".
       return part.replace(
-        /(^|[-/])([a-z])/g,
+        /(^|[-/])(\p{Ll})/gu,
         (_match, separator: string, letter: string) =>
           separator + letter.toUpperCase()
       );
@@ -677,6 +710,18 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
+  let userLanguage: string | null | undefined;
+  try {
+    const prefs = await preferenceRepository.getUserPreferences(userId);
+    userLanguage = prefs?.language;
+  } catch (err) {
+    log(
+      'warn',
+      `Food-photo estimation: failed to load language preference for user ${userId}, defaulting to English`,
+      err
+    );
+  }
+
   // Dispatch reads everything from the decrypted backend detail. The helper
   // enforces the supported-provider, api-key, custom-url, and HEIC checks and
   // reports each as a category we map back to a food-photo error code.
@@ -693,7 +738,7 @@ async function estimateFoodPhotoNutrition(
       aiService,
       Boolean(input.actorIsAdmin)
     ),
-    prompt: buildPrompt(description, weightSlot, images.length),
+    prompt: buildPrompt(description, weightSlot, images.length, userLanguage),
     images,
     jsonSchema: RESPONSE_SCHEMA,
     schemaName: SCHEMA_NAME,

@@ -1,5 +1,6 @@
 import {
   compareByEntryTime,
+  deriveWorkoutSessionStatus,
   earliestEntryTime,
   localDateToDay,
   presetSessionResponseSchema,
@@ -21,6 +22,41 @@ function _dateToString(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return localDateToDay(value);
   return String(value);
+}
+
+/** Convert a pg timestamptz value to an ISO 8601 string, or return null. */
+function _timestampToIso(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/**
+ * Derived lifecycle fields of one preset session (#1995 phase 1). Status is
+ * computed from the same rows that define it, never stored: plan-generated or
+ * plan-linked and untouched -> planned; any checked-off set and not finished ->
+ * in_progress; finished -> partial/completed by set completion; everything a
+ * user logged directly (forms, imports, provider syncs) -> completed.
+ */
+function _deriveLifecycleFields(
+  source: string | null,
+  finishedAt: unknown,
+  hasPlanAssignment: boolean,
+  sets: readonly { completed_at?: string | null }[]
+): {
+  status: ReturnType<typeof deriveWorkoutSessionStatus>;
+  finished_at: string | null;
+} {
+  const finishedAtIso = _timestampToIso(finishedAt);
+  return {
+    status: deriveWorkoutSessionStatus({
+      source,
+      finishedAt: finishedAtIso,
+      hasPlanAssignment,
+      sets,
+    }),
+    finished_at: finishedAtIso,
+  };
 }
 
 /** Parse a JSON string field into a string array, returning null on failure or missing input.
@@ -90,6 +126,7 @@ const SETS_SUBQUERY = `COALESCE(
      SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
             ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir,
             to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at,
+            to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at,
             ees.is_pr, ees.distance
      FROM exercise_entry_sets ees
      WHERE ees.exercise_entry_id = ee.id
@@ -277,7 +314,8 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT id, workout_preset_id, name, description, notes, source, location
+          `SELECT id, workout_preset_id, name, description, notes, source, location,
+                  finished_at, revision
            FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
           [presetIds]
         )
@@ -418,6 +456,16 @@ async function getExerciseEntryHistorySessions(
         (sum, c) => sum + (c.duration_minutes ?? 0),
         0
       );
+      const lifecycle = _deriveLifecycleFields(
+        meta.source as string,
+        meta.finished_at,
+        children.some(
+          (c) =>
+            c.workout_plan_assignment_id !== null &&
+            c.workout_plan_assignment_id !== undefined
+        ),
+        children.flatMap((c) => c.sets ?? [])
+      );
       sessions.push({
         type: 'preset' as const,
         id: meta.id as string,
@@ -428,6 +476,9 @@ async function getExerciseEntryHistorySessions(
         notes: (meta.notes as string) ?? null,
         location: (meta.location as string) ?? null,
         source: meta.source as string,
+        status: lifecycle.status,
+        finished_at: lifecycle.finished_at,
+        revision: Number(meta.revision ?? 1),
         total_duration_minutes: totalDuration,
         exercises: children,
         activity_details: presetDetails,
@@ -520,7 +571,8 @@ async function _getExerciseEntriesByDateWithClient(
   // Fetch preset entries and all exercise entries for the date in parallel
   const [presetResult, entriesResult] = await Promise.all([
     client.query(
-      `SELECT id, workout_preset_id, name, description, notes, source, location, created_at
+      `SELECT id, workout_preset_id, name, description, notes, source, location, created_at,
+             finished_at, revision
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -707,6 +759,13 @@ async function _getExerciseEntriesByDateWithClient(
             c.workout_plan_assignment_id !== undefined
         )?.workout_plan_assignment_id ?? null;
 
+      const lifecycle = _deriveLifecycleFields(
+        presetRow.source as string,
+        presetRow.finished_at,
+        (childAssignmentId ?? null) !== null,
+        children.flatMap((c) => c.sets ?? [])
+      );
+
       sessions.push({
         type: 'preset' as const,
         id: stub.id,
@@ -718,6 +777,9 @@ async function _getExerciseEntriesByDateWithClient(
         notes: (presetRow.notes as string) ?? null,
         location: (presetRow.location as string) ?? null,
         source: presetRow.source as string,
+        status: lifecycle.status,
+        finished_at: lifecycle.finished_at,
+        revision: Number(presetRow.revision ?? 1),
         total_duration_minutes: totalDuration,
         exercises: children,
         activity_details: presetDetails,
@@ -761,10 +823,15 @@ export async function getGroupedExerciseSessionByIdWithClient(
   presetEntryId: string,
   lockExerciseEntries = false
 ): Promise<PresetSessionResponse | null> {
+  // The session row is locked before its exercises because every other
+  // writer of the session (a date move, a delete) takes it first; taking the
+  // exercises first deadlocks against them.
   const metaResult = await client.query(
-    `SELECT id, workout_preset_id, name, description, notes, source, entry_date, location
+    `SELECT id, workout_preset_id, name, description, notes, source, entry_date, location,
+           finished_at, revision
      FROM exercise_preset_entries
-     WHERE user_id = $1 AND id = $2`,
+     WHERE user_id = $1 AND id = $2
+     ${lockExerciseEntries ? 'FOR NO KEY UPDATE' : ''}`,
     [targetUserId, presetEntryId]
   );
 
@@ -834,6 +901,15 @@ export async function getGroupedExerciseSessionByIdWithClient(
 
   const meta = metaResult.rows[0] as Record<string, unknown>;
 
+  const lifecycle = _deriveLifecycleFields(
+    meta.source as string,
+    meta.finished_at,
+    exercises.some(
+      (exercise) => (exercise.workout_plan_assignment_id ?? null) !== null
+    ),
+    exercises.flatMap((exercise) => exercise.sets ?? [])
+  );
+
   return presetSessionResponseSchema.parse({
     type: 'preset',
     id: meta.id as string,
@@ -844,6 +920,9 @@ export async function getGroupedExerciseSessionByIdWithClient(
     notes: (meta.notes as string) ?? null,
     location: (meta.location as string) ?? null,
     source: meta.source as string,
+    status: lifecycle.status,
+    finished_at: lifecycle.finished_at,
+    revision: Number(meta.revision ?? 1),
     total_duration_minutes: exercises.reduce(
       (sum, exercise) => sum + (exercise.duration_minutes ?? 0),
       0

@@ -12,6 +12,10 @@ import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
+import * as oralCareRepository from '../models/oralCareRepository.js';
+import moodRepository from '../models/moodRepository.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { upsertSamplesByDay } from '../services/healthMetricSampleWriter.js';
 import type { WaterContainerResponse } from '@workspace/shared';
 
 vi.mock('../models/measurementRepository.js', () => ({
@@ -30,8 +34,25 @@ vi.mock('../models/waterContainerRepository.js', () => ({
 vi.mock('../models/genericHealthRepository.js', () => ({
   upsertDailyHealthMetrics: vi.fn(),
 }));
+vi.mock('../models/moodRepository.js', () => ({
+  default: {
+    upsertDerivedMood: vi.fn(),
+    createCheckin: vi.fn(),
+    listCustomMoods: vi.fn().mockResolvedValue([]),
+    createCustomMood: vi.fn(),
+  },
+}));
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn().mockResolvedValue('UTC'),
+}));
 vi.mock('../models/mindfulnessRepository.js', () => ({
   createMindfulnessSession: vi.fn(),
+}));
+vi.mock('../models/oralCareRepository.js', () => ({
+  upsertOralCareSession: vi.fn(),
+}));
+vi.mock('../services/healthMetricSampleWriter.js', () => ({
+  upsertSamplesByDay: vi.fn(),
 }));
 
 // Guards the registry against alias drift: every case label from the old
@@ -88,6 +109,7 @@ describe('health data handler registry', () => {
     ['RestingHeartRate', 'resting_heart_rate'],
     ['vo2_max', 'vo2_max'],
     ['Vo2Max', 'vo2_max'],
+    ['skin_temperature', 'skin_temperature'],
   ])("resolves '%s' to the '%s' handler", (rawType, canonicalKey) => {
     expect(resolveHandler(rawType)).toBe(HEALTH_TYPE_HANDLERS[canonicalKey]);
   });
@@ -909,5 +931,329 @@ describe('daily summary readings (resting heart rate, VO2 max)', () => {
         vo2_max: 43.3,
       },
     ]);
+  });
+});
+
+describe('moodHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS.Mood;
+  const ctx = {
+    userId: 'user-123',
+    actingUserId: 'acting-456',
+    parsedDate: '2026-10-05',
+    entryTimestamp: '2026-10-05T10:00:00.000Z',
+    entryHour: 10,
+    resolveCategory: vi.fn(),
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("stores the import as the day's derived import row", async () => {
+    const row = { id: 'mood-1', source: 'import' };
+    vi.mocked(moodRepository.upsertDerivedMood).mockResolvedValue(row as never);
+
+    const result = await handler.handle(
+      { type: 'Mood', value: '70', notes: 'ok', mood_tags: ['Happy'] },
+      ctx
+    );
+
+    expect(result).toEqual({ status: 'success', data: row });
+    expect(moodRepository.upsertDerivedMood).toHaveBeenCalledWith(
+      'user-123',
+      'import',
+      {
+        moodValue: 70,
+        notes: 'ok',
+        moodTags: ['Happy'],
+        entryDate: '2026-10-05',
+        entryTimestamp: '2026-10-05T10:00:00.000Z',
+      }
+    );
+  });
+
+  it('stamps a record dated by day alone at local noon, not UTC midnight', async () => {
+    vi.mocked(moodRepository.upsertDerivedMood).mockResolvedValue({} as never);
+    vi.mocked(loadUserTimezone).mockResolvedValueOnce('America/Chicago');
+
+    // A CSV row: resolveHealthEntryDate stamps a day-only date at UTC
+    // midnight, which is the evening before in Chicago.
+    await handler.handle(
+      { type: 'Mood', value: '70', date: '2026-10-05' },
+      { ...ctx, entryTimestamp: '2026-10-05T00:00:00.000Z' }
+    );
+
+    expect(
+      vi.mocked(moodRepository.upsertDerivedMood).mock.calls[0]![2]
+        .entryTimestamp
+    ).toEqual(new Date('2026-10-05T17:00:00.000Z'));
+  });
+
+  it('keeps the time a record carries of its own', async () => {
+    vi.mocked(moodRepository.upsertDerivedMood).mockResolvedValue({} as never);
+
+    await handler.handle(
+      {
+        type: 'Mood',
+        value: '70',
+        date: '2026-10-05',
+        timestamp: '2026-10-05T10:00:00Z',
+      },
+      ctx
+    );
+
+    expect(
+      vi.mocked(moodRepository.upsertDerivedMood).mock.calls[0]![2]
+        .entryTimestamp
+    ).toBe('2026-10-05T10:00:00.000Z');
+    expect(loadUserTimezone).not.toHaveBeenCalled();
+  });
+
+  it('routes every re-import of the same day to the import derived upsert', async () => {
+    vi.mocked(moodRepository.upsertDerivedMood).mockResolvedValue({} as never);
+    const entry = { type: 'Mood', value: '70' };
+
+    await handler.handle(entry, ctx);
+    await handler.handle(entry, ctx);
+
+    expect(moodRepository.upsertDerivedMood).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(moodRepository.upsertDerivedMood).mock.calls) {
+      expect(call[1]).toBe('import');
+      expect(call[2].entryDate).toBe('2026-10-05');
+    }
+    expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+  });
+});
+
+describe('skinTemperatureHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS['skin_temperature'];
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+    parsedDate: '2026-08-23',
+    entryTimestamp: '2026-08-23T07:30:00.000Z',
+    entryHour: 7,
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.mocked(upsertSamplesByDay).mockReset();
+    vi.mocked(upsertSamplesByDay).mockResolvedValue(1);
+  });
+
+  it('stores a reading as a skin_temperature sample on the wake day', async () => {
+    const outcome = await handler.handle(
+      { type: 'skin_temperature', value: 35.126, source: 'HealthKit' },
+      ctx
+    );
+
+    expect(outcome.status).toBe('success');
+    expect(upsertSamplesByDay).toHaveBeenCalledTimes(1);
+    const [userId, actingUserId, metric, provider, samples, options] =
+      vi.mocked(upsertSamplesByDay).mock.calls[0];
+    expect([userId, actingUserId, metric, provider]).toEqual([
+      'user-1',
+      'actor-1',
+      'skin_temperature',
+      'healthkit',
+    ]);
+    expect(samples).toEqual([
+      expect.objectContaining({
+        entry_date: '2026-08-23',
+        celsius: 35.13,
+        timestamp: new Date('2026-08-23T07:30:00.000Z'),
+      }),
+    ]);
+    expect(options).toMatchObject({ mode: 'merge' });
+  });
+
+  it.each([['abc'], [''], [12], [60]])(
+    'rejects the out-of-range value %j without writing',
+    async (value) => {
+      const outcome = await handler.handle(
+        { type: 'skin_temperature', value, source: 'HealthKit' },
+        ctx
+      );
+
+      expect(outcome.status).toBe('error');
+      expect(upsertSamplesByDay).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps the measurement site and refuses an unknown one', async () => {
+    await handler.handle(
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'wrist',
+      },
+      ctx
+    );
+    const refused = await handler.handle(
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'ear',
+      },
+      ctx
+    );
+
+    const calls = vi.mocked(upsertSamplesByDay).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][4][0]).toMatchObject({ site: 'wrist' });
+    expect(refused).toEqual({
+      status: 'error',
+      error: 'Invalid skin temperature site: ear',
+    });
+  });
+
+  it('writes a batch once per source and reports each entry in order', async () => {
+    const entries = [
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'wrist',
+      },
+      { type: 'skin_temperature', value: 99, source: 'HealthKit' },
+      { type: 'skin_temperature', value: 33.8, source: 'Oura' },
+      {
+        type: 'skin_temperature',
+        value: 36.4,
+        source: 'HealthKit',
+        site: 'body',
+      },
+    ].map((entry) => ({
+      entry,
+      parsedDate: '2026-08-23',
+      entryTimestamp: '2026-08-23T07:30:00.000Z',
+      entryHour: 7,
+    }));
+
+    const outcomes = await handler.handleBatch!(entries, ctx);
+
+    expect(outcomes.map((o) => o.status)).toEqual([
+      'success',
+      'error',
+      'success',
+      'success',
+    ]);
+    // One write per provider and site, each replacing only its own site.
+    const calls = vi.mocked(upsertSamplesByDay).mock.calls;
+    expect(calls).toHaveLength(3);
+    const writes = calls.map((call) => ({
+      provider: call[3],
+      celsius: call[4].map((sample) => sample.celsius),
+      site: call[5]?.site,
+    }));
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        { provider: 'healthkit', celsius: [34.1], site: 'wrist' },
+        { provider: 'healthkit', celsius: [36.4], site: 'body' },
+        expect.objectContaining({ celsius: [33.8], site: undefined }),
+      ])
+    );
+  });
+
+  it('reports an error when the write fails', async () => {
+    vi.mocked(upsertSamplesByDay).mockRejectedValue(new Error('db down'));
+
+    const outcome = await handler.handle(
+      { type: 'skin_temperature', value: 35, source: 'HealthKit' },
+      ctx
+    );
+
+    expect(outcome).toEqual({
+      status: 'error',
+      error: 'Failed to store skin temperature: db down',
+    });
+  });
+});
+
+describe('toothbrushingHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS.Toothbrushing!;
+  const ctx = {
+    userId: 'user-123',
+    actingUserId: 'acting-456',
+    parsedDate: '2026-11-08',
+    entryTimestamp: '2026-11-08T08:00:00.000Z',
+    entryHour: 8,
+    resolveCategory: vi.fn(),
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(oralCareRepository.upsertOralCareSession).mockResolvedValue(
+      {} as never
+    );
+  });
+
+  it.each([
+    'Toothbrushing',
+    'ToothbrushingEvent',
+    'HKCategoryTypeIdentifierToothbrushingEvent',
+    'toothbrushing',
+  ])("resolves '%s' to the toothbrushing handler", (type) => {
+    expect(resolveHandler(type)).toBe(handler);
+  });
+
+  it('stores a synced brush keyed by its sample id, with the duration from its times', async () => {
+    const result = await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:00:00.000Z',
+        endTime: '2026-11-08T08:02:10.000Z',
+        source: 'HealthKit',
+        source_id: 'hk-uuid-1',
+      },
+      ctx
+    );
+    expect(result.status).toBe('success');
+    expect(oralCareRepository.upsertOralCareSession).toHaveBeenCalledWith(
+      'user-123',
+      {
+        entry_date: '2026-11-08',
+        start_time: '2026-11-08T08:00:00.000Z',
+        end_time: '2026-11-08T08:02:10.000Z',
+        duration_seconds: 130,
+        care_type: 'brushing',
+        custom_label: null,
+        provider: 'HealthKit',
+        external_id: 'hk-uuid-1',
+        notes: null,
+      },
+      'acting-456'
+    );
+  });
+
+  it('refuses an end time before the start time', async () => {
+    const result = await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:02:00.000Z',
+        endTime: '2026-11-08T08:00:00.000Z',
+        source_id: 'hk-uuid-2',
+      },
+      ctx
+    );
+    expect(result.status).toBe('error');
+    expect(oralCareRepository.upsertOralCareSession).not.toHaveBeenCalled();
+  });
+
+  it('drops an implausible duration but keeps the brush', async () => {
+    await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:00:00.000Z',
+        endTime: '2026-11-08T10:00:00.000Z',
+        source_id: 'hk-uuid-3',
+      },
+      ctx
+    );
+    expect(
+      vi.mocked(oralCareRepository.upsertOralCareSession).mock.calls[0]![1]
+        .duration_seconds
+    ).toBeNull();
   });
 });

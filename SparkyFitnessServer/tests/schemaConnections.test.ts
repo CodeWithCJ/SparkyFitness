@@ -5,8 +5,8 @@ import { applyRlsPolicies } from '../utils/applyRlsPolicies.js';
 import { grantPermissions } from '../db/grantPermissions.js';
 
 const { borrowed, supplied, connect, probeConnect } = vi.hoisted(() => ({
-  borrowed: { query: vi.fn(), release: vi.fn() },
-  supplied: { query: vi.fn(), release: vi.fn() },
+  borrowed: { query: vi.fn(), release: vi.fn(), escapeLiteral: vi.fn() },
+  supplied: { query: vi.fn(), release: vi.fn(), escapeLiteral: vi.fn() },
   connect: vi.fn(),
   probeConnect: vi.fn(),
 }));
@@ -32,6 +32,15 @@ vi.mock('fs', () => ({
   },
 }));
 
+// The migration file and its schema_migrations record go in one query.
+const migrationSql =
+  "BEGIN;\nSELECT 1;\n;\nINSERT INTO system.schema_migrations (name) VALUES ('example.sql');\nCOMMIT;";
+
+// The policy file, then its rls_policy_state record, in one transaction.
+const rlsSql = expect.stringMatching(
+  /^BEGIN;\nSET LOCAL lock_timeout = \d+;\nSELECT 1;\n;\nINSERT INTO system\.rls_policy_state [\s\S]*\nCOMMIT;$/
+);
+
 beforeEach(() => {
   vi.resetAllMocks();
   // Probe succeeds: the application role's password still authenticates, so
@@ -40,6 +49,9 @@ beforeEach(() => {
   connect.mockResolvedValue(borrowed);
   borrowed.query.mockResolvedValue({ rows: [], rowCount: 1 });
   supplied.query.mockResolvedValue({ rows: [], rowCount: 1 });
+  for (const client of [borrowed, supplied]) {
+    client.escapeLiteral.mockImplementation((value: string) => `'${value}'`);
+  }
   vi.stubEnv('SPARKY_FITNESS_APP_DB_USER', 'test_app');
   vi.spyOn(process, 'exit').mockImplementation(() => {
     throw new Error('Process exited');
@@ -52,8 +64,8 @@ afterEach(() => {
 });
 
 describe.each([
-  { name: 'migrations', run: applyMigrations, sql: 'SELECT 1;' },
-  { name: 'RLS policies', run: applyRlsPolicies, sql: 'SELECT 1;' },
+  { name: 'migrations', run: applyMigrations, sql: migrationSql },
+  { name: 'RLS policies', run: applyRlsPolicies, sql: rlsSql },
   {
     name: 'permissions',
     run: grantPermissions,
@@ -118,7 +130,7 @@ describe('migration permissions', () => {
         )
       ).rejects.toBe(error);
 
-      expect(client.query).toHaveBeenCalledWith('SELECT 1;');
+      expect(client.query).toHaveBeenCalledWith(migrationSql);
       expect(client.query).toHaveBeenCalledWith(
         'GRANT USAGE ON SCHEMA public TO "test_app"'
       );

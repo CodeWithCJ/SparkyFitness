@@ -1,5 +1,5 @@
-import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import React, { type ComponentProps } from 'react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   findHeaderItemByAccessibilityLabel,
   pressActionByAccessibilityLabel,
@@ -7,17 +7,53 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
+import { FooterSaveBar } from '../../src/components/FormScreenChrome';
 import { useMealTypes, useToggleFavorite } from '../../src/hooks';
 import {
   useCreateFoodVariant,
   useFoodVariants,
 } from '../../src/hooks/useFoodVariants';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
+import { QueryClientProvider } from '@tanstack/react-query';
+import * as foodsApi from '../../src/services/api/foodsApi';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
+import { consumePendingRecipeImportSelection } from '../../src/services/recipeImportSelection';
+import { consumePendingActionTagSelection } from '../../src/services/actionTagSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
+import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
+import { foodItemToFoodInfo, mealToFoodInfo } from '../../src/types/foodInfo';
+import type { FoodInfoItem } from '../../src/types/foodInfo';
+import type { FoodItem } from '../../src/types/foods';
+import type { MealFood } from '../../src/types/meals';
+import type {
+  RootStackParamList,
+  RootStackScreenProps,
+} from '../../src/types/navigation';
+import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
+
+jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual('../../src/hooks/useRecipeImport'),
+  useRecipeImportAccess: () => mockRecipeScope,
+}));
+let mockRecipeScope: string | null = 'owner-server';
+let mockUseRealStepperInput = false;
+const mockRecipeClient = new (jest.requireActual(
+  '@tanstack/react-query'
+).QueryClient)();
+const mockBarcodeSources = jest.fn();
+jest.mock('../../src/components/BarcodeSources', () => ({
+  __esModule: true,
+  default: (props: {
+    context: BarcodeLookupContext;
+    onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+  }) => {
+    mockBarcodeSources(props);
+    return null;
+  },
+}));
 
 const mockPop = jest.fn((count: number) => ({
   type: 'POP',
@@ -25,19 +61,29 @@ const mockPop = jest.fn((count: number) => ({
 }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 
+type FoodEntryNavigation = RootStackScreenProps<'FoodEntryAdd'>['navigation'];
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
   setParams: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
-} as any;
+  isFocused: jest.fn(() => true),
+  addListener: jest.fn<
+    ReturnType<FoodEntryNavigation['addListener']>,
+    Parameters<FoodEntryNavigation['addListener']>
+  >(() => jest.fn()),
+} satisfies Partial<jest.Mocked<FoodEntryNavigation>>;
+
+const mockUseFocusEffect = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
     useNavigation: () => mockNavigation,
+    useFocusEffect: (cb: () => void) => mockUseFocusEffect(cb),
     StackActions: {
       pop: (count: number) => mockPop(count),
       popToTop: () => mockPopToTop(),
@@ -46,10 +92,13 @@ jest.mock('@react-navigation/native', () => {
 });
 
 jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => mockRecipeClient,
   useQuery: jest.fn(),
 }));
 
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
   useMealTypes: jest.fn(),
   usePreferences: jest.fn(() => ({
     preferences: undefined,
@@ -90,6 +139,7 @@ jest.mock('../../src/hooks/useAddFoodEntryMeal', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+  consumePendingMealIngredientSelection: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealPlanSelection', () => ({
@@ -136,16 +186,29 @@ jest.mock('../../src/components/ui/Button', () => {
 jest.mock('../../src/components/StepperInput', () => {
   const React = require('react');
   const { TextInput } = require('react-native');
+  const ActualStepperInput = jest.requireActual<
+    typeof import('../../src/components/StepperInput')
+  >('../../src/components/StepperInput').default;
   return {
     __esModule: true,
-    default: ({ value, onChangeText, onBlur }: any) => (
-      <TextInput
-        testID="quantity-input"
-        value={value}
-        onChangeText={onChangeText}
-        onBlur={onBlur}
-      />
-    ),
+    default: (
+      props: ComponentProps<
+        typeof import('../../src/components/StepperInput').default
+      >
+    ) =>
+      mockUseRealStepperInput ? (
+        <ActualStepperInput
+          {...props}
+          inputProps={{ ...props.inputProps, testID: 'quantity-input' }}
+        />
+      ) : (
+        <TextInput
+          testID="quantity-input"
+          value={props.value}
+          onChangeText={props.onChangeText}
+          onBlur={props.onBlur}
+        />
+      ),
   };
 });
 
@@ -297,7 +360,8 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodEntryAddScreen', () => {
-  const navigation = mockNavigation;
+  const navigation = mockNavigation as typeof mockNavigation &
+    FoodEntryNavigation;
 
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
@@ -378,6 +442,11 @@ describe('FoodEntryAddScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRecipeScope = 'owner-server';
+    mockUseRealStepperInput = false;
+    mockNavigation.isFocused.mockReturnValue(true);
+    mockRecipeClient.clear();
+    mockRecipeClient.setQueryData(['userProfile'], { id: 'owner' });
     useQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -440,6 +509,1226 @@ describe('FoodEntryAddScreen', () => {
       isPending: false,
       invalidateCache: mockInvalidateMealCache,
     }));
+  });
+
+  it('opens the exact missing-nutrition Mealie recipe as an ingredient meal without logging food', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseExternalItem,
+        provider_type: 'mealie',
+        provider_external_id: 'rice / beans',
+        recipe_has_nutrition: false,
+        recipeProviderId: 'personal-provider',
+        recipeImportScope: 'owner-server',
+      },
+    });
+    fireEvent.press(screen.getByText('Import ingredients as a meal'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RecipeImport', {
+      providerId: 'personal-provider',
+      recipeSlug: 'rice / beans',
+      scope: 'owner-server',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+    expect(mockAddMeal).not.toHaveBeenCalled();
+  });
+
+  it('does not offer the recipe handoff after the owner changes', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseExternalItem,
+        provider_type: 'mealie',
+        provider_external_id: 'rice',
+        recipe_has_nutrition: false,
+        recipeProviderId: 'personal-provider',
+        recipeImportScope: 'previous-owner',
+      },
+    });
+    expect(screen.queryByText('Import ingredients as a meal')).toBeNull();
+  });
+  it('logs an imported cooked batch as an ordinary 450g portion worth 600kcal', () => {
+    const item = mealToFoodInfo({
+      id: 'cooked-meal',
+      user_id: 'owner',
+      name: 'Cooked rice',
+      description: null,
+      is_public: false,
+      serving_size: 450,
+      serving_unit: 'g',
+      total_servings: 4,
+      created_at: '2026-11-04',
+      updated_at: '2026-11-04',
+      foods: [
+        {
+          id: 'ingredient',
+          food_id: 'rice',
+          variant_id: 'rice-variant',
+          food_name: 'Dry rice',
+          brand: null,
+          quantity: 600,
+          unit: 'g',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 400,
+          protein: 10,
+          carbs: 80,
+          fat: 2,
+        },
+      ],
+    });
+    expect(item.servingSize).toBe(450);
+    expect(item.calories).toBe(600);
+    const screen = renderScreen({ item });
+    fireEvent.press(screen.getByText('Add Meal'));
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'cooked-meal',
+        quantity: 450,
+        unit: 'g',
+      })
+    );
+  });
+
+  it('preserves the source mass through the actual recipe food picker', async () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
+    });
+    const screen = renderScreen({
+      item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+      pickerMode: 'meal-builder',
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'rice',
+        quantity: 0.6,
+        unit: 'kg',
+      },
+    });
+    expect(screen.getByDisplayValue('600')).toBeTruthy();
+  });
+
+  it('converts a late equivalent recipe variant exactly once before returning it', () => {
+    consumePendingRecipeImportSelection();
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: true,
+      isError: false,
+    });
+    const params = {
+      item: { ...baseLocalItem, servingSize: 1, servingUnit: 'kg' },
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'rice',
+        quantity: 0.8,
+        unit: 'kg',
+      },
+    };
+    const screen = renderScreen(params);
+    expect(screen.getByDisplayValue('0.8')).toBeTruthy();
+    const nutrition = { calories: 100, protein: 15, carbs: 6, fat: 0 };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'grams',
+          food_id: 'food-1',
+          serving_size: 1000,
+          serving_unit: 'g',
+          ...nutrition,
+        },
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'kg',
+          ...nutrition,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    screen.rerender(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodEntryAddScreen
+          navigation={navigation}
+          route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+        />
+      </SafeAreaProvider>
+    );
+    expect(screen.getByDisplayValue('800')).toBeTruthy();
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(consumePendingRecipeImportSelection()).toMatchObject({
+      ingredient: { quantity: 800, unit: 'g', variant_id: 'grams' },
+    });
+  });
+
+  it.each([
+    { sourceUnit: 'kg', edited: undefined, expected: '600' },
+    { sourceUnit: 'kg', edited: '0.8', expected: '800' },
+    { sourceUnit: null, edited: '37', expected: '37' },
+    { sourceUnit: null, edited: '.', expected: '.' },
+    { sourceUnit: null, edited: undefined, expected: '' },
+  ])(
+    'keeps the recipe amount while a food without a default serving loads ($sourceUnit, $edited)',
+    ({ sourceUnit, edited, expected }) => {
+      // Search returns a default-variant projection with null columns when none is marked default.
+      const food = {
+        id: 'food-1',
+        name: 'Rice without a default serving',
+        brand: null,
+        is_custom: false,
+        default_variant: {
+          id: undefined,
+          serving_size: null,
+          serving_unit: null,
+          calories: null,
+          protein: null,
+          carbs: null,
+          fat: null,
+        },
+      } as unknown as FoodItem;
+      const item = foodItemToFoodInfo(food);
+      expect(item.servingUnit).toBeNull();
+      mockUseFoodVariants.mockReturnValue({
+        variants: undefined,
+        isLoading: true,
+        isError: false,
+      });
+      const params = {
+        item,
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity: 0.6,
+          unit: sourceUnit,
+        },
+      };
+      const screen = renderScreen(params);
+      expect(screen.getByTestId('quantity-input').props.value).toBe('0.6');
+      if (edited !== undefined)
+        fireEvent.changeText(screen.getByTestId('quantity-input'), edited);
+      mockUseFoodVariants.mockReturnValue({
+        variants: [
+          {
+            id: 'grams',
+            food_id: 'food-1',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 400,
+            protein: 8,
+            carbs: 80,
+            fat: 2,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe(expected);
+      if (expected === '' || expected === '.') {
+        fireEvent.press(screen.getByText('Add Food'));
+        expect(mockBuildMealIngredientDraft).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  it('preserves an explicit edit when the first variant cannot initialize a source amount', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: true,
+      isError: false,
+    });
+    const params = {
+      item: {
+        ...baseLocalItem,
+        variantId: undefined,
+        servingSize: 100,
+        servingUnit: 'g',
+      },
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'rice',
+        quantity: null,
+        unit: null,
+      },
+    };
+    const screen = renderScreen(params);
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '37');
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'grams',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 400,
+          protein: 8,
+          carbs: 80,
+          fat: 2,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    screen.rerender(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodEntryAddScreen
+          navigation={navigation}
+          route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+        />
+      </SafeAreaProvider>
+    );
+    expect(screen.getByDisplayValue('37')).toBeTruthy();
+  });
+
+  it.each([
+    'profile',
+    'scope',
+    'cache-clear',
+    'same-owner',
+    'ordinary',
+  ] as const)(
+    'checks the initiating recipe owner before a new external save after %s',
+    async (change) => {
+      consumePendingRecipeImportSelection();
+      mockSaveFoodAsync.mockResolvedValue({
+        id: 'saved',
+        default_variant: { id: 'saved-variant' },
+      });
+      const params = {
+        item: baseExternalItem,
+        pickerMode: 'meal-builder' as const,
+        ...(change === 'ordinary'
+          ? {}
+          : {
+              recipeImportTarget: {
+                draftKey: 'draft',
+                ingredientId: 'bar',
+                quantity: 2,
+                unit: 'bar',
+              },
+            }),
+      };
+      const screen = renderScreen(params);
+      act(() => {
+        if (change === 'profile' || change === 'ordinary')
+          mockRecipeClient.setQueryData(['userProfile'], { id: 'other-owner' });
+        if (change === 'cache-clear') {
+          mockRecipeClient.clear();
+          mockRecipeClient.setQueryData(['userProfile'], { id: 'owner' });
+        }
+        if (change === 'same-owner')
+          mockRecipeClient.setQueryData(['userProfile'], { id: 'owner' });
+      });
+      if (change === 'scope') mockRecipeScope = 'other-owner-server';
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      fireEvent.press(screen.getByText('Add Food'));
+      if (change === 'same-owner' || change === 'ordinary') {
+        await waitFor(() => expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1));
+        await waitFor(() =>
+          expect(navigation.dispatch).toHaveBeenCalledTimes(1)
+        );
+      } else {
+        expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+        expect(navigation.dispatch).not.toHaveBeenCalled();
+        expect(consumePendingRecipeImportSelection()).toBeNull();
+      }
+      mockSaveFoodAsync.mockReset();
+    }
+  );
+
+  it.each(['owner-server', 'replacement-owner-server'])(
+    'explains how to recover a recipe picker mounted without an owner before %s loads',
+    (loadedScope) => {
+      consumePendingRecipeImportSelection();
+      mockRecipeScope = null;
+      mockRecipeClient.clear();
+      const params = {
+        item: baseExternalItem,
+        pickerMode: 'meal-builder' as const,
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'bar',
+          quantity: 2,
+          unit: 'bar',
+        },
+      };
+      const screen = renderScreen(params);
+      const recovery =
+        'Reopen the recipe import review and choose this ingredient again.';
+      expect(screen.getByText(recovery)).toBeTruthy();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      act(() => {
+        mockRecipeClient.setQueryData(['userProfile'], {
+          id: loadedScope === 'owner-server' ? 'owner' : 'replacement-owner',
+        });
+        mockRecipeClient.setQueryData(['serverConfigs'], {
+          activeConfig: { id: 'server', url: 'https://example.test' },
+        });
+      });
+      mockRecipeScope = loadedScope;
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByText(recovery)).toBeTruthy();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingRecipeImportSelection()).toBeNull();
+    }
+  );
+
+  it.each(['same-owner-reauthentication', 'replacement-profile'] as const)(
+    'renders recipe recovery and rejects a captured Add callback synchronously after %s',
+    (change) => {
+      consumePendingRecipeImportSelection();
+      const screen = renderScreen({
+        item: baseExternalItem,
+        pickerMode: 'meal-builder',
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'bar',
+          quantity: 2,
+          unit: 'bar',
+        },
+      });
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(false);
+      const addBeforeIdentityChange = screen.UNSAFE_getByType(FooterSaveBar)
+        .props.onPress as () => void;
+      act(() => {
+        if (change === 'same-owner-reauthentication') mockRecipeClient.clear();
+        mockRecipeClient.setQueryData(['userProfile'], {
+          id:
+            change === 'same-owner-reauthentication' ? 'owner' : 'other-owner',
+        });
+        addBeforeIdentityChange();
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      expect(
+        screen.getByText(
+          'Reopen the recipe import review and choose this ingredient again.'
+        )
+      ).toBeTruthy();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingRecipeImportSelection()).toBeNull();
+    }
+  );
+
+  it('keeps an ordinary external food selection available without recipe identity', async () => {
+    mockRecipeScope = null;
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved',
+      default_variant: { id: 'saved-variant' },
+    });
+    const screen = renderScreen({
+      item: baseExternalItem,
+      pickerMode: 'meal-builder',
+    });
+    expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(false);
+    expect(
+      screen.queryByText(
+        'Reopen the recipe import review and choose this ingredient again.'
+      )
+    ).toBeNull();
+    fireEvent.press(screen.getByText('Add Food'));
+    await waitFor(() =>
+      expect(mockSetPendingMealIngredientSelection).toHaveBeenCalledTimes(1)
+    );
+    expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+    mockSaveFoodAsync.mockReset();
+  });
+
+  it.each([
+    {
+      action: 'add',
+      sourceUnit: 'g',
+      quantity: 200,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '250',
+      after: '250',
+    },
+    {
+      action: 'remove',
+      sourceUnit: 'g',
+      quantity: 200,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '150',
+      after: '150',
+    },
+    {
+      action: 'add',
+      sourceUnit: null,
+      quantity: null,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '50',
+      after: '50',
+    },
+    {
+      action: 'remove',
+      sourceUnit: null,
+      quantity: null,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '50',
+      after: '50',
+    },
+    {
+      action: 'add',
+      sourceUnit: 'kg',
+      quantity: 0.6,
+      servingSize: 1,
+      initialUnit: 'kg',
+      before: '1',
+      after: '1000',
+    },
+    {
+      action: 'remove',
+      sourceUnit: 'kg',
+      quantity: 0.6,
+      servingSize: 1,
+      initialUnit: 'kg',
+      before: '0.5',
+      after: '500',
+    },
+  ])(
+    'preserves an actual $action stepper edit while the first recipe variant loads ($sourceUnit)',
+    ({
+      action,
+      sourceUnit,
+      quantity,
+      servingSize,
+      initialUnit,
+      before,
+      after,
+    }) => {
+      mockUseRealStepperInput = true;
+      mockUseFoodVariants.mockReturnValue({
+        variants: undefined,
+        isLoading: true,
+        isError: false,
+      });
+      const params = {
+        item: {
+          ...baseLocalItem,
+          variantId: undefined,
+          servingSize,
+          servingUnit: initialUnit,
+        },
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity,
+          unit: sourceUnit,
+        },
+      };
+      const screen = renderScreen(params);
+      fireEvent.press(screen.getByTestId(`icon-${action}`));
+      expect(screen.getByTestId('quantity-input').props.value).toBe(before);
+      mockUseFoodVariants.mockReturnValue({
+        variants: [
+          {
+            id: 'grams',
+            food_id: 'food-1',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 400,
+            protein: 8,
+            carbs: 80,
+            fat: 2,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe(after);
+    }
+  );
+
+  it('retains the ordinary actual stepper amount through food selection', () => {
+    mockUseRealStepperInput = true;
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-builder',
+    });
+    fireEvent.press(screen.getByTestId('icon-add'));
+    expect(screen.getByTestId('quantity-input').props.value).toBe('1.5');
+    fireEvent.press(screen.getByTestId('icon-remove'));
+    expect(screen.getByTestId('quantity-input').props.value).toBe('1');
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockSetPendingMealIngredientSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ingredient: expect.objectContaining({ quantity: 1, unit: 'cup' }),
+      })
+    );
+  });
+
+  it.each(['meal-builder', undefined] as const)(
+    'returns the recipe ingredient to its draft without diary or NFC writes (%s)',
+    async (pickerMode) => {
+      consumePendingRecipeImportSelection();
+      consumePendingActionTagSelection();
+      const target = {
+        draftKey: 'recipe-draft',
+        ingredientId: 'yogurt',
+        quantity: 2,
+        unit: 'cup',
+      };
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode,
+        recipeImportTarget: target,
+        returnDepth: 3,
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+
+      await waitFor(() =>
+        expect(consumePendingRecipeImportSelection()).toEqual({
+          target,
+          ingredient: expect.objectContaining({
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 2,
+            unit: 'cup',
+          }),
+        })
+      );
+      expect(navigation.dispatch).toHaveBeenCalledWith({
+        type: 'POP',
+        payload: { count: 3 },
+      });
+      expect(consumePendingActionTagSelection()).toBeNull();
+      expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['handler', 'effect'] as const)(
+    'retains edited recipe amounts through the %s variant path',
+    async (path) => {
+      const variants = [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 100,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+        {
+          id: 'grams-two',
+          food_id: 'food-1',
+          serving_size: 50,
+          serving_unit: 'g',
+          calories: 70,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+        {
+          id: 'kilos',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'kg',
+          calories: 900,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+      ];
+      mockUseFoodVariants.mockReturnValue({
+        variants: path === 'handler' ? variants : undefined,
+        isLoading: false,
+        isError: false,
+      });
+      const params = {
+        item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+        pickerMode: 'meal-builder' as const,
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity: 600,
+          unit: 'g',
+        },
+      };
+      const screen = renderScreen(params);
+      fireEvent.changeText(screen.getByDisplayValue('600'), '800');
+      if (path === 'handler') {
+        fireEvent.press(screen.getAllByText('50 g (70 cal)')[0]);
+        expect(screen.getByDisplayValue('800')).toBeTruthy();
+        fireEvent.press(screen.getAllByText('1 kg (900 cal)')[0]);
+      } else {
+        // Saved variants arrive from the existing API hook after the amount was edited.
+        mockUseFoodVariants.mockReturnValue({
+          variants: [{ ...variants[2], id: 'variant-1' }],
+          isLoading: false,
+          isError: false,
+        });
+        screen.rerender(
+          <SafeAreaProvider initialMetrics={{ insets, frame }}>
+            <FoodEntryAddScreen
+              navigation={navigation}
+              route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+            />
+          </SafeAreaProvider>
+        );
+      }
+      expect(screen.getByDisplayValue('0.8')).toBeTruthy();
+    }
+  );
+  it.each([
+    'current',
+    'ordinary',
+    'blur',
+    'unmount',
+    'cache-clear',
+    'profile',
+  ] as const)(
+    'keeps real shared save-hook notifications current after %s',
+    async (departure) => {
+      mockUseSaveFood.mockImplementation(
+        jest.requireActual<typeof import('../../src/hooks/useSaveFood')>(
+          '../../src/hooks/useSaveFood'
+        ).useSaveFood
+      );
+      let fail!: (error: Error) => void;
+      const save = jest.spyOn(foodsApi, 'saveFood').mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            fail = reject;
+          })
+      );
+      const view = render(
+        <QueryClientProvider client={mockRecipeClient}>
+          <SafeAreaProvider initialMetrics={{ insets, frame }}>
+            <FoodEntryAddScreen
+              navigation={navigation}
+              route={{
+                key: 'FoodEntryAdd-key',
+                name: 'FoodEntryAdd',
+                params: {
+                  item: baseExternalItem,
+                  pickerMode: 'meal-builder',
+                  ...(departure === 'ordinary'
+                    ? {}
+                    : {
+                        recipeImportTarget: {
+                          draftKey: 'draft',
+                          ingredientId: 'bar',
+                          quantity: 2,
+                          unit: 'bar',
+                        },
+                      }),
+                },
+              }}
+            />
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      );
+      fireEvent.press(view.getByText('Add Food'));
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+      act(() => {
+        if (departure === 'blur') {
+          mockNavigation.isFocused.mockReturnValue(false);
+          for (const [event, listener] of mockNavigation.addListener.mock.calls)
+            if (event === 'blur')
+              listener({ type: 'blur', target: 'FoodEntryAdd-key' });
+        }
+        if (departure === 'cache-clear') mockRecipeClient.clear();
+        if (departure === 'profile')
+          mockRecipeClient.setQueryData(['userProfile'], { id: 'other-owner' });
+      });
+      if (departure === 'unmount') view.unmount();
+      await act(async () => fail(new Error('save rejected')));
+      if (departure === 'current' || departure === 'ordinary')
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ text1: 'Failed to save food' })
+        );
+      else expect(Toast.show).not.toHaveBeenCalled();
+      save.mockRestore();
+      if (departure !== 'unmount') view.unmount();
+    }
+  );
+
+  it.each([
+    'blur',
+    'refocus',
+    'unmount',
+    'cache-clear',
+    'target-replacement',
+    'owner-replacement',
+  ] as const)(
+    'discards a recipe selection whose external save completes after %s',
+    async (departure) => {
+      consumePendingRecipeImportSelection();
+      let finish: (value: unknown) => void = () => {};
+      mockSaveFoodAsync.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      );
+      const screen = renderScreen({
+        item: baseExternalItem,
+        pickerMode: 'meal-builder',
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'bar',
+          quantity: 2,
+          unit: 'bar',
+        },
+      });
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+      act(() => {
+        if (departure === 'blur' || departure === 'refocus')
+          for (const [event, listener] of mockNavigation.addListener.mock.calls)
+            if (event === 'blur')
+              listener({ type: 'blur', target: 'FoodEntryAdd-key' });
+        mockNavigation.isFocused.mockReturnValue(
+          departure !== 'blur' && departure !== 'unmount'
+        );
+      });
+      if (
+        departure === 'owner-replacement' ||
+        departure === 'target-replacement'
+      ) {
+        if (departure === 'owner-replacement') mockRecipeScope = 'other-owner';
+        screen.rerender(
+          <SafeAreaProvider initialMetrics={{ insets, frame }}>
+            <FoodEntryAddScreen
+              navigation={navigation}
+              route={{
+                key: 'FoodEntryAdd-key',
+                name: 'FoodEntryAdd',
+                params: {
+                  item: baseExternalItem,
+                  pickerMode: 'meal-builder',
+                  recipeImportTarget: {
+                    draftKey:
+                      departure === 'target-replacement'
+                        ? 'new-draft'
+                        : 'draft',
+                    ingredientId: 'bar',
+                    quantity: 2,
+                    unit: 'bar',
+                  },
+                },
+              }}
+            />
+          </SafeAreaProvider>
+        );
+      }
+      if (departure === 'unmount') screen.unmount();
+      if (departure === 'cache-clear') {
+        act(() => {
+          mockNavigation.isFocused.mockReturnValue(true);
+          mockRecipeClient.clear();
+        });
+      }
+      await act(async () => {
+        finish({ id: 'saved', default_variant: { id: 'saved-variant' } });
+      });
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingRecipeImportSelection()).toBeNull();
+    }
+  );
+
+  it.each([false, true])(
+    'invalidates a pending recipe save only after committed target replacement (%s)',
+    async (replace) => {
+      consumePendingRecipeImportSelection();
+      let finish: (value: unknown) => void = () => {};
+      mockSaveFoodAsync.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      );
+      const target = {
+        draftKey: 'draft-a',
+        ingredientId: 'bar',
+        quantity: 2,
+        unit: 'bar',
+      };
+      const view = (recipeImportTarget: typeof target) => (
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{
+              key: 'FoodEntryAdd-key',
+              name: 'FoodEntryAdd',
+              params: {
+                item: baseExternalItem,
+                pickerMode: 'meal-builder',
+                recipeImportTarget,
+              },
+            }}
+          />
+        </SafeAreaProvider>
+      );
+      const screen = render(view(target));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+      if (replace) screen.rerender(view({ ...target, draftKey: 'draft-b' }));
+      screen.rerender(view({ ...target }));
+      expect(navigation.isFocused()).toBe(true);
+      await act(async () =>
+        finish({ id: 'saved-food', default_variant: { id: 'saved-variant' } })
+      );
+      if (replace) {
+        expect(navigation.dispatch).not.toHaveBeenCalled();
+        expect(consumePendingRecipeImportSelection()).toBeNull();
+      } else {
+        expect(navigation.dispatch).toHaveBeenCalledTimes(1);
+        expect(consumePendingRecipeImportSelection()).toMatchObject({
+          target,
+          ingredient: { food_id: 'saved-food', variant_id: 'saved-variant' },
+        });
+      }
+    }
+  );
+
+  it('returns a persisted recipe candidate override without creating another local variant', async () => {
+    consumePendingRecipeImportSelection();
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
+    });
+    const variant = {
+      id: 'mapped-variant',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 100,
+      protein: 1,
+      carbs: 2,
+      fat: 3,
+    };
+    const target = {
+      draftKey: 'draft',
+      ingredientId: 'rice',
+      quantity: 600,
+      unit: 'g',
+    };
+    const screen = renderScreen({
+      item: {
+        ...baseLocalItem,
+        variantId: variant.id,
+        servingSize: 100,
+        servingUnit: 'g',
+      },
+      pickerMode: 'meal-builder',
+      recipeImportTarget: target,
+      selectedVariantOverride: variant,
+    });
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+    expect(consumePendingRecipeImportSelection()).toMatchObject({
+      target,
+      ingredient: {
+        food_id: 'food-1',
+        variant_id: 'mapped-variant',
+        quantity: 600,
+        unit: 'g',
+      },
+    });
+    expect(navigation.dispatch).toHaveBeenCalledTimes(1);
+  });
+  it('keeps incomplete recipe amount input across same-unit variants and requires input for incompatible units', () => {
+    const variants = [
+      {
+        id: 'variant-1',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+        protein: 1,
+        carbs: 2,
+        fat: 3,
+      },
+      {
+        id: 'other-g',
+        food_id: 'food-1',
+        serving_size: 50,
+        serving_unit: 'g',
+        calories: 70,
+        protein: 1,
+        carbs: 2,
+        fat: 3,
+      },
+      {
+        id: 'volume',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'ml',
+        calories: 120,
+        protein: 1,
+        carbs: 2,
+        fat: 3,
+      },
+    ];
+    mockUseFoodVariants.mockReturnValue({
+      variants,
+      isLoading: false,
+      isError: false,
+    });
+    const screen = renderScreen({
+      item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'rice',
+        quantity: 600,
+        unit: 'g',
+      },
+    });
+    fireEvent.changeText(screen.getByDisplayValue('600'), '.');
+    fireEvent.press(screen.getAllByText('50 g (70 cal)')[0]);
+    expect(screen.getByTestId('quantity-input').props.value).toBe('.');
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '800');
+    fireEvent.press(screen.getAllByText('100 ml (120 cal)')[0]);
+    expect(screen.getByTestId('quantity-input').props.value).toBe('');
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockBuildMealIngredientDraft).not.toHaveBeenCalled();
+  });
+  it('requires an explicit amount when source volume cannot become the selected mass', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
+    });
+    const screen = renderScreen({
+      item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+      pickerMode: 'meal-builder',
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'milk',
+        quantity: 250,
+        unit: 'ml',
+      },
+    });
+    expect(screen.queryByDisplayValue('250')).toBeNull();
+    expect(screen.queryByDisplayValue('100')).toBeNull();
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockBuildMealIngredientDraft).not.toHaveBeenCalled();
+  });
+
+  it.each(['meal-builder', 'meal-plan', undefined] as const)(
+    'switches barcode source with a fresh item and preserves %s return context',
+    (pickerMode) => {
+      const barcodeLookup: BarcodeLookupContext = {
+        barcode: '1234567890123',
+        providerId: 'local',
+      };
+      const mealPlanTarget = {
+        dayOfWeek: 2,
+        mealTypeId: 'meal-1',
+        mealTypeName: 'Breakfast',
+      };
+      renderScreen({
+        item: baseLocalItem,
+        barcodeLookup,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      const nextItem: FoodInfoItem = {
+        ...baseExternalItem,
+        provider_type: 'example',
+        provider_external_id: 'external-1',
+        originalItem: {
+          name: baseExternalItem.name,
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'bar',
+            calories: 200,
+            protein: 20,
+            carbs: 22,
+            fat: 7,
+            is_default: true,
+          },
+        },
+      };
+      const nextContext = { ...barcodeLookup, providerId: 'provider-two' };
+      const props = mockBarcodeSources.mock.calls.at(-1)?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(nextItem, nextContext);
+      expect(mockNavigation.replace).toHaveBeenCalledWith('FoodEntryAdd', {
+        item: nextItem,
+        barcodeLookup: nextContext,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    }
+  );
+
+  describe('entry time after switching barcode source', () => {
+    let previousDiaryDate: string;
+
+    beforeEach(() => {
+      previousDiaryDate = useDiaryDateStore.getState().selectedDate;
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: [
+          {
+            id: 'meal-1',
+            name: 'Breakfast target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 1,
+            default_time: '08:00',
+          },
+          {
+            id: 'meal-2',
+            name: 'Lunch target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 2,
+            default_time: '12:30',
+          },
+        ],
+      });
+    });
+
+    afterEach(() => {
+      useDiaryDateStore.getState().setSelectedDate(previousDiaryDate);
+    });
+
+    const switchToLocalSource = (screen: ReturnType<typeof render>) => {
+      const props = mockBarcodeSources.mock.lastCall?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(baseLocalItem, {
+        barcode: '1234567890123',
+        providerId: 'local',
+      });
+      const params = mockNavigation.replace.mock.lastCall?.[1] as
+        RootStackParamList['FoodEntryAdd'] | undefined;
+      if (!params)
+        throw new Error('Source switch did not replace the add screen');
+      screen.unmount();
+      return renderScreen(params);
+    };
+
+    const renderBarcodeEntry = (entryTime?: string) =>
+      renderScreen({
+        item: baseExternalItem,
+        barcodeLookup: { barcode: '1234567890123', providerId: 'provider-one' },
+        date: '2020-04-23',
+        mealTypeId: 'meal-1',
+        entryTime,
+      });
+
+    it('recalculates an untouched automatic time when the meal changes after a source switch', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '12:30' }),
+        })
+      );
+    });
+
+    it('fills an untouched time when a past entry changes to today after a source switch', () => {
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: mockUseMealTypes().mealTypes.map((mealType) => ({
+          ...mealType,
+          default_time: null,
+        })),
+      });
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
+
+    it('keeps an explicitly selected time through a source switch and meal/date changes', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry('09:45'));
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '09:45' }),
+        })
+      );
+    });
+
+    it('keeps an intentional clear as a null entry time after a source switch and meal/date changes', () => {
+      const initialScreen = renderBarcodeEntry();
+      fireEvent.press(initialScreen.getByText('Clear'));
+      const screen = switchToLocalSource(initialScreen);
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: null }),
+        })
+      );
+    });
   });
 
   it('stores a pending ingredient and pops back for local foods in meal-builder mode', async () => {
@@ -779,6 +2068,57 @@ describe('FoodEntryAddScreen', () => {
     );
   });
 
+  it('hands a food and its amount back to the NFC tag form', async () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(navigation.dispatch).toHaveBeenCalledWith({
+        type: 'POP',
+        payload: { count: 2 },
+      })
+    );
+    expect(consumePendingActionTagSelection()).toEqual({
+      kind: 'food',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      name: 'Greek Yogurt',
+      quantity: 1,
+      unit: 'cup',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('hands a gram-based meal back to the NFC tag form in its own unit', () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: { ...baseMealItem, servingSize: 200, servingUnit: 'g' },
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(consumePendingActionTagSelection()).toEqual(
+      expect.objectContaining({
+        kind: 'meal',
+        mealId: 'meal-1',
+        name: 'Breakfast Meal',
+        unit: 'g',
+      })
+    );
+    expect(mockAddMeal).not.toHaveBeenCalled();
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Meals not supported here' })
+    );
+  });
+
   it('hides diary-only controls in meal-builder mode', () => {
     const screen = renderScreen({
       item: baseLocalItem,
@@ -922,6 +2262,338 @@ describe('FoodEntryAddScreen', () => {
     );
     expect(mockAddMeal.mock.calls[0][0]).not.toHaveProperty('foods');
     expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('logs a meal with customizedFoods passed through navigation params', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const customizedFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Oats',
+        food_name: 'Oats',
+        brand: null,
+        quantity: 50,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: customizedFoods,
+        },
+      },
+      customizedFoods,
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 50,
+            unit: 'g',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('resets edits from the meal screen back to the saved ingredients', () => {
+    const oats: MealFood = {
+      id: 'mf-1',
+      meal_id: 'meal-1',
+      food_id: 'food-1',
+      name: 'Oats',
+      food_name: 'Oats',
+      brand: null,
+      quantity: 100,
+      unit: 'g',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 389,
+      protein: 16.9,
+      carbs: 66.3,
+      fat: 6.9,
+    };
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: [oats],
+        },
+      },
+      customizedFoods: [{ ...oats, quantity: 50 }],
+      date: '2026-05-15',
+    });
+
+    expect(screen.getByText('50 g')).toBeTruthy();
+    fireEvent.press(screen.getByText('Reset'));
+    expect(screen.queryByText('Reset')).toBeNull();
+    // The list shows the saved amount again, matching what will be logged.
+    expect(screen.queryByText('50 g')).toBeNull();
+    expect(screen.getByText('100 g')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    // The saved meal is logged as it is, so no ingredient list is sent.
+    expect(mockAddMeal.mock.calls[0][0].foods).toBeUndefined();
+  });
+
+  it('allows adjusting ingredient quantity via modal before logging', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    const stepperInput = screen.getByDisplayValue('100');
+    fireEvent.changeText(stepperInput, '150');
+
+    fireEvent.press(screen.getByText('Apply'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 150,
+            unit: 'g',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows switching an ingredient to a saved portion before logging', () => {
+    // food-1's saved variants (beforeEach) include "1 cup" (variant-1). Only
+    // saved portions are offered: logging re-reads nutrition by variant id.
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    fireEvent.press(screen.getByLabelText('Change unit'));
+
+    expect(screen.queryByText('oz')).toBeNull();
+    fireEvent.press(screen.getByText('1 cup'));
+
+    fireEvent.press(screen.getByText('Apply'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 1,
+            unit: 'cup',
+            serving_unit: 'cup',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('allows removing an ingredient from a meal before logging', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const initialFoods: MealFood[] = [
+      {
+        id: 'mf-1',
+        meal_id: 'meal-1',
+        food_id: 'food-1',
+        name: 'Rolled Oats',
+        food_name: 'Rolled Oats',
+        brand: null,
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fat: 6.9,
+      },
+      {
+        id: 'mf-2',
+        meal_id: 'meal-1',
+        food_id: 'food-2',
+        name: 'Whole Milk',
+        food_name: 'Whole Milk',
+        brand: null,
+        quantity: 200,
+        unit: 'ml',
+        serving_size: 200,
+        serving_unit: 'ml',
+        calories: 122,
+        protein: 6.8,
+        carbs: 9.6,
+        fat: 6.6,
+      },
+    ];
+
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: initialFoods,
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Whole Milk'));
+
+    fireEvent.press(screen.getByText('Remove from Meal'));
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        foods: [
+          expect.objectContaining({
+            food_id: 'food-1',
+            quantity: 100,
+          }),
+        ],
+      })
+    );
+    expect(mockAddMeal.mock.calls[0][0].foods).toHaveLength(1);
+  });
+
+  it('does not offer removing the only ingredient of a meal', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: [
+            {
+              id: 'mf-1',
+              meal_id: 'meal-1',
+              food_id: 'food-1',
+              name: 'Rolled Oats',
+              food_name: 'Rolled Oats',
+              brand: null,
+              quantity: 100,
+              unit: 'g',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 389,
+              protein: 16.9,
+              carbs: 66.3,
+              fat: 6.9,
+            },
+          ],
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    expect(screen.getByText('Apply')).toBeTruthy();
+    expect(screen.queryByText('Remove from Meal')).toBeNull();
   });
 
   it('sends the entry note when logging a meal item', () => {
@@ -1152,6 +2824,7 @@ describe('FoodEntryAddScreen', () => {
       date: '2026-04-23',
     });
 
+    expect(screen.getByLabelText('Select Serving')).toBeTruthy();
     expect(screen.getByText('1 portion (150 g) (180 cal)')).toBeTruthy();
     expect(screen.getByText('100 g (120 cal)')).toBeTruthy();
   });
@@ -1482,6 +3155,210 @@ describe('FoodEntryAddScreen', () => {
       vitaminA: '',
       vitaminC: '',
     };
+
+    // A local food switched to oz, an unsaved unit, picked for an NFC tag.
+    const pickConvertedUnitForTag = async (
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      mockCreateVariant.mockResolvedValue({
+        id: 'variant-oz-new',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      });
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          name: 'Greek Yogurt',
+          brand: 'Sparky',
+          servingSize: '1',
+          servingUnit: 'oz',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+          fiber: '',
+          saturatedFat: '',
+          sodium: '',
+          sugars: '',
+          transFat: '',
+          potassium: '',
+          calcium: '',
+          iron: '',
+          cholesterol: '',
+          vitaminA: '',
+          vitaminC: '',
+        },
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            serving_size: 1,
+            serving_unit: 'oz',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            adjustedValues: undefined,
+            adjustedUnitSelection: undefined,
+          })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+      await waitFor(() => expect(mockCreateVariant).toHaveBeenCalledTimes(1));
+    };
+
+    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+      await pickConvertedUnitForTag();
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          foodId: 'food-1',
+          variantId: 'variant-oz-new',
+          unit: 'oz',
+        })
+      );
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
+    it('drops the NFC tag pick when the screen was left while the serving saved', async () => {
+      navigation.isFocused.mockReturnValueOnce(false);
+
+      await pickConvertedUnitForTag();
+
+      await waitFor(() => expect(navigation.isFocused).toHaveBeenCalled());
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    // The saved cup serving with its nutrition adjusted to `calories`.
+    const pickAdjustedServingForTag = async (
+      calories: string,
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          ...draftAdjustedValues,
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories,
+          protein: '15',
+          carbs: '6',
+          fat: '0',
+          caffeineMg: '',
+          waterMl: '',
+          alcoholG: '',
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({ adjustedValues: undefined })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+    };
+
+    it('refuses an NFC tag pick whose saved serving had its nutrition changed here', async () => {
+      await pickAdjustedServingForTag('150');
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('refuses an NFC tag pick whose saved serving had only a custom nutrient changed here', async () => {
+      await pickAdjustedServingForTag('100', {
+        adjustedCustomNutrients: { omega3: 2 },
+      });
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('saves adjusted custom nutrients on the serving made for an NFC tag', async () => {
+      await pickConvertedUnitForTag({ adjustedCustomNutrients: { omega3: 2 } });
+
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'oz',
+          custom_nutrients: { omega3: 2 },
+        })
+      );
+    });
+
+    it('hands the saved serving to the NFC tag form when adjusted nutrition was saved to it', async () => {
+      await pickAdjustedServingForTag('100');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          variantId: 'variant-1',
+          unit: 'cup',
+        })
+      );
+    });
 
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {
       // Regression: draft branch was calling setSelectedVariantId(draftId) for

@@ -114,6 +114,11 @@ interface StepperInputProps {
   };
   /** Compact size for inline use in set rows */
   compact?: boolean;
+  /**
+   * Stretch to the parent's width with a flexible input, keeping the compact
+   * buttons but padding their hit area to 44pt tall. For dense set rows.
+   */
+  fill?: boolean;
 }
 
 type TextInputFocusEvent = NativeSyntheticEvent<TextInputFocusEventData>;
@@ -132,6 +137,7 @@ function StepperInput({
   inputRef,
   accessibilityLabels,
   compact = false,
+  fill = false,
 }: StepperInputProps) {
   const [accentColor, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -139,10 +145,11 @@ function StepperInput({
   ]) as [string, string];
   const [isFocused, setIsFocused] = useState(false);
 
-  const size = compact ? 32 : 40;
+  const size = compact || fill ? 32 : 40;
   const inputWidth = compact ? 48 : 56;
-  const iconSize = compact ? 18 : 20;
-  const fontSize = compact ? 16 : 20;
+  const iconSize = compact || fill ? 18 : 20;
+  const fontSize = compact || fill ? 16 : 20;
+  const buttonHitSlop = fill ? { top: 6, bottom: 6 } : undefined;
 
   const borderColor = isFocused ? accentColor : borderSubtle;
   const {
@@ -153,7 +160,7 @@ function StepperInput({
 
   return (
     <View
-      className="flex-row items-center bg-raised rounded-lg overflow-hidden"
+      className={`flex-row items-center bg-raised rounded-lg overflow-hidden ${fill ? 'flex-1' : ''}`}
       style={{ borderWidth: 1, borderColor }}
     >
       <TouchableOpacity
@@ -166,6 +173,7 @@ function StepperInput({
         }}
         className="items-center justify-center"
         activeOpacity={0.7}
+        hitSlop={buttonHitSlop}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabels?.decrement}
       >
@@ -189,11 +197,12 @@ function StepperInput({
         selectTextOnFocus={selectTextOnFocus}
         className="text-text-primary text-base text-center"
         style={{
-          width: inputWidth,
+          ...(fill ? { flex: 1, minWidth: 0 } : { width: inputWidth }),
           height: size,
           fontSize,
           lineHeight: fontSize + 2,
           padding: 0,
+          fontVariant: ['tabular-nums'],
         }}
         accessibilityLabel={accessibilityLabels?.input}
         {...restInputProps}
@@ -208,6 +217,7 @@ function StepperInput({
         }}
         className="items-center justify-center"
         activeOpacity={0.7}
+        hitSlop={buttonHitSlop}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabels?.increment}
       >

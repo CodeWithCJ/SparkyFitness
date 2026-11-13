@@ -18,15 +18,15 @@
 // them separate means server code that only needs row/header splitting
 // (no numeric semantics) can use this without pulling in coercion logic.
 
-import Papa from "papaparse";
+import Papa from 'papaparse';
 import {
   detectDecimalFormat,
   resolveDecimalFormat,
   type CsvDelimiter,
   type CsvFormatOptions,
   type CsvParseWarning,
-} from "./csvFormat.ts";
-import type { DecimalFormat } from "./csvValue.ts";
+} from './csvFormat.ts';
+import type { DecimalFormat } from './csvValue.ts';
 
 export interface CsvParseResult<
   T extends Record<string, string> = Record<string, string>,
@@ -65,7 +65,7 @@ export function parseCsv<
 >(
   text: string,
   options: CsvFormatOptions,
-  opts: ParseCsvOptions = {},
+  opts: ParseCsvOptions = {}
 ): CsvParseResult<T> {
   const papaConfig: Papa.ParseConfig<T> = {
     header: true,
@@ -73,7 +73,7 @@ export function parseCsv<
     transformHeader: trimHeader,
     quoteChar: options.quoteChar,
   };
-  if (options.delimiter !== "auto") {
+  if (options.delimiter !== 'auto') {
     papaConfig.delimiter = options.delimiter;
   }
   if (opts.preview) {
@@ -89,19 +89,19 @@ export function parseCsv<
   }));
 
   const delimiterDetectionFailed =
-    options.delimiter === "auto" &&
-    errors.some((e) => e.code === "UndetectableDelimiter");
+    options.delimiter === 'auto' &&
+    errors.some((e) => e.code === 'UndetectableDelimiter');
 
   const headers = meta.fields ?? [];
 
   const decimal = opts.numericColumns
     ? detectDecimalFormat(data, opts.numericColumns, opts.decimalSampleSize)
-    : { format: "us" as const, confident: false };
+    : { format: 'us' as const, confident: false };
   const resolvedDecimal = resolveDecimalFormat(options.decimal, decimal);
 
   const fatal: CsvParseWarning | undefined =
     data.length === 0
-      ? { code: "EmptyFile", message: "No data rows were found in this file." }
+      ? { code: 'EmptyFile', message: 'No data rows were found in this file.' }
       : undefined;
 
   return {
@@ -123,7 +123,7 @@ export function parseCsv<
  */
 export function parseCsvHeaders(
   text: string,
-  options: CsvFormatOptions,
+  options: CsvFormatOptions
 ): {
   headers: string[];
   detectedDelimiter: CsvDelimiter | null;

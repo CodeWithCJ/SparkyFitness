@@ -91,6 +91,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
       weather_humidity_percentage: 62.0,
       gear_name: 'Trail Runners',
       gear_external_id: 'GEAR-998',
+      workout_effort: null,
     };
 
     const parsed = exerciseEntriesSchema.parse(validEntry);

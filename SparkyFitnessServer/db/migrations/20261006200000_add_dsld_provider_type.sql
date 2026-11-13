@@ -5,7 +5,6 @@
 -- only for users who can see an active 'dsld' provider, so it can be switched off
 -- like any other external provider. The label database is public and needs no key.
 
-BEGIN;
 
 -- 1. Register the provider type
 INSERT INTO public.external_provider_types (id, display_name, description)
@@ -88,4 +87,3 @@ BEGIN
   END IF;
 END $$;
 
-COMMIT;

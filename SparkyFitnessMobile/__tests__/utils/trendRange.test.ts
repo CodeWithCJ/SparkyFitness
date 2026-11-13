@@ -30,6 +30,19 @@ describe('clampCustomRange', () => {
   });
 });
 
+describe('clampCustomRange maxDays', () => {
+  it('cuts to the given maximum, ending at the end', () => {
+    const range = clampCustomRange('2025-09-01', '2026-10-01', TODAY, 366);
+    expect(range.endDate).toBe('2026-10-01');
+    expect(range.startDate).toBe('2025-10-01');
+  });
+
+  it('still cuts to 180 days by default', () => {
+    const range = clampCustomRange('2025-09-01', '2026-10-01', TODAY);
+    expect(range.startDate).toBe('2026-04-05');
+  });
+});
+
 describe('resolveReportWindow', () => {
   it('ends a preset today and counts its days', () => {
     expect(resolveReportWindow('7d', null, TODAY)).toEqual({

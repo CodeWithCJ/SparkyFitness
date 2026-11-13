@@ -581,9 +581,13 @@ async function processWithingsSleepData(
       `Deleted existing Withings sleep entries between ${minDate} and ${maxDate} for user ${userId}.`
     );
   }
-  const sleepEntryMap = new Map(); // entry_date -> db_id
+  // Each summary's entry, in summary order, so a nap and a night on the same
+  // date keep their own stages. Stages outside every summary go to the date's
+  // summary entry, as before.
+  const summaryEntryIds: string[] = [];
+  const summaryEntryByDate = new Map<string, string>();
   // 1. Process Summaries (The most reliable source for high-level metrics)
-  for (const summary of summaryArr) {
+  for (const [summaryIndex, summary] of summaryArr.entries()) {
     const entryDate =
       // @ts-expect-error TS(2339): Property 'date' does not exist on type 'never'.
       typeof summary.date === 'string'
@@ -663,12 +667,14 @@ async function processWithingsSleepData(
       createdByUserId,
       sleepEntryData
     );
-    sleepEntryMap.set(entryDate, createdEntry.id);
+    summaryEntryIds[summaryIndex] = createdEntry.id;
+    summaryEntryByDate.set(entryDate, createdEntry.id);
     log('info', `Processed sleep summary for ${entryDate} for user ${userId}.`);
   }
   // 2. Process Detailed Series (Sleep Stages)
-  // Match each stage to its parent summary's entry_date so overnight sessions
-  // that cross local midnight stay grouped under one sleep entry.
+  // Match each stage to its parent summary so overnight sessions that cross
+  // local midnight stay grouped under one sleep entry, and a nap's stages stay
+  // on the nap.
   const summaryRanges = summaryArr.map((s) => ({
     // @ts-expect-error TS(2339): Property 'startdate' does not exist on type 'never... Remove this comment to see the full error message
     start: s.startdate,
@@ -682,26 +688,38 @@ async function processWithingsSleepData(
         : // @ts-expect-error TS(2339): Property 'date' does not exist on type 'never'.
           instantToDay(s.date * 1000, timezone),
   }));
-  const stagesByDate = new Map();
+  const stagesByEntry = new Map();
   for (const segment of seriesArr) {
     // @ts-expect-error TS(2339): Property 'startdate' does not exist on type 'never... Remove this comment to see the full error message
     if (segment.startdate && segment.state !== undefined) {
-      const parent = summaryRanges.find(
+      const parentIndex = summaryRanges.findIndex(
         // @ts-expect-error TS(2339): Property 'startdate' does not exist on type 'never... Remove this comment to see the full error message
         (s) => segment.startdate >= s.start && segment.startdate <= s.end
       );
-      const entryDate = parent
-        ? parent.entryDate
-        : // @ts-expect-error TS(2339): Property 'startdate' does not exist on type 'never... Remove this comment to see the full error message
-          instantToDay(segment.startdate * 1000, timezone);
-      if (!stagesByDate.has(entryDate)) {
-        stagesByDate.set(entryDate, []);
+      const entryDate =
+        parentIndex >= 0
+          ? summaryRanges[parentIndex].entryDate
+          : // @ts-expect-error TS(2339): Property 'startdate' does not exist on type 'never... Remove this comment to see the full error message
+            instantToDay(segment.startdate * 1000, timezone);
+      // Summaries a sync merged into one entry share one group, so the
+      // stage totals written below cover all of them.
+      const entryId =
+        parentIndex >= 0
+          ? summaryEntryIds[parentIndex]
+          : summaryEntryByDate.get(entryDate);
+      const groupKey = entryId ?? `date:${entryDate}`;
+      if (!stagesByEntry.has(groupKey)) {
+        stagesByEntry.set(groupKey, { entryId, entryDate, segments: [] });
       }
-      stagesByDate.get(entryDate).push(segment);
+      stagesByEntry.get(groupKey).segments.push(segment);
     }
   }
-  for (const [entryDate, segments] of stagesByDate.entries()) {
-    let entryId = sleepEntryMap.get(entryDate);
+  for (const {
+    entryId: summaryEntryId,
+    entryDate,
+    segments,
+  } of stagesByEntry.values()) {
+    let entryId = summaryEntryId;
     // If no summary was found for this date, we create a basic entry from the series
     if (!entryId) {
       const firstSegment = segments[0];
@@ -721,7 +739,6 @@ async function processWithingsSleepData(
         }
       );
       entryId = basicEntry.id;
-      sleepEntryMap.set(entryDate, entryId);
     }
     const stageAggregates = { deep: 0, light: 0, rem: 0, awake: 0 };
     for (const segment of segments) {

@@ -26,7 +26,16 @@ vi.mock('undici', () => {
     return { destroy: vi.fn() };
   });
   const buildConnector = vi.fn(() => vi.fn());
-  return { default: { Agent, buildConnector }, Agent, buildConnector };
+  // Pass-through, so assertions on the dispatcher still see the Agent.
+  const Dispatcher1Wrapper = vi.fn(function (inner: unknown) {
+    return inner;
+  });
+  return {
+    default: { Agent, buildConnector, Dispatcher1Wrapper },
+    Agent,
+    buildConnector,
+    Dispatcher1Wrapper,
+  };
 });
 
 const TEST_USER_ID = 'user-123';
@@ -335,6 +344,7 @@ describe('estimateUnitConversion', () => {
     // Ollama gets format: 'json' with the schema spelled out in the prompt,
     // rather than the schema as `format` — see buildOllamaRequest.
     expect(body.format).toBe('json');
+    expect(body.think).toBe(false);
     const message = (body.messages as { content: string }[])[0];
     expect(message.content).toContain('conforms to this JSON Schema');
   });

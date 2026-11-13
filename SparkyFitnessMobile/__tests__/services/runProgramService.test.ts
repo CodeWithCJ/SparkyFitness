@@ -4,9 +4,11 @@ import { runProgramQueryKey } from '../../src/hooks/queryKeys';
 import {
   fetchRunProgram,
   markRunProgramWorkoutDone,
+  realignRunProgram,
   saveRunProgram,
 } from '../../src/services/api/runProgramApi';
 import {
+  applyProgramRealign,
   completeProgramWorkout,
   getProgramStatus,
   restartProgram,
@@ -231,4 +233,31 @@ test('a write cancels a read that began before it', async () => {
     expect.objectContaining({ day: '2026-10-12' })
   );
   spy.mockRestore();
+});
+
+test('realigning sends the previewed token and caches the rebuilt program', async () => {
+  const rebuilt = stored({ next_index: 3 });
+  jest.mocked(realignRunProgram).mockResolvedValue({
+    realign: { state: 'fits' },
+    applied: true,
+    program: rebuilt,
+  });
+  await applyProgramRealign({ token: 'abc', force: true, today: '2026-11-02' });
+  expect(realignRunProgram).toHaveBeenCalledWith({
+    confirmed: true,
+    token: 'abc',
+    force: true,
+    today: '2026-11-02',
+  });
+  expect(queryClient.getQueryData(runProgramQueryKey)).toEqual(rebuilt);
+});
+
+test('a refused realignment is thrown and the cached program is re-read', async () => {
+  queryClient.setQueryData(runProgramQueryKey, stored());
+  jest.mocked(realignRunProgram).mockRejectedValue(new Error('409'));
+  const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+  await expect(
+    applyProgramRealign({ token: 'old', today: '2026-11-02' })
+  ).rejects.toThrow('409');
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: runProgramQueryKey });
 });

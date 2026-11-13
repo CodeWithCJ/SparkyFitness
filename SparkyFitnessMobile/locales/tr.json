@@ -1,1 +1,8 @@
-{}
+{
+  "ios": {
+    "NSCameraUsageDescription": "SparkyFitness, besin barkodlarını ve etiketlerini taramak için kameranıza erişmek ister.",
+    "NSHealthShareUsageDescription": "SparkyFitness, Sağlık verilerini (aktivite, antrenmanlar ve vücut ölçüleri gibi) uygulamada göstermek ve kendi barındırdığınız SparkyFitness sunucusuyla senkronize etmek için okur.",
+    "NSHealthUpdateUsageDescription": "SparkyFitness, uygulamada kaydettiğiniz beslenme ve sıvı verilerini ikisini senkronize tutmak için Apple Sağlık'a yazar.",
+    "NSLocalNetworkUsageDescription": "SparkyFitness, yerel ağınızdaki kendi barındırdığınız sunuculara bağlanır."
+  }
+}

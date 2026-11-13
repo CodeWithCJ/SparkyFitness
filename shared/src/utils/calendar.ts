@@ -1,4 +1,4 @@
-import { addDays } from "./timezone.ts";
+import { addDays } from './timezone.ts';
 
 // ---------------------------------------------------------------------------
 // Month-grid construction (no timezone needed — pure day-string arithmetic)
@@ -25,9 +25,9 @@ export interface MonthGrid {
 export function buildMonthGrid(
   year: number,
   month: number,
-  firstDayOfWeek: number,
+  firstDayOfWeek: number
 ): MonthGrid {
-  const monthStart = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
+  const monthStart = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
 
   const startDayOfWeek = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const offset = (startDayOfWeek - firstDayOfWeek + 7) % 7;

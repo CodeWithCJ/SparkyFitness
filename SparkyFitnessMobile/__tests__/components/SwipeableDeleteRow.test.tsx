@@ -36,6 +36,30 @@ describe('SwipeableDeleteRow', () => {
     alertSpy.mockRestore();
   });
 
+  it('presses and long-presses on the same element when given onPress', () => {
+    const onPress = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const screen = render(
+      <SwipeableDeleteRow
+        title="Row"
+        onConfirmDelete={jest.fn()}
+        onPress={onPress}
+        accessibilityLabel="Open row"
+      >
+        <Text>Row</Text>
+      </SwipeableDeleteRow>
+    );
+
+    const row = screen.getByRole('button', { name: 'Open row' });
+    fireEvent.press(row);
+    expect(onPress).toHaveBeenCalledTimes(1);
+    fireEvent(row, 'longPress');
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(onPress).toHaveBeenCalledTimes(1);
+    alertSpy.mockRestore();
+  });
+
   it('cancelling the confirm dialog does not delete', () => {
     const onConfirmDelete = jest.fn();
     let buttons: AlertButton[] = [];

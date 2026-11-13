@@ -1,5 +1,7 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import nutrientGoalPreferenceRepository from '../models/nutrientGoalPreferenceRepository.js';
+import nutrientDisplayPreferenceRepository from '../models/nutrientDisplayPreferenceRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
@@ -304,6 +306,9 @@ class CustomNutrientService {
   ) {
     const client = await getClient(userId);
     try {
+      // The definition and everything keyed by its name change together, or
+      // not at all.
+      await client.query('BEGIN');
       const previousRes = await client.query(
         'SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
         [id, userId]
@@ -324,26 +329,79 @@ class CustomNutrientService {
         [name, unit, aliasesParam, id, userId]
       );
       if (result.rows.length > 0) {
-        log('info', `Custom nutrient updated: ${id} for user ${userId}`);
         if (name && previousName && name !== previousName) {
-          try {
-            const { default: nutrientGoalPreferenceService } =
-              await import('./nutrientGoalPreferenceService.js');
-            await nutrientGoalPreferenceService.renameGoalPreferenceKey(
-              userId,
-              previousName,
-              name
-            );
-          } catch (renameError) {
-            log(
-              'error',
-              `Failed to rename goal-direction preference for custom nutrient ${id}: ${renameError instanceof Error ? renameError.message : String(renameError)}`
+          await nutrientGoalPreferenceRepository.renameNutrientGoalPreferenceKey(
+            userId,
+            previousName,
+            name,
+            client
+          );
+          await nutrientDisplayPreferenceRepository.renameNutrientDisplayPreferenceKey(
+            userId,
+            previousName,
+            name,
+            client
+          );
+          // Goal values are keyed by nutrient name too: move them (current
+          // goals, past goals and saved presets) to the new name. A value
+          // already stored under the new name wins; the old one is dropped.
+          for (const table of ['user_goals', 'goal_presets']) {
+            await client.query(
+              `UPDATE ${table}
+                  SET custom_nutrients = CASE
+                    WHEN custom_nutrients ? $2::text
+                      THEN custom_nutrients - $1::text
+                    ELSE (custom_nutrients - $1::text)
+                      || jsonb_build_object($2::text, custom_nutrients -> $1::text)
+                  END
+                WHERE user_id = $3 AND custom_nutrients ? $1::text`,
+              [previousName, name, userId]
             );
           }
+          // The user's own library foods keep per-variant values under the
+          // name as well. Diary snapshots (food_entries) are history and stay.
+          await client.query(
+            `UPDATE food_variants
+                SET custom_nutrients = CASE
+                  WHEN custom_nutrients ? $2::text
+                    THEN custom_nutrients - $1::text
+                  ELSE (custom_nutrients - $1::text)
+                    || jsonb_build_object($2::text, custom_nutrients -> $1::text)
+                END
+              WHERE custom_nutrients ? $1::text
+                AND food_id IN (SELECT id FROM foods WHERE user_id = $3)`,
+            [previousName, name, userId]
+          );
+          // Supplement definitions keep their per-dose custom values under the
+          // nested `custom_nutrients` object. Logged snapshots
+          // (medication_entries.nutrients_snapshot) are history and stay.
+          await client.query(
+            `UPDATE medications
+                SET nutrients = jsonb_set(
+                  nutrients,
+                  '{custom_nutrients}',
+                  CASE
+                    WHEN nutrients->'custom_nutrients' ? $2::text
+                      THEN (nutrients->'custom_nutrients') - $1::text
+                    ELSE ((nutrients->'custom_nutrients') - $1::text)
+                      || jsonb_build_object($2::text, nutrients->'custom_nutrients'->$1::text)
+                  END
+                )
+              WHERE user_id = $3
+                AND nutrients->'custom_nutrients' ? $1::text`,
+            [previousName, name, userId]
+          );
         }
+      }
+      await client.query('COMMIT');
+      if (result.rows.length > 0) {
+        log('info', `Custom nutrient updated: ${id} for user ${userId}`);
         return result.rows[0];
       }
       return null;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }

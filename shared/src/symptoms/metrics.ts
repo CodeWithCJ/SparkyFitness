@@ -1,4 +1,4 @@
-import type { SymptomEpisodeContext } from "../schemas/api/Symptoms.api.zod.ts";
+import type { SymptomEpisodeContext } from '../schemas/api/Symptoms.api.zod.ts';
 
 /** The fields of an entry the report calculations read. */
 export interface MetricsEntry {
@@ -27,7 +27,7 @@ export interface SymptomMetrics {
 }
 
 const countedEntries = <T extends { source: string }>(entries: T[]): T[] =>
-  entries.filter((e) => e.source !== "cycle");
+  entries.filter((e) => e.source !== 'cycle');
 
 /**
  * Headline numbers for a set of entries. `hourOf` maps an instant to the user's
@@ -36,7 +36,7 @@ const countedEntries = <T extends { source: string }>(entries: T[]): T[] =>
 export function computeSymptomMetrics(
   entries: MetricsEntry[],
   symptomFreeDays: string[],
-  hourOf: (iso: string) => number,
+  hourOf: (iso: string) => number
 ): SymptomMetrics {
   const counted = countedEntries(entries);
   const entryDays = new Set(counted.map((e) => e.entry_date));
@@ -49,9 +49,9 @@ export function computeSymptomMetrics(
       Math.round(
         (new Date(e.ended_at as string).getTime() -
           new Date(e.started_at as string).getTime()) /
-          60000,
-      ),
-    ),
+          60000
+      )
+    )
   );
 
   const triggers = new Map<string, number>();
@@ -79,8 +79,8 @@ export function computeSymptomMetrics(
         : null,
     acuteMedicationDays: new Set(
       counted
-        .filter((e) => e.treatments.some((t) => t.kind === "medication"))
-        .map((e) => e.entry_date),
+        .filter((e) => e.treatments.some((t) => t.kind === 'medication'))
+        .map((e) => e.entry_date)
     ).size,
     triggerCounts: [...triggers.entries()]
       .map(([label, count]) => ({ label, count }))
@@ -106,11 +106,11 @@ const CAFFEINE =
   /coffee|espresso|latte|cappuccino|mocha|energy drink|\bcola\b/i;
 
 export type FactorKey =
-  | "short_sleep"
-  | "low_water"
-  | "alcohol"
-  | "caffeine"
-  | "menstrual_phase"
+  | 'short_sleep'
+  | 'low_water'
+  | 'alcohol'
+  | 'caffeine'
+  | 'menstrual_phase'
   | `trigger:${string}`;
 
 export interface FactorResult {
@@ -130,7 +130,7 @@ export interface FactorResult {
  */
 export function analyzeEpisodeFactors(
   episodes: Array<{ id: string; triggers: string[] }>,
-  contexts: Record<string, SymptomEpisodeContext | undefined>,
+  contexts: Record<string, SymptomEpisodeContext | undefined>
 ): FactorResult[] {
   const tally = new Map<FactorKey, { count: number; known: number }>();
   const bump = (key: FactorKey, known: boolean, present: boolean) => {
@@ -148,26 +148,26 @@ export function analyzeEpisodeFactors(
     if (!ctx) continue;
 
     if (ctx.sleep)
-      bump("short_sleep", true, ctx.sleep.minutes < SHORT_SLEEP_MINUTES);
-    const before = ctx.days.find((d) => d.label === "day_before");
+      bump('short_sleep', true, ctx.sleep.minutes < SHORT_SLEEP_MINUTES);
+    const before = ctx.days.find((d) => d.label === 'day_before');
     if (before?.water_ml != null) {
-      bump("low_water", true, before.water_ml < LOW_WATER_ML);
+      bump('low_water', true, before.water_ml < LOW_WATER_ML);
     }
     const foods = ctx.days.flatMap((d) => d.foods);
     if (ctx.days.some((d) => d.foods.length > 0)) {
       bump(
-        "alcohol",
+        'alcohol',
         true,
-        foods.some((f) => ALCOHOL.test(f)),
+        foods.some((f) => ALCOHOL.test(f))
       );
       bump(
-        "caffeine",
+        'caffeine',
         true,
-        foods.some((f) => CAFFEINE.test(f)),
+        foods.some((f) => CAFFEINE.test(f))
       );
     }
     if (ctx.cycle)
-      bump("menstrual_phase", true, ctx.cycle.phase === "menstrual");
+      bump('menstrual_phase', true, ctx.cycle.phase === 'menstrual');
   }
 
   return [...tally.entries()]

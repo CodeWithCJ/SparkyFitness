@@ -3,10 +3,10 @@
 // YYYY-MM-DD strings via the shared timezone helpers. Content tables (baby
 // development, checklist, food/med safety) live in ./pregnancyContent.ts.
 
-import { addDays, compareDays, daysBetween } from "../utils/timezone.ts";
+import { addDays, compareDays, daysBetween } from '../utils/timezone.ts';
 
-export type PregnancyDueDateBasis = "lmp" | "conception" | "manual" | "scan";
-export type PregnancyStatus = "active" | "completed" | "ended";
+export type PregnancyDueDateBasis = 'lmp' | 'conception' | 'manual' | 'scan';
+export type PregnancyStatus = 'active' | 'completed' | 'ended';
 
 export interface SharedPregnancy {
   id?: string;
@@ -101,24 +101,29 @@ export interface ContractionStats {
  */
 export function contractionStats(
   contractions: SharedContraction[],
-  nowMs: number = Date.now(),
+  nowMs: number = Date.now()
 ): ContractionStats {
   const recent = contractions
     .filter((c) => c.ended_at)
     .filter((c) => nowMs - new Date(c.started_at).getTime() <= 65 * 60 * 1000)
     .sort(
       (a, b) =>
-        new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
+        new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
     );
 
   if (recent.length === 0) {
-    return { count: 0, avgDurationSec: null, avgIntervalMin: null, isFiveOneOne: false };
+    return {
+      count: 0,
+      avgDurationSec: null,
+      avgIntervalMin: null,
+      isFiveOneOne: false,
+    };
   }
 
   const durations = recent.map(
     (c) =>
       (new Date(c.ended_at!).getTime() - new Date(c.started_at).getTime()) /
-      1000,
+      1000
   );
   const avgDurationSec =
     durations.reduce((a, b) => a + b, 0) / durations.length;
@@ -128,7 +133,7 @@ export function contractionStats(
     intervals.push(
       (new Date(recent[i]!.started_at).getTime() -
         new Date(recent[i - 1]!.started_at).getTime()) /
-        60000,
+        60000
     );
   }
   const avgIntervalMin =
@@ -151,7 +156,8 @@ export function contractionStats(
   return {
     count: recent.length,
     avgDurationSec: Math.round(avgDurationSec),
-    avgIntervalMin: avgIntervalMin != null ? Math.round(avgIntervalMin * 10) / 10 : null,
+    avgIntervalMin:
+      avgIntervalMin != null ? Math.round(avgIntervalMin * 10) / 10 : null,
     isFiveOneOne,
   };
 }
@@ -159,7 +165,7 @@ export function contractionStats(
 export interface WeightGainRange {
   lowKg: number;
   highKg: number;
-  category: "underweight" | "normal" | "overweight" | "obese";
+  category: 'underweight' | 'normal' | 'overweight' | 'obese';
 }
 
 /**
@@ -169,37 +175,37 @@ export interface WeightGainRange {
 export function weightGainRange(
   prePregnancyBmi: number,
   week: number,
-  fetusCount = 1,
+  fetusCount = 1
 ): WeightGainRange | null {
   if (week < 1) return null;
   const w = Math.min(week, 40);
 
   // Total-term targets (singleton) per IOM.
-  let category: WeightGainRange["category"];
+  let category: WeightGainRange['category'];
   let totalLow: number;
   let totalHigh: number;
   if (prePregnancyBmi < 18.5) {
-    category = "underweight";
+    category = 'underweight';
     totalLow = 12.5;
     totalHigh = 18;
   } else if (prePregnancyBmi < 25) {
-    category = "normal";
+    category = 'normal';
     totalLow = 11.5;
     totalHigh = 16;
   } else if (prePregnancyBmi < 30) {
-    category = "overweight";
+    category = 'overweight';
     totalLow = 7;
     totalHigh = 11.5;
   } else {
-    category = "obese";
+    category = 'obese';
     totalLow = 5;
     totalHigh = 9;
   }
 
   if (fetusCount >= 2) {
     // IOM twin guidance (normal/overweight/obese; underweight extrapolated).
-    totalLow = category === "obese" ? 11 : category === "overweight" ? 14 : 17;
-    totalHigh = category === "obese" ? 19 : category === "overweight" ? 23 : 25;
+    totalLow = category === 'obese' ? 11 : category === 'overweight' ? 14 : 17;
+    totalHigh = category === 'obese' ? 19 : category === 'overweight' ? 23 : 25;
   }
 
   // ~2 kg in T1, then linear to term.
@@ -221,7 +227,7 @@ export function weightGainRange(
 }
 
 export function isPregnancyActive(p: { status: PregnancyStatus }): boolean {
-  return p.status === "active";
+  return p.status === 'active';
 }
 
 /** Whether `day` falls within the pregnancy term window (for calendar overlays). */
@@ -231,24 +237,84 @@ export function isWithinTerm(dueDate: string, day: string): boolean {
 }
 
 export const PREGNANCY_SYMPTOMS = [
-  { name: "nausea", displayName: "Nausea", category: "digestion", icon: "symptom-nausea", color: "green" },
-  { name: "heartburn", displayName: "Heartburn", category: "digestion", icon: "symptom-nausea", color: "green" },
-  { name: "swelling", displayName: "Swelling", category: "pain", icon: "symptom-cramps", color: "period" },
-  { name: "back_pain", displayName: "Back pain", category: "pain", icon: "symptom-cramps", color: "period" },
-  { name: "braxton_hicks", displayName: "Braxton-Hicks", category: "pain", icon: "symptom-cramps", color: "period" },
-  { name: "fatigue", displayName: "Fatigue", category: "mental", icon: "symptom-fatigue", color: "amber" },
-  { name: "headache", displayName: "Headache", category: "mental", icon: "symptom-headache", color: "lavender" },
-  { name: "cravings", displayName: "Cravings", category: "digestion", icon: "symptom-nausea", color: "green" },
-  { name: "insomnia", displayName: "Insomnia", category: "mental", icon: "symptom-fatigue", color: "amber" },
-  { name: "constipation", displayName: "Constipation", category: "digestion", icon: "symptom-nausea", color: "green" },
+  {
+    name: 'nausea',
+    displayName: 'Nausea',
+    category: 'digestion',
+    icon: 'symptom-nausea',
+    color: 'green',
+  },
+  {
+    name: 'heartburn',
+    displayName: 'Heartburn',
+    category: 'digestion',
+    icon: 'symptom-nausea',
+    color: 'green',
+  },
+  {
+    name: 'swelling',
+    displayName: 'Swelling',
+    category: 'pain',
+    icon: 'symptom-cramps',
+    color: 'period',
+  },
+  {
+    name: 'back_pain',
+    displayName: 'Back pain',
+    category: 'pain',
+    icon: 'symptom-cramps',
+    color: 'period',
+  },
+  {
+    name: 'braxton_hicks',
+    displayName: 'Braxton-Hicks',
+    category: 'pain',
+    icon: 'symptom-cramps',
+    color: 'period',
+  },
+  {
+    name: 'fatigue',
+    displayName: 'Fatigue',
+    category: 'mental',
+    icon: 'symptom-fatigue',
+    color: 'amber',
+  },
+  {
+    name: 'headache',
+    displayName: 'Headache',
+    category: 'mental',
+    icon: 'symptom-headache',
+    color: 'lavender',
+  },
+  {
+    name: 'cravings',
+    displayName: 'Cravings',
+    category: 'digestion',
+    icon: 'symptom-nausea',
+    color: 'green',
+  },
+  {
+    name: 'insomnia',
+    displayName: 'Insomnia',
+    category: 'mental',
+    icon: 'symptom-fatigue',
+    color: 'amber',
+  },
+  {
+    name: 'constipation',
+    displayName: 'Constipation',
+    category: 'digestion',
+    icon: 'symptom-nausea',
+    color: 'green',
+  },
 ] as const;
 
 export const APPOINTMENT_TYPES = [
-  { value: "checkup", displayName: "Prenatal checkup" },
-  { value: "ultrasound", displayName: "Ultrasound / scan" },
-  { value: "glucose_test", displayName: "Glucose screening" },
-  { value: "bloodwork", displayName: "Bloodwork" },
-  { value: "specialist", displayName: "Specialist" },
-  { value: "class", displayName: "Birth / parenting class" },
-  { value: "other", displayName: "Other" },
+  { value: 'checkup', displayName: 'Prenatal checkup' },
+  { value: 'ultrasound', displayName: 'Ultrasound / scan' },
+  { value: 'glucose_test', displayName: 'Glucose screening' },
+  { value: 'bloodwork', displayName: 'Bloodwork' },
+  { value: 'specialist', displayName: 'Specialist' },
+  { value: 'class', displayName: 'Birth / parenting class' },
+  { value: 'other', displayName: 'Other' },
 ] as const;

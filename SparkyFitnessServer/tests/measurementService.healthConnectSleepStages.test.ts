@@ -175,7 +175,8 @@ describe('processHealthData Health Connect sleep stages', () => {
         // sleepSessionHandler field whitelist all the way to the upsert.
         record_timezone: 'America/New_York',
         record_utc_offset_minutes: -300,
-      })
+      }),
+      { keepExistingBiometrics: true }
     );
     expect(
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '(userId: a... Remove this comment to see the full error message
@@ -278,7 +279,8 @@ describe('processHealthData Health Connect sleep stages', () => {
       expect.objectContaining({
         source: 'HealthConnect',
         time_asleep_in_seconds: 3600,
-      })
+      }),
+      { keepExistingBiometrics: true }
     );
     expect(sleepRepository.mergeSleepStageEvents).toHaveBeenCalledTimes(1);
     expect(
@@ -289,6 +291,59 @@ describe('processHealthData Health Connect sleep stages', () => {
       start_time: '2024-01-15T22:00:00.000Z',
       end_time: '2024-01-15T23:00:00.000Z',
       duration_in_seconds: 3600,
+    });
+  });
+  describe('overnight HRV and resting heart rate', () => {
+    const buildSession = (extra: Record<string, unknown> = {}) => [
+      {
+        type: 'SleepSession',
+        source: 'Health Connect',
+        timestamp: '2024-01-15T22:00:00Z',
+        bedtime: '2024-01-15T22:00:00Z',
+        wake_time: '2024-01-16T06:00:00Z',
+        duration_in_seconds: 28800,
+        time_asleep_in_seconds: 27900,
+        ...extra,
+      },
+    ];
+    const upsertCall = () =>
+      (sleepRepository.upsertSleepEntry as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+    it('keeps valid overnight values and asks the repository to preserve stored ones', async () => {
+      await measurementService.processHealthData(
+        buildSession({ avg_overnight_hrv: 41.5, resting_heart_rate: 57 }),
+        userId,
+        actingUserId
+      );
+      expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
+        userId,
+        actingUserId,
+        expect.objectContaining({
+          avg_overnight_hrv: 41.5,
+          resting_heart_rate: 57,
+        }),
+        { keepExistingBiometrics: true }
+      );
+    });
+    it('drops non-positive or non-numeric overnight values', async () => {
+      await measurementService.processHealthData(
+        buildSession({ avg_overnight_hrv: -3, resting_heart_rate: 'abc' }),
+        userId,
+        actingUserId
+      );
+      expect(upsertCall()[2]).not.toHaveProperty('avg_overnight_hrv');
+      expect(upsertCall()[2]).not.toHaveProperty('resting_heart_rate');
+      expect(upsertCall()[3]).toEqual({ keepExistingBiometrics: true });
+    });
+    it('leaves the fields absent when the session carries none', async () => {
+      await measurementService.processHealthData(
+        buildSession(),
+        userId,
+        actingUserId
+      );
+      expect(upsertCall()[2]).not.toHaveProperty('avg_overnight_hrv');
+      expect(upsertCall()[2]).not.toHaveProperty('resting_heart_rate');
+      expect(upsertCall()[3]).toEqual({ keepExistingBiometrics: true });
     });
   });
 });

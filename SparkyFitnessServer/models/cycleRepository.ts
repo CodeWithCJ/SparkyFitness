@@ -4,7 +4,9 @@ import type {
   UpsertCycleSettingsBody,
   UpsertDailyLogBody,
 } from '../schemas/cycleSchemas.js';
-import { localDateToDay, addDays } from '@workspace/shared';
+import { DAILY_MOOD_VALUE_SQL } from './moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
+import { localDateToDay, addDays, daysBetween } from '@workspace/shared';
 import type { DerivedCycle } from '@workspace/shared';
 
 const SETTINGS_COLS = `id, user_id, enabled, mode, avg_cycle_length_override, avg_period_length_override,
@@ -293,7 +295,7 @@ async function replaceDerivedCycles(
 
 async function bulkUpsertFlowLogs(
   userId: string,
-  entries: Array<{ date: string; flow_level: any }>
+  entries: Array<{ date: string; flow_level: string | null }>
 ) {
   const client = await getClient(userId);
   try {
@@ -330,6 +332,31 @@ async function createManualCycle(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+    const startDateStr = normalizeDay(data.start_date);
+
+    // Look for next cycle to compute bounds if not explicitly supplied
+    const nextRes = await client.query(
+      `SELECT start_date FROM cycles
+       WHERE user_id = $1 AND start_date > $2
+       ORDER BY start_date ASC LIMIT 1`,
+      [userId, startDateStr]
+    );
+
+    let calculatedEndDate: string | null = data.end_date ?? null;
+    let calculatedCycleLength: number | null = data.cycle_length ?? null;
+
+    if (!calculatedEndDate) {
+      if (nextRes.rowCount && nextRes.rowCount > 0) {
+        const nextStartStr = normalizeDay(nextRes.rows[0].start_date);
+        calculatedEndDate = addDays(nextStartStr, -1);
+        if (!calculatedCycleLength) {
+          calculatedCycleLength = daysBetween(startDateStr, nextStartStr);
+        }
+      } else if (calculatedCycleLength && calculatedCycleLength > 0) {
+        calculatedEndDate = addDays(startDateStr, calculatedCycleLength - 1);
+      }
+    }
+
     const result = await client.query(
       `INSERT INTO cycles (user_id, start_date, end_date, period_length, cycle_length, is_excluded, source)
        VALUES ($1, $2, $3, $4, $5, COALESCE($6, FALSE), 'manual')
@@ -343,19 +370,43 @@ async function createManualCycle(
        RETURNING id, start_date, end_date, period_length, cycle_length, is_excluded, source`,
       [
         userId,
-        data.start_date,
-        data.end_date ?? null,
+        startDateStr,
+        calculatedEndDate,
         data.period_length ?? null,
-        data.cycle_length ?? null,
+        calculatedCycleLength,
         data.is_excluded ?? false,
       ]
     );
 
     const saved = result.rows[0];
 
+    // If an immediately preceding cycle exists, close its end_date if currently open
+    const prevRes = await client.query(
+      `SELECT id, start_date, end_date, cycle_length FROM cycles
+       WHERE user_id = $1 AND start_date < $2
+       ORDER BY start_date DESC LIMIT 1`,
+      [userId, startDateStr]
+    );
+    if (prevRes.rowCount && prevRes.rowCount > 0) {
+      const prev = prevRes.rows[0];
+      const prevStartStr = normalizeDay(prev.start_date);
+      const newPrevEnd = addDays(startDateStr, -1);
+      const newPrevLen = daysBetween(prevStartStr, startDateStr);
+      if (!prev.end_date || normalizeDay(prev.end_date) >= startDateStr) {
+        await client.query(
+          `UPDATE cycles
+           SET end_date = $1,
+               cycle_length = $2,
+               updated_at = NOW()
+           WHERE id = $3 AND user_id = $4`,
+          [newPrevEnd, newPrevLen, prev.id, userId]
+        );
+      }
+    }
+
     if (saved && data.period_length && data.period_length > 0) {
       for (let i = 0; i < data.period_length; i++) {
-        const dateStr = addDays(data.start_date, i);
+        const dateStr = addDays(startDateStr, i);
         await client.query(
           `INSERT INTO cycle_daily_entries (user_id, entry_date, flow_level, product_usage, unusual_discharge)
            VALUES ($1, $2, 'medium', '{}'::jsonb, '{}'::text[])
@@ -394,7 +445,7 @@ async function updateCycle(
 
     // 1. Fetch the old cycle details first (especially for manual cycles)
     const oldRes = await client.query(
-      `SELECT start_date, end_date, period_length, source FROM cycles
+      `SELECT start_date, end_date, period_length, cycle_length, source FROM cycles
        WHERE id = $1 AND user_id = $2`,
       [cycleId, userId]
     );
@@ -403,11 +454,53 @@ async function updateCycle(
       return null;
     }
     const oldCycle = oldRes.rows[0];
+    const newStartDate = data.start_date
+      ? normalizeDay(data.start_date)
+      : normalizeDay(oldCycle.start_date);
+    let newCycleLength =
+      data.cycle_length !== undefined
+        ? data.cycle_length
+        : oldCycle.cycle_length;
+    const hasExplicitCycleLength =
+      data.cycle_length !== undefined && data.cycle_length !== null;
+    const startDateChanged = newStartDate !== normalizeDay(oldCycle.start_date);
+    let newEndDate =
+      data.end_date !== undefined ? data.end_date : oldCycle.end_date;
+
+    if (
+      newEndDate === undefined ||
+      newEndDate === null ||
+      (!hasExplicitCycleLength && startDateChanged)
+    ) {
+      const nextRes = await client.query(
+        `SELECT start_date FROM cycles
+         WHERE user_id = $1 AND id != $2 AND start_date > $3
+         ORDER BY start_date ASC LIMIT 1`,
+        [userId, cycleId, newStartDate]
+      );
+      if (nextRes.rowCount && nextRes.rowCount > 0) {
+        const nextStartStr = normalizeDay(nextRes.rows[0].start_date);
+        if (newEndDate === undefined || newEndDate === null) {
+          newEndDate = addDays(nextStartStr, -1);
+        }
+        if (!hasExplicitCycleLength) {
+          newCycleLength = daysBetween(newStartDate, nextStartStr);
+        }
+      } else if (
+        (newEndDate === undefined || newEndDate === null) &&
+        newCycleLength &&
+        newCycleLength > 0
+      ) {
+        newEndDate = addDays(newStartDate, newCycleLength - 1);
+      } else if (newEndDate === undefined || newEndDate === null) {
+        newEndDate = null;
+      }
+    }
 
     // 2. Perform the update
     const result = await client.query(
       `UPDATE cycles
-       SET start_date = COALESCE($3, start_date),
+       SET start_date = $3,
            end_date = $4,
            period_length = COALESCE($5, period_length),
            cycle_length = $6,
@@ -419,10 +512,10 @@ async function updateCycle(
       [
         cycleId,
         userId,
-        data.start_date ?? null,
-        data.end_date ?? null,
+        newStartDate,
+        newEndDate,
         data.period_length ?? null,
-        data.cycle_length ?? null,
+        newCycleLength,
         data.is_excluded ?? null,
       ]
     );
@@ -482,7 +575,7 @@ async function deleteCycle(userId: string, cycleId: string): Promise<boolean> {
     // Look up the cycle first: derived cycles are rebuilt from daily-log flow
     // evidence, so deleting the row alone would let recompute recreate it.
     const found = await client.query(
-      `SELECT start_date, end_date, source FROM cycles
+      `SELECT start_date, end_date, period_length, source FROM cycles
        WHERE id = $1 AND user_id = $2`,
       [cycleId, userId]
     );
@@ -490,26 +583,81 @@ async function deleteCycle(userId: string, cycleId: string): Promise<boolean> {
       await client.query('ROLLBACK');
       return false;
     }
-    const { start_date, end_date } = found.rows[0];
+    const { start_date, period_length } = found.rows[0];
+    const startDateStr = normalizeDay(start_date);
+    const periodLen =
+      typeof period_length === 'number' && period_length > 0
+        ? period_length
+        : 5;
 
-    // Clear the underlying period evidence (flow + products) in this cycle's date range
-    // so the recompute does not resurrect it. Other fields on those days (BBT, symptoms,
-    // mood, notes) are preserved.
-    if (end_date) {
+    // Check if there is an immediately subsequent cycle
+    const nextRes = await client.query(
+      `SELECT start_date FROM cycles
+       WHERE user_id = $1 AND id != $2 AND start_date > $3
+       ORDER BY start_date ASC
+       LIMIT 1`,
+      [userId, cycleId, startDateStr]
+    );
+
+    // Calculate upper bound for clearing period flow evidence.
+    // Flow evidence is only cleared within this cycle's bleed span,
+    // strictly capped before the next cycle's start date so future cycles
+    // and daily logs are NEVER wiped.
+    let upperBound = addDays(startDateStr, periodLen - 1);
+    if (nextRes.rowCount && nextRes.rowCount > 0) {
+      const nextStartStr = normalizeDay(nextRes.rows[0].start_date);
+      const dayBeforeNext = addDays(nextStartStr, -1);
+      if (upperBound > dayBeforeNext) {
+        upperBound = dayBeforeNext;
+      }
+    }
+
+    // Clear flow & products strictly within [startDateStr, upperBound]
+    if (startDateStr <= upperBound) {
       await client.query(
         `UPDATE cycle_daily_entries
          SET flow_level = NULL, product_usage = '{}'::jsonb, updated_at = NOW()
          WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3`,
-        [userId, start_date, end_date]
+        [userId, startDateStr, upperBound]
       );
-    } else {
-      // Open (current) cycle: no next cycle, clear from its start onward.
-      await client.query(
-        `UPDATE cycle_daily_entries
-         SET flow_level = NULL, product_usage = '{}'::jsonb, updated_at = NOW()
-         WHERE user_id = $1 AND entry_date >= $2`,
-        [userId, start_date]
-      );
+    }
+
+    // If an immediately preceding cycle exists whose end_date pointed to this cycle,
+    // adjust its boundary to the next cycle (or open/null if no next cycle).
+    const prevRes = await client.query(
+      `SELECT id, start_date, end_date FROM cycles
+       WHERE user_id = $1 AND id != $2 AND start_date < $3
+       ORDER BY start_date DESC
+       LIMIT 1`,
+      [userId, cycleId, startDateStr]
+    );
+    const prev = prevRes.rowCount ? prevRes.rows[0] : null;
+    const prevEnd = prev?.end_date ? normalizeDay(prev.end_date) : null;
+    const dayBeforeDeleted = addDays(startDateStr, -1);
+    if (prev && (prevEnd === null || prevEnd >= dayBeforeDeleted)) {
+      const prevStartStr = normalizeDay(prev.start_date);
+      if (nextRes.rowCount && nextRes.rowCount > 0) {
+        const nextStartStr = normalizeDay(nextRes.rows[0].start_date);
+        const newPrevEnd = addDays(nextStartStr, -1);
+        const newPrevLen = daysBetween(prevStartStr, nextStartStr);
+        await client.query(
+          `UPDATE cycles
+           SET end_date = $1,
+               cycle_length = $2,
+               updated_at = NOW()
+           WHERE id = $3 AND user_id = $4`,
+          [newPrevEnd, newPrevLen, prev.id, userId]
+        );
+      } else {
+        await client.query(
+          `UPDATE cycles
+           SET end_date = NULL,
+               cycle_length = NULL,
+               updated_at = NOW()
+           WHERE id = $1 AND user_id = $2`,
+          [prev.id, userId]
+        );
+      }
     }
 
     const result = await client.query(
@@ -634,13 +782,16 @@ async function getCorrelationSources(userId: string) {
         [userId]
       ),
       client.query(
-        `SELECT entry_date, mood_value AS value FROM mood_entries
-         WHERE user_id = $1 ORDER BY entry_date ASC`,
+        `SELECT entry_date, ${DAILY_MOOD_VALUE_SQL} AS value FROM mood_entries
+         WHERE user_id = $1
+         GROUP BY entry_date
+         HAVING ${DAILY_MOOD_VALUE_SQL} IS NOT NULL
+         ORDER BY entry_date ASC`,
         [userId]
       ),
       client.query(
-        `SELECT entry_date, ROUND(duration_in_seconds / 3600.0, 2) AS value
-         FROM sleep_entries WHERE user_id = $1 ORDER BY entry_date ASC`,
+        `SELECT DISTINCT ON (entry_date) entry_date, ROUND(duration_in_seconds / 3600.0, 2) AS value
+         FROM sleep_entries WHERE user_id = $1 ORDER BY ${MAIN_SLEEP_ORDER_SQL}`,
         [userId]
       ),
       client.query(
@@ -765,7 +916,7 @@ async function getDisplayPreferences(
 async function upsertDisplayPreferences(
   userId: string,
   viewGroup: string,
-  visibleItems: any,
+  visibleItems: unknown,
   platform = 'web'
 ) {
   const client = await getClient(userId);

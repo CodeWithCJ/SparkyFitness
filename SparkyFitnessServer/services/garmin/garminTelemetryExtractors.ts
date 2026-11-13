@@ -253,18 +253,32 @@ function toTrackpointTimestamp(raw: unknown): Date | null {
  *
  * Points without a usable timestamp are dropped — see toTrackpointTimestamp.
  */
+export function isValidCoordinate(
+  lat: number | null,
+  lon: number | null
+): boolean {
+  if (lat === null || lon === null) return false;
+  if (lat === 0 && lon === 0) return false;
+  return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+
 export function extractGarminGpsPoints(
   payload: UnknownRecord
 ): ExtractedGpsPoint[] {
   if (Array.isArray(payload.gps_points)) {
     return asArray<UnknownRecord>(payload.gps_points).flatMap(
-      (pt: UnknownRecord) => {
+      (rawPt: UnknownRecord) => {
+        const pt = asRecord(rawPt);
+        if (pt === null) return [];
         const timestamp = toTrackpointTimestamp(pt.timestamp);
         if (timestamp === null) return [];
+        const lat = firstNum(pt, ['latitude']);
+        const lon = firstNum(pt, ['longitude']);
+        const validCoord = isValidCoordinate(lat, lon);
         return {
           timestamp,
-          latitude: firstNum(pt, ['latitude']) ?? 0,
-          longitude: firstNum(pt, ['longitude']) ?? 0,
+          latitude: validCoord ? lat! : 0,
+          longitude: validCoord ? lon! : 0,
           altitude_meters: firstNum(pt, ['altitude_meters']),
           speed_mps: firstNum(pt, ['speed_mps']),
           heart_rate_bpm: firstInt(pt, ['heart_rate_bpm']),
@@ -278,6 +292,20 @@ export function extractGarminGpsPoints(
   }
 
   const details = asRecord(payload.details);
+  const geoPolylineDTO = asRecord(details?.geoPolylineDTO);
+  const polyline = asArray<UnknownRecord>(geoPolylineDTO?.polyline);
+  const polyByTime = new Map<number, { lat: number; lon: number }>();
+  for (const rawPt of polyline) {
+    const pt = asRecord(rawPt);
+    if (pt === null) continue;
+    const ts = toTrackpointTimestamp(firstValue(pt, ['time']));
+    const lat = firstNum(pt, ['lat', 'latitude']);
+    const lon = firstNum(pt, ['lon', 'longitude']);
+    if (ts !== null && isValidCoordinate(lat, lon)) {
+      polyByTime.set(ts.getTime(), { lat: lat!, lon: lon! });
+    }
+  }
+
   const activityDetailMetrics = asArray<UnknownRecord>(
     details?.activityDetailMetrics
   );
@@ -314,18 +342,30 @@ export function extractGarminGpsPoints(
       );
       if (timestamp === null) return [];
 
-      const lat =
-        latIdx >= 0 && metrics[latIdx] !== null && metrics[latIdx] !== undefined
-          ? (num(metrics[latIdx]) ?? 0)
-          : 0;
-      const lon =
-        lonIdx >= 0 && metrics[lonIdx] !== null && metrics[lonIdx] !== undefined
-          ? (num(metrics[lonIdx]) ?? 0)
-          : 0;
+      // 1. Prefer coordinates from geoPolylineDTO matched by timestamp.
+      // geoPolylineDTO is unshifted and produced directly by Garmin's map polyline engine.
+      const polyCoord = polyByTime.get(timestamp.getTime());
+      let lat = polyCoord?.lat ?? null;
+      let lon = polyCoord?.lon ?? null;
+
+      if (lat === null || lon === null) {
+        if (
+          latIdx >= 0 &&
+          lonIdx >= 0 &&
+          latIdx < metrics.length &&
+          lonIdx < metrics.length
+        ) {
+          lat = num(metrics[latIdx]);
+          lon = num(metrics[lonIdx]);
+        }
+      }
+
+      const validCoord = isValidCoordinate(lat, lon);
+
       return {
         timestamp,
-        latitude: lat,
-        longitude: lon,
+        latitude: validCoord ? lat! : 0,
+        longitude: validCoord ? lon! : 0,
         altitude_meters: altIdx >= 0 ? num(metrics[altIdx]) : null,
         speed_mps: speedIdx >= 0 ? num(metrics[speedIdx]) : null,
         heart_rate_bpm: hrIdx >= 0 ? int(metrics[hrIdx]) : null,
@@ -337,16 +377,19 @@ export function extractGarminGpsPoints(
     });
   }
 
-  const geoPolylineDTO = asRecord(details?.geoPolylineDTO);
-  const polyline = asArray<UnknownRecord>(geoPolylineDTO?.polyline);
   if (polyline.length > 0) {
-    return polyline.flatMap((pt: UnknownRecord) => {
+    return polyline.flatMap((rawPt: UnknownRecord) => {
+      const pt = asRecord(rawPt);
+      if (pt === null) return [];
       const timestamp = toTrackpointTimestamp(firstValue(pt, ['time']));
       if (timestamp === null) return [];
+      const lat = firstNum(pt, ['lat', 'latitude']);
+      const lon = firstNum(pt, ['lon', 'longitude']);
+      if (!isValidCoordinate(lat, lon)) return [];
       return {
         timestamp,
-        latitude: firstNum(pt, ['lat', 'latitude']) ?? 0,
-        longitude: firstNum(pt, ['lon', 'longitude']) ?? 0,
+        latitude: lat!,
+        longitude: lon!,
         altitude_meters: firstNum(pt, ['altitude', 'altitude_meters']),
         speed_mps: firstNum(pt, ['speed']),
         heart_rate_bpm: firstInt(pt, ['heartRate', 'bpm']),
@@ -541,6 +584,38 @@ export function extractGarminTelemetryFields(
 export function findGroupForTimestamp<
   T extends { startMs: number | null; endMs: number | null },
 >(groups: T[], timestampMs: number): T | undefined {
+  if (groups.length === 0) return undefined;
+  if (groups.length <= 16) {
+    const match = groups.find(
+      (g) =>
+        g.startMs !== null &&
+        g.endMs !== null &&
+        timestampMs >= g.startMs &&
+        timestampMs <= g.endMs
+    );
+    return match ?? groups[0];
+  }
+
+  // Binary search candidate interval when groups are chronologically ordered
+  let low = 0;
+  let high = groups.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const g = groups[mid];
+    if (g.startMs !== null && g.endMs !== null) {
+      if (timestampMs >= g.startMs && timestampMs <= g.endMs) {
+        return g;
+      }
+      if (timestampMs < g.startMs) {
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    } else {
+      break;
+    }
+  }
+
   const match = groups.find(
     (g) =>
       g.startMs !== null &&

@@ -1,3 +1,5 @@
+import { MEALIE_NUTRITION_FIELDS } from '@workspace/shared';
+import { z } from 'zod';
 import { log } from '../../config/logging.js';
 import {
   type AiNetworkPolicy,
@@ -15,58 +17,79 @@ function resolveFoodFetch(policy?: AiNetworkPolicy): typeof fetch {
     : fetch;
 }
 
-interface MealieNutrition {
-  calories?: string | number;
-  proteinContent?: string | number;
-  carbohydrateContent?: string | number;
-  fatContent?: string | number;
-  saturatedFatContent?: string | number;
-  unsaturatedFatContent?: string | number;
-  transFatContent?: string | number;
-  cholesterolContent?: string | number;
-  sodiumContent?: string | number;
-  fiberContent?: string | number;
-  sugarContent?: string | number;
-  [key: string]: string | number | undefined;
-}
-
-interface MealieRecipe {
-  name: string;
-  orgURL?: string;
-  slug: string;
-  /** Mealie's recipe UUID; needed to build the media image URL. */
-  id?: string;
-  /**
-   * Truthy when the recipe has an uploaded photo. Mealie stores the image
-   * under a predictable media path rather than returning a URL directly.
-   */
-  image?: string | null;
-  recipeServings?: number;
-  recipeYield?: string;
-  nutrition?: MealieNutrition;
-}
-
-interface MealieSearchResponse {
-  items: MealieRecipe[];
-  total: number;
-}
-
 // Harvest every numeric field from Mealie's schema.org nutrition object (keys
 // like "proteinContent"), keyed by a readable label with the "Content" suffix
 // dropped, for alias discovery and custom-nutrient matching on import.
 function extractMealieProviderNutrients(
-  nutrition: MealieNutrition
+  nutrition: NonNullable<MealieRecipe['nutrition']>
 ): Record<string, number> {
   const out: Record<string, number> = {};
   if (!nutrition || typeof nutrition !== 'object') return out;
   for (const [key, value] of Object.entries(nutrition)) {
-    const num = parseFloat(value as string);
+    const num = parseFloat(String(value ?? ''));
     if (!Number.isFinite(num)) continue;
     const name = key.replace(/Content$/i, '').trim();
     if (name) out[name] = num;
   }
   return out;
 }
+
+const optionalNumber = z.union([z.number(), z.string()]).nullish();
+const mealieUnitSchema = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    abbreviation: z.string().optional(),
+    standardUnit: z.string().nullish(),
+    standardQuantity: optionalNumber,
+  })
+  .passthrough();
+const mealieIngredientSchema = z
+  .object({
+    referenceId: z.string().optional(),
+    quantity: optionalNumber,
+    unit: mealieUnitSchema.nullish(),
+    food: z
+      .object({ id: z.string().optional(), name: z.string().optional() })
+      .passthrough()
+      .nullish(),
+    referencedRecipe: z.unknown().optional(),
+    note: z.string().nullish(),
+    display: z.string().nullish(),
+    originalText: z.string().nullish(),
+    title: z.string().nullish(),
+  })
+  .passthrough();
+export const mealieRecipeSchema = z
+  .object({
+    id: z.string().nullish(),
+    slug: z.string(),
+    name: z.string(),
+    orgURL: z.string().nullish(),
+    image: z.string().nullish(),
+    recipeServings: optionalNumber,
+    recipeYield: z.string().nullish(),
+    recipeIngredient: z.array(mealieIngredientSchema).optional(),
+    nutrition: z
+      .record(z.string(), z.union([z.string(), z.number(), z.null()]))
+      .nullish(),
+  })
+  .passthrough();
+export const mealieIngredientRecipeSchema = mealieRecipeSchema.extend({
+  recipeIngredient: z.array(mealieIngredientSchema).max(100),
+});
+export class MealieRecipeTooLargeError extends Error {
+  constructor() {
+    super(
+      'This Mealie recipe has more than 100 ingredients. Split it into smaller recipes before importing.'
+    );
+    this.name = 'MealieRecipeTooLargeError';
+  }
+}
+export type MealieRecipe = z.infer<typeof mealieRecipeSchema>;
+export type MealieIngredientRecipe = z.infer<
+  typeof mealieIngredientRecipeSchema
+>;
 
 class MealieService {
   accessToken?: string;
@@ -102,48 +125,26 @@ class MealieService {
       hasMore: boolean;
     };
   }> {
-    if (!this.accessToken) {
-      throw new Error('Mealie API key not provided.');
-    }
     const perPage = 10;
-    const url = new URL(`${this.baseUrl}/api/recipes`);
-    url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
-    url.searchParams.append('perPage', String(perPage));
-    url.searchParams.append('page', String(page));
     try {
-      const response = await resolveFoodFetch(this.networkPolicy)(
-        url.toString(),
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-            Accept: 'application/json',
-            ...options.headers,
-          },
-        }
-      );
-      if (!response.ok) {
-        const errorText = await response.text();
-        log('error', `Mealie API Error Response (Raw): ${errorText}`);
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorData.detail}`
-          );
-        } catch (jsonError) {
-          throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorText}`,
-            { cause: jsonError }
-          );
-        }
-      }
-      const data = (await response.json()) as MealieSearchResponse;
-      log(
-        'debug',
-        `Found ${data.items.length} recipes for query: ${query} (page ${page})`
+      const url = new URL(`${this.baseUrl}/api/recipes`);
+      url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
+      url.searchParams.append('perPage', String(perPage));
+      url.searchParams.append('page', String(page));
+      const data = await this.request(
+        url,
+        'recipe search',
+        z.object({
+          items: z.array(z.unknown()),
+          total: z.number().int().nonnegative(),
+        }),
+        { headers: options.headers }
       );
       return {
-        items: data.items,
+        items: data.items.flatMap((item) => {
+          const parsed = mealieRecipeSchema.safeParse(item);
+          return parsed.success ? [parsed.data] : [];
+        }),
         pagination: {
           page,
           pageSize: perPage,
@@ -151,64 +152,134 @@ class MealieService {
           hasMore: page * perPage < data.total,
         },
       };
-    } catch (error) {
-      log(
-        'error',
-        'Error during Mealie recipe search:',
-        error instanceof Error ? error.message : String(error)
-      );
+    } catch {
       return {
         items: [],
-        pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
+        pagination: { page, pageSize: perPage, totalCount: 0, hasMore: false },
       };
     }
   }
+  getRecipeDetails(
+    slug: string,
+    options: { headers?: Record<string, string>; requireIngredients: true }
+  ): Promise<MealieIngredientRecipe>;
+  getRecipeDetails(
+    slug: string,
+    options?: { headers?: Record<string, string>; requireIngredients?: false }
+  ): Promise<MealieRecipe | null>;
   async getRecipeDetails(
     slug: string,
-    options: { headers?: Record<string, string> } = {}
+    options: {
+      headers?: Record<string, string>;
+      requireIngredients?: boolean;
+    } = {}
   ): Promise<MealieRecipe | null> {
-    // Added options parameter
-    if (!this.accessToken) {
-      throw new Error('Mealie API key not provided.');
-    }
-    const url = `${this.baseUrl}/api/recipes/${slug}`;
     try {
-      const response = await resolveFoodFetch(this.networkPolicy)(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          Accept: 'application/json',
-          ...options.headers, // Apply custom headers
-        },
-      });
-      if (!response.ok) {
-        const errorData = (await response.json()) as { detail?: string };
-        throw new Error(
-          `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData.detail}`
-        );
-      }
-      const data = (await response.json()) as MealieRecipe;
-      log('debug', `Successfully retrieved details for recipe: ${slug}`);
-      return data;
-    } catch (error) {
-      log(
-        'error',
-        'Error during Mealie recipe details retrieval:',
-        error instanceof Error ? error.message : String(error)
+      return await this.request(
+        this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
+        'recipe read',
+        options.requireIngredients
+          ? mealieIngredientRecipeSchema
+          : mealieRecipeSchema,
+        { headers: options.headers }
       );
+    } catch (error) {
+      if (options.requireIngredients) throw error;
       return null;
     }
   }
-  mapMealieRecipeToSparkyFood(mealieRecipe: MealieRecipe, userId: string) {
-    log(
-      'debug',
-      'Raw Mealie Recipe Data:',
-      JSON.stringify(mealieRecipe, null, 2)
+
+  private async request<T>(
+    url: string | URL,
+    operation: 'recipe read' | 'recipe search' | 'nutrition update',
+    schema: z.ZodType<T>,
+    init: RequestInit = {}
+  ): Promise<T> {
+    let status: number | null = null;
+    let failure:
+      'credentials' | 'transport' | 'http' | 'schema' | 'ingredient_limit' =
+      'credentials';
+    try {
+      if (!this.accessToken) throw new Error('Missing credentials');
+      failure = 'transport';
+      const response = await resolveFoodFetch(this.networkPolicy)(url, {
+        ...init,
+        signal: AbortSignal.timeout(30000),
+        headers: {
+          Authorization: 'Bearer ' + this.accessToken,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...init.headers,
+        },
+      });
+      status = response.status;
+      failure = 'http';
+      if (!response.ok) throw new Error('Upstream rejected request');
+      failure = 'schema';
+      const parsed = schema.safeParse(await response.json());
+      if (parsed.success) return parsed.data;
+      if (
+        operation === 'recipe read' &&
+        parsed.error.issues.some(
+          (issue) =>
+            issue.code === 'too_big' &&
+            issue.origin === 'array' &&
+            issue.path.length === 1 &&
+            issue.path[0] === 'recipeIngredient'
+        )
+      )
+        failure = 'ingredient_limit';
+      throw new Error('Invalid Mealie response');
+    } catch {
+      // Never log arbitrary transport/schema errors, URLs, credentials or bodies.
+      log('error', 'Mealie ingredient request failed', {
+        operation,
+        status,
+        failure,
+      });
+      if (failure === 'ingredient_limit') throw new MealieRecipeTooLargeError();
+      throw new Error(
+        'Mealie ' +
+          operation +
+          ' failed' +
+          (failure === 'http' ? ' (' + status + ')' : '')
+      );
+    }
+  }
+  async patchRecipeNutrition(
+    slug: string,
+    patch: Record<string, string>,
+    existing: Record<string, string | number | null>
+  ): Promise<MealieIngredientRecipe> {
+    return this.request(
+      this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
+      'nutrition update',
+      mealieIngredientRecipeSchema,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ nutrition: { ...existing, ...patch } }),
+      }
     );
+  }
+
+  mapMealieRecipeToSparkyFood(mealieRecipe: MealieRecipe, userId: string) {
     const nutrition = mealieRecipe.nutrition || {};
     return {
       food: {
         name: mealieRecipe.name,
+        recipe_has_nutrition: MEALIE_NUTRITION_FIELDS.some(({ field }) => {
+          const value = nutrition[field];
+          return (
+            value !== null &&
+            value !== undefined &&
+            String(value).trim() !== '' &&
+            Number.isFinite(parseFloat(String(value)))
+          );
+        }),
+        recipe_servings:
+          Number(mealieRecipe.recipeServings) > 0
+            ? Number(mealieRecipe.recipeServings)
+            : null,
         brand: mealieRecipe.orgURL
           ? new URL(mealieRecipe.orgURL).hostname
           : null,

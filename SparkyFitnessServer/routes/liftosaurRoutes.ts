@@ -11,6 +11,7 @@ import {
   syncClaimTarget,
   startProviderSync,
 } from '../services/providerSyncClaim.js';
+import { publicErrorMessage } from '../utils/errors.js';
 
 const router = express.Router();
 
@@ -126,7 +127,7 @@ router.post(
       }
       res.status(500).json({
         message: 'Error initiating manual Liftosaur sync',
-        error: errorMessage(error),
+        error: publicErrorMessage(error),
       });
     }
   }
@@ -162,7 +163,7 @@ router.get(
       log('error', `Error getting Liftosaur status: ${errorMessage(error)}`);
       res.status(500).json({
         message: 'Error getting Liftosaur status',
-        error: errorMessage(error),
+        error: publicErrorMessage(error),
       });
     }
   }
@@ -206,7 +207,7 @@ router.post(
       log('error', `Error disconnecting Liftosaur: ${errorMessage(error)}`);
       res.status(500).json({
         message: 'Error disconnecting Liftosaur',
-        error: errorMessage(error),
+        error: publicErrorMessage(error),
       });
     }
   }

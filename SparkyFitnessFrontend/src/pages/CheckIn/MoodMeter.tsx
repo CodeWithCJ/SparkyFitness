@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BUILT_IN_MOODS,
+  MOOD_FACE_STEP,
+  moodFaceValue,
   moodValueToTag,
-  representativeMoodValue,
 } from '@workspace/shared';
 import type { CustomMood } from '@/types/mood';
 import { Slider } from '@/components/ui/slider';
@@ -39,14 +40,20 @@ import {
   useMoodDisplayPreferences,
   useUpdateMoodDisplayPreferencesMutation,
 } from '@/hooks/CheckIn/useMood';
+import RatingSelector from '@/pages/CheckIn/RatingSelector';
 
 interface MoodMeterProps {
-  mood: number;
+  /** null until a mood is picked: every part of a check-in is optional. */
+  mood: number | null;
   notes: string;
   moodTags: string[];
-  onMoodChange: (value: number) => void;
+  energy: number | null;
+  focus: number | null;
+  onMoodChange: (value: number | null) => void;
   onNotesChange: (value: string) => void;
   onTagsChange: (tags: string[]) => void;
+  onEnergyChange: (value: number | null) => void;
+  onFocusChange: (value: number | null) => void;
 }
 
 // Domain color tokens -> hex, so mood colors are actually rendered on chips.
@@ -86,10 +93,9 @@ const MOOD_MAX = 95;
  * A step is half the gap between two faces, so the stops in between are not
  * stray positions but the half-way marks: happy leaning excited, calm leaning
  * confident. That only reads as deliberate while a face lands on every second
- * stop, which is what `MOOD_FACE_STEP` keeps true.
+ * stop, which taking it from the shared `MOOD_FACE_STEP` keeps true.
  */
-const MOOD_STEP = 5;
-const MOOD_FACE_STEP = MOOD_STEP * 2;
+const MOOD_STEP = MOOD_FACE_STEP / 2;
 
 /** Into the range the picker can show. */
 const clampToScale = (value: number) =>
@@ -107,17 +113,11 @@ const THUMB_INSET_PX = 10;
  * the further right you went, since the bands are not evenly spread over 10-100.
  */
 const BAND_SCALE = BUILT_IN_MOODS.filter((m) => m.band != null).map((m) => {
-  // `representativeMoodValue` gives the band midpoint on the raw 0-100 scale,
-  // which the two end bands put where no stop can land: 8 for "sad" (0-15),
-  // below the minimum, and 93 for "excited" (85-100). Snap onto the grid the
-  // thumb travels so every face is a stop the thumb can rest on.
-  const value = clampToScale(
-    MOOD_MIN +
-      Math.round(
-        (representativeMoodValue([m.name]) - MOOD_MIN) / MOOD_FACE_STEP
-      ) *
-        MOOD_FACE_STEP
-  );
+  // The shared face value is already on the grid the thumb travels (10 for
+  // "sad" up to 90 for "excited", not the raw band midpoints 8 and 93), so
+  // every face is a stop the thumb can rest on, and the mobile picker writes
+  // the same value for it.
+  const value = moodFaceValue(m.name);
   return {
     ...m,
     value,
@@ -129,9 +129,13 @@ const MoodMeter = ({
   mood,
   notes,
   moodTags,
+  energy,
+  focus,
   onMoodChange,
   onNotesChange,
   onTagsChange,
+  onEnergyChange,
+  onFocusChange,
 }: MoodMeterProps) => {
   const { t } = useTranslation();
   const { data: customMoods } = useCustomMoods();
@@ -150,9 +154,12 @@ const MoodMeter = ({
   // The band the value falls in, driving both the emoji and the label beside it
   // so the header cannot name one mood while the legend highlights another.
   // `moodValueToTag` always names one of the nine; the fallback is for types.
+  // No mood picked yet means no band: nothing is named or highlighted.
   const currentBand =
-    BAND_SCALE.find((m) => m.name === moodValueToTag(mood ?? 50)) ??
-    BAND_SCALE[0]!;
+    mood === null
+      ? null
+      : (BAND_SCALE.find((m) => m.name === moodValueToTag(mood)) ??
+        BAND_SCALE[0]!);
 
   const toggleTag = (name: string) => {
     onTagsChange(
@@ -227,24 +234,57 @@ const MoodMeter = ({
     <div className="space-y-4">
       {/* Intensity rating (kept for interop + trend) */}
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <Label>{t('moodMeter.intensity', 'Overall mood')}</Label>
-          <span className="flex items-center gap-1.5 text-sm font-medium">
-            <span className="text-lg leading-none">{currentBand.emoji}</span>
-            {builtInMoodLabel(currentBand.name, currentBand.displayName)}
-          </span>
+          <div className="flex items-center gap-2">
+            {currentBand ? (
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <span className="text-lg leading-none">
+                  {currentBand.emoji}
+                </span>
+                {builtInMoodLabel(currentBand.name, currentBand.displayName)}
+              </span>
+            ) : (
+              <span className="text-sm font-medium text-muted-foreground">
+                {t('moodMeter.noMoodSelected', 'No mood selected')}
+              </span>
+            )}
+            {mood !== null && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs text-muted-foreground"
+                onClick={() => onMoodChange(null)}
+              >
+                {t('moodMeter.clearMood', 'Clear mood')}
+              </Button>
+            )}
+          </div>
         </div>
         {/* Clamped for display only. An import may carry 96-100, and Radix
             announces the controlled value verbatim, so passing one through
             would report a mood above the maximum the slider declares. The
-            stored value is left alone until the user moves the thumb. */}
+            stored value is left alone until the user moves the thumb.
+            With no mood yet the thumb is parked, dimmed, in the middle; a
+            press on it picks that middle value, since Radix only reports a
+            value that differs from the one it shows. */}
         <Slider
           value={[clampToScale(mood ?? 50)]}
           min={MOOD_MIN}
           max={MOOD_MAX}
           step={MOOD_STEP}
           onValueChange={(vals) => onMoodChange(vals[0] ?? 50)}
-          className="w-full"
+          onPointerDown={() => {
+            if (mood === null) onMoodChange(50);
+          }}
+          className={cn('w-full', mood === null && 'opacity-50')}
+          hideRange={mood === null}
+          valueText={
+            mood === null
+              ? t('moodMeter.noMoodSelected', 'No mood selected')
+              : undefined
+          }
           aria-label={t('moodMeter.intensity', 'Overall mood')}
         />
         {/* Tappable band emojis: the scale, and a shortcut to a face. Each is
@@ -255,7 +295,7 @@ const MoodMeter = ({
         >
           <div className="relative h-6">
             {BAND_SCALE.map((m) => {
-              const active = currentBand.name === m.name;
+              const active = currentBand?.name === m.name;
               return (
                 <button
                   key={m.name}
@@ -277,6 +317,24 @@ const MoodMeter = ({
             })}
           </div>
         </div>
+      </div>
+
+      {/* Optional energy and focus ratings */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <RatingSelector
+          label={t('moodMeter.energy', 'Energy')}
+          lowLabel={t('moodMeter.energyLow', 'Drained')}
+          highLabel={t('moodMeter.energyHigh', 'Energized')}
+          value={energy}
+          onChange={onEnergyChange}
+        />
+        <RatingSelector
+          label={t('moodMeter.focus', 'Focus')}
+          lowLabel={t('moodMeter.focusLow', 'Scattered')}
+          highLabel={t('moodMeter.focusHigh', 'Locked in')}
+          value={focus}
+          onChange={onFocusChange}
+        />
       </div>
 
       {/* Multi-select mood tags */}
@@ -407,7 +465,7 @@ const MoodMeter = ({
       {/* Notes */}
       <div>
         <Label htmlFor="mood-notes">
-          {t('checkIn.notesOptional', 'Notes (optional)')}
+          {t('checkIn.journalOptional', 'Journal (optional)')}
         </Label>
         <Textarea
           id="mood-notes"
@@ -417,7 +475,7 @@ const MoodMeter = ({
           )}
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          className="mt-2"
+          className="mt-2 min-h-[140px]"
         />
       </div>
     </div>

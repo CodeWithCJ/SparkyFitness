@@ -1,0 +1,122 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.service.quicksettings.Tile
+import android.service.quicksettings.TileService
+import com.sparkyapps.sparkyfitness.backgroundwater.BackgroundWaterStore
+import com.sparkyapps.sparkyfitness.backgroundwater.enqueueLogWater
+import {{APPLICATION_ID}}.R
+
+/**
+ * Quick Settings tiles, the Android side of the iOS Control Center controls
+ * (targets/widget/Controls.swift). They share the widgets' strings and follow
+ * the app language the same way (WidgetLocale). The tile is drawn again each
+ * time the panel opens, so it shows the latest snapshot without a refresh.
+ */
+abstract class SparkyTileService : TileService() {
+    /** Also the tile's name in the panel's edit list (plugins/withQuickSettingsTiles.ts). */
+    protected abstract val labelRes: Int
+
+    override fun onStartListening() {
+        super.onStartListening()
+        refresh()
+    }
+
+    protected fun refresh() {
+        val tile = qsTile ?: return
+        tile.state = Tile.STATE_INACTIVE
+        render(tile, WidgetLocale.localizedContext(this))
+        tile.updateTile()
+    }
+
+    protected open fun render(tile: Tile, context: Context) {
+        tile.label = context.getString(labelRes)
+    }
+
+    /** Opens the app on a deep link, asking to unlock first on the lock screen. */
+    protected fun openApp(path: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://$path"))
+            .setPackage(packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val launch = Runnable {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startActivityAndCollapse(
+                    PendingIntent.getActivity(
+                        this,
+                        path.hashCode(),
+                        intent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                )
+            } else {
+                // Throws from Android 14 for apps targeting it, hence the branch.
+                @Suppress("DEPRECATION")
+                startActivityAndCollapse(intent)
+            }
+        }
+        if (isLocked) unlockAndRun(launch) else launch.run()
+    }
+}
+
+class ScanFoodTileService : SparkyTileService() {
+    override val labelRes = R.string.widget_scan_barcode
+
+    override fun onClick() = openApp("scan")
+}
+
+class SearchFoodTileService : SparkyTileService() {
+    override val labelRes = R.string.widget_search_food
+
+    override fun onClick() = openApp("search")
+}
+
+/**
+ * Logs one drink without opening the app, like the "Log water" launcher
+ * shortcut and the iOS control, so it also works from the lock screen. Greyed
+ * out while the app holds no login for it. It is a button, not a switch, so it
+ * is drawn again right away and never stays on. A Toast would be drawn under
+ * the open panel or hidden by the lock screen, and some panels (HyperOS) do
+ * not show a tile's subtitle, so its result goes to the notification list
+ * (fromTile = true).
+ */
+class LogWaterTileService : SparkyTileService() {
+    override val labelRes = R.string.tile_log_water
+
+    override fun render(tile: Tile, context: Context) {
+        super.render(tile, context)
+        if (BackgroundWaterStore.load(this) == null) tile.state = Tile.STATE_UNAVAILABLE
+    }
+
+    override fun onClick() {
+        enqueueLogWater(applicationContext, fromTile = true)
+        refresh()
+    }
+}
+
+/**
+ * Today's calories left, read from the calorie widget's snapshot, in the
+ * label like the iOS control. Opens the food diary. Quick Settings opens on
+ * the lock screen, so the figure only shows while a login is stored, and the
+ * app erases the snapshot whenever the account changes (useAuth).
+ */
+class CaloriesLeftTileService : SparkyTileService() {
+    override val labelRes = R.string.tile_calories_left
+
+    override fun render(tile: Tile, context: Context) {
+        val snapshot = CalorieWidget.loadSnapshot(this)
+        if (snapshot == null || BackgroundWaterStore.load(this) == null) {
+            super.render(tile, context)
+            return
+        }
+        tile.label = context.getString(
+            CalorieWidget.energyLeftRes(snapshot.isKj),
+            CalorieWidget.formatInt(context, snapshot.remaining),
+        )
+    }
+
+    override fun onClick() = openApp("diary")
+}

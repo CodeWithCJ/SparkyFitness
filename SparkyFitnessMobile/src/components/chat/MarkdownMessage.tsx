@@ -52,10 +52,7 @@ export default function MarkdownMessage({
   fontSize?: number;
   /** Fade in appended characters. Leave off for already-complete text. */
   streaming?: boolean;
-  /**
-   * Per-element style overrides merged over the themed defaults. Notes use it
-   * to size embedded photos, which chat never has.
-   */
+  /** Per-element style overrides merged over the themed defaults. */
   styleOverrides?: MarkdownStyle;
 }) {
   const [textPrimary, muted, accent, raised, background, border] =

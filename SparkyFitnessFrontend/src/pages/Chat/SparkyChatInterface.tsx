@@ -17,10 +17,14 @@ import { Thread } from '@/components/thread';
 import { useToast } from '@/hooks/use-toast';
 import { useChatToolCategories } from '@/contexts/ChatToolCategoriesContext';
 import { useEffect } from 'react';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { FoodAssistantState } from '@/components/ai/FoodAssistantState';
 
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 import { type UIMessage } from 'ai';
 import { resizeImageBase64 } from '@/utils/imageResize';
+import { getChatConversationId } from '@/utils/chatConversationId';
 
 import { useTranslation } from 'react-i18next';
 interface SparkyChatInnerProps {
@@ -43,8 +47,10 @@ const SparkyChatInner = ({
   const { t } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
   const invalidateChat = useChatInvalidation();
+  const queryClient = useQueryClient();
   const userDate = formatDateToYYYYMMDD(new Date());
   const { toast } = useToast();
+  const { activeUserId } = useActiveUser();
 
   // Runtime tool-category selection, scoped to the active service and prefilled
   // from its full/core profile. getSelected() is stable and reads the latest
@@ -142,6 +148,9 @@ const SparkyChatInner = ({
             // closure never sends a stale set). Empty => server falls back to
             // the service's profile default.
             toolCategories: hasCustomSelection ? getSelected() : undefined,
+            // Stable per-conversation ID. The server pins providers that need
+            // session affinity (OpenCode Go) to it.
+            conversationId: await getChatConversationId(activeUserId ?? ''),
             messages: processedMessages,
           },
         };
@@ -152,6 +161,7 @@ const SparkyChatInner = ({
       // Invalidate queries to refresh diary nutrition and check-ins in real-time
       invalidateDiary();
       invalidateChat();
+      void queryClient.invalidateQueries({ queryKey: ['foodAssistant'] });
     },
     onError: (error) => {
       toast({
@@ -169,6 +179,19 @@ const SparkyChatInner = ({
 
   return (
     <div className="flex flex-col h-full bg-background">
+      <FoodAssistantState
+        onResume={(taskId) =>
+          runtime.thread.append({
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Continue my saved food task ${taskId}. Read its latest checkpoint before proceeding.`,
+              },
+            ],
+          })
+        }
+      />
       <div className="flex-1 overflow-hidden py-4">
         <Thread runtime={runtime} />
       </div>
@@ -178,6 +201,7 @@ const SparkyChatInner = ({
 
 const SparkyChatInterface = () => {
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const { data: activeAIServiceSetting, isLoading: isActiveServiceLoading } =
     useActiveAIService(!!user);
   const { data: preferences, isLoading: isPrefsLoading } =
@@ -197,6 +221,7 @@ const SparkyChatInterface = () => {
 
   return (
     <SparkyChatInner
+      key={activeUserId ?? ''}
       activeAIServiceSetting={activeAIServiceSetting || null}
       history={history || []}
     />

@@ -93,6 +93,7 @@ export function mapGarminCategoryToMuscles(rawCategory: unknown): {
     return { primary: [], secondary: [] };
   }
   const normalized = rawCategory
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '_');
@@ -110,7 +111,13 @@ export function mapGarminExerciseCategory(rawCategory: unknown): string {
     return 'general';
   }
 
-  const normalized = rawCategory.trim().toLowerCase();
+  const normalized = rawCategory
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  const uppercaseKey = normalized.toUpperCase();
 
   // Yoga
   if (normalized.includes('yoga')) {
@@ -123,12 +130,14 @@ export function mapGarminExerciseCategory(rawCategory: unknown): string {
   }
 
   // Plyometrics
-  if (normalized.includes('plyometrics')) {
+  if (normalized.includes('plyometrics') || normalized.includes('plyo')) {
     return 'plyometrics';
   }
 
-  // Cardio indicators
+  // Cardio indicators (including RUN, BIKE)
   if (
+    uppercaseKey === 'RUN' ||
+    uppercaseKey === 'BIKE' ||
     GARMIN_CARDIO_CATEGORY_INDICATORS.some((indicator) =>
       normalized.includes(indicator)
     )
@@ -143,6 +152,16 @@ export function mapGarminExerciseCategory(rawCategory: unknown): string {
     normalized.includes('weight_lifting')
   ) {
     if (normalized.includes('olympic')) return 'olympic weightlifting';
+  }
+
+  // Warm up
+  if (uppercaseKey === 'WARM_UP') {
+    return 'general';
+  }
+
+  // Known Garmin strength category from the muscle map
+  if (GARMIN_CATEGORY_TO_MUSCLES[uppercaseKey]) {
+    return 'strength';
   }
 
   // Strength

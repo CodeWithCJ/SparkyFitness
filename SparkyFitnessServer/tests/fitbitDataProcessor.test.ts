@@ -131,6 +131,7 @@ describe('processFitbitSleep recording-zone stamp (issue #2033)', () => {
     vi.clearAllMocks();
     vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
       id: 'sleep-1',
+      created: true,
     });
   });
 
@@ -143,8 +144,8 @@ describe('processFitbitSleep recording-zone stamp (issue #2033)', () => {
     // same stored offset must reproduce Fitbit's reported 23:00, even though
     // the historical zone offset that January was -300.
     const { hour, minute } = instantHourMinuteWithOffset(
-      new Date(entry.bedtime),
-      entry.record_utc_offset_minutes
+      new Date(entry.bedtime!),
+      entry.record_utc_offset_minutes!
     );
     expect({ hour, minute }).toEqual({ hour: 23, minute: 0 });
   });

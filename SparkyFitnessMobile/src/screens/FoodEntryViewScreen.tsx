@@ -81,6 +81,8 @@ import {
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import VerifiedBadge from '../components/VerifiedBadge';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -146,6 +148,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -849,7 +852,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
 
-  const viewCalories = Math.round(scaledValue(entry.calories, entry));
+  const viewCalories = roundedEnergy(
+    scaledValue(entry.calories, entry),
+    energyUnit
+  );
   const viewProtein = Math.round(scaledValue(entry.protein, entry));
   const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
   const viewFat = Math.round(scaledValue(entry.fat, entry));
@@ -1147,11 +1153,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               <View className="flex-1 items-center pr-10">
                 <Text className="text-text-primary text-3xl font-medium">
                   {isEditing
-                    ? Math.round(scaled(displayValues.calories))
+                    ? roundedEnergy(scaled(displayValues.calories), energyUnit)
                     : viewCalories}
                 </Text>
                 <Text className="text-text-secondary text-base mt-1">
-                  {t('nutrients.calories', { defaultValue: 'Calories' })}
+                  {energyUnit === 'kJ'
+                    ? energyUnitLabel(energyUnit, t)
+                    : t('nutrients.calories', { defaultValue: 'Calories' })}
                 </Text>
               </View>
               <Animated.View

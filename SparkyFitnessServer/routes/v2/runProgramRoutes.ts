@@ -3,12 +3,22 @@ import {
   customRunProgramInputSchema,
   adjustRunning,
   adjustRunProgramBodySchema,
+  applyRealign,
+  builtInBaseline,
   completeRunProgramWorkoutBodySchema,
-  findProgram,
+  instantToDay,
   ProgramAdjustError,
+  ProgramRealignStaleError,
   rateRunProgramWorkoutBodySchema,
+  realignInputFromProgram,
+  realignProgram,
+  realignRunProgramBodySchema,
+  todayInZone,
+  toRealignResult,
+  type RunProgramResponse,
   upsertRunProgramBodySchema,
 } from '@workspace/shared';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import requireSelfActor from '../../middleware/requireSelfMiddleware.js';
 import {
   adjustRunProgram,
@@ -190,7 +200,7 @@ router.post('/adjust', async (req, res, next) => {
           state,
           parsed.data.percent,
           parsed.data.count,
-          findProgram(state.programId)?.workouts
+          builtInBaseline(state.programId, state.workouts)
         ),
       req.authenticatedUserId
     );
@@ -208,6 +218,80 @@ router.post('/adjust', async (req, res, next) => {
 
 /**
  * @swagger
+ * /v2/run-program/realign:
+ *   post:
+ *     summary: Rebuild the rest of the plan to finish on the goal day
+ *     description: Works out which workouts to drop, fold or repeat so the last one (the race) lands on the goal day, never touching the taper or the final workout, and eases the running after a long gap. Without `confirmed` true nothing is saved and the response only previews the change. A goal that is not realistic is reported with the choices (a later date, a shorter race, or `force` to go ahead); a `token` from the preview that no longer matches the plan is refused with 409.
+ *     tags: [Exercise]
+ *     responses:
+ *       200:
+ *         description: '`{ realign, applied, program }`.'
+ *       400:
+ *         description: Invalid body, no program, or nothing to realign.
+ *       409:
+ *         description: The plan changed since the preview was made.
+ */
+router.post('/realign', async (req, res, next) => {
+  try {
+    const parsed = realignRunProgramBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: parsed.error.format(),
+      });
+    }
+    const body = parsed.data;
+    const tz = await loadUserTimezone(req.userId);
+    const today = body.today ?? todayInZone(tz);
+    const inputFor = (program: RunProgramResponse) => {
+      const lastAdjusted = program.adjustment_log.at(-1);
+      return realignInputFromProgram(program, {
+        today,
+        lastAdjustedDay: lastAdjusted
+          ? instantToDay(lastAdjusted.at, tz)
+          : null,
+        distance: body.distance,
+        force: body.force,
+      });
+    };
+    if (body.confirmed !== true) {
+      const program = await getRunProgram(req.userId, req.authenticatedUserId);
+      if (!program) {
+        return res.status(400).json({ error: 'There is no run program.' });
+      }
+      return res.json({
+        realign: toRealignResult(realignProgram(inputFor(program))),
+        applied: false,
+        program: null,
+      });
+    }
+    const program = await adjustRunProgram(
+      req.userId,
+      'user',
+      (state) => applyRealign(inputFor(state.program), body.token),
+      req.authenticatedUserId
+    );
+    if (!program) {
+      return res.status(400).json({ error: 'There is no run program.' });
+    }
+    res.json({
+      realign: toRealignResult(realignProgram(inputFor(program))),
+      applied: true,
+      program,
+    });
+  } catch (error) {
+    if (error instanceof ProgramRealignStaleError) {
+      return res.status(409).json({ error: error.message });
+    }
+    if (error instanceof ProgramAdjustError) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+/**
+ * @swagger
  * /v2/run-program/custom:
  *   get:
  *     summary: List the person's own run programs
@@ -215,7 +299,7 @@ router.post('/adjust', async (req, res, next) => {
  *     tags: [Exercise]
  *     responses:
  *       200:
- *         description: `{ programs: [...] }`, newest first.
+ *         description: '`{ programs: [...] }`, newest first.'
  *   post:
  *     summary: Create one of the person's own run programs
  *     tags: [Exercise]

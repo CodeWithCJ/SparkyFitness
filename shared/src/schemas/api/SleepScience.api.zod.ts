@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { dailySleepNeedSchema } from "../database/DailySleepNeed.zod.ts";
+import { z } from 'zod';
+import { dailySleepNeedSchema } from '../database/DailySleepNeed.zod.ts';
 
 // DailyNeedData: extends DB schema, with date/method/confidence as API-only fields
 export const dailyNeedResponseSchema = dailySleepNeedSchema
@@ -46,16 +46,18 @@ export const mctqStatsDayClassificationSchema = z.object({
 });
 
 export const mctqStatsDataSchema = z.object({
-  profile: z.object({
-    baselineSleepNeed: z.number(),
-    method: z.string(),
-    confidence: z.string(),
-    basedOnDays: z.number(),
-    lastCalculated: z.string().nullable(),
-    sdWorkday: z.number().nullable(),
-    sdFreeday: z.number().nullable(),
-    socialJetlag: z.number().nullable(),
-  }).nullable(),
+  profile: z
+    .object({
+      baselineSleepNeed: z.number(),
+      method: z.string(),
+      confidence: z.string(),
+      basedOnDays: z.number(),
+      lastCalculated: z.string().nullable(),
+      sdWorkday: z.number().nullable(),
+      sdFreeday: z.number().nullable(),
+      socialJetlag: z.number().nullable(),
+    })
+    .nullable(),
   latestCalculation: z.record(z.string(), z.unknown()).nullable(),
   dayClassifications: z.array(mctqStatsDayClassificationSchema),
 });
@@ -96,8 +98,14 @@ export const energyCurveDataSchema = z.object({
   points: z.array(energyCurvePointSchema).optional(),
   currentEnergy: z.number().optional(),
   currentZone: z.string().optional(),
-  nextPeak: z.object({ hour: z.number(), energy: z.number() }).nullable().optional(),
-  nextDip: z.object({ hour: z.number(), energy: z.number() }).nullable().optional(),
+  nextPeak: z
+    .object({ hour: z.number(), energy: z.number() })
+    .nullable()
+    .optional(),
+  nextDip: z
+    .object({ hour: z.number(), energy: z.number() })
+    .nullable()
+    .optional(),
   melatoninWindow: z.object({ start: z.number(), end: z.number() }).optional(),
   wakeTime: z.number().optional(),
   sleepDebtPenalty: z.number().optional(),

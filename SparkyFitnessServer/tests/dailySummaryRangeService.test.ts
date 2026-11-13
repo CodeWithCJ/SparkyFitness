@@ -19,6 +19,9 @@ import foodRepository from '../models/foodMisc.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import bmrService from '../services/bmrService.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../services/goalService.js', () => ({
   default: { getUserGoals: vi.fn(), getUserGoalsForRange: vi.fn() },
 }));
@@ -55,7 +58,7 @@ vi.mock('../models/foodMisc.js', () => ({
   default: { getDailySupplementTotals: vi.fn() },
 }));
 vi.mock('../models/genericHealthRepository.js', () => ({
-  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
+  getDeviceTotalCaloriesByDateRange: vi.fn(),
 }));
 vi.mock('../services/bmrService.js', () => ({
   default: { calculateBmr: vi.fn() },
@@ -168,7 +171,7 @@ beforeEach(() => {
     new Map()
   );
   vi.mocked(
-    genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    genericHealthRepository.getDeviceTotalCaloriesByDateRange
   ).mockResolvedValue([]);
 
   // ── per-date path ──
@@ -319,15 +322,21 @@ describe('parity with the per-date Diary path', () => {
 });
 
 describe('range mechanics', () => {
-  test('uses the matching Health Connect total for each completed day', async () => {
+  test('uses the matching device total for each completed day', async () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       ...PREFERENCES,
       calorie_goal_adjustment_mode: 'tdee',
       goal_mode: 'maintain',
     });
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
-    ).mockResolvedValue([{ entry_date: '2026-08-08', total_calories: 2300 }]);
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
+    ).mockResolvedValue([
+      {
+        entry_date: '2026-08-08',
+        source_provider: 'garmin',
+        total_calories: 2300,
+      },
+    ]);
 
     const { days } = await runRange();
     const day = days.find((entry) => entry.date === '2026-08-08');
@@ -382,7 +391,7 @@ describe('range mechanics', () => {
     expect(userRepository.getUserProfile).toHaveBeenCalledTimes(1);
     expect(preferenceRepository.getUserPreferences).toHaveBeenCalledTimes(1);
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).toHaveBeenCalledTimes(1);
     // The per-date step query must never be reached from the ranged path.
     expect(measurementRepository.getStepCaloriesForDate).not.toHaveBeenCalled();
@@ -405,7 +414,7 @@ describe('range mechanics', () => {
       measurementRepository.getExternalBmrByDateRange
     ).not.toHaveBeenCalled();
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).not.toHaveBeenCalled();
     // The Aug 8 day was steps-only, so with no checkin access it credits nothing.
     expect(days.find((day) => day.date === '2026-08-08')?.burned).toBe(0);

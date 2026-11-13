@@ -1,7 +1,70 @@
 import { apiCall } from '../api';
 import { buildPayloadRequest } from '../imageRequest';
+import {
+  foodVariantKey,
+  planFoodVariantReconciliation,
+} from './foodVariantReconciliation';
 
 import type { Food, FoodVariant } from '@/types/food';
+import {
+  buildNamedFoodPortion,
+  parseNamedFoodPortion,
+} from '@workspace/shared';
+
+export interface FoodCreateProgress {
+  savedFood?: Food;
+  metadataSignature?: string;
+  referenceSignature?: string;
+  baselineVariantIds?: string[];
+  attemptedVariantKeys?: string[];
+}
+
+/** Draft indices refer to the complete variants array submitted to saveFood. */
+export type ManagedFoodPortion = { id: string } | { draftIndex: number };
+
+function metadataSignature(food: Food): string {
+  return JSON.stringify({ ...food, id: undefined });
+}
+
+function referenceSignature(variant: FoodVariant | undefined): string {
+  return JSON.stringify(variant ? { ...variant, id: undefined } : null);
+}
+
+function rebaseManagedPortions(
+  variants: FoodVariant[],
+  reference: FoodVariant | undefined,
+  managedPortions: readonly ManagedFoodPortion[] = []
+): FoodVariant[] {
+  if (!reference) return variants;
+  return variants.map((variant, index) => {
+    if (
+      !managedPortions.some((selection) =>
+        'id' in selection
+          ? selection.id === variant.id
+          : !variant.id && selection.draftIndex === index
+      )
+    )
+      return variant;
+    const definition = parseNamedFoodPortion(variant.serving_unit);
+    if (!definition) return variant;
+    const portion = buildNamedFoodPortion(reference, {
+      ...definition,
+      amount: definition.amount * variant.serving_size,
+    });
+    if (!portion)
+      throw new Error(
+        'The saved food reference cannot calculate this portion.'
+      );
+    return {
+      ...variant,
+      ...portion,
+      serving_size: variant.serving_size,
+      serving_unit: variant.serving_unit,
+      allergens: reference.allergens ?? variant.allergens,
+      traces: reference.traces ?? variant.traces,
+    };
+  });
+}
 
 export const loadFoodVariants = async (
   foodId: string
@@ -63,36 +126,98 @@ export const saveFood = async (
   variants: FoodVariant[],
   userId: string,
   foodId?: string,
-  imageFiles?: File[]
+  imageFiles?: File[],
+  onFoodPersisted?: (food: Food) => void,
+  options: {
+    createProgress?: FoodCreateProgress;
+    managedPortions?: readonly ManagedFoodPortion[];
+  } = {}
 ): Promise<Food> => {
   let savedFood: Food;
 
   if (foodId) {
-    // Update existing food
-    savedFood = await apiCall(`/foods/${foodId}`, {
-      method: 'PUT',
-      ...buildFoodRequest(
-        {
-          ...foodData,
-          barcode: foodData.barcode,
-          provider_external_id: foodData.provider_external_id,
-          provider_type: foodData.provider_type,
-          provider_verified: foodData.provider_verified,
-          // Images the user kept; newly attached files are appended server-side.
-          images: foodData.images ?? [],
-        },
-        imageFiles
-      ),
-    });
+    // A new-food POST may have reused an existing barcode/provider record.
+    // Resume that append operation without replacing its metadata or units.
+    const resumeCreate =
+      options.createProgress?.savedFood?.id === foodId
+        ? options.createProgress
+        : undefined;
+    const metadataChanged =
+      resumeCreate?.metadataSignature !== undefined &&
+      (metadataSignature(foodData) !== resumeCreate.metadataSignature ||
+        !!imageFiles?.length);
+    savedFood =
+      resumeCreate?.savedFood && !metadataChanged
+        ? resumeCreate.savedFood
+        : await apiCall(`/foods/${foodId}`, {
+            method: 'PUT',
+            ...buildFoodRequest(
+              {
+                ...foodData,
+                barcode: foodData.barcode,
+                provider_external_id: foodData.provider_external_id,
+                provider_type: foodData.provider_type,
+                provider_verified: foodData.provider_verified,
+                // Images the user kept; newly attached files are appended server-side.
+                images: foodData.images ?? [],
+              },
+              imageFiles
+            ),
+          });
+    if (resumeCreate && savedFood?.id) {
+      resumeCreate.savedFood = savedFood;
+      resumeCreate.metadataSignature = metadataSignature({
+        ...foodData,
+        images: savedFood.images ?? foodData.images,
+      });
+    }
+    if (savedFood?.id) onFoodPersisted?.(savedFood);
 
     // Fetch existing variants to determine what to update/delete/insert
     const existingVariants = await loadFoodVariants(foodId);
+    if (resumeCreate && !resumeCreate.baselineVariantIds)
+      resumeCreate.baselineVariantIds = existingVariants.flatMap((variant) =>
+        variant.id ? [variant.id] : []
+      );
+    const referenceChanged =
+      resumeCreate?.referenceSignature !== undefined &&
+      referenceSignature(variants[0]) !== resumeCreate.referenceSignature;
+    const storedReference =
+      savedFood?.default_variant ??
+      existingVariants.find((variant) => variant.is_default);
+    const updatedReference =
+      referenceChanged && variants[0]
+        ? { ...variants[0], id: storedReference?.id, is_default: true }
+        : undefined;
+    const requestedVariants = resumeCreate
+      ? [
+          ...(updatedReference ? [updatedReference] : []),
+          ...rebaseManagedPortions(
+            variants,
+            updatedReference ?? storedReference ?? variants[0],
+            options.managedPortions
+          ).slice(1),
+        ]
+      : variants;
 
-    const variantsToCreate = variants.filter((v) => !v.id);
-    const variantsToUpdate = variants.filter((v) => v.id);
-    const variantsToDelete = existingVariants.filter(
-      (ev) => !variants.some((v) => v.id === ev.id)
+    const {
+      variantsToCreate,
+      variantsToUpdate,
+      variantsToDelete,
+      nextAttemptedVariantKeys,
+    } = planFoodVariantReconciliation(
+      requestedVariants,
+      existingVariants,
+      resumeCreate
+        ? {
+            baselineVariantIds: resumeCreate.baselineVariantIds ?? [],
+            attemptedVariantKeys: resumeCreate.attemptedVariantKeys ?? [],
+            updatedReferenceId: updatedReference?.id,
+          }
+        : undefined
     );
+    if (resumeCreate)
+      resumeCreate.attemptedVariantKeys = nextAttemptedVariantKeys;
 
     // Update existing variants
     for (const variant of variantsToUpdate) {
@@ -132,6 +257,12 @@ export const saveFood = async (
           traces: variant.traces ?? null,
         },
       });
+      if (resumeCreate && variant.id === updatedReference?.id) {
+        savedFood = { ...savedFood, default_variant: variant };
+        resumeCreate.savedFood = savedFood;
+        resumeCreate.referenceSignature = referenceSignature(variants[0]);
+        onFoodPersisted?.(savedFood);
+      }
     }
 
     // Create new variants
@@ -166,6 +297,8 @@ export const saveFood = async (
         custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
         source: variant.source,
         ai_confidence: variant.ai_confidence,
+        allergens: variant.allergens ?? null,
+        traces: variant.traces ?? null,
       }));
       await apiCall('/foods/food-variants/bulk', {
         method: 'POST',
@@ -239,9 +372,44 @@ export const saveFood = async (
       method: 'POST',
       ...buildFoodRequest(foodToCreate, imageFiles),
     });
+    // Preserve the identity and consumed images even if additional variants
+    // fail. The form can resume against this food on the next Save attempt.
+    onFoodPersisted?.(savedFood);
+    const progress = options.createProgress;
+    if (progress) {
+      progress.savedFood = savedFood;
+      progress.metadataSignature = metadataSignature({
+        ...foodData,
+        images: savedFood.images ?? foodData.images,
+      });
+      progress.referenceSignature = referenceSignature(primaryVariant);
+    }
 
     // Insert additional variants (starting from the second variant)
-    const additionalVariantsToInsert = variants.slice(1).map((variant) => ({
+    let additionalVariants = rebaseManagedPortions(
+      variants,
+      savedFood.default_variant ?? primaryVariant,
+      options.managedPortions
+    ).slice(1);
+    if (
+      additionalVariants.length > 0 &&
+      (progress || options.managedPortions?.length)
+    ) {
+      const baseline = await loadFoodVariants(savedFood.id);
+      if (progress) {
+        progress.baselineVariantIds = baseline.flatMap((variant) =>
+          variant.id ? [variant.id] : []
+        );
+        progress.attemptedVariantKeys = additionalVariants.map(foodVariantKey);
+      }
+      additionalVariants = additionalVariants.filter(
+        (variant) =>
+          !baseline.some(
+            (existing) => foodVariantKey(existing) === foodVariantKey(variant)
+          )
+      );
+    }
+    const additionalVariantsToInsert = additionalVariants.map((variant) => ({
       food_id: savedFood.id,
       serving_size: variant.serving_size,
       serving_unit: variant.serving_unit,
@@ -271,6 +439,8 @@ export const saveFood = async (
       custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
       source: variant.source,
       ai_confidence: variant.ai_confidence,
+      allergens: variant.allergens ?? null,
+      traces: variant.traces ?? null,
     }));
 
     if (additionalVariantsToInsert.length > 0) {

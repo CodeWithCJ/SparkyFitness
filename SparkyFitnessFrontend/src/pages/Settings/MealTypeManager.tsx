@@ -3,6 +3,7 @@ import { toHourMinute } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -209,16 +210,16 @@ const MealTypeManager = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>
+                  <Label id="new-meal-default-time-label">
                     {t(
                       'mealTypeManager.defaultTimeOptional',
                       'Default Time (optional)'
                     )}
                   </Label>
-                  <Input
-                    type="time"
+                  <TimeInput
+                    aria-labelledby="new-meal-default-time-label"
                     value={newDefaultTime}
-                    onChange={(e) => setNewDefaultTime(e.target.value)}
+                    onChange={setNewDefaultTime}
                   />
                   <p className="text-xs text-muted-foreground">
                     {t(
@@ -273,16 +274,18 @@ const MealTypeManager = () => {
                   })}
                 </span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">
+                  <span
+                    id={`meal-default-time-${item.id}-label`}
+                    className="text-xs text-muted-foreground"
+                  >
                     {t('mealTypeManager.defaultTime', 'Default Time:')}
                   </span>
-                  <Input
-                    type="time"
+                  <TimeInput
+                    aria-labelledby={`meal-default-time-${item.id}-label`}
                     className="w-[100px] h-8 text-xs p-1"
                     key={`${item.id}-${item.default_time}`}
                     defaultValue={toHourMinute(item.default_time) || ''}
-                    onBlur={async (e) => {
-                      const val = e.target.value;
+                    onBlur={async (val) => {
                       if (val !== (toHourMinute(item.default_time) || '')) {
                         await updateMealType({
                           id: item.id,
@@ -390,16 +393,16 @@ const MealTypeManager = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>
+              <Label id="edit-meal-default-time-label">
                 {t(
                   'mealTypeManager.defaultTimeOptional',
                   'Default Time (optional)'
                 )}
               </Label>
-              <Input
-                type="time"
+              <TimeInput
+                aria-labelledby="edit-meal-default-time-label"
                 value={newDefaultTime}
-                onChange={(e) => setNewDefaultTime(e.target.value)}
+                onChange={setNewDefaultTime}
               />
             </div>
             <DialogFooter>

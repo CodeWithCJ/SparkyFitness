@@ -2,6 +2,7 @@ import { addLog } from '../LogService';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
+  TransformedMindfulnessSession,
   TransformedNutritionEntry,
   SparkyMealType,
   AggregatedSleepSession,
@@ -10,6 +11,7 @@ import {
   HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
+import type { MindfulnessSessionType } from '@workspace/shared';
 import {
   BLOOD_GLUCOSE_MG_DL_PER_MMOL_L,
   createBloodPressureTransformer,
@@ -487,7 +489,9 @@ const EXERCISE_TYPE_OTHER_WORKOUT = 0;
 
 // Health Connect SleepStageType constants from react-native-health-connect.
 // We skip UNKNOWN values so they do not distort asleep-time totals downstream.
-const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
+export const mapHealthConnectSleepStage = (
+  stage: number
+): SleepStageType | null => {
   switch (stage) {
     case 1:
       return 'awake';
@@ -527,6 +531,23 @@ const mapHealthConnectMealType = (mealType: unknown): SparkyMealType => {
       return 'snacks';
     default:
       return 'snacks'; // UNKNOWN/0 → snacks (no neutral bucket in Sparky)
+  }
+};
+
+// Health Connect MindfulnessSessionType constants → Sparky session_type.
+// HC: UNKNOWN=0, MEDITATION=1, BREATHING=2, MUSIC=3, MOVEMENT=4, UNGUIDED=5.
+const mapHealthConnectMindfulnessType = (
+  sessionType: unknown
+): MindfulnessSessionType => {
+  switch (sessionType) {
+    case 1:
+      return 'meditation';
+    case 2:
+      return 'breathwork';
+    case 5:
+      return 'unguided';
+    default:
+      return 'other'; // MUSIC, MOVEMENT and UNKNOWN have no own Sparky type
   }
 };
 
@@ -631,6 +652,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
           date,
           unit,
           source: HEALTH_CONNECT_SOURCE,
+          // Lets aggregateByDay weight the daily average by time.
+          ...(sample.time ? { timestamp: sample.time } : {}),
         });
       }
     }
@@ -640,6 +663,46 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     HEALTH_CONNECT_SOURCE,
     getDateString
   ),
+
+  MindfulnessSession: (rec, _record, _metricConfig, output) => {
+    if (!rec.startTime || !rec.endTime) return;
+    if (isOwnRecord(rec)) return;
+
+    const metadata = rec.metadata as { id?: string } | undefined;
+    // The server upserts on (provider, external_id); without HC's stable id a
+    // re-sync would create a duplicate session every time.
+    if (!metadata?.id) return;
+
+    const start = new Date(rec.startTime as string).getTime();
+    const end = new Date(rec.endTime as string).getTime();
+    if (isNaN(start) || isNaN(end)) return;
+    const durationSeconds = Math.round((end - start) / 1000);
+    if (durationSeconds <= 0) return;
+
+    const title = typeof rec.title === 'string' ? rec.title.trim() : '';
+    const body = typeof rec.notes === 'string' ? rec.notes.trim() : '';
+    const notes = [title, body].filter(Boolean).join('\n');
+
+    // Instant + offset only, no day string: the server derives the calendar
+    // day from them (same as Nutrition).
+    const session: TransformedMindfulnessSession = {
+      type: 'MindfulnessSession',
+      source: HEALTH_CONNECT_SOURCE,
+      source_id: metadata.id,
+      timestamp: rec.startTime as string,
+      startTime: rec.startTime as string,
+      endTime: rec.endTime as string,
+      duration_seconds: durationSeconds,
+      // /api/health-data rejects any type outside its complex-type list that
+      // has no `value`. The handler reads duration_seconds first and only
+      // falls back to value (minutes).
+      value: durationSeconds / 60,
+      session_type: mapHealthConnectMindfulnessType(rec.mindfulnessSessionType),
+      ...(notes ? { notes } : {}),
+      ...extractTimezoneMetadata(rec),
+    };
+    output.push(session);
+  },
 
   SleepSession: (rec, _record, _metricConfig, output) => {
     if (!rec.startTime || !rec.endTime) return;
@@ -722,6 +785,12 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       awake_sleep_seconds: awakeSeconds,
       ...extractTimezoneMetadata(rec, true),
     };
+    if (typeof rec.avg_overnight_hrv === 'number') {
+      sleepSession.avg_overnight_hrv = rec.avg_overnight_hrv;
+    }
+    if (typeof rec.resting_heart_rate === 'number') {
+      sleepSession.resting_heart_rate = rec.resting_heart_rate;
+    }
     output.push(sleepSession);
   },
 

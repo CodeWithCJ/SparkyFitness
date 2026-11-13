@@ -42,7 +42,11 @@ const OuraCallback = () => {
       }
 
       try {
-        await linkOuraAccount({ code, state });
+        await linkOuraAccount({
+          code,
+          state,
+          redirect_uri: `${window.location.origin}/oura/callback`,
+        });
         setMessage('Oura account successfully linked!');
       } catch (error: unknown) {
         console.error('Error processing Oura callback:', error);

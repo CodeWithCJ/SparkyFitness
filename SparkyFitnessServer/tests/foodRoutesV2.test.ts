@@ -98,9 +98,103 @@ app.use('/v2/foods', foodRoutesV2);
 app.use((err: any, req: any, res: any, _next: any) => {
   res.status(err.status || 500).json({ error: err.message });
 });
+describe('Mealie browsing through the existing food-search boundary', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('allows an empty Mealie search and retains recipe context without creating foods', async () => {
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Ingredient recipe',
+          brand: null,
+          is_custom: true,
+          provider_type: 'mealie',
+          provider_external_id: 'recipe-slug',
+          recipe_has_nutrition: false,
+          recipe_servings: 4,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'serving',
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            is_default: true,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 10, totalCount: 1, hasMore: false },
+    });
+    const response = await request(app)
+      .get('/v2/foods/search/mealie')
+      .query({ query: '', providerId: 'personal-provider' });
+    expect(response.status).toBe(200);
+    expect(response.body.foods[0]).toMatchObject({
+      provider_external_id: 'recipe-slug',
+      recipe_has_nutrition: false,
+      recipe_servings: 4,
+    });
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-123',
+      'mealie',
+      '',
+      {
+        page: 1,
+        pageSize: 20,
+        providerId: 'personal-provider',
+        autoScale: true,
+      },
+      'user-123'
+    );
+  });
+  it('continues to reject empty searches for other food providers', async () => {
+    const response = await request(app)
+      .get('/v2/foods/search/usda')
+      .query({ query: '' });
+    expect(response.status).toBe(400);
+    expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+});
 describe('GET /v2/foods/barcode/:barcode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+  it('requests resolved source metadata and exposes it without raw provider data', async () => {
+    const barcode = '3017620422003';
+    const providerId = '11111111-1111-4111-8111-111111111111';
+    vi.mocked(foodCoreService.lookupBarcode).mockResolvedValue({
+      source: 'openfoodfacts',
+      providerId,
+      providerName: 'Backup database',
+      barcode_raw: { internal: 'provider response' },
+      food: {
+        name: 'Spread',
+        brand: null,
+        is_custom: false,
+        default_variant: {
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 539,
+          protein: 6.3,
+          carbs: 57.5,
+          fat: 30.9,
+          is_default: true,
+        },
+      },
+    });
+    const response = await request(app).get(`/v2/foods/barcode/${barcode}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      providerId,
+      providerName: 'Backup database',
+    });
+    expect(response.body).not.toHaveProperty('barcode_raw');
+    expect(foodCoreService.lookupBarcode).toHaveBeenCalledWith(
+      barcode,
+      'user-123',
+      undefined,
+      'user-123',
+      { includeProviderMetadata: true, signal: expect.any(AbortSignal) }
+    );
   });
   it('returns a local barcode hit when optional fields are null', async () => {
     const barcode = '012345678901';

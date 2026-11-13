@@ -1,6 +1,5 @@
 -- Migration to fix the food_variants RLS policy to correctly check parent food visibility
 
-BEGIN;
 
 -- Drop the existing flawed policy on food_variants
 DROP POLICY IF EXISTS food_variants_rls ON public.food_variants;
@@ -31,4 +30,3 @@ USING (
 );
 
 
-COMMIT;

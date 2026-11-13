@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -276,32 +276,28 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor={`bedtime-${index}`}>
+                  <Label id={`bedtime-${index}-label`}>
                     {t('sleepEntrySection.bedtime', 'Bedtime')}
                   </Label>
-                  <Input
+                  <TimeInput
                     id={`bedtime-${index}`}
-                    type="time"
+                    aria-labelledby={`bedtime-${index}-label`}
                     value={session.bedtime}
-                    onChange={(e) =>
-                      handleSleepSessionChange(index, 'bedtime', e.target.value)
+                    onChange={(value) =>
+                      handleSleepSessionChange(index, 'bedtime', value)
                     }
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`wakeTime-${index}`}>
+                  <Label id={`wakeTime-${index}-label`}>
                     {t('sleepEntrySection.wakeTime', 'Wake Time')}
                   </Label>
-                  <Input
+                  <TimeInput
                     id={`wakeTime-${index}`}
-                    type="time"
+                    aria-labelledby={`wakeTime-${index}-label`}
                     value={session.wakeTime}
-                    onChange={(e) =>
-                      handleSleepSessionChange(
-                        index,
-                        'wakeTime',
-                        e.target.value
-                      )
+                    onChange={(value) =>
+                      handleSleepSessionChange(index, 'wakeTime', value)
                     }
                   />
                 </div>

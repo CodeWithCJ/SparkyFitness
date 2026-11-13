@@ -1,4 +1,7 @@
-import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import {
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+  parseNamedFoodPortion,
+} from '@workspace/shared';
 import type { ExternalFoodVariant } from '../types/externalFoods';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
@@ -414,6 +417,51 @@ function findMetricEquivalent(
   return equivalents?.find((eq) => isMetricUnit(eq.serving_unit));
 }
 
+function normalizeServingText(text: string): string {
+  return formatServingDescription(text).toLowerCase();
+}
+
+/** Whether a description states only this size and unit ("1.0 serving"). */
+function restatesServing(
+  description: string,
+  servingSize: number,
+  servingUnit: string | null | undefined
+): boolean {
+  const match = normalizeServingText(description).match(
+    /^(\d+(?:[.,]\d+)?)\s*(.+)$/
+  );
+  return (
+    !!match &&
+    Number(match[1].replace(',', '.')) === coerceNumber(servingSize) &&
+    match[2] === normalizeServingText(servingUnit ?? '')
+  );
+}
+
+/**
+ * Whether a description should be shown in place of the serving's own size
+ * and unit. The provider mappers fill in `${size} ${unit}` when a provider
+ * sends no description (Open Food Facts' "1 portion (100 g)" arrives as
+ * "1 serving"); that text says nothing more, and showing it would drop the
+ * metric equivalent and the localized unit (#3402).
+ *
+ * Beside the quantity (`perUnit`) the label names one unit, so a metric
+ * equivalent there must be the whole serving: "oz (85 g)" for a 3 oz serving
+ * would say one ounce weighs 85 g, so that serving keeps its description.
+ */
+function describesServing(
+  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
+    Partial<Pick<FoodDisplayValues, 'servingSize'>>,
+  { perUnit = false }: { perUnit?: boolean } = {}
+): boolean {
+  const description = values.servingDescription;
+  if (!description || !hasMeaningfulDescription(description)) return false;
+  if (values.servingSize === undefined) return true;
+  if (!restatesServing(description, values.servingSize, values.servingUnit)) {
+    return true;
+  }
+  return perUnit && values.servingSize !== 1;
+}
+
 export function formatVariantServingLabel(
   values: Pick<
     FoodDisplayValues,
@@ -421,7 +469,7 @@ export function formatVariantServingLabel(
   >,
   equivalents?: EquivalentUnit[]
 ): string {
-  if (hasMeaningfulDescription(values.servingDescription)) {
+  if (describesServing(values)) {
     return formatServingDescription(values.servingDescription ?? '');
   }
 
@@ -446,10 +494,11 @@ export function formatVariantServingLabel(
  * the redundant serving count, but retains a known metric equivalent.
  */
 export function formatQuantityUnitLabel(
-  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'>,
+  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
+    Partial<Pick<FoodDisplayValues, 'servingSize'>>,
   equivalents?: EquivalentUnit[]
 ): string {
-  if (hasMeaningfulDescription(values.servingDescription)) {
+  if (describesServing(values, { perUnit: true })) {
     return formatServingDescription(values.servingDescription ?? '');
   }
 
@@ -573,11 +622,14 @@ export function buildExternalVariantOptions(
         servingDescription,
         calories: base.calories,
       };
+      const weights = groupedWeightBelongsToServing(base, equivalents)
+        ? equivalents
+        : undefined;
       return {
         id: base.id,
-        label: formatVariantLabel(values, equivalents),
-        quantityUnitLabel: formatQuantityUnitLabel(values, equivalents),
-        perServingLabel: formatVariantServingLabel(values, equivalents),
+        label: formatVariantLabel(values, weights),
+        quantityUnitLabel: formatQuantityUnitLabel(values, weights),
+        perServingLabel: formatVariantServingLabel(values, weights),
         servingDescription,
         servingSize: base.serving_size,
         servingUnit: base.serving_unit,
@@ -748,23 +800,59 @@ type NutritionLike = Partial<
   custom_nutrients?: Record<string, string | number> | null;
 };
 
+/** Reads a stored nutrient value as a number; blank or invalid values count as 0. */
 function coerceNumber(value: unknown): number {
   if (value == null || value === '') return 0;
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
-  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
-    if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;
-  }
-  const ac = a.custom_nutrients ?? {};
-  const bc = b.custom_nutrients ?? {};
+/**
+ * Whether the metric weight grouped with a provider serving is that
+ * serving's own. Servings are grouped on equal nutrition, which every amount
+ * of an all-zero food shares. A provider that states a serving's weight sends
+ * it with the same values, so a weight such as 1.2 g for one almond holds
+ * whenever the values are not all zero. Values can also match the 100 g or
+ * 100 ml reference by rounding, since providers scale each portion from it: a
+ * 125 ml glass of a drink with 1 kcal and 1 mg of sodium per 100 ml rounds to
+ * the same values. That weight needs a value of 10 or more, which rounding to
+ * whole units can only make match an amount up to about 10% away.
+ */
+function groupedWeightBelongsToServing(
+  variant: NutritionLike,
+  equivalents: EquivalentUnit[]
+): boolean {
+  const weight = findMetricEquivalent(equivalents);
+  if (!weight) return true;
+  const values = [
+    ...FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => variant[field]),
+    ...Object.values(variant.custom_nutrients ?? {}),
+  ].map((value) => Math.abs(coerceNumber(value)));
+  return isReferenceServing(weight.serving_size, weight.serving_unit)
+    ? values.some((value) => value >= 10)
+    : values.some((value) => value > 0);
+}
+
+/** True when two custom-nutrient maps hold the same amounts (a missing key counts as 0). */
+export function customNutrientsMatch(
+  a: Record<string, string | number> | null | undefined,
+  b: Record<string, string | number> | null | undefined
+): boolean {
+  const ac = a ?? {};
+  const bc = b ?? {};
   const keys = new Set([...Object.keys(ac), ...Object.keys(bc)]);
   for (const key of keys) {
     if (coerceNumber(ac[key]) !== coerceNumber(bc[key])) return false;
   }
   return true;
+}
+
+/** True when two variants hold the same nutrient and custom-nutrient amounts. */
+export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
+  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
+    if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;
+  }
+  return customNutrientsMatch(a.custom_nutrients, b.custom_nutrients);
 }
 
 export function toEquivalentUnit(variant: FoodVariantDetail): EquivalentUnit {
@@ -800,6 +888,7 @@ export function groupEquivalentVariants<
     const match = groups.find(
       (g) =>
         nutritionMatches(g.base, variant) &&
+        !separateNamedPortion(g.base, variant) &&
         !hasConflictingMetricServingContext(g.base, variant)
     );
     if (match) {
@@ -831,7 +920,11 @@ export function groupEquivalentVariants<
     } else {
       // Fallback: the same persisted serving identity with different nutrition
       // (for example provider rounding) is still one picker option.
-      const sizeMatch = groups.find((g) => isSameVariant(g.base, variant));
+      const sizeMatch = groups.find(
+        (g) =>
+          !separateNamedPortion(g.base, variant) &&
+          isSameVariant(g.base, variant)
+      );
       if (sizeMatch) {
         const shouldPromoteMetricContext =
           !hasDistinctMetricServingContext(sizeMatch.base) &&
@@ -850,6 +943,23 @@ export function groupEquivalentVariants<
     }
   }
   return groups;
+}
+
+function separateNamedPortion(a: ServingIdentity, b: ServingIdentity): boolean {
+  const namedA = parseNamedFoodPortion(a.serving_unit ?? '');
+  const namedB = parseNamedFoodPortion(b.serving_unit ?? '');
+  if (namedA && namedB) {
+    return (
+      a.serving_size !== b.serving_size ||
+      namedA.amount !== namedB.amount ||
+      namedA.unit !== namedB.unit ||
+      namedA.name.replace(/\s+/g, ' ').toLowerCase() !==
+        namedB.name.replace(/\s+/g, ' ').toLowerCase()
+    );
+  }
+  return Boolean(
+    (namedA || namedB) && servingVariantKey(a) !== servingVariantKey(b)
+  );
 }
 
 type DesiredSiblingRow = Partial<FoodVariantDetail> & { id?: string };

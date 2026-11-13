@@ -10,9 +10,9 @@ import {
   formatXLabel7d,
   formatXLabel30d90d,
   formatTooltipDate,
-  formatDateWithYear,
   computeNiceYAxisScale,
 } from './charts/chartFormatting';
+import { formatDateWithYear } from '../utils/dayLabel';
 import LineSeriesMark from './charts/LineSeriesMark';
 import TrendGoalLine from './charts/TrendGoalLine';
 import type { WeightDataPoint } from '../hooks/useMeasurementsRange';

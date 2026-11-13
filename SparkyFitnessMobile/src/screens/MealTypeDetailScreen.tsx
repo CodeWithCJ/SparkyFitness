@@ -12,6 +12,7 @@ import CopyMealSheet, {
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
@@ -19,6 +20,8 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
@@ -36,6 +39,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -47,7 +51,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date,
     enabled: isConnected,
@@ -121,29 +125,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   }, [refetch]);
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('mealTypeDetail.states.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('mealTypeDetail.states.noServerHint', {
-            defaultValue:
-              'Configure your server connection in Settings to view meal nutrition.',
-          })}
-          action={{
-            label: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -213,7 +195,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
           name={label}
           brand={
             targetCalories > 0
-              ? `${formatDateLabel(date, t, dateLocale)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}`
+              ? `${formatDateLabel(date, t, dateLocale)} · ${t('mealTypeDetail.targetCaloriesWithUnit', { defaultValue: 'Target: {{calories}} {{unit}}', calories: formatEnergyNumber(targetCalories, energyUnit), unit: energyUnitLabel(energyUnit, t) })}`
               : formatDateLabel(date, t, dateLocale)
           }
           values={nutrition.values}
@@ -274,18 +256,41 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       ...(canCopy
         ? [
             {
-              kind: 'icon' as const,
+              kind: 'menu' as const,
               sfSymbol: 'doc.on.doc',
               ionicon: 'copy-outline',
-              role: 'secondary' as const,
-              onPress: () =>
-                copySheetRef.current?.present(
-                  date,
-                  mealTypeId ?? null,
-                  mealTypeName
-                ),
-              accessibilityLabel: t('mealTypeDetail.accessibility.copyMeal', {
-                defaultValue: 'Copy meal to another day',
+              items: [
+                {
+                  label: t('mealTypeDetail.accessibility.copyMeal', {
+                    defaultValue: 'Copy meal to another day',
+                  }),
+                  icon: 'calendar' as const,
+                  sfSymbol: 'calendar',
+                  onPress: () =>
+                    copySheetRef.current?.present(
+                      date,
+                      mealTypeId ?? null,
+                      mealTypeName
+                    ),
+                },
+                {
+                  label: t('familyDiary.copyToFamily', {
+                    defaultValue: 'Copy to family',
+                  }),
+                  icon: 'people' as const,
+                  sfSymbol: 'person.2',
+                  onPress: () =>
+                    navigation.navigate('FamilyMembers', {
+                      copySource: {
+                        sourceDate: date,
+                        mealTypeId: mealTypeId ?? null,
+                        mealTypeName,
+                      },
+                    }),
+                },
+              ],
+              accessibilityLabel: t('familyDiary.copyMealOptions', {
+                defaultValue: 'Copy meal',
               }),
               identifier: 'meal-type-detail-copy',
             },
@@ -301,7 +306,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     >
       {header}
 
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
 
       <ServingAdjustSheet
         ref={servingSheetRef}

@@ -241,11 +241,11 @@ describe('computeExerciseCredited', () => {
 // ---------------------------------------------------------------------------
 describe('computeCalorieProgress', () => {
   it('returns 50% when half the goal is consumed', () => {
-    expect(computeCalorieProgress(2000, 1000)).toBe(50);
+    expect(computeCalorieProgress(1000, 1000)).toBe(50);
   });
 
   it('returns 0% when nothing is consumed', () => {
-    expect(computeCalorieProgress(2000, 2000)).toBe(0);
+    expect(computeCalorieProgress(0, 2000)).toBe(0);
   });
 
   it('returns 100% when goal is fully consumed', () => {
@@ -257,8 +257,32 @@ describe('computeCalorieProgress', () => {
   });
 
   it('clamps to 0 and never goes negative', () => {
-    // remaining > goal means nothing consumed
-    expect(computeCalorieProgress(2000, 3000)).toBe(0);
+    expect(computeCalorieProgress(-100, 2100)).toBe(0);
+  });
+
+  it('shows food eaten as a fraction of the budget including credited activity', () => {
+    expect(computeCalorieProgress(1225, 1256)).toBeCloseTo(49.375);
+  });
+
+  it('still shows food eaten when activity exceeds intake', () => {
+    expect(computeCalorieProgress(500, 3000)).toBeCloseTo(14.286);
+  });
+
+  it.each([
+    [0, 0],
+    [500, -500],
+    [500, -600],
+  ])(
+    'returns a finite zero for a non-positive budget (%s eaten, %s remaining)',
+    (eaten, remaining) => {
+      expect(computeCalorieProgress(eaten, remaining)).toBe(0);
+    }
+  );
+
+  it('has the same progress in kcal and kJ', () => {
+    expect(computeCalorieProgress(1225 * 4.184, 1256 * 4.184)).toBeCloseTo(
+      computeCalorieProgress(1225, 1256)
+    );
   });
 });
 

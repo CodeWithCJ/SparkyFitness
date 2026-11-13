@@ -1,26 +1,18 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const healthMetricSamplesIdSchema = z.string();
 
-// Kept in sync BY HAND with the chk_health_metric_samples_metric CHECK
-// constraint added in
-// db/migrations/20260730000000_create_generic_health_and_workout_tables.sql.
-// Both must govern the same six values, deliberately, at two different layers:
-//   - the DB CHECK constraint is the backstop, guarding against bad data from
-//     ANY writer (a future migration, a script, a bug that bypasses this schema);
-//   - this enum is the app-boundary guard, giving a typed union and a clean
-//     validation error before a bad value ever reaches SQL.
-// Adding a 7th metric means editing BOTH. There is no single source of truth
-// generating one from the other — if you add automation for that, remove this
-// comment and point it at the generator instead.
+// Keep this enum in sync with chk_health_metric_samples_metric. New metrics
+// require both a migration and a per-metric sample schema below.
 export const healthMetricSchema = z.enum([
-  "heart_rate",
-  "hrv",
-  "respiration",
-  "spo2",
-  "stress",
-  "body_battery",
-  "skin_temperature",
+  'heart_rate',
+  'hrv',
+  'respiration',
+  'spo2',
+  'stress',
+  'body_battery',
+  'skin_temperature',
+  'blood_glucose',
 ]);
 export type HealthMetric = z.infer<typeof healthMetricSchema>;
 
@@ -41,6 +33,12 @@ const baseSampleSchema = z.object({
   t: z.iso.datetime({ offset: true }),
   ex: z.string().optional(),
   sl: z.string().optional(),
+});
+
+/** Canonical glucose unit is mmol/L; source identifies the app/device writer. */
+export const bloodGlucoseSampleSchema = baseSampleSchema.extend({
+  mmol_l: z.number().positive().max(100),
+  source_bundle_id: z.string().max(256).optional(),
 });
 
 export const heartRateSampleSchema = baseSampleSchema.extend({
@@ -65,7 +63,21 @@ export const stressSampleSchema = baseSampleSchema.extend({
 export const bodyBatterySampleSchema = baseSampleSchema.extend({
   level: z.number(),
 });
+/**
+ * Where a skin temperature was taken. Apple's sleeping wrist temperature and an
+ * overnight Body Temperature mean both arrive from `healthkit`, so a baseline
+ * built per source has to keep them apart. Older samples have none.
+ */
+export const SKIN_TEMPERATURE_SITES = ['wrist', 'body'] as const;
+export type SkinTemperatureSite = (typeof SKIN_TEMPERATURE_SITES)[number];
+export const isSkinTemperatureSite = (
+  value: unknown
+): value is SkinTemperatureSite =>
+  typeof value === 'string' &&
+  (SKIN_TEMPERATURE_SITES as readonly string[]).includes(value);
+
 export const skinTemperatureSampleSchema = baseSampleSchema.extend({
+  site: z.enum(SKIN_TEMPERATURE_SITES).optional(),
   celsius: z.number().optional(),
   temperature_celsius: z.number().optional(),
   deviation_celsius: z.number().optional(),
@@ -77,9 +89,7 @@ export type RespirationSample = z.infer<typeof respirationSampleSchema>;
 export type Spo2Sample = z.infer<typeof spo2SampleSchema>;
 export type StressSample = z.infer<typeof stressSampleSchema>;
 export type BodyBatterySample = z.infer<typeof bodyBatterySampleSchema>;
-export type SkinTemperatureSample = z.infer<
-  typeof skinTemperatureSampleSchema
->;
+export type SkinTemperatureSample = z.infer<typeof skinTemperatureSampleSchema>;
 
 const rowBase = {
   id: healthMetricSamplesIdSchema,
@@ -94,40 +104,45 @@ const rowBase = {
 // Discriminated union on `metric` so `samples` is narrowed to the correct
 // per-metric shape at the application boundary — the type safety a shared
 // table would otherwise lose relative to four separate tables.
-export const healthMetricSamplesSchema = z.discriminatedUnion("metric", [
+export const healthMetricSamplesSchema = z.discriminatedUnion('metric', [
   z.object({
     ...rowBase,
-    metric: z.literal("heart_rate"),
+    metric: z.literal('blood_glucose'),
+    samples: z.array(bloodGlucoseSampleSchema),
+  }),
+  z.object({
+    ...rowBase,
+    metric: z.literal('heart_rate'),
     samples: z.array(heartRateSampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("hrv"),
+    metric: z.literal('hrv'),
     samples: z.array(hrvSampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("respiration"),
+    metric: z.literal('respiration'),
     samples: z.array(respirationSampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("spo2"),
+    metric: z.literal('spo2'),
     samples: z.array(spo2SampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("stress"),
+    metric: z.literal('stress'),
     samples: z.array(stressSampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("body_battery"),
+    metric: z.literal('body_battery'),
     samples: z.array(bodyBatterySampleSchema),
   }),
   z.object({
     ...rowBase,
-    metric: z.literal("skin_temperature"),
+    metric: z.literal('skin_temperature'),
     samples: z.array(skinTemperatureSampleSchema),
   }),
 ]);
@@ -144,44 +159,49 @@ const rowBaseInitializer = {
 };
 
 export const healthMetricSamplesInitializerSchema = z.discriminatedUnion(
-  "metric",
+  'metric',
   [
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("heart_rate"),
+      metric: z.literal('blood_glucose'),
+      samples: z.array(bloodGlucoseSampleSchema),
+    }),
+    z.object({
+      ...rowBaseInitializer,
+      metric: z.literal('heart_rate'),
       samples: z.array(heartRateSampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("hrv"),
+      metric: z.literal('hrv'),
       samples: z.array(hrvSampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("respiration"),
+      metric: z.literal('respiration'),
       samples: z.array(respirationSampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("spo2"),
+      metric: z.literal('spo2'),
       samples: z.array(spo2SampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("stress"),
+      metric: z.literal('stress'),
       samples: z.array(stressSampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("body_battery"),
+      metric: z.literal('body_battery'),
       samples: z.array(bodyBatterySampleSchema),
     }),
     z.object({
       ...rowBaseInitializer,
-      metric: z.literal("skin_temperature"),
+      metric: z.literal('skin_temperature'),
       samples: z.array(skinTemperatureSampleSchema),
     }),
-  ],
+  ]
 );
 export type HealthMetricSamplesInitializer = z.infer<
   typeof healthMetricSamplesInitializerSchema

@@ -2,7 +2,7 @@ import {
   DROP_SET_ROUND_INCREMENT,
   isWarmupOrDropSetType,
   type DropSetWeightUnit,
-} from "./dropSetCalculator.ts";
+} from './dropSetCalculator.ts';
 
 // Within-session ramp: each successive working set of one exercise steps by
 // a fixed increment (negative ramps down). Unrelated to the progression
@@ -14,7 +14,7 @@ export type WeightRampUnit = DropSetWeightUnit;
 
 /** A ramp is on only for a finite, non-zero increment. */
 export function isWeightRampActive(
-  rampIncrementKg: number | null | undefined,
+  rampIncrementKg: number | null | undefined
 ): rampIncrementKg is number {
   return (
     rampIncrementKg != null &&
@@ -29,7 +29,9 @@ export function isWeightRampActive(
  * step down from the last working set. Accepts web ("Warm-up", "Drop Set")
  * and mobile ("warmup", "drop") vocabularies.
  */
-export function isWeightRampSetType(setType: string | null | undefined): boolean {
+export function isWeightRampSetType(
+  setType: string | null | undefined
+): boolean {
   return !isWarmupOrDropSetType(setType);
 }
 
@@ -38,12 +40,10 @@ export function isWeightRampSetType(setType: string | null | undefined): boolean
  * base), 1 for the next, and so on; null for sets the ramp skips.
  */
 export function weightRampStepIndexes(
-  sets: readonly { set_type?: string | null }[],
+  sets: readonly { set_type?: string | null }[]
 ): (number | null)[] {
   let step = 0;
-  return sets.map((set) =>
-    isWeightRampSetType(set.set_type) ? step++ : null,
-  );
+  return sets.map((set) => (isWeightRampSetType(set.set_type) ? step++ : null));
 }
 
 /**
@@ -56,15 +56,13 @@ export function calculateRampedWeightKg(
   baseWeightKg: number,
   stepIndex: number,
   rampIncrementKg: number,
-  unit: WeightRampUnit,
+  unit: WeightRampUnit
 ): number {
   if (stepIndex <= 0) return baseWeightKg;
   const roundIncrement = DROP_SET_ROUND_INCREMENT[unit];
-  const toUnit = unit === "kg" ? 1 : 1 / KG_PER_LB;
+  const toUnit = unit === 'kg' ? 1 : 1 / KG_PER_LB;
   const raw = (baseWeightKg + stepIndex * rampIncrementKg) * toUnit;
   const rounded = Math.round(raw / roundIncrement) * roundIncrement;
   const clean = Math.max(roundIncrement, Math.round(rounded * 100) / 100);
-  return unit === "kg"
-    ? clean
-    : Math.round(clean * KG_PER_LB * 10000) / 10000;
+  return unit === 'kg' ? clean : Math.round(clean * KG_PER_LB * 10000) / 10000;
 }

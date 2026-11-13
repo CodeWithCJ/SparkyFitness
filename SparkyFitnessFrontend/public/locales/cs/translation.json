@@ -33,7 +33,9 @@
     "partialTitle": "Fotografie zveřejněna; údaje o produktu nepotvrzeny"
   },
   "layout": {
-    "welcome": "Vítejte, {{activeUserName}}"
+    "welcome": "Vítejte, {{activeUserName}}",
+    "docs": "Dokumenty",
+    "translate": "Přeložit"
   },
   "chat": {
     "toolCategories": {
@@ -110,7 +112,7 @@
     "importing": "Probíhá import…",
     "importData": "Importovat data",
     "importRecords_one": "Importovat {{count}} záznam",
-    "importRecords_few": "",
+    "importRecords_few": "Importovat {{count}} záznamy",
     "importRecords_other": "Importovat {{count}} záznamů",
     "importErrorTitle": "Chyba importu",
     "pasteFirst": "Nejprve prosím vložte data ve formátu CSV.",
@@ -525,19 +527,19 @@
       "macroLabel_dietary_fiber": "Vláknina",
       "includeMacros": "Zahrnout makroživiny",
       "servingUnit_tablet_one": "tableta",
-      "servingUnit_tablet_few": "",
+      "servingUnit_tablet_few": "tablety",
       "servingUnit_tablet_other": "tablet",
       "servingUnit_capsule_one": "tobolka",
-      "servingUnit_capsule_few": "",
+      "servingUnit_capsule_few": "tobolky",
       "servingUnit_capsule_other": "tobolek",
       "servingUnit_softgel_one": "měkká tobolka",
-      "servingUnit_softgel_few": "",
+      "servingUnit_softgel_few": "měkké tobolky",
       "servingUnit_softgel_other": "měkkých tobolek",
       "servingUnit_gummy_one": "želé bonbon",
-      "servingUnit_gummy_few": "",
+      "servingUnit_gummy_few": "želé bonbony",
       "servingUnit_gummy_other": "želé bonbonů",
       "servingUnit_pill_one": "pilulka",
-      "servingUnit_pill_few": "",
+      "servingUnit_pill_few": "pilulky",
       "servingUnit_pill_other": "pilulek",
       "servingEquals": "1 porce =",
       "clearNutrients": "Odebrat vše",
@@ -628,7 +630,6 @@
       "prnReason": "Důvod (volitelné)",
       "prnReasonPlaceholder": "např. Bolest",
       "prnMax": "Maximální dávky / den",
-      "supplementDoseScalingCalories": "Každý záznam představuje {{dose}} porcí: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Každý záznam představuje {{dose}} porcí, tedy {{dose}}násobek výživových hodnot zadaných pro jednu porci.",
       "servingUnit": "porce",
       "servingsPerLog": "Počet porcí na jeden záznam",
@@ -728,7 +729,8 @@
     "pregnancy": "Těhotenství",
     "medications": "Léky",
     "foodLog": "Zapsat jídlo",
-    "wellness": "Zdraví"
+    "wellness": "Zdraví",
+    "symptoms": "Příznaky"
   },
   "nutrition": {
     "calories": "Kalorie",
@@ -842,8 +844,6 @@
       "categoryStrength": "Silový trénink",
       "categoryCardio": "Kardio",
       "categoryYoga": "Jóga",
-      "caloriesPerHourLabel": "Kalorie/hodina",
-      "caloriesPerHourHint": "Ponechte prázdné, chcete-li použít kalorie vypočítané systémem za hodinu ({{newExerciseCalories}} cal/hodinu).",
       "descriptionLabel": "Popis",
       "sourceLabel": "Zdroj",
       "forceLabel": "Směr pohybu",
@@ -915,8 +915,6 @@
       "activeCalories": "Aktivní kalorie: {{activeCaloriesFromExercise}} {{energyUnit}}",
       "stepsCalories": "Kroky: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}",
       "bmrCalories": "BMR: {{bmr}} {{energyUnit}}",
-      "bmrSourceMeasured": "Naměřeno",
-      "bmrSourceAlgorithm": "Algoritmus",
       "totalCaloriesBurned": "Celkem: {{totalCaloriesBurned}} {{energyUnit}}",
       "goal": "cíl",
       "caloriesBurnedBreakdownTitle": "Rozdělení spálených kalorií",
@@ -965,7 +963,6 @@
       "exerciseLabel": "Cvičení",
       "unknownExercise": "Neznámé cvičení",
       "addSetButton": "Přidat sadu",
-      "caloriesBurnedOptionalLabel": "Spálené kalorie (volitelné)",
       "caloriesBurnedPlaceholder": "Zadejte spálené kalorie pro přepsání výpočtu",
       "caloriesBurnedHint": "Pokud ponecháte prázdné, kalorie se při uložení automaticky vypočítají.",
       "distanceLabel": "Vzdálenost",
@@ -1274,7 +1271,7 @@
     "deletePlanTooltip": "Smazat cvičební plán",
     "activatePlanTooltip": "Aktivujte plán",
     "deactivatePlanTooltip": "Deaktivovat plán",
-    "statusLabel": "Stav:",
+    "statusLabel": "Stav ",
     "activeStatus": "Aktivní",
     "inactiveStatus": "Neaktivní",
     "ongoingStatus": "- Probíhá",
@@ -1375,13 +1372,13 @@
     "workoutPreset": "Předvolba tréninku",
     "activeCaloriesValue": "Aktivní výdej: {{calories}}",
     "setCount": "{{count}} série",
-    "setCount_one": "",
-    "setCount_few": "",
+    "setCount_one": "{{count}} série{{count}} série{{count}} sérií{{count}} série{{count}} sérií",
+    "setCount_few": "{{count}} série",
     "setCount_other": "{{count}} sérií",
     "secondsShort": "{{count}} s",
     "repCount": "{{count}} opakování",
-    "repCount_one": "",
-    "repCount_few": "",
+    "repCount_one": "{{count}} opakování",
+    "repCount_few": "{{count}} opakování",
     "repCount_other": "{{count}} opakování",
     "meta": {
       "beginner": "Začátečník",
@@ -1461,10 +1458,10 @@
     "syncingAll": "Synchronizace všech poskytovatelů...",
     "noActiveProviders": "Nebyli nalezeni žádní aktivní poskytovatelé k synchronizaci.",
     "syncCompleted_one": "Poskytovatel {{count}} byl úspěšně synchronizován.",
-    "syncCompleted_few": "",
+    "syncCompleted_few": "Úspěšně synchronizováni {{count}} poskytovatelé.",
     "syncCompleted_other": "Poskytovatelé {{count}} byli úspěšně synchronizováni.",
     "syncFailed_one": "Synchronizace poskytovatele {{count}} se nezdařila.",
-    "syncFailed_few": "",
+    "syncFailed_few": "Synchronizace {{count}} poskytovatelů se nezdařila.",
     "syncFailed_other": "Synchronizace poskytovatelů {{count}} se nezdařila."
   },
   "settings": {
@@ -2078,7 +2075,6 @@
       "title": "Nastavení alergenů"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dynamicky upravuje váš denní cíl podle skutečného metabolismu. Pro vysokou přesnost je potřeba pravidelně zaznamenávat jídlo a hmotnost.",
       "burnedActivity": "Aktivita (jen cvičení a kroky)",
       "burnedBmr": "Aktivita + BMR (váš bazální metabolismus)",
       "burnedTdee": "Celkový energetický výdej z Health Connect (náhradní výpočet: BMR + kalorie vydané aktivitou)",
@@ -2217,7 +2213,6 @@
       "safetyFloorStandardHint": "Použije vyšší hodnotu z odhadovaného RMR a klinického minima (1 200 kcal pro ženy, 1 500 kcal pro muže).",
       "safetyFloorValueLabel": "Vlastní minimum",
       "awaitingCalibrationTitle": "Čeká se na kalibraci adaptivního TDEE",
-      "modeUnreachableSuffix": "nelze dosáhnout",
       "customPercentageUnreachable": "Požadovaný deficit je vyšší než přibližně {{percent}} %, což je maximum povolené bezpečným minimem; cíl bude zvýšen na toto minimum.",
       "deficitCeilingHintEstimated": "Při vaší současné úrovni aktivity lze dosáhnout nejvýše přibližně {{percent}} % deficitu. U vyššího deficitu bude cíl zvýšen na bezpečné minimum.",
       "deficitCeilingHintMeasured": "Podle naměřeného TDEE lze dosáhnout nejvýše přibližně {{percent}} % deficitu. U vyššího deficitu bude cíl zvýšen na bezpečné minimum.",
@@ -2240,10 +2235,7 @@
       "unsafeGainTitle": "Rizikové tempo přibírání",
       "unsafeGainText": "Nárůst o více než 0,5 % tělesné hmotnosti týdně znamená, že většina přidané hmotnosti bude tuk, ne sval. Menší energetický nadbytek může umožnit podobný nárůst svalové hmoty při výrazně menším nárůstu tuku.",
       "unsafeLossTitle": "Rizikové tempo hubnutí",
-      "unsafeLossText": "Úbytek o více než 1,5 % tělesné hmotnosti týdně se považuje za nadměrný. Toto tempo výrazně zvyšuje riziko vážné ztráty svalů, letargie, hormonální nerovnováhy a nutričních nedostatků. Zvolte méně agresivní režim cíle.",
-      "calibrationDescription": "Adaptivní výpočet TDEE ve SparkyFitness potřebuje k přesnému odhadu celkového energetického výdeje alespoň {{required}} dní pravidelného zaznamenávání (nyní používá náhradní odhady). Kalibraci urychlíte:",
-      "calibrationWeightTip": "Zaznamenávejte hmotnost alespoň 3–4× týdně.",
-      "calibrationFoodTip": "Denně zaznamenávejte energetický příjem (> 200 kcal/den)."
+      "unsafeLossText": "Úbytek o více než 1,5 % tělesné hmotnosti týdně se považuje za nadměrný. Toto tempo výrazně zvyšuje riziko vážné ztráty svalů, letargie, hormonální nerovnováhy a nutričních nedostatků. Zvolte méně agresivní režim cíle."
     },
     "mfa": {
       "confirmPassword": "Pro pokračování potvrďte heslo",
@@ -2435,7 +2427,7 @@
       "availableBackupsDescription": "Vyberte záložní soubor ke stažení.",
       "noBackupsFound": "Nebyly nalezeny žádné záložní soubory.",
       "backupCount_one": "Záloha {{count}}",
-      "backupCount_few": "",
+      "backupCount_few": "{{count}} zálohy",
       "backupCount_other": "Zálohy {{count}}",
       "backupFileName": "Název souboru",
       "backupDate": "Zahájeno",
@@ -2873,7 +2865,6 @@
       "calorieLogRequirement": "• Záznamy kalorií pro výpočet TDEE (alespoň 7 dní s ≥ 200 kcal)",
       "daysMissing": "❌ Chybí (zaznamenáno {{days}}/{{required}} dní)",
       "daysMet": "✓ Splněno (zaznamenáno {{days}}/{{required}} dní)",
-      "stabilityRequirement": "• Záznamy kalorií pro stabilitu cílového rozpočtu (alespoň {{required}} dní ≥ 200 kcal)",
       "daysWarning": "⚠️ Chybí (zaznamenáno {{days}}/{{required}} dní)",
       "usingFallbackBmr": "Používá se náhradní BMR × koeficient aktivity:",
       "fallbackMath": "Výpočet: BMR ({{bmr}} kcal) × koeficient aktivity ({{multiplier}}) = {{result}} {{unit}}",
@@ -3075,7 +3066,6 @@
     "editingTemporarilyUnavailable": "Úprava údajů potraviny je kvůli změnám databáze dočasně nedostupná."
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Jak se dnes cítíte?",
     "neutral": "Neutrální",
     "anyThoughtsOrFeelings": "Nějaké myšlenky nebo pocity, které byste chtěli přidat?",
     "sleepTracking": "Sledování spánku",
@@ -3156,17 +3146,13 @@
     "failedToLoadRecentCustom": "Nedávná vlastní měření se nepodařilo načíst.",
     "failedToLoadRecentStandard": "Nedávná standardní měření se nepodařilo načíst.",
     "failedToSaveCustomMeasurement": "Vlastní měření se nepodařilo uložit.",
-    "failedToSaveMood": "Náladu se nepodařilo uložit.",
     "failedToUpdateMeasurement": "Měření se nepodařilo aktualizovat.",
     "level": "úroveň",
     "measurementUpdatedSuccessfully": "Měření bylo úspěšně aktualizováno.",
-    "moodSaved": "Nálada uložena",
-    "moodSavedSuccessfully": "Nálada byla úspěšně uložena.",
     "muscleMass": "Svalová hmota",
     "recentFasts": "Nedávné půsty",
     "recentFastsDescription": "Poslední záznamy a stav půstu.",
     "recentMeasurementsDescription": "Vaše nejnovější záznamy včetně měření, dokončených půstů a synchronizovaných zdravotních údajů.",
-    "saveMood": "Uložit náladu",
     "stressLevel": "Úroveň stresu",
     "tabs": {
       "fasting": "Půst a nálada",
@@ -3582,7 +3568,12 @@
     "backOff": "Odlehčovací série",
     "restPause": "Rest-pause",
     "cluster": "Clusterová série",
-    "technique": "Technika"
+    "technique": "Technika",
+    "formatInterval": "Intervalový / HIIT",
+    "formatTabata": "Tabata",
+    "formatEmom": "EMOM",
+    "formatAmrap": "AMRAP",
+    "formatForTime": "Na čas"
   },
   "addWorkoutPlanDialog": {
     "editTitle": "Upravit cvičební plán",
@@ -4249,7 +4240,7 @@
     "target": "Cíl",
     "weight": "Hmotnost",
     "personalRecords": "Osobní záznamy (PR)",
-    "prs": "PR –",
+    "prs": "PR ",
     "estimated1RM": "Odhadované 1RM",
     "maxWeight": "Maximální hmotnost",
     "maxReps": "Maximální počet opakování",
@@ -4649,7 +4640,7 @@
   "cycle": {
     "hub": "Centrum cyklu a těhotenství",
     "pregnancyHub": "Těhotenské centrum",
-    "hubSubtitle": "Sledujte, rozumějte a synchronizujte se se svým tělem.",
+    "hubSubtitle": "Sledujte, rozumět a synchronizujte se svým tělem.",
     "tabs": {
       "today": "Dnes",
       "calendar": "Kalendář",
@@ -5255,7 +5246,6 @@
   "mood": {
     "dailyMood": "Denní nálada",
     "date": "Datum",
-    "deletedSuccessfully": "Záznam nálady byl smazán.",
     "failedAddCustom": "Náladu se nepodařilo přidat.",
     "failedDeleteCustom": "Náladu se nepodařilo odebrat.",
     "failedLoadPrefs": "Nastavení nálad se nepodařilo načíst.",
@@ -5263,17 +5253,13 @@
     "failedToDelete": "Záznam nálady se nepodařilo smazat.",
     "failedToLoadCustom": "Nálady se nepodařilo načíst.",
     "failedToLoadEntries": "Záznamy nálady se nepodařilo načíst.",
-    "failedToLoadEntry": "Záznam nálady se nepodařilo načíst.",
     "failedToSave": "Záznam nálady se nepodařilo uložit.",
     "failedToUpdate": "Záznam nálady se nepodařilo aktualizovat.",
     "intensityTrend": "Celkový vývoj nálady v čase",
     "mood": "Nálada",
     "moodValue": "Hodnota nálady",
     "mostCommon": "Nejčastější nálady",
-    "noMoodData": "Pro toto období nejsou k dispozici žádné údaje o náladě.",
-    "notes": "Poznámky: ",
-    "savedSuccessfully": "Záznam nálady byl uložen.",
-    "updatedSuccessfully": "Záznam nálady byl aktualizován."
+    "noMoodData": "Pro toto období nejsou k dispozici žádné údaje o náladě."
   },
   "preferences": {
     "resetError": "Předvolby se nepodařilo obnovit"
@@ -5877,5 +5863,176 @@
     "imageBlockedFrom": "Externí obrázek zablokován: {{host}}",
     "imageFromHost": "obrázek z webu {{host}}",
     "externalImage": "externí obrázek"
+  },
+  "muscles": {
+    "abdominals": "Břišní svaly",
+    "abductors": "Abduktory",
+    "adductors": "Adduktory",
+    "biceps": "Biceps",
+    "calves": "Lýtka",
+    "chest": "Hrudník",
+    "forearms": "Předloktí",
+    "glutes": "Hýžďové svaly",
+    "hamstrings": "Zadní stehenní svaly",
+    "lats": "Široké svaly zádové",
+    "lower back": "Dolní část zad",
+    "middle back": "Střední část zad",
+    "neck": "Krk",
+    "quadriceps": "Čtyřhlavé svaly stehenní",
+    "shoulders": "Ramena",
+    "traps": "Trapézy",
+    "triceps": "Triceps"
+  },
+  "equipment": {
+    "barbell": "Velká činka",
+    "dumbbell": "Jednoruční činka",
+    "kettlebells": "Kettlebelly",
+    "cable": "Kladka",
+    "machine": "Stroj",
+    "bands": "Gumy",
+    "body only": "Pouze vlastní váha",
+    "medicine ball": "Medicinbal",
+    "exercise ball": "Gymnastický míč",
+    "foam roll": "Válec",
+    "e-z curl bar": "Zalomená tyč EZ",
+    "other": "Ostatní"
+  },
+  "interval": {
+    "ready": "Připraveno",
+    "countdown": "Připravte se",
+    "work": "Práce",
+    "rest": "Odpočinek",
+    "roundOfTotal": "Kolo {{current}} z {{total}}",
+    "round": "Kolo {{current}}",
+    "resume": "Pokračovat",
+    "pause": "Pozastavit",
+    "timeCapLabel": "Limit: {{cap}}",
+    "wodScoring": "Hodnocení WOD",
+    "rx": "Rx",
+    "scaled": "Upraveno",
+    "extraReps": "Další opakování"
+  },
+  "symptoms": {
+    "categories": {
+      "general": "Obecné",
+      "pain": "Bolest",
+      "skin": "Kůže",
+      "other": "Ostatní",
+      "gi": "Žaludek a střeva"
+    },
+    "severity": {
+      "mild": "Mírná",
+      "moderate": "Mírný",
+      "severe": "Silná"
+    }
+  },
+  "guidedWorkout": {
+    "cue": {
+      "getReady": "Připravte se. Začíná cvik {{name}}.",
+      "setStartReps_one": "{{name}}. {{count}} opakování.",
+      "setStartReps_few": "{{name}}. {{count}} opakování.",
+      "setStartReps_other": "{{name}}. {{count}} opakování.",
+      "setStartSeconds_one": "{{name}}. {{count}} sekunda.",
+      "setStartSeconds_few": "{{name}}. {{count}} sekundy.",
+      "setStartSeconds_other": "{{name}}. {{count}} sekund.",
+      "setStartOpen": "{{name}}.",
+      "halfway": "Půlka.",
+      "rest_one": "Odpočinek. {{count}} sekunda.",
+      "rest_few": "Odpočinek. {{count}} sekundy.",
+      "rest_other": "Odpočinek. {{count}} sekund.",
+      "intervalRest": "Odpočinek.",
+      "nextUp": "Další: {{name}}.",
+      "workoutComplete": "Trénink dokončen."
+    },
+    "card": {
+      "badge": "VEDENÝ",
+      "getReady": "Připravte se",
+      "setOfTotal": "Série {{current}} z {{total}}",
+      "rest": "Odpočinek",
+      "nextUp": "Další na řadě",
+      "targetReps_one": "{{count}} opakování",
+      "targetReps_few": "{{count}} opakování",
+      "targetReps_other": "{{count}} opakování",
+      "targetSeconds_one": "{{count}} sekunda",
+      "targetSeconds_few": "{{count}} sekundy",
+      "targetSeconds_other": "{{count}} sekund",
+      "paused": "Pozastaveno",
+      "pause": "Pozastavit",
+      "resume": "Pokračovat",
+      "mute": "Vypnout hlas",
+      "unmute": "Zapnout hlas",
+      "replay": "Přehrát pokyny znovu",
+      "doneNext": "HOTOVO – DALŠÍ",
+      "doneHintReps_one": "Klepněte, až provedete {{count}} opakování",
+      "doneHintReps_few": "Klepněte, až provedete {{count}} opakování",
+      "doneHintReps_other": "Klepněte, až provedete {{count}} opakování",
+      "doneHint": "Klepněte, až skončíte"
+    },
+    "settings": {
+      "section": "Vedené tréninky",
+      "enabled": "Vedený režim",
+      "voice": "Hlas",
+      "rate": "Rychlost řeči",
+      "rateValue": "{{rate}}×",
+      "countdown": "Odpočet před startem",
+      "countdownSubtitle": "Před prvním cvikem a před každou časovanou sérií.",
+      "countdownValue_one": "{{count}} s",
+      "countdownValue_few": "{{count}} s",
+      "countdownValue_other": "{{count}} s",
+      "sample": "Takto budou znít vaše vedené tréninky.",
+      "test": "Vyzkoušet hlas"
+    }
+  },
+  "workoutFeedback": {
+    "title": "Jaký to byl pocit?",
+    "subtitle": "Další návrhy se tomu přizpůsobí.",
+    "difficulty": {
+      "tooEasy": "Příliš snadné",
+      "justRight": "Tak akorát",
+      "tooHard": "Příliš těžké"
+    },
+    "painQuestion": "Měli jste nějakou bolest nebo nepohodlí?",
+    "painWhere": "Při kterých cvicích? (volitelné)",
+    "painNotePlaceholder": "Co bolelo? (volitelné)",
+    "painPrivacy": "Návrhy pro tyto cviky budou lehčí, nikdy těžší.",
+    "rateExercises": "Ohodnoťte každý cvik",
+    "saving": "Ukládání…",
+    "saved": "Uloženo"
+  },
+  "adaptiveCoaching": {
+    "reasons": {
+      "painReported": "Dnes lehčí: posledně jste zde hlásili bolest.",
+      "painRepeated": "Dnes lehčí: bolest zde dva tréninky po sobě. Zvažte alternativu.",
+      "sessionPain": "Zachování zátěže: v posledním tréninku jste hlásili nepohodlí.",
+      "tooHard": "Zachování zátěže: posledně to bylo příliš těžké.",
+      "tooHardRepeated": "Dnes lehčí: příliš těžké dva tréninky po sobě.",
+      "highEffort": "Zachování zátěže: vaše poslední série byly téměř na maximum.",
+      "tooEasyRepeated": "O krok těžší: příliš snadné dva tréninky po sobě."
+    },
+    "declined": "Používá se váš obvyklý návrh.",
+    "variation": "Dělali jste to ve většině nedávných tréninků. Zkusit variaci?",
+    "useUsual": "Použít můj obvyklý",
+    "useAdjusted": "Použít upravený návrh",
+    "seeAlternatives": "Zobrazit alternativy"
+  },
+  "mindfulness": {
+    "actions": {
+      "breathe": "Dýchat",
+      "timer": "Časovač",
+      "log": "Zaznamenat"
+    },
+    "types": {
+      "meditation": "Meditace",
+      "breathwork": "Dechová cvičení",
+      "reflection": "Reflexe",
+      "walking": "Všímavá chůze",
+      "yoga": "Jóga",
+      "other": "Ostatní"
+    },
+    "timer": {
+      "title": "Časovač meditace",
+      "pause": "Pozastavit",
+      "resume": "Pokračovat"
+    }
   }
 }

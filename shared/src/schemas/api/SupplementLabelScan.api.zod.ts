@@ -1,13 +1,13 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /** The dose forms the supplement form offers; shared with the lookup product. */
 export const supplementLabelFormSchema = z.enum([
-  "tablet",
-  "capsule",
-  "softgel",
-  "gummy",
-  "powder",
-  "liquid",
+  'tablet',
+  'capsule',
+  'softgel',
+  'gummy',
+  'powder',
+  'liquid',
 ]);
 
 /** One line of a Supplement Facts panel: the amount in a serving, as printed. */

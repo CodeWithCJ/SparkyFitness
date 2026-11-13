@@ -36,7 +36,7 @@ export function calculateDropSetWeights(config: DropSetConfig): number[] {
     const rounded = Math.round(current / roundIncrement) * roundIncrement;
     const cleanWeight = Math.max(
       roundIncrement,
-      Math.round(rounded * 100) / 100,
+      Math.round(rounded * 100) / 100
     );
     results.push(cleanWeight);
   }
@@ -53,9 +53,9 @@ export function calculateDropSetWeightsKg(
   baseWeightKg: number,
   unit: DropSetWeightUnit,
   count: number = DEFAULT_DROP_SET_COUNT,
-  dropPercent: number = DEFAULT_DROP_SET_PERCENT,
+  dropPercent: number = DEFAULT_DROP_SET_PERCENT
 ): number[] {
-  if (unit === "kg") {
+  if (unit === 'kg') {
     return calculateDropSetWeights({
       baseWeight: baseWeightKg,
       count,
@@ -85,7 +85,7 @@ export interface DropSetBaseCandidate {
  */
 export function findDropSetBaseIndex<T extends DropSetBaseCandidate>(
   sets: readonly T[],
-  effectiveWeight: (set: T) => number | null | undefined = (set) => set.weight,
+  effectiveWeight: (set: T) => number | null | undefined = (set) => set.weight
 ): number {
   for (let i = sets.length - 1; i >= 0; i--) {
     const set = sets[i];
@@ -97,19 +97,19 @@ export function findDropSetBaseIndex<T extends DropSetBaseCandidate>(
 }
 
 function normalizeSetType(setType: string | null | undefined): string {
-  return setType ? setType.toLowerCase().replace(/[^a-z]/g, "") : "";
+  return setType ? setType.toLowerCase().replace(/[^a-z]/g, '') : '';
 }
 
 /** Web labels the set type "Warm-up"; mobile uses "warmup". */
 export function isWarmupSetType(setType: string | null | undefined): boolean {
-  return normalizeSetType(setType) === "warmup";
+  return normalizeSetType(setType) === 'warmup';
 }
 
 /** Web labels set types "Warm-up" / "Drop Set"; mobile uses "warmup" / "drop". */
 export function isWarmupOrDropSetType(
-  setType: string | null | undefined,
+  setType: string | null | undefined
 ): boolean {
   return (
-    isWarmupSetType(setType) || normalizeSetType(setType).startsWith("drop")
+    isWarmupSetType(setType) || normalizeSetType(setType).startsWith('drop')
   );
 }

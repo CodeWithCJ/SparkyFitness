@@ -45,8 +45,6 @@
       "categoryStrength": "Voima",
       "categoryCardio": "Kardio",
       "categoryYoga": "Jooga",
-      "caloriesPerHourLabel": "Kaloria tunnissa",
-      "caloriesPerHourHint": "Jätä tyhjäksi käyttääksesi järjestelmän laskemaa arvoa ({{newExerciseCalories}} kaloria tunnissa).",
       "descriptionLabel": "Kuvaus",
       "sourceLabel": "Lähde",
       "forceLabel": "Voima",
@@ -126,7 +124,6 @@
       "exerciseLabel": "Harjoitus",
       "unknownExercise": "Tuntematon harjoitus",
       "addSetButton": "Lisää sarja",
-      "caloriesBurnedOptionalLabel": "Kulutetut kalorit (valinnainen)",
       "caloriesBurnedPlaceholder": "Syötä kulutettujen kalorien määrä estääksesi automaattisen laskennan",
       "caloriesBurnedHint": "Kalorien määrä lasketaan automaattisesti tallennettaessa jos kenttä on tyhjä.",
       "distanceLabel": "Matka",
@@ -852,7 +849,6 @@
     "searchFoodsToYour": "Etsi ruokia lisättäväksi ateriaan"
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Kuinka voit tänään?",
     "neutral": "Neutraali",
     "anyThoughtsOrFeelings": "Onko mitään ajatuksia tai tuntemuksia joita haluaisit lisätä?",
     "sleepTracking": "Unen seuranta",

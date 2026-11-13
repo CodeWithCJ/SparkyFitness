@@ -7,16 +7,25 @@ import {
   fetchExerciseProgressionStats,
   deleteExerciseEntry,
   createPresetSession,
+  updatePresetSession,
   logWorkoutPreset,
   deleteExercisePresetEntry,
-  fetchExerciseDetails,
   getExerciseHistory,
   fetchWorkoutLocations,
+  fetchCalorieLinkSuggestions,
+  setCalorieLink,
+  clearCalorieLink,
 } from '@/api/Exercises/exerciseEntryService';
-import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
-import i18n from '@/i18n';
+import { exerciseEntryKeys } from '@/api/keys/exercises';
+import { HttpApiError } from '@/api/api';
 import { dailyProgressKeys } from '@/api/keys/diary';
-import { UpdateExerciseEntryRequest } from '@workspace/shared';
+import { goalKeys } from '@/api/keys/goals';
+import { shoeKeys } from '@/api/keys/shoes';
+import {
+  SetCalorieLinkRequest,
+  UpdateExerciseEntryRequest,
+  UpdatePresetSessionRequest,
+} from '@workspace/shared';
 import { useDiaryInvalidation } from '../useInvalidateKeys';
 
 // --- Queries ---
@@ -70,6 +79,7 @@ export const useCreateExerciseEntryMutation = () => {
 
 export const useUpdateExerciseEntryMutation = () => {
   const invalidate = useDiaryInvalidation();
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
@@ -80,7 +90,10 @@ export const useUpdateExerciseEntryMutation = () => {
       id: string;
       data: UpdateExerciseEntryRequest & { imageFile: File | null };
     }) => updateExerciseEntry(id, data),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: shoeKeys.all });
+    },
     meta: {
       successMessage: t(
         'diary.exerciseEntry.updateSuccess',
@@ -96,11 +109,16 @@ export const useUpdateExerciseEntryMutation = () => {
 
 export const useDeleteExerciseEntryMutation = () => {
   const invalidate = useDiaryInvalidation();
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: deleteExerciseEntry,
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // A linked run counts toward its shoe's mileage and run count.
+      queryClient.invalidateQueries({ queryKey: shoeKeys.all });
+    },
     meta: {
       successMessage: t(
         'diary.exerciseEntry.deleteSuccess',
@@ -135,6 +153,7 @@ export const useLogWorkoutPresetMutation = () => {
       queryClient.invalidateQueries({
         queryKey: dailyProgressKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({
         queryKey: ['workoutPlanTemplates'],
       });
@@ -161,6 +180,7 @@ export const useCreatePresetSessionMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {
@@ -176,6 +196,31 @@ export const useCreatePresetSessionMutation = () => {
   });
 };
 
+/**
+ * Updates a grouped workout session, including the #1995 phase 1 lifecycle
+ * writes (finish stamps finished_at, resume sends null). No toast meta: the
+ * resume call is followed by navigation and the finish call already shows
+ * its own summary dialog.
+ */
+export const useUpdatePresetSessionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      presetEntryId,
+      payload,
+    }: {
+      presetEntryId: string;
+      payload: UpdatePresetSessionRequest;
+    }) => updatePresetSession(presetEntryId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
+    },
+  });
+};
+
 export const useDeleteExercisePresetEntryMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -187,6 +232,7 @@ export const useDeleteExercisePresetEntryMutation = () => {
       queryClient.invalidateQueries({
         queryKey: dailyProgressKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {
@@ -202,16 +248,83 @@ export const useDeleteExercisePresetEntryMutation = () => {
   });
 };
 
-export const exerciseDetailsOptions = (exerciseId: string) => ({
-  queryKey: exerciseKeys.detail(exerciseId),
-  queryFn: () => fetchExerciseDetails(exerciseId),
-  staleTime: 1000 * 60 * 60,
-  enabled: !!exerciseId,
-  meta: {
-    errorMessage: i18n.t(
-      'exercise.failedToFetchDetails',
-      'Could not fetch exercise details. Please try again.'
-    ),
-  },
-});
 export { fetchExerciseProgressionStats };
+
+// --- Calorie link (a logged workout and the same session synced from a watch) ---
+
+export const useCalorieLinkSuggestions = (
+  entryId: string,
+  enabled: boolean
+) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.calorieLink(entryId),
+    queryFn: () => fetchCalorieLinkSuggestions(entryId),
+    enabled,
+    staleTime: 0,
+  });
+};
+
+export const useSetCalorieLinkMutation = () => {
+  const invalidate = useDiaryInvalidation();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: ({
+      entryId,
+      body,
+    }: {
+      entryId: string;
+      body: SetCalorieLinkRequest;
+    }) => setCalorieLink(entryId, body),
+    onSuccess: (_data, { entryId }) => {
+      invalidate();
+      queryClient.invalidateQueries({
+        queryKey: exerciseEntryKeys.calorieLink(entryId),
+      });
+    },
+    meta: {
+      successMessage: t(
+        'exercise.calorieLink.linked',
+        'Workouts linked. The session now counts once.'
+      ),
+      errorMessage: t(
+        'exercise.calorieLink.linkError',
+        'Failed to link the workouts.'
+      ),
+    },
+  });
+};
+
+export const useClearCalorieLinkMutation = () => {
+  const invalidate = useDiaryInvalidation();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: (entryId: string) => clearCalorieLink(entryId),
+    onSuccess: (_data, entryId) => {
+      invalidate();
+      queryClient.invalidateQueries({
+        queryKey: exerciseEntryKeys.calorieLink(entryId),
+      });
+    },
+    meta: {
+      successMessage: t(
+        'exercise.calorieLink.unlinked',
+        'Workouts unlinked. Each counts its own calories again.'
+      ),
+      errorMessage: t(
+        'exercise.calorieLink.unlinkError',
+        'Failed to unlink the workouts.'
+      ),
+    },
+  });
+};
+/**
+ * True when the server refused a preset-session write because the session
+ * changed on another device or tab (#1995 phase 1 revision check).
+ * Pages route on this instead of importing the API error class directly.
+ */
+export const isPresetSessionConflictError = (error: unknown): boolean =>
+  error instanceof HttpApiError && error.status === 409;

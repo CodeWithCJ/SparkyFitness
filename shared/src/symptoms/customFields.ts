@@ -1,4 +1,4 @@
-import type { SymptomCustomFieldDef } from "./constants.ts";
+import type { SymptomCustomFieldDef } from './constants.ts';
 
 /**
  * Checks the values of a symptom's custom fields against the definition's
@@ -8,46 +8,45 @@ import type { SymptomCustomFieldDef } from "./constants.ts";
  */
 export function validateCustomFieldValues(
   defs: SymptomCustomFieldDef[] | null | undefined,
-  values: Record<string, unknown> | null | undefined,
+  values: Record<string, unknown> | null | undefined
 ): string[] {
   const problems: string[] = [];
   if (!defs || !values) return problems;
 
   for (const def of defs) {
     const value = values[def.key];
-    if (value === undefined || value === null || value === "") continue;
+    if (value === undefined || value === null || value === '') continue;
 
     switch (def.type) {
-      case "number":
-        if (typeof value !== "number" || !Number.isFinite(value)) {
+      case 'number':
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
           problems.push(`${def.label} must be a number`);
         }
         break;
-      case "boolean":
-        if (typeof value !== "boolean") {
+      case 'boolean':
+        if (typeof value !== 'boolean') {
           problems.push(`${def.label} must be yes or no`);
         }
         break;
-      case "text":
-        if (typeof value !== "string") {
+      case 'text':
+        if (typeof value !== 'string') {
           problems.push(`${def.label} must be text`);
         }
         break;
-      case "select":
+      case 'select':
         if (
-          typeof value !== "string" ||
+          typeof value !== 'string' ||
           (def.options && !def.options.includes(value))
         ) {
           problems.push(`${def.label} must be one of the listed options`);
         }
         break;
-      case "multiselect":
+      case 'multiselect':
         if (
           !Array.isArray(value) ||
           value.some(
             (v) =>
-              typeof v !== "string" ||
-              (def.options && !def.options.includes(v)),
+              typeof v !== 'string' || (def.options && !def.options.includes(v))
           )
         ) {
           problems.push(`${def.label} must only contain listed options`);

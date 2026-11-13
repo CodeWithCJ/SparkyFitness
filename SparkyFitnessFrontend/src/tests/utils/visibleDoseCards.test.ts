@@ -1,4 +1,4 @@
-import { visibleDoseCards } from '@/pages/Medications/medicationUtils';
+import { visibleDoseCards } from '@workspace/shared';
 
 // The Log view renders one card per subtype. The medications card doubles as the
 // "nothing scheduled at all" empty state, which is why it is not simply

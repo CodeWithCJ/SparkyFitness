@@ -2,7 +2,7 @@ import type {
   SymptomOptionKind,
   SymptomSection,
   SymptomTemplate,
-} from "./constants.ts";
+} from './constants.ts';
 
 type SectionMap = Record<SymptomSection, boolean>;
 
@@ -83,15 +83,15 @@ export const TEMPLATE_SECTIONS: Record<SymptomTemplate, SectionMap> = {
 /** Which pick-list the "locations" section reads from for a template. */
 export const TEMPLATE_LOCATION_KIND: Record<
   SymptomTemplate,
-  Extract<SymptomOptionKind, "location" | "head_location">
+  Extract<SymptomOptionKind, 'location' | 'head_location'>
 > = {
-  generic: "location",
-  headache: "head_location",
-  pain: "location",
-  gi: "location",
-  respiratory: "location",
-  skin: "location",
-  mental: "location",
+  generic: 'location',
+  headache: 'head_location',
+  pain: 'location',
+  gi: 'location',
+  respiratory: 'location',
+  skin: 'location',
+  mental: 'location',
 };
 
 /**
@@ -101,16 +101,16 @@ export const TEMPLATE_LOCATION_KIND: Record<
  */
 export function resolveSections(
   template: string | null | undefined,
-  overrides?: unknown,
+  overrides?: unknown
 ): SectionMap {
-  const known = (template ?? "generic") as SymptomTemplate;
+  const known = (template ?? 'generic') as SymptomTemplate;
   const resolved = {
     ...(TEMPLATE_SECTIONS[known] ?? TEMPLATE_SECTIONS.generic),
   };
-  if (overrides && typeof overrides === "object") {
+  if (overrides && typeof overrides === 'object') {
     for (const key of Object.keys(resolved) as SymptomSection[]) {
       const value = (overrides as Record<string, unknown>)[key];
-      if (typeof value === "boolean") resolved[key] = value;
+      if (typeof value === 'boolean') resolved[key] = value;
     }
   }
   return resolved;

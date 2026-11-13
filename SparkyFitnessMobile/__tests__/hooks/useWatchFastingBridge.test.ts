@@ -5,6 +5,7 @@ import {
   fetchCurrentFast,
   startFast,
 } from '../../src/services/api/fastingApi';
+import { getActiveServerConfigId } from '../../src/services/storage';
 
 type Listener = (payload: unknown) => void;
 const mockListeners = new Map<string, Listener>();
@@ -30,6 +31,9 @@ jest.mock('../../src/hooks/useFasting', () => ({
   cancelFastGoalNotification: jest.fn(),
 }));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfigId: jest.fn(async () => 'srv-1'),
+}));
 
 describe('useWatchFastingBridge', () => {
   beforeEach(() => {
@@ -108,5 +112,39 @@ describe('useWatchFastingBridge', () => {
     renderHook(() => useWatchFastingBridge(true));
     mockListeners.get('onFastEndRequested')?.({ clientId: 'c4' });
     await waitFor(() => expect(mockSendAck).toHaveBeenCalledWith('c4', false));
+  });
+
+  it('ignores fast requests whose ownerId does not match the active server', async () => {
+    (getActiveServerConfigId as jest.Mock).mockResolvedValueOnce('srv-active');
+    renderHook(() => useWatchFastingBridge(true));
+    mockListeners.get('onFastStartRequested')?.({
+      presetId: '18-6',
+      clientId: 'c7',
+      ownerId: 'srv-other',
+    });
+    await waitFor(() =>
+      expect(getActiveServerConfigId).toHaveBeenCalledTimes(1)
+    );
+    expect(fetchCurrentFast).not.toHaveBeenCalled();
+    expect(startFast).not.toHaveBeenCalled();
+    expect(mockSendAck).not.toHaveBeenCalled();
+  });
+
+  it('aborts startFast if the active server changes while fetchCurrentFast is pending', async () => {
+    (getActiveServerConfigId as jest.Mock)
+      .mockResolvedValueOnce('srv-1')
+      .mockResolvedValueOnce('srv-2');
+    (fetchCurrentFast as jest.Mock).mockResolvedValue(null);
+    renderHook(() => useWatchFastingBridge(true));
+    mockListeners.get('onFastStartRequested')?.({
+      presetId: '18-6',
+      clientId: 'c8',
+      ownerId: 'srv-1',
+    });
+    await waitFor(() =>
+      expect(getActiveServerConfigId).toHaveBeenCalledTimes(2)
+    );
+    expect(startFast).not.toHaveBeenCalled();
+    expect(mockSendAck).not.toHaveBeenCalled();
   });
 });

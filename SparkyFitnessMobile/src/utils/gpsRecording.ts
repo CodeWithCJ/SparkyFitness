@@ -8,6 +8,8 @@ import type { WorkoutLapWindow } from '../types/healthRecords';
  */
 
 export type RecordingActivity = 'walk' | 'run' | 'ride';
+/** A recording activity, or jump rope (recorded on the watch, no GPS). */
+export type DiaryActivity = RecordingActivity | 'jumpRope';
 
 /** One accepted location fix. Times are epoch milliseconds. */
 export interface RecordedPoint {
@@ -329,6 +331,10 @@ export interface RecordedSplit {
   endT: number;
   /** True for the trailing stretch shorter than a full unit. */
   partial: boolean;
+  /** Net height change over the split in metres, or null without altitude. */
+  elevationChangeMeters?: number | null;
+  /** Average heart rate over the split, or null with no readings in it. */
+  avgHeartRate?: number | null;
 }
 
 /**
@@ -347,22 +353,27 @@ export function computeSplits(
   const total = distances[distances.length - 1];
   const splits: RecordedSplit[] = [];
 
-  // Instant (epoch ms) and active-clock second at a given path distance.
-  const at = (target: number): { t: number; active: number } => {
+  // Instant (epoch ms), active-clock second and altitude at a path distance.
+  const at = (
+    target: number
+  ): { t: number; active: number; alt: number | null } => {
     let i = 1;
     while (i < points.length - 1 && distances[i] < target) i++;
     const d0 = distances[i - 1];
     const d1 = distances[i];
     const ratio =
       d1 > d0 ? Math.min(1, Math.max(0, (target - d0) / (d1 - d0))) : 1;
+    const alt0 = points[i - 1].alt;
+    const alt1 = points[i].alt;
     return {
       t: points[i - 1].t + (points[i].t - points[i - 1].t) * ratio,
       active: active[i - 1] + (active[i] - active[i - 1]) * ratio,
+      alt: alt0 !== null && alt1 !== null ? alt0 + (alt1 - alt0) * ratio : null,
     };
   };
 
   let startDistance = 0;
-  let start = { t: points[0].t, active: active[0] };
+  let start = { t: points[0].t, active: active[0], alt: points[0].alt };
   let index = 1;
   while (startDistance + unitMeters <= total + 1e-6) {
     const endDistance = startDistance + unitMeters;
@@ -374,6 +385,8 @@ export function computeSplits(
       startT: start.t,
       endT: end.t,
       partial: false,
+      elevationChangeMeters:
+        start.alt !== null && end.alt !== null ? end.alt - start.alt : null,
     });
     index++;
     startDistance = endDistance;
@@ -389,9 +402,38 @@ export function computeSplits(
       startT: start.t,
       endT: points[points.length - 1].t,
       partial: true,
+      elevationChangeMeters:
+        start.alt !== null && points[points.length - 1].alt !== null
+          ? (points[points.length - 1].alt as number) - start.alt
+          : null,
     });
   }
   return splits;
+}
+
+/**
+ * The same splits with each one's average heart rate from the readings that
+ * fall inside it, or null when it holds none. Readings are epoch-ms samples.
+ */
+export function withSplitHeartRate(
+  splits: readonly RecordedSplit[],
+  samples: readonly { t: number; bpm: number }[]
+): RecordedSplit[] {
+  return splits.map((split) => {
+    const inside = samples.filter(
+      (sample) => sample.t >= split.startT && sample.t <= split.endT
+    );
+    return {
+      ...split,
+      avgHeartRate:
+        inside.length > 0
+          ? Math.round(
+              inside.reduce((sum, sample) => sum + sample.bpm, 0) /
+                inside.length
+            )
+          : null,
+    };
+  });
 }
 
 /**

@@ -13,6 +13,87 @@ export class CustomCategoryExistsError extends Error {
   }
 }
 
+const sqlState = /^[0-9A-Z]{5}$/;
+
+interface InternalErrorFields {
+  message?: unknown;
+  code?: unknown;
+  severity?: unknown;
+  errno?: unknown;
+  syscall?: unknown;
+  errors?: unknown;
+  cause?: unknown;
+}
+
+/** A pg error (SQLSTATE code and severity) or a Node system error. */
+function isRawInternal(value: InternalErrorFields): boolean {
+  return (
+    (typeof value.code === 'string' &&
+      sqlState.test(value.code) &&
+      typeof value.severity === 'string') ||
+    (typeof value.errno === 'number' && typeof value.syscall === 'string')
+  );
+}
+
+/** Database and system errors found through `cause` and `errors[]`. */
+function rawInternalCauses(err: InternalErrorFields): InternalErrorFields[] {
+  const found: InternalErrorFields[] = [];
+  const queue: { value: unknown; depth: number }[] = [
+    ...(Array.isArray(err.errors) ? err.errors : []),
+    err.cause,
+  ].map((value) => ({ value, depth: 1 }));
+  while (queue.length > 0 && found.length < 20) {
+    const { value, depth } = queue.shift()!;
+    if (typeof value !== 'object' || value === null || depth > 5) continue;
+    const fields = value as InternalErrorFields;
+    if (isRawInternal(fields)) found.push(fields);
+    for (const next of [
+      ...(Array.isArray(fields.errors) ? fields.errors : []),
+      fields.cause,
+    ]) {
+      queue.push({ value: next, depth: depth + 1 });
+    }
+  }
+  return found;
+}
+
+/**
+ * Whether an error's own message or code would show a client the text of a
+ * database or system error, which names hosts, tables and SQL. That is the
+ * error itself, or an error repeating the message or code of one it wraps
+ * (`Failed to load: column "x" does not exist`, or an `AggregateError` of
+ * refused connections). An app message that only keeps the database error as
+ * its `cause`, such as "A goal preset with this name already exists.", is not
+ * internal.
+ */
+export function isInternalError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const fields = err as InternalErrorFields;
+  if (isRawInternal(fields)) return true;
+  const message = typeof fields.message === 'string' ? fields.message : '';
+  return rawInternalCauses(fields).some(
+    (cause) =>
+      (typeof cause.message === 'string' &&
+        cause.message.trim() !== '' &&
+        message.includes(cause.message.trim())) ||
+      (typeof cause.code === 'string' && cause.code === fields.code)
+  );
+}
+
+/**
+ * The message a hand-written 5xx response may show the client: the error's
+ * own message, or `fallback` when that would leak a database or system error
+ * (see `isInternalError`) or is missing.
+ */
+export function publicErrorMessage(
+  error: unknown,
+  fallback = 'Internal Server Error'
+): string {
+  if (isInternalError(error)) return fallback;
+  const message = (error as { message?: unknown } | null | undefined)?.message;
+  return typeof message === 'string' && message ? message : fallback;
+}
+
 // A thrown value only has to be renderable, not an Error, and `error.message`
 // on its own is not always enough to diagnose one. Node's Happy Eyeballs
 // connector rejects with an `AggregateError` whose `message` is the empty

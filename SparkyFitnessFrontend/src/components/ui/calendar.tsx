@@ -15,6 +15,7 @@ import {
 } from 'react-day-picker';
 
 import { cn } from '@/lib/utils';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Select,
@@ -37,21 +38,27 @@ function Calendar({
   yearsRange = 10,
   formatters,
   components,
+  weekStartsOn,
   ...props
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
+  const { firstDayOfWeek } = usePreferences();
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      // --cell-radius is Tailwind's rounded-full value; the theme defines no
+      // --radius-full, so selected days in the first and last column lost
+      // their rounded edge.
       className={cn(
-        'group/calendar bg-background p-2 [--cell-radius:var(--radius-full)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
+        'group/calendar bg-background p-2 [--cell-radius:calc(infinity*1px)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
       )}
       captionLayout={captionLayout}
       locale={locale}
+      weekStartsOn={weekStartsOn ?? firstDayOfWeek}
       reverseYears
       startMonth={new Date(new Date().getFullYear() - yearsRange, 0)}
       endMonth={new Date(new Date().getFullYear() + 1, 11)}

@@ -57,7 +57,7 @@ enum GpsSignal: Int {
 /// What the wearer is recording from the wrist alone. Raw values are for
 /// logging, not the wire.
 enum WatchRunKind: String {
-    case walk, run
+    case walk, run, jumpRope
 
     func title(_ place: WatchRunPlace) -> String {
         switch (self, place) {
@@ -65,6 +65,7 @@ enum WatchRunKind: String {
         case (.walk, .outdoor): return String(localized: "watch.run.title.outdoorWalk", defaultValue: "Outdoor walk")
         case (.run, .indoor): return String(localized: "watch.run.title.indoorRun", defaultValue: "Indoor run")
         case (.run, .outdoor): return String(localized: "watch.run.title.outdoorRun", defaultValue: "Outdoor run")
+        case (.jumpRope, _): return String(localized: "watch.run.title.jumpRope", defaultValue: "Jump Rope")
         }
     }
 
@@ -72,6 +73,7 @@ enum WatchRunKind: String {
         switch self {
         case .walk: return "figure.walk"
         case .run: return "figure.run"
+        case .jumpRope: return "figure.jumprope"
         }
     }
 
@@ -79,6 +81,21 @@ enum WatchRunKind: String {
         switch self {
         case .walk: return .walking
         case .run: return .running
+        case .jumpRope: return .jumpRope
+        }
+    }
+
+    /// A jump rope covers no distance, so the live and summary views drop the
+    /// distance and pace tiles and show time and heart rate only.
+    var showsDistance: Bool { self != .jumpRope }
+
+    /// The short name on a Cardio choice tile, distinct from the fuller
+    /// `title` used as the recording's heading.
+    var shortLabel: String {
+        switch self {
+        case .walk: return String(localized: "watch.activity.walk", defaultValue: "Walk")
+        case .run: return String(localized: "watch.activity.run", defaultValue: "Run")
+        case .jumpRope: return String(localized: "watch.activity.jumpRope", defaultValue: "Jump Rope")
         }
     }
 }
@@ -149,6 +166,8 @@ struct WatchRunStartRequest: Equatable {
     /// The Record screen's switches. Nil from an older phone build, which
     /// leaves the run to the phone's saved preferences.
     var settings: WatchRunSettings? = nil
+    /// A saved route to follow, outdoors only. Nil from an older phone build.
+    var route: WatchRoute? = nil
 }
 
 /// Auto-pause and voice cues for one run. Chosen at the start (from the
@@ -400,6 +419,13 @@ struct WatchRunResult {
     /// What the watch showed before the wearer entered the treadmill's
     /// distance; nil when nothing was entered. The phone learns from the pair.
     var estimatedDistanceMeters: Double?
+    /// Apple's heart-rate zone group for the saved workout. Empty when this
+    /// watchOS cannot read one. Not scaled with distance.
+    var appleZones: [[String: Any]] = []
+    /// Steps over the moving time. The phone turns these into cadence and
+    /// stride. Nil when the watch could not count them (an older build, or a
+    /// run recovered after the app was killed).
+    var steps: Int? = nil
 
     /// The run with its distance (and the lap marks along it) multiplied by
     /// `factor`.

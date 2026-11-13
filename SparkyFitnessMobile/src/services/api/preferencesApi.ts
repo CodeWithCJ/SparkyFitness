@@ -41,6 +41,21 @@ export const updateNutrientDisplayPreference = (
     body: { visible_nutrients: visibleNutrients },
   });
 
+/**
+ * Resets a view group / platform to the server default.
+ * DELETE /api/preferences/nutrient-display/:viewGroup/:platform
+ */
+export const resetNutrientDisplayPreference = (
+  viewGroup: string,
+  platform: string
+): Promise<NutrientDisplayPreference> =>
+  apiFetch<NutrientDisplayPreference>({
+    endpoint: `/api/preferences/nutrient-display/${viewGroup}/${platform}`,
+    serviceName: 'Preferences API',
+    operation: 'reset nutrient display preference',
+    method: 'DELETE',
+  });
+
 interface EnsureTimezoneBootstrappedOptions {
   throwOnFailure?: boolean;
 }
@@ -62,6 +77,15 @@ export const fetchPreferences = async (): Promise<UserPreferences> => {
     operation: 'fetch preferences',
   });
 };
+
+/**
+ * Whether the account reads iPhone active calories from the Move ring. Read on each
+ * sync so a change on another device applies. A failed fetch throws, so the calorie
+ * read fails and is retried rather than sending the other figure; an older server
+ * without the field reads as off.
+ */
+export const fetchMoveRingActiveCaloriesSetting = async (): Promise<boolean> =>
+  (await fetchPreferences()).use_move_ring_active_calories === true;
 
 /**
  * Updates user preferences (partial — only provided fields are changed).

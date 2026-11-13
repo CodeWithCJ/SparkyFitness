@@ -21,6 +21,7 @@ describe('healthTrends registry', () => {
       hydration: 'Hydration',
       calories: 'Calories',
       vo2max: 'VO2 max',
+      heartRate: 'Resting Heart Rate',
     };
 
     for (const key of HEALTH_TREND_KEYS) {

@@ -36,10 +36,29 @@ describe('parseWatchRunPayload', () => {
     expect(plain?.estimatedDistanceMeters).toBeUndefined();
   });
 
+  test('reads the step count and ignores a bad one', () => {
+    expect(parseWatchRunPayload({ ...base, steps: 4210.4 })?.steps).toBe(4210);
+    expect(parseWatchRunPayload(base)?.steps).toBeUndefined();
+    expect(parseWatchRunPayload({ ...base, steps: 0 })?.steps).toBeUndefined();
+    expect(parseWatchRunPayload({ ...base, steps: -3 })?.steps).toBeUndefined();
+  });
+
   test('keeps good rows and drops malformed ones', () => {
     const parsed = parseWatchRunPayload(base);
     expect(parsed?.route).toHaveLength(2);
     expect(parsed?.heartRate).toEqual([[1000, 110]]);
+  });
+
+  test('accepts a jump rope session', () => {
+    expect(
+      parseWatchRunPayload({
+        ...base,
+        kind: 'jumpRope',
+        place: 'indoor',
+        route: [],
+      })?.kind
+    ).toBe('jumpRope');
+    expect(parseWatchRunPayload({ ...base, kind: 'swim' })).toBeNull();
   });
 
   test('keeps lap marks in order and drops junk', () => {

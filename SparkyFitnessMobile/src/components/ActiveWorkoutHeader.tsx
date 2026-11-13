@@ -2,11 +2,11 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useClockTick } from '../hooks/useClockTick';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { formatElapsed } from '../utils/workoutSession';
 import type { ExerciseProgress } from '../utils/workoutProgress';
 import Icon, { type IconName } from './Icon';
-import KeyboardCollapsible from './KeyboardCollapsible';
 import LiquidGlassSurface, {
   createLiquidGlassPillStyle,
 } from './LiquidGlassSurface';
@@ -21,9 +21,12 @@ interface ActiveWorkoutHeaderProps {
   name: string;
   location?: string | null;
   startedAt: number | null;
-  /** Epoch ms driving the elapsed clock — the screen's 1s tick. */
-  now: number;
   progress: ExerciseProgress[];
+  /**
+   * Show "n / m exercises" on the elapsed line instead of the segmented bar
+   * (the focus view's numbered chips already show each exercise's progress).
+   */
+  progressInSubtitle?: boolean;
   onBack: () => void;
   onDiscard: () => void;
   /** Adds an "End workout" action (the finish flow) in its own menu group. */
@@ -40,12 +43,18 @@ interface ActiveWorkoutHeaderProps {
   onOpenSettings?: () => void;
   /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
+  /** Side-bar poses: the screen draws back and menu itself, in the strip. */
+  buttonsInStrip?: boolean;
+  /** The header publishes its menu opener here for the strip's menu button. */
+  openMenuRef?: React.MutableRefObject<(() => void) | null>;
+  /** The header sits in the top status row, beside the clock and Wi-Fi cluster. */
+  inStatusRow?: boolean;
 }
 
 /**
  * Header action button. With Liquid Glass active it floats on its own round
  * glass surface, matching the native iOS 26 bar buttons every native-header
- * screen gets; otherwise it stays a flat pressable icon.
+ * screen gets (49 pt, measured on App Settings' back button); otherwise it stays a flat pressable icon.
  */
 function HeaderIconButton({
   icon,
@@ -69,10 +78,10 @@ function HeaderIconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className={
-        usesGlass ? 'h-[38px] w-[38px] items-center justify-center' : 'p-2'
+        usesGlass ? 'h-[49px] w-[49px] items-center justify-center' : 'p-2'
       }
     >
-      <Icon name={icon} size={22} color={color} />
+      <Icon name={icon} size={usesGlass ? 24 : 22} color={color} />
     </Pressable>
   );
 
@@ -90,6 +99,73 @@ function HeaderIconButton({
   );
 }
 
+// Status row geometry on the Duo's tall inner pose: the clock and Wi-Fi cluster
+// are centred ~48 pt down and span the last ~120 pt of the row (measured).
+const STATUS_ROW_TOP_PAD = 24;
+const STATUS_CLUSTER_WIDTH = 120;
+
+/**
+ * Back and menu buttons stacked for the status strip (side-bar poses).
+ */
+export function ActiveWorkoutStripButtons({
+  onBack,
+  onMenu,
+}: {
+  onBack: () => void;
+  onMenu: () => void;
+}) {
+  const { t } = useTranslation();
+  const [textPrimary, chromeBorder] = useCSSVariable([
+    '--color-text-primary',
+    '--color-chrome-border',
+  ]) as [string, string];
+  const usesGlass = useNativeIOSTabsActive();
+  return (
+    <View className="items-center gap-2 pb-2">
+      <HeaderIconButton
+        icon="chevron-back"
+        color={textPrimary}
+        usesGlass={usesGlass}
+        chromeBorder={chromeBorder}
+        onPress={onBack}
+        accessibilityLabel={t('activeWorkout.header.back', {
+          defaultValue: 'Back',
+        })}
+      />
+      <HeaderIconButton
+        icon="ellipsis-horizontal"
+        color={textPrimary}
+        usesGlass={usesGlass}
+        chromeBorder={chromeBorder}
+        onPress={onMenu}
+        accessibilityLabel={t('activeWorkout.header.menu', {
+          defaultValue: 'Workout menu',
+        })}
+      />
+    </View>
+  );
+}
+
+/**
+ * The "MM:SS elapsed" line. It ticks on its own once a second, so neither the
+ * rest of the header nor the screen re-renders for the clock.
+ */
+function ElapsedTime({ startedAt }: { startedAt: number | null }) {
+  const { t } = useTranslation();
+  const now = useClockTick();
+  return (
+    <Text
+      className="text-xs text-text-secondary"
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {t('activeWorkout.header.elapsedTime', {
+        defaultValue: '{{time}} elapsed',
+        time: formatElapsed(startedAt, now),
+      })}
+    </Text>
+  );
+}
+
 /**
  * Custom chrome for the active-workout screen (the route renders with
  * `headerShown: false`): back, name + elapsed clock, kebab menu, and the
@@ -99,8 +175,8 @@ function ActiveWorkoutHeader({
   name,
   location,
   startedAt,
-  now,
   progress,
+  progressInSubtitle = false,
   onBack,
   onDiscard,
   onEndWorkout,
@@ -110,6 +186,9 @@ function ActiveWorkoutHeader({
   onReorder,
   onOpenSettings,
   onClearAllSets,
+  buttonsInStrip = false,
+  openMenuRef,
+  inStatusRow = false,
 }: ActiveWorkoutHeaderProps) {
   const { t } = useTranslation();
   const [
@@ -131,10 +210,25 @@ function ActiveWorkoutHeader({
 
   const menuSheetRef = useRef<ActionSheetRef>(null);
   const openMenu = () => menuSheetRef.current?.present();
+  React.useEffect(() => {
+    if (openMenuRef) openMenuRef.current = openMenu;
+  });
 
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets
   ).length;
+  const progressText = (
+    <Text
+      className="text-xs text-text-secondary"
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {t('activeWorkout.header.exerciseProgress', {
+        defaultValue: '{{completed}} / {{count}} exercises',
+        completed: doneCount,
+        count: progress.length,
+      })}
+    </Text>
+  );
 
   const menuItems: ActionSheetItem[] = [];
   if (onAddExercise) {
@@ -224,18 +318,26 @@ function ActiveWorkoutHeader({
   });
 
   return (
-    <View className="px-3 pb-2 border-b border-border-subtle bg-background">
-      <View className="flex-row items-center">
-        <HeaderIconButton
-          icon="chevron-back"
-          color={textPrimary}
-          usesGlass={usesGlass}
-          chromeBorder={chromeBorder}
-          onPress={onBack}
-          accessibilityLabel={t('activeWorkout.header.back', {
-            defaultValue: 'Back',
-          })}
-        />
+    <View
+      className="px-3 pb-2 border-b border-border-subtle bg-background"
+      style={inStatusRow ? { paddingTop: STATUS_ROW_TOP_PAD } : undefined}
+    >
+      <View
+        className="flex-row items-center"
+        style={inStatusRow ? { marginRight: STATUS_CLUSTER_WIDTH } : undefined}
+      >
+        {!buttonsInStrip && (
+          <HeaderIconButton
+            icon="chevron-back"
+            color={textPrimary}
+            usesGlass={usesGlass}
+            chromeBorder={chromeBorder}
+            onPress={onBack}
+            accessibilityLabel={t('activeWorkout.header.back', {
+              defaultValue: 'Back',
+            })}
+          />
+        )}
 
         <View className="flex-1 items-center">
           <Text
@@ -245,15 +347,13 @@ function ActiveWorkoutHeader({
             {name}
           </Text>
           <View className="flex-row items-center gap-2">
-            <Text
-              className="text-xs text-text-secondary"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {t('activeWorkout.header.elapsedTime', {
-                defaultValue: '{{time}} elapsed',
-                time: formatElapsed(startedAt, now),
-              })}
-            </Text>
+            <ElapsedTime startedAt={startedAt} />
+            {progressInSubtitle && (
+              <>
+                <Text className="text-xs text-text-secondary">·</Text>
+                {progressText}
+              </>
+            )}
             {location ? (
               <Pressable
                 onPress={onEditLocation}
@@ -275,21 +375,21 @@ function ActiveWorkoutHeader({
 
         {/* Glass chrome is monochrome (see resolveHeaderActionColors), so the
             kebab takes the primary tint on that path. */}
-        <HeaderIconButton
-          icon="ellipsis-horizontal"
-          color={usesGlass ? textPrimary : textMuted}
-          usesGlass={usesGlass}
-          chromeBorder={chromeBorder}
-          onPress={openMenu}
-          accessibilityLabel={t('activeWorkout.header.menu', {
-            defaultValue: 'Workout menu',
-          })}
-        />
+        {!buttonsInStrip && (
+          <HeaderIconButton
+            icon="ellipsis-horizontal"
+            color={usesGlass ? textPrimary : textMuted}
+            usesGlass={usesGlass}
+            chromeBorder={chromeBorder}
+            onPress={openMenu}
+            accessibilityLabel={t('activeWorkout.header.menu', {
+              defaultValue: 'Workout menu',
+            })}
+          />
+        )}
       </View>
 
-      {/* Folds away with the keyboard so the log gets the row's height back;
-          the name + elapsed clock above stay visible. */}
-      <KeyboardCollapsible>
+      {!progressInSubtitle && (
         <View className="flex-row items-center gap-3 px-2 mt-1">
           <View className="flex-1 flex-row gap-1">
             {progress.map((p) => {
@@ -321,18 +421,9 @@ function ActiveWorkoutHeader({
               );
             })}
           </View>
-          <Text
-            className="text-xs text-text-secondary"
-            style={{ fontVariant: ['tabular-nums'] }}
-          >
-            {t('activeWorkout.header.exerciseProgress', {
-              defaultValue: '{{completed}} / {{count}} exercises',
-              completed: doneCount,
-              count: progress.length,
-            })}
-          </Text>
+          {progressText}
         </View>
-      </KeyboardCollapsible>
+      )}
 
       <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
     </View>

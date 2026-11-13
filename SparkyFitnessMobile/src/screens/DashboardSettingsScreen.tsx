@@ -140,6 +140,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const setMindfulnessCardVisible = useAppPreferencesStore(
     (s) => s.setMindfulnessCardVisible
   );
+  const oralCareCardVisible = useAppPreferencesStore(
+    (s) => s.oralCareCardVisible
+  );
+  const setOralCareCardVisible = useAppPreferencesStore(
+    (s) => s.setOralCareCardVisible
+  );
+  const labResultsCardVisible = useAppPreferencesStore(
+    (s) => s.labResultsCardVisible
+  );
+  const setLabResultsCardVisible = useAppPreferencesStore(
+    (s) => s.setLabResultsCardVisible
+  );
   const trainingLoadCardVisible = useAppPreferencesStore(
     (s) => s.trainingLoadCardVisible
   );
@@ -174,6 +186,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     progressPhotos: progressPhotosCardVisible,
     healthTrends: healthTrendsCardVisible,
     mindfulness: mindfulnessCardVisible,
+    oralCare: oralCareCardVisible,
+    labResults: labResultsCardVisible,
     trainingLoad: trainingLoadCardVisible,
   };
 
@@ -222,6 +236,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         case 'mindfulness':
           setMindfulnessCardVisible(isVisible);
           break;
+        case 'oralCare':
+          setOralCareCardVisible(isVisible);
+          break;
+        case 'labResults':
+          setLabResultsCardVisible(isVisible);
+          break;
         case 'trainingLoad':
           setTrainingLoadCardVisible(isVisible);
           break;
@@ -242,6 +262,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       setProgressPhotosCardVisible,
       setHealthTrendsCardVisible,
       setMindfulnessCardVisible,
+      setOralCareCardVisible,
+      setLabResultsCardVisible,
       setTrainingLoadCardVisible,
     ]
   );
@@ -389,7 +411,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           <Text className="text-text-secondary text-sm">
             {t('dashboardSettings.customNutrientsDescription', {
               defaultValue:
-                'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.',
+                'Add custom nutrients in Settings > Food Settings > Custom Nutrients. Once you add some, they will appear here so you can choose which show on your Dashboard.',
             })}
           </Text>
         </View>

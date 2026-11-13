@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -188,41 +189,41 @@ export const EditFastDialog: React.FC<EditFastDialogProps> = ({
             )}
 
             <div className="grid gap-1">
-              <Label htmlFor="start-time">
+              <Label id="start-time-label">
                 {t('fasting.startTime', 'Start Time')}
               </Label>
-              <Input
+              <DateTimeInput
                 id="start-time"
-                type="datetime-local"
+                aria-labelledby="start-time-label"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={setStartTime}
                 required
               />
             </div>
 
             {fast?.status === 'COMPLETED' ? (
               <div className="grid gap-1">
-                <Label htmlFor="end-time">
+                <Label id="end-time-label">
                   {t('fasting.endTime', 'End Time')}
                 </Label>
-                <Input
+                <DateTimeInput
                   id="end-time"
-                  type="datetime-local"
+                  aria-labelledby="end-time-label"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={setEndTime}
                   required
                 />
               </div>
             ) : (
               <div className="grid gap-1">
-                <Label htmlFor="target-end-time">
+                <Label id="target-end-time-label">
                   {t('fasting.targetEndTime', 'Target End Time')}
                 </Label>
-                <Input
+                <DateTimeInput
                   id="target-end-time"
-                  type="datetime-local"
+                  aria-labelledby="target-end-time-label"
                   value={targetEndTime}
-                  onChange={(e) => setTargetEndTime(e.target.value)}
+                  onChange={setTargetEndTime}
                   required
                 />
               </div>

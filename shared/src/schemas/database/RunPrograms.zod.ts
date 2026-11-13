@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const runProgramsIdSchema = z.string();
 
@@ -7,7 +7,7 @@ export const runProgramsSchema = z.object({
   user_id: z.string(),
   program_id: z.string(),
   name: z.string().nullable(),
-  activity: z.enum(["run", "walk"]).nullable(),
+  activity: z.enum(['run', 'walk']).nullable(),
   enabled: z.boolean(),
   next_index: z.number(),
   workouts: z.unknown(),
@@ -27,7 +27,7 @@ export const runProgramsInitializerSchema = z.object({
   user_id: z.string(),
   program_id: z.string(),
   name: z.string().nullable().optional(),
-  activity: z.enum(["run", "walk"]).nullable().optional(),
+  activity: z.enum(['run', 'walk']).nullable().optional(),
   enabled: z.boolean().optional().default(true),
   next_index: z.number().optional().default(0),
   workouts: z.unknown().optional(),
@@ -47,7 +47,7 @@ export const runProgramsMutatorSchema = z.object({
   user_id: z.string().optional(),
   program_id: z.string().optional(),
   name: z.string().nullable().optional(),
-  activity: z.enum(["run", "walk"]).nullable().optional(),
+  activity: z.enum(['run', 'walk']).nullable().optional(),
   enabled: z.boolean().optional(),
   next_index: z.number().optional(),
   workouts: z.unknown().optional(),

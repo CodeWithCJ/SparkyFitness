@@ -12,7 +12,9 @@ export interface WatchLinkStatus {
   isReachable: boolean;
 }
 
-const isSupported = Platform.OS === 'ios' && WatchConnectivity != null;
+const platformHasWatchSupport =
+  (Platform.OS === 'ios' || Platform.OS === 'android') &&
+  WatchConnectivity != null;
 
 /**
  * Subscribes to the one native event that can change either flag.
@@ -54,6 +56,10 @@ const getFalse = () => false;
 export function useWatchConnectivity(): WatchLinkStatus {
   const isReachable = useSyncExternalStore(subscribe, getIsReachable, getFalse);
   const isPaired = useSyncExternalStore(subscribe, getIsPaired, getFalse);
+  // Ask the native module too: on Android it is false without Google Play
+  // services even though the module loads and can restore a cached pairing.
+  const isSupported =
+    platformHasWatchSupport && WatchConnectivity?.isSupported() === true;
 
   return { isSupported, isPaired, isReachable };
 }

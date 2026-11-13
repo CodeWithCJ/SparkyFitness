@@ -92,6 +92,8 @@ export interface ActivityDraft {
   calories: string;
   caloriesBurned?: string;
   caloriesManuallySet?: boolean;
+  /** Calories the daily total counts instead of `calories`; blank counts them. */
+  caloriesApplied?: string;
   distance: string;
   avgHeartRate: string;
   notes: string;

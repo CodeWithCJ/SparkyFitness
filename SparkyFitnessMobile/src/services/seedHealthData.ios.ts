@@ -121,6 +121,7 @@ const SEED_WRITE_PERMISSIONS: PermissionRequest[] = [
   { recordType: 'Hydration', accessType: 'write' },
   { recordType: 'BodyTemperature', accessType: 'write' },
   { recordType: 'HeartRate', accessType: 'write' },
+  { recordType: 'RestingHeartRate', accessType: 'write' },
   { recordType: 'Weight', accessType: 'write' },
   { recordType: 'Height', accessType: 'write' },
   { recordType: 'SleepSession', accessType: 'write' },
@@ -346,47 +347,100 @@ const seedQuantitySamples = async (
 
 const seedHeartRate = async (dates: Date[]): Promise<number> => {
   let count = 0;
+  const now = new Date();
 
   for (const date of dates) {
-    // 3 heart rate samples per day: morning, afternoon, evening
-    // For today, filter to hours that have already passed
-    const allHours = [6, 8, 14, 20];
-    const currentHour = new Date().getHours();
-    const sampleHours = isToday(date)
-      ? allHours.filter((h) => h < currentHour)
-      : allHours.slice(1); // Skip 6 AM for past days
+    const today = isToday(date);
 
-    for (const hour of sampleHours) {
+    // 1. Seed Resting Heart Rate (1 sample per day, morning 07:00, ~56-60 bpm matching mockup ~58 bpm)
+    const rhrTime = new Date(date);
+    rhrTime.setHours(7, 0, 0, 0);
+    if (!today || rhrTime <= now) {
       try {
-        const sampleTime = new Date(date);
-        sampleTime.setHours(hour, randomInt(0, 30), 0, 0);
+        const rhrEnd = new Date(rhrTime.getTime() + 60000);
+        const rhrSuccess = await saveQuantitySample(
+          'HKQuantityTypeIdentifierRestingHeartRate',
+          'count/min',
+          randomInt(56, 60),
+          rhrTime,
+          rhrEnd,
+          {}
+        );
+        if (rhrSuccess) count++;
+      } catch (error) {
+        const message = getErrorMessage(error);
+        addLog(
+          `[SeedHealthData] Failed to seed resting heart rate: ${message}`,
+          'WARNING'
+        );
+      }
+    }
 
-        // For today, skip future samples
-        if (isToday(date) && sampleTime > new Date()) {
-          continue;
-        }
+    // 2. Generate circadian points:
+    // Night sleep dip (48-55 bpm, low at 04:30), daytime baseline (70-76 bpm),
+    // workout spike (12:11 - 12:41, peak 162 bpm, 1-min recovery to 98 bpm),
+    // elevated spike (16:30, 105 bpm).
+    const points: { time: Date; bpm: number }[] = [];
+    for (let hour = 0; hour < 24; hour += 1) {
+      const sampleTime = new Date(date);
+      sampleTime.setHours(hour, 15, 0, 0);
+      if (today && sampleTime > now) continue;
 
-        const endTime = new Date(sampleTime);
-        endTime.setMinutes(endTime.getMinutes() + 1);
+      let bpm: number;
+      if (hour < 7) {
+        const dip = Math.sin((hour / 7) * Math.PI) * 6;
+        bpm = Math.round(54 - dip + (Math.random() * 3 - 1.5));
+      } else if (hour === 12) {
+        continue; // Handled in workout points below
+      } else if (hour === 16) {
+        bpm = 105; // Elevated spike at 16:30
+        sampleTime.setMinutes(30);
+      } else if (hour >= 21) {
+        bpm = Math.round(65 - (hour - 21) * 3);
+      } else {
+        bpm = Math.round(72 + (Math.random() * 6 - 3));
+      }
+      points.push({ time: sampleTime, bpm: Math.max(45, Math.min(185, bpm)) });
+    }
 
-        const bpm = randomInt(60, 100);
+    // Workout points (12:11 - 12:42)
+    const workoutStart = new Date(date);
+    workoutStart.setHours(12, 11, 0, 0);
+    const workoutOffsets = [
+      { min: 0, bpm: 85 },
+      { min: 5, bpm: 118 },
+      { min: 10, bpm: 132 },
+      { min: 15, bpm: 134 },
+      { min: 20, bpm: 162 }, // peak
+      { min: 25, bpm: 140 },
+      { min: 30, bpm: 130 },
+      { min: 31, bpm: 98 }, // 1-min recovery
+    ];
+    for (const w of workoutOffsets) {
+      const wt = new Date(workoutStart.getTime() + w.min * 60000);
+      if (!today || wt <= now) {
+        points.push({ time: wt, bpm: w.bpm });
+      }
+    }
 
+    for (const pt of points) {
+      try {
+        const endTime = new Date(pt.time.getTime() + 60000);
         const success = await saveQuantitySample(
           'HKQuantityTypeIdentifierHeartRate',
           'count/min',
-          bpm,
-          sampleTime,
+          pt.bpm,
+          pt.time,
           endTime,
           {}
         );
-
         if (success) {
           count++;
         }
       } catch (error) {
         const message = getErrorMessage(error);
         addLog(
-          `[SeedHealthData] Failed to seed heart rate: ${message}`,
+          `[SeedHealthData] Failed to seed heart rate sample: ${message}`,
           'WARNING'
         );
       }

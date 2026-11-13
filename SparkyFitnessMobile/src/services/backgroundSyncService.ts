@@ -6,6 +6,7 @@ import { runWriteback } from './writeback';
 import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import {
+  initHealthConnect,
   loadHealthPreference,
   healthReadProvider,
   resetDatabaseInaccessibleCount,
@@ -203,6 +204,15 @@ const runBackgroundSync = async (
     await addLog(
       '[Background Sync] No metrics enabled — nothing to sync',
       'INFO'
+    );
+    return;
+  }
+
+  const healthConnectInitialized = await initHealthConnect();
+  if (!healthConnectInitialized) {
+    await addLog(
+      '[Background Sync] Health provider initialization failed — skipping health reads and timestamp update; will retry next cycle. Check provider availability and health permissions in Settings.',
+      'WARNING'
     );
     return;
   }

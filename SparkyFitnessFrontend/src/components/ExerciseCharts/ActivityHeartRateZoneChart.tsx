@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
+import type { StoredZoneMethod } from '@workspace/shared';
+import { zoneChartMethodLabel } from '@/utils/heartRateZoneLabels';
 
 interface HeartRateZoneData {
   name: string;
@@ -52,6 +54,8 @@ interface ActivityHeartRateZonesChartProps {
   /** exercise_entries.source (case-insensitive) — determines whether these
    *  zones came from the device itself or from our own age-based estimate. */
   providerName?: string;
+  /** How the stored zones were worked out; null/absent for workouts stored before methods were recorded. */
+  zoneMethod?: StoredZoneMethod | 'mixed' | null;
 }
 
 // Only these two sources go through hrZoneCalculator.ts's age-based estimate
@@ -64,11 +68,15 @@ const ESTIMATED_MAX_HR_PROVIDERS = new Set(['healthkit', 'health connect']);
 export const ActivityHeartRateZonesChart = ({
   data,
   providerName,
+  zoneMethod,
 }: ActivityHeartRateZonesChartProps) => {
   const { t } = useTranslation();
-  const isEstimatedMaxHr = ESTIMATED_MAX_HR_PROVIDERS.has(
-    (providerName ?? '').toLowerCase()
-  );
+  const methodLabel = zoneChartMethodLabel(t, zoneMethod);
+  // Rows stored before methods were recorded were all worked out from age, so
+  // the age note still applies to them; newer rows say their own method.
+  const isEstimatedMaxHr =
+    !methodLabel &&
+    ESTIMATED_MAX_HR_PROVIDERS.has((providerName ?? '').toLowerCase());
 
   return (
     <ZoomableChart title={t('reports.activityReport.heartRateTimeInZones')}>
@@ -78,6 +86,14 @@ export const ActivityHeartRateZonesChart = ({
             <CardTitle className="text-sm">
               {t('reports.activityReport.heartRateTimeInZones')}
             </CardTitle>
+            {methodLabel && (
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="hr-zones-method"
+              >
+                {methodLabel}
+              </p>
+            )}
             {isEstimatedMaxHr && (
               <p className="text-xs text-muted-foreground">
                 {t(

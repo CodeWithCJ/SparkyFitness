@@ -6,7 +6,7 @@ import Icon from '../Icon';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import { getCalendarWeekdayShortNames } from '../../utils/calendarLocalization';
 import { monthGridWeeks, shiftMonth } from '../../utils/monthGrid';
-import type { TimelineItem } from '../../utils/programTimeline';
+import type { TimelineItem } from '@workspace/shared';
 
 interface Props {
   /** The month shown, YYYY-MM. */

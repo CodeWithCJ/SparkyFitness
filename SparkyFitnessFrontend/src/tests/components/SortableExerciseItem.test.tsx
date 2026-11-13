@@ -18,7 +18,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ distanceUnit: 'km' }),
+  usePreferences: () => ({
+    distanceUnit: 'km',
+    energyUnit: 'kcal',
+    getEnergyUnitString: (unit: string) => unit,
+  }),
 }));
 
 // Only rendered for non-cardio exercises, and its import chain initializes i18n.
@@ -290,6 +294,17 @@ describe('SortableExerciseItem replace/duplicate exercise actions', () => {
         'increment_value',
         expect.closeTo(2.268, 3)
       );
+    });
+
+    // Presets have no exercise-level notes column; notes live on each set (#3110).
+    it('has no exercise-level notes field', () => {
+      renderPresetItem({}, 'kg');
+      expect(
+        screen.queryByText(/Exercise Notes \/ Cues/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/Seat setting 4/)
+      ).not.toBeInTheDocument();
     });
 
     it('omits the ramp where the edit cannot be saved', () => {

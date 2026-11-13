@@ -29,6 +29,9 @@ final class RecordingHealthKitController: NSObject {
     /// Called on the main queue with each new reading as it is taken, ahead of
     /// the batch it will also be part of. Display only.
     var onLiveReading: ((Double, Date) -> Void)?
+    /// Apple's zone totals once a saved recording's workout is written.
+    /// `sessionId` is the own-write marker on that workout.
+    var onAppleZones: ((String, [[String: Any]]) -> Void)?
 
     /// What happens to the workout when collection stops.
     enum Outcome {
@@ -133,7 +136,16 @@ final class RecordingHealthKitController: NSObject {
 
     private static func complete(_ builder: HKLiveWorkoutBuilder, save: Bool) {
         if save {
-            builder.finishWorkout { _, _ in }
+            builder.finishWorkout { workout, _ in
+                guard let workout else { return }
+                let zones = AppleWorkoutZones.heartRateZones(of: workout)
+                guard !zones.isEmpty,
+                      let sessionId = workout.metadata?[WorkoutHealthKitController.sessionMetadataKey] as? String
+                else { return }
+                DispatchQueue.main.async {
+                    RecordingHealthKitController.shared.onAppleZones?(sessionId, zones)
+                }
+            }
         } else {
             builder.discardWorkout()
         }

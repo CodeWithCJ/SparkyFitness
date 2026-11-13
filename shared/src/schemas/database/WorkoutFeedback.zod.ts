@@ -1,15 +1,15 @@
 // Hand-written in the ts-to-zod generated style (precedent:
 // UserWaterContainers.zod.ts). Keep on regen. Issue #1560.
-import { z } from "zod";
+import { z } from 'zod';
 
 export const WORKOUT_FEEDBACK_DIFFICULTIES = [
-  "too_easy",
-  "just_right",
-  "too_hard",
+  'too_easy',
+  'just_right',
+  'too_hard',
 ] as const;
 
 export const workoutFeedbackDifficultySchema = z.enum(
-  WORKOUT_FEEDBACK_DIFFICULTIES,
+  WORKOUT_FEEDBACK_DIFFICULTIES
 );
 
 export type WorkoutFeedbackDifficulty = z.infer<

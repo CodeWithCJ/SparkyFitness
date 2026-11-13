@@ -141,7 +141,8 @@ export async function getWorkoutCoachingSignals(
   userId: string,
   authenticatedUserId: string,
   exerciseIds: string[],
-  excludePresetEntryId: string | null
+  excludePresetEntryId: string | null,
+  evidenceAfter: Date | null = null
 ): Promise<WorkoutCoachingSignalsResponse> {
   const enabled = await getAdaptiveSuggestionsSetting(
     userId,
@@ -160,7 +161,8 @@ export async function getWorkoutCoachingSignals(
       addDays(today, -SIGNAL_LOOKBACK_DAYS),
       today,
       SIGNAL_ROW_DEPTH,
-      excludePresetEntryId
+      excludePresetEntryId,
+      evidenceAfter
     ),
     getExerciseSessionCounts(
       userId,

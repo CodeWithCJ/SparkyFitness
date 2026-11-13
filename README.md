@@ -1,32 +1,25 @@
-<div align="right">
-  <details>
-    <summary >🌐 Language</summary>
-    <div>
-      <div align="right">
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=en">English</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=zh-CN">简体中文</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=zh-TW">繁體中文</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=ja">日本語</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=ko">한국어</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=hi">हिन्दी</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=th">ไทย</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=fr">Français</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=de">Deutsch</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=es">Español</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=it">Italiano</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=ru">Русский</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=pt">Português</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=nl">Nederlands</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=pl">Polski</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=ar">العربية</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=fa">فارسی</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=tr">Türkçe</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=vi">Tiếng Việt</a></p>
-        <p><a href="https://openaitx.github.io/view.html?user=CodeWithCJ&project=SparkyFitness&lang=id">Bahasa Indonesia</a></p>
-      </div>
-    </div>
-  </details>
-</div>
+<p align="center">
+  <b>English</b> ·
+  <a href="docs/readme/README_zh-CN.md">简体中文</a> ·
+  <a href="docs/readme/README_zh-TW.md">繁體中文</a> ·
+  <a href="docs/readme/README_ja.md">日本語</a> ·
+  <a href="docs/readme/README_ko.md">한국어</a> ·
+  <a href="docs/readme/README_hi.md">हिन्दी</a> ·
+  <a href="docs/readme/README_th.md">ไทย</a> ·
+  <a href="docs/readme/README_fr.md">Français</a> ·
+  <a href="docs/readme/README_de.md">Deutsch</a> ·
+  <a href="docs/readme/README_es.md">Español</a> ·
+  <a href="docs/readme/README_it.md">Italiano</a> ·
+  <a href="docs/readme/README_ru.md">Русский</a> ·
+  <a href="docs/readme/README_pt-BR.md">Português (Brasil)</a> ·
+  <a href="docs/readme/README_nl.md">Nederlands</a> ·
+  <a href="docs/readme/README_pl.md">Polski</a> ·
+  <a href="docs/readme/README_ar.md">العربية</a> ·
+  <a href="docs/readme/README_fa.md">فارسی</a> ·
+  <a href="docs/readme/README_tr.md">Türkçe</a> ·
+  <a href="docs/readme/README_vi.md">Tiếng Việt</a> ·
+  <a href="docs/readme/README_id.md">Bahasa Indonesia</a>
+</p>
 
 # SparkyFitness
 
@@ -39,6 +32,7 @@ SparkyFitness is a self-hosted fitness tracking platform made up of:
 - A backend server (API + data storage)
 - A web-based frontend
 - Native mobile apps for iOS and Android
+- Companion apps for Apple Watch and Wear OS
 
 It stores and manages health data on infrastructure you control, without relying on third party services.
 
@@ -46,6 +40,7 @@ It stores and manages health data on infrastructure you control, without relying
 
 - Nutrition, exercise, hydration, sleep, fasting, mood and body measurement tracking
 - Goal setting and daily check-ins
+- [Apple Watch and Wear OS apps](https://codewithcj.github.io/SparkyFitness/mobile-app/watch-apps): goals, water, weight, fasting, medications, workouts and watch face complications
 - Interactive charts and long-term reports
 - Multiple user profiles and family access
 - Light and dark themes
@@ -106,6 +101,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Swedish Food Agency (Livsmedelsverket)**
 - **Free Exercise DB** (Github)
 - **Wger**
+- **Intervals.ICU**
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
 
@@ -231,7 +227,7 @@ For full installation guides, configuration options, and development docs, pleas
 ## Contributors
 
 <a href="https://github.com/CodeWithCJ/SparkyFitness/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=CodeWithCJ/SparkyFitness" width="100%"/>
+  <img src="https://contrib.rocks/image?repo=CodeWithCJ/SparkyFitness" width="100%" alt="SparkyFitness contributors"/>
 </a>
 
 ## ⚠️ Known Issues / Beta Features ⚠️

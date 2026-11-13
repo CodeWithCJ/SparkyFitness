@@ -37,6 +37,11 @@ function adaptiveReasonText(t: TFunction, reason: AdaptiveReason): string {
         'adaptiveCoaching.reasons.highEffort',
         'Holding weight: your last sets were near max effort.'
       );
+    case 'low_effort':
+      return t(
+        'adaptiveCoaching.reasons.lowEffort',
+        'A step heavier: your last sets were logged as easy.'
+      );
     case 'too_easy_repeated':
       return t(
         'adaptiveCoaching.reasons.tooEasyRepeated',

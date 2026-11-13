@@ -10,7 +10,7 @@
 // happened to be a whole number).
 
 export const isBlank = (value: string | undefined | null): boolean =>
-  value === undefined || value === null || String(value).trim() === "";
+  value === undefined || value === null || String(value).trim() === '';
 
 /**
  * Result of parsing/coercing a single CSV cell.
@@ -21,8 +21,7 @@ export const isBlank = (value: string | undefined | null): boolean =>
  * the cell as absent or default it to some other value.
  */
 export type CellResult<T> =
-  | { ok: true; value?: T }
-  | { ok: false; raw: string };
+  { ok: true; value?: T } | { ok: false; raw: string };
 
 /**
  * Which convention a *repeated* thousands separator follows, and — for a
@@ -30,7 +29,7 @@ export type CellResult<T> =
  * which reading to prefer. `'us'` treats `,` as thousands / `.` as decimal;
  * `'eu'` treats `.` as thousands / `,` as decimal. See {@link toNumber}.
  */
-export type DecimalFormat = "us" | "eu";
+export type DecimalFormat = 'us' | 'eu';
 
 // Strips or reinterprets one separator character `sep` within `text`, where
 // `sep` occurs zero or more times.
@@ -47,18 +46,18 @@ export type DecimalFormat = "us" | "eu";
 //   "1,5", "1,2345"): unambiguously a decimal point, independent of format.
 function normalizeSingleSeparator(
   text: string,
-  sep: "," | ".",
-  ambiguousMeansDecimal: boolean,
+  sep: ',' | '.',
+  ambiguousMeansDecimal: boolean
 ): string {
-  const escaped = sep === "." ? "\\." : sep;
-  const count = (text.match(new RegExp(escaped, "g")) || []).length;
+  const escaped = sep === '.' ? '\\.' : sep;
+  const count = (text.match(new RegExp(escaped, 'g')) || []).length;
   if (count === 0) return text;
 
   const lastIndex = text.lastIndexOf(sep);
   const trailing = text.slice(lastIndex + 1);
-  const stripped = () => text.split(sep).join("");
+  const stripped = () => text.split(sep).join('');
   const asDecimal = () =>
-    text.slice(0, lastIndex).split(sep).join("") + "." + trailing;
+    text.slice(0, lastIndex).split(sep).join('') + '.' + trailing;
 
   if (count > 1) return stripped();
   if (trailing.length === 3) {
@@ -92,11 +91,11 @@ function normalizeSingleSeparator(
  */
 export function toNumber(
   value: string | undefined,
-  format: DecimalFormat = "us",
+  format: DecimalFormat = 'us'
 ): number | undefined {
   if (isBlank(value)) return undefined;
   const text = String(value).trim();
-  if (text === "") return undefined;
+  if (text === '') return undefined;
 
   const dotCount = (text.match(/\./g) || []).length;
   const commaCount = (text.match(/,/g) || []).length;
@@ -104,15 +103,15 @@ export function toNumber(
   let normalized: string;
   if (dotCount > 0 && commaCount > 0) {
     const decimalChar =
-      text.lastIndexOf(",") > text.lastIndexOf(".") ? "," : ".";
-    const groupChar = decimalChar === "," ? "." : ",";
-    normalized = text.split(groupChar).join("").replace(decimalChar, ".");
+      text.lastIndexOf(',') > text.lastIndexOf('.') ? ',' : '.';
+    const groupChar = decimalChar === ',' ? '.' : ',';
+    normalized = text.split(groupChar).join('').replace(decimalChar, '.');
   } else if (commaCount > 0) {
     // ',' is nominally the decimal separator under 'eu'.
-    normalized = normalizeSingleSeparator(text, ",", format === "eu");
+    normalized = normalizeSingleSeparator(text, ',', format === 'eu');
   } else if (dotCount > 0) {
     // '.' is nominally the decimal separator under 'us'.
-    normalized = normalizeSingleSeparator(text, ".", format === "us");
+    normalized = normalizeSingleSeparator(text, '.', format === 'us');
   } else {
     normalized = text;
   }
@@ -129,11 +128,13 @@ export function toNumber(
  */
 export function readNumberCell(
   raw: string | undefined,
-  format: DecimalFormat = "us",
+  format: DecimalFormat = 'us'
 ): CellResult<number> {
   if (isBlank(raw)) return { ok: true };
   const value = toNumber(raw, format);
-  return value === undefined ? { ok: false, raw: raw ?? "" } : { ok: true, value };
+  return value === undefined
+    ? { ok: false, raw: raw ?? '' }
+    : { ok: true, value };
 }
 
 export function round(value: number, digits = 2): number {
@@ -145,27 +146,27 @@ export function round(value: number, digits = 2): number {
 // Each converter returns `undefined` for an unrecognized unit token so
 // callers can flag the row as an error instead of silently defaulting to the
 // canonical unit.
-const KG_UNITS = new Set(["kg", "kgs", "kilogram", "kilograms"]);
-const LB_UNITS = new Set(["lb", "lbs", "pound", "pounds"]);
+const KG_UNITS = new Set(['kg', 'kgs', 'kilogram', 'kilograms']);
+const LB_UNITS = new Set(['lb', 'lbs', 'pound', 'pounds']);
 const CM_UNITS = new Set([
-  "cm",
-  "centimeter",
-  "centimeters",
-  "centimetre",
-  "centimetres",
+  'cm',
+  'centimeter',
+  'centimeters',
+  'centimetre',
+  'centimetres',
 ]);
-const IN_UNITS = new Set(["in", "inch", "inches"]);
-const M_UNITS = new Set(["m", "meter", "meters", "metre", "metres"]);
-const ML_UNITS = new Set(["ml", "milliliter", "milliliters"]);
-const L_UNITS = new Set(["l", "liter", "liters", "litre", "litres"]);
-const OZ_UNITS = new Set(["oz", "floz", "fl oz", "ounce", "ounces"]);
+const IN_UNITS = new Set(['in', 'inch', 'inches']);
+const M_UNITS = new Set(['m', 'meter', 'meters', 'metre', 'metres']);
+const ML_UNITS = new Set(['ml', 'milliliter', 'milliliters']);
+const L_UNITS = new Set(['l', 'liter', 'liters', 'litre', 'litres']);
+const OZ_UNITS = new Set(['oz', 'floz', 'fl oz', 'ounce', 'ounces']);
 
-const normUnit = (unit?: string): string => (unit || "").trim().toLowerCase();
+const normUnit = (unit?: string): string => (unit || '').trim().toLowerCase();
 
 /** Converts to kilograms. An empty/blank unit is treated as already kg. */
 export function weightToKg(value: number, unit?: string): number | undefined {
   const u = normUnit(unit);
-  if (u === "" || KG_UNITS.has(u)) return value;
+  if (u === '' || KG_UNITS.has(u)) return value;
   if (LB_UNITS.has(u)) return value * 0.45359237;
   return undefined;
 }
@@ -173,7 +174,7 @@ export function weightToKg(value: number, unit?: string): number | undefined {
 /** Converts to centimetres. An empty/blank unit is treated as already cm. */
 export function lengthToCm(value: number, unit?: string): number | undefined {
   const u = normUnit(unit);
-  if (u === "" || CM_UNITS.has(u)) return value;
+  if (u === '' || CM_UNITS.has(u)) return value;
   if (IN_UNITS.has(u)) return value * 2.54;
   if (M_UNITS.has(u)) return value * 100;
   return undefined;
@@ -182,7 +183,7 @@ export function lengthToCm(value: number, unit?: string): number | undefined {
 /** Converts to millilitres. An empty/blank unit is treated as already ml. */
 export function volumeToMl(value: number, unit?: string): number | undefined {
   const u = normUnit(unit);
-  if (u === "" || ML_UNITS.has(u)) return value;
+  if (u === '' || ML_UNITS.has(u)) return value;
   if (L_UNITS.has(u)) return value * 1000;
   if (OZ_UNITS.has(u)) return value * 29.5735;
   return undefined;

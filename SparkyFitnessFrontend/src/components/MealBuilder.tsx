@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -67,6 +69,8 @@ interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
   duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
+  onIngredientsDirtyChange?: (dirty: boolean) => void;
+  onIngredientsLoadedChange?: (loaded: boolean) => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   initialMealName?: string;
   initialDescription?: string;
@@ -127,10 +131,25 @@ const ALL_NUTRIENT_KEYS = [
   'alcohol_g',
 ] as const;
 
+// Only ingredient identities and amounts govern source nutrition sync. Keep
+// ordinary meal metadata and diary serving controls outside this comparison.
+const ingredientSignature = (foods: MealFood[]) =>
+  JSON.stringify(
+    foods.map((food) => ({
+      foodId: food.food_id ?? null,
+      variantId: food.variant_id ?? null,
+      childMealId: food.child_meal_id ?? null,
+      quantity: food.quantity,
+      unit: food.unit,
+    }))
+  );
+
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
   duplicateFromMealId,
   onCancel,
+  onIngredientsDirtyChange,
+  onIngredientsLoadedChange,
   initialFoods,
   initialMealName,
   initialDescription,
@@ -235,6 +254,31 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     'logged' | 'perServing' | 'total'
   >(source === 'food-diary' ? 'logged' : 'perServing');
   const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
+  const [savedIngredientSignature, setSavedIngredientSignature] = useState<
+    string | null
+  >(null);
+  const [mealLoadFailed, setMealLoadFailed] = useState(false);
+  const [mealLoadRetry, setMealLoadRetry] = useState(0);
+  const ingredientsLoaded =
+    source !== 'meal-management' ||
+    !mealId ||
+    savedIngredientSignature !== null;
+  const currentIngredientSignature = ingredientSignature(mealFoods);
+  useEffect(() => {
+    onIngredientsDirtyChange?.(
+      !!mealId &&
+        savedIngredientSignature !== null &&
+        currentIngredientSignature !== savedIngredientSignature
+    );
+    onIngredientsLoadedChange?.(ingredientsLoaded);
+  }, [
+    mealId,
+    savedIngredientSignature,
+    currentIngredientSignature,
+    onIngredientsDirtyChange,
+    onIngredientsLoadedChange,
+    ingredientsLoaded,
+  ]);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
   const [selectedFoodForUnitSelection, setSelectedFoodForUnitSelection] =
@@ -303,6 +347,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       const sourceMealId = mealId ?? duplicateFromMealId;
       const isDuplicate = !mealId && !!duplicateFromMealId;
       if (source === 'meal-management' && sourceMealId) {
+        if (mealId) {
+          setSavedIngredientSignature(null);
+          setMealLoadFailed(false);
+        }
         try {
           const meal = await queryClient.fetchQuery(
             mealViewOptions(sourceMealId)
@@ -330,9 +378,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               ).toString()
             );
             setMealFoods(meal.foods || []);
-          }
+            if (mealId)
+              setSavedIngredientSignature(
+                ingredientSignature(meal.foods || [])
+              );
+          } else if (mealId) setMealLoadFailed(true);
         } catch (err) {
           error(loggingLevel, 'Failed to fetch meal for editing:', err);
+          if (mealId) setMealLoadFailed(true);
         }
       } else if (source === 'food-diary' && foodEntryId) {
         // Use foodEntryId for food-diary editing
@@ -500,6 +553,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     initialServingSize,
     initialServingUnit,
     queryClient,
+    mealLoadRetry,
   ]);
 
   const handleAddFoodToMeal = (food: Food) => {
@@ -750,7 +804,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     });
   };
 
+  const [isConsumedQuantityValid, setIsConsumedQuantityValid] = useState(true);
+
   const handleSaveMeal = async () => {
+    if (source === 'food-diary' && !isConsumedQuantityValid) return;
     // One normalization for every payload built below: an empty or
     // whitespace-only note is the absence of a note, not an empty string.
     const normalizedMealNotes = mealNotes.trim() || null;
@@ -769,7 +826,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     // Resolve any un-persisted foods (e.g. from photo estimation) before saving
     const resolvedFoods: MealFood[] = [];
     for (const mf of mealFoods) {
-      if (mf.item_type === 'meal' || mf.child_meal_id || mf.food_id) {
+      if (
+        mf.item_type === 'meal' ||
+        mf.child_meal_id ||
+        mf.food_id ||
+        (source === 'food-diary' && foodEntryId)
+      ) {
+        // Logged ingredients already carry their nutrition snapshot. Editing
+        // history must not recreate a library food whose link was deleted.
         resolvedFoods.push(mf);
         continue;
       }
@@ -1331,6 +1395,38 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     </div>
   );
 
+  if (!ingredientsLoaded) {
+    return (
+      <div className="space-y-3 pt-4">
+        {mealLoadFailed ? (
+          <p role="alert" className="text-destructive">
+            {t('mealBuilder.loadMealError', 'Failed to load meal for editing.')}
+          </p>
+        ) : (
+          <p role="status">
+            {t('mealBuilder.loadingIngredients', 'Loading meal ingredients…')}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            {t('common.cancel', 'Cancel')}
+          </Button>
+          {mealLoadFailed && (
+            <Button
+              onClick={() => {
+                loadedIdRef.current = null;
+                setMealLoadFailed(false);
+                setMealLoadRetry((attempt) => attempt + 1);
+              }}
+            >
+              {t('mealBuilder.retryLoad', 'Retry loading meal')}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pt-4">
       <div className="space-y-2">
@@ -1608,13 +1704,22 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     { servingUnit }
                   )}
                 </Label>
-                <Input
+                <NumericInput
                   id="consumedQuantity"
-                  type="number"
+                  allowExpressions
+                  onValidityChange={setIsConsumedQuantityValid}
+                  decimals={3}
+                  required
                   step="any"
                   min="0"
-                  value={consumedQuantity}
-                  onChange={(e) => setConsumedQuantity(e.target.value)}
+                  value={
+                    consumedQuantity === ''
+                      ? undefined
+                      : Number(consumedQuantity)
+                  }
+                  onValueChange={(value) =>
+                    setConsumedQuantity(value?.toString() ?? '')
+                  }
                   placeholder="1"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -1626,7 +1731,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="entryTime">
+                  <Label id="entryTime-label">
                     {t('mealBuilder.entryTimeOptional', {
                       defaultValue: 'Time (optional)',
                     })}
@@ -1662,11 +1767,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     </button>
                   </div>
                 </div>
-                <Input
+                <TimeInput
                   id="entryTime"
-                  type="time"
+                  aria-labelledby="entryTime-label"
                   value={entryTime}
-                  onChange={(e) => setEntryTime(e.target.value)}
+                  onChange={setEntryTime}
                 />
               </div>
             </div>
@@ -1880,7 +1985,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         <Button variant="outline" onClick={onCancel}>
           {t('common.cancel', 'Cancel')}
         </Button>
-        <Button onClick={handleSaveMeal}>
+        <Button
+          onClick={handleSaveMeal}
+          disabled={source === 'food-diary' && !isConsumedQuantityValid}
+        >
           {source === 'food-diary'
             ? t('mealBuilder.updateEntryButton', 'Update Entry')
             : t('mealBuilder.saveMealButton', 'Save Meal')}

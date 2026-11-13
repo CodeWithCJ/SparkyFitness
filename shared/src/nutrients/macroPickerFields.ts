@@ -12,8 +12,8 @@
  * rollup reads would let a user enter a number that silently goes nowhere.
  */
 
-import type { FoodVariantNutrientField } from "../constants/foodVariantNutrients.ts";
-import { normalizeNutrientName } from "../utils/nutrientMatching.ts";
+import type { FoodVariantNutrientField } from '../constants/foodVariantNutrients.ts';
+import { normalizeNutrientName } from '../utils/nutrientMatching.ts';
 
 export interface MacroPickerField {
   /** the `food_variants` column, and the key in a supplement's `nutrients` payload */
@@ -22,48 +22,48 @@ export interface MacroPickerField {
   displayName: string;
   /** compact label for the supplement editor, where five fields share one row */
   shortLabel: string;
-  unit: "kcal" | "g";
+  unit: 'kcal' | 'g';
   /** alternate spellings, matched via `normalizeNutrientName` */
   aliases: string[];
 }
 
 export const MACRO_PICKER_FIELDS: MacroPickerField[] = [
   {
-    fieldKey: "calories",
-    displayName: "Calories",
-    shortLabel: "Calories",
-    unit: "kcal",
+    fieldKey: 'calories',
+    displayName: 'Calories',
+    shortLabel: 'Calories',
+    unit: 'kcal',
     // NOT "calories from fat": that is a component of total energy, not another name for
     // it, and matching it here would file a fat-only figure as the whole serving's calories.
-    aliases: ["energy", "kcal", "total calories"],
+    aliases: ['energy', 'kcal', 'total calories'],
   },
   {
-    fieldKey: "protein",
-    displayName: "Protein",
-    shortLabel: "Protein",
-    unit: "g",
-    aliases: ["proteins"],
+    fieldKey: 'protein',
+    displayName: 'Protein',
+    shortLabel: 'Protein',
+    unit: 'g',
+    aliases: ['proteins'],
   },
   {
-    fieldKey: "carbs",
-    displayName: "Carbohydrates",
-    shortLabel: "Carbs",
-    unit: "g",
-    aliases: ["carbs", "total carbohydrate", "carbohydrate"],
+    fieldKey: 'carbs',
+    displayName: 'Carbohydrates',
+    shortLabel: 'Carbs',
+    unit: 'g',
+    aliases: ['carbs', 'total carbohydrate', 'carbohydrate'],
   },
   {
-    fieldKey: "fat",
-    displayName: "Fat",
-    shortLabel: "Fat",
-    unit: "g",
-    aliases: ["total fat", "fats"],
+    fieldKey: 'fat',
+    displayName: 'Fat',
+    shortLabel: 'Fat',
+    unit: 'g',
+    aliases: ['total fat', 'fats'],
   },
   {
-    fieldKey: "dietary_fiber",
-    displayName: "Dietary fiber",
-    shortLabel: "Fiber",
-    unit: "g",
-    aliases: ["fiber", "fibre", "dietary fibre"],
+    fieldKey: 'dietary_fiber',
+    displayName: 'Dietary fiber',
+    shortLabel: 'Fiber',
+    unit: 'g',
+    aliases: ['fiber', 'fibre', 'dietary fibre'],
   },
 ];
 
@@ -77,14 +77,17 @@ export const MACRO_PICKER_FIELDS: MacroPickerField[] = [
  * short label and every alias, all normalized.
  */
 export function resolveMacroFieldKey(
-  name: string,
+  name: string
 ): FoodVariantNutrientField | null {
   const query = normalizeNutrientName(name);
   if (!query) return null;
   const match = MACRO_PICKER_FIELDS.find((field) =>
-    [field.displayName, field.fieldKey, field.shortLabel, ...field.aliases].some(
-      (candidate) => normalizeNutrientName(candidate) === query,
-    ),
+    [
+      field.displayName,
+      field.fieldKey,
+      field.shortLabel,
+      ...field.aliases,
+    ].some((candidate) => normalizeNutrientName(candidate) === query)
   );
   return match?.fieldKey ?? null;
 }

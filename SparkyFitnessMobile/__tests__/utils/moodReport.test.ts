@@ -1,9 +1,16 @@
 import { buildMoodReport, moodTagLabel } from '../../src/utils/moodReport';
-import type { MoodEntry } from '../../src/types/mood';
+import type { MoodEntry } from '../../src/services/api/moodApi';
 
-const entry = (day: string, value: number, tags: string[] = []): MoodEntry => ({
-  id: `${day}-${value}`,
+const entry = (
+  day: string,
+  value: number | null,
+  tags: string[] = [],
+  source: MoodEntry['source'] = 'manual'
+): MoodEntry => ({
+  id: `${day}-${value}-${source}-${tags.join()}`,
   entry_date: day,
+  entry_timestamp: `${day}T12:00:00Z`,
+  source,
   mood_value: value,
   mood_tags: tags,
   notes: null,
@@ -51,6 +58,62 @@ describe('buildMoodReport', () => {
     const report = buildMoodReport([], '2026-10-01', 3);
     expect(report.averageValue).toBeNull();
     expect(report.loggedDays).toBe(0);
+  });
+});
+
+describe('buildMoodReport with check-ins that have no mood', () => {
+  it('does not count a day with only null moods as logged', () => {
+    const report = buildMoodReport(
+      [
+        entry('2026-10-05', 40),
+        entry('2026-10-06', null, ['focused']),
+        entry('2026-10-07', 80),
+      ],
+      '2026-10-05',
+      3
+    );
+    expect(report.loggedDays).toBe(2);
+    expect(report.averageValue).toBe(60);
+    expect(report.best?.day).toBe('2026-10-07');
+    expect(report.lowest?.day).toBe('2026-10-05');
+    expect(report.weekdayAverages.map((w) => w.weekday)).toEqual([1, 3]);
+    expect(report.days[1]).toMatchObject({ value: 0, entries: 0 });
+  });
+
+  it('ignores null moods when averaging a day and counts only moods', () => {
+    const report = buildMoodReport(
+      [
+        entry('2026-10-05', 40),
+        entry('2026-10-05', null),
+        entry('2026-10-05', 80),
+      ],
+      '2026-10-05',
+      1
+    );
+    expect(report.days[0]).toMatchObject({ value: 60, entries: 2 });
+  });
+
+  it('uses the Garmin mood when a day has no manual mood', () => {
+    const report = buildMoodReport(
+      [entry('2026-10-05', null), entry('2026-10-05', 70, [], 'garmin')],
+      '2026-10-05',
+      1
+    );
+    expect(report.days[0]).toMatchObject({ value: 70, entries: 0 });
+    expect(report.loggedDays).toBe(1);
+  });
+
+  it('counts tags across manual rows only', () => {
+    const report = buildMoodReport(
+      [
+        entry('2026-10-05', 50, ['calm']),
+        entry('2026-10-05', null, ['calm']),
+        entry('2026-10-05', 70, ['garmin-tag'], 'garmin'),
+      ],
+      '2026-10-05',
+      1
+    );
+    expect(report.topTags).toEqual([{ tag: 'calm', count: 2 }]);
   });
 });
 

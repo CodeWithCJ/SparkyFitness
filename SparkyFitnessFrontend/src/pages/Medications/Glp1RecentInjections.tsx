@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import {
   Select,
   SelectContent,
@@ -186,13 +187,16 @@ export default function Glp1RecentInjections({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
+                <Label
+                  id="glp1-edit-injected-at-label"
+                  className="text-xs text-muted-foreground"
+                >
                   {t('medications.glp1.dateTime', 'Date & time')}
                 </Label>
-                <Input
-                  type="datetime-local"
+                <DateTimeInput
+                  aria-labelledby="glp1-edit-injected-at-label"
                   value={editInjectedAt}
-                  onChange={(e) => setEditInjectedAt(e.target.value)}
+                  onChange={setEditInjectedAt}
                 />
               </div>
             </div>

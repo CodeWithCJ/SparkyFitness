@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import { scheduleJob } from './scheduledJobs.js';
 import { scheduleBackupsOnStartup } from './backupScheduler.js';
 import { scheduleOpenFoodFactsAutoSyncOnStartup } from './openFoodFactsAutoSyncScheduler.js';
 import { startProviderSyncSchedulers } from './providerSyncScheduler.js';
@@ -7,12 +7,13 @@ import { deleteExpiredTickets } from './passkeyTicketService.js';
 import { scheduleDemoMidnightReset } from './demoSeedService.js';
 import { log } from '../config/logging.js';
 import { scheduledJobsDisabled } from '../utils/scheduledJobs.js';
+import { runNightlyNutritionPush } from '../integrations/intervals/intervalsNutritionPush.js';
 
 // Backup scheduling is handled by services/backupScheduler.ts
 // Session cleanup scheduling
 const scheduleSessionCleanup = async () => {
   // Run every day at 3 AM
-  cron.schedule('0 3 * * *', async () => {
+  scheduleJob('session-cleanup', '0 3 * * *', async () => {
     try {
       await cleanupSessions();
     } catch (error) {
@@ -45,5 +46,13 @@ export async function scheduleBackgroundJobs(): Promise<void> {
   await scheduleOpenFoodFactsAutoSyncOnStartup();
   scheduleSessionCleanup();
   startProviderSyncSchedulers();
+  scheduleJob(
+    'intervals-nutrition-push',
+    '45 23 * * *',
+    runNightlyNutritionPush,
+    {
+      noOverlap: true,
+    }
+  );
   scheduleDemoMidnightReset();
 }

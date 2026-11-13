@@ -1,4 +1,5 @@
-import { apiCall } from '@/api/api';
+import { API_BASE_URL, apiCall } from '@/api/api';
+import type { CheckInPhotoWithWeight } from '@workspace/shared';
 
 export type PhotoType = 'front' | 'back' | 'side';
 
@@ -21,6 +22,29 @@ export const fetchCheckInPhotos = async (
   });
   if (!response || !Array.isArray(response)) return [];
   return response as CheckInPhoto[];
+};
+
+/**
+ * Served through the authenticated, ownership-checked route (the session cookie
+ * travels with the same-origin <img> request), not the public static mount:
+ * progress photos are private.
+ */
+export const checkInPhotoFileUrl = (id: string): string =>
+  `${API_BASE_URL}/measurements/check-in-photos/file/${id}`;
+
+/**
+ * Every progress photo with the weight logged that day, newest day first. One
+ * request backs both the comparison and the time-lapse.
+ */
+export const fetchCheckInPhotoGallery = async (): Promise<
+  CheckInPhotoWithWeight[]
+> => {
+  const response = await apiCall('/measurements/check-in-photos', {
+    method: 'GET',
+    suppress404Toast: true,
+  });
+  if (!response || !Array.isArray(response)) return [];
+  return response as CheckInPhotoWithWeight[];
 };
 
 export const fetchCheckInPhotoDates = async (): Promise<string[]> => {

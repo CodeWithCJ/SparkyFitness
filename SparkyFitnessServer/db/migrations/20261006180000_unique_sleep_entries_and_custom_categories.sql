@@ -23,10 +23,12 @@
 -- slot (same day, hour for Hourly, and source), so no reading is deleted or
 -- stacked. Merging a different definition would reinterpret its measurements
 -- (32 inches shown as 32 cm), so those are never merged either. Every category
--- left sharing a name is renamed "<name> (2)", "<name> (3)" and so on, and one
--- category per user and name is then enforced.
+-- left sharing a name is renamed "<name> (2)", "<name> (3)" and so on. A suffix
+-- can still match a name another row already has (an upgrade with several
+-- health categories all named HRV failed the unique index on "HRV (3)"), so
+-- any name that is still shared is renamed again from the rows as they stand.
+-- One category per user and name is then enforced.
 
-BEGIN;
 
 -- Sleep entries
 
@@ -106,6 +108,9 @@ BEGIN
 END $$;
 
 -- The oldest remaining category keeps the name; rename the others.
+-- Rank the rows still in the table, not the pre-merge snapshot: a category
+-- the merge kept is still here, and a category it deleted must not take a
+-- suffix slot.
 DO $$
 DECLARE
   survivor RECORD;
@@ -119,8 +124,7 @@ BEGIN
              ROW_NUMBER() OVER (
                PARTITION BY user_id, name ORDER BY created_at, id
              ) AS position
-      FROM custom_category_merge
-      WHERE id = keep_id
+      FROM public.custom_categories
     ) ranked
     WHERE position > 1
     ORDER BY user_id, name, position
@@ -140,7 +144,57 @@ BEGIN
   END LOOP;
 END $$;
 
+-- The pass above chooses each suffix from the names it can see at that
+-- moment. When one of those names is itself renamed later in the same pass,
+-- two rows can both be left as "HRV (3)". Rename whatever is still shared,
+-- one row at a time, until the unique index can be built.
+DO $$
+DECLARE
+  extra RECORD;
+  suffix_number INTEGER;
+  candidate TEXT;
+  guard INTEGER := 0;
+BEGIN
+  LOOP
+    guard := guard + 1;
+    IF guard > 10000 THEN
+      RAISE EXCEPTION 'custom category names are still not unique';
+    END IF;
+
+    SELECT id, user_id, name INTO extra
+    FROM (
+      SELECT id, user_id, name, created_at,
+             ROW_NUMBER() OVER (
+               PARTITION BY user_id, name ORDER BY created_at, id
+             ) AS position
+      FROM public.custom_categories
+    ) ranked
+    WHERE position > 1
+    ORDER BY user_id, name, created_at, id
+    LIMIT 1;
+
+    EXIT WHEN NOT FOUND;
+
+    suffix_number := 2;
+    LOOP
+      IF suffix_number > 9999 THEN
+        RAISE EXCEPTION 'no free name for custom category %', extra.id;
+      END IF;
+      candidate := LEFT(extra.name, 50 - LENGTH(' (' || suffix_number || ')'))
+                   || ' (' || suffix_number || ')';
+      EXIT WHEN NOT EXISTS (
+        SELECT 1 FROM public.custom_categories
+        WHERE user_id = extra.user_id
+          AND name = candidate
+          AND id <> extra.id
+      );
+      suffix_number := suffix_number + 1;
+    END LOOP;
+
+    UPDATE public.custom_categories SET name = candidate WHERE id = extra.id;
+  END LOOP;
+END $$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS custom_categories_user_name_key
   ON public.custom_categories (user_id, name);
 
-COMMIT;

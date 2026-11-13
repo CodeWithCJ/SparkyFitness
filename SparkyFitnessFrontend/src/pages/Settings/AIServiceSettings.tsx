@@ -29,7 +29,7 @@ import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { VoiceInputSettings } from '@/components/ai/VoiceInputSettings';
 import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
-import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
+import { isCustomModelName, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useAIServices,
   useActiveAIService,
@@ -179,6 +179,7 @@ const AIServiceSettings = () => {
         is_active: true,
         model_name: globalSetting.model_name || undefined,
         chat_tool_profile: globalSetting.chat_tool_profile ?? 'full',
+        reasoning_effort: globalSetting.reasoning_effort ?? 'medium',
         supports_audio_input: globalSetting.supports_audio_input,
       };
       await addService(overrideData);
@@ -577,11 +578,10 @@ const AIServiceSettings = () => {
     // Clear any prior service's test result so it never lingers on this form.
     resetTestStatus();
     setEditingService(service.id ?? null);
-    const isCustomModel = service.model_name
-      ? !getModelOptions(service.service_type ?? '').includes(
-          service.model_name
-        )
-      : false;
+    const isCustomModel = isCustomModelName(
+      service.service_type ?? '',
+      service.model_name
+    );
     setEditData({
       service_name: service.service_name,
       service_type: service.service_type,
@@ -593,6 +593,7 @@ const AIServiceSettings = () => {
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
       chat_tool_profile: service.chat_tool_profile ?? 'full',
+      reasoning_effort: service.reasoning_effort ?? 'medium',
       supports_audio_input: service.supports_audio_input,
     });
   };

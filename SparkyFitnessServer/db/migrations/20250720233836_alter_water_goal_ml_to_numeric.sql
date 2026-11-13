@@ -1,6 +1,4 @@
-BEGIN;
 
 ALTER TABLE user_goals
 ALTER COLUMN water_goal_ml TYPE NUMERIC(10, 3);
 
-COMMIT;

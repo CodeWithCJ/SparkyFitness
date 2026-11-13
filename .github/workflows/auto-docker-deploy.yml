@@ -5,13 +5,25 @@ on:
     types: [published]
   workflow_dispatch:
 
+# One run at a time, in the order they start, so an older release's run cannot
+# push `latest` after a newer one: each run checks whether its tag is the
+# newest release, and a run that started later always pushes last. A run
+# waiting for approval holds the queue until it is approved or rejected.
+concurrency:
+  group: publish-docker-images
+  cancel-in-progress: false
+
 jobs:
   push_to_registries:
     name: Push Docker image to multiple registries
     runs-on: ubuntu-latest
-    environment: github-pages
+    # The Docker Hub and GHCR credentials live in this environment, which only
+    # main and v* tags can use and which waits for a maintainer's approval, so a
+    # workflow pushed on another branch or tag cannot read them.
+    environment: release
+    # Pushes to GHCR with GHCR_TOKEN, not GITHUB_TOKEN. The attestations are
+    # pushed with the same login.
     permissions:
-      packages: write
       contents: read
       attestations: write
       id-token: write
@@ -19,12 +31,37 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+        with:
+          # Nothing here pushes with git, so no token stays in .git/config.
+          persist-credentials: false
 
       - name: Get latest release tag
         id: get_latest_release
         uses: actions/github-script@v6
         with:
           script: |
+            // A release run, or a dispatch from a v* tag, builds that tag, so name
+            // the images after it. Looking up the newest release instead would put
+            // an older tag's code under a newer release's name.
+            const release = context.payload.release;
+            const builtTag =
+              context.eventName === 'release' && release && !release.prerelease && !release.draft
+                ? release.tag_name
+                : context.eventName === 'workflow_dispatch' && context.ref.startsWith('refs/tags/')
+                  ? context.ref.slice('refs/tags/'.length)
+                  : null;
+            if (builtTag) {
+              core.setOutput('tag', builtTag);
+              // Approval can come late, and an older tag can be dispatched by
+              // hand, so only the newest release moves `latest`.
+              const { data: newest } = await github.rest.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              core.setOutput('latest', String(newest.tag_name === builtTag));
+              return;
+            }
+            core.setOutput('latest', 'true');
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -38,43 +75,47 @@ jobs:
           result-encoding: string
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # GHCR_TOKEN (a classic PAT with only write:packages) lives in the release
+      # environment. The packages give this repository's Actions no write
+      # access, so GITHUB_TOKEN cannot push them from a branch workflow.
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Set lowercase repository name
         id: repo
         run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Metadata frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness
             ghcr.io/${{ steps.repo.outputs.name }}-frontend
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push frontend
         id: push-frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.frontend
           push: true
+          pull: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -90,22 +131,23 @@ jobs:
 
       - name: Metadata server
         id: meta-server
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_server
             ghcr.io/${{ steps.repo.outputs.name }}-server
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push server
         id: push-server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.backend
           push: true
+          pull: true
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -121,22 +163,23 @@ jobs:
 
       - name: Metadata Garmin Microservice
         id: meta-garmin
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_garmin
             ghcr.io/${{ steps.repo.outputs.name }}-garmin
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push Garmin Microservice
         id: push-garmin
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: SparkyFitnessGarmin
           file: docker/Dockerfile.garmin_microservice
           push: true
+          pull: true
           tags: ${{ steps.meta-garmin.outputs.tags }}
           labels: ${{ steps.meta-garmin.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -149,6 +192,3 @@ jobs:
           subject-name: ghcr.io/${{ steps.repo.outputs.name }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
           push-to-registry: true
-
-
-

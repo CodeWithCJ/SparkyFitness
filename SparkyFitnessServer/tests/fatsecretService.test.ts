@@ -66,6 +66,32 @@ describe('getFatSecretAccessToken caching', () => {
     expect(basic).toBe('token-basic');
     expect(premier).toBe('token-premier');
   });
+
+  // Rewrapped as a "Network error", an account without the premier scope never
+  // started the premier cooldown and retried premier on every food lookup.
+  it('keeps the OAuth error code when the scope is rejected', async () => {
+    const rejection = (body: object) =>
+      new Response(JSON.stringify(body), {
+        status: 400,
+        statusText: 'Bad Request',
+      });
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(rejection({ error: 'invalid_scope' }))
+      .mockResolvedValueOnce(
+        rejection({
+          error: 'invalid_scope',
+          error_description: 'Invalid scope',
+        })
+      );
+
+    await expect(
+      getFatSecretAccessToken('client-r', 'secret', 'premier')
+    ).rejects.toThrow('FatSecret authentication failed: invalid_scope');
+    await expect(
+      getFatSecretAccessToken('client-r', 'secret', 'premier')
+    ).rejects.toThrow('FatSecret authentication failed: invalid_scope');
+  });
 });
 
 describe('FatSecret Service Mapping', () => {

@@ -2,14 +2,17 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { daysBetween } from '@workspace/shared';
+import {
+  daysBetween,
+  formatSignedWeightChange,
+  framesForAngle,
+} from '@workspace/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import i18n from '../localization/i18n';
@@ -24,6 +27,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCheckInPhotoGallery } from '../hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate } from '../utils/dateUtils';
 import {
   formatWeightDisplay,
@@ -49,6 +53,7 @@ type Side = 'before' | 'after';
 const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -66,14 +71,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Oldest first reads left-to-right as progression, which is how the two
   // panes are laid out.
-  const timeline = useMemo<ProgressPhotoDay[]>(
-    () =>
-      days
-        .filter((day) => day.photos[angle])
-        .slice()
-        .reverse(),
-    [days, angle]
-  );
+  const timeline = useMemo(() => framesForAngle(days, angle), [days, angle]);
 
   const [pickingSide, setPickingSide] = useState<Side>('before');
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -160,8 +158,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
         ? weightFromKg(kg, 'lbs')
         : weightFromKg(kg, weightMode);
     const unit = weightMode === 'st_lbs' ? 'lb' : weightMode;
-    const rounded = Math.round(converted * 10) / 10;
-    return `${rounded > 0 ? '+' : ''}${rounded} ${unit}`;
+    return `${formatSignedWeightChange(converted)} ${unit}`;
   };
 
   const renderPane = (
@@ -233,9 +230,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
       <View
         className="flex-1 bg-background"
-        style={
-          Platform.OS === 'android' ? { paddingTop: insets.top } : undefined
-        }
+        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
       >
         {header}
         <View className="py-16 items-center">
@@ -248,7 +243,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View
       className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
 

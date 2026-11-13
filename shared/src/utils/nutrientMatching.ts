@@ -11,23 +11,23 @@
 export function normalizeNutrientName(value: string): string {
   return value
     .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, " ")
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim()
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, ' ');
 }
 
 // Normalize a provider's unit string (e.g. USDA "UG", OFF "µg") into the form a
 // user would type for a custom nutrient. Unknown units pass through trimmed.
 const NUTRIENT_UNIT_ALIASES: Record<string, string> = {
-  g: "g",
-  mg: "mg",
-  ug: "µg",
-  µg: "µg",
-  mcg: "µg",
-  kcal: "kcal",
-  kj: "kJ",
-  iu: "IU",
+  g: 'g',
+  mg: 'mg',
+  ug: 'µg',
+  µg: 'µg',
+  mcg: 'µg',
+  kcal: 'kcal',
+  kj: 'kJ',
+  iu: 'IU',
 };
 
 export function normalizeNutrientUnit(unit: string): string {
@@ -62,7 +62,7 @@ const ENERGY_TO_KJ: Record<string, number> = {
 export function convertNutrientAmount(
   value: number,
   fromUnit: string | undefined,
-  toUnit: string | undefined,
+  toUnit: string | undefined
 ): number | null {
   if (!fromUnit || !toUnit) return null;
   const from = fromUnit.trim().toLowerCase();

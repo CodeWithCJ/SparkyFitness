@@ -62,3 +62,10 @@ test('averages heart rate readings and has none without them', () => {
   expect(averageHeartRate([{ bpm: 140 }, { bpm: 151 }])).toBe(146);
   expect(averageHeartRate([])).toBeNull();
 });
+
+test('carries the measured form when there is one, and nothing when there is not', () => {
+  const form = { avgCadence: 168, strideLengthCm: 112.5 };
+  expect(build({ form }).form).toEqual(form);
+  expect(build()).not.toHaveProperty('form');
+  expect(build({ form: null })).not.toHaveProperty('form');
+});

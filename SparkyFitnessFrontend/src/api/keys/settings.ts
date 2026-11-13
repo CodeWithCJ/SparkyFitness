@@ -41,4 +41,5 @@ export const preferencesKeys = {
   nutrients: () => [...preferencesKeys.all, 'nutrients'] as const,
   nutrientGoalDirection: () =>
     [...preferencesKeys.all, 'nutrient-goal-direction'] as const,
+  heartRateZones: () => [...preferencesKeys.all, 'heart-rate-zones'] as const,
 };

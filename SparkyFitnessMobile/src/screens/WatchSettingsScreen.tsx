@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -26,7 +26,7 @@ import { WATCH_STANDARD_NUTRIENT_KEYS } from '../utils/watchNutrients';
 type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
 
 /**
- * The Apple Watch app's layout: which pages it shows and the order you swipe
+ * The companion watch app's layout: which pages it shows and the order you swipe
  * through them, and which nutrients its Goals page lists under the calorie
  * ring. Stored on the phone and sent to the watch in its context push
  * (`useWatchCheckInBridge`), so a change reaches the wrist the next time the
@@ -34,6 +34,7 @@ type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
  */
 const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const { t } = useTranslation();
+  const isAndroid = Platform.OS === 'android';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -46,6 +47,26 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
     (s) => s.watchDoubleTapEnabled
   );
   const watchRpeEnabled = useAppPreferencesStore((s) => s.watchRpeEnabled);
+  const watchSetScreenMetrics = useAppPreferencesStore(
+    (s) => s.watchSetScreenMetrics
+  );
+  const setWatchSetScreenMetrics = useAppPreferencesStore(
+    (s) => s.setWatchSetScreenMetrics
+  );
+  const watchUpNextPage = useAppPreferencesStore((s) => s.watchUpNextPage);
+  const setWatchUpNextPage = useAppPreferencesStore(
+    (s) => s.setWatchUpNextPage
+  );
+  const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
+  const setWatchLargerText = useAppPreferencesStore(
+    (s) => s.setWatchLargerText
+  );
+  const watchClassicWorkout = useAppPreferencesStore(
+    (s) => s.watchClassicWorkout
+  );
+  const setWatchClassicWorkout = useAppPreferencesStore(
+    (s) => s.setWatchClassicWorkout
+  );
   const setWatchRpeEnabled = useAppPreferencesStore(
     (s) => s.setWatchRpeEnabled
   );
@@ -100,7 +121,9 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   }, [watchNutrientOrder, customNutrients, t]);
 
   const header = useScreenHeader({
-    title: t('screens.watchSettings', { defaultValue: 'Apple Watch' }),
+    title: isAndroid
+      ? t('screens.wearOsSettings', { defaultValue: 'Wear OS' })
+      : t('screens.watchSettings', { defaultValue: 'Apple Watch' }),
     left: { kind: 'back' },
   });
 
@@ -123,31 +146,40 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
         <Text className="text-text-primary text-base font-semibold mb-1">
           {t('watchSettings.gesturesTitle', { defaultValue: 'Gestures' })}
         </Text>
-        <SettingsRow
-          title={t('watchSettings.doubleTapTitle', {
-            defaultValue: 'Double-tap to log a set',
-          })}
-          subtitle={t('watchSettings.doubleTapSubtitle', {
-            defaultValue:
-              'Double-tap on a supported watch (Series 9, Ultra 2 or later, watchOS 11) logs the set on screen during a workout.',
-          })}
-          subtitleNumberOfLines={0}
-          rightAccessory={
-            <Switch
-              testID="watch-double-tap-switch"
-              value={watchDoubleTapEnabled}
-              onValueChange={setWatchDoubleTapEnabled}
-            />
-          }
-        />
+        {!isAndroid && (
+          <SettingsRow
+            title={t('watchSettings.doubleTapTitle', {
+              defaultValue: 'Double-tap to log a set',
+            })}
+            subtitle={t('watchSettings.doubleTapSubtitle', {
+              defaultValue:
+                'Double-tap on a supported watch (Series 9, Ultra 2 or later, watchOS 11) logs the set on screen during a workout.',
+            })}
+            subtitleNumberOfLines={0}
+            rightAccessory={
+              <Switch
+                testID="watch-double-tap-switch"
+                value={watchDoubleTapEnabled}
+                onValueChange={setWatchDoubleTapEnabled}
+              />
+            }
+          />
+        )}
         <SettingsRow
           title={t('watchSettings.rpeTitle', {
             defaultValue: 'Ask for effort (RPE) after each set',
           })}
-          subtitle={t('watchSettings.rpeSubtitle', {
-            defaultValue:
-              'After you log a set on the watch, turn the Digital Crown to pick how hard it was, from 1 to 10, then tap Save, or tap Skip.',
-          })}
+          subtitle={
+            isAndroid
+              ? t('watchSettings.rpeSubtitleWearOs', {
+                  defaultValue:
+                    'After you log a set on the watch, turn the rotary crown or tap +/− to pick how hard it was, from 5 to 10, then tap Save, or tap Skip.',
+                })
+              : t('watchSettings.rpeSubtitle', {
+                  defaultValue:
+                    'After you log a set on the watch, turn the Digital Crown to pick how hard it was, from 1 to 10, then tap Save, or tap Skip.',
+                })
+          }
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
@@ -158,33 +190,111 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
           }
         />
 
-        <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
-          {t('watchSettings.setInputTitle', { defaultValue: 'Set input' })}
-        </Text>
-        <Text className="text-text-secondary text-sm mb-4">
-          {t('watchSettings.setInputDescription', {
-            defaultValue:
-              'How you enter weight and reps on the watch during a workout: type them on a keypad, or tap a value and turn the Digital Crown or drag it, 0.5 at a time for weight.',
-          })}
-        </Text>
-        <SegmentedControl<WatchSetInputStyle>
-          segments={[
-            {
-              key: 'keypad',
-              label: t('watchSettings.setInputKeypad', {
-                defaultValue: 'Keypad',
-              }),
-            },
-            {
-              key: 'crown',
-              label: t('watchSettings.setInputCrown', {
-                defaultValue: 'Digital Crown',
-              }),
-            },
-          ]}
-          activeKey={watchSetInputStyle}
-          onSelect={setWatchSetInputStyle}
-        />
+        {!isAndroid && (
+          <>
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.setInputTitle', { defaultValue: 'Set input' })}
+            </Text>
+            <Text className="text-text-secondary text-sm mb-4">
+              {t('watchSettings.setInputDescription', {
+                defaultValue:
+                  'How you enter weight and reps on the watch during a workout: type them on a keypad, or tap a value and turn the Digital Crown or drag it, 0.5 at a time for weight.',
+              })}
+            </Text>
+            <SegmentedControl<WatchSetInputStyle>
+              segments={[
+                {
+                  key: 'keypad',
+                  label: t('watchSettings.setInputKeypad', {
+                    defaultValue: 'Keypad',
+                  }),
+                },
+                {
+                  key: 'crown',
+                  label: t('watchSettings.setInputCrown', {
+                    defaultValue: 'Digital Crown',
+                  }),
+                },
+              ]}
+              activeKey={watchSetInputStyle}
+              onSelect={setWatchSetInputStyle}
+            />
+
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.layoutTitle', { defaultValue: 'Layout' })}
+            </Text>
+            <SettingsRow
+              title={t('watchSettings.setScreenMetricsTitle', {
+                defaultValue: 'Metrics on the set screen',
+              })}
+              subtitle={t('watchSettings.setScreenMetricsSubtitle', {
+                defaultValue:
+                  'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-set-screen-metrics-switch"
+                  value={watchSetScreenMetrics}
+                  onValueChange={setWatchSetScreenMetrics}
+                />
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.upNextTitle', {
+                defaultValue: 'Up Next page',
+              })}
+              subtitle={t('watchSettings.upNextSubtitle', {
+                defaultValue:
+                  'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-up-next-switch"
+                  value={watchUpNextPage}
+                  onValueChange={setWatchUpNextPage}
+                />
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.largerTextTitle', {
+                defaultValue: 'Larger text on the watch',
+              })}
+              subtitle={t('watchSettings.largerTextSubtitle', {
+                defaultValue:
+                  'Larger type and the newer layouts across the watch: Goals, Water, the workout, Fasting, Steps and more. Off keeps the original look.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-larger-text-switch"
+                  value={watchLargerText}
+                  onValueChange={setWatchLargerText}
+                />
+              }
+            />
+            {watchLargerText && (
+              <SettingsRow
+                title={t('watchSettings.classicWorkoutTitle', {
+                  defaultValue: 'Original workout page',
+                })}
+                subtitle={t('watchSettings.classicWorkoutSubtitle', {
+                  defaultValue:
+                    'Keep the original workout screen while larger text is on everywhere else. With larger text off the workout always uses it.',
+                })}
+                subtitleNumberOfLines={0}
+                rightAccessory={
+                  <Switch
+                    testID="watch-classic-workout-switch"
+                    value={watchClassicWorkout}
+                    onValueChange={setWatchClassicWorkout}
+                  />
+                }
+              />
+            )}
+          </>
+        )}
 
         <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
           {t('watchSettings.pagesTitle', { defaultValue: 'Pages' })}

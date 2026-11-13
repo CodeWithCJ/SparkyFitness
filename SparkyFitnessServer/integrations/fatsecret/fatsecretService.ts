@@ -1,5 +1,6 @@
 import { log } from '../../config/logging.js';
 import { altBarcode } from '../../utils/foodUtils.js';
+import { nutrientNumber } from '../../utils/foodPortionResolver.js';
 
 interface FatSecretServing {
   serving_id?: string;
@@ -246,8 +247,10 @@ function assertNoFatSecretApiError(data?: FatSecretApiResponse | null): void {
 async function getFatSecretAccessToken(
   clientId: string | undefined,
   clientSecret: string | undefined,
-  requestedScope = 'basic'
+  requestedScope = 'basic',
+  signal?: AbortSignal
 ): Promise<string> {
+  signal?.throwIfAborted();
   if (!clientId || !clientSecret) {
     throw new Error('FatSecret API credentials are not configured.');
   }
@@ -266,6 +269,7 @@ async function getFatSecretAccessToken(
     );
     const response = await fetch(FATSECRET_OAUTH_TOKEN_URL, {
       method: 'POST',
+      ...(signal && { signal }),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
@@ -276,11 +280,13 @@ async function getFatSecretAccessToken(
         client_secret: clientSecret,
       }).toString(),
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
       const errorData = (await response.json()) as {
         error?: string;
         error_description?: string;
       };
+      signal?.throwIfAborted();
       log(
         'error',
         `FatSecret OAuth Token API error for scope "${requestedScope}":`,
@@ -295,21 +301,32 @@ async function getFatSecretAccessToken(
           'warn',
           'FatSecret "barcode" scope invalid, falling back to "basic"'
         );
-        return getFatSecretAccessToken(clientId, clientSecret, 'basic');
+        return getFatSecretAccessToken(clientId, clientSecret, 'basic', signal);
       }
-      throw new Error(
-        `FatSecret authentication failed: ${errorData.error_description || response.statusText}`
+      // Keep FatSecret's OAuth code (e.g. invalid_scope) in the message: premier
+      // entitlement detection matches on it to start the premier cooldown.
+      throw Object.assign(
+        new Error(
+          `FatSecret authentication failed: ${[errorData.error, errorData.error_description].filter(Boolean).join(' - ') || response.statusText}`
+        ),
+        { fatSecretOAuthError: errorData.error }
       );
     }
     const data = (await response.json()) as {
       access_token: string;
       expires_in: number;
     };
+    signal?.throwIfAborted();
     const token = data.access_token;
     const expiry = Date.now() + data.expires_in * 1000 - 60000; // Set expiry 1 minute early
     tokensByScope.set(cacheKey, { token, expiry });
     return token;
   } catch (error) {
+    signal?.throwIfAborted();
+    // A rejection from FatSecret itself is not a network error; rethrow it as is.
+    if ((error as { fatSecretOAuthError?: unknown }).fatSecretOAuthError) {
+      throw error;
+    }
     log(
       'error',
       `Network error during FatSecret OAuth token acquisition for scope "${requestedScope}":`,
@@ -325,15 +342,19 @@ async function getFatSecretAccessToken(
 async function searchFatSecretByBarcode(
   barcode: string,
   clientId: string,
-  clientSecret: string
+  clientSecret: string,
+  surfaceErrors = false,
+  signal?: AbortSignal
 ) {
   try {
     // Specifically request barcode scope for this call
     const accessToken = await getFatSecretAccessToken(
       clientId,
       clientSecret,
-      'basic barcode'
+      'basic barcode',
+      signal
     );
+    signal?.throwIfAborted();
     const url = `${FATSECRET_API_BASE_URL}/food/barcode/find-by-id/v2?${new URLSearchParams(
       {
         barcode: barcode,
@@ -343,13 +364,23 @@ async function searchFatSecretByBarcode(
     log('info', `FatSecret Barcode Lookup URL: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
+      ...(signal && { signal }),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
+      if (surfaceErrors && response.status !== 404) {
+        throw Object.assign(
+          new Error(
+            `FatSecret barcode lookup failed (HTTP ${response.status}).`
+          ),
+          { status: 502 }
+        );
+      }
       if (response.status === 404) {
         const alt = altBarcode(barcode);
 
@@ -362,20 +393,36 @@ async function searchFatSecretByBarcode(
           ).toString()}`;
           const altResponse = await fetch(altUrl, {
             method: 'GET',
+            ...(signal && { signal }),
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
               Accept: 'application/json',
             },
           });
+          signal?.throwIfAborted();
           if (altResponse.ok) {
             const data = await altResponse.json();
+            signal?.throwIfAborted();
+            if (surfaceErrors) {
+              if (data.error && String(data.error.code) === '211') return null;
+              assertNoFatSecretApiError(data);
+            }
             return data;
+          }
+          if (surfaceErrors && altResponse.status !== 404) {
+            throw Object.assign(
+              new Error(
+                `FatSecret barcode lookup failed (HTTP ${altResponse.status}).`
+              ),
+              { status: 502 }
+            );
           }
         }
         return null;
       }
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'FatSecret Barcode API error:', errorText);
       // If we get an error related to scope/permission, we know barcode API isn't available
       if (response.status === 403 || response.status === 401) {
@@ -388,6 +435,7 @@ async function searchFatSecretByBarcode(
       throw new Error(`FatSecret Barcode API error: ${errorText}`);
     }
     const data = await response.json();
+    signal?.throwIfAborted();
     if (data.error && String(data.error.code) === '211') {
       return null; // No food item detected
     }
@@ -413,35 +461,27 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
     // 1. Household variant (e.g., "1 serving", "1/4 cup")
     // 2. Metric variant (e.g., "237 g", "100 ml")
     const baseNutrients = {
-      calories: Math.round(parseFloat(serving.calories || '') || 0),
-      protein: Math.round((parseFloat(serving.protein || '') || 0) * 10) / 10,
-      carbs:
-        Math.round((parseFloat(serving.carbohydrate || '') || 0) * 10) / 10,
-      fat: Math.round((parseFloat(serving.fat || '') || 0) * 10) / 10,
-      saturated_fat:
-        Math.round((parseFloat(serving.saturated_fat || '') || 0) * 10) / 10,
-      polyunsaturated_fat:
-        Math.round((parseFloat(serving.polyunsaturated_fat || '') || 0) * 10) /
-        10,
-      monounsaturated_fat:
-        Math.round((parseFloat(serving.monounsaturated_fat || '') || 0) * 10) /
-        10,
-      trans_fat:
-        Math.round((parseFloat(serving.trans_fat || '') || 0) * 10) / 10,
-      cholesterol: Math.round(parseFloat(serving.cholesterol || '') || 0),
-      sodium: Math.round(parseFloat(serving.sodium || '') || 0),
-      potassium: Math.round(parseFloat(serving.potassium || '') || 0),
-      dietary_fiber:
-        Math.round((parseFloat(serving.fiber || '') || 0) * 10) / 10,
-      sugars: Math.round((parseFloat(serving.sugar || '') || 0) * 10) / 10,
-      vitamin_a: Math.round(parseFloat(serving.vitamin_a || '') || 0),
-      vitamin_c: Math.round(parseFloat(serving.vitamin_c || '') || 0),
-      calcium: Math.round(parseFloat(serving.calcium || '') || 0),
-      iron: Math.round(parseFloat(serving.iron || '') || 0),
+      calories: nutrientNumber(serving.calories),
+      protein: nutrientNumber(serving.protein),
+      carbs: nutrientNumber(serving.carbohydrate),
+      fat: nutrientNumber(serving.fat),
+      saturated_fat: nutrientNumber(serving.saturated_fat),
+      polyunsaturated_fat: nutrientNumber(serving.polyunsaturated_fat),
+      monounsaturated_fat: nutrientNumber(serving.monounsaturated_fat),
+      trans_fat: nutrientNumber(serving.trans_fat),
+      cholesterol: nutrientNumber(serving.cholesterol),
+      sodium: nutrientNumber(serving.sodium),
+      potassium: nutrientNumber(serving.potassium),
+      dietary_fiber: nutrientNumber(serving.fiber),
+      sugars: nutrientNumber(serving.sugar),
+      vitamin_a: nutrientNumber(serving.vitamin_a),
+      vitamin_c: nutrientNumber(serving.vitamin_c),
+      calcium: nutrientNumber(serving.calcium),
+      iron: nutrientNumber(serving.iron),
     };
     const rawNutrients = extractFatSecretProviderNutrients(serving);
     const addVariant = (size: number, unit: string, isDefault: boolean) => {
-      if (isNaN(size) || !unit) return;
+      if (!Number.isFinite(size) || size <= 0 || !unit) return;
       const normalizedUnit = normalizeServingUnit(unit);
       const key = `${size}_${normalizedUnit}`.toLowerCase();
       if (!variantsMap.has(key) || isDefault) {
@@ -459,7 +499,9 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
       }
     };
     // 1. Try to create Household variant
-    let hhSize = parseFloat(serving.number_of_units || '');
+    let hhSize = serving.number_of_units
+      ? evaluateFraction(serving.number_of_units)
+      : NaN;
     let hhUnit = serving.measurement_description;
     const isGenericHH =
       !hhUnit ||

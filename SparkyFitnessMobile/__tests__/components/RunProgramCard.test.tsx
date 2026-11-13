@@ -55,7 +55,7 @@ describe('RunProgramCard', () => {
     expect(screen.getByText(/nine weeks, three runs a week/)).toBeTruthy();
     expect(
       screen.getByText(
-        /Week 1: workouts of .* minutes\. Builds to \d+ minutes of running/
+        /Week 1: workouts of .* minutes\. Builds to \d+ minutes of effort/
       )
     ).toBeTruthy();
     expect(screen.queryByText('Do this workout')).toBeNull();
@@ -137,6 +137,55 @@ describe('RunProgramCard', () => {
     );
     expect(screen.getByText('Beginner 5K complete')).toBeTruthy();
     expect(screen.getByText('Start again')).toBeTruthy();
+  });
+});
+
+describe('Zone 2 program', () => {
+  const zone2 = (next: number) =>
+    programStatus({ programId: 'zone2Base', next })!;
+
+  it('shows the zone check note on the check run only', () => {
+    const h = handlers();
+    const { rerender } = render(
+      <RunProgramCard
+        status={zone2(10)}
+        loaded
+        selected
+        enabled
+        {...h}
+        programId="zone2Base"
+      />
+    );
+    expect(screen.getByText('Zone 2 base · Week 4, run 2')).toBeTruthy();
+    expect(screen.getByText(/Zone check: run this one/)).toBeTruthy();
+    rerender(
+      <RunProgramCard
+        status={zone2(11)}
+        loaded
+        selected
+        enabled
+        {...h}
+        programId="zone2Base"
+      />
+    );
+    expect(screen.queryByText(/Zone check: run this one/)).toBeNull();
+  });
+
+  it('describes the program and its four-run version while switched off', () => {
+    const h = handlers();
+    render(
+      <RunProgramCard
+        status={null}
+        loaded
+        selected={false}
+        enabled={false}
+        {...h}
+        programId="zone2Base4"
+      />
+    );
+    expect(
+      screen.getByText(/Zone 2 base: ten weeks, four easy runs a week/)
+    ).toBeTruthy();
   });
 });
 

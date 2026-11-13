@@ -6,7 +6,7 @@ This directory contains a Nix flake and a NixOS module for running SparkyFitness
 ## Layout
 
 - [`../flake.nix`](../flake.nix) — packages, dev shell and NixOS modules.
-- [`backend.nix`](./backend.nix) — the Express API server (`tsx index.ts`).
+- [`backend.nix`](./backend.nix) — the Express API server (`node --import tsx index.ts`).
 - [`frontend.nix`](./frontend.nix) — the static Vite build.
 - [`garmin.nix`](./garmin.nix) — the Garmin Connect microservice
 - [`module.nix`](./module.nix) — the `services.sparkyfitness` NixOS module
@@ -26,8 +26,9 @@ nix build .#sparkyfitness-garmin
 > **Updating dependency hashes:** the `pnpmDeps.hash` values in `backend.nix`
 > and `frontend.nix` pin the offline pnpm store and must be refreshed whenever
 > `pnpm-lock.yaml` (or a package's dependency set) changes. A stale hash shows
-> up as a `hash mismatch` build failure. Run the helper script to recompute
-> both automatically:
+> up as a `hash mismatch` build failure. On `main`, the Update Nix pnpm Hashes
+> workflow does this after every lockfile change and merges the result itself.
+> To recompute both on a branch, run the helper script:
 >
 > ```bash
 > nix/update-hashes.sh

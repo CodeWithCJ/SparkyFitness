@@ -11,7 +11,7 @@ import {
   isAfter,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { type SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
 import {
@@ -312,32 +312,30 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           {isEditing ? (
             <>
               <div>
-                <Label htmlFor="edit-bedtime">
+                <Label id="edit-bedtime-label">
                   {t('sleepTimelineEditor.bedtime', 'Bedtime')}
                 </Label>
-                <Input
+                <TimeInput
                   id="edit-bedtime"
-                  type="time"
+                  aria-labelledby="edit-bedtime-label"
                   value={editableBedtime}
-                  onChange={(e) => {
-                    setEditableBedtime(e.target.value);
-                    if (onTimeChange)
-                      onTimeChange(e.target.value, editableWakeTime);
+                  onChange={(value) => {
+                    setEditableBedtime(value);
+                    if (onTimeChange) onTimeChange(value, editableWakeTime);
                   }}
                 />
               </div>
               <div>
-                <Label htmlFor="edit-wakeTime">
+                <Label id="edit-wakeTime-label">
                   {t('sleepTimelineEditor.wakeTime', 'Wake Time')}
                 </Label>
-                <Input
+                <TimeInput
                   id="edit-wakeTime"
-                  type="time"
+                  aria-labelledby="edit-wakeTime-label"
                   value={editableWakeTime}
-                  onChange={(e) => {
-                    setEditableWakeTime(e.target.value);
-                    if (onTimeChange)
-                      onTimeChange(editableBedtime, e.target.value);
+                  onChange={(value) => {
+                    setEditableWakeTime(value);
+                    if (onTimeChange) onTimeChange(editableBedtime, value);
                   }}
                 />
               </div>

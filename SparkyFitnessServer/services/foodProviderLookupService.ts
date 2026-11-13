@@ -126,8 +126,10 @@ export function pickBestVariant(
 
 export interface ProviderLookupResult {
   source: string;
+  provider_id?: string;
   food: ProviderFoodItem | null;
   alternatives?: ProviderFoodItem[];
+  failed_providers?: string[];
 }
 
 /**
@@ -138,8 +140,10 @@ export interface ProviderLookupResult {
 export async function lookupFoodFromProviders(
   userId: string,
   foodName: string,
-  targets: ProviderLookupTarget[]
+  targets: ProviderLookupTarget[],
+  externalId?: string
 ): Promise<ProviderLookupResult> {
+  const failedProviders: string[] = [];
   for (const provider of targets) {
     try {
       log(
@@ -152,18 +156,21 @@ export async function lookupFoodFromProviders(
         foodName,
         { providerId: provider.id }
       );
-      if (result.foods.length > 0) {
-        const ranked = rankProviderMatches(
-          result.foods as ProviderFoodItem[],
-          foodName
-        );
+      const foods = (result.foods as ProviderFoodItem[]).filter(
+        (food) =>
+          !externalId || String(food.provider_external_id) === externalId
+      );
+      if (foods.length > 0) {
+        const ranked = rankProviderMatches(foods, foodName);
         return {
           source: provider.provider_type,
+          provider_id: provider.id,
           food: ranked[0],
           alternatives: ranked.slice(1),
         };
       }
     } catch (error) {
+      failedProviders.push(provider.provider_type);
       log(
         'warn',
         `[foodProviderLookup] provider ${provider.provider_name} failed:`,
@@ -171,7 +178,11 @@ export async function lookupFoodFromProviders(
       );
     }
   }
-  return { source: 'ai_estimate', food: null };
+  return {
+    source: failedProviders.length ? 'unavailable' : 'not_found',
+    food: null,
+    failed_providers: failedProviders,
+  };
 }
 
 export default {

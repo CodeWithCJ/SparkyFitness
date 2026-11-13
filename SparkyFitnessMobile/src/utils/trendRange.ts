@@ -60,17 +60,18 @@ const dayCount = (startDate: string, endDate: string): number => {
   );
 };
 
-/** Orders and bounds a picked range: not after today, at most `MAX_CUSTOM_RANGE_DAYS` long. */
+/** Orders and bounds a picked range: not after today, at most `maxDays` (default `MAX_CUSTOM_RANGE_DAYS`) long. */
 export function clampCustomRange(
   from: string,
   to: string,
-  today: string = getTodayDate()
+  today: string = getTodayDate(),
+  maxDays: number = MAX_CUSTOM_RANGE_DAYS
 ): CustomRange {
   let [startDate, endDate] = from <= to ? [from, to] : [to, from];
   if (endDate > today) endDate = today;
   if (startDate > endDate) startDate = endDate;
-  if (dayCount(startDate, endDate) > MAX_CUSTOM_RANGE_DAYS) {
-    startDate = addDays(endDate, -(MAX_CUSTOM_RANGE_DAYS - 1));
+  if (dayCount(startDate, endDate) > maxDays) {
+    startDate = addDays(endDate, -(maxDays - 1));
   }
   return { startDate, endDate };
 }

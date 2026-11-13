@@ -9,6 +9,7 @@ import {
   listInjections,
   logInjection,
   deleteInjection,
+  updateInjection,
   listTitration,
   createTitrationStep,
   updateTitrationStep,
@@ -45,6 +46,7 @@ import {
 import type { CustomCategory } from '../types/customMeasurements';
 import type {
   LogInjectionInput,
+  UpdateInjectionInput,
   MedicationPen,
   TitrationStep,
   UpdateTitrationStepInput,
@@ -100,6 +102,15 @@ export function useLogInjection() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: LogInjectionInput) => logInjection(body),
+    onSuccess: () => invalidateMedicationEntryCaches(queryClient),
+  });
+}
+
+export function useUpdateInjection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateInjectionInput }) =>
+      updateInjection(id, body),
     onSuccess: () => invalidateMedicationEntryCaches(queryClient),
   });
 }

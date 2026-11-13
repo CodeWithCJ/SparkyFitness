@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The water widget's - and + buttons before Android 12, where Glance cannot
+     round a view's corners. The colour is Glance's surfaceVariant there. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="20dp" />
+    <solid android:color="#FF49454F" />
+</shape>

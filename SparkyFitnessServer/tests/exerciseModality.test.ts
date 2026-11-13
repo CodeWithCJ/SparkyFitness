@@ -123,13 +123,15 @@ describe('exercise modality writers', () => {
 
   describe('getOrCreateActiveCaloriesExercise', () => {
     it('labels the bootstrapped Cardio exercise duration_distance', async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ id: uuidv4() }] });
+      mockClient.query.mockImplementation(async (sql: string) =>
+        sql.startsWith('INSERT') ? { rows: [{ id: uuidv4() }] } : { rows: [] }
+      );
 
       await exerciseDb.getOrCreateActiveCaloriesExercise(uuidv4());
 
-      const insertParams = lastQuery(mockClient)[1];
+      const insertParams = mockClient.query.mock.calls.find(([sql]: [string]) =>
+        String(sql).includes('INSERT INTO exercises')
+      )?.[1];
       expect(insertParams[insertParams.length - 1]).toBe('duration_distance');
     });
   });

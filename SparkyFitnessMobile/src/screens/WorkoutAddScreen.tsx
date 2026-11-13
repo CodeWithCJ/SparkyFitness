@@ -19,7 +19,10 @@ import StatusView from '../components/StatusView';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
-import { useSetEditAccessoryBar } from '../components/SetRowChrome';
+import {
+  SET_ACCESSORY_BAR_HEIGHT,
+  useSetEditAccessoryBar,
+} from '../components/SetRowChrome';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
@@ -329,6 +332,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 name: submission.name,
                 entry_date: submission.entryDate,
                 source: 'sparky',
+                // Manual form logs are done by definition; stamp them
+                // finished so they derive as completed, not in progress.
+                finished_at: new Date().toISOString(),
                 exercises: submission.payloadExercises,
               };
               await createSession(payload);
@@ -413,7 +419,8 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
         <>
           <KeyboardAwareScrollView
             contentContainerClassName="px-4"
-            bottomOffset={80}
+            // Clear of the set-entry bar riding on top of the keyboard.
+            bottomOffset={SET_ACCESSORY_BAR_HEIGHT + 16}
             keyboardShouldPersistTaps="handled"
             // Set-row taps remount the focused input; stop the keyboard-hide
             // restore scroll so the refocus lands on the tapped cell (see

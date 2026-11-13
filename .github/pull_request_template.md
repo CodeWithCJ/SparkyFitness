@@ -1,9 +1,18 @@
 > [!TIP]
 > **Help us review and merge your PR faster!**
-> Please ensure you have completed the **Checklist** below.
-> For **Frontend** changes, please run `pnpm run validate` to check for any errors.
-> PRs that include tests and clear screenshots are highly preferred!
-> Note: AI-generated descriptions must be manually edited for conciseness. Do not paste raw AI summaries.
+> Please complete the **Checklist** below. Typecheck, lint, format and tests run automatically in CI, so there are no boxes for them, but please run them locally first (`pnpm run validate` and `pnpm test` in each package you changed).
+> **Before you submit:**
+>
+> - Translations: only edit the English (`en`) files. Other languages are synced automatically and CI will reject changes to them.
+> - Backend: new files use TypeScript, new endpoints have Zod schemas and tests, and new user-specific tables get an entry in `rls_policies.sql`. Reviewers check these; CI does not.
+>
+> PRs that include tests and clear validation proof (screenshots or a screen recording) are highly preferred.
+>
+> Note: Descriptions must be edited for conciseness. Do not paste raw generated summaries.
+>
+> Title format: start with a type, like `feat:`, `fix:`, `docs:`, `refactor:` or `security:`.
+>
+> Only one SQL migration per PR is allowed. Edit that single file in place as the PR evolves.
 
 ## Description
 
@@ -14,6 +23,8 @@
 (Brief technical approach.)
 
 Linked Issue: Closes #
+
+<!-- Only part of the fix? Change "Closes" to "Part of" (or "Related to"). The issue stays open. "Closes", "Fixes" and "Resolves" close it automatically when this PR merges. -->
 
 ## How to Test
 
@@ -38,39 +49,34 @@ Linked Issue: Closes #
 
 - [ ] **[MANDATORY for new feature] Alignment**: I have raised a GitHub issue and it was reviewed/approved by maintainers or it was approved on Discord.
 
-**Frontend changes (`SparkyFitnessFrontend/`):**
-
-- [ ] **[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.
-- [ ] **[MANDATORY for Frontend changes] Translations**: I have only updated the English (`en`) translation file.
-
-**Backend changes (`SparkyFitnessServer/`):**
-
-- [ ] **[MANDATORY for Backend changes] Code Quality**: I have run typecheck, lint, and tests. New files use TypeScript, new endpoints have Zod schemas, and new endpoints include tests.
-- [ ] **[MANDATORY for Backend changes] Database Security**: I have updated `rls_policies.sql` for any new user-specific tables.
-
 **UI changes (components, screens, pages):**
 
-- [ ] **[MANDATORY for UI changes] Screenshots**: I have attached Before/After screenshots below.
+- [ ] **[MANDATORY for UI changes] Validation proof**: I have attached screenshots or a screen recording showing the change working. This saves maintainers from re-testing by hand.
 
 **Mobile changes (`SparkyFitnessMobile/`):**
 
 - [ ] **[MANDATORY for Mobile changes] Tested on device or emulator**: I have verified the changes work on iOS or Android.
 
-## Screenshots
+## AI Assistance
+
+Pick **one**. This helps maintainers choose how closely to review.
+
+- [ ] **No AI**: I wrote this change without AI tools.
+- [ ] **AI, reviewed line by line**: AI wrote part of this. I read every generated line and edited it before accepting.
+- [ ] **AI, tested and partly understood**: AI wrote most of this. I tested the behavior, but I only partly understand the generated code.
+- [ ] **AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only.
+
+## Validation Proof
+
+Attach screenshots or a screen recording of the change working (before/after for UI changes). Backend-only changes can paste test or request output instead.
 
 <details>
 <summary>Click to expand</summary>
 
-### Before
-
-![before](url)
-
-### After
-
-![after](url)
+Drag and drop your screenshots or recording here.
 
 </details>
 
 ## Notes for Reviewers
 
-> Optional — use this for anything that doesn't fit above: known tradeoffs, areas you'd like specific feedback on, qustions you have or context that helps reviewers.
+> Optional — use this for anything that doesn't fit above: known tradeoffs, areas you'd like specific feedback on, questions you have or context that helps reviewers.

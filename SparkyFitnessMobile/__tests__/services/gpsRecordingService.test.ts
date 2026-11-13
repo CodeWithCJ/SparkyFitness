@@ -122,6 +122,38 @@ describe('starting', () => {
     );
   });
 
+  it('keeps the fitness test being run on the session, across a restart', async () => {
+    await startRecording({
+      activity: 'run',
+      fitnessTest: 'cooper',
+      notification,
+    });
+
+    expect((await storedSession())?.fitnessTest).toBe('cooper');
+  });
+
+  it('records an ordinary run with no fitness test', async () => {
+    await startRecording({ activity: 'run', notification });
+
+    expect((await storedSession())?.fitnessTest).toBeUndefined();
+  });
+
+  it('records a fitness test on a treadmill, with no location task', async () => {
+    await startRecording({
+      activity: 'run',
+      indoor: true,
+      fitnessTest: '5k',
+      notification,
+    });
+
+    const stored = await storedSession();
+    expect(stored).toMatchObject({ indoor: true, fitnessTest: '5k' });
+    expect(mockedLocation.startLocationUpdatesAsync).not.toHaveBeenCalled();
+    expect(
+      mockedLocation.requestForegroundPermissionsAsync
+    ).not.toHaveBeenCalled();
+  });
+
   it('does not record when permission is denied', async () => {
     mockedLocation.requestForegroundPermissionsAsync.mockResolvedValue({
       granted: false,

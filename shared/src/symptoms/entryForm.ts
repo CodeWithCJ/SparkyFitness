@@ -2,14 +2,14 @@ import type {
   CreateSymptomEntryBody,
   SymptomEntryResponse,
   SymptomTreatmentInput,
-} from "../schemas/api/Symptoms.api.zod.ts";
-import type { SymptomImpact, TreatmentEffectiveness } from "./constants.ts";
-import { scaleMax, severityBand, type SymptomChoice } from "./choices.ts";
+} from '../schemas/api/Symptoms.api.zod.ts';
+import type { SymptomImpact, TreatmentEffectiveness } from './constants.ts';
+import { scaleMax, severityBand, type SymptomChoice } from './choices.ts';
 
 /** A treatment being edited in a form, before it is saved with the entry. */
 export interface TreatmentDraft {
   key: string;
-  kind: "medication" | "relief";
+  kind: 'medication' | 'relief';
   name: string;
   medicationId: string | null;
   dose: string | null;
@@ -18,7 +18,7 @@ export interface TreatmentDraft {
 }
 
 export const draftsFromEntry = (
-  entry: Pick<SymptomEntryResponse, "treatments">,
+  entry: Pick<SymptomEntryResponse, 'treatments'>
 ): TreatmentDraft[] =>
   entry.treatments.map((tr) => ({
     key: tr.id,
@@ -31,7 +31,7 @@ export const draftsFromEntry = (
   }));
 
 export const draftsToInputs = (
-  drafts: TreatmentDraft[],
+  drafts: TreatmentDraft[]
 ): SymptomTreatmentInput[] =>
   drafts.map((tr) => ({
     kind: tr.kind,
@@ -44,7 +44,7 @@ export const draftsToInputs = (
 
 export const reliefDraft = (name: string, now: Date): TreatmentDraft => ({
   key: `relief-${name}`,
-  kind: "relief",
+  kind: 'relief',
   name,
   medicationId: null,
   dose: null,
@@ -54,7 +54,7 @@ export const reliefDraft = (name: string, now: Date): TreatmentDraft => ({
 
 /** Everything a person can fill in on the symptom log form. */
 export interface SymptomFormState {
-  mode: "quick" | "episode";
+  mode: 'quick' | 'episode';
   /** ISO instant an episode began. */
   startedAt: string;
   ongoing: boolean;
@@ -100,10 +100,10 @@ export function buildEntryBody(input: {
 
   const max = scaleMax(choice.scaleType);
   const severity =
-    choice.scaleType === "text"
+    choice.scaleType === 'text'
       ? null
       : (state.severity ??
-        (choice.scaleType === "count" ? null : Math.ceil(max / 2)));
+        (choice.scaleType === 'count' ? null : Math.ceil(max / 2)));
   const band =
     severity != null ? severityBand(severity, choice.scaleType) : null;
 
@@ -112,19 +112,19 @@ export function buildEntryBody(input: {
     symptom_name_snapshot: choice.displayName,
     severity,
     severity_label:
-      band === "low"
-        ? "Mild"
-        : band === "mid"
-          ? "Moderate"
+      band === 'low'
+        ? 'Mild'
+        : band === 'mid'
+          ? 'Moderate'
           : band
-            ? "Severe"
+            ? 'Severe'
             : null,
     body_locations: state.locations,
     qualities: state.qualities,
     associated_symptoms: state.associated,
     triggers: state.triggers,
     phases: Object.fromEntries(
-      Object.entries(state.phases).filter(([, v]) => v.length > 0),
+      Object.entries(state.phases).filter(([, v]) => v.length > 0)
     ),
     impact: state.impact,
     context_text: state.notes.trim() || null,
@@ -134,7 +134,7 @@ export function buildEntryBody(input: {
     treatments: draftsToInputs(state.treatments),
   };
 
-  if (state.mode === "episode") {
+  if (state.mode === 'episode') {
     body.started_at = state.startedAt;
     body.ended_at = state.ongoing ? null : state.endedAt;
   } else {

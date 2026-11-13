@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const dailyGoalsResponseSchema = z.object({
   calories: z.number(),
@@ -31,7 +31,9 @@ export const dailyGoalsResponseSchema = z.object({
   lunch_percentage: z.number(),
   dinner_percentage: z.number(),
   snacks_percentage: z.number(),
-  custom_nutrients: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  custom_nutrients: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional(),
   custom_meal_percentages: z.record(z.string(), z.number()).optional(),
 });
 

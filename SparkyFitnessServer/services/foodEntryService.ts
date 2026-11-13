@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository, {
   type MealEntryMoveResult,
@@ -21,16 +22,52 @@ import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import Papa from 'papaparse';
 import {
   type CopyReviewedFoodEntriesFromUserBody,
+  type CopyReviewedFoodEntriesToUserBody,
   type CopySelectedFoodEntriesFromUserBody,
-  foodEntryCopyFingerprint,
+  type CopySelectedFoodEntriesToUserBody,
+  copyFingerprintFor,
+  type FoodEntryCopyFingerprintVersion,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
   foodVolumeToMl,
+  resolveExerciseCalories,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
 // Helper functions (already defined)
+
+/** What an exercise row adds to the day: the applied override when set, else the estimate. */
+function countedExerciseCalories(ex: {
+  calories_burned: number | string;
+  calories_applied?: number | string | null;
+}): number {
+  return Number(ex.calories_applied ?? ex.calories_burned) || 0;
+}
+
+/**
+ * The day's exercise calories for the CSV summary row. A device "Active Calories"
+ * entry already includes the logged workouts, so take the larger of the two
+ * instead of adding both, as the diary's exercise card does.
+ */
+export function exportedExerciseCalories(
+  entries: {
+    exercise_name?: string | null;
+    calories_burned: number | string;
+    calories_applied?: number | string | null;
+  }[]
+): number {
+  let active = 0;
+  let logged = 0;
+  for (const ex of entries) {
+    if (ex.exercise_name === 'Active Calories') {
+      active += countedExerciseCalories(ex);
+    } else {
+      logged += countedExerciseCalories(ex);
+    }
+  }
+  return resolveExerciseCalories(logged, active, 0).calories;
+}
 /**
  * A parsed row from a food-diary CSV import.
  *
@@ -1535,29 +1572,33 @@ async function copyFoodEntriesFromUser(
   }
 }
 
-async function copySelectedFoodEntriesFromUser(
+async function requireFamilyCopyPermission(
+  actingUserId: string,
+  familyUserId: string,
+  direction: 'from' | 'to'
+) {
+  const hasAccess = await familyAccessRepository.checkCopyPermissions(
+    actingUserId,
+    familyUserId
+  );
+  if (!hasAccess) {
+    throw copyStatusError(
+      `Forbidden: You do not have permissions to copy ${direction} this family member.`,
+      403
+    );
+  }
+}
+
+async function copySelectedFoodEntries(
   targetUserId: string,
   actingUserId: string,
   sourceUserId: string,
   sourceDate: string,
   targetDate: string,
   targetMealType: string,
-  selections: CopySelectedFoodEntriesFromUserBody['entries']
+  selections: CopySelectedFoodEntriesFromUserBody['entries'],
+  fingerprintVersion?: FoodEntryCopyFingerprintVersion
 ) {
-  // checkCopyPermissions requires both diary management and food-library
-  // access, and must be evaluated for the real actor rather than a switched
-  // active-user context.
-  const hasAccess = await familyAccessRepository.checkCopyPermissions(
-    actingUserId,
-    sourceUserId
-  );
-  if (!hasAccess) {
-    throw copyStatusError(
-      'Forbidden: You do not have permissions to copy from this family member.',
-      403
-    );
-  }
-
   const targetMealTypeId = await resolveMealTypeId(
     targetUserId,
     targetMealType
@@ -1566,9 +1607,9 @@ async function copySelectedFoodEntriesFromUser(
     throw copyStatusError('Invalid target meal type.', 400);
   }
 
-  // Do not trust client-side diary rows. Re-fetch every requested source row
-  // before preparing anything for insertion, so an unavailable or changed row
-  // fails the entire selected-copy operation.
+  const fingerprint = copyFingerprintFor(fingerprintVersion);
+  // Re-fetch every source row using the server-derived owner. The repository
+  // repeats this check under the same transaction as the destination writes.
   const selectedEntries = await Promise.all(
     selections.map(async (selection) => ({
       selection,
@@ -1578,14 +1619,13 @@ async function copySelectedFoodEntriesFromUser(
       ),
     }))
   );
-
   for (const { selection, entry } of selectedEntries) {
     if (
       !entry ||
       entry.id !== selection.entryId ||
       entry.user_id !== sourceUserId ||
       entry.entry_date !== sourceDate ||
-      foodEntryCopyFingerprint(entry) !== selection.sourceFingerprint ||
+      fingerprint(entry) !== selection.sourceFingerprint ||
       !Number.isFinite(Number(entry.serving_size)) ||
       Number(entry.serving_size) <= 0
     ) {
@@ -1595,74 +1635,61 @@ async function copySelectedFoodEntriesFromUser(
       );
     }
   }
-
-  const entriesToCreate: FoodEntryInput[] = [];
-  for (const { selection, entry } of selectedEntries) {
-    // Catalog-linked rows have a stable identity for duplicate detection.
-    // Rows without food_id are not de-duplicated here, but they cannot be
-    // copied today: chk_food_or_meal_id requires meal_id when food_id is null,
-    // and neither this path nor the existing web copy path inserts meal_id.
-    const existingEntry = entry.food_id
-      ? await foodRepository.getFoodEntryByDetails(
-          targetUserId,
-          entry.food_id,
-          targetMealTypeId,
-          targetDate,
-          entry.variant_id,
-          null
-        )
-      : null;
-    if (existingEntry) continue;
-
-    entriesToCreate.push({
-      user_id: targetUserId,
-      created_by_user_id: actingUserId,
-      food_id: entry.food_id,
-      variant_id: entry.variant_id,
-      meal_type_id: targetMealTypeId,
-      food_entry_meal_id: null,
-      meal_plan_template_id: null,
-      entry_date: targetDate,
-      entry_time: entry.entry_time ?? null,
-      quantity: selection.quantity,
-      unit: entry.unit,
-      food_name: entry.food_name,
-      brand_name: entry.brand_name,
-      serving_size: entry.serving_size,
-      serving_unit: entry.serving_unit,
-      calories: entry.calories,
-      protein: entry.protein,
-      carbs: entry.carbs,
-      fat: entry.fat,
-      saturated_fat: entry.saturated_fat,
-      polyunsaturated_fat: entry.polyunsaturated_fat,
-      monounsaturated_fat: entry.monounsaturated_fat,
-      trans_fat: entry.trans_fat,
-      cholesterol: entry.cholesterol,
-      sodium: entry.sodium,
-      potassium: entry.potassium,
-      dietary_fiber: entry.dietary_fiber,
-      sugars: entry.sugars,
-      vitamin_a: entry.vitamin_a,
-      vitamin_c: entry.vitamin_c,
-      calcium: entry.calcium,
-      iron: entry.iron,
-      caffeine_mg: entry.caffeine_mg,
-      water_ml: entry.water_ml,
-      alcohol_g: entry.alcohol_g,
-      glycemic_index: entry.glycemic_index,
-      custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
-      // The note travels with the entry it describes.
-      notes: entry.notes ?? null,
-    });
-  }
-
-  return entriesToCreate.length === 0
-    ? []
-    : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId);
+  return foodRepository.copySelectedFoodEntries({
+    targetUserId,
+    actingUserId,
+    sourceUserId,
+    sourceDate,
+    targetDate,
+    targetMealTypeId,
+    selections,
+    ...(fingerprintVersion ? { fingerprintVersion } : {}),
+  });
 }
 
-async function copyReviewedFoodEntriesFromUser(
+async function copySelectedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  targetDate: string,
+  targetMealType: string,
+  selections: CopySelectedFoodEntriesFromUserBody['entries']
+) {
+  await requireFamilyCopyPermission(actingUserId, sourceUserId, 'from');
+  return copySelectedFoodEntries(
+    targetUserId,
+    actingUserId,
+    sourceUserId,
+    sourceDate,
+    targetDate,
+    targetMealType,
+    selections
+  );
+}
+
+async function copySelectedFoodEntriesToUser(
+  actingUserId: string,
+  targetUserId: string,
+  sourceDate: string,
+  targetDate: string,
+  targetMealType: string,
+  selections: CopySelectedFoodEntriesToUserBody['entries']
+) {
+  await requireFamilyCopyPermission(actingUserId, targetUserId, 'to');
+  return copySelectedFoodEntries(
+    targetUserId,
+    actingUserId,
+    actingUserId,
+    sourceDate,
+    targetDate,
+    targetMealType,
+    selections,
+    'to-user'
+  );
+}
+
+async function copyReviewedFoodEntries(
   targetUserId: string,
   actingUserId: string,
   sourceUserId: string,
@@ -1670,21 +1697,9 @@ async function copyReviewedFoodEntriesFromUser(
   sourceMealType: string,
   targetDate: string,
   targetMealType: string,
-  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
+  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries'],
+  fingerprintVersion?: FoodEntryCopyFingerprintVersion
 ) {
-  // Keep the reviewed-entry fingerprint contract isolated to this endpoint.
-  // Consolidating the otherwise overlapping copy paths is separate work.
-  const hasAccess = await familyAccessRepository.checkCopyPermissions(
-    actingUserId,
-    sourceUserId
-  );
-  if (!hasAccess) {
-    throw copyStatusError(
-      'Forbidden: You do not have permissions to copy from this family member.',
-      403
-    );
-  }
-
   const sourceMealTypeId = await resolveMealTypeId(
     sourceUserId,
     sourceMealType
@@ -1697,9 +1712,6 @@ async function copyReviewedFoodEntriesFromUser(
     throw copyStatusError('Invalid source or target meal type.', 400);
   }
 
-  // This early check produces the clear 409 without creating a container. The
-  // repository repeats the same comparison inside its serializable write
-  // transaction so a concurrent source mutation cannot slip through.
   const currentSourceEntries =
     await foodRepository.getFoodEntriesByDateAndMealType(
       sourceUserId,
@@ -1707,7 +1719,11 @@ async function copyReviewedFoodEntriesFromUser(
       sourceMealTypeId
     );
   if (
-    !hasExactReviewedFoodEntrySnapshot(currentSourceEntries, reviewedEntries)
+    !hasExactReviewedFoodEntrySnapshot(
+      currentSourceEntries,
+      reviewedEntries,
+      copyFingerprintFor(fingerprintVersion)
+    )
   ) {
     throw copyStatusError(
       'One or more source entries changed. Refresh the family diary.',
@@ -1724,9 +1740,55 @@ async function copyReviewedFoodEntriesFromUser(
     targetDate,
     targetMealTypeId,
     reviewedEntries,
+    ...(fingerprintVersion ? { fingerprintVersion } : {}),
   });
 }
 
+async function copyReviewedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string,
+  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
+) {
+  await requireFamilyCopyPermission(actingUserId, sourceUserId, 'from');
+  return copyReviewedFoodEntries(
+    targetUserId,
+    actingUserId,
+    sourceUserId,
+    sourceDate,
+    sourceMealType,
+    targetDate,
+    targetMealType,
+    reviewedEntries
+  );
+}
+
+async function copyReviewedFoodEntriesToUser(
+  actingUserId: string,
+  targetUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string,
+  reviewedEntries: CopyReviewedFoodEntriesToUserBody['entries']
+) {
+  await requireFamilyCopyPermission(actingUserId, targetUserId, 'to');
+  return copyReviewedFoodEntries(
+    targetUserId,
+    actingUserId,
+    actingUserId,
+    sourceDate,
+    sourceMealType,
+    targetDate,
+    targetMealType,
+    reviewedEntries,
+    'to-user'
+  );
+}
 async function copyFoodEntriesToUser(
   authenticatedUserId: string,
   actingUserId: string,
@@ -2226,6 +2288,7 @@ async function resolveLoggedMealPortion(
   authenticatedUserId: string,
   overrides?: {
     entry_total_servings?: number | null;
+    transactionClient?: PoolClient;
   }
 ): Promise<{
   totalServings: number | null;
@@ -2240,10 +2303,16 @@ async function resolveLoggedMealPortion(
   // If a template is linked and we are missing snapshot values, fetch the template to populate them
   if (entry.meal_template_id && totalServings === null) {
     try {
-      const template = await mealRepository.getMealById(
-        entry.meal_template_id,
-        authenticatedUserId
-      );
+      const template = overrides?.transactionClient
+        ? await mealRepository.getMealById(
+            entry.meal_template_id,
+            authenticatedUserId,
+            overrides.transactionClient
+          )
+        : await mealRepository.getMealById(
+            entry.meal_template_id,
+            authenticatedUserId
+          );
       if (template) {
         if (template.serving_unit === 'serving') {
           totalServings = Number(template.total_servings) || 1.0;
@@ -2254,6 +2323,7 @@ async function resolveLoggedMealPortion(
         }
       }
     } catch (err) {
+      if (overrides?.transactionClient) throw err;
       log(
         'warn',
         'Failed to fetch meal template for unscaling / portion resolution:',
@@ -2495,6 +2565,54 @@ async function updateFoodEntryMeal(
     `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(updatedMealData)}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`
   );
   try {
+    // Validate and normalize every numeric field before updating the parent or
+    // deleting components. Request bodies can contain malformed snapshot data.
+    const numericFoodFields = [
+      'quantity',
+      'serving_size',
+      'calories',
+      'protein',
+      'carbs',
+      'fat',
+      'saturated_fat',
+      'polyunsaturated_fat',
+      'monounsaturated_fat',
+      'trans_fat',
+      'cholesterol',
+      'sodium',
+      'potassium',
+      'dietary_fiber',
+      'sugars',
+      'vitamin_a',
+      'vitamin_c',
+      'calcium',
+      'iron',
+      'caffeine_mg',
+      'water_ml',
+      'alcohol_g',
+    ] as const;
+    const validatedFoods = updatedMealData.foods?.map((foodItem) => {
+      const validatedFood = { ...foodItem };
+      for (const field of numericFoodFields) {
+        const value = foodItem[field];
+        if (value === undefined || value === null) continue;
+        if (
+          (typeof value !== 'number' && typeof value !== 'string') ||
+          (typeof value === 'string' && value.trim() === '') ||
+          !Number.isFinite(Number(value)) ||
+          Number(value) < 0 ||
+          (field === 'serving_size' && Number(value) <= 0)
+        ) {
+          const error: Error & { statusCode?: number } = new Error(
+            `Food item ${field} must be a finite ${field === 'serving_size' ? 'positive number' : 'nonnegative number'}.`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+        validatedFood[field] = Number(value);
+      }
+      return validatedFood;
+    });
     // 1. Reject a component-affecting update that cannot rebuild its
     // components BEFORE touching the parent row. The component rows carry the
     // meal's date, meal type, and scaled nutrition, so anything that changes
@@ -2520,167 +2638,207 @@ async function updateFoodEntryMeal(
         throw error;
       }
     }
-    // 2. Update the parent food_entry_meals record's metadata
-    const updatedFoodEntryMeal =
-      await foodEntryMealRepository.updateFoodEntryMeal(
-        foodEntryMealId,
-        {
-          name: updatedMealData.name,
-          description: updatedMealData.description,
-          notes: updatedMealData.notes, // undefined preserves, null clears
-          meal_type: updatedMealData.meal_type, // Also allow updating meal type
-          meal_type_id: updatedMealData.meal_type_id, // Update meal type id so component entries inherit it
-          entry_date: updatedMealData.entry_date, // And entry date
-          entry_time: updatedMealData.entry_time, // undefined preserves, null clears
-          meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
-          quantity: updatedMealData.quantity as number | null | undefined, // Update quantity
-          unit: updatedMealData.unit, // Update unit
-          entry_total_servings: updatedMealData.entry_total_servings,
-        },
-        authenticatedUserId
-      );
-    if (!updatedFoodEntryMeal) {
-      throw new Error('Food entry meal not found or not authorized to update.');
-    }
-    const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
-    // 3. Rebuild the component food_entries — but only when the caller sent
-    // them. `foods` is optional, and a metadata-only update (a note, say)
-    // would otherwise delete every component and recreate none, silently
-    // emptying the logged meal.
-    if (!updatedMealData.foods) {
-      log(
-        'debug',
-        `updateFoodEntryMeal: metadata-only update for ${foodEntryMealId}; leaving components untouched.`
-      );
-      return updatedFoodEntryMeal;
-    }
-    await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(
-      foodEntryMealId,
-      authenticatedUserId
-    );
-    log(
-      'debug',
-      `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
-    );
-    log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
-    // Calculate portion multiplier snapshot-first.
-    const portion = await resolveLoggedMealPortion(
-      {
-        meal_template_id:
-          updatedFoodEntryMeal.meal_template_id ??
-          updatedMealData.meal_template_id,
-        quantity:
-          updatedMealData.quantity !== undefined
-            ? Number(updatedMealData.quantity) || 1.0
-            : updatedFoodEntryMeal.quantity,
-        unit: updatedMealData.unit ?? updatedFoodEntryMeal.unit,
-        legacy_serving_unit_math:
-          updatedFoodEntryMeal.legacy_serving_unit_math === true,
-        entry_total_servings:
-          updatedMealData.entry_total_servings !== undefined
-            ? updatedMealData.entry_total_servings
-            : updatedFoodEntryMeal.entry_total_servings,
-      },
-      authenticatedUserId
-    );
-    const multiplier = portion.multiplier;
-    log(
-      'info',
-      `Update portion scaling: multiplier ${multiplier} (consumed: ${updatedMealData.quantity ?? updatedFoodEntryMeal.quantity}, total_servings: ${portion.totalServings}, legacy: ${updatedFoodEntryMeal.legacy_serving_unit_math === true})`
-    );
-    // 3. Create new component food_entries records
-    const entriesToCreate = [];
-    for (const foodItem of updatedMealData.foods ?? []) {
-      const food = await foodRepository.getFoodById(
-        String(foodItem.food_id),
-        authenticatedUserId
-      );
-      if (!food) {
-        log(
-          'warn',
-          `Food with ID ${foodItem.food_id} not found when updating food entry meal. Skipping.`
+    // Resolve every ingredient before any writes; never silently drop a row
+    // that cannot be rebuilt from its snapshot or an accessible variant.
+    const preparedFoods = [];
+    for (const foodItem of validatedFoods ?? []) {
+      const food = foodItem.food_id
+        ? await foodRepository.getFoodById(
+            foodItem.food_id,
+            authenticatedUserId
+          )
+        : null;
+      const variantId = foodItem.variant_id || food?.default_variant?.id;
+      const variant = variantId
+        ? await foodRepository.getFoodVariantById(
+            variantId,
+            authenticatedUserId
+          )
+        : null;
+
+      // Diary editors send the stored per-serving nutrition along with the
+      // edited amount. Keep that snapshot even if the library links were
+      // deleted or the current variant's nutrition has changed. Older clients
+      // that send only IDs still resolve their nutrition from the variant.
+      // serving_size and calories describe one reference serving, not values
+      // pre-scaled to the consumed quantity; scaling happens when entries are read.
+      let snapshot;
+      if (
+        foodItem.serving_size !== undefined &&
+        foodItem.serving_size !== null &&
+        Number.isFinite(Number(foodItem.serving_size)) &&
+        Number(foodItem.serving_size) > 0 &&
+        foodItem.calories !== undefined &&
+        foodItem.calories !== null
+      ) {
+        const foodName = (foodItem.food_name ?? food?.name ?? '').trim();
+        if (!foodName) {
+          const error: Error & { statusCode?: number } = new Error(
+            'A food item needs a nonempty food name.'
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+        snapshot = buildFoodEntrySnapshot(
+          {
+            name: foodName,
+            brand: food?.brand ?? null,
+          },
+          {
+            ...foodItem,
+            serving_size: foodItem.serving_size ?? null,
+            serving_unit: foodItem.serving_unit ?? foodItem.unit ?? null,
+          }
         );
-        continue;
+      } else {
+        if (!food || !variant) {
+          const error: Error & { statusCode?: number } = new Error(
+            'A food item needs a stored serving size and calories or an accessible food variant.'
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+        snapshot = buildFoodEntrySnapshot(food, variant);
       }
-      const variantId = foodItem.variant_id || food.default_variant?.id;
-      if (!variantId) {
-        log(
-          'warn',
-          `No variant ID found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
-        );
-        continue;
-      }
-      const variant = await foodRepository.getFoodVariantById(
-        variantId,
-        authenticatedUserId
-      );
-      if (!variant) {
-        log(
-          'warn',
-          `Food variant with ID ${variantId} not found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
-        );
-        continue;
-      }
-      const snapshot = {
-        food_name: food.name,
-        brand_name: food.brand,
-        serving_size: variant.serving_size,
-        serving_unit: variant.serving_unit,
-        calories: variant.calories,
-        protein: variant.protein,
-        carbs: variant.carbs,
-        fat: variant.fat,
-        saturated_fat: variant.saturated_fat,
-        polyunsaturated_fat: variant.polyunsaturated_fat,
-        monounsaturated_fat: variant.monounsaturated_fat,
-        trans_fat: variant.trans_fat,
-        cholesterol: variant.cholesterol,
-        sodium: variant.sodium,
-        potassium: variant.potassium,
-        dietary_fiber: variant.dietary_fiber,
-        sugars: variant.sugars,
-        vitamin_a: variant.vitamin_a,
-        vitamin_c: variant.vitamin_c,
-        calcium: variant.calcium,
-        iron: variant.iron,
-        caffeine_mg: variant.caffeine_mg,
-        water_ml: variant.water_ml,
-        alcohol_g: variant.alcohol_g,
-        glycemic_index: variant.glycemic_index,
-        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
-      };
-      // Scale the food quantity
-      const scaledQuantity = Number(foodItem.quantity ?? 0) * multiplier;
-      entriesToCreate.push({
-        user_id: authenticatedUserId,
-        created_by_user_id: actingUserId,
-        food_id: foodItem.food_id,
-        meal_type_id: resolvedMealTypeId,
-        quantity: scaledQuantity, // SCALED quantity
-        unit: foodItem.unit,
-        variant_id: variantId,
-        // Fall back to the stored date like every other inherited field. An
-        // omitted entry_date would otherwise reach the NOT NULL column and
-        // fail the insert — after the delete has already run, leaving the
-        // logged meal with no components and nothing to retry from.
-        entry_date:
-          updatedMealData.entry_date ?? updatedFoodEntryMeal.entry_date,
-        entry_time: updatedFoodEntryMeal.entry_time ?? null,
-        food_entry_meal_id: foodEntryMealId, // Link to the existing food_entry_meals ID
-        ...snapshot,
+      preparedFoods.push({
+        foodItem,
+        food_id: food ? foodItem.food_id : null,
+        variant_id: food && variant ? variantId : null,
+        snapshot,
       });
     }
-    if (entriesToCreate.length > 0) {
-      await foodRepository.bulkCreateFoodEntries(
-        entriesToCreate,
-        authenticatedUserId
+    // All meal writes share one RLS-scoped connection and transaction. A late
+    // insert/constraint failure must retain both the parent and its components.
+    const client = await getClient(authenticatedUserId);
+    let discardClient = false;
+    try {
+      await client.query('BEGIN');
+      // 2. Update the parent food_entry_meals record's metadata
+      const updatedFoodEntryMeal =
+        await foodEntryMealRepository.updateFoodEntryMeal(
+          foodEntryMealId,
+          {
+            name: updatedMealData.name,
+            description: updatedMealData.description,
+            notes: updatedMealData.notes, // undefined preserves, null clears
+            meal_type: updatedMealData.meal_type, // Also allow updating meal type
+            meal_type_id: updatedMealData.meal_type_id, // Update meal type id so component entries inherit it
+            entry_date: updatedMealData.entry_date, // And entry date
+            entry_time: updatedMealData.entry_time, // undefined preserves, null clears
+            meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
+            quantity: updatedMealData.quantity as number | null | undefined, // Update quantity
+            unit: updatedMealData.unit, // Update unit
+            entry_total_servings: updatedMealData.entry_total_servings,
+          },
+          authenticatedUserId,
+          client
+        );
+      if (!updatedFoodEntryMeal) {
+        throw new Error(
+          'Food entry meal not found or not authorized to update.'
+        );
+      }
+      const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
+      // 3. Rebuild the component food_entries — but only when the caller sent
+      // them. `foods` is optional, and a metadata-only update (a note, say)
+      // would otherwise delete every component and recreate none, silently
+      // emptying the logged meal.
+      if (!updatedMealData.foods) {
+        log(
+          'debug',
+          `updateFoodEntryMeal: metadata-only update for ${foodEntryMealId}; leaving components untouched.`
+        );
+        await client.query('COMMIT');
+        return updatedFoodEntryMeal;
+      }
+      log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
+      // Calculate portion multiplier snapshot-first.
+      const portion = await resolveLoggedMealPortion(
+        {
+          meal_template_id:
+            updatedFoodEntryMeal.meal_template_id ??
+            updatedMealData.meal_template_id,
+          quantity:
+            updatedMealData.quantity !== undefined
+              ? Number(updatedMealData.quantity) || 1.0
+              : updatedFoodEntryMeal.quantity,
+          unit: updatedMealData.unit ?? updatedFoodEntryMeal.unit,
+          legacy_serving_unit_math:
+            updatedFoodEntryMeal.legacy_serving_unit_math === true,
+          entry_total_servings:
+            updatedMealData.entry_total_servings !== undefined
+              ? updatedMealData.entry_total_servings
+              : updatedFoodEntryMeal.entry_total_servings,
+        },
+        authenticatedUserId,
+        { transactionClient: client }
       );
+      const multiplier = portion.multiplier;
       log(
         'info',
-        `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`
+        `Update portion scaling: multiplier ${multiplier} (consumed: ${updatedMealData.quantity ?? updatedFoodEntryMeal.quantity}, total_servings: ${portion.totalServings}, legacy: ${updatedFoodEntryMeal.legacy_serving_unit_math === true})`
       );
+      // 3. Create new component food_entries records
+      const entriesToCreate = [];
+      for (const { foodItem, food_id, variant_id, snapshot } of preparedFoods) {
+        // Scale the food quantity
+        const scaledQuantity = Number(foodItem.quantity ?? 0) * multiplier;
+        entriesToCreate.push({
+          user_id: authenticatedUserId,
+          created_by_user_id: actingUserId,
+          food_id,
+          meal_type_id: resolvedMealTypeId,
+          quantity: scaledQuantity, // SCALED quantity
+          unit: foodItem.unit,
+          variant_id,
+          // Fall back to the stored date like every other inherited field. An
+          // omitted entry_date would otherwise reach the NOT NULL column and
+          // fail the insert — after the delete has already run, leaving the
+          // logged meal with no components and nothing to retry from.
+          entry_date:
+            updatedMealData.entry_date ?? updatedFoodEntryMeal.entry_date,
+          entry_time: updatedFoodEntryMeal.entry_time ?? null,
+          food_entry_meal_id: foodEntryMealId, // Link to the existing food_entry_meals ID
+          ...snapshot,
+        });
+      }
+      await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(
+        foodEntryMealId,
+        authenticatedUserId,
+        client
+      );
+      log(
+        'debug',
+        `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
+      );
+      if (entriesToCreate.length > 0) {
+        await foodRepository.bulkCreateFoodEntries(
+          entriesToCreate,
+          authenticatedUserId,
+          { client }
+        );
+        log(
+          'info',
+          `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`
+        );
+      }
+      await client.query('COMMIT');
+      return updatedFoodEntryMeal;
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        discardClient = true;
+        log(
+          'error',
+          'Failed to roll back the logged meal update:',
+          rollbackError
+        );
+      }
+      throw error;
+    } finally {
+      client.release(discardClient);
     }
-    return updatedFoodEntryMeal;
   } catch (error) {
     log(
       'error',
@@ -3364,16 +3522,11 @@ async function exportAllDiaryEntriesToCSVStream(
         );
         const waterTotal = parseFloat(String(water?.water_ml)) || 0;
 
-        let caloriesBurned = 0;
-        exerciseEntries.forEach(
-          (ex: {
-            entry_date: string | Date;
-            calories_burned: number | string;
-          }) => {
-            if (getDayString(ex.entry_date) === dateStr) {
-              caloriesBurned += Number(ex.calories_burned) || 0;
-            }
-          }
+        const caloriesBurned = exportedExerciseCalories(
+          exerciseEntries.filter(
+            (ex: { entry_date: string | Date }) =>
+              getDayString(ex.entry_date) === dateStr
+          )
         );
 
         const drinkLogs = waterIntakeLogs.filter(
@@ -3707,15 +3860,7 @@ async function exportAllDiaryEntriesToCSVStream(
         null
       );
 
-      let caloriesBurned = 0;
-      exEntries.forEach(
-        (ex: {
-          entry_date: string | Date;
-          calories_burned: number | string;
-        }) => {
-          caloriesBurned += Number(ex.calories_burned) || 0;
-        }
-      );
+      const caloriesBurned = exportedExerciseCalories(exEntries);
 
       const lastDateDrinkLogs =
         await measurementRepository.getWaterIntakeLogsByDates(userId, [
@@ -3972,8 +4117,10 @@ export { deleteFoodEntryMeal };
 export { exportAllDiaryEntriesToCSVStream };
 export { copyFoodEntriesFromUser };
 export { copyReviewedFoodEntriesFromUser };
+export { copyReviewedFoodEntriesToUser };
 export { copyFoodEntriesToUser };
 export { copySelectedFoodEntriesFromUser };
+export { copySelectedFoodEntriesToUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
   createFoodEntry,
@@ -3996,7 +4143,9 @@ export default {
   exportAllDiaryEntriesToCSVStream,
   copyFoodEntriesFromUser,
   copyReviewedFoodEntriesFromUser,
+  copyReviewedFoodEntriesToUser,
   copyFoodEntriesToUser,
   copySelectedFoodEntriesFromUser,
+  copySelectedFoodEntriesToUser,
   importFoodDiaryEntriesInBulk,
 };

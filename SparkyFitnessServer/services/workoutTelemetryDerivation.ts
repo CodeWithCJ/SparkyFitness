@@ -7,7 +7,7 @@
  * place instead of once per platform, and keeps the upload small.
  */
 
-import type { HrSample } from './hrZoneCalculator.js';
+import type { HrSample } from '@workspace/shared';
 
 /** A GPS trackpoint as it arrives on the wire (short keys). */
 export interface TelemetryGpsPoint {

@@ -2,11 +2,13 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'
 import request from 'supertest';
 import express from 'express';
+import { instantToDay } from '@workspace/shared';
 import fastingRoutes from '../routes/fastingRoutes.js';
 import fastingRepository from '../models/fastingRepository.js';
 import fastingPreferencesRepository from '../models/fastingPreferencesRepository.js';
 import fastingAutoCalculationService from '../services/fastingAutoCalculationService.js';
 import moodRepository from '../models/moodRepository.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 // Mock repositories and middleware
 vi.mock('../models/fastingRepository.js');
@@ -199,12 +201,34 @@ describe('Fasting Routes', () => {
         .send({ id: 'fast-id', end_time: endTime, mood: { value: 8 } });
 
       expect(res.statusCode).toEqual(200);
-      expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
-        'testUserId',
-        10,
-        '',
-        endTime
-      );
+      expect(moodRepository.createCheckin).toHaveBeenCalledWith('testUserId', {
+        moodValue: 10,
+        notes: null,
+        entryTimestamp: endTime,
+        entryDate: instantToDay(endTime, 'UTC'),
+      });
+    });
+
+    it('dates the check-in in the user timezone, not the UTC day', async () => {
+      const lateEnd = '2026-10-20T03:30:00.000Z';
+      vi.mocked(loadUserTimezone).mockResolvedValue('America/Chicago');
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValue(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+
+      const res = await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: lateEnd, mood: { value: 50 } });
+
+      expect(res.statusCode).toEqual(200);
+      expect(moodRepository.createCheckin).toHaveBeenCalledWith('testUserId', {
+        moodValue: 50,
+        notes: null,
+        entryTimestamp: lateEnd,
+        entryDate: '2026-10-19',
+      });
+      vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
     });
 
     it('clamps the mood on the auto-calculated fast too', async () => {
@@ -224,12 +248,79 @@ describe('Fasting Routes', () => {
         });
 
       expect(res.statusCode).toEqual(200);
-      expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      expect(moodRepository.createCheckin).toHaveBeenCalledWith('testUserId', {
+        moodValue: 100,
+        notes: 'Done',
+        entryTimestamp: endTime,
+        entryDate: instantToDay(endTime, 'UTC'),
+      });
+    });
+
+    it('ends an auto-calculated fast with an auto-prefixed id from the client', async () => {
+      // @ts-expect-error TS(2339)
+      fastingAutoCalculationService.getCurrentAutoFast.mockResolvedValue({
+        start_time: '2026-07-18T00:00:00.000Z',
+        target_end_time: '2026-07-18T16:00:00.000Z',
+        fasting_type: '16:8',
+      });
+      // @ts-expect-error TS(2339)
+      fastingRepository.createCompletedFast.mockResolvedValue({
+        id: 'completed-uuid',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+        duration_minutes: 960,
+      });
+
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-2026-07-18T00:00:00.000Z',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(200);
+      expect(fastingRepository.createCompletedFast).toHaveBeenCalledWith(
         'testUserId',
-        100,
-        'Done',
-        endTime
+        '2026-07-18T00:00:00.000Z',
+        endTime,
+        '2026-07-18T16:00:00.000Z',
+        960,
+        '16:8'
       );
+      expect(fastingRepository.getFastingById).not.toHaveBeenCalled();
+    });
+
+    it('rejects ending an eating window as a fast', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-eating-window-2026-07-18T00:00:00.000Z',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Cannot end an eating window');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid timestamp dates in fast end request', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-current',
+        start_time: 'not-a-date',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid start_time and end_time');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-string fast id', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 12345,
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid fast id is required');
     });
 
     it('rejects a mood that is not a number before ending anything', async () => {
@@ -241,7 +332,133 @@ describe('Fasting Routes', () => {
       expect(res.body.error).toBe('Mood value must be a number');
       expect(fastingRepository.getFastingById).not.toHaveBeenCalled();
       expect(fastingRepository.endFast).not.toHaveBeenCalled();
-      expect(moodRepository.createOrUpdateMoodEntry).not.toHaveBeenCalled();
+      expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+    });
+
+    it('logs the mood only after the fast has ended', async () => {
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValue(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 50 } })
+        .expect(200);
+
+      const ended = vi.mocked(fastingRepository.endFast).mock
+        .invocationCallOrder[0]!;
+      const logged = vi.mocked(moodRepository.createCheckin).mock
+        .invocationCallOrder[0]!;
+      expect(logged).toBeGreaterThan(ended);
+    });
+
+    it('logs no mood when ending the fast fails', async () => {
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValue(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockRejectedValueOnce(new Error('db down'));
+
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 50 } })
+        .expect(500);
+
+      expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+    });
+
+    it('logs no second mood when a retried end finds the first check-in', async () => {
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValueOnce({
+        ...activeFast,
+        status: 'COMPLETED',
+      });
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+      vi.mocked(moodRepository.hasManualCheckinAt).mockResolvedValueOnce(true);
+
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 50 } })
+        .expect(200);
+
+      expect(fastingRepository.endFast).toHaveBeenCalled();
+      expect(moodRepository.hasManualCheckinAt).toHaveBeenCalledWith(
+        'testUserId',
+        endTime
+      );
+      expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+    });
+
+    it('recovers the mood on a retry after its first write failed', async () => {
+      // First attempt: the fast ends, then the mood write fails.
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValueOnce(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+      vi.mocked(moodRepository.createCheckin).mockRejectedValueOnce(
+        new Error('db down')
+      );
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 50 } })
+        .expect(500);
+
+      // Retry: the fast is already completed and no check-in was stored.
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValueOnce({
+        ...activeFast,
+        status: 'COMPLETED',
+      });
+      vi.mocked(moodRepository.hasManualCheckinAt).mockResolvedValueOnce(false);
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 50 } })
+        .expect(200);
+
+      expect(moodRepository.createCheckin).toHaveBeenCalledTimes(2);
+      expect(moodRepository.createCheckin).toHaveBeenLastCalledWith(
+        'testUserId',
+        expect.objectContaining({ moodValue: 50, entryTimestamp: endTime })
+      );
+    });
+
+    it('logs no second mood when the auto-calculated fast and its check-in are already recorded', async () => {
+      // @ts-expect-error TS(2339)
+      fastingAutoCalculationService.getCurrentAutoFast.mockResolvedValue({
+        start_time: '2026-07-18T00:00:00.000Z',
+      });
+      // A retry: the insert finds the fast it already stored and returns null.
+      // @ts-expect-error TS(2339)
+      fastingRepository.createCompletedFast.mockResolvedValueOnce(null);
+      vi.mocked(moodRepository.hasManualCheckinAt).mockResolvedValueOnce(true);
+
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'auto-current', end_time: endTime, mood: { value: 50 } })
+        .expect(200);
+
+      expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+    });
+
+    it('recovers the auto-calculated fast mood when its check-in is missing on a retry', async () => {
+      // @ts-expect-error TS(2339)
+      fastingAutoCalculationService.getCurrentAutoFast.mockResolvedValue({
+        start_time: '2026-07-18T00:00:00.000Z',
+      });
+      // @ts-expect-error TS(2339)
+      fastingRepository.createCompletedFast.mockResolvedValueOnce(null);
+      vi.mocked(moodRepository.hasManualCheckinAt).mockResolvedValueOnce(false);
+
+      await request(app)
+        .post('/fasting/end')
+        .send({ id: 'auto-current', end_time: endTime, mood: { value: 50 } })
+        .expect(200);
+
+      expect(moodRepository.createCheckin).toHaveBeenCalledWith(
+        'testUserId',
+        expect.objectContaining({ moodValue: 50, entryTimestamp: endTime })
+      );
     });
 
     it('ends the fast without logging a mood that carries no value', async () => {
@@ -256,7 +473,7 @@ describe('Fasting Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(fastingRepository.endFast).toHaveBeenCalled();
-      expect(moodRepository.createOrUpdateMoodEntry).not.toHaveBeenCalled();
+      expect(moodRepository.createCheckin).not.toHaveBeenCalled();
     });
   });
 

@@ -1,26 +1,53 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { HeartRateBand } from '@workspace/shared';
+import type {
+  FitnessTestResponse,
+  HeartRateBand,
+  PaceReferenceRace,
+} from '@workspace/shared';
 import { formatLocalizedNumber } from '../../localization';
 import { formatClock } from '../../utils/gpsRecording';
+import { raceResultText } from '../../utils/paceReference';
+import { fitnessTestName } from '../../utils/fitnessTest';
+import { formatDayLabel } from '../../utils/dayLabel';
 import type { PaceBandChoice } from './PaceBandCard';
 
 export interface SuggestedRangesCardProps {
   unit: 'km' | 'miles';
-  /** Pace ranges in the display unit; null when there is no history to base them on. */
-  pace: { work: PaceBandChoice; easy: PaceBandChoice; sessions: number } | null;
+  /**
+   * Pace ranges in the display unit; null when there is no history or race to
+   * base them on. `race` is set when they come from a recent race result, and
+   * `efforts` has the ranges for tempo, marathon-pace and stride stretches.
+   */
+  pace: {
+    work: PaceBandChoice;
+    easy: PaceBandChoice;
+    warm: PaceBandChoice;
+    sessions: number;
+    race?: PaceReferenceRace | null;
+    /** Set when they come from the latest fitness test. */
+    fitnessTest?: FitnessTestResponse | null;
+    efforts?: {
+      tempo?: PaceBandChoice;
+      marathon?: PaceBandChoice;
+      stride?: PaceBandChoice;
+    };
+  } | null;
   /** Heart-rate ranges; null without a birth date, or without a watch to read them. */
   heartRate: {
     work: HeartRateBand;
     easy: HeartRateBand;
+    warm: HeartRateBand;
     maxHeartRate: number;
+    maxHrSource: 'user' | 'age' | 'observed' | 'fallback';
+    zoneMethod: 'percent_max' | 'heart_rate_reserve' | 'custom';
   } | null;
   onUse: () => void;
 }
 
 /**
- * Starting ranges for a plan's fast and easy stretches, with where they came
+ * Starting ranges for a plan's fast and easy stretches and its warm-up and cool-down, with where they came
  * from. Nothing is switched on until the person taps Use.
  */
 const SuggestedRangesCard: React.FC<SuggestedRangesCardProps> = ({
@@ -61,19 +88,59 @@ const SuggestedRangesCard: React.FC<SuggestedRangesCardProps> = ({
             {t('recordActivity.suggestedRanges.pace', {
               fast: paceText(pace.work),
               easy: paceText(pace.easy),
-              defaultValue: 'Pace: fast {{fast}}, easy {{easy}}',
+              warm: paceText(pace.warm),
+              defaultValue:
+                'Pace: fast {{fast}}, easy {{easy}}, warm-up and cool-down {{warm}}',
             })}
           </Text>
+          {pace.efforts && Object.keys(pace.efforts).length > 0 ? (
+            <Text className="text-text-primary text-sm mt-0.5">
+              {[
+                pace.efforts.tempo
+                  ? t('recordActivity.suggestedRanges.tempo', {
+                      range: paceText(pace.efforts.tempo),
+                      defaultValue: 'tempo {{range}}',
+                    })
+                  : null,
+                pace.efforts.marathon
+                  ? t('recordActivity.suggestedRanges.marathonPace', {
+                      range: paceText(pace.efforts.marathon),
+                      defaultValue: 'marathon pace {{range}}',
+                    })
+                  : null,
+                pace.efforts.stride
+                  ? t('recordActivity.suggestedRanges.strides', {
+                      range: paceText(pace.efforts.stride),
+                      defaultValue: 'strides {{range}}',
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </Text>
+          ) : null}
           <Text className="text-text-secondary text-xs mt-0.5">
-            {t('recordActivity.suggestedRanges.paceSource', {
-              count: pace.sessions,
-              formattedCount: formatLocalizedNumber(pace.sessions),
-              defaultValue_one:
-                'Based on your last {{formattedCount}} session.',
-              defaultValue_other:
-                'Based on your last {{formattedCount}} sessions.',
-              defaultValue: 'Based on your last {{formattedCount}} sessions.',
-            })}
+            {pace.fitnessTest
+              ? t('recordActivity.suggestedRanges.paceSourceTest', {
+                  test: fitnessTestName(t, pace.fitnessTest.test_type),
+                  date: formatDayLabel(pace.fitnessTest.test_date, 'long'),
+                  defaultValue: 'Based on your {{test}} on {{date}}.',
+                })
+              : pace.race
+                ? t('recordActivity.suggestedRanges.paceSourceRace', {
+                    race: raceResultText(t, pace.race),
+                    defaultValue: 'Based on your recent race: {{race}}.',
+                  })
+                : t('recordActivity.suggestedRanges.paceSource', {
+                    count: pace.sessions,
+                    formattedCount: formatLocalizedNumber(pace.sessions),
+                    defaultValue_one:
+                      'Based on your last {{formattedCount}} session.',
+                    defaultValue_other:
+                      'Based on your last {{formattedCount}} sessions.',
+                    defaultValue:
+                      'Based on your last {{formattedCount}} sessions.',
+                  })}
           </Text>
         </View>
       ) : null}
@@ -83,15 +150,33 @@ const SuggestedRangesCard: React.FC<SuggestedRangesCardProps> = ({
             {t('recordActivity.suggestedRanges.heartRate', {
               fast: bpmText(heartRate.work),
               easy: bpmText(heartRate.easy),
-              defaultValue: 'Heart rate: fast {{fast}}, easy {{easy}}',
+              warm: bpmText(heartRate.warm),
+              defaultValue:
+                'Heart rate: fast {{fast}}, easy {{easy}}, warm-up and cool-down {{warm}}',
             })}
           </Text>
           <Text className="text-text-secondary text-xs mt-0.5">
-            {t('recordActivity.suggestedRanges.heartRateSource', {
-              max: heartRate.maxHeartRate,
-              defaultValue:
-                'From an estimated maximum of {{max}} bpm for your age.',
-            })}
+            {heartRate.zoneMethod === 'custom'
+              ? t('recordActivity.suggestedRanges.heartRateSourceCustom', {
+                  defaultValue: 'From your custom heart rate zones.',
+                })
+              : heartRate.zoneMethod === 'heart_rate_reserve'
+                ? t('recordActivity.suggestedRanges.heartRateSourceReserve', {
+                    max: heartRate.maxHeartRate,
+                    defaultValue:
+                      'From your heart rate reserve zones, with a maximum of {{max}} bpm.',
+                  })
+                : heartRate.maxHrSource === 'user'
+                  ? t('recordActivity.suggestedRanges.heartRateSourceUser', {
+                      max: heartRate.maxHeartRate,
+                      defaultValue:
+                        'From your maximum heart rate of {{max}} bpm.',
+                    })
+                  : t('recordActivity.suggestedRanges.heartRateSource', {
+                      max: heartRate.maxHeartRate,
+                      defaultValue:
+                        'From an estimated maximum of {{max}} bpm for your age.',
+                    })}
           </Text>
         </View>
       ) : null}

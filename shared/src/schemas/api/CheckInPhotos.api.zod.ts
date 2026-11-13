@@ -1,7 +1,7 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /** The three angles the server accepts for a check-in progress photo. */
-export const PHOTO_TYPES = ["front", "back", "side"] as const;
+export const PHOTO_TYPES = ['front', 'back', 'side'] as const;
 
 export const photoTypeSchema = z.enum(PHOTO_TYPES);
 
@@ -23,7 +23,7 @@ export const checkInPhotoWithWeightSchema = z.object({
 
 /** Response of GET /measurements/check-in-photos, newest day first. */
 export const checkInPhotoGalleryResponseSchema = z.array(
-  checkInPhotoWithWeightSchema,
+  checkInPhotoWithWeightSchema
 );
 
 /** A photo row as returned by GET /measurements/check-in-photos/:date. */

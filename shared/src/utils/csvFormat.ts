@@ -10,26 +10,26 @@
 // visible, auto-detected, and overridable, plus adds the delimiter and
 // quote-character axes Papa was already guessing at without telling anyone.
 
-import { isBlank, type DecimalFormat } from "./csvValue.ts";
+import { isBlank, type DecimalFormat } from './csvValue.ts';
 
 /** Delimiters PapaParse itself guesses between; see papaparse's guessDelimiter. */
-export type CsvDelimiter = "," | ";" | "\t" | "|";
+export type CsvDelimiter = ',' | ';' | '\t' | '|';
 
 export type CsvQuoteChar = '"' | "'";
 
 /** A user-facing choice for a genuinely ambiguous axis: their pick, or 'auto'. */
-export type DecimalFormatChoice = DecimalFormat | "auto";
-export type CsvDelimiterChoice = CsvDelimiter | "auto";
+export type DecimalFormatChoice = DecimalFormat | 'auto';
+export type CsvDelimiterChoice = CsvDelimiter | 'auto';
 
 /** Supported date formats for CSV importers. */
 export const DATE_FORMATS: string[] = [
-  "MM/dd/yyyy",
-  "dd/MM/yyyy",
-  "dd-MMM-yyyy",
-  "yyyy-MM-dd",
-  "MMM dd, yyyy",
-  "yyyy/MM/dd",
-  "dd.MM.yyyy",
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd-MMM-yyyy',
+  'yyyy-MM-dd',
+  'MMM dd, yyyy',
+  'yyyy/MM/dd',
+  'dd.MM.yyyy',
 ];
 
 /** The full set of format knobs an import screen may expose. */
@@ -55,16 +55,16 @@ export interface CsvFormatCapabilities {
 }
 
 export const DEFAULT_CSV_FORMAT: CsvFormatOptions = {
-  delimiter: "auto",
-  decimal: "auto",
+  delimiter: 'auto',
+  decimal: 'auto',
   quoteChar: '"',
 };
 
 export const CSV_DELIMITER_LABEL_KEYS: Record<CsvDelimiter, string> = {
-  ",": "comma",
-  ";": "semicolon",
-  "\t": "tab",
-  "|": "pipe",
+  ',': 'comma',
+  ';': 'semicolon',
+  '\t': 'tab',
+  '|': 'pipe',
 };
 
 /**
@@ -111,7 +111,7 @@ const HAS_COMMA = /,/;
 export function detectDecimalFormat(
   rows: Array<Record<string, string>>,
   numericColumns: string[],
-  sampleSize: number = Number.POSITIVE_INFINITY,
+  sampleSize: number = Number.POSITIVE_INFINITY
 ): DecimalDetection {
   let usVotes = 0;
   let euVotes = 0;
@@ -140,20 +140,20 @@ export function detectDecimalFormat(
   }
 
   if (euVotes === 0 && usVotes === 0) {
-    return { format: "us", confident: false };
+    return { format: 'us', confident: false };
   }
   if (euVotes > usVotes) {
-    return { format: "eu", confident: true, evidence: euEvidence };
+    return { format: 'eu', confident: true, evidence: euEvidence };
   }
-  return { format: "us", confident: true, evidence: usEvidence };
+  return { format: 'us', confident: true, evidence: usEvidence };
 }
 
 /** 'auto' resolves to the detection; an explicit choice always wins. */
 export function resolveDecimalFormat(
   choice: DecimalFormatChoice,
-  detection: DecimalDetection,
+  detection: DecimalDetection
 ): DecimalFormat {
-  return choice === "auto" ? detection.format : choice;
+  return choice === 'auto' ? detection.format : choice;
 }
 
 // ── Error/outcome reporting shared across all importers ────────────────────
@@ -185,7 +185,8 @@ export interface CsvImportOutcome<T = unknown> {
 
 // ── Header-mapping suggestion, shared by every importer's mapping dialog ───
 
-const normalizeHeader = (h: string): string => h.toLowerCase().replace(/[_ ]/g, "");
+const normalizeHeader = (h: string): string =>
+  h.toLowerCase().replace(/[_ ]/g, '');
 
 /**
  * Best-effort initial guess at which file column corresponds to each
@@ -196,13 +197,13 @@ const normalizeHeader = (h: string): string => h.toLowerCase().replace(/[_ ]/g, 
  */
 export function suggestHeaderMapping(
   requiredHeaders: string[],
-  fileHeaders: string[],
+  fileHeaders: string[]
 ): Record<string, string> {
   const mapping: Record<string, string> = {};
   for (const required of requiredHeaders) {
     const normalizedRequired = normalizeHeader(required);
     const match = fileHeaders.find(
-      (h) => normalizeHeader(h) === normalizedRequired,
+      (h) => normalizeHeader(h) === normalizedRequired
     );
     if (match) mapping[required] = match;
   }

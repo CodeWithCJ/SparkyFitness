@@ -15,6 +15,7 @@ import locale_nlTranslation from './locales/nl/translation.json';
 import locale_plTranslation from './locales/pl/translation.json';
 import locale_pt_BRTranslation from './locales/pt-BR/translation.json';
 import locale_ruTranslation from './locales/ru/translation.json';
+import locale_trTranslation from './locales/tr/translation.json';
 import locale_yue_HantTranslation from './locales/yue-Hant/translation.json';
 import locale_zh_HansTranslation from './locales/zh-Hans/translation.json';
 import locale_zh_HantTranslation from './locales/zh-Hant/translation.json';
@@ -32,6 +33,7 @@ export const RESOURCE_MAP = {
   "pl": { translation: locale_plTranslation },
   "pt-BR": { translation: locale_pt_BRTranslation },
   "ru": { translation: locale_ruTranslation },
+  "tr": { translation: locale_trTranslation },
   "yue-Hant": { translation: locale_yue_HantTranslation },
   "zh-Hans": { translation: locale_zh_HansTranslation },
   "zh-Hant": { translation: locale_zh_HantTranslation },

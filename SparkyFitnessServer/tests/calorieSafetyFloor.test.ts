@@ -8,6 +8,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import bmrService from '../services/bmrService.js';
 import adaptiveTdeeService from '../services/AdaptiveTdeeService.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/goalRepository.js');
 vi.mock('../models/weeklyGoalPlanRepository.js');
 vi.mock('../models/goalPresetRepository.js');
@@ -25,8 +28,8 @@ describe('goalService calorie safety floor preference', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
-    ).mockResolvedValue(null);
+      weeklyGoalPlanRepository.getActiveWeeklyGoalPlansInRange
+    ).mockResolvedValue([]);
     vi.mocked(goalRepository.getGoalsInRange).mockResolvedValue([]);
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: 2000,

@@ -1,5 +1,5 @@
-import type { ExerciseModality } from "../constants/exercise.ts";
-import type { IntervalPhase } from "./intervalEngine.ts";
+import type { ExerciseModality } from '../constants/exercise.ts';
+import type { IntervalPhase } from './intervalEngine.ts';
 
 /**
  * Guided workout narration (#1507). This module decides WHAT is said and
@@ -24,7 +24,7 @@ export function clampGuidedCountdownSec(seconds: number): number {
   if (!Number.isFinite(seconds)) return DEFAULT_GUIDED_COUNTDOWN_SEC;
   return Math.min(
     GUIDED_COUNTDOWN_MAX_SEC,
-    Math.max(GUIDED_COUNTDOWN_MIN_SEC, Math.round(seconds)),
+    Math.max(GUIDED_COUNTDOWN_MIN_SEC, Math.round(seconds))
   );
 }
 
@@ -34,14 +34,14 @@ export function clampGuidedSpeechRate(rate: number): number {
     Math.round(rate / GUIDED_SPEECH_RATE_STEP) * GUIDED_SPEECH_RATE_STEP;
   return Math.min(
     GUIDED_SPEECH_RATE_MAX,
-    Math.max(GUIDED_SPEECH_RATE_MIN, stepped),
+    Math.max(GUIDED_SPEECH_RATE_MIN, stepped)
   );
 }
 
 export type GuidedSetTarget =
-  | { kind: "time"; seconds: number }
-  | { kind: "reps"; reps: number }
-  | { kind: "open" };
+  | { kind: 'time'; seconds: number }
+  | { kind: 'reps'; reps: number }
+  | { kind: 'open' };
 
 /**
  * What a set asks for. Duration modalities are clock-driven when they carry a
@@ -51,33 +51,33 @@ export type GuidedSetTarget =
  */
 export function resolveGuidedSetTarget(
   modality: ExerciseModality,
-  set: { reps?: number | null; duration?: number | null },
+  set: { reps?: number | null; duration?: number | null }
 ): GuidedSetTarget {
   const seconds = Number(set.duration) || 0;
   const reps = Number(set.reps) || 0;
   const durationLike =
-    modality === "duration" || modality === "duration_distance";
-  if (durationLike && seconds > 0) return { kind: "time", seconds };
-  if (reps > 0) return { kind: "reps", reps };
-  if (seconds > 0) return { kind: "time", seconds };
-  return { kind: "open" };
+    modality === 'duration' || modality === 'duration_distance';
+  if (durationLike && seconds > 0) return { kind: 'time', seconds };
+  if (reps > 0) return { kind: 'reps', reps };
+  if (seconds > 0) return { kind: 'time', seconds };
+  return { kind: 'open' };
 }
 
 export type GuidedCue =
-  | { type: "getReady"; exerciseName: string }
+  | { type: 'getReady'; exerciseName: string }
   | {
-      type: "setStart";
+      type: 'setStart';
       exerciseName: string;
       target: GuidedSetTarget;
       setNumber: number;
       totalSets: number;
     }
-  | { type: "instruction"; text: string }
-  | { type: "halfway" }
-  | { type: "rest"; seconds: number }
-  | { type: "nextUp"; exerciseName: string }
-  | { type: "intervalRest" }
-  | { type: "workoutComplete" };
+  | { type: 'instruction'; text: string }
+  | { type: 'halfway' }
+  | { type: 'rest'; seconds: number }
+  | { type: 'nextUp'; exerciseName: string }
+  | { type: 'intervalRest' }
+  | { type: 'workoutComplete' };
 
 export interface GuidedSetInfo {
   exerciseName: string;
@@ -91,7 +91,7 @@ export interface GuidedSetInfo {
 
 /** Instruction lines worth speaking: trimmed, empties dropped. */
 export function normalizeGuidedInstructions(
-  lines: readonly string[] | string | null | undefined,
+  lines: readonly string[] | string | null | undefined
 ): string[] {
   if (!lines) return [];
   if (typeof lines === 'string') {
@@ -117,7 +117,7 @@ export function normalizeGuidedInstructions(
 
 /** Spoken once, as a guided session begins its first get-ready. */
 export function buildGuidedSessionStartCues(first: GuidedSetInfo): GuidedCue[] {
-  return [{ type: "getReady", exerciseName: first.exerciseName }];
+  return [{ type: 'getReady', exerciseName: first.exerciseName }];
 }
 
 /**
@@ -128,7 +128,7 @@ export function buildGuidedSessionStartCues(first: GuidedSetInfo): GuidedCue[] {
 export function buildGuidedSetStartCues(set: GuidedSetInfo): GuidedCue[] {
   const cues: GuidedCue[] = [
     {
-      type: "setStart",
+      type: 'setStart',
       exerciseName: set.exerciseName,
       target: set.target,
       setNumber: set.setNumber,
@@ -137,7 +137,7 @@ export function buildGuidedSetStartCues(set: GuidedSetInfo): GuidedCue[] {
   ];
   if (set.setNumber === 1) {
     for (const text of normalizeGuidedInstructions(set.instructions)) {
-      cues.push({ type: "instruction", text });
+      cues.push({ type: 'instruction', text });
     }
   }
   return cues;
@@ -150,40 +150,41 @@ export function buildGuidedSetStartCues(set: GuidedSetInfo): GuidedCue[] {
  */
 export function buildGuidedReplayCues(
   set: GuidedSetInfo,
-  upNext: boolean,
+  upNext: boolean
 ): GuidedCue[] {
   const cues: GuidedCue[] = [
     {
-      type: "setStart",
+      type: 'setStart',
       exerciseName: set.exerciseName,
       target: set.target,
       setNumber: set.setNumber,
       totalSets: set.totalSets,
     },
-    ...normalizeGuidedInstructions(set.instructions).map(
-      (text): GuidedCue => ({ type: "instruction", text }),
-    ),
+    ...normalizeGuidedInstructions(set.instructions).map((text): GuidedCue => ({
+      type: 'instruction',
+      text,
+    })),
   ];
   return upNext
-    ? [{ type: "nextUp", exerciseName: set.exerciseName }, ...cues]
+    ? [{ type: 'nextUp', exerciseName: set.exerciseName }, ...cues]
     : cues;
 }
 
 /** Spoken as a rest begins; announces what follows it when known. */
 export function buildGuidedRestCues(
   restSeconds: number,
-  next: { exerciseName: string } | null,
+  next: { exerciseName: string } | null
 ): GuidedCue[] {
   const cues: GuidedCue[] = [];
   if (restSeconds > 0) {
-    cues.push({ type: "rest", seconds: Math.round(restSeconds) });
+    cues.push({ type: 'rest', seconds: Math.round(restSeconds) });
   }
-  if (next) cues.push({ type: "nextUp", exerciseName: next.exerciseName });
+  if (next) cues.push({ type: 'nextUp', exerciseName: next.exerciseName });
   return cues;
 }
 
 export function buildGuidedWorkoutCompleteCues(): GuidedCue[] {
-  return [{ type: "workoutComplete" }];
+  return [{ type: 'workoutComplete' }];
 }
 
 /**
@@ -193,7 +194,7 @@ export function buildGuidedWorkoutCompleteCues(): GuidedCue[] {
 export function shouldSpeakGuidedHalfway(
   durationSec: number,
   remainingSec: number,
-  alreadySpoken: boolean,
+  alreadySpoken: boolean
 ): boolean {
   if (alreadySpoken || durationSec < GUIDED_HALFWAY_MIN_SEC) return false;
   return remainingSec > 0 && remainingSec <= durationSec / 2;
@@ -214,43 +215,40 @@ export function buildGuidedIntervalPhaseCues(
   getStep: (stepIndex: number) => {
     exerciseName: string;
     target: GuidedSetTarget;
-  } | null,
+  } | null
 ): GuidedCue[] {
-  if (phase.kind === "finished") return buildGuidedWorkoutCompleteCues();
-  if (phase.kind === "countdown") {
-    const firstWork = phases.find((p) => p.kind === "work");
+  if (phase.kind === 'finished') return buildGuidedWorkoutCompleteCues();
+  if (phase.kind === 'countdown') {
+    const firstWork = phases.find((p) => p.kind === 'work');
     const step =
       firstWork?.stepIndex != null ? getStep(firstWork.stepIndex) : null;
-    return step ? [{ type: "getReady", exerciseName: step.exerciseName }] : [];
+    return step ? [{ type: 'getReady', exerciseName: step.exerciseName }] : [];
   }
-  if (phase.kind === "work") {
+  if (phase.kind === 'work') {
     const step = phase.stepIndex != null ? getStep(phase.stepIndex) : null;
     if (!step) return [];
     return [
       {
-        type: "setStart",
+        type: 'setStart',
         exerciseName: step.exerciseName,
         // The phase clock owns the length, whatever the set says.
         target:
-          step.target.kind === "reps"
+          step.target.kind === 'reps'
             ? step.target
-            : { kind: "time", seconds: phase.durationSec },
+            : { kind: 'time', seconds: phase.durationSec },
         setNumber: phase.round,
         totalSets: phase.totalRounds ?? 0,
       },
     ];
   }
   // rest
-  const cues: GuidedCue[] = [{ type: "intervalRest" }];
+  const cues: GuidedCue[] = [{ type: 'intervalRest' }];
   const nextWork = phases.find(
-    (p) => p.phaseIndex > phase.phaseIndex && p.kind === "work",
+    (p) => p.phaseIndex > phase.phaseIndex && p.kind === 'work'
   );
-  if (
-    nextWork?.stepIndex != null &&
-    nextWork.stepIndex !== phase.stepIndex
-  ) {
+  if (nextWork?.stepIndex != null && nextWork.stepIndex !== phase.stepIndex) {
     const next = getStep(nextWork.stepIndex);
-    if (next) cues.push({ type: "nextUp", exerciseName: next.exerciseName });
+    if (next) cues.push({ type: 'nextUp', exerciseName: next.exerciseName });
   }
   return cues;
 }

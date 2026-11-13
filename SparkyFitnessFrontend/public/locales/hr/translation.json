@@ -1,11 +1,44 @@
 {
   "openFoodFactsContribution": {
-    "packagingPhoto": "Pakiranje"
+    "packagingPhoto": "Pakiranje",
+    "title": "Doprinesite projektu Open Food Facts",
+    "unavailable": "Za doprinose su potrebni vaši vlastiti prehrambeni proizvodi, omogućena postavka na poslužitelju i postojeći korisnički račun na platformi Open Food Facts.",
+    "introduction": "Vaši podaci o hrani spremaju se lokalno. Odaberite fotografiju ovog proizvoda koju ste snimili, a zatim provjerite što će točno biti objavljeno. Priprema ili otkazivanje pregleda ne mijenja podatke na platformi Open Food Facts.",
+    "saveAndPreview": "Spremi i pregledaj doprinos",
+    "photoLabel": "Vaša vlastita fotografija proizvoda",
+    "photoHelp": "Upotrijebite jasnu fotografiju prednje strane, nutritivne deklaracije ili ambalaže. Podaci o lokaciji i drugi metapodaci slike uklanjaju se prije objave.",
+    "imageTypeLabel": "Fotografski sadržaj",
+    "nutritionPhoto": "Nutritivna deklaracija",
+    "frontPhoto": "Prednja strana proizvoda",
+    "imageError": "Odaberite jasnu fotografiju u formatu JPEG, PNG ili WebP, veličine manje od 20 MB, s najmanje 640 piksela na dužoj strani i 160 piksela na kraćoj strani, te najviše 40 megapiksela."
   },
   "onboarding": {
     "planReady": "Tvoj personalizirani plan je spreman."
   },
   "nutritionCharts": {
     "vitamin_c": "Vitamin C"
+  },
+  "barcodeLookup": {
+    "title": "Rezultati barkoda",
+    "yourFoods": "Vaša hrana",
+    "fallback": "Rezervna opcija",
+    "basis": "Po {{quantity}} {{unit}}",
+    "protein": "Protein: {{value}} g",
+    "carbs": "Ugljikohidrati: {{value}} g",
+    "fat": "Masti: {{value}} g",
+    "sourceFailed": "Ovom izvoru nije bilo moguće pristupiti.",
+    "sourceNotFound": "U ovom izvoru nije pronađen nijedan proizvod.",
+    "useFood": "Koristite hranu",
+    "notFound": "Proizvod nije pronađen. Provjerite druge izvore ili ručno dodajte namirnicu.",
+    "otherSources": "Ostali izvori",
+    "loading": "Provjera ostalih izvora…",
+    "alternativesFailed": "Nije bilo moguće učitati druge izvore.",
+    "retry": "Pokušaj ponovno",
+    "noAlternatives": "Drugi izvori nisu dostupni.",
+    "useSource": "Koristite ovaj izvor"
+  },
+  "numericInput": {
+    "mathHint": "Podržava +, -, *, / i zagrade, npr. 30*5.",
+    "invalidExpression": "Unesite valjan izračun unutar dopuštenog raspona."
   }
 }

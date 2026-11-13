@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isPrivateNetworkAddress,
   createCorsOriginChecker,
+  CORS_ALLOWED_HEADERS,
 } from '../utils/corsHelper.js';
 describe('corsHelper', () => {
   describe('isPrivateNetworkAddress', () => {
@@ -170,6 +171,11 @@ describe('corsHelper', () => {
           resolve();
         });
       });
+    });
+  });
+  describe('CORS_ALLOWED_HEADERS', () => {
+    it('lets browsers send the mood model version header', () => {
+      expect(CORS_ALLOWED_HEADERS).toContain('x-mood-model-version');
     });
   });
 });

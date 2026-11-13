@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const exerciseEntriesIdSchema = z.string();
 
@@ -79,10 +79,16 @@ export const exerciseEntriesSchema = z.object({
   weather_humidity_percentage: z.number().nullable(),
   gear_name: z.string().nullable(),
   gear_external_id: z.string().nullable(),
+  workout_effort: z.number().int().min(1).max(10).nullable(),
+  calories_applied: z.number().min(0).nullable().optional(),
+  calorie_link_id: z.string().nullable().optional(),
+  calorie_link_resolution: z.string().nullable().optional(),
+  shoe_id: z.string().nullable().optional(),
   steps: z.number().nullable().optional(),
   water_estimated: z.number().nullable().optional(),
   watch_telemetry_observed_at: z.date().nullable().optional(),
   watch_duration_minutes: z.number().nullable().optional(),
+  manual_fields: z.array(z.string()).nullable().optional(),
 });
 
 export const exerciseEntriesInitializerSchema = z.object({
@@ -160,10 +166,16 @@ export const exerciseEntriesInitializerSchema = z.object({
   weather_humidity_percentage: z.number().optional().nullable(),
   gear_name: z.string().optional().nullable(),
   gear_external_id: z.string().optional().nullable(),
+  workout_effort: z.number().int().min(1).max(10).optional().nullable(),
+  calories_applied: z.number().min(0).optional().nullable(),
+  calorie_link_id: z.string().optional().nullable(),
+  calorie_link_resolution: z.string().optional().nullable(),
+  shoe_id: z.string().optional().nullable(),
   steps: z.number().optional().nullable(),
   water_estimated: z.number().optional().nullable(),
   watch_telemetry_observed_at: z.date().optional().nullable(),
   watch_duration_minutes: z.number().optional().nullable(),
+  manual_fields: z.array(z.string()).nullable().optional(),
 });
 
 export const exerciseEntriesMutatorSchema =

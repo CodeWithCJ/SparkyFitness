@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // #2461: per-day workout counts for the Reports workout heatmap. Sparse — only
 // days with at least one logged workout — so a 12-month window stays small

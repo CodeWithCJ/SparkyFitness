@@ -9,13 +9,44 @@ import { parseGarminHealthMeasurements } from '../integrations/garminconnect/gar
 import { log } from '../config/logging.js';
 import moment from 'moment';
 import garminService from '../services/garminService.js';
-import { getGarminSyncPhaseErrors } from '../services/garminSyncResult.js';
+import {
+  getGarminSyncPhaseErrors,
+  isGarminServiceUnreachable,
+  type GarminSyncResult,
+} from '../services/garminSyncResult.js';
 import {
   SYNC_ALREADY_RUNNING_RESPONSE,
   startProviderSync,
 } from '../services/providerSyncClaim.js';
+import { createUserRateLimiter } from '../utils/userRateLimiter.js';
 const router = express.Router();
 router.use(express.json());
+
+interface GarminManualSyncResponse extends GarminSyncResult {
+  failedPhases: string[];
+  serviceUnreachable: boolean;
+}
+
+interface GarminStatusResponse {
+  isLinked: boolean;
+  lastUpdated?: Date | string | null;
+  lastSyncAt?: Date | string | null;
+  tokenExpiresAt?: Date | string | null;
+  /** Only checked while a Garmin provider exists. */
+  serviceReachable?: boolean;
+  message: string;
+}
+/**
+ * A sealed sign-in can be answered again after a wrong code until it expires,
+ * so cap the codes a user can try in that window; Garmin's own throttling is
+ * not ours to rely on.
+ */
+export const MFA_ATTEMPT_MAX = 5;
+export const MFA_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
+export const mfaAttemptLimiter = createUserRateLimiter(
+  MFA_ATTEMPT_MAX,
+  MFA_ATTEMPT_WINDOW_MS
+);
 // Date validation constants
 const MAX_DATE_RANGE_DAYS = 365; // Maximum allowed date range
 const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
@@ -103,10 +134,10 @@ router.post(
         email,
         password
       );
+      // The reply holds Garmin tokens or a sealed sign-in; log only its status.
       log(
         'info',
-        `Garmin login microservice response for user ${userId}:`,
-        result
+        `Garmin login microservice status for user ${userId}: ${result.status}`
       );
       if (result.status === 'success' && result.tokens) {
         log(
@@ -141,12 +172,16 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               client_state: { type: 'string' }
+ *               client_state:
+ *                 type: string
+ *                 description: The sealed sign-in that /login returned with needs_mfa. It expires after 5 minutes.
  *               mfa_code: { type: 'string' }
  *             required: [client_state, mfa_code]
  *     responses:
  *       200:
  *         description: Login result.
+ *       429:
+ *         description: Too many MFA codes tried in the last 5 minutes.
  */
 router.post(
   '/resume_login',
@@ -161,6 +196,13 @@ router.post(
           .status(400)
           .json({ error: 'Client state and MFA code are required.' });
       }
+      const retryAfter = mfaAttemptLimiter.hit(userId);
+      if (retryAfter > 0) {
+        res.set('Retry-After', String(retryAfter));
+        return res
+          .status(429)
+          .json({ error: 'Too many MFA code attempts. Try again shortly.' });
+      }
       const result = await garminConnectService.garminResumeLogin(
         userId,
         client_state,
@@ -168,8 +210,7 @@ router.post(
       );
       log(
         'info',
-        `Garmin resume login microservice response for user ${userId}:`,
-        result
+        `Garmin resume login microservice status for user ${userId}: ${result.status}`
       );
       if (result.status === 'success' && result.tokens) {
         log(
@@ -426,7 +467,11 @@ router.post(
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Full sync result.
+ *         description: >-
+ *           Full sync result per phase (health, activities, nutrition), plus
+ *           failedPhases (phases with an error) and serviceUnreachable (the
+ *           errors show the Garmin microservice could not be reached). A
+ *           partly failed sync still answers 200.
  */
 router.post(
   '/sync',
@@ -479,7 +524,12 @@ router.post(
           `[garminRoutes] Skipping Garmin last_sync_at update for user ${userId}; failed phases: ${failedPhases.join(', ')}`
         );
       }
-      res.status(200).json(result);
+      const body: GarminManualSyncResponse = {
+        ...result,
+        failedPhases,
+        serviceUnreachable: isGarminServiceUnreachable(result),
+      };
+      res.status(200).json(body);
     } catch (error) {
       next(error);
     }
@@ -519,18 +569,25 @@ router.get(
         // For security, do not send raw tokens to the frontend.
         // Instead, send status, last updated, and token expiry.
         // You might also send a masked external_user_id if available and useful for display.
-        res.status(200).json({
+        const body: GarminStatusResponse = {
           isLinked: true,
+          // updated_at moves on any change to the provider row; kept for
+          // older clients. lastSyncAt is the last completed sync.
           lastUpdated: provider.updated_at,
+          lastSyncAt: provider.last_sync_at ?? null,
           tokenExpiresAt: provider.token_expires_at,
+          serviceReachable:
+            await garminConnectService.checkGarminMicroserviceHealth(),
           // externalUserId: provider.external_user_id ? `${provider.external_user_id.substring(0, 4)}...` : null, // Example masking
           message: 'Garmin Connect is linked.',
-        });
+        };
+        res.status(200).json(body);
       } else {
-        res.status(200).json({
+        const body: GarminStatusResponse = {
           isLinked: false,
           message: 'Garmin Connect is not linked.',
-        });
+        };
+        res.status(200).json(body);
       }
     } catch (error) {
       next(error);

@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'
 import request from 'supertest';
 import express from 'express';
-import garminRoutes from '../routes/garminRoutes.js';
+import garminRoutes, {
+  MFA_ATTEMPT_MAX,
+  mfaAttemptLimiter,
+} from '../routes/garminRoutes.js';
+import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
 import garminService from '../services/garminService.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 
@@ -39,6 +43,7 @@ vi.mock('../integrations/garminconnect/garminConnectService.js', () => ({
     syncGarminHealthAndWellness: vi.fn(),
     fetchGarminActivitiesAndWorkouts: vi.fn(),
     fetchGarminNutritionDiary: vi.fn(),
+    checkGarminMicroserviceHealth: vi.fn(),
   },
 }));
 
@@ -94,6 +99,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mfaAttemptLimiter.reset();
   permissionState.allow = true;
   (
     externalProviderRepository.getExternalDataProviderByUserIdAndProviderName as any
@@ -129,6 +135,29 @@ describe('permission gating (switched-context delegate without diary access)', (
   });
 });
 
+describe('POST /integrations/garmin/resume_login', () => {
+  it('stops forwarding codes once the attempt cap is reached', async () => {
+    vi.mocked(garminConnectService.garminResumeLogin).mockResolvedValue({
+      status: 'invalid_mfa_code',
+    });
+    const attempt = () =>
+      request(app)
+        .post('/integrations/garmin/resume_login')
+        .send({ client_state: 'sealed', mfa_code: '123456' });
+
+    for (let i = 0; i < MFA_ATTEMPT_MAX; i++) {
+      expect((await attempt()).statusCode).toBe(200);
+    }
+    const res = await attempt();
+
+    expect(res.statusCode).toBe(429);
+    expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+    expect(garminConnectService.garminResumeLogin).toHaveBeenCalledTimes(
+      MFA_ATTEMPT_MAX
+    );
+  });
+});
+
 describe('POST /integrations/garmin/sync', () => {
   it('answers 409 without syncing while another sync holds the account', async () => {
     vi.mocked(startProviderSync).mockResolvedValueOnce(null);
@@ -157,7 +186,11 @@ describe('POST /integrations/garmin/sync', () => {
       .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(result);
+    expect(res.body).toEqual({
+      ...result,
+      failedPhases: [],
+      serviceUnreachable: false,
+    });
     expect(garminService.syncGarminData).toHaveBeenCalledWith(
       'user-123',
       'manual',
@@ -184,9 +217,97 @@ describe('POST /integrations/garmin/sync', () => {
       .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(result);
+    expect(res.body).toEqual({
+      ...result,
+      failedPhases: ['health'],
+      serviceUnreachable: false,
+    });
     expect(
       externalProviderRepository.updateProviderLastSync
+    ).not.toHaveBeenCalled();
+  });
+
+  it('flags an unreachable Garmin microservice and still answers 200', async () => {
+    (garminService.syncGarminData as any).mockResolvedValue({
+      health: {
+        error:
+          '[2026-06-01..2026-06-07]: Failed to fetch Garmin health and wellness chunk (2026-06-01 to 2026-06-07): connect ECONNREFUSED 127.0.0.1:8000',
+      },
+      activities: {
+        processedEntries: 0,
+        partialErrors: ['[2026-06-01..2026-06-07]: ENOTFOUND'],
+      },
+      nutrition: { processedEntries: 3 },
+    });
+
+    const res = await request(app)
+      .post('/integrations/garmin/sync')
+      .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.failedPhases).toEqual(['health', 'activities']);
+    expect(res.body.serviceUnreachable).toBe(true);
+  });
+});
+
+describe('GET /integrations/garmin/status', () => {
+  const provider = {
+    id: 'provider-1',
+    updated_at: '2026-06-08T10:00:00.000Z',
+    last_sync_at: '2026-06-07T09:00:00.000Z',
+    token_expires_at: '2026-06-09T10:00:00.000Z',
+  };
+
+  it.each([true, false])(
+    'returns lastSyncAt and serviceReachable=%s for a linked account',
+    async (reachable) => {
+      (
+        externalProviderRepository.getExternalDataProviderByUserIdAndProviderName as any
+      ).mockResolvedValue(provider);
+      vi.mocked(
+        garminConnectService.checkGarminMicroserviceHealth
+      ).mockResolvedValue(reachable);
+
+      const res = await request(app).get('/integrations/garmin/status');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({
+        isLinked: true,
+        lastUpdated: provider.updated_at,
+        lastSyncAt: provider.last_sync_at,
+        tokenExpiresAt: provider.token_expires_at,
+        serviceReachable: reachable,
+        message: 'Garmin Connect is linked.',
+      });
+    }
+  );
+
+  it('returns lastSyncAt null when the account never synced', async () => {
+    (
+      externalProviderRepository.getExternalDataProviderByUserIdAndProviderName as any
+    ).mockResolvedValue({ ...provider, last_sync_at: null });
+    vi.mocked(
+      garminConnectService.checkGarminMicroserviceHealth
+    ).mockResolvedValue(true);
+
+    const res = await request(app).get('/integrations/garmin/status');
+
+    expect(res.body.lastSyncAt).toBeNull();
+  });
+
+  it('does not check the microservice without a linked account', async () => {
+    (
+      externalProviderRepository.getExternalDataProviderByUserIdAndProviderName as any
+    ).mockResolvedValue(null);
+
+    const res = await request(app).get('/integrations/garmin/status');
+
+    expect(res.body).toEqual({
+      isLinked: false,
+      message: 'Garmin Connect is not linked.',
+    });
+    expect(
+      garminConnectService.checkGarminMicroserviceHealth
     ).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -11,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import {
   Save,
@@ -19,6 +21,10 @@ import {
   Target,
   Sparkles,
   Percent,
+  Brain,
+  Activity,
+  Lock,
+  Watch,
   TrendingDown,
   ShieldAlert,
   Info,
@@ -28,8 +34,8 @@ import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ActivityLevel } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
+import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import { Trans, useTranslation } from 'react-i18next';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -56,6 +62,10 @@ import {
 import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { AdaptiveEstimateEducation } from '@/components/CalorieTargetBreakdown/AdaptiveEstimateEducation';
+import { WeeklyWeightGoalInput } from '@/components/WeeklyWeightGoalInput';
+import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
+import { formatWeeklyGoalRateWithUnit } from '@/utils/weeklyWeightGoal';
 import {
   getBmrAlgorithmLabel,
   getBodyFatAlgorithmLabel,
@@ -79,33 +89,98 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   shouldShowCalorieSafetyWarning,
   normalizeCalorieGoalAdjustmentMode,
+  isAdaptiveEarnBackSuppressed,
+  isAdaptiveActivitySeparated,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
+  ENERGY_DENSITY_KCAL_PER_KG,
+  getClinicalCalorieMinimum,
+  getRecommendedCalorieSafetyFloor,
+  isCalorieCyclingAvailable,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  calorieCyclingPattern,
+  cycleDayTarget,
+  cycleWeekTargets,
+  weeklyGoalPlanInForce,
+  type CalorieCyclingMode,
 } from '@workspace/shared';
+import { CalorieCyclingSettings } from '@/components/CalorieCyclingSettings';
+import { isCalorieCyclingPatternUseful } from '@/utils/calorieCycling';
+import { useWeeklyGoalPlans } from '@/hooks/Goals/useGoals';
+
+/** The Daily Calorie Goal Adjustment choices shown as cards. */
+const ADJUSTMENT_MODE_CARDS: {
+  mode: CalorieGoalAdjustmentMode;
+  icon: typeof Brain;
+  titleKey: string;
+  title: string;
+  summaryKey: string;
+  summary: string;
+}[] = [
+  {
+    mode: 'adaptive',
+    icon: Brain,
+    titleKey: 'settings.calorieGoalAdjustment.cardAdaptive',
+    title: 'Adaptive',
+    summaryKey: 'settings.calorieGoalAdjustment.cardAdaptiveSummary',
+    summary: 'Learns from your intake and weight trend',
+  },
+  {
+    mode: 'dynamic',
+    icon: Activity,
+    titleKey: 'settings.calorieGoalAdjustment.cardDynamic',
+    title: 'Dynamic',
+    summaryKey: 'settings.calorieGoalAdjustment.cardDynamicSummary',
+    summary: 'Adds your daily activity to your goal',
+  },
+  {
+    mode: 'fixed',
+    icon: Lock,
+    titleKey: 'settings.calorieGoalAdjustment.cardFixed',
+    title: 'Fixed',
+    summaryKey: 'settings.calorieGoalAdjustment.cardFixedSummary',
+    summary: 'The same target whatever you do',
+  },
+  {
+    mode: 'percentage',
+    icon: Percent,
+    titleKey: 'settings.calorieGoalAdjustment.cardPercentage',
+    title: 'Percentage earn-back',
+    summaryKey: 'settings.calorieGoalAdjustment.cardPercentageSummary',
+    summary: 'Adds back part of your exercise calories',
+  },
+  {
+    mode: 'tdee',
+    icon: Watch,
+    titleKey: 'settings.calorieGoalAdjustment.cardDevice',
+    title: 'Device projection',
+    summaryKey: 'settings.calorieGoalAdjustment.cardDeviceSummary',
+    summary: "Projects your device's total burn to midnight",
+  },
+];
 
 /**
- * This screen offers radio items for five of the six adjustment modes. `smart` has no
+ * This screen offers cards for five of the six adjustment modes. `smart` has no
  * item of its own and behaves identically to `tdee` in `computeCaloriesRemaining`, so it
- * is presented as `tdee` rather than leaving the RadioGroup with nothing selected and the
+ * is presented as `tdee` rather than leaving no card selected and the
  * explanation falling through to the `fixed` copy. Mirrors the same normalisation mobile
  * already does in CalorieSettingsScreen.
  */
-const SELECTABLE_MODES = [
-  'adaptive',
-  'dynamic',
-  'fixed',
-  'percentage',
-  'tdee',
-] as const satisfies readonly CalorieGoalAdjustmentMode[];
-
-const isCalorieGoalAdjustmentMode = (
-  value: string
-): value is CalorieGoalAdjustmentMode =>
-  (SELECTABLE_MODES as readonly string[]).includes(value);
-
 const toSelectableMode = normalizeCalorieGoalAdjustmentMode;
 
+// Sunday first, matching `Date.getDay()` and the stored cycling offsets.
+const CYCLING_WEEKDAYS = [
+  { key: 'sunday', name: 'Sunday' },
+  { key: 'monday', name: 'Monday' },
+  { key: 'tuesday', name: 'Tuesday' },
+  { key: 'wednesday', name: 'Wednesday' },
+  { key: 'thursday', name: 'Thursday' },
+  { key: 'friday', name: 'Friday' },
+  { key: 'saturday', name: 'Saturday' },
+] as const;
+
 const CalculationSettings = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
   const {
     energyUnit,
@@ -127,9 +202,15 @@ const CalculationSettings = () => {
     activityLevel: contextActivityLevel,
     goalMode: contextGoalMode,
     goalModeCalculationMethod: contextGoalModeCalculationMethod,
+    adaptiveActivitySeparate: contextAdaptiveActivitySeparate,
+    adjustMacrosWithExercise: contextAdjustMacrosWithExercise,
     goalModeCustomPercentage: contextGoalModeCustomPercentage,
+    goalModeWeeklyChangeKg: contextGoalModeWeeklyChangeKg,
     calorieSafetyFloorMode: contextCalorieSafetyFloorMode,
     calorieSafetyFloorValue: contextCalorieSafetyFloorValue,
+    calorieCyclingMode: contextCalorieCyclingMode,
+    calorieCyclingOffsets: contextCalorieCyclingOffsets,
+    firstDayOfWeek,
     weightUnit,
     timezone,
     convertWeight,
@@ -157,8 +238,51 @@ const CalculationSettings = () => {
     useState<GoalModeCalculationMethod>(
       contextGoalModeCalculationMethod || 'manual'
     );
+  const [adjustMacrosWithExercise, setAdjustMacrosWithExercise] = useState(
+    contextAdjustMacrosWithExercise ?? false
+  );
+  const [adaptiveActivitySeparate, setAdaptiveActivitySeparate] = useState(
+    contextAdaptiveActivitySeparate ?? false
+  );
   const [goalModeCustomPercentage, setGoalModeCustomPercentage] =
     useState<number>(contextGoalModeCustomPercentage ?? 0);
+  const [goalModeWeeklyChangeKg, setGoalModeWeeklyChangeKg] = useState<number>(
+    contextGoalModeWeeklyChangeKg ?? 0
+  );
+  const [weeklyRateValid, setWeeklyRateValid] = useState(true);
+  // An older server or a partial preference load may not have these yet.
+  const savedCalorieCyclingMode: CalorieCyclingMode =
+    contextCalorieCyclingMode ?? 'off';
+  const savedCalorieCyclingOffsets =
+    contextCalorieCyclingOffsets ?? CALORIE_CYCLING_DEFAULT_OFFSETS;
+  const [calorieCycling, setCalorieCycling] = useState<{
+    mode: CalorieCyclingMode;
+    offsets: number[];
+  }>({
+    mode: savedCalorieCyclingMode,
+    offsets: [...savedCalorieCyclingOffsets],
+  });
+  useEffect(() => {
+    setCalorieCycling({
+      mode: savedCalorieCyclingMode,
+      offsets: [...savedCalorieCyclingOffsets],
+    });
+  }, [savedCalorieCyclingMode, savedCalorieCyclingOffsets]);
+  // The weekday the cycling chart and the Live Preview show; today until a
+  // day is picked on the chart.
+  const [pickedCyclingDay, setPickedCyclingDay] = useState<number | null>(null);
+  const calorieCyclingValid = isCalorieCyclingPatternUseful(
+    calorieCycling.mode,
+    calorieCycling.offsets
+  );
+  const cyclingAvailable = isCalorieCyclingAvailable({
+    calorie_goal_adjustment_mode: calorieGoalAdjustmentMode,
+    goal_mode_calculation_method: goalModeCalculationMethod,
+    adaptive_activity_separate: adaptiveActivitySeparate,
+  });
+  // A pattern that changes nothing only blocks saving while cycling can
+  // apply; when an earn-back mode pauses it, the rest still saves.
+  const cyclingBlocksSave = cyclingAvailable && !calorieCyclingValid;
   // Mirrors the input's raw text so a partially typed '-' survives keystrokes.
   const [customPercentageInput, setCustomPercentageInput] = useState<string>(
     String(contextGoalModeCustomPercentage ?? 0)
@@ -276,6 +400,8 @@ const CalculationSettings = () => {
     if (contextGoalModeCalculationMethod) {
       setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
     }
+    setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
+    setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
     if (contextGoalModeCustomPercentage !== undefined) {
       setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
       setCustomPercentageInput(String(contextGoalModeCustomPercentage));
@@ -314,6 +440,8 @@ const CalculationSettings = () => {
     contextActivityLevel,
     contextGoalMode,
     contextGoalModeCalculationMethod,
+    contextAdaptiveActivitySeparate,
+    contextAdjustMacrosWithExercise,
     contextGoalModeCustomPercentage,
     contextCalorieSafetyFloorMode,
     contextCalorieSafetyFloorValue,
@@ -321,7 +449,16 @@ const CalculationSettings = () => {
     energyUnit,
   ]);
 
+  useEffect(() => {
+    if (contextGoalModeWeeklyChangeKg !== undefined) {
+      setGoalModeWeeklyChangeKg(contextGoalModeWeeklyChangeKg);
+      setWeeklyRateValid(true);
+    }
+  }, [contextGoalModeWeeklyChangeKg]);
+
   const handleSave = async () => {
+    if (goalMode === 'weekly' && !weeklyRateValid) return;
+    if (cyclingBlocksSave) return;
     setIsSaving(true);
     try {
       await saveAllPreferences({
@@ -342,9 +479,14 @@ const CalculationSettings = () => {
         activityLevel: activityLevel,
         goalMode: goalMode,
         goalModeCalculationMethod: goalModeCalculationMethod,
+        adaptiveActivitySeparate,
+        adjustMacrosWithExercise,
         goalModeCustomPercentage: goalModeCustomPercentage,
+        goalModeWeeklyChangeKg,
         calorieSafetyFloorMode,
         calorieSafetyFloorValue,
+        calorieCyclingMode: calorieCycling.mode,
+        calorieCyclingOffsets: calorieCycling.offsets,
       });
       invalidateDiary();
       invalidateDailyProgress();
@@ -403,6 +545,7 @@ const CalculationSettings = () => {
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
+  const { data: weeklyGoalPlans } = useWeeklyGoalPlans();
 
   const { user } = useAuth();
   const { data: userProfile } = useProfileQuery(user?.id);
@@ -422,8 +565,42 @@ const CalculationSettings = () => {
     : 30;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
+  const hasValidRmr = Boolean(
+    (measuredBmr != null && measuredBmr > 0) ||
+    (weightKg != null &&
+      weightKg > 0 &&
+      (bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham'
+        ? bodyFat != null && bodyFat > 0
+        : bmrAlgorithm === 'Oxford'
+          ? true
+          : heightCm != null && heightCm > 0))
+  );
   const rawManualGoal = goalsData?.calories ?? 2000;
   const staticTdee = Math.round(bmr * activityMultiplier);
+  const activitySeparated = isAdaptiveActivitySeparated(
+    calorieGoalAdjustmentMode,
+    goalModeCalculationMethod,
+    adaptiveActivitySeparate
+  );
+  // Server-derived baselines reflect saved settings until preferences are saved
+  // and the adaptive query refreshes. Keep the full-day TDEE for its reference row.
+  const savedActivitySeparated = isAdaptiveActivitySeparated(
+    contextCalorieGoalAdjustmentMode,
+    contextGoalModeCalculationMethod,
+    contextAdaptiveActivitySeparate
+  );
+  const previewActivitySeparated = isAdaptiveActivitySeparated(
+    calorieGoalAdjustmentMode,
+    goalModeCalculationMethod,
+    savedActivitySeparated
+  );
+  const adaptiveEarnBackSuppressed =
+    bmr > 0 &&
+    isAdaptiveEarnBackSuppressed(
+      calorieGoalAdjustmentMode,
+      goalModeCalculationMethod,
+      adaptiveActivitySeparate
+    );
   const calorieGoalOffset = bmr > 0 ? rawManualGoal - staticTdee : 0;
 
   let currentGoalBase =
@@ -457,9 +634,13 @@ const CalculationSettings = () => {
     goalMode,
     calculationMethod: goalModeCalculationMethod,
     customPercentage: goalModeCustomPercentage,
+    weeklyChangeKg: goalModeWeeklyChangeKg,
     bmr,
     activityLevelMultiplier: activityMultiplier,
-    adaptiveTdee: adaptiveTdeeData ? adaptiveTdeeData.tdee : null,
+    adaptiveTdee: getAdaptiveTdeeForGoal(
+      adaptiveTdeeData,
+      previewActivitySeparated
+    ),
     adaptiveTdeeFallback: adaptiveTdeeData ? adaptiveTdeeData.isFallback : true,
     adaptiveTdeeDaysOfData: adaptiveTdeeData
       ? (adaptiveTdeeData.daysOfData ?? 0)
@@ -480,15 +661,76 @@ const CalculationSettings = () => {
   // The safety floor clamps silently, so a goal mode that cannot be reached at
   // this activity level renders identically to one that can — at None (x1.0) every
   // deficit mode returns the same target. Surface the ceiling in the picker so the
-  // choice is informed rather than explained after the override. The ceiling depends
-  // only on the baseline and the floor, so it is the same for every mode.
+  // choice is informed rather than explained after the override. The current weekly
+  // target also exposes a ceiling under manual calculation, but percentage options
+  // only use that floor with the adaptive method.
   const deficitCeilingPercent = previewResult.maxFeasibleDeficitPercent;
+
+  // Calorie cycling (#2327): the same base and floor the server cycles from,
+  // and what today gets with the pattern on screen.
+  const cyclingBaseTarget = bmr > 0 ? previewResult.finalTarget : rawManualGoal;
+  const cyclingFloor =
+    previewResult.effectiveSafetyFloor ??
+    resolveCalorieSafetyFloor(
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
+      bmr > 0
+        ? getRecommendedCalorieSafetyFloor(bmr, gender)
+        : getClinicalCalorieMinimum(gender)
+    );
+  const todayWeekday = new Date(`${todayStr}T12:00:00`).getDay();
+  const cyclingDay = pickedCyclingDay ?? todayWeekday;
+  const todayCycled =
+    cyclingAvailable &&
+    calorieCyclingValid &&
+    calorieCyclingPattern({
+      calorie_cycling_mode: calorieCycling.mode,
+      calorie_cycling_offsets: calorieCycling.offsets,
+    }) !== null &&
+    !weeklyGoalPlanInForce(weeklyGoalPlans ?? [], todayStr)
+      ? cycleDayTarget({
+          baseTarget: cyclingBaseTarget,
+          offsets: calorieCycling.offsets,
+          weekday: cyclingDay,
+          floor: cyclingFloor,
+        })
+      : null;
+  // Safety callouts judge the lowest day of the week once cycling applies,
+  // so a low day under RMR or the absolute floor is still warned about.
+  const safetyCheckTarget = todayCycled
+    ? Math.min(
+        ...cycleWeekTargets({
+          baseTarget: cyclingBaseTarget,
+          offsets: calorieCycling.offsets,
+          floor: cyclingFloor,
+        }).map((day) => day.target)
+      )
+    : previewResult.finalTarget;
+  // Maintain hides the callouts, but a cycled low day can still fall below
+  // RMR or the clinical minimum with a custom or disabled floor.
+  const showSafetyCallouts =
+    shouldShowCalorieSafetyWarning(goalMode) || todayCycled !== null;
+  // Only a day cycling actually moves gets a step in the preview.
+  const cyclingToday =
+    todayCycled && todayCycled.delta !== 0 ? todayCycled : null;
+  // Same `common.<day>` keys as the chart's day selectors.
+  const cyclingWeekday = CYCLING_WEEKDAYS[cyclingDay] ?? CYCLING_WEEKDAYS[0];
+  const todayWeekdayName = t(
+    `common.${cyclingWeekday.key}`,
+    cyclingWeekday.name
+  );
   const isGoalModeUnreachable = (mode: GoalMode) =>
+    goalModeCalculationMethod === 'adaptive' &&
     deficitCeilingPercent != null &&
     getGoalModeAdjustment(mode, goalModeCustomPercentage) * 100 >
       deficitCeilingPercent + 1e-9;
 
-  const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
+  const deficitPct =
+    goalMode === 'weekly'
+      ? previewResult.baselineTdee > 0
+        ? previewResult.appliedDeficit / previewResult.baselineTdee
+        : 0
+      : getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
 
   // Measured adaptive TDEE, shown only when the same sufficiency test used by
   // computeCalorieTarget passes; constant across goal modes and methods.
@@ -502,7 +744,12 @@ const CalculationSettings = () => {
     : null;
 
   let baselineLabel: string;
-  if (goalModeCalculationMethod === 'adaptive') {
+  if (previewActivitySeparated) {
+    baselineLabel = t(
+      'settings.goalMode.baselineActivityExcluded',
+      'Adaptive baseline (activity excluded)'
+    );
+  } else if (goalModeCalculationMethod === 'adaptive') {
     baselineLabel = previewResult.insufficientHistory
       ? t('settings.goalMode.baselineEstimatedTdee', 'Estimated TDEE')
       : t(
@@ -522,7 +769,10 @@ const CalculationSettings = () => {
   }
 
   const getCoachingAdvice = () => {
-    if (goalMode === 'maintain') {
+    if (
+      goalMode === 'maintain' ||
+      (goalMode === 'weekly' && goalModeWeeklyChangeKg === 0)
+    ) {
       return {
         title: t(
           'settings.goalMode.coaching.maintenanceTitle',
@@ -852,111 +1102,138 @@ const CalculationSettings = () => {
             'Daily Calorie Goal Adjustment'
           )}
         </Label>
-        <RadioGroup
+        {/* Radix radios: arrow keys move the choice, one tab stop. */}
+        <RadioGroupPrimitive.Root
           value={calorieGoalAdjustmentMode}
-          // RadioGroup's contract is `(value: string) => void`; annotating the
-          // parameter as the narrower union would be unsound. Narrow explicitly and
-          // ignore anything that is not a mode.
-          onValueChange={(value: string) => {
-            if (isCalorieGoalAdjustmentMode(value)) {
-              setCalorieGoalAdjustmentMode(value);
-            }
+          onValueChange={(value) => {
+            const card = ADJUSTMENT_MODE_CARDS.find((c) => c.mode === value);
+            if (card) setCalorieGoalAdjustmentMode(card.mode);
           }}
-          className="flex flex-col space-y-2 mb-4"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="adaptive" id="adaptive-goal" />
-            <Label htmlFor="adaptive-goal" className="cursor-pointer">
-              <Trans
-                i18nKey="settings.goalMode.adaptiveGoalTheGoldStandard"
-                defaults={
-                  "<span>Adaptive Goal:</span> The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
-                }
-                components={{ span: <span className="font-medium" /> }}
-              />
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="dynamic" id="dynamic-goal" />
-            <Label htmlFor="dynamic-goal" className="cursor-pointer">
-              <Trans
-                i18nKey="settings.goalMode.dynamicGoalYourCalorieGoal"
-                defaults={
-                  '<span>Dynamic Goal:</span> Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.'
-                }
-                components={{ span: <span className="font-medium" /> }}
-              />
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="fixed" id="fixed-goal" />
-            <Label htmlFor="fixed-goal" className="cursor-pointer">
-              <Trans
-                i18nKey="settings.goalMode.fixedGoalYourCalorieGoal"
-                defaults={
-                  '<span>Fixed Goal:</span> Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
-                }
-                components={{ span: <span className="font-medium" /> }}
-              />
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="percentage" id="percentage-goal" />
-            <Label htmlFor="percentage-goal" className="cursor-pointer">
-              <Trans
-                i18nKey="settings.goalMode.percentageEarnBackOnlyEarn"
-                defaults={
-                  '<span>Percentage Earn-Back:</span> Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
-                }
-                components={{ span: <span className="font-medium" /> }}
-              />
-            </Label>
-          </div>
-          {calorieGoalAdjustmentMode === 'percentage' && (
-            <div className="ml-6 flex items-center gap-3">
-              <Percent className="w-4 h-4 text-muted-foreground" />
-              <Label
-                htmlFor="exercise-calorie-percentage"
-                className="text-sm whitespace-nowrap"
-              >
-                {t(
-                  'settings.calorieGoalAdjustment.percentageLabel',
-                  'Earn-back percentage:'
-                )}
-              </Label>
-              <Input
-                id="exercise-calorie-percentage"
-                type="number"
-                min={0}
-                max={100}
-                value={exerciseCaloriePercentage}
-                onChange={(e) => {
-                  const val = Math.min(
-                    100,
-                    Math.max(0, Number(e.target.value))
-                  );
-                  setExerciseCaloriePercentage(val);
-                }}
-                className="w-20"
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
+          aria-label={t(
+            'settings.calorieGoalAdjustment.title',
+            'Daily Calorie Goal Adjustment'
           )}
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="tdee" id="tdee-goal" />
-            <Label htmlFor="tdee-goal" className="cursor-pointer">
-              <Trans
-                i18nKey="settings.goalMode.deviceProjectionUsesHealthConnect"
-                defaults={
-                  '<span>Device Projection:</span> Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
-                }
-                components={{ span: <span className="font-medium" /> }}
-              />
-            </Label>
+          className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {ADJUSTMENT_MODE_CARDS.map((card) => {
+            const CardIcon = card.icon;
+            const checked = calorieGoalAdjustmentMode === card.mode;
+            return (
+              <RadioGroupPrimitive.Item
+                key={card.mode}
+                value={card.mode}
+                className={cn(
+                  'flex items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  checked
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-border hover:bg-muted/50'
+                )}
+              >
+                <CardIcon
+                  className={cn(
+                    'mt-0.5 h-4 w-4 shrink-0',
+                    checked ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                  aria-hidden="true"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">
+                    {t(card.titleKey, card.title)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(card.summaryKey, card.summary)}
+                  </span>
+                </span>
+              </RadioGroupPrimitive.Item>
+            );
+          })}
+        </RadioGroupPrimitive.Root>
+        <p
+          className="mt-3 text-sm text-muted-foreground"
+          data-testid="adjustment-mode-description"
+        >
+          {calorieGoalAdjustmentMode === 'adaptive' ? (
+            <Trans
+              i18nKey="settings.goalMode.adaptiveGoalMatchedEvidence"
+              defaults={
+                '<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'dynamic' ? (
+            <Trans
+              i18nKey="settings.goalMode.dynamicGoalYourCalorieGoal"
+              defaults={
+                '<span>Dynamic Goal:</span> Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'fixed' ? (
+            <Trans
+              i18nKey="settings.goalMode.fixedGoalYourCalorieGoal"
+              defaults={
+                '<span>Fixed Goal:</span> Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'percentage' ? (
+            <Trans
+              i18nKey="settings.goalMode.percentageEarnBackOnlyEarn"
+              defaults={
+                '<span>Percentage Earn-Back:</span> Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'tdee' ? (
+            <Trans
+              i18nKey="settings.goalMode.deviceProjectionUsesHealthConnect"
+              defaults={
+                '<span>Device Projection:</span> Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : null}
+        </p>
+        {calorieGoalAdjustmentMode === 'adaptive' && (
+          <div className="mt-3" data-testid="adaptive-calculation-limitations">
+            <AdaptiveEstimateEducation />
           </div>
+        )}
+        <div className="mt-3 mb-4 space-y-3">
+          {calorieGoalAdjustmentMode === 'percentage' &&
+            !adaptiveEarnBackSuppressed && (
+              <div className="flex items-center gap-3">
+                <Percent className="w-4 h-4 text-muted-foreground" />
+                <Label
+                  htmlFor="exercise-calorie-percentage"
+                  className="text-sm whitespace-nowrap"
+                >
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageLabel',
+                    'Earn-back percentage:'
+                  )}
+                </Label>
+                <Input
+                  id="exercise-calorie-percentage"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={exerciseCaloriePercentage}
+                  onChange={(e) => {
+                    const val = Math.min(
+                      100,
+                      Math.max(0, Number(e.target.value))
+                    );
+                    setExerciseCaloriePercentage(val);
+                  }}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
           {(calorieGoalAdjustmentMode === 'tdee' ||
             calorieGoalAdjustmentMode === 'adaptive') && (
-            <div className="ml-6 flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <Label
                   htmlFor="activity-level"
@@ -1013,8 +1290,18 @@ const CalculationSettings = () => {
               {calorieGoalAdjustmentMode === 'adaptive' && (
                 <p className="text-sm text-muted-foreground italic mt-[-4px]">
                   {t(
-                    'settings.goalMode.inAdaptiveModeThisIs',
-                    '💡 In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
+                    'settings.goalMode.adaptivePlausibilityBandHint',
+                    '💡 In Adaptive mode this sets the formula baseline and the ±{{band}} {{unit}} plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.',
+                    {
+                      band: Math.round(
+                        convertEnergy(
+                          ADAPTIVE_TDEE_CLAMP_KCAL,
+                          'kcal',
+                          energyUnit
+                        )
+                      ),
+                      unit: getEnergyUnitString(energyUnit),
+                    }
                   )}
                 </p>
               )}
@@ -1048,7 +1335,7 @@ const CalculationSettings = () => {
               )}
             </div>
           )}
-        </RadioGroup>
+        </div>
 
         {/* Dynamic Calculation Explanation Box */}
         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl space-y-4">
@@ -1078,7 +1365,7 @@ const CalculationSettings = () => {
                   {calorieGoalAdjustmentMode === 'tdee'
                     ? t(
                         'settings.calculationExplanation.burnedTdee',
-                        'Health Connect total calories (BMR + active calories fallback)'
+                        'Device total calories (BMR + active calories fallback)'
                       )
                     : includeBmrInNetCalories
                       ? t(
@@ -1122,61 +1409,86 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {calorieGoalAdjustmentMode === 'dynamic'
+                  {activitySeparated
                     ? t(
-                        'settings.calculationExplanation.remainingDynamic',
-                        'Daily Goal - Net Energy (Your goal grows as you move)'
+                        'settings.calculationExplanation.remainingActivitySeparated',
+                        'Daily Goal - Eaten + Activity (Steps and workouts, without BMR)'
                       )
-                    : calorieGoalAdjustmentMode === 'percentage'
+                    : adaptiveEarnBackSuppressed
                       ? t(
-                          'settings.calculationExplanation.remainingPercentage',
-                          'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
-                          { pct: exerciseCaloriePercentage }
+                          'settings.calculationExplanation.remainingAdaptive',
+                          'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
                         )
-                      : calorieGoalAdjustmentMode === 'tdee'
+                      : calorieGoalAdjustmentMode === 'dynamic'
                         ? t(
-                            'settings.calculationExplanation.remainingTdee',
-                            'Projected TDEE × Goal Mode − Eaten'
+                            'settings.calculationExplanation.remainingDynamic',
+                            'Daily Goal - Net Energy (Your goal grows as you move)'
                           )
-                        : calorieGoalAdjustmentMode === 'adaptive'
+                        : calorieGoalAdjustmentMode === 'percentage'
                           ? t(
-                              'settings.calculationExplanation.remainingAdaptive',
-                              'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
+                              'settings.calculationExplanation.remainingPercentage',
+                              'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
+                              { pct: exerciseCaloriePercentage }
                             )
-                          : t(
-                              'settings.calculationExplanation.remainingFixed',
-                              'Daily Goal - Eaten (Activity does not change your budget)'
-                            )}
+                          : calorieGoalAdjustmentMode === 'tdee'
+                            ? goalMode === 'weekly'
+                              ? t(
+                                  'settings.calculationExplanation.remainingTdeeWeekly',
+                                  'Projected TDEE + Weekly adjustment − Eaten'
+                                )
+                              : t(
+                                  'settings.calculationExplanation.remainingTdee',
+                                  'Projected TDEE × Goal Mode − Eaten'
+                                )
+                            : calorieGoalAdjustmentMode === 'adaptive'
+                              ? t(
+                                  'settings.calculationExplanation.remainingAdaptive',
+                                  'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
+                                )
+                              : t(
+                                  'settings.calculationExplanation.remainingFixed',
+                                  'Daily Goal - Eaten (Activity does not change your budget)'
+                                )}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="pt-2 text-sm text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
-            {calorieGoalAdjustmentMode === 'dynamic'
+            {activitySeparated
               ? t(
-                  'settings.calculationExplanation.dynamicFootnote',
-                  '* Ideal for fueling workouts and active recovery.'
+                  'settings.calculationExplanation.activitySeparatedFootnote',
+                  'After saving, the adaptive baseline excludes historical activity; today’s steps and workouts are credited once without BMR. Server-derived preview values use your saved settings.'
                 )
-              : calorieGoalAdjustmentMode === 'percentage'
+              : adaptiveEarnBackSuppressed
                 ? t(
-                    'settings.calculationExplanation.percentageFootnote',
-                    '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
+                    'settings.calorieGoalAdjustment.adaptiveEarnBack',
+                    'Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.'
                   )
-                : calorieGoalAdjustmentMode === 'tdee'
+                : calorieGoalAdjustmentMode === 'dynamic'
                   ? t(
-                      'settings.calculationExplanation.tdeeFootnote',
-                      '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
+                      'settings.calculationExplanation.dynamicFootnote',
+                      '* Ideal for fueling workouts and active recovery.'
                     )
-                  : calorieGoalAdjustmentMode === 'adaptive'
+                  : calorieGoalAdjustmentMode === 'percentage'
                     ? t(
-                        'settings.calculationExplanation.adaptiveFootnote',
-                        '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                        'settings.calculationExplanation.percentageFootnote',
+                        '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
                       )
-                    : t(
-                        'settings.calculationExplanation.fixedFootnote',
-                        '* Ideal for strict caloric deficits and weight management.'
-                      )}
+                    : calorieGoalAdjustmentMode === 'tdee'
+                      ? t(
+                          'settings.calculationExplanation.tdeeFootnote',
+                          '* Sync total calories from Health Connect, Garmin or Polar. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
+                        )
+                      : calorieGoalAdjustmentMode === 'adaptive'
+                        ? t(
+                            'settings.calculationExplanation.adaptiveEstimateFootnote',
+                            '* Gradually adjusts your Daily Goal using estimates from food and weight records. Weight fluctuations and incomplete logs add uncertainty.'
+                          )
+                        : t(
+                            'settings.calculationExplanation.fixedFootnote',
+                            '* Ideal for strict caloric deficits and weight management.'
+                          )}
           </div>
         </div>
       </div>
@@ -1195,7 +1507,7 @@ const CalculationSettings = () => {
             <span className="block mt-1">
               {t(
                 'settings.goalMode.deviceProjectionHint',
-                'In Device Projection mode, this percentage is applied directly to the projected device TDEE.'
+                'In Device Projection mode, this adjustment is applied directly to the projected device TDEE.'
               )}
             </span>
           )}
@@ -1210,12 +1522,16 @@ const CalculationSettings = () => {
               value={goalMode}
               onValueChange={(value: GoalMode) => {
                 setGoalMode(value);
+                setWeeklyRateValid(true);
               }}
             >
               <SelectTrigger id="goal-mode-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="weekly">
+                  {t('settings.goalMode.weekly', 'Weekly weight change')}
+                </SelectItem>
                 <SelectItem value="maintain">
                   {t('settings.goalMode.modeMaintain', 'Maintain (0%)')}
                 </SelectItem>
@@ -1262,21 +1578,32 @@ const CalculationSettings = () => {
             </Select>
             {deficitCeilingPercent != null && (
               <p className="text-xs text-muted-foreground mt-1.5">
-                {/* Name the lever that actually sets the ceiling. Activity level
-                    only feeds the baseline while history is insufficient; once
-                    adaptive is calibrated the baseline is measured expenditure
-                    and the setting no longer enters the calculation. */}
-                {previewResult.insufficientHistory
-                  ? t(
-                      'settings.goalMode.deficitCeilingHintEstimated',
-                      'At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
-                      { percent: deficitCeilingPercent.toFixed(0) }
-                    )
-                  : t(
-                      'settings.goalMode.deficitCeilingHintMeasured',
-                      'Based on your measured TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
-                      { percent: deficitCeilingPercent.toFixed(0) }
-                    )}
+                {/* Name the baseline the goal uses. Activity level also sets the
+                    formula inputs and plausibility band of the gradual estimate. */}
+                {goalMode === 'weekly'
+                  ? t('settings.goalMode.weeklyCeilingHintWithUnit', {
+                      defaultValue:
+                        'At this baseline and safety floor, the largest projected loss is about {{rate}} per week. Larger requests are limited by the safety floor.',
+                      rate: formatWeeklyGoalRateWithUnit(
+                        (previewResult.baselineTdee *
+                          deficitCeilingPercent *
+                          7) /
+                          (100 * ENERGY_DENSITY_KCAL_PER_KG),
+                        weightUnit,
+                        i18n.resolvedLanguage ?? i18n.language
+                      ),
+                    })
+                  : previewResult.insufficientHistory
+                    ? t(
+                        'settings.goalMode.deficitCeilingHintEstimated',
+                        'At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                        { percent: deficitCeilingPercent.toFixed(0) }
+                      )
+                    : t(
+                        'settings.goalMode.deficitCeilingHintMeasured',
+                        'Based on your estimated TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                        { percent: deficitCeilingPercent.toFixed(0) }
+                      )}
               </p>
             )}
           </div>
@@ -1309,7 +1636,72 @@ const CalculationSettings = () => {
           </div>
         </div>
 
+        {goalMode === 'weekly' && (
+          <WeeklyWeightGoalInput
+            key={contextGoalModeWeeklyChangeKg ?? 0}
+            value={goalModeWeeklyChangeKg}
+            weightUnit={weightUnit}
+            onChange={setGoalModeWeeklyChangeKg}
+            onValidityChange={setWeeklyRateValid}
+            disabled={isSaving}
+          />
+        )}
+
+        <div className="mb-4 rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="adjust-macros-with-exercise">
+              {t(
+                'calculationSettings.adjustMacrosWithExercise',
+                'Adjust percentage macro goals with exercise calories'
+              )}
+            </Label>
+            <Switch
+              id="adjust-macros-with-exercise"
+              checked={adjustMacrosWithExercise}
+              onCheckedChange={setAdjustMacrosWithExercise}
+              aria-describedby="adjust-macros-with-exercise-hint"
+            />
+          </div>
+          <p
+            id="adjust-macros-with-exercise-hint"
+            className="text-sm text-muted-foreground"
+          >
+            {t(
+              'calculationSettings.adjustMacrosWithExerciseHint',
+              'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.'
+            )}
+          </p>
+        </div>
+
         {/* Custom Percentage Input (visible only for Manual mode) */}
+        {calorieGoalAdjustmentMode === 'dynamic' &&
+          goalModeCalculationMethod === 'adaptive' && (
+            <div className="mb-4 rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="adaptive-activity-separate">
+                  {t(
+                    'settings.goalMode.adaptiveActivitySeparate',
+                    'Count activity calories separately'
+                  )}
+                </Label>
+                <Switch
+                  id="adaptive-activity-separate"
+                  checked={adaptiveActivitySeparate}
+                  onCheckedChange={setAdaptiveActivitySeparate}
+                  aria-describedby="adaptive-activity-separate-hint"
+                />
+              </div>
+              <p
+                id="adaptive-activity-separate-hint"
+                className="text-sm text-muted-foreground"
+              >
+                {t(
+                  'settings.goalMode.adaptiveActivitySeparateHint',
+                  'After saving, learn a baseline excluding historical activity and credit today’s steps and workouts once, without adding BMR again. This needs consistent food, weight, step and workout history. Until enough history is available, use BMR × your non-workout activity multiplier.'
+                )}
+              </p>
+            </div>
+          )}
         {goalMode === 'manual' && (
           <div className="mb-4 flex items-center gap-3">
             <Percent className="w-4 h-4 text-muted-foreground" />
@@ -1385,10 +1777,15 @@ const CalculationSettings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="calorie-safety-floor-mode">
-                {t(
-                  'settings.goalMode.safetyFloorModeLabel',
-                  'Adaptive Safety Floor'
-                )}
+                {goalMode === 'weekly'
+                  ? t(
+                      'settings.goalMode.weeklySafetyFloorModeLabel',
+                      'Calorie safety floor'
+                    )
+                  : t(
+                      'settings.goalMode.safetyFloorModeLabel',
+                      'Adaptive Safety Floor'
+                    )}
               </Label>
               <Select
                 value={calorieSafetyFloorMode}
@@ -1483,6 +1880,25 @@ const CalculationSettings = () => {
           </p>
         </div>
 
+        <CalorieCyclingSettings
+          mode={calorieCycling.mode}
+          offsets={calorieCycling.offsets}
+          onChange={setCalorieCycling}
+          available={cyclingAvailable}
+          pausedByWeeklyPlan={Boolean(
+            weeklyGoalPlanInForce(weeklyGoalPlans ?? [], todayStr)
+          )}
+          baseTarget={cyclingBaseTarget}
+          floor={cyclingFloor}
+          firstDayOfWeek={firstDayOfWeek ?? 0}
+          todayWeekday={todayWeekday}
+          selectedDay={cyclingDay}
+          onSelectDay={setPickedCyclingDay}
+          convertEnergy={convertEnergy}
+          energyUnit={energyUnit}
+          energyUnitString={getEnergyUnitString(energyUnit)}
+        />
+
         {/* Live Preview & Diagnostics Callouts */}
         <div className="space-y-3">
           {/* Live Preview Panel */}
@@ -1554,29 +1970,63 @@ const CalculationSettings = () => {
                       )
                     )
                   )}`}{' '}
-                  {getEnergyUnitString(energyUnit)} (
-                  {Math.abs(
-                    Math.round(
-                      getGoalModeAdjustment(
-                        goalMode,
-                        goalModeCustomPercentage
-                      ) * 100
-                    )
-                  )}
-                  %)
+                  {getEnergyUnitString(energyUnit)}
+                  {goalMode !== 'weekly' &&
+                    ` (${Math.abs(Math.round(deficitPct * 100))}%)`}
                 </span>
               </div>
+              {cyclingToday && (
+                <>
+                  <div className="hidden md:block text-muted-foreground">→</div>
+                  <div data-testid="calorie-cycling-today">
+                    <span className="text-muted-foreground">
+                      {t(
+                        'settings.calorieCycling.previewStep',
+                        'Calorie cycling ({{day}}):',
+                        { day: todayWeekdayName }
+                      )}
+                    </span>{' '}
+                    <span
+                      className={`font-semibold ${
+                        cyclingToday.delta > 0
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {cyclingToday.delta > 0 ? '+' : '−'}
+                      {Math.round(
+                        convertEnergy(
+                          Math.abs(cyclingToday.delta),
+                          'kcal',
+                          energyUnit
+                        )
+                      )}{' '}
+                      {getEnergyUnitString(energyUnit)}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="hidden md:block text-muted-foreground">→</div>
               <div>
                 <span className="text-muted-foreground">
-                  {t(
-                    'settings.goalMode.dailyCalorieTarget',
-                    'Daily Calorie Target:'
-                  )}
+                  {cyclingToday && cyclingDay !== todayWeekday
+                    ? t(
+                        'settings.calorieCycling.previewTargetForDay',
+                        'Daily Calorie Target ({{day}}):',
+                        { day: todayWeekdayName }
+                      )
+                    : t(
+                        'settings.goalMode.dailyCalorieTarget',
+                        'Daily Calorie Target:'
+                      )}
                 </span>{' '}
                 <span className="font-bold text-base text-primary">
                   {Math.round(
-                    convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+                    convertEnergy(
+                      cyclingToday?.target ?? previewResult.finalTarget,
+                      'kcal',
+                      energyUnit
+                    )
                   )}{' '}
                   {getEnergyUnitString(energyUnit)}
                 </span>
@@ -1607,20 +2057,27 @@ const CalculationSettings = () => {
               <div className="pt-2 border-t border-border/60 text-sm flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">
-                    {previewResult.isGainGoal
+                    {goalMode === 'weekly'
                       ? t(
-                          'settings.goalMode.projectedWeeklyGain',
-                          'Projected weekly gain:'
+                          'settings.goalMode.projectedWeeklyChange',
+                          'Projected weekly change:'
                         )
-                      : t(
-                          'settings.goalMode.projectedWeeklyLoss',
-                          'Projected weekly loss:'
-                        )}
+                      : previewResult.isGainGoal
+                        ? t(
+                            'settings.goalMode.projectedWeeklyGain',
+                            'Projected weekly gain:'
+                          )
+                        : t(
+                            'settings.goalMode.projectedWeeklyLoss',
+                            'Projected weekly loss:'
+                          )}
                   </span>
                   <span className="font-semibold">
                     ~
                     {formatProjectedLoss(
-                      Math.abs(previewResult.projectedWeeklyChangeKg)
+                      goalMode === 'weekly'
+                        ? previewResult.projectedWeeklyChangeKg
+                        : Math.abs(previewResult.projectedWeeklyChangeKg)
                     )}
                   </span>
                   <span className="text-muted-foreground">
@@ -1653,6 +2110,8 @@ const CalculationSettings = () => {
             {/* Detailed Calculation Breakdown */}
             <div className="pt-3 border-t border-border/60 space-y-2.5">
               <CalorieTargetBreakdown
+                defaultOpen
+                adaptiveActivitySeparate={previewActivitySeparated}
                 previewResult={previewResult}
                 adaptiveTdeeData={adaptiveTdeeData}
                 bmrAlgorithm={bmrAlgorithm}
@@ -1668,11 +2127,25 @@ const CalculationSettings = () => {
                 goalMode={goalMode}
                 goalModeCalculationMethod={goalModeCalculationMethod}
                 goalModeCustomPercentage={goalModeCustomPercentage}
+                goalModeWeeklyChangeKg={goalModeWeeklyChangeKg}
                 calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
                 rawManualGoal={rawManualGoal}
                 adjustedManualGoal={currentGoalBase}
                 activityMultiplier={activityMultiplier}
                 bmrSource={measuredBmr != null ? 'measured' : undefined}
+                calorieCycling={
+                  cyclingToday
+                    ? {
+                        status: 'active',
+                        baseTarget: Math.round(cyclingBaseTarget),
+                        target: cyclingToday.target,
+                        delta: cyclingToday.delta,
+                        dayType: cyclingToday.delta > 0 ? 'high' : 'low',
+                        floor: cyclingFloor,
+                        clampedToFloor: cyclingToday.clampedToFloor,
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -1706,9 +2179,10 @@ const CalculationSettings = () => {
           )}
 
           {/* Warning callouts */}
-          {shouldShowCalorieSafetyWarning(goalMode) &&
-            previewResult.finalTarget < previewResult.rmr &&
-            previewResult.finalTarget >= previewResult.absoluteFloorValue && (
+          {showSafetyCallouts &&
+            hasValidRmr &&
+            safetyCheckTarget < previewResult.rmr &&
+            safetyCheckTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
                 <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -1729,8 +2203,8 @@ const CalculationSettings = () => {
             )}
 
           {/* Absolute Floor Danger Callout */}
-          {shouldShowCalorieSafetyWarning(goalMode) &&
-            previewResult.finalTarget < previewResult.absoluteFloorValue && (
+          {showSafetyCallouts &&
+            safetyCheckTarget < previewResult.absoluteFloorValue && (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -1814,20 +2288,25 @@ const CalculationSettings = () => {
                       {previewResult.insufficientHistory
                         ? t(
                             'settings.goalMode.clampAdviceEstimated',
-                            '. To lose faster than that, raise your expenditure through activity, or check that your Activity Level is not understated — it sets this ceiling until you have enough history for a measured baseline.'
+                            '. Check that your Activity Level is not understated: it sets the formula baseline and plausibility limits used throughout Adaptive TDEE’s gradual calculation.'
                           )
                         : t(
                             'settings.goalMode.clampAdviceMeasured',
-                            '. To lose faster than that, raise your actual expenditure rather than cutting intake further; your baseline is measured, so the Activity Level setting no longer affects it.'
+                            '. With Adaptive TDEE, Activity Level still sets the formula baseline and plausibility limits and affects the gradual return to that baseline as evidence ages.'
                           )}
                     </>
                   )}
                 </p>
                 <p className="text-sm text-amber-700/80 dark:text-amber-400/70 leading-relaxed">
-                  {t(
-                    'settings.goalMode.manualFloorWarning',
-                    'The Manual calculation method does not apply this floor — it warns instead of overriding.'
-                  )}
+                  {goalMode === 'weekly'
+                    ? t(
+                        'settings.goalMode.weeklyFloorApplies',
+                        'Weekly weight targets use your configured safety floor with either calculation method.'
+                      )
+                    : t(
+                        'settings.goalMode.manualFloorWarning',
+                        'The Manual calculation method does not apply this floor — it warns instead of overriding.'
+                      )}
                 </p>
               </div>
             </div>
@@ -1886,23 +2365,22 @@ const CalculationSettings = () => {
                     )}
                   </p>
                   <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
-                    {t('settings.goalMode.calibrationDescription', {
-                      defaultValue:
-                        "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
-                      required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
-                    })}
+                    {t(
+                      'settings.goalMode.adaptiveFallbackDescription',
+                      'Fallback is being used while usable weight and food history is collected. Incomplete days and scale-weight fluctuations still add uncertainty; sufficient logs allow an estimate rather than a direct measurement of metabolism.'
+                    )}
                   </p>
                   <ul className="list-disc pl-4 text-sm text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
                     <li>
                       {t(
-                        'settings.goalMode.calibrationWeightTip',
-                        'Log weight at least 3-4 times per week.'
+                        'settings.goalMode.adaptiveWeightIntervalTip',
+                        'Log actual weights at consistent times, keeping food records across the observed period.'
                       )}
                     </li>
                     <li>
                       {t(
-                        'settings.goalMode.calibrationFoodTip',
-                        'Log food intake daily (>200 kcal/day).'
+                        'settings.goalMode.adaptiveFoodIntervalTip',
+                        'Log food as completely as possible; a qualifying date can still be partial.'
                       )}
                     </li>
                   </ul>
@@ -2129,7 +2607,14 @@ const CalculationSettings = () => {
         </div>
       </div>
 
-      <Button onClick={handleSave} disabled={isSaving}>
+      <Button
+        onClick={handleSave}
+        disabled={
+          isSaving ||
+          (goalMode === 'weekly' && !weeklyRateValid) ||
+          cyclingBlocksSave
+        }
+      >
         <Save className="h-4 w-4 mr-2" />
         {isSaving
           ? t('common.saving', 'Saving...')

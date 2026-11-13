@@ -1,5 +1,10 @@
 import { act, renderHook } from '@testing-library/react-native';
+import { AppState, type NativeEventSubscription } from 'react-native';
 import Toast from 'react-native-toast-message';
+import {
+  KeyboardController,
+  KeyboardEvents,
+} from 'react-native-keyboard-controller';
 import type { PresetSessionResponse } from '@workspace/shared';
 import {
   AUTOSAVE_DEBOUNCE_MS,
@@ -55,6 +60,13 @@ const mockSyncCache = syncExerciseSessionInCache as jest.MockedFunction<
 >;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
+const mockKeyboardVisible = KeyboardController.isVisible as jest.MockedFunction<
+  typeof KeyboardController.isVisible
+>;
+const mockAddKeyboardListener =
+  KeyboardEvents.addListener as jest.MockedFunction<
+    typeof KeyboardEvents.addListener
+  >;
 
 function makeSession(): PresetSessionResponse {
   return {
@@ -388,6 +400,319 @@ describe('useActiveWorkoutAutosave', () => {
         'ex-uuid-2',
         'ex-uuid-1',
       ]);
+    });
+  });
+
+  describe('while a set is being edited', () => {
+    type ResolveSave = (session: PresetSessionResponse) => Promise<void>;
+
+    function renderEditable(editing: boolean) {
+      return renderHook(
+        (props: { editing: boolean }) => useActiveWorkoutAutosave(props),
+        {
+          initialProps: { editing },
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+    }
+
+    /** The server's copy of the live session, with these set ids reassigned. */
+    function serverCopy(ids: Record<string, number>): PresetSessionResponse {
+      const local = getStore().session!;
+      return {
+        ...local,
+        exercises: local.exercises.map((exercise) => ({
+          ...exercise,
+          sets: exercise.sets.map((set) => ({
+            ...set,
+            id: ids[String(set.id)] ?? set.id,
+          })),
+        })),
+      };
+    }
+
+    /** Make the next save hang until the returned function resolves it. */
+    function deferNextSave(): ResolveSave {
+      let resolve!: (session: PresetSessionResponse) => void;
+      mockUpdateWorkout.mockImplementationOnce(
+        () =>
+          new Promise((r) => {
+            resolve = r;
+          })
+      );
+      return async (session) => {
+        await act(async () => {
+          resolve(session);
+          await jest.advanceTimersByTimeAsync(0);
+        });
+      };
+    }
+
+    function sentSetIds(call: number): (number | undefined)[] {
+      const payload = mockUpdateWorkout.mock.calls[call]![1];
+      return payload.exercises![0]!.sets!.map((set) => set.id);
+    }
+
+    // The jest preset mocks AppState.currentState as a function; a response
+    // is only held while the app is in the foreground.
+    const currentStateDescriptor = Object.getOwnPropertyDescriptor(
+      AppState,
+      'currentState'
+    );
+
+    function setAppState(state: string): void {
+      Object.defineProperty(AppState, 'currentState', {
+        get: () => state,
+        configurable: true,
+      });
+    }
+
+    beforeEach(() => {
+      // Editing ends with the keyboard already gone unless a test says not.
+      mockKeyboardVisible.mockReturnValue(false);
+      setAppState('active');
+    });
+
+    afterEach(() => {
+      mockKeyboardVisible.mockReturnValue(true);
+      if (currentStateDescriptor != null) {
+        Object.defineProperty(AppState, 'currentState', currentStateDescriptor);
+      }
+    });
+
+    it('still sends the save on the usual debounce', async () => {
+      renderEditable(true);
+      startAndEdit();
+
+      await advance(AUTOSAVE_DEBOUNCE_MS - 1);
+      expect(mockUpdateWorkout).not.toHaveBeenCalled();
+      await advance(1);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not push back a pending save when a cell gains focus', async () => {
+      const { rerender } = renderEditable(false);
+      startAndEdit();
+
+      await advance(AUTOSAVE_DEBOUNCE_MS - 500);
+      rerender({ editing: true });
+      await advance(500);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    });
+
+    it('holds a response that lands mid-edit and adopts it once editing ends', async () => {
+      const { rerender } = renderEditable(false);
+      startAndEdit(80);
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+
+      // The lifter taps a cell before the reply arrives.
+      rerender({ editing: true });
+      const localBefore = getStore().session;
+      await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+
+      expect(getStore().session).toBe(localBefore);
+      expect(getStore().hasUnsavedChanges).toBe(true);
+
+      rerender({ editing: false });
+      await advance(0);
+      const sets = getStore().session!.exercises[0].sets;
+      expect(sets.map((set) => set.id)).toEqual([501, 502]);
+      expect(sets[0].weight).toBe(80);
+      expect(getStore().hasUnsavedChanges).toBe(false);
+      // Adopting a clean echo leaves nothing for another save.
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps edits made while the response was held and sends them with the server ids', async () => {
+      const { rerender } = renderEditable(false);
+      act(() => {
+        getStore().startWorkout(makeSession());
+        getStore().addSetToExercise('ex-uuid-1');
+      });
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(sentSetIds(0)).toEqual([101, 102, undefined]);
+
+      rerender({ editing: true });
+      await resolveSave(serverCopy({ '-1': 103 }));
+      act(() => {
+        getStore().updateSetField('-1', { reps: 12 });
+      });
+
+      rerender({ editing: false });
+      await advance(0);
+      const sets = getStore().session!.exercises[0].sets;
+      expect(sets.map((set) => set.id)).toEqual([101, 102, 103]);
+      expect(sets[2].reps).toBe(12);
+      expect(getStore().hasUnsavedChanges).toBe(true);
+
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(2);
+      expect(sentSetIds(1)).toEqual([101, 102, 103]);
+      const resent = mockUpdateWorkout.mock.calls[1]![1].exercises![0]!.sets!;
+      expect(resent[2]!.reps).toBe(12);
+    });
+
+    it('adopts a held response before any other save builds its payload', async () => {
+      const { rerender } = renderEditable(false);
+      act(() => {
+        getStore().startWorkout(makeSession());
+        getStore().addSetToExercise('ex-uuid-1');
+      });
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      rerender({ editing: true });
+      await resolveSave(serverCopy({ '-1': 103 }));
+      expect(getStore().session!.exercises[0].sets[2].id).toBe(-1);
+
+      // e.g. the watch logs a set while the phone still has a cell focused.
+      act(() => {
+        getStore().completeSet('101');
+      });
+      await act(async () => {
+        await saveActiveWorkoutSession(queryClient);
+      });
+
+      expect(sentSetIds(1)).toEqual([101, 102, 103]);
+    });
+
+    it('takes in a held response on flush, even mid-edit', async () => {
+      const { result, rerender } = renderEditable(false);
+      startAndEdit(80);
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      rerender({ editing: true });
+      await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      expect(
+        getStore().session!.exercises[0].sets.map((set) => set.id)
+      ).toEqual([501, 502]);
+      expect(getStore().hasUnsavedChanges).toBe(false);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for the keyboard to finish closing before adopting', async () => {
+      const { rerender } = renderEditable(false);
+      startAndEdit(80);
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      rerender({ editing: true });
+      await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+
+      // Log dismisses the keyboard as it ends editing: still closing.
+      mockKeyboardVisible.mockReturnValue(true);
+      mockAddKeyboardListener.mockClear();
+      rerender({ editing: false });
+      await advance(0);
+      expect(getStore().session!.exercises[0].sets[0].id).toBe(101);
+
+      const didHide = mockAddKeyboardListener.mock.calls.find(
+        ([event]) => event === 'keyboardDidHide'
+      );
+      expect(didHide).toBeDefined();
+      act(() => {
+        didHide![1]({
+          height: 0,
+          duration: 0,
+          timestamp: 0,
+          target: -1,
+          type: 'default',
+          appearance: 'light',
+        });
+      });
+      expect(getStore().session!.exercises[0].sets[0].id).toBe(501);
+    });
+
+    describe('when the app leaves the foreground', () => {
+      let appStateListeners: ((state: string) => void)[];
+      // The jest preset's AppState mock: a spy over it would restore it to
+      // an empty implementation, so its own implementation is swapped back.
+      const mockAddEventListener = AppState.addEventListener as jest.Mock;
+      const defaultAddEventListener =
+        mockAddEventListener.getMockImplementation();
+      beforeEach(() => {
+        appStateListeners = [];
+        mockAddEventListener.mockImplementation(
+          (_: string, handler: (state: string) => void) => {
+            appStateListeners.push(handler);
+            return { remove: jest.fn() } as unknown as NativeEventSubscription;
+          }
+        );
+      });
+
+      afterEach(() => {
+        mockAddEventListener.mockImplementation(defaultAddEventListener);
+      });
+
+      // The held response lives only in memory; an app killed in the
+      // background must come back with the server's ids in the store.
+      it('takes in a held response mid-edit', async () => {
+        const { rerender } = renderEditable(false);
+        startAndEdit(80);
+        const resolveSave = deferNextSave();
+        await advance(AUTOSAVE_DEBOUNCE_MS);
+        rerender({ editing: true });
+        await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+        expect(getStore().session!.exercises[0].sets[0].id).toBe(101);
+
+        act(() => {
+          for (const listener of appStateListeners) listener('background');
+        });
+
+        expect(
+          getStore().session!.exercises[0].sets.map((set) => set.id)
+        ).toEqual([501, 502]);
+        expect(getStore().hasUnsavedChanges).toBe(false);
+      });
+
+      // iOS reports inactive (app switcher, a call) before background, and a
+      // swipe from the app switcher can kill the app without reaching it.
+      it.each(['inactive', 'background'])(
+        'does not hold a response that lands while the app is %s',
+        async (appState) => {
+          const { rerender } = renderEditable(false);
+          startAndEdit(80);
+          const resolveSave = deferNextSave();
+          await advance(AUTOSAVE_DEBOUNCE_MS);
+          rerender({ editing: true });
+          setAppState(appState);
+          await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+
+          expect(
+            getStore().session!.exercises[0].sets.map((set) => set.id)
+          ).toEqual([501, 502]);
+          expect(getStore().hasUnsavedChanges).toBe(false);
+        }
+      );
+    });
+
+    it('drops a held response once its live run has been replaced', async () => {
+      const { rerender } = renderEditable(false);
+      startAndEdit(80);
+      const resolveSave = deferNextSave();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      rerender({ editing: true });
+      await resolveSave(serverCopy({ '101': 501, '102': 502 }));
+
+      // Discarded and started again from the same diary session.
+      await advance(1_000);
+      act(() => {
+        getStore().clearWorkout({ discarded: true });
+        getStore().startWorkout(makeSession());
+      });
+      const restarted = getStore().session;
+
+      rerender({ editing: false });
+      await advance(0);
+      expect(getStore().session).toBe(restarted);
+      expect(getStore().session!.exercises[0].sets[0].id).toBe(101);
     });
   });
 

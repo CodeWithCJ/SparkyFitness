@@ -1,5 +1,6 @@
 import {
   buildIntervalPlan,
+  findProgram,
   programStatus,
   INTERVAL_PRESETS,
 } from '@workspace/shared';
@@ -7,6 +8,7 @@ import {
   buildWatchRunPlans,
   buildWatchStartPlan,
 } from '../../src/utils/watchRunPlans';
+import { suggestedPaceRangesFromRace } from '../../src/utils/suggestedRanges';
 
 const t = ((_key: string, options?: { defaultValue?: string }) =>
   options?.defaultValue ?? _key) as never;
@@ -149,4 +151,98 @@ describe('program voice lines', () => {
     });
     expect(free.startText).toBeUndefined();
   });
+});
+
+describe('race pace ranges on the program workout', () => {
+  const ranges = suggestedPaceRangesFromRace(
+    { distanceKm: 5, seconds: 1500 },
+    'run'
+  )!;
+
+  test('puts the easy-running range on the runs of a run/walk plan', () => {
+    const status = programStatus({ programId: 'beginner5k', next: 0 })!;
+    const [program] = buildWatchRunPlans(
+      t,
+      { status, enabled: true },
+      names,
+      ranges
+    );
+    const runs = program.steps.filter((s) => s.paceMin !== undefined);
+    expect(runs.length).toBeGreaterThan(0);
+    for (const step of runs) {
+      expect(step.paceMin).toBe(ranges.byEffort.easy!.minSecondsPerKm);
+      expect(step.paceMax).toBe(ranges.byEffort.easy!.maxSecondsPerKm);
+    }
+  });
+
+  test('gives a tempo run its tempo range and the strides theirs, but hills none', () => {
+    // Week 7 of the faster 10K has strides and a tempo run; week 2 has hills.
+    const programIndex = (week: number, day: number) =>
+      findProgram('faster10k')!.workouts.findIndex(
+        (w) => w.week === week && w.day === day
+      );
+    const plansFor = (week: number, day: number) =>
+      buildWatchRunPlans(
+        t,
+        {
+          status: programStatus({
+            programId: 'faster10k',
+            next: programIndex(week, day),
+          })!,
+          enabled: true,
+        },
+        names,
+        ranges
+      )[0].steps;
+
+    const tempo = plansFor(6, 2).find((s) => s.seconds === 30 * 60)!;
+    expect(tempo.paceMin).toBe(ranges.byEffort.tempo!.minSecondsPerKm);
+    const strides = plansFor(6, 1).filter((s) => s.seconds === 20);
+    expect(strides).toHaveLength(6);
+    expect(
+      strides.every(
+        (s) => s.paceMin === ranges.byEffort.stride!.minSecondsPerKm
+      )
+    ).toBe(true);
+    const hills = plansFor(1, 0).filter((s) => s.seconds === 45);
+    expect(hills).toHaveLength(8);
+    expect(hills.every((s) => s.paceMin === undefined)).toBe(true);
+  });
+
+  test('leaves the steps free without a race, and leaves the built-in plans alone', () => {
+    const status = programStatus({ programId: 'beginner5k', next: 0 })!;
+    const free = buildWatchRunPlans(t, { status, enabled: true }, names);
+    expect(free[0].steps.every((s) => s.paceMin === undefined)).toBe(true);
+    const withRace = buildWatchRunPlans(
+      t,
+      { status, enabled: true },
+      names,
+      ranges
+    );
+    expect(withRace.slice(1)).toEqual(free.slice(1));
+  });
+});
+
+test('puts the Zone 2 range on a Zone 2 workout, the step names Zone 2 and strides get none', () => {
+  const status = programStatus({ programId: 'zone2Base', next: 15 })!;
+  const band = { minBpm: 111, maxBpm: 129 };
+  const [plan] = buildWatchRunPlans(
+    t,
+    { status, enabled: true },
+    names,
+    null,
+    band
+  );
+  const zone2Steps = plan.steps.filter((s) => s.label === 'Zone 2 run');
+  expect(zone2Steps.length).toBeGreaterThan(0);
+  for (const step of zone2Steps) {
+    expect(step).toMatchObject({ hrMin: 111, hrMax: 129 });
+  }
+  expect(plan.steps.filter((s) => s.hrMin !== undefined)).toEqual(zone2Steps);
+});
+
+test('a Zone 2 workout has no heart-rate range on the watch when none is known', () => {
+  const status = programStatus({ programId: 'zone2Base', next: 0 })!;
+  const [plan] = buildWatchRunPlans(t, { status, enabled: true }, names);
+  expect(plan.steps.some((s) => s.hrMin !== undefined)).toBe(false);
 });

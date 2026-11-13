@@ -42,6 +42,10 @@ const BODY_FAT_ALGORITHM_LABELS: Record<string, TranslationLabel> = {
 };
 
 const GOAL_MODE_LABELS: Record<string, TranslationLabel> = {
+  weekly: {
+    key: 'settings.goalMode.weekly',
+    defaultValue: 'Weekly weight change',
+  },
   maintain: {
     key: 'settings.goalMode.modeNames.maintain',
     defaultValue: 'Maintain',

@@ -329,67 +329,6 @@ router.put('/profiles', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /identity/update-password:
- *   post:
- *     summary: Update user password
- *     tags: [Identity & Security]
- *     description: Allows an authenticated user to update their password.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - newPassword
- *             properties:
- *               newPassword:
- *                 type: string
- *                 format: password
- *                 description: The new password for the user.
- *     responses:
- *       200:
- *         description: Password updated successfully.
- *       400:
- *         description: New password is required.
- *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
- *       404:
- *         description: User not found.
- *       500:
- *         description: Server error.
- */
-router.post(
-  '/update-password',
-  authenticate,
-  demoGuard,
-  async (req, res, next) => {
-    const { newPassword } = req.body;
-    if (!newPassword) {
-      return res.status(400).json({ error: 'New password is required.' });
-    }
-    try {
-      // Security: Password updates must always apply to the authenticated user, not the active context
-
-      await authService.updateUserPassword(
-        req.authenticatedUserId,
-        newPassword
-      );
-      res.status(200).json({ message: 'Password updated successfully.' });
-    } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      if (error.constructor.name === 'NotFoundError') {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
-  }
-);
-/**
- * @swagger
  * /identity/update-email:
  *   post:
  *     summary: Update user email
@@ -595,21 +534,42 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - enabled
  *             properties:
  *               enabled:
  *                 type: boolean
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *                 description: Required when disabling, unless the account has no local password (SSO only).
  *     responses:
  *       200:
  *         description: MFA settings updated successfully.
+ *       400:
+ *         description: enabled is missing or not a boolean.
+ *       401:
+ *         description: Current password is incorrect.
  */
 router.post(
   '/mfa/email-toggle',
   authenticate,
   demoGuard,
   async (req, res, next) => {
-    const { enabled } = req.body;
+    const { enabled, currentPassword } = req.body ?? {};
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean.' });
+    }
     try {
       // Security: MFA settings must apply to the authenticated user
+      // Turning email MFA off needs the current password, like Better Auth's
+      // two-factor/disable does for TOTP.
+      if (!enabled) {
+        await authService.verifyCurrentPassword(
+          req.authenticatedUserId,
+          currentPassword
+        );
+      }
 
       const user = await authService.getUser(req.authenticatedUserId);
       const totpEnabled = !!user.mfa_totp_enabled;

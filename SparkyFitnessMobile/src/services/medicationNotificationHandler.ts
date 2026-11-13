@@ -1,72 +1,1074 @@
+import { AppState } from 'react-native';
+import * as Network from 'expo-network';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
 import {
   addNotificationResponseListener,
   dismissDeliveredNotification,
+  ensureMedicationReminderChannel,
+  MEDICATION_REMINDER_CATEGORY,
+  MEDICATION_REMINDER_CHANNEL_ID,
+  MEDICATION_REMINDER_GROUP_CATEGORY,
   MEDICATION_TAKEN_ACTION,
   MEDICATION_SKIP_ACTION,
+  MEDICATION_SNOOZE_ACTION,
 } from './notifications';
-import { createEntry, listEntries } from './api/medicationsApi';
+import {
+  createEntry,
+  listEntries,
+  listMedications,
+} from './api/medicationsApi';
 import { queryClient } from '../hooks/queryClient';
 import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEntryCaches';
-import { addLog } from '../services/LogService';
-import type { MedicationEntryStatus } from '@workspace/shared';
+import { addLog, _flushBuffer } from '../services/LogService';
+import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
+import { addDays } from '../utils/dateUtils';
+import { getActiveServerConfig } from './storage';
 import { isDoseLogged } from '../utils/medications';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  acknowledgeNativeMedicationActionResults,
+  addNativeMedicationResultListener,
+  readNativeMedicationActionResults,
+  isNativeMedicationActionClaimed,
+} from './medicationNativeBridge';
+import { syncNativeMedicationSnoozeMinutes } from './medicationNativeSync';
+import i18n, {
+  getDeviceLanguage,
+  initializeI18n,
+  normalizeLanguage,
+} from '../localization/i18n';
+
+export const MEDICATION_NOTIFICATION_TASK_NAME =
+  'MEDICATION_NOTIFICATION_ACTION_TASK';
+export const PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY =
+  'pending_medication_notification_actions';
+const SNOOZED_MEDICATION_REMINDERS_KEY = 'snoozed_medication_reminders';
+
+interface SnoozedMedicationReminderRecord {
+  baseKey: string;
+  entryDate: string;
+  doses?: { medicationId: string; scheduleId: string | null }[];
+}
+
+export interface PendingMedicationNotificationAction {
+  key: string | null;
+  notificationId: string;
+  status: MedicationEntryStatus;
+  doses: { medicationId: string; scheduleId: string | null }[];
+  entryDate: string;
+  userId?: string | null;
+  /** The saved server the reminder was scheduled for; absent on older reminders. */
+  serverId?: string | null;
+  takenAt?: string;
+}
 
 let initialized = false;
+const inFlightActions = new Map<string, Promise<boolean>>();
+let pendingActionsQueue: Promise<unknown> = Promise.resolve();
+
+function withPendingActionsLock<T>(work: () => Promise<T>): Promise<T> {
+  const next = pendingActionsQueue.then(work, work);
+  pendingActionsQueue = next.catch(() => undefined);
+  return next;
+}
+
+export function extractNotificationData(
+  content: Notifications.NotificationContent | undefined
+): Record<string, string | undefined> | undefined {
+  if (!content) return undefined;
+  if (
+    content.data &&
+    typeof content.data === 'object' &&
+    Object.keys(content.data).length > 0
+  ) {
+    return content.data as Record<string, string | undefined>;
+  }
+  const rawContent = content as Notifications.NotificationContent & {
+    dataString?: string;
+  };
+  const jsonSource =
+    typeof content.data === 'string'
+      ? content.data
+      : typeof rawContent.dataString === 'string'
+        ? rawContent.dataString
+        : undefined;
+  if (jsonSource) {
+    try {
+      const parsed = JSON.parse(jsonSource);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, string | undefined>;
+      }
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+  if (content.data && typeof content.data === 'object') {
+    return content.data as Record<string, string | undefined>;
+  }
+  return undefined;
+}
+
+function parseDosesFromData(
+  data: Record<string, string | undefined> | undefined
+): { medicationId: string; scheduleId: string | null }[] {
+  if (!data) return [];
+  if (data.doses) {
+    try {
+      const parsed =
+        typeof data.doses === 'string' ? JSON.parse(data.doses) : data.doses;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(
+          (d: { medicationId: string; scheduleId?: string | null }) => ({
+            medicationId: d.medicationId,
+            scheduleId: d.scheduleId ?? null,
+          })
+        );
+      }
+    } catch {
+      // fallback below
+    }
+  }
+  if (data.medicationId) {
+    return [
+      {
+        medicationId: data.medicationId,
+        scheduleId: data.scheduleId ?? null,
+      },
+    ];
+  }
+  return [];
+}
+
+function doesNotificationMatchAction(
+  content: Notifications.NotificationContent | undefined,
+  key: string | null,
+  doses: { medicationId: string; scheduleId: string | null }[],
+  entryDate: string
+): boolean {
+  const notifData = extractNotificationData(content);
+  if (!notifData) return false;
+
+  const notifBaseKey = notifData.baseKey ?? notifData.key ?? null;
+  if (
+    key &&
+    (notifBaseKey === key ||
+      notifData.key === key ||
+      (typeof notifData.key === 'string' &&
+        notifData.key.startsWith(`${key}_`)))
+  ) {
+    return true;
+  }
+
+  if (notifData.entryDate && notifData.entryDate !== entryDate) {
+    return false;
+  }
+
+  const notifDoses = parseDosesFromData(notifData);
+  if (notifDoses.length === 0 || doses.length === 0) return false;
+
+  // Dismiss/cancel another notification if every dose it represents is covered
+  // by the doses just logged/skipped in this action.
+  return notifDoses.every((nd) =>
+    doses.some(
+      (d) =>
+        d.medicationId === nd.medicationId &&
+        (d.scheduleId ?? null) === (nd.scheduleId ?? null)
+    )
+  );
+}
+
+/** The id of the saved server the app is signed in to now, or null. */
+async function currentServerId(): Promise<string | null> {
+  try {
+    return (await getActiveServerConfig())?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A reminder stamped with a server is acted on only while that server is the
+ * active one; otherwise it is kept queued until it is. A copy of a server (a
+ * restored backup) has the same user and medication ids but another server id.
+ */
+function belongsToOtherServer(
+  serverId: string | null | undefined,
+  activeServerId: string | null
+): boolean {
+  return Boolean(serverId) && serverId !== activeServerId;
+}
+
+function actionDedupeId(action: {
+  key: string | null;
+  entryDate: string;
+  doses: { medicationId: string; scheduleId: string | null }[];
+  userId?: string | null;
+}): string {
+  const prefix = action.userId ? `${action.userId}_` : '';
+  if (action.key) return `${prefix}${action.key}`;
+  const doseIds = action.doses
+    .map((d) => `${d.medicationId}:${d.scheduleId ?? ''}`)
+    .sort()
+    .join(',');
+  return `${prefix}${action.entryDate}_${doseIds}`;
+}
+
+async function readPendingActions(): Promise<
+  PendingMedicationNotificationAction[]
+> {
+  try {
+    const raw = await AsyncStorage.getItem(
+      PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+    );
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? (parsed as PendingMedicationNotificationAction[])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writePendingActions(
+  actions: PendingMedicationNotificationAction[]
+): Promise<boolean> {
+  try {
+    if (actions.length === 0) {
+      await AsyncStorage.removeItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+      );
+    } else {
+      await AsyncStorage.setItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+        JSON.stringify(actions)
+      );
+    }
+    return true;
+  } catch {
+    // The caller decides whether a failed write matters.
+    return false;
+  }
+}
+
+async function enqueuePendingAction(
+  record: PendingMedicationNotificationAction
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
+    const existing = await readPendingActions();
+    const id = actionDedupeId(record);
+    const filtered = existing.filter((item) => actionDedupeId(item) !== id);
+    filtered.push(record);
+    return writePendingActions(filtered);
+  });
+}
+
+async function removePendingAction(record: {
+  key: string | null;
+  entryDate: string;
+  doses: { medicationId: string; scheduleId: string | null }[];
+  userId?: string | null;
+}): Promise<void> {
+  await withPendingActionsLock(async () => {
+    const existing = await readPendingActions();
+    if (existing.length === 0) return;
+    const id = actionDedupeId(record);
+    const filtered = existing.filter((item) => actionDedupeId(item) !== id);
+    if (filtered.length !== existing.length) {
+      await writePendingActions(filtered);
+    }
+  });
+}
+
+async function readSnoozedReminders(): Promise<
+  SnoozedMedicationReminderRecord[]
+> {
+  try {
+    const raw = await AsyncStorage.getItem(SNOOZED_MEDICATION_REMINDERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? (parsed as SnoozedMedicationReminderRecord[])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeSnoozedReminders(
+  records: SnoozedMedicationReminderRecord[]
+): Promise<boolean> {
+  try {
+    if (records.length === 0) {
+      await AsyncStorage.removeItem(SNOOZED_MEDICATION_REMINDERS_KEY);
+    } else {
+      await AsyncStorage.setItem(
+        SNOOZED_MEDICATION_REMINDERS_KEY,
+        JSON.stringify(records)
+      );
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function recordSnoozedReminder(
+  baseKey: string,
+  entryDate: string,
+  doses: { medicationId: string; scheduleId: string | null }[]
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
+    const existing = await readSnoozedReminders();
+    const filtered = existing.filter((item) => item.baseKey !== baseKey);
+    filtered.push({ baseKey, entryDate, doses });
+    return writeSnoozedReminders(filtered);
+  });
+}
+
+async function removeSnoozedReminder(baseKey: string | null): Promise<void> {
+  if (!baseKey) return;
+  await withPendingActionsLock(async () => {
+    const existing = await readSnoozedReminders();
+    if (existing.length === 0) return;
+    const filtered = existing.filter((item) => item.baseKey !== baseKey);
+    if (filtered.length !== existing.length) {
+      await writeSnoozedReminders(filtered);
+    }
+  });
+}
+
+/**
+ * Returns the set of snoozed `baseKey`s that remain active while pruning stale
+ * or logged entries from storage. A snooze is retained while its `baseKey` is
+ * in `desiredKeys` or while at least one represented dose has no terminal
+ * `taken` or `skipped` entry for its stored `entryDate` (such as a cross-day
+ * snooze or a same-day grouped snooze after one of its doses is logged).
+ * Records whose doses all belong to medications other than the active account's
+ * are never retained: a snooze record carries no user identity, so the
+ * medication ids it references are the only proof of ownership.
+ */
+export async function syncSnoozedMedicationReminders(
+  today: string,
+  desiredKeys: Set<string>,
+  activeSnoozeNotifications: Notifications.NotificationContent[] = [],
+  ownedMedicationIds?: Set<string>,
+  todayEntries?: MedicationEntry[]
+): Promise<Set<string>> {
+  return withPendingActionsLock(async () => {
+    const existing = await readSnoozedReminders();
+    const candidates = new Map<
+      string,
+      {
+        baseKey: string;
+        entryDate: string;
+        doses: { medicationId: string; scheduleId: string | null }[];
+      }
+    >();
+
+    for (const item of existing) {
+      candidates.set(item.baseKey, {
+        baseKey: item.baseKey,
+        entryDate: item.entryDate,
+        doses: Array.isArray(item.doses) ? item.doses : [],
+      });
+    }
+
+    const activeSnoozeBaseKeys = new Set<string>();
+    for (const content of activeSnoozeNotifications) {
+      const data = extractNotificationData(content);
+      if (!data || data.isSnoozed !== 'true') continue;
+      const baseKey = data.baseKey ?? data.key;
+      if (!baseKey) continue;
+      activeSnoozeBaseKeys.add(baseKey);
+      const entryDate = data.entryDate || today;
+      const notifDoses = parseDosesFromData(data);
+      const current = candidates.get(baseKey);
+      if (current) {
+        if (current.doses.length === 0 && notifDoses.length > 0) {
+          current.doses = notifDoses;
+        }
+      } else {
+        candidates.set(baseKey, {
+          baseKey,
+          entryDate,
+          doses: notifDoses,
+        });
+      }
+    }
+
+    if (candidates.size === 0) return new Set<string>();
+
+    const entriesByDate = new Map<string, Promise<MedicationEntry[] | null>>();
+    const getEntriesForDate = (
+      entryDate: string
+    ): Promise<MedicationEntry[] | null> => {
+      if (entryDate === today && todayEntries !== undefined) {
+        return Promise.resolve(todayEntries);
+      }
+      let pending = entriesByDate.get(entryDate);
+      if (!pending) {
+        pending = listEntries({ fromDate: entryDate, toDate: entryDate }).catch(
+          () => null
+        );
+        entriesByDate.set(entryDate, pending);
+      }
+      return pending;
+    };
+
+    const retainedBaseKeys = new Set<string>();
+    for (const candidate of candidates.values()) {
+      // A snooze left behind by an account that is no longer active must not
+      // keep its reminder alive: the stored copy still carries that account's
+      // medication names, and nothing else in reconcile cancels it.
+      if (
+        ownedMedicationIds &&
+        !candidate.doses.some((d) => ownedMedicationIds.has(d.medicationId))
+      ) {
+        continue;
+      }
+
+      if (candidate.entryDate === today) {
+        if (desiredKeys.has(candidate.baseKey)) {
+          retainedBaseKeys.add(candidate.baseKey);
+          continue;
+        }
+        if (!candidate.baseKey.startsWith('med_group_')) {
+          continue;
+        }
+      }
+
+      if (candidate.doses.length === 0) {
+        continue;
+      }
+
+      if (
+        candidate.entryDate < addDays(today, -1) &&
+        !activeSnoozeBaseKeys.has(candidate.baseKey)
+      ) {
+        continue;
+      }
+
+      const entriesForDate = await getEntriesForDate(candidate.entryDate);
+      const hasUnloggedDose =
+        entriesForDate === null ||
+        candidate.doses.some(
+          (d) =>
+            (!ownedMedicationIds || ownedMedicationIds.has(d.medicationId)) &&
+            !isDoseLogged(entriesForDate, d.medicationId, d.scheduleId)
+        );
+      if (hasUnloggedDose) {
+        retainedBaseKeys.add(candidate.baseKey);
+      }
+    }
+
+    const retainedStorage = existing.filter((item) =>
+      retainedBaseKeys.has(item.baseKey)
+    );
+    if (retainedStorage.length !== existing.length) {
+      await writeSnoozedReminders(retainedStorage);
+    }
+    return retainedBaseKeys;
+  });
+}
+
+export async function flushPendingMedicationNotificationActions(): Promise<boolean> {
+  const pending = await readPendingActions();
+  if (pending.length === 0) return false;
+
+  // Resolve the medications (and owning user_id) for the currently signed-in
+  // account. Queued records belonging to another account must be retained in
+  // storage so they can be replayed when that account is active again, while
+  // never writing another account's doses into the current account.
+  let ownedMedicationIds: Set<string>;
+  let activeUserIds: Set<string>;
+  try {
+    const medications = await listMedications();
+    ownedMedicationIds = new Set(medications.map((m) => m.id));
+    activeUserIds = new Set(
+      medications
+        .map((m) => m.user_id)
+        .filter((id): id is string => Boolean(id))
+    );
+  } catch {
+    // Ownership cannot be verified right now; keep the queue for a later run
+    // rather than writing it into an account we cannot vouch for.
+    return false;
+  }
+
+  const resolvedIds = new Set<string>();
+  let anySucceeded = false;
+  const activeServerId = await currentServerId();
+
+  for (const record of pending) {
+    const dedupeKey = actionDedupeId(record);
+    const existingPromise = inFlightActions.get(dedupeKey);
+    if (existingPromise) {
+      await existingPromise;
+      continue;
+    }
+
+    const replayPromise = (async (): Promise<boolean> => {
+      try {
+        if (belongsToOtherServer(record.serverId, activeServerId)) {
+          // Made for another saved server; retain it until that server is active.
+          return false;
+        }
+        if (
+          record.userId &&
+          activeUserIds.size > 0 &&
+          !activeUserIds.has(record.userId)
+        ) {
+          // Record belongs to a different account; retain it for replay later.
+          return false;
+        }
+
+        const ownedDoses = record.doses.filter((d) =>
+          ownedMedicationIds.has(d.medicationId)
+        );
+        if (ownedDoses.length === 0) {
+          // Only drop the record if we can confirm its owning user is currently
+          // active (meaning the medication was deleted by its owner). Otherwise
+          // retain it so the owning account can replay it after switching back.
+          if (record.userId && activeUserIds.has(record.userId)) {
+            resolvedIds.add(dedupeKey);
+            return true;
+          }
+          return false;
+        }
+
+        const existing = await listEntries({
+          fromDate: record.entryDate,
+          toDate: record.entryDate,
+          ...(ownedDoses.length === 1
+            ? { medicationId: ownedDoses[0].medicationId }
+            : {}),
+        });
+
+        const unlogged = ownedDoses.filter(
+          (d) => !isDoseLogged(existing, d.medicationId, d.scheduleId)
+        );
+
+        if (unlogged.length > 0) {
+          const takenAt =
+            record.status === 'taken'
+              ? (record.takenAt ?? new Date().toISOString())
+              : undefined;
+          await Promise.all(
+            unlogged.map((d) =>
+              createEntry({
+                medication_id: d.medicationId,
+                schedule_id: d.scheduleId,
+                status: record.status,
+                entry_date: record.entryDate,
+                taken_at: takenAt,
+              })
+            )
+          );
+        }
+
+        await removeSnoozedReminder(record.key);
+        await clearMatchingReminders(
+          record.notificationId,
+          record.key,
+          ownedDoses,
+          record.entryDate
+        );
+        resolvedIds.add(dedupeKey);
+        anySucceeded = true;
+        return true;
+      } catch {
+        return false;
+      }
+    })().finally(() => {
+      inFlightActions.delete(dedupeKey);
+    });
+
+    inFlightActions.set(dedupeKey, replayPromise);
+    await replayPromise;
+  }
+
+  if (resolvedIds.size > 0) {
+    await withPendingActionsLock(async () => {
+      const latest = await readPendingActions();
+      await writePendingActions(
+        latest.filter((item) => !resolvedIds.has(actionDedupeId(item)))
+      );
+    });
+  }
+  if (anySucceeded) {
+    invalidateMedicationEntryCaches(queryClient);
+  }
+  return anySucceeded;
+}
+
+export async function processMedicationNotificationResponse(
+  response: Notifications.NotificationResponse
+): Promise<boolean> {
+  const actionId = response.actionIdentifier;
+
+  const isSnooze = actionId === MEDICATION_SNOOZE_ACTION;
+  let status: MedicationEntryStatus | null = null;
+  if (actionId === MEDICATION_TAKEN_ACTION) {
+    status = 'taken';
+  } else if (actionId === MEDICATION_SKIP_ACTION) {
+    status = 'skipped';
+  }
+
+  if (!status && !isSnooze) return true;
+
+  // On iOS the native handler takes these buttons so they work with the app
+  // closed. A press it claimed is done or running there; doing it here too
+  // would log the dose twice (entries have no unique constraint on a dose).
+  if (
+    isNativeMedicationActionClaimed(
+      response.notification?.request?.identifier ?? '',
+      actionId
+    )
+  ) {
+    await applyNativeMedicationActionResults();
+    return true;
+  }
+
+  const content = response.notification?.request?.content;
+  const data = extractNotificationData(content);
+  const medicationId = data?.medicationId;
+  const entryDate = data?.entryDate;
+
+  if ((!medicationId && !data?.doses) || !entryDate) {
+    addLog(
+      '[MedicationNotificationAction] Missing required data in notification',
+      'WARNING'
+    );
+    return false;
+  }
+
+  const doses = parseDosesFromData(data);
+  if (doses.length === 0) return false;
+
+  const notificationId = response.notification.request.identifier;
+  const baseKey = data?.baseKey ?? data?.key ?? null;
+  const userId = data?.userId ?? null;
+  const serverId = data?.serverId ?? null;
+  const dedupeKey = isSnooze
+    ? `snooze_${actionDedupeId({ key: baseKey, entryDate, doses, userId })}`
+    : actionDedupeId({ key: baseKey, entryDate, doses, userId });
+
+  const existingPromise = inFlightActions.get(dedupeKey);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const actionPromise = (
+    isSnooze
+      ? handleSnoozeNotificationAction(
+          content,
+          data,
+          doses,
+          entryDate,
+          notificationId,
+          baseKey
+        )
+      : handleNotificationAction(
+          status!,
+          doses,
+          entryDate,
+          notificationId,
+          baseKey,
+          userId,
+          serverId
+        )
+  ).finally(() => {
+    inFlightActions.delete(dedupeKey);
+  });
+
+  inFlightActions.set(dedupeKey, actionPromise);
+  return actionPromise;
+}
+
+async function handleSnoozeNotificationAction(
+  content: Notifications.NotificationContent | undefined,
+  data: Record<string, string | undefined> | undefined,
+  doses: { medicationId: string; scheduleId: string | null }[],
+  entryDate: string,
+  notificationId: string,
+  key: string | null
+): Promise<boolean> {
+  try {
+    if (!useAppPreferencesStore.persist?.hasHydrated?.()) {
+      await useAppPreferencesStore.persist?.rehydrate?.();
+    }
+  } catch {
+    // Fall back to in-memory default if storage rehydration fails in headless mode.
+  }
+
+  try {
+    if (!i18n.isInitialized) {
+      const prefsLang = useAppPreferencesStore.getState()?.languagePreference;
+      const targetLang = normalizeLanguage(
+        data?.locale ??
+          (prefsLang && prefsLang !== 'system'
+            ? prefsLang
+            : getDeviceLanguage())
+      );
+      await initializeI18n(targetLang);
+    }
+  } catch {
+    // Fall back to default English strings if i18n init fails in headless mode.
+  }
+
+  try {
+    await ensureMedicationReminderChannel();
+
+    const prefsState = useAppPreferencesStore.getState();
+    const snoozeMinutes = prefsState?.medicationReminderSnoozeMinutes ?? 30;
+    const hideNames = Boolean(prefsState?.medicationReminderHideNames);
+    const triggerDate = new Date(Date.now() + snoozeMinutes * 60_000);
+    const effectiveBaseKey = key ?? `${entryDate}_${doses[0].medicationId}`;
+    const snoozeKey = `${effectiveBaseKey}_snooze_${triggerDate.getTime()}`;
+    const isGroup = doses.length > 1 || data?.isGroup === 'true';
+    const categoryIdentifier =
+      content?.categoryIdentifier ||
+      (isGroup
+        ? MEDICATION_REMINDER_GROUP_CATEGORY
+        : MEDICATION_REMINDER_CATEGORY);
+
+    const cleanData: Record<string, string> = {};
+    if (data) {
+      for (const [k, v] of Object.entries(data)) {
+        if (typeof v === 'string') {
+          cleanData[k] = v;
+        }
+      }
+    }
+    cleanData.medicationId = doses[0].medicationId;
+    if (doses[0].scheduleId) {
+      cleanData.scheduleId = doses[0].scheduleId;
+    }
+    cleanData.entryDate = entryDate;
+    cleanData.baseKey = effectiveBaseKey;
+    cleanData.key = snoozeKey;
+    cleanData.isSnoozed = 'true';
+    cleanData.hideNames = String(hideNames);
+
+    const genericBody = isGroup
+      ? i18n.t('medications.notificationScheduledDoses', {
+          count: doses.length,
+          defaultValue: 'You have {{count}} scheduled doses',
+          defaultValue_one: 'You have {{count}} scheduled dose',
+        }) || `You have ${doses.length} scheduled doses`
+      : i18n.t('medications.notificationScheduledDose', {
+          defaultValue: 'You have a scheduled dose',
+        }) || 'You have a scheduled dose';
+
+    const fallbackTitle =
+      i18n.t('medications.notificationTitle', {
+        defaultValue: 'Medication reminder',
+      }) || 'Medication reminder';
+
+    // Schedule the replacement reminder before dismissing the active notification
+    // or cancelling pending repeats so a scheduling error never drops the alert.
+    const scheduledId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: content?.title || fallbackTitle,
+        body: hideNames ? genericBody : content?.body || genericBody,
+        sound: true,
+        categoryIdentifier,
+        data: cleanData,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
+        channelId: MEDICATION_REMINDER_CHANNEL_ID,
+      },
+    });
+
+    await recordSnoozedReminder(effectiveBaseKey, entryDate, doses);
+    await dismissDeliveredNotification(notificationId);
+    await clearMatchingReminders(notificationId, key, doses, entryDate, {
+      excludeIdentifier: scheduledId,
+      excludeKey: snoozeKey,
+    });
+
+    addLog(
+      `[MedicationNotificationAction] Snoozed ${doses.length} medication(s) for ${snoozeMinutes}m`,
+      'DEBUG'
+    );
+    return true;
+  } catch (error) {
+    addLog(
+      `[MedicationNotificationAction] Failed to snooze medication: ${(error as Error).message}`,
+      'ERROR'
+    );
+    return false;
+  }
+}
+
+TaskManager.defineTask<Notifications.NotificationTaskPayload>(
+  MEDICATION_NOTIFICATION_TASK_NAME,
+  async ({ data, error }) => {
+    if (error) {
+      addLog(
+        `[MedicationNotificationAction] Background task error: ${error.message}`,
+        'ERROR'
+      );
+      await _flushBuffer?.();
+      return Notifications.BackgroundNotificationTaskResult.Failed;
+    }
+
+    if (data && typeof data === 'object' && 'actionIdentifier' in data) {
+      const ok = await processMedicationNotificationResponse(
+        data as unknown as Notifications.NotificationResponse
+      );
+      await _flushBuffer?.();
+      return ok
+        ? Notifications.BackgroundNotificationTaskResult.NewData
+        : Notifications.BackgroundNotificationTaskResult.Failed;
+    }
+
+    await _flushBuffer?.();
+    return Notifications.BackgroundNotificationTaskResult.NewData;
+  }
+);
+
+let applyingNativeResults: Promise<boolean> | null = null;
+let applyNativeResultsAgain = false;
+
+/**
+ * Applies what the iOS native handler did while JavaScript was not looking:
+ * records snoozes, retries writes that failed, and refreshes the caches. A
+ * result is acknowledged (and so forgotten natively) only once it has been
+ * stored, so a failed write here leaves it to be applied again. Applying is
+ * safe to repeat: queue records dedupe, and the retry lists the day first.
+ */
+export function applyNativeMedicationActionResults(): Promise<boolean> {
+  if (applyingNativeResults) {
+    applyNativeResultsAgain = true;
+    return applyingNativeResults;
+  }
+  const run = (async () => {
+    let appliedAny = false;
+    do {
+      applyNativeResultsAgain = false;
+      appliedAny = (await applyNativeResultsOnce()) || appliedAny;
+    } while (applyNativeResultsAgain);
+    return appliedAny;
+  })().finally(() => {
+    applyingNativeResults = null;
+  });
+  applyingNativeResults = run;
+  return run;
+}
+
+async function applyNativeResultsOnce(): Promise<boolean> {
+  const results = readNativeMedicationActionResults();
+  if (results.length === 0) return false;
+
+  const done: string[] = [];
+  let refresh = false;
+  let queuedRetry = false;
+  for (const result of results) {
+    if (result.kind === 'snooze') {
+      const recorded = await recordSnoozedReminder(
+        result.baseKey,
+        result.entryDate,
+        result.doses
+      );
+      if (!recorded) {
+        // Keep it natively: without the record, reconciliation could schedule
+        // repeat reminders for a dose that is snoozed.
+        addLog(
+          '[MedicationNotificationAction] Could not store a native snooze; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
+      addLog(
+        `[MedicationNotificationAction] Snoozed ${result.doses.length} medication(s) for ${result.minutes}m (native)`,
+        'DEBUG'
+      );
+      done.push(result.id);
+    } else if (result.kind === 'snoozeFailed') {
+      addLog(
+        '[MedicationNotificationAction] Native snooze could not be scheduled',
+        'WARNING'
+      );
+      done.push(result.id);
+    } else if (result.failedDoses.length > 0) {
+      const stored = await enqueuePendingAction({
+        key: result.key,
+        notificationId: result.notificationId,
+        status: result.status,
+        doses: result.failedDoses,
+        entryDate: result.entryDate,
+        userId: result.userId,
+        serverId: result.serverId,
+        takenAt: result.takenAt,
+      });
+      if (!stored) {
+        // Keep it natively until it can be stored.
+        addLog(
+          '[MedicationNotificationAction] Could not queue a failed native dose; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
+      addLog(
+        `[MedicationNotificationAction] Native handler could not log ${result.failedDoses.length} medication(s); queued to retry`,
+        'WARNING'
+      );
+      queuedRetry = true;
+      refresh = refresh || result.loggedCount > 0;
+      done.push(result.id);
+    } else {
+      await removePendingAction({
+        key: result.key,
+        entryDate: result.entryDate,
+        doses: result.doses,
+        userId: result.userId,
+      });
+      await removeSnoozedReminder(result.key);
+      addLog(
+        `[MedicationNotificationAction] Logged ${result.loggedCount} medication(s) as ${result.status} (native)`,
+        'DEBUG'
+      );
+      refresh = true;
+      done.push(result.id);
+    }
+  }
+  acknowledgeNativeMedicationActionResults(done);
+  if (refresh) invalidateMedicationEntryCaches(queryClient);
+  // Replay what was just queued now, rather than waiting for the next
+  // reconcile: it stays queued if the server is still unreachable.
+  if (queuedRetry) {
+    await retryPendingMedicationActions();
+  }
+  return done.length > 0;
+}
+
+let retryingPending: Promise<boolean> | null = null;
+let retryAgain = false;
+
+/**
+ * Replays the queued dose writes (see `flushPendingMedicationNotificationActions`),
+ * one run at a time. It does nothing when the queue is empty and leaves the
+ * queue alone when the server is still unreachable.
+ */
+export function retryPendingMedicationActions(): Promise<boolean> {
+  if (retryingPending) {
+    // A run already in progress may have read the queue before this caller's
+    // dose was added: have it go round once more.
+    retryAgain = true;
+    return retryingPending;
+  }
+  const run = (async () => {
+    let any = false;
+    do {
+      retryAgain = false;
+      any =
+        (await flushPendingMedicationNotificationActions().catch(
+          () => false
+        )) || any;
+    } while (retryAgain);
+    return any;
+  })().finally(() => {
+    retryingPending = null;
+  });
+  retryingPending = run;
+  return run;
+}
 
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;
 
-  addNotificationResponseListener((response) => {
-    const actionId = response.actionIdentifier;
+  syncNativeMedicationSnoozeMinutes();
+  void applyNativeMedicationActionResults();
+  addNativeMedicationResultListener(() => {
+    void applyNativeMedicationActionResults();
+  });
+  AppState.addEventListener('change', (state) => {
+    if (state !== 'active') return;
+    void applyNativeMedicationActionResults();
+    void retryPendingMedicationActions();
+  });
+  // A dose that could not be written while offline is replayed when the
+  // connection returns, not only at the next reconcile (which does not run on
+  // reconnect). A missing native module just means no reconnect retries.
+  try {
+    Network.addNetworkStateListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        void retryPendingMedicationActions();
+      }
+    });
+  } catch {
+    // Foreground return still retries.
+  }
 
-    let status: MedicationEntryStatus | null = null;
-    if (actionId === MEDICATION_TAKEN_ACTION) {
-      status = 'taken';
-    } else if (actionId === MEDICATION_SKIP_ACTION) {
-      status = 'skipped';
-    }
-
-    if (!status) return;
-
-    const content = response.notification.request.content;
-    const data = content.data as Record<string, string | undefined>;
-    const medicationId = data?.medicationId;
-    const scheduleId = data?.scheduleId;
-    const entryDate = data?.entryDate;
-
-    if ((!medicationId && !data?.doses) || !entryDate) {
+  if (typeof Notifications.registerTaskAsync === 'function') {
+    void Notifications.registerTaskAsync(
+      MEDICATION_NOTIFICATION_TASK_NAME
+    ).catch((err: unknown) => {
       addLog(
-        '[MedicationNotificationAction] Missing required data in notification',
+        `[MedicationNotificationAction] Failed to register background notification task: ${(err as Error).message}`,
         'WARNING'
       );
-      return;
-    }
+    });
+  }
 
-    let doses: { medicationId: string; scheduleId: string | null }[] = [];
-    if (data?.doses) {
-      try {
-        const parsed = JSON.parse(data.doses);
-        if (Array.isArray(parsed)) {
-          doses = parsed;
-        }
-      } catch {
-        // fallback below
-      }
-    }
-    if (doses.length === 0 && medicationId) {
-      doses = [{ medicationId, scheduleId: scheduleId ?? null }];
-    }
-
-    void handleNotificationAction(
-      status,
-      doses,
-      entryDate,
-      response.notification.request.identifier,
-      data?.baseKey ?? data?.key ?? null
-    );
+  addNotificationResponseListener((response) => {
+    void processMedicationNotificationResponse(response);
   });
+}
+
+async function clearMatchingReminders(
+  notificationId: string,
+  key: string | null,
+  doses: { medicationId: string; scheduleId: string | null }[],
+  entryDate: string,
+  options?: { excludeIdentifier?: string; excludeKey?: string }
+): Promise<void> {
+  if (typeof Notifications.getPresentedNotificationsAsync === 'function') {
+    const presented =
+      await Notifications.getPresentedNotificationsAsync().catch(() => []);
+    const siblingDelivered = presented.filter(
+      (n) =>
+        n.request.identifier !== notificationId &&
+        doesNotificationMatchAction(n.request.content, key, doses, entryDate)
+    );
+    await Promise.all(
+      siblingDelivered.map((n) =>
+        dismissDeliveredNotification(n.request.identifier)
+      )
+    );
+  }
+
+  const allPending =
+    await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
+  const toCancel = allPending.filter((n) => {
+    if (
+      options?.excludeIdentifier &&
+      n.identifier === options.excludeIdentifier
+    ) {
+      return false;
+    }
+    if (
+      options?.excludeKey &&
+      extractNotificationData(n.content)?.key === options.excludeKey
+    ) {
+      return false;
+    }
+    return doesNotificationMatchAction(n.content, key, doses, entryDate);
+  });
+  await Promise.all(
+    toCancel.map((n) =>
+      Notifications.cancelScheduledNotificationAsync(n.identifier).catch(
+        () => {}
+      )
+    )
+  );
 }
 
 async function handleNotificationAction(
@@ -74,9 +1076,80 @@ async function handleNotificationAction(
   doses: { medicationId: string; scheduleId: string | null }[],
   entryDate: string,
   notificationId: string,
-  key: string | null
-): Promise<void> {
+  key: string | null,
+  userId: string | null = null,
+  serverId: string | null = null
+): Promise<boolean> {
+  const takenAt = status === 'taken' ? new Date().toISOString() : undefined;
   try {
+    // Dismiss the tapped notification immediately so Android / Wear OS clears
+    // the interacted reminder right away. Sibling delivered and scheduled repeat
+    // reminders are cleared only after the entry is confirmed or written.
+    await dismissDeliveredNotification(notificationId);
+
+    // A reminder made for another saved server is not written to this one:
+    // keep it queued until that server is active again.
+    if (belongsToOtherServer(serverId, await currentServerId())) {
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        serverId,
+        takenAt,
+      });
+      addLog(
+        '[MedicationNotificationAction] Reminder press belongs to another server; queued for when it is active',
+        'WARNING'
+      );
+      return true;
+    }
+
+    // A reminder can outlive an account switch. Write only doses of medications
+    // the signed-in account owns, whether or not the reminder carries identity
+    // fields; if ownership cannot be checked (offline) the press is queued, and
+    // the replay checks it the same way.
+    const medications = await listMedications();
+    const ownedIds = new Set(medications.map((m) => m.id));
+    const activeUserIds = new Set(
+      medications
+        .map((m) => m.user_id)
+        .filter((id): id is string => Boolean(id))
+    );
+    const otherAccount =
+      userId !== null && activeUserIds.size > 0 && !activeUserIds.has(userId);
+    const ownDoses = otherAccount
+      ? []
+      : doses.filter((d) => ownedIds.has(d.medicationId));
+    if (ownDoses.length === 0) {
+      // Same rule as the replay (`flushPendingMedicationNotificationActions`):
+      // when the reminder's own account is signed in and no longer has the
+      // medication, it was deleted, so drop the press; otherwise keep it queued
+      // to replay when the owning account is signed in again.
+      if (userId && activeUserIds.has(userId)) {
+        await removeSnoozedReminder(key);
+        return true;
+      }
+      await enqueuePendingAction({
+        key,
+        notificationId,
+        status,
+        doses,
+        entryDate,
+        userId,
+        serverId,
+        takenAt,
+      });
+      addLog(
+        '[MedicationNotificationAction] Reminder press belongs to another account; queued for when it is signed in',
+        'WARNING'
+      );
+      return true;
+    }
+    doses = ownDoses;
+
     const existing = await listEntries({
       fromDate: entryDate,
       toDate: entryDate,
@@ -88,11 +1161,12 @@ async function handleNotificationAction(
     );
 
     if (unlogged.length === 0) {
-      await dismissDeliveredNotification(notificationId);
-      return;
+      await removePendingAction({ key, entryDate, doses, userId });
+      await removeSnoozedReminder(key);
+      await clearMatchingReminders(notificationId, key, doses, entryDate);
+      invalidateMedicationEntryCaches(queryClient);
+      return true;
     }
-
-    const takenAt = status === 'taken' ? new Date().toISOString() : undefined;
 
     await Promise.all(
       unlogged.map((d) =>
@@ -106,36 +1180,36 @@ async function handleNotificationAction(
       )
     );
 
+    await removePendingAction({ key, entryDate, doses, userId });
+    await removeSnoozedReminder(key);
+    await clearMatchingReminders(notificationId, key, doses, entryDate);
+
     // This path writes the entry through the API directly rather than through the
     // mutations, so nothing else marks the caches stale. With an infinite stale time the
     // app can resume onto an already-focused dashboard, skip the focus refetch, and show
     // calories that do not include the dose the user just marked taken from the reminder.
     invalidateMedicationEntryCaches(queryClient);
 
-    if (key) {
-      const allPending =
-        await Notifications.getAllScheduledNotificationsAsync();
-      const toCancel = allPending.filter(
-        (n) => n.content.data?.baseKey === key
-      );
-      await Promise.all(
-        toCancel.map((n) =>
-          Notifications.cancelScheduledNotificationAsync(n.identifier).catch(
-            () => {}
-          )
-        )
-      );
-    }
-
-    await dismissDeliveredNotification(notificationId);
     addLog(
       `[MedicationNotificationAction] Logged ${unlogged.length} medication(s) as ${status}`,
       'DEBUG'
     );
+    return true;
   } catch (error) {
+    await enqueuePendingAction({
+      key,
+      notificationId,
+      status,
+      doses,
+      entryDate,
+      userId,
+      serverId,
+      takenAt,
+    });
     addLog(
       `[MedicationNotificationAction] Failed to log medication: ${(error as Error).message}`,
       'ERROR'
     );
+    return false;
   }
 }

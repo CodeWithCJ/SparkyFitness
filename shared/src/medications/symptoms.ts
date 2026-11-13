@@ -22,6 +22,7 @@ export interface SharedSymptomEntry {
   impact?: string | null;
   peak_severity?: number | null;
   severity_timeline?: Array<{ at: string; severity: number }>;
+  impact_timeline?: Array<{ at: string; impact: string }>;
   custom_fields?: Record<string, unknown>;
 }
 
@@ -30,25 +31,25 @@ export interface SharedUserCustomSymptom {
   user_id: string;
   name: string;
   display_name: string | null;
-  scale_type: "1-5" | "1-10" | "none-severe" | "count" | "text";
+  scale_type: '1-5' | '1-10' | 'none-severe' | 'count' | 'text';
   unit?: string | null;
   is_glp1_flagged: boolean;
 }
 
 export const BUILT_IN_SYMPTOMS = [
-  { name: "nausea", displayName: "Nausea", isGlp1: true },
-  { name: "fatigue", displayName: "Fatigue", isGlp1: true },
-  { name: "headache", displayName: "Headache", isGlp1: false },
-  { name: "constipation", displayName: "Constipation", isGlp1: true },
-  { name: "diarrhea", displayName: "Diarrhea", isGlp1: true },
-  { name: "vomiting", displayName: "Vomiting", isGlp1: true },
-  { name: "acid_reflux", displayName: "Acid Reflux / GERD", isGlp1: true },
+  { name: 'nausea', displayName: 'Nausea', isGlp1: true },
+  { name: 'fatigue', displayName: 'Fatigue', isGlp1: true },
+  { name: 'headache', displayName: 'Headache', isGlp1: false },
+  { name: 'constipation', displayName: 'Constipation', isGlp1: true },
+  { name: 'diarrhea', displayName: 'Diarrhea', isGlp1: true },
+  { name: 'vomiting', displayName: 'Vomiting', isGlp1: true },
+  { name: 'acid_reflux', displayName: 'Acid Reflux / GERD', isGlp1: true },
   {
-    name: "stomach_pain",
-    displayName: "Stomach Pain / Cramping",
+    name: 'stomach_pain',
+    displayName: 'Stomach Pain / Cramping',
     isGlp1: true,
   },
-  { name: "dizziness", displayName: "Dizziness", isGlp1: false },
+  { name: 'dizziness', displayName: 'Dizziness', isGlp1: false },
 ];
 
 /**
@@ -65,17 +66,17 @@ export function getSymptomPatternHints(
     logged_at: string;
     severity: number;
     symptom_name_snapshot: string;
-  }>,
+  }>
 ): Array<{
   symptomName: string;
   message: string;
-  severityLevel: "low" | "medium" | "high";
+  severityLevel: 'low' | 'medium' | 'high';
   sampleSize: number;
 }> {
   const hints: Array<{
     symptomName: string;
     message: string;
-    severityLevel: "low" | "medium" | "high";
+    severityLevel: 'low' | 'medium' | 'high';
     sampleSize: number;
   }> = [];
   if (injections.length < 2 || symptoms.length === 0) return hints;
@@ -150,24 +151,24 @@ export function getSymptomPatternHints(
     const postRate = postCount / postHours; // events per hour inside the window
     const baseRate = baseCount / baselineHours; // events per hour outside it
     const displayName =
-      name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
+      name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
     const avgOnset = onsetCount > 0 ? Math.round(onsetSum / onsetCount) : null;
-    const onsetTxt = avgOnset != null ? ` (avg onset ${avgOnset}h)` : "";
+    const onsetTxt = avgOnset != null ? ` (avg onset ${avgOnset}h)` : '';
 
-    let message = "";
-    let severityLevel: "low" | "medium" | "high" = "low";
+    let message = '';
+    let severityLevel: 'low' | 'medium' | 'high' = 'low';
 
     if (baseRate <= 0 && postCount > 0) {
       message = `${displayName} only shows up after your dose${onsetTxt} — ${postCount} of ${total} logs. N=${total}.`;
-      severityLevel = "medium";
+      severityLevel = 'medium';
     } else if (baseRate > 0) {
       const ratio = postRate / baseRate;
       if (ratio >= 1.3) {
         message = `${displayName} is ${ratio.toFixed(1)}× more frequent in the ${POST_DOSE_WINDOW_H}h after your dose${onsetTxt}. N=${total}.`;
-        severityLevel = ratio >= 2 ? "high" : "medium";
+        severityLevel = ratio >= 2 ? 'high' : 'medium';
       } else if (ratio <= 0.7) {
         message = `${displayName} is actually less frequent right after your dose (${ratio.toFixed(1)}×). N=${total}.`;
-        severityLevel = "low";
+        severityLevel = 'low';
       } else {
         continue; // no meaningful link — don't add noise
       }
@@ -177,7 +178,7 @@ export function getSymptomPatternHints(
 
     const avgSeverity =
       list.reduce((sum, s) => sum + s.severity, 0) / list.length;
-    if (avgSeverity >= 7 && severityLevel !== "low") severityLevel = "high";
+    if (avgSeverity >= 7 && severityLevel !== 'low') severityLevel = 'high';
 
     hints.push({
       symptomName: name,

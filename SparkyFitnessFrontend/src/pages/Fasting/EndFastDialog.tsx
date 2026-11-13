@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 
 import { Trans, useTranslation } from 'react-i18next';
 interface EndFastDialogProps {
@@ -99,23 +100,21 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
             )}
           </p>
           <div className="grid grid-cols-1 gap-2">
-            <label className="text-sm">
+            <label id="end-fast-start-label" className="text-sm">
               {t('fasting.endFastDialog.startTime', 'Start Time')}
             </label>
-            <input
-              type="datetime-local"
+            <DateTimeInput
+              aria-labelledby="end-fast-start-label"
               value={startLocal}
-              onChange={(e) => setStartLocal(e.target.value)}
-              className="w-full p-2 border rounded"
+              onChange={setStartLocal}
             />
-            <label className="text-sm">
+            <label id="end-fast-end-label" className="text-sm">
               {t('fasting.endFastDialog.endTime', 'End Time')}
             </label>
-            <input
-              type="datetime-local"
+            <DateTimeInput
+              aria-labelledby="end-fast-end-label"
               value={endLocal}
-              onChange={(e) => setEndLocal(e.target.value)}
-              className="w-full p-2 border rounded"
+              onChange={setEndLocal}
             />
           </div>
         </div>

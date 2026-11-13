@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "C7WRKGBVR6.com.SparkyApps.SparkyFitnessMobile",
+          "C7WRKGBVR6.org.SparkyApps.SparkyFitnessMobile1.dev"
+        ],
+        "components": [{ "/": "/t/*" }]
+      }
+    ]
+  }
+}

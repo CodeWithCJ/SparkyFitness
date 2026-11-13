@@ -5,30 +5,47 @@ import exerciseEntryDb, {
   EXERCISE_ENTRY_TELEMETRY_COLUMNS,
 } from '../models/exerciseEntry.js';
 import foodRepository from '../models/foodRepository.js';
+import type {
+  SleepEntryInput,
+  SleepEntryUpsertOptions,
+} from '../models/sleepRepository.js';
+import type { SleepUserProfile } from '../models/userRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
+import * as oralCareRepository from '../models/oralCareRepository.js';
 import { resolveActivityMapping } from './workoutActivityMapping.js';
 import {
-  computeHrZones,
-  resolveMaxHr,
+  computeTimeInZones,
+  bucketsFromAppleWorkoutZones,
+  appleWorkoutZonesFromWire,
+  observedMaxBpm,
   type HrSample,
-} from './hrZoneCalculator.js';
+  type HrZoneBucket,
+} from '@workspace/shared';
+import heartRateZoneService from './heartRateZoneService.js';
 import {
   deriveLaps,
   deriveWorkoutTelemetry,
   type LapWindow,
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
-import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import {
+  type FlatHealthSample,
+  upsertSamplesByDay,
+} from './healthMetricSampleWriter.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
   BUILT_IN_MOODS,
+  instantForDay,
   instantHourMinute,
   instantToDay,
+  isDayString,
+  isSkinTemperatureSite,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
   todayInZone,
@@ -415,6 +432,11 @@ async function ingestNutritionFoodEntry(
 
 // ── Registry types ─────────────────────────────────────────────────────────
 
+export interface SleepContext {
+  tz: string;
+  userProfile: SleepUserProfile | null | undefined;
+}
+
 /**
  * Per-request dependencies injected by processHealthData. processSleepEntry
  * and resolveCategory live in measurementService and are passed in rather
@@ -422,23 +444,16 @@ async function ingestNutritionFoodEntry(
  * swap in a request-scoped category resolver without touching handlers).
  */
 export interface HealthBatchContext {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getSleepContext: () => Promise<{ tz: string; userProfile: any }>;
+  userId: string;
+  actingUserId: string;
+  getSleepContext: () => Promise<SleepContext>;
   processSleepEntry: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    actingUserId: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sleepEntryData: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sleepContext: { tz: string; userProfile: any }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ) => Promise<any>;
+    userId: string,
+    actingUserId: string,
+    sleepEntryData: SleepEntryInput,
+    sleepContext: SleepContext,
+    options?: SleepEntryUpsertOptions
+  ) => Promise<{ id: string } & Record<string, unknown>>;
   resolveCategory: (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     userId: any,
@@ -1205,6 +1220,26 @@ const bmrHandler: HealthTypeHandler = {
   handleBatch: checkInHandleBatch,
 };
 
+// Overnight HRV / resting heart rate ride along on Health Connect sleep
+// sessions. Only finite, positive numbers are kept; anything else is dropped so
+// the stored value is left alone rather than overwritten with junk.
+function positiveBiometrics(entry: {
+  avg_overnight_hrv?: unknown;
+  resting_heart_rate?: unknown;
+}): { avg_overnight_hrv?: number; resting_heart_rate?: number } {
+  const result: { avg_overnight_hrv?: number; resting_heart_rate?: number } =
+    {};
+  const hrv = entry.avg_overnight_hrv;
+  if (typeof hrv === 'number' && Number.isFinite(hrv) && hrv > 0) {
+    result.avg_overnight_hrv = hrv;
+  }
+  const rhr = entry.resting_heart_rate;
+  if (typeof rhr === 'number' && Number.isFinite(rhr) && rhr > 0) {
+    result.resting_heart_rate = rhr;
+  }
+  return result;
+}
+
 const sleepSessionHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { source = 'manual', timestamp } = entry;
@@ -1234,12 +1269,14 @@ const sleepSessionHandler: HealthTypeHandler = {
         awake_sleep_seconds: Number(entry.awake_sleep_seconds) || 0,
         record_timezone: entry.record_timezone,
         record_utc_offset_minutes: entry.record_utc_offset_minutes,
+        ...positiveBiometrics(entry),
       };
       const sleepEntryResult = await ctx.processSleepEntry(
         ctx.userId,
         ctx.actingUserId,
         sleepEntryData,
-        await ctx.getSleepContext()
+        await ctx.getSleepContext(),
+        { keepExistingBiometrics: true }
       );
       return { status: 'success', data: sleepEntryResult };
     } catch (sleepError) {
@@ -1421,8 +1458,24 @@ async function ensureCustomMoodsExist(
   }
 }
 
-// Mood has its own dedicated table (mood_entries), upserted on
-// (user_id, entry_date) — unlike Stress it does not go through
+// A record dated by day alone, as the CSV import sends it, has no time of its
+// own: resolveHealthEntryDate stamps it at UTC midnight, which is the evening
+// before for anyone west of UTC. Such a mood takes now for today and local noon
+// for a past day instead.
+async function importedMoodTimestamp(
+  entry: { date?: unknown; entry_date?: unknown; timestamp?: unknown },
+  ctx: HealthEntryContext
+): Promise<string | Date> {
+  const day = entry.date || entry.entry_date;
+  if (entry.timestamp || typeof day !== 'string' || !isDayString(day)) {
+    return ctx.entryTimestamp;
+  }
+  return instantForDay(ctx.parsedDate, await loadUserTimezone(ctx.userId));
+}
+
+// Mood has its own dedicated table (mood_entries), upserted as the day's
+// 'import' derived row on (user_id, entry_date, source) so a re-import never
+// touches manual check-ins — unlike Stress it does not go through
 // custom_measurements. mood_value is a 10-100 scale (see MoodMeter.tsx /
 // moodUtils.ts for the band->label mapping); mood_tags is an optional array
 // of free-form tag names, auto-creating any unrecognized custom mood.
@@ -1444,12 +1497,16 @@ const moodHandler: HealthTypeHandler = {
       if (moodTags && moodTags.length > 0) {
         await ensureCustomMoodsExist(ctx.userId, moodTags);
       }
-      const result = await moodRepository.createOrUpdateMoodEntry(
+      const result = await moodRepository.upsertDerivedMood(
         ctx.userId,
-        moodValue,
-        entry.notes ?? null,
-        ctx.parsedDate,
-        moodTags
+        'import',
+        {
+          moodValue,
+          notes: entry.notes ?? null,
+          moodTags,
+          entryDate: ctx.parsedDate,
+          entryTimestamp: await importedMoodTimestamp(entry, ctx),
+        }
       );
       return { status: 'success', data: result };
     } catch (moodError) {
@@ -1652,6 +1709,21 @@ function sanitizeGpsPoints(raw: unknown): TelemetryGpsPoint[] {
     .sort((a, b) => byInstant(a.t, b.t));
 }
 
+/**
+ * Apple's zone group on a synced workout, or undefined when the client did
+ * not send one (or it was not five usable zones). An empty array is a real
+ * answer: Apple reported five zones and no time in any of them.
+ */
+function appleDeviceZones(
+  entry: Record<string, unknown>
+): HrZoneBucket[] | undefined {
+  if (!Object.prototype.hasOwnProperty.call(entry, 'hr_zones'))
+    return undefined;
+  const parsed = appleWorkoutZonesFromWire(entry.hr_zones);
+  if (!parsed) return undefined;
+  return bucketsFromAppleWorkoutZones(parsed) ?? undefined;
+}
+
 /** Keeps only well-formed bpm readings. */
 function sanitizeHrSamples(raw: unknown): HrSample[] {
   if (!Array.isArray(raw)) return [];
@@ -1763,10 +1835,33 @@ async function persistWorkoutTelemetry(
         .filter((p) => typeof p.hr === 'number' && Number.isFinite(p.hr))
         .map((p) => ({ t: p.t, bpm: p.hr as number }));
 
-  if (zoneSamples.length > 1) {
-    const { userProfile } = await ctx.getSleepContext();
-    const { maxHr } = resolveMaxHr(userProfile?.date_of_birth, zoneSamples);
-    const zones = computeHrZones(zoneSamples, maxHr);
+  // Apple already summed these on the workout. Re-bucketing the series with
+  // Sparky's settings would disagree, including by dropping time below zone 1
+  // that Apple counts as zone 1. Absent or unusable zones fall through.
+  const deviceZones = appleDeviceZones(entry);
+  if (deviceZones !== undefined) {
+    if (deviceZones.length > 0) {
+      await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
+        ctx.userId,
+        ctx.actingUserId,
+        deviceZones.map((zone) => ({
+          user_id: ctx.userId,
+          exercise_entry_id: exerciseEntryId,
+          entry_date: entryDate,
+          zone_index: zone.zone_index,
+          zone_lower_bpm: zone.zone_lower_bpm,
+          zone_upper_bpm: zone.zone_upper_bpm,
+          seconds_in_zone: zone.seconds_in_zone,
+          zone_method: 'device',
+        }))
+      );
+    }
+  } else if (zoneSamples.length > 1) {
+    const resolved = await heartRateZoneService.resolveZonesForUser(
+      ctx.userId,
+      observedMaxBpm(zoneSamples)
+    );
+    const zones = computeTimeInZones(zoneSamples, resolved.floors);
     if (zones.length > 0) {
       await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
         ctx.userId,
@@ -1779,6 +1874,7 @@ async function persistWorkoutTelemetry(
           zone_lower_bpm: zone.zone_lower_bpm,
           zone_upper_bpm: zone.zone_upper_bpm,
           seconds_in_zone: zone.seconds_in_zone,
+          zone_method: resolved.effectiveMethod,
         }))
       );
     }
@@ -1822,9 +1918,32 @@ function localEntryTime(iso: string, tz: string): string | null {
   }
 }
 
+/**
+ * Shape check for a workout record, run before the pre-cleanup deletes anything
+ * (#2938) and again by the handler. Returns why the record cannot be stored, or
+ * null when it can.
+ */
+export function invalidWorkoutReason(
+  entry: Record<string, unknown>
+): string | null {
+  const { sets } = entry;
+  if (sets === undefined || sets === null) return null;
+  if (!Array.isArray(sets)) return 'Invalid workout: sets must be an array.';
+  if (
+    sets.some(
+      (set) => typeof set !== 'object' || set === null || Array.isArray(set)
+    )
+  ) {
+    return 'Invalid workout: every set must be an object.';
+  }
+  return null;
+}
+
 const workoutHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { type, source = 'manual' } = entry;
+    const invalidReason = invalidWorkoutReason(entry);
+    if (invalidReason) return { status: 'error', error: invalidReason };
     try {
       const {
         activityType,
@@ -1997,7 +2116,12 @@ const workoutHandler: HealthTypeHandler = {
             }
           : {}
       );
-      if (gpsPoints.length > 0 || hrSamples.length > 0 || entry.laps) {
+      if (
+        gpsPoints.length > 0 ||
+        hrSamples.length > 0 ||
+        entry.laps ||
+        Array.isArray(entry.hr_zones)
+      ) {
         try {
           await persistWorkoutTelemetry(
             entry,
@@ -2320,6 +2444,193 @@ const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
   decimals: 1,
 });
 
+// Apple's sleeping wrist temperature arrives as a plain record, one per night.
+// It is kept as a `skin_temperature` sample, not a custom measurement, so the
+// Sleep screen reads it from the same place as Polar's skin temperature.
+const SKIN_TEMPERATURE_BOUNDS = { min: 20, max: 45 };
+
+const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
+  const outcomes: HandlerOutcome[] = new Array(entries.length);
+  // One write per provider and site: wrist and body readings share the
+  // provider's day row, and each write replaces only its own site's samples.
+  interface SiteGroup {
+    provider: string;
+    site: SkinTemperatureSite | undefined;
+    indexes: number[];
+    samples: FlatHealthSample[];
+  }
+  const byProvider = new Map<string, SiteGroup>();
+
+  entries.forEach(({ entry, parsedDate, entryTimestamp }, i) => {
+    const celsius = parseDailySummaryReading(entry.value);
+    const timestamp = new Date(entryTimestamp);
+    if (
+      celsius === null ||
+      celsius < SKIN_TEMPERATURE_BOUNDS.min ||
+      celsius > SKIN_TEMPERATURE_BOUNDS.max ||
+      !Number.isFinite(timestamp.getTime())
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature value: ${String(entry.value)}`,
+      };
+      return;
+    }
+    // A site the server does not know is refused rather than dropped: written
+    // without one, the merge would treat it as an older reading.
+    if (
+      entry.site !== undefined &&
+      entry.site !== null &&
+      !isSkinTemperatureSite(entry.site)
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature site: ${String(entry.site)}`,
+      };
+      return;
+    }
+    const provider = normalizeHealthSourceProvider(entry.source);
+    const site = isSkinTemperatureSite(entry.site) ? entry.site : undefined;
+    const key = `${provider}|${site ?? ''}`;
+    const group: SiteGroup = byProvider.get(key) ?? {
+      provider,
+      site,
+      indexes: [],
+      samples: [],
+    };
+    group.indexes.push(i);
+    group.samples.push({
+      entry_date: parsedDate,
+      timestamp,
+      celsius: Math.round(celsius * 100) / 100,
+      // Wrist and overnight body temperature both come from one source, so the
+      // site keeps their baselines apart.
+      ...(site ? { site } : {}),
+      device_name: typeof entry.source === 'string' ? entry.source : null,
+    });
+    byProvider.set(key, group);
+  });
+
+  for (const { provider, site, ...group } of byProvider.values()) {
+    try {
+      await upsertSamplesByDay(
+        ctx.userId,
+        ctx.actingUserId,
+        'skin_temperature',
+        provider,
+        group.samples,
+        {
+          // One row per (user, metric, day, provider): replace only the span
+          // these readings cover, so a re-sync does not duplicate a night.
+          mode: 'merge',
+          window: minMax(group.samples.map((s) => s.timestamp.getTime())),
+          ...(site ? { site } : {}),
+        }
+      );
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'success',
+          data: { metric: 'skin_temperature' },
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'error',
+          error: `Failed to store skin temperature: ${message}`,
+        };
+      }
+    }
+  }
+  return outcomes;
+};
+
+const skinTemperatureHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const [outcome] = await skinTemperatureHandleBatch(
+      [
+        {
+          entry,
+          parsedDate: ctx.parsedDate,
+          entryTimestamp: ctx.entryTimestamp,
+          entryHour: ctx.entryHour,
+        },
+      ],
+      ctx
+    );
+    return outcome;
+  },
+  handleBatch: skinTemperatureHandleBatch,
+};
+
+// Toothbrushing from a health store (#1862; Apple Health's ToothbrushingEvent,
+// which smart brushes such as Oral-B write). The sample's start and end give
+// the duration. Re-sending a sample updates its row through
+// (user, provider, external_id). A brush the person also logged in Sparky is
+// kept and counted once when read (shared oralCareSessionsCoveredBySync).
+const toothbrushingHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const startTime =
+      typeof entry.startTime === 'string' && entry.startTime
+        ? entry.startTime
+        : null;
+    const endTime =
+      typeof entry.endTime === 'string' && entry.endTime ? entry.endTime : null;
+    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
+    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs < startMs) {
+      return {
+        status: 'error',
+        error: 'Invalid Toothbrushing entry: endTime is before startTime.',
+      };
+    }
+    const sentDuration = Number(entry.duration_seconds ?? entry.duration);
+    const durationSeconds =
+      Number.isFinite(sentDuration) && sentDuration > 0
+        ? Math.round(sentDuration)
+        : Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+          ? Math.round((endMs - startMs) / 1000)
+          : null;
+    const externalId = entry.source_id
+      ? String(entry.source_id)
+      : entry.id
+        ? String(entry.id)
+        : null;
+    try {
+      const result = await oralCareRepository.upsertOralCareSession(
+        ctx.userId,
+        {
+          entry_date: ctx.parsedDate,
+          start_time: startTime,
+          end_time: endTime,
+          // A brushing longer than an hour is not one brushing.
+          duration_seconds:
+            durationSeconds !== null && durationSeconds <= 3600
+              ? durationSeconds
+              : null,
+          care_type: 'brushing',
+          custom_label: null,
+          provider:
+            typeof entry.source === 'string' && entry.source
+              ? entry.source
+              : 'apple_health',
+          external_id: externalId,
+          notes: null,
+        },
+        ctx.actingUserId
+      );
+      return { status: 'success', data: result };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        status: 'error',
+        error: `Failed to process Toothbrushing entry: ${message}`,
+      };
+    }
+  },
+};
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 // Handlers keyed by canonical type name.
@@ -2346,8 +2657,10 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   sleep_entry: sleepEntryHandler,
   Mood: moodHandler,
   MindfulnessSession: mindfulnessHandler,
+  Toothbrushing: toothbrushingHandler,
   resting_heart_rate: restingHeartRateHandler,
   vo2_max: vo2MaxHandler,
+  skin_temperature: skinTemperatureHandler,
 };
 
 // Lookup-only normalization of incoming type spellings to canonical handler
@@ -2377,6 +2690,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   mindfulness_session: 'MindfulnessSession',
   mindfulness: 'MindfulnessSession',
   mindful: 'MindfulnessSession',
+  ToothbrushingEvent: 'Toothbrushing',
+  HKCategoryTypeIdentifierToothbrushingEvent: 'Toothbrushing',
+  toothbrushing: 'Toothbrushing',
   RestingHeartRate: 'resting_heart_rate',
   Vo2Max: 'vo2_max',
 };

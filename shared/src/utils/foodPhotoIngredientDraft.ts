@@ -3,12 +3,12 @@ import {
   scalePortionMacros,
   sumPortionMacros,
   sumGrams,
-} from "./foodPhotoEstimateMath.ts";
-import type { EstimateMacros, PortionMacros } from "./foodPhotoEstimateMath.ts";
+} from './foodPhotoEstimateMath.ts';
+import type { EstimateMacros, PortionMacros } from './foodPhotoEstimateMath.ts';
 import type {
   FoodPhotoEstimateItem,
   FoodPhotoEstimateMatch,
-} from "../schemas/api/FoodPhotoEstimate.api.zod.ts";
+} from '../schemas/api/FoodPhotoEstimate.api.zod.ts';
 
 /**
  * Editing state for the detected-ingredient list on the photo review screen.
@@ -104,12 +104,12 @@ export type IngredientDraftAction =
  * this stays the four-plus-two the row actually displays.
  */
 const MATCH_SIGNIFICANT_KEYS = [
-  "calories_kcal",
-  "protein_g",
-  "carbs_g",
-  "fat_g",
-  "fiber_g",
-  "sugar_g",
+  'calories_kcal',
+  'protein_g',
+  'carbs_g',
+  'fat_g',
+  'fiber_g',
+  'sugar_g',
 ] as const satisfies readonly (keyof EstimateMacros)[];
 
 /**
@@ -128,18 +128,18 @@ const MATCH_SIGNIFICANT_KEYS = [
 export function hasUsableMacros(
   // Partial: `match.scaled` comes off the wire, where every micronutrient is
   // optional. Only the core macros are inspected anyway.
-  scaled: Partial<EstimateMacros> | null | undefined,
+  scaled: Partial<EstimateMacros> | null | undefined
 ): boolean {
   if (!scaled) return false;
   return MATCH_SIGNIFICANT_KEYS.some((key) => {
     const value = scaled[key];
-    return typeof value === "number" && Number.isFinite(value) && value > 0;
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
   });
 }
 
 /** A match that can actually be applied: it exists and has real nutrition. */
 function applicableMatch(
-  match: FoodPhotoEstimateMatch | null | undefined,
+  match: FoodPhotoEstimateMatch | null | undefined
 ): FoodPhotoEstimateMatch | null {
   return match && hasUsableMacros(match.scaled) ? match : null;
 }
@@ -168,9 +168,7 @@ function toRow(item: FoodPhotoEstimateItem, index: number): IngredientDraftRow {
     match: item.match ?? null,
     alternates: item.alternates ?? [],
     // Applied on open only when the server says the match is strong enough.
-    matchApplied: Boolean(
-      item.preselect_match && applicableMatch(item.match)
-    ),
+    matchApplied: Boolean(item.preselect_match && applicableMatch(item.match)),
     manualOverride: false,
   };
 }
@@ -200,7 +198,7 @@ const ADDED_ROW_ID_PREFIX = 'added-';
  * overstate the plate's weight everywhere it is summed.
  */
 export function ingredientRowFromPickedFood(
-  input: PickedFoodRowInput,
+  input: PickedFoodRowInput
 ): NewIngredientDraftRow {
   const quantity =
     Number.isFinite(input.quantity) && input.quantity > 0 ? input.quantity : 0;
@@ -262,13 +260,15 @@ function nextAddedRowId(rows: IngredientDraftRow[]): string {
   return `${ADDED_ROW_ID_PREFIX}${highest + 1}`;
 }
 
-export function initialiseIngredientDraft(items: FoodPhotoEstimateItem[]): DraftState {
+export function initialiseIngredientDraft(
+  items: FoodPhotoEstimateItem[]
+): DraftState {
   const rows = items.map(toRow);
   return {
     rows: rows.map((row) =>
       row.matchApplied && row.match?.scaled
         ? { ...row, macros: asPortionMacros(row.match.scaled) }
-        : row,
+        : row
     ),
     expandedId: null,
   };
@@ -277,7 +277,7 @@ export function initialiseIngredientDraft(items: FoodPhotoEstimateItem[]): Draft
 function mapRow(
   state: DraftState,
   id: string,
-  update: (row: IngredientDraftRow) => IngredientDraftRow,
+  update: (row: IngredientDraftRow) => IngredientDraftRow
 ): DraftState {
   return {
     ...state,
@@ -287,21 +287,25 @@ function mapRow(
 
 export function ingredientDraftReducer(
   state: DraftState,
-  action: IngredientDraftAction,
+  action: IngredientDraftAction
 ): DraftState {
   switch (action.type) {
     case 'SET_GRAMS':
       return mapRow(state, action.id, (row) => {
-        const grams = Number.isFinite(action.grams) && action.grams >= 0 ? action.grams : 0;
+        const grams =
+          Number.isFinite(action.grams) && action.grams >= 0 ? action.grams : 0;
         // A hand-edited row keeps its numbers; only the weight moves.
         if (row.manualOverride) return { ...row, grams };
         // A row showing a matched food rescales from that food's nutrition,
         // not from the AI's, so the DB values stay authoritative.
-        const base = row.matchApplied && row.match?.scaled
-          ? { macros: asPortionMacros(row.match.scaled), grams: row.aiGrams }
-          : { macros: row.aiMacros, grams: row.aiGrams };
+        const base =
+          row.matchApplied && row.match?.scaled
+            ? { macros: asPortionMacros(row.match.scaled), grams: row.aiGrams }
+            : { macros: row.aiMacros, grams: row.aiGrams };
         const rescaled = scalePortionMacros(base.macros, base.grams, grams);
-        return rescaled ? { ...row, grams, macros: rescaled } : { ...row, grams };
+        return rescaled
+          ? { ...row, grams, macros: rescaled }
+          : { ...row, grams };
       });
 
     case 'SET_MACRO':
@@ -316,7 +320,9 @@ export function ingredientDraftReducer(
         macros: asPortionMacros({
           ...row.macros,
           [action.key]:
-            Number.isFinite(action.value) && action.value >= 0 ? action.value : 0,
+            Number.isFinite(action.value) && action.value >= 0
+              ? action.value
+              : 0,
         }),
       }));
 
@@ -364,7 +370,11 @@ export function ingredientDraftReducer(
     case 'CLEAR_MATCH':
       return mapRow(state, action.id, (row) => {
         if (!row.matchApplied) return row;
-        const restored = scalePortionMacros(row.aiMacros, row.aiGrams, row.grams);
+        const restored = scalePortionMacros(
+          row.aiMacros,
+          row.aiGrams,
+          row.grams
+        );
         return {
           ...row,
           matchApplied: false,
@@ -378,9 +388,10 @@ export function ingredientDraftReducer(
 
     case 'RECALC_FROM_GRAMS':
       return mapRow(state, action.id, (row) => {
-        const base = row.matchApplied && row.match?.scaled
-          ? asPortionMacros(row.match.scaled)
-          : row.aiMacros;
+        const base =
+          row.matchApplied && row.match?.scaled
+            ? asPortionMacros(row.match.scaled)
+            : row.aiMacros;
         const rescaled = scalePortionMacros(base, row.aiGrams, row.grams);
         return rescaled
           ? { ...row, manualOverride: false, macros: rescaled }
@@ -399,7 +410,10 @@ export function ingredientDraftReducer(
       // returned them in, and what the user added reads as a later addition.
       return {
         ...state,
-        rows: [...state.rows, { ...action.row, id: nextAddedRowId(state.rows) }],
+        rows: [
+          ...state.rows,
+          { ...action.row, id: nextAddedRowId(state.rows) },
+        ],
       };
 
     case 'RESET':
@@ -409,7 +423,6 @@ export function ingredientDraftReducer(
       return state;
   }
 }
-
 
 /**
  * Whether a new `items` prop should reset the draft.
@@ -424,7 +437,7 @@ export function ingredientDraftReducer(
  */
 export function shouldResetIngredientDraft(
   items: readonly FoodPhotoEstimateItem[],
-  seenItems: readonly FoodPhotoEstimateItem[],
+  seenItems: readonly FoodPhotoEstimateItem[]
 ): boolean {
   if (items === seenItems) return false;
   return !(items.length === 0 && seenItems.length === 0);

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
+import type { PresetSessionResponse } from '@workspace/shared';
 import { updateWorkout } from '../services/api/exerciseApi';
 import { ApiError } from '../services/api/errors';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
@@ -10,6 +12,7 @@ import { buildSessionExercisesPayload } from '../utils/workoutSession';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { addLog } from '../services/LogService';
 import { normalizeDate } from '../utils/dateUtils';
+import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 
 export const AUTOSAVE_DEBOUNCE_MS = 1500;
 
@@ -17,6 +20,50 @@ export type ActiveWorkoutSaveOutcome = 'clean' | 'saved' | 'failed';
 
 /** The latest save; each save waits for it so two never overlap. */
 let saveQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * A save response held back because it landed while a set was being edited.
+ * Adopting it swaps in the server's copy of the session, which re-renders
+ * every card under the open keyboard. It carries the ids the server assigned,
+ * so it is adopted before any later save builds its payload, and otherwise
+ * once editing ends or the app leaves the foreground (see
+ * `useActiveWorkoutAutosave`): it lives only in memory, and an app killed in
+ * the background must come back with those ids in the persisted store.
+ *
+ * A single slot is only safe because `saveNow` adopts it before every save
+ * and saves are serialized through `saveQueue`, so a second response can
+ * never land while one is still held.
+ */
+let heldResponse: {
+  result: PresetSessionResponse;
+  sentRevision: number;
+  sentEntryIds: string[];
+  sentSetIds: string[][];
+  sessionId: string;
+  startedAt: number | null;
+} | null = null;
+
+/**
+ * Fold a held response into the store. The store already drops a response for
+ * another session, and keeps newer local edits (grafting only the ids) when
+ * the revision moved on. A held response from an earlier live run of the same
+ * session (discarded and started again) is dropped here: that store is still
+ * dirty, so the next save resends everything it holds.
+ */
+function adoptHeldServerSession(): void {
+  const held = heldResponse;
+  if (held == null) return;
+  heldResponse = null;
+  const state = useActiveWorkoutStore.getState();
+  if (state.sessionId !== held.sessionId || state.startedAt !== held.startedAt)
+    return;
+  state.applyServerSession(
+    held.result,
+    held.sentRevision,
+    held.sentEntryIds,
+    held.sentSetIds
+  );
+}
 
 /**
  * One-shot save of the live session's unsaved edits. Shared by the autosave
@@ -33,16 +80,27 @@ let saveQueue: Promise<unknown> = Promise.resolve();
  * assigned (or finds nothing left to save).
  */
 export function saveActiveWorkoutSession(
-  queryClient: QueryClient
+  queryClient: QueryClient,
+  options?: {
+    /**
+     * Read when the response lands: true holds it back instead of adopting
+     * it (the screen, while a set is being edited).
+     */
+    holdAdoption?: () => boolean;
+  }
 ): Promise<ActiveWorkoutSaveOutcome> {
-  const run = saveQueue.then(() => saveNow(queryClient));
+  const run = saveQueue.then(() => saveNow(queryClient, options?.holdAdoption));
   saveQueue = run.catch(() => undefined);
   return run;
 }
 
 async function saveNow(
-  queryClient: QueryClient
+  queryClient: QueryClient,
+  holdAdoption?: () => boolean
 ): Promise<ActiveWorkoutSaveOutcome> {
+  // A held response carries the ids the server assigned to new sets; a payload
+  // built without them would make the server insert those sets again.
+  adoptHeldServerSession();
   const state = useActiveWorkoutStore.getState();
   if (
     !state.hasUnsavedChanges ||
@@ -115,9 +173,20 @@ async function saveNow(
       ),
       activity_details: activityDetails,
     });
-    useActiveWorkoutStore
-      .getState()
-      .applyServerSession(result, sentRevision, sentEntryIds, sentSetIds);
+    if (holdAdoption?.() === true) {
+      heldResponse = {
+        result,
+        sentRevision,
+        sentEntryIds,
+        sentSetIds,
+        sessionId,
+        startedAt: state.startedAt,
+      };
+    } else {
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(result, sentRevision, sentEntryIds, sentSetIds);
+    }
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {
@@ -161,14 +230,24 @@ export async function flushActiveWorkoutBeforeClear(
  * mid-save queues exactly one trailing save), and folds every response back
  * through `applyServerSession` so recreated ids re-attach to completion state.
  *
+ * `editing` (a set cell is focused) keeps the response away from the
+ * keyboard: saves still go out on the usual debounce, but a response landing
+ * while editing is held and adopted once editing ends and the keyboard has
+ * closed (or by the next save, a flush, or the app leaving the foreground,
+ * whichever comes first). A response that lands while the app is not in the
+ * foreground (iOS reports inactive before background) is never held. Local
+ * edits are never touched by the hold: the store stays dirty until the held
+ * response is adopted.
+ *
  * Deliberately not `useCrudMutation`: that toasts on every failure, but
  * background retries must be silent — failures are logged, the store stays
  * dirty, and the user is told only at flush points (once per failure streak).
  * Date-keyed cache invalidation also happens only at flush, not per save.
  */
-export function useActiveWorkoutAutosave(): {
+export function useActiveWorkoutAutosave(options?: { editing?: boolean }): {
   flush: () => Promise<boolean>;
 } {
+  const editing = options?.editing ?? false;
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const sessionRevision = useActiveWorkoutStore((s) => s.sessionRevision);
@@ -181,9 +260,39 @@ export function useActiveWorkoutAutosave(): {
   const savedSinceInvalidateRef = useRef(false);
   /** Suppresses repeat flush-failure toasts until a save succeeds again. */
   const failureToastShownRef = useRef(false);
+  /** `editing` for responses that land after the render that set it. */
+  const editingRef = useRef(editing);
+
+  useEffect(() => {
+    editingRef.current = editing;
+    if (editing) return;
+    // Editing ended: take in a response held meanwhile, after the keyboard
+    // has finished closing so the re-render does not land mid-animation.
+    return runAfterKeyboardSettles(adoptHeldServerSession, 0);
+  }, [editing]);
+
+  // Leaving the screen mid-edit releases the hold too.
+  useEffect(
+    () => () => {
+      editingRef.current = false;
+      adoptHeldServerSession();
+    },
+    []
+  );
+
+  // So does leaving the foreground: the app may be killed in the background.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') adoptHeldServerSession();
+    });
+    return () => subscription.remove();
+  }, []);
 
   const performSave = useCallback(async (): Promise<boolean> => {
-    const outcome = await saveActiveWorkoutSession(queryClient);
+    const outcome = await saveActiveWorkoutSession(queryClient, {
+      holdAdoption: () =>
+        editingRef.current && AppState.currentState === 'active',
+    });
     if (outcome === 'saved') {
       savedSinceInvalidateRef.current = true;
       failureToastShownRef.current = false;
@@ -238,6 +347,9 @@ export function useActiveWorkoutAutosave(): {
     const entryDate = before.session?.entry_date ?? null;
     const needsSave = before.hasUnsavedChanges || inFlightRef.current != null;
     const ok = needsSave ? await runSave() : true;
+    // A flush is a sync point (leaving the screen, finishing): whatever the
+    // server sent back is taken in now, even mid-edit.
+    adoptHeldServerSession();
 
     if (ok) {
       if (savedSinceInvalidateRef.current && entryDate) {

@@ -19,6 +19,7 @@ import {
 } from '../../src/services/notifications';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { addLog } from '../../src/services/LogService';
+import { initMoodCheckinNotificationResponses } from '../../src/services/moodCheckinNotificationHandler';
 import { initMedicationNotificationActions } from '../../src/services/medicationNotificationHandler';
 
 jest.mock('expo-splash-screen', () => ({
@@ -60,6 +61,10 @@ jest.mock('../../src/services/notifications', () => ({
 
 jest.mock('../../src/services/medicationNotificationHandler', () => ({
   initMedicationNotificationActions: jest.fn(),
+}));
+
+jest.mock('../../src/services/moodCheckinNotificationHandler', () => ({
+  initMoodCheckinNotificationResponses: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../src/services/workoutLiveActivity', () => ({
@@ -199,6 +204,18 @@ describe('useAppStartup', () => {
       await i18n.changeLanguage('en');
     });
     await waitFor(() => expect(mockRegisterLocalized).toHaveBeenCalledTimes(2));
+  });
+
+  it('stops the mood check-in tap listener on unmount', async () => {
+    const stop = jest.fn();
+    (initMoodCheckinNotificationResponses as jest.Mock).mockReturnValue(stop);
+    const { unmount } = renderHook(() =>
+      useAppStartup({ shouldYieldObserverSync })
+    );
+    await waitFor(() => expect(initNotifications).toHaveBeenCalled());
+    expect(stop).not.toHaveBeenCalled();
+    unmount();
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 
   it('removes the languageChanged listener on unmount', async () => {

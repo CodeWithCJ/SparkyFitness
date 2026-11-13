@@ -27,9 +27,20 @@ class CalorieWidgetReceiver : GlanceAppWidgetReceiver() {
             CoroutineScope(Dispatchers.Default).launch {
                 try {
                     glanceAppWidget.updateAll(context)
-                    scheduleMidnightRefresh(context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // The next snapshot push redraws it.
                 } finally {
-                    pending.finish()
+                    // The alarm fires once, so the next one is set even when
+                    // this redraw failed.
+                    try {
+                        scheduleMidnightRefresh(context)
+                    } catch (e: Exception) {
+                        // Set again at the next onUpdate.
+                    } finally {
+                        pending.finish()
+                    }
                 }
             }
             return

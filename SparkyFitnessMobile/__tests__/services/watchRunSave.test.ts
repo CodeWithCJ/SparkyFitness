@@ -7,10 +7,12 @@ import {
 } from '../../src/services/api/exerciseApi';
 import { resolveRecordingExercise } from '../../src/services/gpsRecordingSave';
 import { saveWatchRun } from '../../src/services/watchRunSave';
+import { measureWatchRunForm } from '../../src/services/stepDistance';
 import type { WatchRunPayload } from '../../src/utils/watchRun';
 
 jest.mock('../../src/services/api/exerciseApi');
 jest.mock('../../src/services/gpsRecordingSave');
+jest.mock('../../src/services/stepDistance');
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const T0 = new Date(2026, 9, 10, 7, 5).getTime();
@@ -51,14 +53,15 @@ beforeEach(() => {
     .mocked(resolveRecordingExercise)
     .mockResolvedValue({ id: 'ex1', name: 'Running' } as never);
   jest.mocked(createExerciseEntry).mockResolvedValue({ id: 'e1' } as never);
+  jest.mocked(measureWatchRunForm).mockResolvedValue(null);
 });
 
 test('logs the entry, route and telemetry from the watch figures', async () => {
   const created = jest.fn(() => Promise.resolve());
-  const id = await saveWatchRun(outdoor, 'km', undefined, created);
+  const saved = await saveWatchRun(outdoor, 'km', undefined, created);
 
-  expect(id).toBe('e1');
-  expect(created).toHaveBeenCalledWith('e1');
+  expect(saved).toEqual({ entryId: 'e1', form: null });
+  expect(created).toHaveBeenCalledWith('e1', null);
   expect(createExerciseEntry).toHaveBeenCalledWith(
     expect.objectContaining({
       exercise_id: 'ex1',
@@ -90,9 +93,12 @@ test('a telemetry failure does not fail the save', async () => {
   jest
     .mocked(attachExerciseEntryWatchTelemetry)
     .mockRejectedValueOnce(new Error('boom'));
-  await expect(saveWatchRun(outdoor, 'km', undefined, jest.fn())).resolves.toBe(
-    'e1'
-  );
+  await expect(
+    saveWatchRun(outdoor, 'km', undefined, jest.fn())
+  ).resolves.toEqual({
+    entryId: 'e1',
+    form: null,
+  });
 });
 
 test('cuts the route at the laps the wearer marked', async () => {
@@ -134,7 +140,10 @@ test('a failed laps upload does not fail the save', async () => {
     lapDistances: [900],
     distanceSeries: [],
   };
-  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toBe('e7');
+  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toEqual({
+    entryId: 'e7',
+    form: null,
+  });
   expect(attachExerciseEntryWatchTelemetry).toHaveBeenCalled();
 });
 
@@ -173,5 +182,140 @@ test('a failed series upload does not fail the save', async () => {
       [10, 28],
     ],
   };
-  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toBe('e7');
+  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toEqual({
+    entryId: 'e7',
+    form: null,
+  });
+});
+
+describe('cadence and stride from the phone', () => {
+  const form = { avgCadence: 168, strideLengthCm: 100, steps: 3000 };
+
+  test('are sent with the entry and handed to the caller', async () => {
+    jest.mocked(measureWatchRunForm).mockResolvedValue(form);
+    const created = jest.fn(() => Promise.resolve());
+
+    const saved = await saveWatchRun(outdoor, 'km', undefined, created);
+
+    expect(measureWatchRunForm).toHaveBeenCalledWith(
+      {
+        activity: 'run',
+        startedAt: outdoor.startedAt,
+        finishedAt: outdoor.endedAt,
+        activeSeconds: 950,
+      },
+      3000,
+      undefined
+    );
+    expect(createExerciseEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ avg_cadence: 168, stride_length_cm: 100 })
+    );
+    expect(created).toHaveBeenCalledWith('e1', form);
+    expect(saved.form).toBe(form);
+  });
+
+  test('passes the watch step count through', async () => {
+    jest.mocked(measureWatchRunForm).mockResolvedValue(form);
+
+    await saveWatchRun({ ...outdoor, steps: 3200 }, 'km', undefined, jest.fn());
+
+    expect(measureWatchRunForm).toHaveBeenCalledWith(
+      expect.anything(),
+      3000,
+      3200
+    );
+  });
+
+  test('use the treadmill distance the wearer entered, which is what is stored', async () => {
+    jest.mocked(measureWatchRunForm).mockResolvedValue(form);
+    // The watch sends the corrected figure as distanceMeters.
+    const treadmill = {
+      ...outdoor,
+      place: 'indoor' as const,
+      route: [],
+      distanceMeters: 5000,
+      estimatedDistanceMeters: 4400,
+    };
+    await saveWatchRun(treadmill, 'km', undefined, jest.fn());
+
+    expect(measureWatchRunForm).toHaveBeenCalledWith(
+      expect.anything(),
+      5000,
+      undefined
+    );
+    expect(createExerciseEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ distance: 5 })
+    );
+  });
+
+  test('leave stride off when only cadence is known', async () => {
+    jest
+      .mocked(measureWatchRunForm)
+      .mockResolvedValue({ avgCadence: 160, strideLengthCm: null, steps: 900 });
+    await saveWatchRun(outdoor, 'km', undefined, jest.fn());
+
+    const payload = jest.mocked(createExerciseEntry).mock.calls[0][0];
+    expect(payload.avg_cadence).toBe(160);
+    expect(payload).not.toHaveProperty('stride_length_cm');
+  });
+
+  test('send nothing when the phone could not say', async () => {
+    await saveWatchRun(outdoor, 'km', undefined, jest.fn());
+
+    const payload = jest.mocked(createExerciseEntry).mock.calls[0][0];
+    expect(payload).not.toHaveProperty('avg_cadence');
+    expect(payload).not.toHaveProperty('stride_length_cm');
+  });
+
+  test('never fail the save when measuring throws', async () => {
+    jest.mocked(measureWatchRunForm).mockRejectedValue(new Error('no sensor'));
+
+    await expect(
+      saveWatchRun(outdoor, 'km', undefined, jest.fn())
+    ).resolves.toEqual({ entryId: 'e1', form: null });
+    expect(createExerciseEntry).toHaveBeenCalledTimes(1);
+  });
+
+  test('are not measured again on a retry, and the stored form comes back', async () => {
+    const saved = await saveWatchRun(outdoor, 'km', 'e1', jest.fn(), form);
+
+    expect(measureWatchRunForm).not.toHaveBeenCalled();
+    expect(createExerciseEntry).not.toHaveBeenCalled();
+    expect(saved).toEqual({ entryId: 'e1', form });
+  });
+});
+
+test('a jump rope files a Jump Rope entry with no distance', async () => {
+  jest
+    .mocked(resolveRecordingExercise)
+    .mockResolvedValue({ id: 'ex9', name: 'Jump Rope' } as never);
+  const jumpRope = {
+    ...outdoor,
+    kind: 'jumpRope' as const,
+    place: 'indoor' as const,
+    route: [],
+    distanceMeters: 0,
+    distanceSeries: [
+      [0, 0],
+      [10, 28],
+    ],
+    laps: [T0 + 300_000],
+    lapDistances: [900],
+  };
+  await saveWatchRun(jumpRope, 'km', undefined, jest.fn());
+
+  expect(resolveRecordingExercise).toHaveBeenCalledWith('jumpRope');
+  expect(createExerciseEntry).toHaveBeenCalledWith(
+    expect.objectContaining({
+      exercise_id: 'ex9',
+      distance: null,
+    })
+  );
+  expect(attachExerciseEntryGpsTrack).not.toHaveBeenCalled();
+  expect(attachExerciseEntryLaps).not.toHaveBeenCalled();
+  expect(attachExerciseEntryDistanceSeries).not.toHaveBeenCalled();
+  expect(attachExerciseEntryWatchTelemetry).toHaveBeenCalledWith(
+    'e1',
+    expect.objectContaining({ activeEnergyKcal: 210 })
+  );
 });

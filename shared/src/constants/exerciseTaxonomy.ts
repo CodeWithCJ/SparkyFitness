@@ -15,148 +15,146 @@
  */
 
 export const CANONICAL_MUSCLES = [
-  "abdominals",
-  "abductors",
-  "adductors",
-  "biceps",
-  "calves",
-  "chest",
-  "forearms",
-  "glutes",
-  "hamstrings",
-  "lats",
-  "lower back",
-  "middle back",
-  "neck",
-  "quadriceps",
-  "shoulders",
-  "traps",
-  "triceps",
+  'abdominals',
+  'abductors',
+  'adductors',
+  'biceps',
+  'calves',
+  'chest',
+  'forearms',
+  'glutes',
+  'hamstrings',
+  'lats',
+  'lower back',
+  'middle back',
+  'neck',
+  'quadriceps',
+  'shoulders',
+  'traps',
+  'triceps',
 ] as const;
 
 export type CanonicalMuscle = (typeof CANONICAL_MUSCLES)[number];
 
 export const CANONICAL_EQUIPMENT = [
-  "barbell",
-  "dumbbell",
-  "kettlebells",
-  "cable",
-  "machine",
-  "bands",
-  "body only",
-  "medicine ball",
-  "exercise ball",
-  "foam roll",
-  "e-z curl bar",
-  "other",
+  'barbell',
+  'dumbbell',
+  'kettlebells',
+  'cable',
+  'machine',
+  'bands',
+  'body only',
+  'medicine ball',
+  'exercise ball',
+  'foam roll',
+  'e-z curl bar',
+  'other',
 ] as const;
 
 export type CanonicalEquipment = (typeof CANONICAL_EQUIPMENT)[number];
 
 const MUSCLE_SYNONYMS: Record<string, CanonicalMuscle> = {
-  abs: "abdominals",
-  ab: "abdominals",
-  core: "abdominals",
-  obliques: "abdominals",
-  oblique: "abdominals",
-  "rectus abdominis": "abdominals",
-  "obliquus externus abdominis": "abdominals",
-  "hip abductors": "abductors",
-  "hip adductors": "adductors",
-  "inner thigh": "adductors",
-  "inner thighs": "adductors",
-  bicep: "biceps",
-  "biceps brachii": "biceps",
-  brachialis: "forearms",
-  forearm: "forearms",
-  calf: "calves",
-  soleus: "calves",
-  gastrocnemius: "calves",
-  pecs: "chest",
-  pec: "chest",
-  pectorals: "chest",
-  "pectoralis major": "chest",
-  "serratus anterior": "chest",
-  glute: "glutes",
-  gluteus: "glutes",
-  "gluteus maximus": "glutes",
-  "gluteus medius": "glutes",
-  hamstring: "hamstrings",
-  "biceps femoris": "hamstrings",
-  lat: "lats",
-  "latissimus dorsi": "lats",
-  "lower back": "lower back",
-  "erector spinae": "lower back",
-  "middle back": "middle back",
-  "upper back": "middle back",
-  rhomboids: "middle back",
-  back: "middle back",
-  quads: "quadriceps",
-  quad: "quadriceps",
-  "quadriceps femoris": "quadriceps",
-  shoulder: "shoulders",
-  delts: "shoulders",
-  delt: "shoulders",
-  deltoids: "shoulders",
-  deltoid: "shoulders",
-  "anterior deltoid": "shoulders",
-  "front delts": "shoulders",
-  "side delts": "shoulders",
-  "rear delts": "shoulders",
-  trap: "traps",
-  trapezius: "traps",
-  tricep: "triceps",
-  "triceps brachii": "triceps",
+  abs: 'abdominals',
+  ab: 'abdominals',
+  core: 'abdominals',
+  obliques: 'abdominals',
+  oblique: 'abdominals',
+  'rectus abdominis': 'abdominals',
+  'obliquus externus abdominis': 'abdominals',
+  'hip abductors': 'abductors',
+  'hip adductors': 'adductors',
+  'inner thigh': 'adductors',
+  'inner thighs': 'adductors',
+  bicep: 'biceps',
+  'biceps brachii': 'biceps',
+  brachialis: 'forearms',
+  forearm: 'forearms',
+  calf: 'calves',
+  soleus: 'calves',
+  gastrocnemius: 'calves',
+  pecs: 'chest',
+  pec: 'chest',
+  pectorals: 'chest',
+  'pectoralis major': 'chest',
+  'serratus anterior': 'chest',
+  glute: 'glutes',
+  gluteus: 'glutes',
+  'gluteus maximus': 'glutes',
+  'gluteus medius': 'glutes',
+  hamstring: 'hamstrings',
+  'biceps femoris': 'hamstrings',
+  lat: 'lats',
+  'latissimus dorsi': 'lats',
+  'lower back': 'lower back',
+  'erector spinae': 'lower back',
+  'middle back': 'middle back',
+  'upper back': 'middle back',
+  rhomboids: 'middle back',
+  back: 'middle back',
+  quads: 'quadriceps',
+  quad: 'quadriceps',
+  'quadriceps femoris': 'quadriceps',
+  shoulder: 'shoulders',
+  delts: 'shoulders',
+  delt: 'shoulders',
+  deltoids: 'shoulders',
+  deltoid: 'shoulders',
+  'anterior deltoid': 'shoulders',
+  'front delts': 'shoulders',
+  'side delts': 'shoulders',
+  'rear delts': 'shoulders',
+  trap: 'traps',
+  trapezius: 'traps',
+  tricep: 'triceps',
+  'triceps brachii': 'triceps',
 };
 
 const EQUIPMENT_SYNONYMS: Record<string, CanonicalEquipment> = {
-  "body weight": "body only",
-  bodyweight: "body only",
-  "body-weight": "body only",
-  none: "body only",
-  "none (bodyweight exercise)": "body only",
-  "pull-up bar": "body only",
-  "pullup bar": "body only",
-  "dip station": "body only",
-  dumbbells: "dumbbell",
-  kettlebell: "kettlebells",
-  cables: "cable",
-  "cable machine": "cable",
-  "smith machine": "machine",
-  machines: "machine",
-  band: "bands",
-  "resistance band": "bands",
-  "resistance bands": "bands",
-  "swiss ball": "exercise ball",
-  "stability ball": "exercise ball",
-  "foam roller": "foam roll",
-  "ez-bar": "e-z curl bar",
-  "ez bar": "e-z curl bar",
-  "sz-bar": "e-z curl bar",
-  "ez curl bar": "e-z curl bar",
-  "gym mat": "other",
+  'body weight': 'body only',
+  bodyweight: 'body only',
+  'body-weight': 'body only',
+  none: 'body only',
+  'none (bodyweight exercise)': 'body only',
+  'pull-up bar': 'body only',
+  'pullup bar': 'body only',
+  'dip station': 'body only',
+  dumbbells: 'dumbbell',
+  kettlebell: 'kettlebells',
+  cables: 'cable',
+  'cable machine': 'cable',
+  'smith machine': 'machine',
+  machines: 'machine',
+  band: 'bands',
+  'resistance band': 'bands',
+  'resistance bands': 'bands',
+  'swiss ball': 'exercise ball',
+  'stability ball': 'exercise ball',
+  'foam roller': 'foam roll',
+  'ez-bar': 'e-z curl bar',
+  'ez bar': 'e-z curl bar',
+  'sz-bar': 'e-z curl bar',
+  'ez curl bar': 'e-z curl bar',
+  'gym mat': 'other',
 };
 
 // Accessories that say nothing about how the load is applied: a bench press
 // and a dumbbell bench press are both "bench", so counting it would make
 // every bench exercise look like the same equipment.
-const IGNORED_EQUIPMENT = new Set(["bench", "incline bench", "decline bench"]);
+const IGNORED_EQUIPMENT = new Set(['bench', 'incline bench', 'decline bench']);
 
 /** A bench says nothing about the load, so modality derivation skips it. */
-export function isIgnoredEquipment(
-  value: string | null | undefined,
-): boolean {
+export function isIgnoredEquipment(value: string | null | undefined): boolean {
   if (!value) return false;
   return IGNORED_EQUIPMENT.has(clean(value));
 }
 
 function clean(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 /** Canonical muscle for a stored/typed name, or null when it is unknown. */
 export function normalizeMuscle(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): CanonicalMuscle | null {
   if (!value) return null;
   const key = clean(value);
@@ -168,7 +166,7 @@ export function normalizeMuscle(
 
 /** Canonical equipment for a stored/typed name, or null when it is unknown or an accessory. */
 export function normalizeEquipment(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): CanonicalEquipment | null {
   if (!value) return null;
   const key = clean(value);
@@ -181,7 +179,7 @@ export function normalizeEquipment(
 
 /** Distinct canonical muscles for a list of raw names; unknown names are dropped. */
 export function normalizeMuscleList(
-  values: readonly (string | null | undefined)[] | null | undefined,
+  values: readonly (string | null | undefined)[] | null | undefined
 ): CanonicalMuscle[] {
   const result = new Set<CanonicalMuscle>();
   for (const value of values ?? []) {
@@ -197,14 +195,14 @@ export function normalizeMuscleList(
  * equipment null for most bodyweight movements.
  */
 export function normalizeEquipmentList(
-  values: readonly (string | null | undefined)[] | null | undefined,
+  values: readonly (string | null | undefined)[] | null | undefined
 ): CanonicalEquipment[] {
   const result = new Set<CanonicalEquipment>();
   for (const value of values ?? []) {
     const equipment = normalizeEquipment(value);
     if (equipment) result.add(equipment);
   }
-  if (result.size === 0) result.add("body only");
+  if (result.size === 0) result.add('body only');
   return [...result];
 }
 
@@ -220,7 +218,7 @@ export function muscleSpellings(muscles: readonly CanonicalMuscle[]): string[] {
 
 /** Whether the given string matches a canonical muscle name (case-insensitive). */
 export function isCanonicalMuscle(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): value is CanonicalMuscle {
   if (!value) return false;
   return (CANONICAL_MUSCLES as readonly string[]).includes(clean(value));
@@ -228,7 +226,7 @@ export function isCanonicalMuscle(
 
 /** Whether the given string matches a canonical equipment name (case-insensitive). */
 export function isCanonicalEquipment(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): value is CanonicalEquipment {
   if (!value) return false;
   return (CANONICAL_EQUIPMENT as readonly string[]).includes(clean(value));
@@ -239,19 +237,19 @@ export function isCanonicalEquipment(
  * E.g. "lower back" -> "Lower Back", "e-z curl bar" -> "E-Z Curl Bar".
  */
 export function formatTaxonomyFallback(value: string): string {
-  if (!value) return "";
+  if (!value) return '';
   const trimmed = value.trim();
-  if (trimmed.toLowerCase() === "e-z curl bar") {
-    return "E-Z Curl Bar";
+  if (trimmed.toLowerCase() === 'e-z curl bar') {
+    return 'E-Z Curl Bar';
   }
   return trimmed
-    .split(" ")
+    .split(' ')
     .map((word) =>
       word.length > 0
         ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        : "",
+        : ''
     )
-    .join(" ");
+    .join(' ');
 }
 
 /**
@@ -273,4 +271,3 @@ export function resolveCanonicalOrCustomEquipment(input: string): string {
   if (normalized) return normalized;
   return input.trim();
 }
-

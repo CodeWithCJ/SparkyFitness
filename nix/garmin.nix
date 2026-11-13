@@ -5,13 +5,29 @@
   stdenvNoCC,
   python3,
   makeWrapper,
+  fetchFromGitHub,
 }:
 let
   # Mirrors SparkyFitnessGarmin/requirements.txt.
   pythonEnv = python3.withPackages (ps: [
     ps.fastapi
     ps.uvicorn
-    ps.garminconnect
+    # Pinned like requirements.txt: finishing an MFA sign-in from its saved
+    # state, in a fresh process, needs 0.3.20 or later.
+    (ps.garminconnect.overridePythonAttrs {
+      version = "0.3.20";
+      src = fetchFromGitHub {
+        owner = "cyberjunky";
+        repo = "python-garminconnect";
+        tag = "0.3.20";
+        hash = "sha256-3gVJTOIIGjIYqo5NvaIV/OHt0DxY16KCyokyJ9/bHiw=";
+      };
+      dependencies = [
+        ps.curl-cffi
+        ps.requests
+        ps.ua-generator
+      ];
+    })
     ps.curl-cffi
     ps.ua-generator
     ps.python-dotenv

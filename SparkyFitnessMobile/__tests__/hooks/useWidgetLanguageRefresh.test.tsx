@@ -12,6 +12,7 @@ jest.mock('../../src/services/CalorieWidgetBridge', () => ({
     prepareWidgetLocale: jest.fn(() => Promise.resolve()),
     reloadWidget: jest.fn(() => Promise.resolve()),
     reloadMacroWidget: jest.fn(() => Promise.resolve()),
+    reloadWaterWidget: jest.fn(() => Promise.resolve()),
   },
 }));
 
@@ -23,6 +24,7 @@ const mockPrepareWidgetLocale =
   CalorieWidgetBridge.prepareWidgetLocale as jest.Mock;
 const mockReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 const mockReloadMacro = CalorieWidgetBridge.reloadMacroWidget as jest.Mock;
+const mockReloadWater = CalorieWidgetBridge.reloadWaterWidget as jest.Mock;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 type I18nEventListener = (lng?: string) => void;
@@ -45,6 +47,7 @@ describe('useWidgetLanguageRefresh', () => {
     mockPrepareWidgetLocale.mockReset().mockResolvedValue(undefined);
     mockReload.mockReset().mockResolvedValue(undefined);
     mockReloadMacro.mockReset().mockResolvedValue(undefined);
+    mockReloadWater.mockReset().mockResolvedValue(undefined);
     languageListeners = [];
     resolvedLanguage = 'en';
     useAppPreferencesStore.setState({ languagePreference: 'system' });
@@ -71,11 +74,11 @@ describe('useWidgetLanguageRefresh', () => {
     if (osSpy) osSpy.restore();
   });
 
-  const setPreference = (preference: 'system' | 'en' | 'pl') => {
+  const setPreference = (preference: 'system' | 'en' | 'pl' | 'es') => {
     useAppPreferencesStore.setState({ languagePreference: preference });
   };
 
-  it('prepares the effective PL render locale before both reloads', async () => {
+  it('prepares the effective PL render locale before every reload', async () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
     renderHook(() => useWidgetLanguageRefresh());
@@ -84,8 +87,12 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockPrepareWidgetLocale).toHaveBeenCalledWith('pl', 'pl');
     expect(mockReload).toHaveBeenCalledTimes(1);
     expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+    expect(mockReloadWater).toHaveBeenCalledTimes(1);
     expect(mockPrepareWidgetLocale.mock.invocationCallOrder[0]).toBeLessThan(
       mockReload.mock.invocationCallOrder[0]
+    );
+    expect(mockPrepareWidgetLocale.mock.invocationCallOrder[0]).toBeLessThan(
+      mockReloadWater.mock.invocationCallOrder[0]
     );
   });
 
@@ -102,6 +109,24 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockPrepareWidgetLocale).toHaveBeenLastCalledWith('pl', 'en');
     expect(mockReload).toHaveBeenCalledTimes(2);
     expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders the widgets in any shipped language, not only Polish', async () => {
+    setPreference('es');
+    resolvedLanguage = 'es';
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushSync();
+
+    expect(mockPrepareWidgetLocale).toHaveBeenCalledWith('es', 'es');
+  });
+
+  it('follows a system language the app ships, such as German', async () => {
+    setPreference('system');
+    resolvedLanguage = 'de';
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushSync();
+
+    expect(mockPrepareWidgetLocale).toHaveBeenCalledWith('system', 'de');
   });
 
   it('uses system preference with effective EN and prepares before reload', async () => {
@@ -180,6 +205,24 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
+  it('retries after a water widget failure', async () => {
+    setPreference('pl');
+    resolvedLanguage = 'pl';
+    mockReloadWater.mockRejectedValueOnce(new Error('water failed'));
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushSync();
+
+    expect(mockAddLog).toHaveBeenCalledWith(
+      '[useWidgetLanguageRefresh] Water widget reload failed',
+      'ERROR'
+    );
+
+    languageListeners[0]('pl');
+    await flushSync();
+    expect(mockPrepareWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockReloadWater).toHaveBeenCalledTimes(2);
+  });
+
   it('serializes rapid signals and uses the latest effective language', async () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
@@ -203,5 +246,6 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockPrepareWidgetLocale).not.toHaveBeenCalled();
     expect(mockReload).not.toHaveBeenCalled();
     expect(mockReloadMacro).not.toHaveBeenCalled();
+    expect(mockReloadWater).not.toHaveBeenCalled();
   });
 });

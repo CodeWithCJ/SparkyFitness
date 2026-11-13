@@ -219,11 +219,10 @@ const DailyNutritionDetailsScreen: React.FC<
     );
   }
 
+  const calorieBudget =
+    summary.calorieBalance.eaten + summary.calorieBalance.remaining;
   const goalPercentages = {
-    calories:
-      summary.calorieGoal > 0
-        ? Math.round((summary.caloriesConsumed / summary.calorieGoal) * 100)
-        : null,
+    calories: calorieBudget > 0 ? summary.calorieBalance.progress : null,
     protein:
       summary.protein.goal > 0
         ? Math.round((summary.protein.consumed / summary.protein.goal) * 100)
@@ -370,10 +369,18 @@ const DailyNutritionDetailsScreen: React.FC<
           fiber={summary.fiber.consumed}
           goalPercentages={goalPercentages}
           showNetCarbs={false}
-          calorieGoal={summary.calorieGoal}
+          calorieGoal={calorieBudget}
           proteinGoal={summary.protein.goal}
           carbsGoal={summary.carbs.goal}
           fatGoal={summary.fat.goal}
+          onMacroPress={(macro) =>
+            navigation.navigate('NutrientTrends', {
+              nutrientKey: macro.key,
+              nutrientLabel: macro.label,
+              unit: 'g',
+              goal: macro.goal,
+            })
+          }
         />
 
         {/* Predefined Nutrients Section */}

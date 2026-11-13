@@ -25,6 +25,7 @@ import type { MedicationDetail } from '@/types/medications';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -405,12 +406,11 @@ export default function SymptomLogForm({
         </Button>
       </div>
       {showPicker && (
-        <Input
-          type="datetime-local"
+        <DateTimeInput
           aria-label={t('symptoms.form.startedAt', 'Start date and time')}
           value={toDatetimeLocal(startedAt)}
-          onChange={(e) => {
-            const iso = fromDatetimeLocal(e.target.value);
+          onChange={(value) => {
+            const iso = fromDatetimeLocal(value);
             if (iso) setStartedAt(iso);
           }}
           className="w-full max-w-xs"
@@ -431,15 +431,15 @@ export default function SymptomLogForm({
       </div>
       {!ongoing && (
         <div className="flex flex-col gap-1">
-          <Label htmlFor="symptom-ended">
+          <Label id="symptom-ended-label">
             {t('symptoms.form.ended', 'Ended')}
           </Label>
-          <Input
+          <DateTimeInput
             id="symptom-ended"
-            type="datetime-local"
+            aria-labelledby="symptom-ended-label"
             value={toDatetimeLocal(endedAt)}
-            onChange={(e) => {
-              const iso = fromDatetimeLocal(e.target.value);
+            onChange={(value) => {
+              const iso = fromDatetimeLocal(value);
               if (iso) setEndedAt(iso);
             }}
             className="w-full max-w-xs"

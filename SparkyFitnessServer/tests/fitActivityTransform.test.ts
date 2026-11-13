@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { FitMessages } from '@garmin/fitsdk';
 import { decodeFitBuffer } from '../integrations/garminfit/fitDecoder.js';
 import { transformFitActivity } from '../integrations/garminfit/fitActivityTransform.js';
+import {
+  mapGarminCategoryToMuscles,
+  mapGarminExerciseCategory,
+} from '../services/garmin/garminExerciseMapper.js';
 
 const FIXTURE_PATH = new URL('./fixtures/tennis-activity.fit', import.meta.url);
 const START_MS = Date.parse('2026-01-15T02:00:00Z');
@@ -20,6 +24,153 @@ function transformFixture() {
   const result = transformFitActivity(messages, buffer);
   if (!result.ok) throw new Error(`Fixture transform failed: ${result.reason}`);
   return result;
+}
+
+function createSyntheticStrengthMessages(): FitMessages {
+  return {
+    fileIdMesgs: [
+      { serialNumber: 42, timeCreated: new Date('2026-10-23T14:51:07Z') },
+    ],
+    sessionMesgs: [
+      {
+        startTime: new Date('2026-10-23T14:51:07Z'),
+        totalTimerTime: 889,
+        totalCalories: 59,
+        metabolicCalories: 21,
+        trainingLoadPeak: 2.58,
+        sport: 'training',
+        subSport: 'strengthTraining',
+      },
+    ],
+    workoutMesgs: [
+      {
+        wktName: 'Oberkörper',
+        sport: 'training',
+        subSport: 'strengthTraining',
+        numValidSteps: 12,
+      },
+    ],
+    exerciseTitleMesgs: [
+      { exerciseCategory: 'pushUp', exerciseName: 0, wktStepName: 'Push-up' },
+      {
+        exerciseCategory: 'tricepsExtension',
+        exerciseName: 0,
+        wktStepName: 'Triceps Press',
+      },
+    ],
+    workoutStepMesgs: [
+      {
+        intensity: 'active',
+        wktStepName: 'Push-up',
+        exerciseCategory: 'pushUp',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+      {
+        intensity: 'active',
+        wktStepName: 'Push-up',
+        exerciseCategory: 'pushUp',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+      {
+        intensity: 'active',
+        wktStepName: 'Push-up',
+        exerciseCategory: 'pushUp',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+      {
+        intensity: 'active',
+        wktStepName: 'Triceps Press',
+        exerciseCategory: 'tricepsExtension',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+      {
+        intensity: 'active',
+        wktStepName: 'Triceps Press',
+        exerciseCategory: 'tricepsExtension',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+      {
+        intensity: 'active',
+        wktStepName: 'Triceps Press',
+        exerciseCategory: 'tricepsExtension',
+        exerciseName: 0,
+      },
+      { intensity: 'recovery' },
+    ],
+    setMesgs: [
+      // Push-up 1 (warmup)
+      {
+        setType: 'warmup',
+        repetitions: 10,
+        weight: 0,
+        duration: 53,
+        category: ['pushUp'],
+        categorySubType: [0],
+        wktStepIndex: 0,
+      },
+      { setType: 'active', repetitions: 0, duration: 80, wktStepIndex: 1 },
+      // Push-up 2
+      {
+        setType: 'active',
+        repetitions: 10,
+        weight: 0,
+        duration: 24,
+        category: ['pushUp'],
+        categorySubType: [0],
+        wktStepIndex: 2,
+      },
+      { setType: 'active', repetitions: 0, duration: 63, wktStepIndex: 3 },
+      // Push-up 3
+      {
+        setType: 'active',
+        repetitions: 10,
+        weight: 0,
+        duration: 28,
+        category: ['pushUp'],
+        categorySubType: [0],
+        wktStepIndex: 4,
+      },
+      { setType: 'active', repetitions: 0, duration: 154, wktStepIndex: 5 },
+      // Triceps Press 1
+      {
+        setType: 'active',
+        repetitions: 11,
+        weight: 0,
+        duration: 40,
+        category: ['tricepsExtension'],
+        categorySubType: [0],
+        wktStepIndex: 6,
+      },
+      { setType: 'active', repetitions: 0, duration: 164, wktStepIndex: 7 },
+      // Triceps Press 2
+      {
+        setType: 'active',
+        repetitions: 10,
+        weight: 0,
+        duration: 34,
+        category: ['tricepsExtension'],
+        categorySubType: [0],
+        wktStepIndex: 8,
+      },
+      { setType: 'active', repetitions: 0, duration: 204, wktStepIndex: 9 },
+      // Triceps Press 3
+      {
+        setType: 'active',
+        repetitions: 9,
+        weight: 0,
+        duration: 32,
+        category: ['tricepsExtension'],
+        categorySubType: [0],
+        wktStepIndex: 10,
+      },
+      { setType: 'active', repetitions: 0, duration: 13, wktStepIndex: 11 },
+    ],
+  } as unknown as FitMessages;
 }
 
 /** Minimal valid message set for unit tests that craft their own inputs. */
@@ -306,6 +457,32 @@ describe('transformFitActivity — unit behaviour', () => {
     expect(result.entryDate).toBe('2026-03-02');
   });
 
+  it('ignores an implausible localTimestamp (20 years ahead) and keeps the real date', () => {
+    const messages = baseMessages({
+      activityMesgs: [
+        {
+          timestamp: new Date('2026-10-17T17:17:53Z'),
+          // Some exporters write a Unix-epoch value in this FIT-epoch field: +20 years.
+          localTimestamp: 1792261073,
+        },
+      ],
+      sessionMesgs: [
+        {
+          startTime: new Date('2026-10-17T16:00:00Z'),
+          totalTimerTime: 60,
+          sport: 'cycling',
+        },
+      ],
+    } as Partial<FitMessages>);
+    const result = transformFitActivity(messages, Buffer.from('x'));
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.entryDate).toBeNull(); // caller falls back to the profile timezone
+    expect(result.detailData.activity.startTimeLocal).toBeUndefined();
+    expect(result.warnings).toEqual([
+      expect.stringContaining('no device-local time'),
+    ]);
+  });
+
   it('returns a null entry date and a warning when local time is missing', () => {
     const result = transformFitActivity(baseMessages(), Buffer.from('x'));
     if (!result.ok) throw new Error(result.reason);
@@ -380,6 +557,52 @@ describe('transformFitActivity — unit behaviour', () => {
     expect(result.reason).toMatch(/100000/);
   });
 
+  it('rejects files above the set cap', () => {
+    const set = {
+      timestamp: new Date('2026-03-01T10:00:00Z'),
+      duration: 30,
+      repetitions: 10,
+    };
+    const result = transformFitActivity(
+      baseMessages({
+        setMesgs: new Array(10_001).fill(set),
+      } as Partial<FitMessages>),
+      Buffer.from('x')
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected rejection');
+    expect(result.reason).toMatch(/10000/);
+  });
+
+  it('rejects files above the exercise title cap', () => {
+    const title = {
+      wktStepName: 'Bench Press',
+      exerciseCategory: 'benchPress',
+    };
+    const result = transformFitActivity(
+      baseMessages({
+        exerciseTitleMesgs: new Array(1_001).fill(title),
+      } as unknown as Partial<FitMessages>),
+      Buffer.from('x')
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected rejection');
+    expect(result.reason).toMatch(/1000/);
+  });
+
+  it('rejects files above the workout step cap', () => {
+    const step = { wktStepName: 'Step 1' };
+    const result = transformFitActivity(
+      baseMessages({
+        workoutStepMesgs: new Array(1_001).fill(step),
+      } as unknown as Partial<FitMessages>),
+      Buffer.from('x')
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected rejection');
+    expect(result.reason).toMatch(/1000/);
+  });
+
   it('rejects files whose decoded detail data exceeds the size cap', () => {
     const messages = baseMessages({
       sportMesgs: [{ name: 'x'.repeat(11 * 1024 * 1024) }],
@@ -388,5 +611,194 @@ describe('transformFitActivity — unit behaviour', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected rejection');
     expect(result.reason).toMatch(/limit 10MB/);
+  });
+});
+
+describe('transformFitActivity — strength workout transformation', () => {
+  it('correctly parses exercises, sets, reps, and weights from synthetic strength FIT messages', () => {
+    const messages = createSyntheticStrengthMessages();
+    const result = transformFitActivity(
+      messages,
+      Buffer.from('synthetic-strength-buffer')
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected successful transform');
+    expect(result.kind).toBe('strength');
+    expect(result.sport).toBe('training');
+    expect(result.strengthWorkout).toBeDefined();
+
+    const sw = result.strengthWorkout!;
+    expect(sw.workoutName).toBe('Oberkörper');
+    expect(sw.groupedExercises).toHaveLength(2);
+
+    // Exercise 1: Push-up (3 active sets, set 1 is Warmup)
+    const pushUp = sw.groupedExercises[0];
+    expect(pushUp.name).toBe('Push-up');
+    expect(pushUp.category).toBe('pushUp');
+    expect(pushUp.sets).toHaveLength(3);
+    expect(pushUp.sets[0]).toEqual({
+      set_number: 1,
+      set_type: 'Warmup',
+      reps: 10,
+      weight: 0,
+      duration: 53,
+      rest_time: 80,
+      notes: '',
+    });
+    expect(pushUp.sets[1]).toEqual({
+      set_number: 2,
+      set_type: 'Working Set',
+      reps: 10,
+      weight: 0,
+      duration: 24,
+      rest_time: 63,
+      notes: '',
+    });
+    expect(pushUp.sets[2]).toEqual({
+      set_number: 3,
+      set_type: 'Working Set',
+      reps: 10,
+      weight: 0,
+      duration: 28,
+      rest_time: 154,
+      notes: '',
+    });
+
+    // Exercise 2: Triceps Press (3 active sets)
+    const triceps = sw.groupedExercises[1];
+    expect(triceps.name).toBe('Triceps Press');
+    expect(triceps.category).toBe('tricepsExtension');
+    expect(triceps.sets).toHaveLength(3);
+    expect(triceps.sets[0]).toEqual({
+      set_number: 1,
+      set_type: 'Working Set',
+      reps: 11,
+      weight: 0,
+      duration: 40,
+      rest_time: 164,
+      notes: '',
+    });
+    expect(triceps.sets[1]).toEqual({
+      set_number: 2,
+      set_type: 'Working Set',
+      reps: 10,
+      weight: 0,
+      duration: 34,
+      rest_time: 204,
+      notes: '',
+    });
+    expect(triceps.sets[2]).toEqual({
+      set_number: 3,
+      set_type: 'Working Set',
+      reps: 9,
+      weight: 0,
+      duration: 32,
+      rest_time: 13,
+      notes: '',
+    });
+
+    // Calories: total 59, metabolic 21 -> active 38
+    expect(result.detailData.activity.calories).toBe(59);
+    expect(result.detailData.activity.active_calories).toBe(38);
+
+    // Training Load Peak
+    expect(result.detailData.activity.training_load).toBe(2.58);
+    expect(result.entryData.training_load).toBe(2.58);
+
+    // Workout data structure for WorkoutReportVisualizer
+    expect(sw.workoutData.workoutName).toBe('Oberkörper');
+    expect(sw.workoutData.sportType).toEqual({ sportTypeKey: 'training' });
+    expect(sw.workoutData.workoutSegments).toHaveLength(1);
+    expect(sw.workoutData.workoutSegments![0].workoutSteps).toHaveLength(6);
+    expect(sw.workoutData.workoutSegments![0].workoutSteps[0]).toMatchObject({
+      type: 'ExecutableStepDTO',
+      stepOrder: 1,
+      exerciseName: 'Push-up',
+      category: 'pushUp',
+      weightValue: 0,
+      endCondition: { conditionTypeKey: 'reps' },
+      endConditionValue: 10,
+    });
+  });
+
+  it('correctly maps camelCase Garmin FIT categories to muscle groups and strength modality', () => {
+    const pushUpMuscles = mapGarminCategoryToMuscles('pushUp');
+    expect(pushUpMuscles).toEqual({
+      primary: ['chest'],
+      secondary: ['triceps', 'shoulders'],
+    });
+    expect(mapGarminExerciseCategory('pushUp')).toBe('strength');
+
+    const tricepsMuscles = mapGarminCategoryToMuscles('tricepsExtension');
+    expect(tricepsMuscles).toEqual({
+      primary: ['triceps'],
+      secondary: [],
+    });
+    expect(mapGarminExerciseCategory('tricepsExtension')).toBe('strength');
+
+    const benchMuscles = mapGarminCategoryToMuscles('benchPress');
+    expect(benchMuscles).toEqual({
+      primary: ['chest'],
+      secondary: ['triceps', 'shoulders'],
+    });
+    expect(mapGarminExerciseCategory('benchPress')).toBe('strength');
+
+    // Cardio categories must not be classified as strength
+    expect(mapGarminExerciseCategory('RUN')).toBe('cardio');
+    expect(mapGarminExerciseCategory('bike')).toBe('cardio');
+    expect(mapGarminExerciseCategory('plyo')).toBe('plyometrics');
+    expect(mapGarminExerciseCategory('olympic_lift')).toBe(
+      'olympic weightlifting'
+    );
+    expect(mapGarminExerciseCategory('warmUp')).toBe('general');
+    expect(mapGarminExerciseCategory('WARM_UP')).toBe('general');
+  });
+
+  it('does not incorrectly fall back to category-only title when a specific subtype is requested', () => {
+    const messages: FitMessages = {
+      fileIdMesgs: [
+        { serialNumber: 100, timeCreated: new Date('2026-10-23T14:51:07Z') },
+      ],
+      sessionMesgs: [
+        {
+          startTime: new Date('2026-10-23T14:51:07Z'),
+          totalTimerTime: 300,
+          sport: 'training',
+          subSport: 'strengthTraining',
+        },
+      ],
+      exerciseTitleMesgs: [
+        {
+          exerciseCategory: 'benchPress',
+          exerciseName: 1,
+          wktStepName: 'Custom Flat Bench',
+        },
+      ],
+      setMesgs: [
+        {
+          timestamp: new Date('2026-10-23T14:52:00Z'),
+          duration: 30,
+          category: ['benchPress'],
+          categorySubtype: [8], // inclineBarbellBenchPress
+          reps: 8,
+          weight: 60,
+          setType: 1, // active
+        },
+      ],
+    };
+
+    const result = transformFitActivity(
+      messages,
+      Buffer.from('synthetic-strength-buffer-2')
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected successful transform');
+
+    const sw = result.strengthWorkout;
+    expect(sw).toBeDefined();
+    expect(sw!.groupedExercises).toHaveLength(1);
+    // Subtype 8 must resolve via Profile.types to 'Incline Barbell Bench Press',
+    // NOT fall back to 'Custom Flat Bench' (which was registered for subtype 1)
+    expect(sw!.groupedExercises[0].name).toBe('Incline Barbell Bench Press');
   });
 });

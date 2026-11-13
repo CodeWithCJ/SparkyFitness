@@ -1,0 +1,16 @@
+<!-- A 24-unit glyph scaled into the 108dp adaptive-icon canvas, inside its 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.75"
+        android:scaleY="1.75"
+        android:translateX="33"
+        android:translateY="33">
+        <path
+            android:fillColor="#FF5087F7"
+            android:pathData="M3,3h5v2H5v3H3V3zM16,3h5v5h-2V5h-3V3zM3,16h2v3h3v2H3v-5zM19,16h2v5h-5v-2h3v-3zM7,8h1v8H7V8zM9,8h2v8H9V8zM12,8h1v8h-1V8zM14,8h1v8h-1V8zM16,8h1v8h-1V8z" />
+    </group>
+</vector>

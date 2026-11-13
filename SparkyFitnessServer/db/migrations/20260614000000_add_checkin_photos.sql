@@ -12,7 +12,6 @@
 --
 -- Guarded with DO/IF NOT EXISTS throughout so the script is safe to re-run.
 
-BEGIN;
 
 -- 1. Prerequisite: primary key on check_in_measurements.id (only if missing).
 DO $$
@@ -45,4 +44,3 @@ CREATE TABLE IF NOT EXISTS public.check_in_photos (
 -- No separate (user_id, entry_date) index: the unique constraint above already
 -- builds a composite index whose leading columns cover lookups by user + date.
 
-COMMIT;

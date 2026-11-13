@@ -9,20 +9,21 @@ SparkyFitness is translated through [Weblate](https://weblate.sparkyfitness.com/
 Always pair a key with an English fallback in the code itself, so a missing translation degrades to readable English rather than a raw key:
 
 ```tsx
-t('nav.diary', { defaultValue: 'Diary' })
+t("nav.diary", { defaultValue: "Diary" });
 ```
 
-## Five Weblate components
+## Six Weblate components
 
-The web app has one translated file per language. The mobile app has four, because its surfaces use different formats and placeholder syntax and cannot share a component — Weblate translates each real file directly.
+The web app and the backend server have one translated file per language. The mobile app has four, because its surfaces use different formats and placeholder syntax and cannot share a component — Weblate translates each real file directly.
 
-| Component | English source | Format |
-| --- | --- | --- |
-| Web | `SparkyFitnessFrontend/public/locales/en/translation.json` | i18next JSON, `{{value}}` |
-| Mobile runtime | `SparkyFitnessMobile/src/localization/locales/en/translation.json` | i18next JSON, `{{value}}` |
-| Mobile permissions | `SparkyFitnessMobile/locales/en.json` | Expo metadata JSON |
-| Android widget | `SparkyFitnessMobile/targets/android-widget/res/values/widget_strings.xml` | Android resources, `%1$s` |
-| iOS widget | `SparkyFitnessMobile/targets/widget/en.lproj/Localizable.strings` | Apple Strings, `%@` |
+| Component          | English source                                                             | Format                    |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------- |
+| Web                | `SparkyFitnessFrontend/public/locales/en/translation.json`                 | i18next JSON, `{{value}}` |
+| Server             | `SparkyFitnessServer/locales/en/translation.json`                          | i18next JSON, `{{value}}` |
+| Mobile runtime     | `SparkyFitnessMobile/src/localization/locales/en/translation.json`         | i18next JSON, `{{value}}` |
+| Mobile permissions | `SparkyFitnessMobile/locales/en.json`                                      | Expo metadata JSON        |
+| Android widget     | `SparkyFitnessMobile/targets/android-widget/res/values/widget_strings.xml` | Android resources, `%1$s` |
+| iOS widget         | `SparkyFitnessMobile/targets/widget/en.lproj/Localizable.strings`          | Apple Strings, `%@`       |
 
 The widgets need real Android and iOS resource files rather than the JSON catalog: they render outside the app process, so the widget itself, its name and description in the widget gallery, and its appearance before the first data sync cannot depend on the app's runtime translations.
 
@@ -37,17 +38,17 @@ you edit an en/ source
         ◄──────────────────pull──────────────────┘
         │
         ▼
- PR "chore(i18n): sync translations from Weblate"  ──►  merged  ──►  shipped
+ PR "chore(i18n): sync translations from Weblate"  ──►  merged before the release PR  ──►  shipped
 ```
 
-[`SparkyFitnessTranslations`](https://github.com/CodeWithCJ/SparkyFitnessTranslations) is the repository Weblate is connected to. The workflow runs on demand and opens one pull request on each side. Translators never open a pull request here, and you never open one there.
+[`SparkyFitnessTranslations`](https://github.com/CodeWithCJ/SparkyFitnessTranslations) is the repository Weblate is connected to. The workflow runs every night and on demand, from `main`, and opens or updates one pull request on each side. It merges the English one there itself, unless it deletes more than 300 lines; then the run fails until a maintainer merges it. The one here gets CI and merges itself once CI passes; if it is still open when a release pull request is ready, a maintainer merges it first, because the release tag is created on that pull request's merge commit. Translators never open a pull request here, and you never open one there.
 
 ## Adding a language
 
 You do not create translation files by hand.
 
 1. Ask on [Weblate](https://weblate.sparkyfitness.com/engage/sparkyfitness/) for the language to be added. Translation can start immediately and stay incomplete for as long as it needs — missing strings fall back to English, and a partially translated widget falls back to the English resource.
-2. The sync workflow brings the catalogs into this repository. At this point the language is a *translation candidate*: present in the repo, not yet shipped.
+2. The sync workflow brings the catalogs into this repository. At this point the language is a _translation candidate_: present in the repo, not yet shipped.
 3. A maintainer enables it when it is complete enough:
    - **Web** — add the code to `getSupportedLanguages()` and `getLanguageDisplayName()` in `SparkyFitnessFrontend/src/utils/languageUtils.ts`.
    - **Mobile** — add an entry to `SparkyFitnessMobile/src/localization/localeRegistry.json`, then run `pnpm run i18n:generate`.

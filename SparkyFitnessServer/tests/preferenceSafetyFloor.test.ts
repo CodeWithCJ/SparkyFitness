@@ -27,7 +27,7 @@ describe('calorie safety floor preference validation', () => {
   it('rejects an unknown mode', async () => {
     await expect(
       preferenceService.updateUserPreferences('user-1', 'user-1', {
-        calorie_safety_floor_mode: 'sometimes',
+        calorie_safety_floor_mode: 'sometimes' as never,
       })
     ).rejects.toMatchObject({ status: 400 });
   });

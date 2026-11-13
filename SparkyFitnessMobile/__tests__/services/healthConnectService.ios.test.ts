@@ -10,8 +10,19 @@ import {
   queryQuantitySamples,
 } from '@kingstinct/react-native-healthkit';
 
+import { allDayHeartRateSettled } from '../../src/services/shared/healthSyncEngine';
 import type { HealthMetricStates } from '../../src/types/healthRecords';
 import type { SyncDuration } from '../../src/services/healthkit/preferences';
+
+// The all-day heart rate phase runs only for the account the sync started for.
+jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
+  getActiveServerConfig: jest.fn().mockResolvedValue({
+    id: 'server-1',
+    url: 'https://sparky.example',
+    apiKey: 'key-1',
+  }),
+}));
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -19,6 +30,10 @@ jest.mock('../../src/services/LogService', () => ({
 
 jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/preferencesApi', () => ({
+  fetchMoveRingActiveCaloriesSetting: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock('../../src/HealthMetrics', () => ({
@@ -120,6 +135,9 @@ const statsBucket = (
 
 describe('syncHealthData (iOS)', () => {
   beforeEach(async () => {
+    // A heart rate phase from an earlier sync must finish first, so the calls
+    // a test sees are its own sync's.
+    await allDayHeartRateSettled();
     jest.clearAllMocks();
     // Initialize HealthKit as available for most tests
     mockIsHealthDataAvailable.mockResolvedValue(true);
@@ -222,7 +240,7 @@ describe('syncHealthData (iOS)', () => {
     expect(minRecord.unit).toBe('bpm');
   });
 
-  test('HeartRate uses native day statistics, not raw samples', async () => {
+  test('HeartRate daily figures use native day statistics; raw samples are read only for the all-day upload', async () => {
     mockQueryStatisticsCollection.mockResolvedValue([
       statsBucket(48, 120, 72.4),
     ]);
@@ -233,8 +251,14 @@ describe('syncHealthData (iOS)', () => {
     });
 
     expect(result.success).toBe(true);
-    // No raw sample read for HeartRate — one discrete-statistics collection query instead.
-    expect(mockQueryQuantitySamples).not.toHaveBeenCalled();
+    // The daily min/max/avg come from one discrete-statistics collection query. The
+    // only raw sample read is the separate all-day heart rate upload, which runs
+    // after the sync has returned.
+    await allDayHeartRateSettled();
+    expect(mockQueryQuantitySamples).toHaveBeenCalled();
+    for (const call of mockQueryQuantitySamples.mock.calls) {
+      expect(call[0]).toBe('HKQuantityTypeIdentifierHeartRate');
+    }
     expect(mockQueryStatisticsCollection).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierHeartRate',
       ['discreteMin', 'discreteMax', 'discreteAverage'],

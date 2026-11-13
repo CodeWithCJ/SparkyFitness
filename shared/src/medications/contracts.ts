@@ -6,10 +6,12 @@ import type { SharedScheduleRule } from './schedules.ts';
 // names mirror the server's medicationSchemas.ts and repository columns —
 // snake_case, straight from the database.
 
-export type MedicationEntryStatus = 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
+export type MedicationEntryStatus =
+  'taken' | 'skipped' | 'snoozed' | 'prn_taken';
 
 /** Meal timing for a scheduled dose, relative to the nearest meal. */
-export type MedicationWithMeal = 'before' | 'with' | 'after' | 'away_from_meals';
+export type MedicationWithMeal =
+  'before' | 'with' | 'after' | 'away_from_meals';
 
 /**
  * A supplement's per-serving nutrition: the fixed food-variant nutrient columns

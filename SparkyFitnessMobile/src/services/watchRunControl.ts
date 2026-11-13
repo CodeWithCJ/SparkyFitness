@@ -4,6 +4,8 @@ import WatchConnectivity, {
 import type { WatchRunPlanPayload } from '../utils/watchRunPlans';
 import { useWatchRunLiveStore } from '../stores/watchRunLiveStore';
 import { addLog } from './LogService';
+import { toWatchRoutePayload } from '../utils/watchRoute';
+import type { Route } from '@workspace/shared';
 
 const newId = (): string =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -26,10 +28,20 @@ export async function startRunOnWatch(options: {
   paceBand?: { minSecondsPerKm: number; maxSecondsPerKm: number };
   /** A heart-rate range to stay inside. */
   heartRateBand?: { minBpm: number; maxBpm: number };
+  /** A saved route to follow; used only for an outdoor run. */
+  route?: Pick<Route, 'id' | 'name' | 'points' | 'cues'>;
 }): Promise<string> {
-  if (!WatchConnectivity) throw new Error('Apple Watch is not available');
+  if (!WatchConnectivity) throw new Error('Watch is not available');
   const requestId = newId();
   const requestedAt = Date.now();
+  // Indoors there is no GPS to follow a route with.
+  const route =
+    options.route && options.place === 'outdoor'
+      ? toWatchRoutePayload(options.route)
+      : null;
+  if (options.route && options.place === 'outdoor' && !route) {
+    throw new Error('The selected route has no line to follow');
+  }
   await WatchConnectivity.startRun({
     requestId,
     kind: options.kind,
@@ -53,6 +65,7 @@ export async function startRunOnWatch(options: {
         }
       : {}),
     ...(options.plan ? { plan: options.plan } : {}),
+    ...(route ? { route } : {}),
   });
   useWatchRunLiveStore.getState().setPending({
     requestId,

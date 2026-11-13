@@ -16,6 +16,7 @@ import type {
 import symptomRepository from '../models/symptomRepository.js';
 import type {
   SymptomDefinitionRow,
+  SymptomEntryRow,
   SymptomEntryWithDetails,
   SymptomEntryWrite,
   SymptomTreatmentRow,
@@ -105,6 +106,8 @@ function toEntryResponse(row: SymptomEntryWithDetails): SymptomEntryResponse {
   return {
     ...row,
     impact: row.impact as SymptomEntryResponse['impact'],
+    impact_timeline: (row.impact_timeline ??
+      []) as SymptomEntryResponse['impact_timeline'],
     logged_at: iso(row.logged_at) as string,
     started_at: iso(row.started_at),
     ended_at: iso(row.ended_at),
@@ -241,6 +244,11 @@ function reconcileLocations(
 }
 
 async function listEntries(userId: string, query: ListSymptomEntriesQuery) {
+  // An overlapping range is read in the profile timezone, like entry_date.
+  const timezone =
+    query.overlapping && (query.fromDate || query.toDate)
+      ? await loadUserTimezone(userId)
+      : undefined;
   const rows = await symptomRepository.listSymptomEntries(userId, {
     fromDate: query.fromDate ?? undefined,
     toDate: query.toDate ?? undefined,
@@ -249,6 +257,8 @@ async function listEntries(userId: string, query: ListSymptomEntriesQuery) {
     medicationId: query.medicationId,
     source: query.source,
     episodesOnly: query.episodesOnly,
+    overlapping: query.overlapping,
+    timezone,
   });
   return rows.map(toEntryResponse);
 }
@@ -289,6 +299,10 @@ async function createEntry(userId: string, body: CreateSymptomEntryBody) {
         { at: fields.started_at, severity: fields.severity },
       ];
     }
+  }
+  // ...and its impact timeline at the first impact.
+  if (fields.impact && fields.started_at) {
+    write.impact_timeline = [{ at: fields.started_at, impact: fields.impact }];
   }
 
   try {
@@ -346,34 +360,51 @@ async function updateEntry(
   }
 
   // A severity change on an episode is a new reading on its timeline; a quick
-  // log has no timeline, so its peak simply follows the value.
-  if (fields.severity !== undefined && fields.severity !== null) {
-    const severityChanged =
-      existing.severity === null ||
-      Number(existing.severity) !== fields.severity;
-    if (severityChanged) {
-      if (existing.started_at || startedAt) {
-        const timeline = [
-          ...existing.severity_timeline,
-          {
-            at: new Date().toISOString(),
-            severity: fields.severity,
-          },
-        ];
-        write.severity_timeline = timeline;
-        write.peak_severity = Math.max(...timeline.map((p) => p.severity));
-      } else {
-        write.peak_severity = fields.severity;
+  // log has no timeline, so its peak simply follows the value. Both are worked
+  // out from the entry as stored when the update runs, so an overlapping update
+  // cannot drop the other's reading.
+  const readings = (current: SymptomEntryRow): SymptomEntryWrite => {
+    const changes: SymptomEntryWrite = {};
+    const isEpisode = Boolean(current.started_at || startedAt);
+    if (fields.severity !== undefined && fields.severity !== null) {
+      const severityChanged =
+        current.severity === null ||
+        Number(current.severity) !== fields.severity;
+      if (severityChanged) {
+        if (isEpisode) {
+          const timeline = [
+            ...current.severity_timeline,
+            {
+              at: new Date().toISOString(),
+              severity: fields.severity,
+            },
+          ];
+          changes.severity_timeline = timeline;
+          changes.peak_severity = Math.max(...timeline.map((p) => p.severity));
+        } else {
+          changes.peak_severity = fields.severity;
+        }
       }
     }
-  }
+
+    // The same for impact: a change on an episode is appended to its timeline
+    // instead of replacing the history.
+    if (fields.impact && fields.impact !== current.impact && isEpisode) {
+      changes.impact_timeline = [
+        ...(current.impact_timeline ?? []),
+        { at: new Date().toISOString(), impact: fields.impact },
+      ];
+    }
+    return changes;
+  };
 
   try {
     const row = await symptomRepository.updateSymptomEntry(
       userId,
       id,
       write,
-      treatments
+      treatments,
+      readings
     );
     if (!row) throw new SymptomNotFoundError('Symptom entry not found');
     return toEntryResponse(row);
@@ -416,7 +447,8 @@ async function addSeverity(
     userId,
     id,
     body.severity,
-    body.at ?? null
+    body.at ?? null,
+    body.impact ?? null
   );
   if (!row) throw new SymptomNotFoundError('Symptom entry not found');
   return toEntryResponse(row);

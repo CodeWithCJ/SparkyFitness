@@ -82,19 +82,6 @@ export const formatTooltipDate = (day: string): string => {
   });
 };
 
-/** A calendar day with its year, for dates far enough out that the year matters. */
-export const formatDateWithYear = (day: string): string => {
-  const parts = day.split('-');
-  if (parts.length < 3) return day;
-  const [year, month, d] = parts.map(Number);
-  const date = new Date(year, (month || 1) - 1, d || 1);
-  return date.toLocaleDateString(getAppLocale(), {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
 /** Formats chart tick values according to the active application locale. */
 export const formatChartYLabel = (value: number): string =>
   value >= 1000

@@ -109,7 +109,7 @@ describe('ExerciseHistoryList', () => {
     mockUseExerciseHistory.mockReturnValue({ ...baseHookResult });
   });
 
-  it('renders a chip per set with warmup prefixes', () => {
+  it('renders a row per set, with warm-ups lettered and working sets numbered', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,
       sessions: [
@@ -124,12 +124,116 @@ describe('ExerciseHistoryList', () => {
     const screen = renderList();
 
     expect(screen.getByText('Tue, Jan 6')).toBeTruthy();
-    expect(screen.getByText('W 60 × 10')).toBeTruthy();
+    expect(screen.getByText('60 × 10')).toBeTruthy();
     expect(screen.getByText('100 × 5')).toBeTruthy();
     expect(screen.getByText('12 reps')).toBeTruthy();
+    // The warm-up is a W, so the working sets count 1 and 2.
+    expect(screen.getByText('W')).toBeTruthy();
+    expect(screen.getByText('1')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
   });
 
-  it('chips duration-modality sets as seconds, with the legacy reps fallback', () => {
+  it('shows each set RPE as a pill and leaves it empty without one', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([
+          makeSet({ weight: 100, reps: 5, rpe: 8 }),
+          makeSet({ weight: 100, reps: 5, rpe: 9.5 }),
+          makeSet({ weight: 100, reps: 5 }),
+        ]),
+      ],
+    });
+
+    const screen = renderList();
+
+    expect(screen.getAllByTestId('history-rpe')).toHaveLength(2);
+    expect(screen.getByText('8')).toBeTruthy();
+    expect(screen.getByText('9.5')).toBeTruthy();
+  });
+
+  it('letters drop and failure sets and keeps counting the working sets', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([
+          makeSet({ weight: 100, reps: 5 }),
+          makeSet({ set_type: 'drop', weight: 80, reps: 8 }),
+          makeSet({ set_type: 'failure', weight: 100, reps: 3 }),
+          makeSet({ weight: 100, reps: 4 }),
+        ]),
+      ],
+    });
+
+    const screen = renderList();
+
+    expect(screen.getByText('D')).toBeTruthy();
+    expect(screen.getByText('F')).toBeTruthy();
+    expect(screen.getByText('1')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+  });
+
+  it('headlines a workout by its name, with the date and start time beneath', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makePresetSession([
+          makeEntry(EXERCISE_ID, [
+            makeSet({
+              weight: 100,
+              reps: 5,
+              completed_at: '2026-01-06T16:08:00',
+            }),
+          ]),
+        ]),
+      ],
+    });
+
+    const screen = renderList();
+
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.getByText(/Tue, Jan 6 · 4:08/)).toBeTruthy();
+  });
+
+  it('opens the workout from the session header when it can', () => {
+    const session = makePresetSession([
+      makeEntry(EXERCISE_ID, [makeSet({ weight: 100, reps: 5 })]),
+    ]);
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [session],
+    });
+    const onOpenSession = jest.fn();
+
+    const screen = renderList({ onOpenSession });
+    fireEvent.press(screen.getByTestId('history-session-header'));
+
+    expect(onOpenSession).toHaveBeenCalledWith(session);
+  });
+
+  it('shows no header button without an open handler', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [makeIndividualSession([makeSet({ weight: 100, reps: 5 })])],
+    });
+
+    expect(renderList().queryByTestId('history-session-header')).toBeNull();
+  });
+
+  it('heads the value column for what the sets record', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([
+          makeSet({ weight: null, reps: null, duration: 45 }),
+        ]),
+      ],
+    });
+
+    expect(renderList({ modality: 'duration' }).getByText('Time')).toBeTruthy();
+  });
+
+  it('shows duration-modality sets as seconds, with the legacy reps fallback', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,
       sessions: [
@@ -167,7 +271,7 @@ describe('ExerciseHistoryList', () => {
     expect(screen.queryByText('60 × 8')).toBeNull();
   });
 
-  it('marks chips that beat, tie, or miss the record distinctly', () => {
+  it('marks sets that beat or tie the record distinctly', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,
       sessions: [
@@ -185,12 +289,12 @@ describe('ExerciseHistoryList', () => {
     });
 
     // is_pr wins even though 105 × 5 doesn't tie the (stale) bestSet.
-    expect(screen.getAllByTestId('pr-chip')).toHaveLength(1);
+    expect(screen.getAllByTestId('pr-row')).toHaveLength(1);
     // Only the exact non-warmup tie gets the match outline.
-    expect(screen.getAllByTestId('pr-match-chip')).toHaveLength(1);
+    expect(screen.getAllByTestId('pr-match-row')).toHaveLength(1);
   });
 
-  it('renders plain chips when no best set is provided', () => {
+  it('renders plain rows when no best set is provided', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,
       sessions: [makeIndividualSession([makeSet({ weight: 100, reps: 5 })])],
@@ -198,7 +302,7 @@ describe('ExerciseHistoryList', () => {
 
     const screen = renderList();
 
-    expect(screen.queryByTestId('pr-match-chip')).toBeNull();
+    expect(screen.queryByTestId('pr-match-row')).toBeNull();
   });
 
   it('falls back to a duration/calories summary for set-less entries', () => {
@@ -214,7 +318,7 @@ describe('ExerciseHistoryList', () => {
 
     const screen = renderList();
 
-    expect(screen.getByText('30 min · 200 cal')).toBeTruthy();
+    expect(screen.getByText('30 min · 200 kcal')).toBeTruthy();
   });
 
   it('shows an empty state when there are no sessions', () => {
@@ -276,5 +380,48 @@ describe('ExerciseHistoryList', () => {
 
     fireEvent.press(screen.getByText('Loading...'));
     expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  describe('effort card', () => {
+    it('shows nothing until a set has an RPE', () => {
+      mockUseExerciseHistory.mockReturnValue({
+        ...baseHookResult,
+        sessions: [makeIndividualSession([makeSet({ rpe: null })])],
+      });
+      expect(renderList().queryByTestId('exercise-effort-card')).toBeNull();
+    });
+
+    it('shows the last session average, the trend and the 1RM with effort', () => {
+      mockUseExerciseHistory.mockReturnValue({
+        ...baseHookResult,
+        sessions: [
+          makeIndividualSession([makeSet({ rpe: 9, reps: 5, weight: 100 })], {
+            entry_date: '2026-01-06',
+          }),
+          makeIndividualSession([makeSet({ rpe: 7, reps: 5, weight: 100 })], {
+            entry_date: '2026-01-02',
+          }),
+        ],
+      });
+      const screen = renderList();
+
+      expect(screen.getByTestId('exercise-effort-card')).toBeTruthy();
+      expect(screen.getByText('Avg RPE, last session')).toBeTruthy();
+      expect(screen.getByTestId('exercise-effort-bars')).toBeTruthy();
+      // The RPE 7 session is judged as 8 reps (3 left); reps alone gives 5.
+      expect(screen.getByText('Est. 1RM with effort')).toBeTruthy();
+      expect(screen.getByText('126.7 kg')).toBeTruthy();
+      expect(screen.getByText('116.7 kg')).toBeTruthy();
+    });
+
+    it('leaves the 1RM out for a bodyweight exercise', () => {
+      mockUseExerciseHistory.mockReturnValue({
+        ...baseHookResult,
+        sessions: [makeIndividualSession([makeSet({ rpe: 8 })])],
+      });
+      const screen = renderList({ modality: 'bodyweight_reps' });
+      expect(screen.getByTestId('exercise-effort-card')).toBeTruthy();
+      expect(screen.queryByText('Est. 1RM with effort')).toBeNull();
+    });
   });
 });

@@ -1,5 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { getClient } from '../db/poolManager.js';
+import { DAILY_MOOD_VALUE_SQL } from '../models/moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from '../models/sleepRepository.js';
 import coachRepository from '../models/coachRepository.js';
 import engagementRepository from '../models/engagementRepository.js';
 import habitRepository from '../models/habitRepository.js';
@@ -98,8 +100,49 @@ describe('coachRepository', () => {
     // All three CTEs must carry the anchor — a single toContain would pass
     // with a half-fixed query.
     expect(sql.match(/entry_date >= \$3::date - \$2::int/g)).toHaveLength(3);
+    // daily_mood is one row per day, so the LEFT JOIN cannot multiply food rows.
+    const start = sql.indexOf('daily_mood AS (');
+    const cte = sql.slice(
+      start,
+      sql.indexOf('SELECT', start + 40 + DAILY_MOOD_VALUE_SQL.length)
+    );
+    expect(cte).toContain('GROUP BY entry_date');
+    expect(cte).toMatch(/HAVING [\s\S]*IS NOT NULL/);
+    expect(cte).toContain(DAILY_MOOD_VALUE_SQL);
+    expect(DAILY_MOOD_VALUE_SQL).toContain('::int');
     expect(sql).not.toContain('CURRENT_DATE');
     expect(params).toEqual(['user-1', 30, '2026-06-11']);
+  });
+
+  it('getDailyCorrelationRows takes one sleep per day, so a night two sources recorded cannot multiply food rows', async () => {
+    await coachRepository.getDailyCorrelationRows('user-1', 30, '2026-06-11');
+    const [sql] = mockClient.query.mock.calls[0];
+    const start = sql.indexOf('daily_sleep AS (');
+    const cte = sql.slice(start, sql.indexOf('daily_mood AS (', start));
+    expect(cte).toContain('DISTINCT ON (entry_date)');
+    expect(cte).toContain(MAIN_SLEEP_ORDER_SQL);
+  });
+
+  it('get30DaySleepAggregates counts and averages one main sleep per day', async () => {
+    await coachRepository.get30DaySleepAggregates('user-1', '2026-06-11');
+    const [sql] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('DISTINCT ON (entry_date)');
+    expect(sql).toContain(MAIN_SLEEP_ORDER_SQL);
+  });
+
+  it('get30DayMoodAggregates counts days with a mood and averages the per-day values', async () => {
+    mockClient.query.mockResolvedValue({
+      rows: [{ entries: 2, avg_mood: '45' }],
+    });
+    const result = await coachRepository.get30DayMoodAggregates(
+      'user-1',
+      '2026-06-11'
+    );
+    const [sql] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(DAILY_MOOD_VALUE_SQL);
+    expect(sql).toContain('GROUP BY entry_date');
+    expect(sql).toContain('IS NOT NULL');
+    expect(result).toEqual({ entries: 2, avg_mood: '45' });
   });
 
   it('releases the client when a query throws', async () => {
@@ -213,10 +256,19 @@ describe('habitRepository', () => {
     expect(params).toEqual(['user-1']);
   });
 
+  const habitStatements = () =>
+    mockClient.query.mock.calls.map(([sql]: [string]) =>
+      sql.trim().split(/\s+/).slice(0, 2).join(' ')
+    );
+  const habitCall = (prefix: string) =>
+    mockClient.query.mock.calls.find(([sql]: [string]) => sql.includes(prefix));
+
   it('upsertHabitLog updates the existing row when one exists', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [{ id: 'cm-1' }] })
-      .mockResolvedValueOnce({ rows: [] });
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.startsWith('SELECT id FROM custom_measurements')
+        ? { rows: [{ id: 'cm-1' }] }
+        : { rows: [] }
+    );
 
     await habitRepository.upsertHabitLog(
       'user-1',
@@ -225,17 +277,20 @@ describe('habitRepository', () => {
       'true'
     );
 
-    expect(mockClient.query).toHaveBeenCalledTimes(2);
-    const [updateSql, updateParams] = mockClient.query.mock.calls[1];
-    expect(updateSql).toContain('UPDATE custom_measurements');
+    expect(habitStatements()).toEqual([
+      'BEGIN',
+      'SELECT pg_advisory_xact_lock(lock_key)',
+      'SELECT id',
+      'UPDATE custom_measurements',
+      'COMMIT',
+    ]);
+    const [, lockParams] = habitCall('pg_advisory_xact_lock');
+    expect(lockParams).toEqual(['user-1', ['habit-1'], ['2026-06-11']]);
+    const [, updateParams] = habitCall('UPDATE custom_measurements');
     expect(updateParams).toEqual(['true', 'cm-1']);
   });
 
   it('upsertHabitLog inserts when no row exists', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-
     await habitRepository.upsertHabitLog(
       'user-1',
       'habit-1',
@@ -243,9 +298,9 @@ describe('habitRepository', () => {
       'false'
     );
 
-    const [insertSql, insertParams] = mockClient.query.mock.calls[1];
-    expect(insertSql).toContain('INSERT INTO custom_measurements');
+    const [, insertParams] = habitCall('INSERT INTO custom_measurements');
     expect(insertParams).toEqual(['user-1', 'habit-1', 'false', '2026-06-11']);
+    expect(habitStatements().at(-1)).toBe('COMMIT');
   });
 
   it('getHabitHistory adds range clauses only for provided bounds', async () => {

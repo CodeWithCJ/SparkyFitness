@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 
 export const CallbackBodySchema = z.object({
   code: z.string().min(1, 'code is required'),
+  redirect_uri: z.string().url().optional(),
 });
 
 export type CallbackBody = z.infer<typeof CallbackBodySchema>;

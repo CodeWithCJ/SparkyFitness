@@ -5,7 +5,6 @@
 -- default. Both are nullable; when unset, vision features fall back to the
 -- existing active/default text service, so behavior is unchanged on upgrade.
 
-BEGIN;
 
 -- Per-user override: route vision tasks (food-photo, label scan) to a
 -- dedicated service. Falls back to active_ai_service_id when NULL.
@@ -18,4 +17,3 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS default_vision_ai_service_id UUID
   REFERENCES public.ai_service_settings(id) ON DELETE SET NULL;
 
-COMMIT;

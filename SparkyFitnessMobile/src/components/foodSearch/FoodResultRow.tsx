@@ -14,6 +14,8 @@ import { primaryImageOf, usableFoodImages } from '../../utils/foodImages';
 import { useOpenLightbox } from '../LightboxProvider';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { FoodItem, TopFoodItem } from '../../types/foods';
+import { energyUnitLabel, roundedEnergy } from '../../utils/energyUnit';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 /**
  * Multi-select affordance for the food-search landing lists (#1980). When
@@ -46,6 +48,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   selection,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const status = deriveShareStatus(
     item.user_id,
     item.shared_with_public,
@@ -140,8 +143,8 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {Math.round(item.default_variant.calories)}{' '}
-            {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+            {roundedEnergy(item.default_variant.calories, energyUnit)}{' '}
+            {energyUnitLabel(energyUnit, t)}
           </Text>
           <Text className="text-text-secondary text-xs">
             {/* i18n-audit-ignore-next-line hardcoded-ui-text -- quantity and unit are literal data values. */}

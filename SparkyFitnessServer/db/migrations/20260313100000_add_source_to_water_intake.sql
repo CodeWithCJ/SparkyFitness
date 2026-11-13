@@ -1,7 +1,6 @@
 -- Migration: Add source and audit columns to water_intake
 -- Created: 2026-03-13
 
-BEGIN;
 
 -- 1. Add new columns
 ALTER TABLE public.water_intake ADD COLUMN IF NOT EXISTS "source" character varying(50) DEFAULT 'manual'::character varying;
@@ -33,4 +32,3 @@ ALTER TABLE public.water_intake
     DROP CONSTRAINT IF EXISTS water_intake_updated_by_user_id_fkey,
     ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
-COMMIT;

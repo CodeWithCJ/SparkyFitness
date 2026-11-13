@@ -58,7 +58,7 @@ export const useUpdateSettings = () => {
         // stale answer until its staleTime expires, so turning the admin
         // toggle on appears to do nothing.
         queryClient.invalidateQueries({ queryKey: mockDataKeys.all }),
-        // Login options (email, passkey) derive from these settings.
+        // Login options (email, passkey, magic link) derive from these settings.
         queryClient.invalidateQueries({ queryKey: authKeys.settings }),
       ]);
     },

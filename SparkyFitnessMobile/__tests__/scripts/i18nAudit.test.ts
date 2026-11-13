@@ -442,6 +442,35 @@ describe('LocaleValidator', () => {
     expect(result.errors).toHaveLength(0);
   });
 
+  it('passes when a translated string repeats a valid source placeholder', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"msg": "{{name}} paused at {{done}} of {{total}}."}',
+      pl: '{"msg": "{{name}} wstrzymano na {{done}} (z {{done}} / {{total}})."}',
+    });
+
+    const validator = new LocaleValidator(
+      path.join(
+        tmpDir,
+        'src',
+        'localization',
+        'locales',
+        'en',
+        'translation.json'
+      ),
+      path.join(
+        tmpDir,
+        'src',
+        'localization',
+        'locales',
+        'pl',
+        'translation.json'
+      )
+    );
+
+    const result = validator.validate();
+    expect(result.errors).toHaveLength(0);
+  });
+
   it('fails for duplicate locale keys (singular colliding with plural group)', () => {
     const tmpDir = createFixtureStructure({
       en: '{"item": "Item", "item_one": "One item", "item_other": "Items"}',

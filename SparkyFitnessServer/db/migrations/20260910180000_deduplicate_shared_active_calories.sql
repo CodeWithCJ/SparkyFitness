@@ -1,6 +1,5 @@
 -- Daily active calories are cumulative totals, not additive workouts.
 -- Retain the most recently written import, including downward corrections.
-BEGIN;
 
 -- Prevent edits and cascading child inserts while selecting complete groups.
 LOCK TABLE public.exercise_entries IN SHARE ROW EXCLUSIVE MODE;
@@ -52,4 +51,3 @@ DELETE FROM public.exercise_entries e
 USING ranked r
 WHERE e.id = r.id AND r.shared_group AND r.recognized_group AND r.position > 1;
 
-COMMIT;

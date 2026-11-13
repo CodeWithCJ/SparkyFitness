@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Loader2, Save, Play, Upload, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
@@ -161,7 +162,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
           <div className="mb-4">
             <label
               className="block text-foreground text-sm font-bold mb-2"
-              htmlFor="backupTime"
+              id="backup-time-label"
             >
               {t('admin.backupSettings.backupTime', {
                 timezone: new Date()
@@ -170,10 +171,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
                 defaultValue: `Backup Time (${new Date().toLocaleTimeString('en-us', { timeZoneName: 'short' }).split(' ')[2]}):`,
               })}
             </label>
-            <Input
-              type="time"
+            <TimeInput
+              aria-labelledby="backup-time-label"
               value={backupTime}
-              onChange={(e) => setBackupTime(e.target.value)}
+              onChange={setBackupTime}
               className="bg-muted shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>

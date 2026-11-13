@@ -18,10 +18,12 @@ import type {
   SupplementTotals,
   WaterIntakeBreakdown,
   AdjustedGoals,
+  CalorieCyclingDay,
 } from '@workspace/shared';
 import {
   resolveSupplementTotals,
   addSupplementCustomNutrients,
+  computeCalorieProgress,
 } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 
@@ -35,6 +37,8 @@ export interface DailySummaryRawData {
   calorieBalance?: CalorieBalance;
   supplementTotals?: SupplementTotals;
   adjustedGoals?: AdjustedGoals | null;
+  /** How calorie cycling set the day's goal; absent from older servers. */
+  calorieCycling?: CalorieCyclingDay;
 }
 
 export async function loadDailySummaryRawData(
@@ -53,6 +57,7 @@ export async function loadDailySummaryRawData(
     calorieBalance: data.calorieBalance,
     supplementTotals: data.supplementTotals,
     adjustedGoals: data.adjustedGoals ?? null,
+    calorieCycling: data.calorieCycling,
   };
 }
 
@@ -70,6 +75,7 @@ export function buildDailySummary(
     calorieBalance,
     supplementTotals,
     adjustedGoals,
+    calorieCycling,
   } = raw;
 
   const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
@@ -84,25 +90,31 @@ export function buildDailySummary(
   const remainingCalories = calorieGoal - netCalories;
 
   const fallbackRemaining = calorieGoal - caloriesConsumed;
-  const resolvedCalorieBalance: CalorieBalance = calorieBalance ?? {
+  const balance: CalorieBalance = calorieBalance ?? {
     eaten: Math.round(caloriesConsumed),
     burned: Math.round(caloriesBurned),
     remaining: Math.round(fallbackRemaining),
     goal: Math.round(calorieGoal),
     net: Math.round(netCalories),
-    progress:
-      calorieGoal > 0
-        ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100))
-        : 0,
+    progress: 0,
     bmr: 0,
     bmrSource: 'formula' as const,
     exerciseSource: 'none',
     tdeeProjection: null,
   };
+  // Older servers report net calories / base goal here. Derive the food-budget
+  // percentage from their authoritative totals so every mobile surface agrees.
+  const resolvedCalorieBalance: CalorieBalance = {
+    ...balance,
+    progress: Math.round(
+      computeCalorieProgress(balance.eaten, balance.remaining)
+    ),
+  };
 
   return {
     date,
     calorieGoal,
+    calorieCycling,
     caloriesConsumed,
     caloriesBurned,
     activeCalories,
@@ -133,6 +145,9 @@ export function buildDailySummary(
     waterConsumed: waterIntake.water_ml || 0,
     waterGoal: adjustedGoals?.water_goal_ml ?? goals.water_goal_ml ?? 2500,
     waterFromFood: Number(waterIntakeBreakdown?.food_ml) || 0,
+    waterManual: waterIntakeBreakdown
+      ? Number(waterIntakeBreakdown.manual_ml) || 0
+      : null,
     foodEntries,
     supplementTotals: supplements,
     exerciseEntries,

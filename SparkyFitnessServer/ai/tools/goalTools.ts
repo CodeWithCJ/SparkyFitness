@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, type CalorieCyclingDay } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import goalService from '../../services/goalService.js';
 import goalRepository from '../../models/goalRepository.js';
@@ -50,6 +50,28 @@ const GOAL_SNAPSHOT_FIELDS = [
 // Adjusted goals come from the goal-mode calculation and can carry float noise
 // (e.g. 88.30000000000001). Round to 1 decimal for chat display — integers stay
 // integers, so raw stored goals render exactly as before.
+/** One line saying how calorie cycling (#2327) changed the day's calorie goal. */
+function describeCalorieCycling(value: unknown): string {
+  const cycling = value as CalorieCyclingDay | undefined;
+  if (!cycling) return '';
+  switch (cycling.status) {
+    case 'paused_earn_back':
+      return '- **Calorie cycling:** paused, because exercise calories are added back to the goal\n';
+    case 'paused_weekly_plan':
+      return '- **Calorie cycling:** paused, because a weekly goal plan sets this day\n';
+    case 'active': {
+      if (cycling.dayType === 'even') {
+        return `- **Calorie cycling:** even day (base ${cycling.baseTarget} kcal)\n`;
+      }
+      const sign = cycling.delta > 0 ? '+' : '';
+      const floor = cycling.clampedToFloor ? ', held at the safety floor' : '';
+      return `- **Calorie cycling:** ${cycling.dayType} day (${sign}${cycling.delta} kcal on a ${cycling.baseTarget} kcal base${floor})\n`;
+    }
+    default:
+      return '';
+  }
+}
+
 function roundGoalValue(value: unknown): unknown {
   const num = Number(value);
   return Number.isFinite(num) ? Math.round(num * 10) / 10 : value;
@@ -177,6 +199,7 @@ Actions:
                   text += `- **${name}:** ${amount}\n`;
                 }
               }
+              text += describeCalorieCycling(goals.calorie_cycling);
               return text;
             }
 
@@ -301,6 +324,17 @@ Actions:
             if (field in goals) {
               data[field] = roundGoalValue(goals[field]);
             }
+          }
+          const cycling = goals.calorie_cycling as
+            CalorieCyclingDay | undefined;
+          if (cycling) {
+            data['calorie_cycling'] = {
+              status: cycling.status,
+              day_type: cycling.dayType,
+              base_calories: cycling.baseTarget,
+              change_kcal: cycling.delta,
+              held_at_safety_floor: cycling.clampedToFloor,
+            };
           }
           data['goal_directions'] = effectiveGoalTypes;
           return formatJsonResult(data);

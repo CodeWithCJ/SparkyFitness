@@ -4,8 +4,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import * as Reanimated from 'react-native-reanimated';
-import { AppState } from 'react-native';
+import { Alert, AppState, Keyboard } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { ComposerPrimitive } from '@assistant-ui/react-native';
+import type { ActionSheetRef as MockActionSheetRef } from '../../src/components/ActionSheet';
 import { transcribeVoiceRecording } from '../../src/services/api/voiceTranscriptionApi';
+import {
+  pickChatImageFromCamera,
+  pickChatImagesFromLibrary,
+} from '../../src/utils/pickImage';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
 import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
@@ -15,6 +22,59 @@ import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
 // Stub the primitives instead, with `ThreadPrimitive.If`/`Empty` honoring
 // controllable flags so the empty state and Send↔Cancel gating are exercised.
 // Streaming behavior itself is covered by on-device manual verification.
+
+const mockPhotoSheet = {
+  present: jest.fn(),
+  dismiss: jest.fn(),
+  finishDismiss: () => {},
+};
+
+jest.mock('../../src/components/ActionSheet', () => {
+  const React: typeof import('react') = require('react');
+  const {
+    View,
+    Text,
+    Pressable,
+  }: typeof import('react-native') = require('react-native');
+  type MockSheetProps = React.ComponentPropsWithoutRef<
+    typeof import('../../src/components/ActionSheet').default
+  >;
+  return {
+    __esModule: true,
+    default: React.forwardRef<MockActionSheetRef, MockSheetProps>(
+      (props, ref) => {
+        const [visible, setVisible] = React.useState(false);
+        React.useImperativeHandle(ref, () => ({
+          present: () => {
+            mockPhotoSheet.present();
+            setVisible(true);
+          },
+          dismiss: mockPhotoSheet.dismiss,
+        }));
+        const { onDismiss } = props;
+        React.useEffect(() => {
+          mockPhotoSheet.finishDismiss = () => {
+            setVisible(false);
+            onDismiss?.();
+          };
+        }, [onDismiss]);
+        if (!visible) return null;
+        return React.createElement(
+          View,
+          { testID: `photo-source-${props.layout}` },
+          React.createElement(Text, null, props.title),
+          props.items.map((item) =>
+            React.createElement(
+              Pressable,
+              { key: item.key, onPress: item.onPress },
+              React.createElement(Text, null, item.label)
+            )
+          )
+        );
+      }
+    ),
+  };
+});
 
 // expo/fetch's FetchResponse extends the global Response (absent in jsdom); the
 // transport is stubbed here anyway.
@@ -82,6 +142,14 @@ jest.mock('@assistant-ui/react-native', () => {
           }
           (global as any).__mockComposerSetText?.(value);
         },
+        addAttachment: async (attachment: unknown) => {
+          await mockPhotoState.__mockComposerAddAttachment(attachment);
+        },
+        attachment: (selector: { id: string } | { index: number }) => ({
+          remove: async () => {
+            await mockPhotoState.__mockComposerRemoveAttachment(selector);
+          },
+        }),
       }),
     }),
     useAuiEvent: (event: string, handler: () => void) => {
@@ -94,10 +162,26 @@ jest.mock('@assistant-ui/react-native', () => {
         };
       }, [event, handler]);
     },
-    useAuiState: (selector: (s: any) => any) =>
+    useAuiState: <T,>(
+      selector: (state: {
+        thread: { isRunning: boolean };
+        composer: { text: string; attachments: readonly unknown[] };
+        message: MockPhotoMessage;
+      }) => T
+    ) =>
       selector({
-        thread: { isRunning: !!(global as any).__mockChatIsRunning },
-        composer: { text: (global as any).__mockComposerText ?? '' },
+        thread: { isRunning: mockPhotoState.__mockChatIsRunning },
+        composer: {
+          text: mockPhotoState.__mockComposerText ?? '',
+          attachments: mockPhotoState.__mockComposerAttachments,
+        },
+        message: mockPhotoState.__mockMessageState ?? {
+          role: 'user',
+          status: { type: 'complete' },
+          content: [],
+          parts: [],
+          attachments: [],
+        },
       }),
     ThreadPrimitive: {
       Root: Box,
@@ -106,15 +190,31 @@ jest.mock('@assistant-ui/react-native', () => {
           ? null
           : React.createElement(React.Fragment, null, children),
       Messages: React.forwardRef(
-        ({ children: _children, ...props }: any, ref: any) => {
+        (
+          {
+            children,
+            ...props
+          }: {
+            children?: (args: { message: MockPhotoMessage }) => React.ReactNode;
+          },
+          ref: React.ForwardedRef<{ scrollToEnd: (options: unknown) => void }>
+        ) => {
           React.useImperativeHandle(ref, () => ({
             scrollToEnd: (options: unknown) =>
               (global as any).__mockMessagesScrollToEnd?.(options),
           }));
-          return React.createElement(View, {
-            testID: 'thread-messages',
-            ...props,
-          });
+          const renderedMessage =
+            mockPhotoState.__mockMessageState && typeof children === 'function'
+              ? children({ message: mockPhotoState.__mockMessageState })
+              : null;
+          return React.createElement(
+            View,
+            {
+              testID: 'thread-messages',
+              ...props,
+            },
+            renderedMessage
+          );
         }
       ),
       If: ({ children, running, empty }: any) => {
@@ -149,7 +249,10 @@ jest.mock('@assistant-ui/react-native', () => {
       }) =>
         React.createElement(
           View,
-          { testID: 'composer-send', accessibilityState: { disabled } },
+          {
+            testID: 'composer-send',
+            accessibilityState: { disabled: disabled ?? false },
+          },
           children
         ),
       Cancel: ({ children }: any) =>
@@ -157,8 +260,41 @@ jest.mock('@assistant-ui/react-native', () => {
     },
     MessagePrimitive: {
       Root: Box,
-      Content: () => null,
-      If: ({ children }: any) => children,
+      Content: ({
+        renderText,
+      }: {
+        renderText?: (args: {
+          part: { type: 'text'; text: string };
+          index: number;
+        }) => React.ReactNode;
+      }) => {
+        const msg = mockPhotoState.__mockMessageState;
+        const parts = msg?.parts ?? msg?.content ?? [];
+        return React.createElement(
+          React.Fragment,
+          null,
+          parts
+            .filter((part) => part.type === 'text' && part.text)
+            .map((part, index) =>
+              React.createElement(
+                React.Fragment,
+                { key: index },
+                renderText ? renderText({ part, index }) : null
+              )
+            )
+        );
+      },
+      If: ({
+        children,
+        user,
+        assistant,
+      }: React.PropsWithChildren<{ user?: boolean; assistant?: boolean }>) => {
+        const role = mockPhotoState.__mockMessageState?.role ?? 'user';
+        if (user !== undefined && user !== (role === 'user')) return null;
+        if (assistant !== undefined && assistant !== (role === 'assistant'))
+          return null;
+        return children;
+      },
     },
     ErrorPrimitive: {
       Root: Box,
@@ -196,6 +332,12 @@ jest.mock('../../src/services/api/voiceTranscriptionApi', () => ({
     text: 'Привет из Gemini',
     model: 'gemini-test',
   })),
+}));
+
+jest.mock('../../src/utils/pickImage', () => ({
+  MAX_CHAT_ATTACHMENTS: 5,
+  pickChatImageFromCamera: jest.fn(),
+  pickChatImagesFromLibrary: jest.fn(),
 }));
 
 const mockVoicePreferences = { enabled: true, refetch: jest.fn() };
@@ -296,6 +438,10 @@ beforeEach(() => {
   (global as any).__mockMessagesScrollToEnd = undefined;
   (global as any).__mockComposerText = '';
   (global as any).__mockComposerSetText = jest.fn();
+  mockPhotoState.__mockComposerAddAttachment = jest.fn();
+  mockPhotoState.__mockComposerRemoveAttachment = jest.fn();
+  mockPhotoState.__mockComposerAttachments = [];
+  mockPhotoState.__mockMessageState = undefined;
   (global as any).__mockComposerDeferEchoes = false;
   voiceTestState.__mockVoiceServiceId = null;
   mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
@@ -1078,5 +1224,359 @@ describe('ChatScreen history seeding', () => {
         'Ask Sparky anything about your nutrition, exercise, or goals.'
       )
     ).toBeNull();
+  });
+});
+
+interface MockPhotoMessage {
+  id?: string;
+  role: 'user' | 'assistant';
+  status?: { type: string };
+  content: { type: 'text'; text: string }[];
+  parts?: { type: 'text'; text: string }[];
+  attachments: readonly unknown[];
+}
+
+const mockPhotoState = globalThis as typeof globalThis & {
+  __mockComposerText: string;
+  __mockChatIsRunning: boolean;
+  __mockChatIsEmpty: boolean;
+  __mockComposerAttachments: readonly unknown[];
+  __mockComposerAddAttachment: jest.Mock;
+  __mockComposerRemoveAttachment: jest.Mock;
+  __mockMessageState: MockPhotoMessage | undefined;
+};
+const photoTestState = mockPhotoState;
+
+describe('ChatScreen photo attachments', () => {
+  const mockPickCamera = jest.mocked(pickChatImageFromCamera);
+  const mockPickLibrary = jest.mocked(pickChatImagesFromLibrary);
+
+  beforeEach(() => {
+    mockPickCamera.mockReset();
+    mockPickLibrary.mockReset();
+    jest
+      .mocked(useFocusEffect)
+      .mockImplementation(function useMockFocus(effect) {
+        React.useEffect(effect, [effect]);
+      });
+  });
+
+  afterEach(() => {
+    jest.mocked(useFocusEffect).mockReset();
+    jest.restoreAllMocks();
+  });
+
+  async function openPhotoSheet() {
+    const screen = renderScreen();
+    fireEvent.press(await screen.findByTestId('composer-attach-photo'));
+    return screen;
+  }
+
+  it('opens an icon-tile sheet instead of a system alert and dismisses the keyboard', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const keyboardSpy = jest.spyOn(Keyboard, 'dismiss');
+    const screen = await openPhotoSheet();
+    expect(screen.getByTestId('photo-source-grid')).toBeTruthy();
+    expect(screen.getByText('Take Photo')).toBeTruthy();
+    expect(screen.getByText('Choose from Library')).toBeTruthy();
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(keyboardSpy).toHaveBeenCalled();
+    expect(
+      screen.getByTestId('composer-attach-photo').props.accessibilityState
+    ).toMatchObject({ expanded: true });
+    fireEvent.press(screen.getByTestId('composer-attach-photo'));
+    expect(mockPhotoSheet.present).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the camera only after the sheet finishes closing', async () => {
+    mockPickCamera.mockResolvedValueOnce({
+      status: 'ok',
+      image: {
+        uri: 'file:///camera-meal.jpg',
+        dataUrl: 'data:image/jpeg;base64,CAMERA_BASE64',
+        name: 'camera-meal.jpg',
+        mimeType: 'image/jpeg',
+      },
+    });
+
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Take Photo'));
+    expect(mockPhotoSheet.dismiss).toHaveBeenCalledTimes(1);
+    expect(mockPickCamera).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText('Choose from Library'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickLibrary).not.toHaveBeenCalled();
+
+    expect(mockPickCamera).toHaveBeenCalled();
+    expect(photoTestState.__mockComposerAddAttachment).toHaveBeenCalledWith({
+      type: 'image',
+      name: 'camera-meal.jpg',
+      contentType: 'image/jpeg',
+      content: [
+        {
+          type: 'image',
+          image: 'data:image/jpeg;base64,CAMERA_BASE64',
+          filename: 'camera-meal.jpg',
+        },
+      ],
+    });
+  });
+
+  it('shows a permission toast when camera access is denied', async () => {
+    mockPickCamera.mockResolvedValueOnce({ status: 'denied' });
+
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Take Photo'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Camera permission needed',
+        text2: 'Enable camera access to add a photo.',
+      })
+    );
+    expect(photoTestState.__mockComposerAddAttachment).not.toHaveBeenCalled();
+  });
+
+  it('attaches selected photos from the library', async () => {
+    mockPickLibrary.mockResolvedValueOnce([
+      {
+        uri: 'file:///lib-1.jpg',
+        dataUrl: 'data:image/jpeg;base64,LIB1',
+        name: 'lib-1.jpg',
+        mimeType: 'image/jpeg',
+      },
+      {
+        uri: 'file:///lib-2.jpg',
+        dataUrl: 'data:image/jpeg;base64,LIB2',
+        name: 'lib-2.jpg',
+        mimeType: 'image/jpeg',
+      },
+    ]);
+
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Choose from Library'));
+    expect(mockPickLibrary).not.toHaveBeenCalled();
+    await act(async () => mockPhotoSheet.finishDismiss());
+
+    expect(mockPickLibrary).toHaveBeenCalledWith(5);
+    expect(photoTestState.__mockComposerAddAttachment).toHaveBeenCalledTimes(2);
+  });
+
+  it('can dismiss and reopen the sheet without opening a native picker', async () => {
+    const screen = await openPhotoSheet();
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickCamera).not.toHaveBeenCalled();
+    expect(mockPickLibrary).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('composer-attach-photo').props.accessibilityState
+    ).toMatchObject({ expanded: false });
+    fireEvent.press(screen.getByTestId('composer-attach-photo'));
+    expect(mockPhotoSheet.present).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not open a queued picker after leaving chat', async () => {
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Take Photo'));
+    screen.unmount();
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickCamera).not.toHaveBeenCalled();
+  });
+
+  it('drops the queued selection if a response starts before dismissal finishes', async () => {
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Take Photo'));
+    photoTestState.__mockChatIsRunning = true;
+    screen.rerenderThread();
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickCamera).not.toHaveBeenCalled();
+  });
+
+  it('leaves normal Send availability to the runtime, including image-only messages', async () => {
+    const screen = renderScreen();
+    await screen.findByTestId('composer-send');
+    expect(
+      screen.UNSAFE_getByType(ComposerPrimitive.Send).props.disabled
+    ).toBeUndefined();
+    photoTestState.__mockComposerAttachments = [
+      {
+        id: 'photo',
+        type: 'image',
+        content: [{ type: 'image', image: 'data:image/jpeg;base64,PHOTO' }],
+      },
+    ];
+    screen.rerenderThread();
+    expect(
+      screen.UNSAFE_getByType(ComposerPrimitive.Send).props.disabled
+    ).toBeUndefined();
+  });
+
+  it('keeps Send disabled while the native picker is open', async () => {
+    let finishPick:
+      | ((value: Awaited<ReturnType<typeof pickChatImageFromCamera>>) => void)
+      | undefined;
+    mockPickCamera.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishPick = resolve;
+      })
+    );
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Take Photo'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(
+      screen.getByTestId('composer-send').props.accessibilityState
+    ).toMatchObject({
+      disabled: true,
+    });
+    expect(screen.getByTestId('composer-attach-photo')).toBeDisabled();
+    await act(async () => finishPick?.({ status: 'cancelled' }));
+    expect(screen.getByTestId('composer-attach-photo')).toBeEnabled();
+  });
+
+  it('discards native picker results after leaving chat', async () => {
+    const pending =
+      deferred<Awaited<ReturnType<typeof pickChatImagesFromLibrary>>>();
+    mockPickLibrary.mockReturnValueOnce(pending.promise);
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Choose from Library'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    screen.unmount();
+    await act(async () =>
+      pending.resolve([
+        {
+          uri: 'file:///late.jpg',
+          dataUrl: 'data:image/jpeg;base64,LATE',
+          name: 'late.jpg',
+          mimeType: 'image/jpeg',
+        },
+      ])
+    );
+    expect(photoTestState.__mockComposerAddAttachment).not.toHaveBeenCalled();
+  });
+
+  it('unlocks the picker after an error and allows retrying', async () => {
+    mockPickLibrary.mockRejectedValueOnce(new Error('Cannot decode photo'));
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Choose from Library'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: 'Could not add photo' })
+    );
+    expect(screen.getByTestId('composer-attach-photo')).toBeEnabled();
+    mockPickLibrary.mockResolvedValueOnce([]);
+    fireEvent.press(screen.getByTestId('composer-attach-photo'));
+    fireEvent.press(screen.getByText('Choose from Library'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickLibrary).toHaveBeenCalledTimes(2);
+  });
+
+  it('respects the available slots even if the native picker returns extra photos', async () => {
+    photoTestState.__mockComposerAttachments = Array.from(
+      { length: 4 },
+      (_, index) => ({
+        id: String(index),
+        type: 'image',
+        content: [{ type: 'image', image: 'data:image/jpeg;base64,EXISTING' }],
+      })
+    );
+    mockPickLibrary.mockResolvedValueOnce(
+      Array.from({ length: 3 }, (_, index) => ({
+        uri: `file:///photo-${index}.jpg`,
+        dataUrl: `data:image/jpeg;base64,PHOTO${index}`,
+        name: `photo-${index}.jpg`,
+        mimeType: 'image/jpeg',
+      }))
+    );
+    const screen = await openPhotoSheet();
+    fireEvent.press(screen.getByText('Choose from Library'));
+    await act(async () => mockPhotoSheet.finishDismiss());
+    expect(mockPickLibrary).toHaveBeenCalledWith(1);
+    expect(photoTestState.__mockComposerAddAttachment).toHaveBeenCalledTimes(1);
+  });
+
+  it('cannot open the sheet at the five-photo limit', async () => {
+    photoTestState.__mockComposerAttachments = Array.from(
+      { length: 5 },
+      (_, index) => ({
+        id: String(index),
+        type: 'image',
+        content: [{ type: 'image', image: 'data:image/jpeg;base64,IMAGE' }],
+      })
+    );
+    const screen = renderScreen();
+    const button = await screen.findByTestId('composer-attach-photo');
+    expect(button).toBeDisabled();
+    fireEvent.press(button);
+    expect(mockPhotoSheet.present).not.toHaveBeenCalled();
+  });
+
+  it('renders pending composer image attachments, opens lightbox on tap, and removes on close', async () => {
+    photoTestState.__mockComposerAttachments = [
+      {
+        id: 'att-1',
+        type: 'image',
+        name: 'bowl.jpg',
+        content: [{ type: 'image', image: 'data:image/jpeg;base64,BOWL' }],
+      },
+    ];
+
+    const screen = renderScreen();
+    const thumb = await screen.findByTestId('composer-attachment-0');
+    const removeBtn = screen.getByTestId('composer-attachment-remove-0');
+
+    fireEvent.press(thumb);
+    expect(screen.getByTestId('lightbox-close')).toBeTruthy();
+
+    fireEvent.press(removeBtn);
+    expect(photoTestState.__mockComposerRemoveAttachment).toHaveBeenCalledWith({
+      id: 'att-1',
+    });
+  });
+
+  it('renders user message image attachments and hides the empty text bubble and Copy button for image-only messages', async () => {
+    photoTestState.__mockChatIsEmpty = false;
+    photoTestState.__mockMessageState = {
+      id: 'msg-img-only',
+      role: 'user',
+      status: { type: 'complete' },
+      content: [],
+      parts: [],
+      attachments: [
+        {
+          id: '0',
+          type: 'image',
+          name: 'plate.jpg',
+          content: [{ type: 'image', image: 'data:image/jpeg;base64,PLATE' }],
+        },
+      ],
+    };
+
+    const screen = renderScreen();
+    expect(await screen.findByTestId('message-attachment-0')).toBeTruthy();
+    expect(screen.queryByTestId('user-message-bubble')).toBeNull();
+    expect(screen.queryByText('Copy')).toBeNull();
+
+    photoTestState.__mockMessageState = {
+      id: 'msg-img-text',
+      role: 'user',
+      status: { type: 'complete' },
+      content: [{ type: 'text', text: 'How many calories in this?' }],
+      parts: [{ type: 'text', text: 'How many calories in this?' }],
+      attachments: [
+        {
+          id: '0',
+          type: 'image',
+          name: 'plate.jpg',
+          content: [{ type: 'image', image: 'data:image/jpeg;base64,PLATE' }],
+        },
+      ],
+    };
+    screen.rerenderThread();
+
+    expect(screen.getByTestId('message-attachment-0')).toBeTruthy();
+    expect(screen.getByTestId('user-message-bubble')).toBeTruthy();
+    expect(screen.getByText('How many calories in this?')).toBeTruthy();
+    expect(screen.getByText('Copy')).toBeTruthy();
   });
 });

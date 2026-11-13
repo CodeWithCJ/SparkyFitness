@@ -1,4 +1,4 @@
-import { clockInZone } from "./timezone.ts";
+import { clockInZone } from './timezone.ts';
 
 /**
  * Helpers for the optional wall-clock time-of-day on diary entries
@@ -13,16 +13,14 @@ const TIME_STRING_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
 /** Returns true if the value is a 24h 'HH:MM' or 'HH:MM:SS' string. */
 export function isEntryTimeString(value: unknown): value is string {
-  return typeof value === "string" && TIME_STRING_REGEX.test(value);
+  return typeof value === 'string' && TIME_STRING_REGEX.test(value);
 }
 
 /**
  * Normalizes 'HH:MM:SS' (or 'HH:MM') to 'HH:MM' for display and
  * `<input type="time">` values. Returns null for null/undefined/invalid input.
  */
-export function toHourMinute(
-  time: string | null | undefined,
-): string | null {
+export function toHourMinute(time: string | null | undefined): string | null {
   if (!isEntryTimeString(time)) return null;
   return time.slice(0, 5);
 }
@@ -32,12 +30,12 @@ export function toHourMinute(
  * exercises), or null when none has a time set.
  */
 export function earliestEntryTime(
-  entries: ReadonlyArray<{ entry_time?: string | null }>,
+  entries: ReadonlyArray<{ entry_time?: string | null }>
 ): string | null {
   let earliest: string | null = null;
   for (const entry of entries) {
     const time = entry.entry_time;
-    if (typeof time !== "string" || time === "") continue;
+    if (typeof time !== 'string' || time === '') continue;
     if (earliest === null || time < earliest) earliest = time;
   }
   return earliest;
@@ -51,10 +49,10 @@ export function earliestEntryTime(
  */
 export function compareByEntryTime(
   a: string | null | undefined,
-  b: string | null | undefined,
+  b: string | null | undefined
 ): number {
-  const timeA = typeof a === "string" && a !== "" ? a : null;
-  const timeB = typeof b === "string" && b !== "" ? b : null;
+  const timeA = typeof a === 'string' && a !== '' ? a : null;
+  const timeB = typeof b === 'string' && b !== '' ? b : null;
   if (timeA && timeB) return timeA < timeB ? -1 : timeA > timeB ? 1 : 0;
   if (timeA) return -1;
   if (timeB) return 1;
@@ -68,10 +66,10 @@ interface MealTypeWithDefaultTime {
 
 const FALLBACK_MEAL_BUCKETS: Array<{ maxHourExclusive: number; name: string }> =
   [
-    { maxHourExclusive: 11, name: "breakfast" },
-    { maxHourExclusive: 15, name: "lunch" },
-    { maxHourExclusive: 20, name: "dinner" },
-    { maxHourExclusive: 24, name: "snacks" },
+    { maxHourExclusive: 11, name: 'breakfast' },
+    { maxHourExclusive: 15, name: 'lunch' },
+    { maxHourExclusive: 20, name: 'dinner' },
+    { maxHourExclusive: 24, name: 'snacks' },
   ];
 
 function timeToMinutes(time: string): number {
@@ -89,9 +87,9 @@ function timeToMinutes(time: string): number {
  */
 export function defaultMealTypeForTime(
   mealTypes: MealTypeWithDefaultTime[],
-  now: { hour: number; minute: number },
+  now: { hour: number; minute: number }
 ): string {
-  if (mealTypes.length === 0) return "breakfast";
+  if (mealTypes.length === 0) return 'breakfast';
   const nowMinutes = now.hour * 60 + now.minute;
 
   let best: MealTypeWithDefaultTime | null = null;
@@ -109,8 +107,7 @@ export function defaultMealTypeForTime(
   const configuredWithTime = mealTypes
     .filter((mt) => isEntryTimeString(mt.default_time))
     .sort(
-      (a, b) =>
-        timeToMinutes(a.default_time!) - timeToMinutes(b.default_time!),
+      (a, b) => timeToMinutes(a.default_time!) - timeToMinutes(b.default_time!)
     );
 
   if (configuredWithTime.length > 0) {
@@ -118,11 +115,11 @@ export function defaultMealTypeForTime(
   }
 
   const bucket = FALLBACK_MEAL_BUCKETS.find(
-    (b) => now.hour < b.maxHourExclusive,
+    (b) => now.hour < b.maxHourExclusive
   );
-  const fallbackName = bucket ? bucket.name : "snacks";
+  const fallbackName = bucket ? bucket.name : 'snacks';
   const match = mealTypes.find(
-    (mealType) => mealType.name.toLowerCase() === fallbackName,
+    (mealType) => mealType.name.toLowerCase() === fallbackName
   );
   return match ? match.name : mealTypes[0]!.name;
 }
@@ -139,13 +136,13 @@ export function defaultMealTypeForTime(
  */
 export function pickMealTypeForTime<T extends MealTypeWithDefaultTime>(
   mealTypes: T[],
-  now: { hour: number; minute: number },
+  now: { hour: number; minute: number }
 ): T | null {
   if (mealTypes.length === 0) return null;
   const name = defaultMealTypeForTime(mealTypes, now);
   return (
     mealTypes.find(
-      (mealType) => mealType.name.toLowerCase() === name.toLowerCase(),
+      (mealType) => mealType.name.toLowerCase() === name.toLowerCase()
     ) ??
     mealTypes[0] ??
     null
@@ -167,5 +164,5 @@ export function prefillEntryTime(opts: {
   }
   const fromDefault = toHourMinute(opts.defaultTime);
   if (fromDefault) return fromDefault;
-  return "";
+  return '';
 }

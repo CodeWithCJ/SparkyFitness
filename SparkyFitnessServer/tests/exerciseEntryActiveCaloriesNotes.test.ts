@@ -43,10 +43,22 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
     vi.clearAllMocks();
   });
 
-  it('records the synced source in the notes on insert (Health Connect, not Apple Health)', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] }) // no existing entry
-      .mockResolvedValueOnce({ rows: [{ id: 'entry-1' }] }); // insert
+  // Answers the existing-entry lookup with `existing` and every other
+  // statement (BEGIN, the lock, the write, COMMIT) with one row.
+  const respondWith = (existing: Record<string, unknown> | undefined) => {
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.includes('SELECT id, calories_burned')
+        ? { rows: existing ? [existing] : [] }
+        : { rows: [{ id: 'entry-1' }] }
+    );
+  };
+  const writeCall = () =>
+    mockClient.query.mock.calls.find(([sql]: [string]) =>
+      /^\s*(INSERT|UPDATE) /.test(sql)
+    );
+
+  it('writes inside one transaction under a per-user, per-day lock', async () => {
+    respondWith(undefined);
 
     await exerciseEntryDb.upsertExerciseEntryData(
       'user-1',
@@ -57,7 +69,57 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
       'Health Connect'
     );
 
-    const [sql, params] = mockClient.query.mock.calls[1];
+    const statements = mockClient.query.mock.calls.map(
+      ([sql]: [string]) => sql.trim().split(/\s+/)[0]
+    );
+    expect(statements).toEqual([
+      'BEGIN',
+      'SELECT',
+      'SELECT',
+      'INSERT',
+      'COMMIT',
+    ]);
+    const [lockSql, lockParams] = mockClient.query.mock.calls[1];
+    expect(lockSql).toContain('pg_advisory_xact_lock');
+    expect(lockParams).toEqual(['user-1', '2024-01-15']);
+    expect(getClient).toHaveBeenCalledTimes(1);
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('rolls back and releases the client when the write fails', async () => {
+    mockClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('INSERT INTO exercise_entries')) {
+        throw new Error('boom');
+      }
+      return { rows: [] };
+    });
+
+    await expect(
+      exerciseEntryDb.upsertExerciseEntryData(
+        'user-1',
+        'user-1',
+        'exercise-1',
+        300,
+        '2024-01-15'
+      )
+    ).rejects.toThrow(/Failed to insert active calories exercise entry: boom/);
+    expect(mockClient.query.mock.calls.at(-1)[0]).toBe('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('records the synced source in the notes on insert (Health Connect, not Apple Health)', async () => {
+    respondWith(undefined);
+
+    await exerciseEntryDb.upsertExerciseEntryData(
+      'user-1',
+      'user-1',
+      'exercise-1',
+      300,
+      '2024-01-15',
+      'Health Connect'
+    );
+
+    const [sql, params] = writeCall();
     expect(sql).toContain('INSERT INTO exercise_entries');
     expect(params[5]).toBe('Active calories logged from Health Connect.');
     expect(params[5]).not.toContain('Apple Health');
@@ -66,11 +128,7 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
   });
 
   it('records the synced source in the notes on update', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({
-        rows: [{ id: 'entry-1', calories_burned: 100 }],
-      }) // existing entry
-      .mockResolvedValueOnce({ rows: [{ id: 'entry-1' }] }); // update
+    respondWith({ id: 'entry-1', calories_burned: 100 });
 
     await exerciseEntryDb.upsertExerciseEntryData(
       'user-1',
@@ -81,7 +139,7 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
       'Health Connect'
     );
 
-    const [sql, params] = mockClient.query.mock.calls[1];
+    const [sql, params] = writeCall();
     expect(sql).toContain('UPDATE exercise_entries');
     expect(params[1]).toBe(
       'Active calories logged from Health Connect (updated).'
@@ -93,9 +151,7 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
   });
 
   it('maps the HealthKit source to the friendly "Apple Health" label', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 'entry-1' }] });
+    respondWith(undefined);
 
     await exerciseEntryDb.upsertExerciseEntryData(
       'user-1',
@@ -106,16 +162,14 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
       'HealthKit'
     );
 
-    const [, params] = mockClient.query.mock.calls[1];
+    const [, params] = writeCall();
     expect(params[5]).toBe('Active calories logged from Apple Health.');
     // The source column keeps the raw value; clients map it to a display name.
     expect(params[8]).toBe('HealthKit');
   });
 
   it('falls back to a generic source label when none is provided', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 'entry-1' }] });
+    respondWith(undefined);
 
     await exerciseEntryDb.upsertExerciseEntryData(
       'user-1',
@@ -125,15 +179,13 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
       '2024-01-15'
     );
 
-    const [, params] = mockClient.query.mock.calls[1];
+    const [, params] = writeCall();
     expect(params[5]).toBe('Active calories logged from Health Data.');
     expect(params[8]).toBe('Health Data');
   });
 
   it('falls back to a generic source label when source is explicitly null', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 'entry-1' }] });
+    respondWith(undefined);
 
     await exerciseEntryDb.upsertExerciseEntryData(
       'user-1',
@@ -145,7 +197,7 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
       null as unknown as string
     );
 
-    const [, params] = mockClient.query.mock.calls[1];
+    const [, params] = writeCall();
     expect(params[5]).toBe('Active calories logged from Health Data.');
     expect(params[5]).not.toContain('null');
     expect(params[8]).toBe('Health Data');

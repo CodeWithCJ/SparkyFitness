@@ -1,7 +1,12 @@
 const mockSetConfig = jest.fn();
+const mockRefreshShortcut = jest.fn();
 jest.mock('../../modules/background-water', () => ({
   __esModule: true,
-  default: { setConfig: (json: string | null) => mockSetConfig(json) },
+  default: {
+    setConfig: (json: string | null) => mockSetConfig(json),
+    refreshShortcut: (shortLabel: string, longLabel: string) =>
+      mockRefreshShortcut(shortLabel, longLabel),
+  },
 }));
 const mockGetActiveServerConfig = jest.fn();
 jest.mock('../../src/services/storage', () => ({
@@ -11,10 +16,12 @@ jest.mock('../../src/services/storage', () => ({
 }));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
+import { addLog } from '../../src/services/LogService';
 import {
   buildBackgroundWaterConfig,
   drinkVolumeLabel,
   clearBackgroundWater,
+  refreshBackgroundWaterShortcut,
   syncBackgroundWater,
 } from '../../src/services/backgroundWater';
 
@@ -42,11 +49,13 @@ const server = {
 describe('background water', () => {
   beforeEach(() => {
     mockSetConfig.mockReset();
+    mockRefreshShortcut.mockReset();
     mockGetActiveServerConfig.mockReset();
   });
 
   it('builds the config the native shortcut posts with', () => {
     expect(buildBackgroundWaterConfig(server, container)).toEqual({
+      serverId: 's1',
       baseUrl: 'https://sparky.example.com',
       headers: {
         'X-Proxy': 'abc',
@@ -88,5 +97,40 @@ describe('background water', () => {
     expect(JSON.parse(mockSetConfig.mock.calls[0][0]).weightUnit).toBe('lbs');
     await clearBackgroundWater();
     expect(mockSetConfig).toHaveBeenLastCalledWith(null);
+  });
+
+  it('puts the launcher shortcut back with the labels it is given', async () => {
+    await refreshBackgroundWaterShortcut('Registrar agua', 'Sin abrir la app');
+    expect(mockRefreshShortcut).toHaveBeenCalledWith(
+      'Registrar agua',
+      'Sin abrir la app'
+    );
+  });
+
+  it('restores the shortcut only after a clear asked for before it', async () => {
+    const order: string[] = [];
+    mockSetConfig.mockImplementation(() => order.push('clear'));
+    mockRefreshShortcut.mockImplementation(() => order.push('refresh'));
+    await Promise.all([
+      clearBackgroundWater(),
+      refreshBackgroundWaterShortcut(
+        'Log water',
+        'Log water in the background'
+      ),
+    ]);
+    expect(order).toEqual(['clear', 'refresh']);
+  });
+
+  it('logs rather than throws when the shortcut cannot be restored', async () => {
+    mockRefreshShortcut.mockImplementation(() => {
+      throw new Error('launcher refused');
+    });
+    await expect(
+      refreshBackgroundWaterShortcut('Log water', 'Log water in the background')
+    ).resolves.toBeUndefined();
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('launcher refused'),
+      'WARNING'
+    );
   });
 });

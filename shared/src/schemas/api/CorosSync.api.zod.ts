@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const corosSyncResultSchema = z.object({
   success: z.literal(true),
-  source: z.enum(["live_api", "local_raw_replay"]),
+  source: z.enum(['live_api', 'local_raw_replay']),
   range: z.object({
     startDate: z.string(),
     endDate: z.string(),
@@ -13,6 +13,8 @@ export const corosSyncResultSchema = z.object({
   skippedExisting: z.number().int().nonnegative(),
   deferred: z.number().int().nonnegative(),
   summaryOnly: z.number().int().nonnegative(),
+  activitiesFailed: z.number().int().nonnegative(),
+  failedRequiredFetches: z.array(z.string()),
   warnings: z.array(z.string()),
 });
 

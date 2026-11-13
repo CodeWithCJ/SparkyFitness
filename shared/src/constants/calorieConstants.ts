@@ -46,6 +46,10 @@ export const CALORIE_CALCULATION_CONSTANTS = {
  */
 export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
+/** Actual observations, never interpolated days, needed to fit a weight rate. */
+export const ADAPTIVE_TDEE_WEIGHT_MIN_OBSERVATIONS = 2;
+export const ADAPTIVE_TDEE_WEIGHT_MIN_SPAN_DAYS = 14;
+
 /**
  * Half-width of the Adaptive TDEE plausibility band, in kcal.
  *
@@ -55,20 +59,35 @@ export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
  */
 export const ADAPTIVE_TDEE_CLAMP_KCAL = 500;
 
+/** Engineering stability policy; these intervals are not clinical cutoffs. */
+export const ADAPTIVE_TDEE_ESTIMATE_WINDOW_DAYS = 28;
+export const ADAPTIVE_TDEE_CONFIDENCE_FRESH_DAYS = 10;
+export const ADAPTIVE_TDEE_STABILITY_DAYS = 28;
+export const ADAPTIVE_TDEE_WEIGHT_HOLD_DAYS = 14;
+export const ADAPTIVE_TDEE_WEIGHT_FADE_DAYS = 7;
+/** Conservative whole-kcal display bound with a fixed baseline and past logs. */
+export const ADAPTIVE_TDEE_STABILITY_MAX_DAILY_CHANGE_KCAL = Math.ceil(
+  (2 * ADAPTIVE_TDEE_CLAMP_KCAL) / ADAPTIVE_TDEE_STABILITY_DAYS
+);
+
 /**
  * Qualifying calorie-log days before a measured adaptive TDEE may drive a goal.
  *
- * `AdaptiveTdeeService` releases a raw estimate at 7 days, which is enough to
- * report but not enough to budget against: the estimate is still moving, and a
- * goal that tracks it lurches. Goals therefore wait for a stabler window, which
- * is the threshold the settings UI calls "target budget stability".
+ * The expenditure filter starts learning at the same threshold. Starting it
+ * earlier and switching the goal only later would bypass the gradual release.
  */
 export const ADAPTIVE_TDEE_GOAL_MIN_DAYS = 14;
 
+/**
+ * Qualifying calorie-log days (at least 200 kcal each) before the log-derived
+ * adaptive TDEE estimate is released in place of the BMR-based fallback.
+ */
+export const ADAPTIVE_TDEE_MIN_CALORIE_DAYS = ADAPTIVE_TDEE_GOAL_MIN_DAYS;
+
 export const CALORIE_SAFETY_FLOOR_MODES = [
-  "standard",
-  "custom",
-  "disabled",
+  'standard',
+  'custom',
+  'disabled',
 ] as const;
 
 export type CalorieSafetyFloorMode =
@@ -136,3 +155,24 @@ export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   very_active: 1.725,
   extra_active: 1.9,
 } as const;
+
+/**
+ * Calorie cycling (#2327): how a weekly calorie budget is spread over the
+ * weekdays. `off` keeps the same target every day; `training_rest` and `custom`
+ * both store one raw percentage per weekday (index 0 = Sunday), which the
+ * shared `cycleWeekTargets` scales so the week still adds up to target x 7.
+ */
+export const CALORIE_CYCLING_MODES = [
+  'off',
+  'training_rest',
+  'custom',
+] as const;
+
+export type CalorieCyclingMode = (typeof CALORIE_CYCLING_MODES)[number];
+
+/** Largest raw weekday percentage, either way. */
+export const CALORIE_CYCLING_MAX_OFFSET = 40;
+
+export const CALORIE_CYCLING_DEFAULT_OFFSETS: readonly number[] = [
+  0, 0, 0, 0, 0, 0, 0,
+];

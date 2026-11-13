@@ -1,4 +1,3 @@
-BEGIN;
 
 -- =========================================================
 -- 1. Create the new reference table 
@@ -141,4 +140,3 @@ BEGIN
     END IF;
 END $$;
 
-COMMIT;

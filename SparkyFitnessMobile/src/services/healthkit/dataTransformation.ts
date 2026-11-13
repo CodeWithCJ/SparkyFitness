@@ -1,7 +1,10 @@
+import { instantToDay, isValidTimeZone } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
+  TransformedMindfulnessSession,
+  TransformedToothbrushingSession,
   TransformedNutritionEntry,
   SparkyMealType,
   AggregatedSleepSession,
@@ -261,6 +264,28 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     const value = extractNestedValue(rec, 'temperature', 'inCelsius');
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;
+  },
+
+  // Apple stamps the night's value across the sleep, so key it to the wake day
+  // (the sample's end) like the sleep session it belongs to, on the clock the
+  // sample was recorded on (as the sleep session is) when it says which.
+  SleepingWristTemperature: (rec) => {
+    const value = extractNestedValue(rec, 'temperature', 'inCelsius');
+    const instant = rec.endTime ?? rec.time;
+    const { record_timezone: recordTimezone } = extractTimezoneMetadata(rec);
+    const isInstant = typeof instant === 'string' || instant instanceof Date;
+    const date =
+      recordTimezone && isValidTimeZone(recordTimezone) && isInstant
+        ? instantToDay(instant, recordTimezone)
+        : getDateString(instant);
+    return value !== null && date
+      ? {
+          value,
+          date,
+          site: 'wrist',
+          ...(isInstant ? { timestamp: new Date(instant).toISOString() } : {}),
+        }
+      : null;
   },
 
   // Percentage records
@@ -552,12 +577,19 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     // Send only the instant (timestamp) plus tz metadata, never a pre-bucketed day
     // string: the server derives the calendar day from the instant + timezone.
+    const meta = rec.metadata as Record<string, unknown> | undefined;
+    const foodName =
+      (rec.metadataFoodType as string) ||
+      (meta?.HKFoodType as string) ||
+      (meta?.foodType as string) ||
+      'Apple Health food';
+
     const entry: TransformedNutritionEntry = {
       type: 'Nutrition',
       source: HEALTHKIT_SOURCE,
       source_id: uuid,
       timestamp: startDate,
-      food_name: (rec.metadataFoodType as string) || 'Apple Health food',
+      food_name: foodName,
       meal_type: mealTypeFromInstant(new Date(startDate)),
       ...extractTimezoneMetadata(rec),
     };
@@ -580,6 +612,63 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     if (!hasNutrient) return; // no recognized positive nutrients — drop the entry
     output.push(entry);
+  },
+
+  // HKCategoryTypeIdentifierMindfulSession carries no session type or notes, so
+  // every session is sent as 'other'. The sample uuid is the idempotency key.
+  MindfulnessSession: (rec, _record, _metricConfig, output) => {
+    if (isOwnRecord(rec)) return; // don't re-import sessions Sparky wrote
+
+    const uuid = rec.uuid as string | undefined;
+    if (!uuid) return;
+    if (!rec.startTime || !rec.endTime) return;
+
+    const start = new Date(rec.startTime as string).getTime();
+    const end = new Date(rec.endTime as string).getTime();
+    if (isNaN(start) || isNaN(end)) return;
+    const durationSeconds = Math.round((end - start) / 1000);
+    if (durationSeconds <= 0) return;
+
+    const session: TransformedMindfulnessSession = {
+      type: 'MindfulnessSession',
+      source: HEALTHKIT_SOURCE,
+      source_id: uuid,
+      timestamp: rec.startTime as string,
+      startTime: rec.startTime as string,
+      endTime: rec.endTime as string,
+      duration_seconds: durationSeconds,
+      value: durationSeconds / 60,
+      session_type: 'other',
+      ...extractTimezoneMetadata(rec),
+    };
+    output.push(session);
+  },
+
+  // ToothbrushingEvent: the brush's start and end give its duration. A brush
+  // Sparky wrote back (writeback) is skipped so it never comes back in.
+  Toothbrushing: (rec, _record, _metricConfig, output) => {
+    if (isOwnRecord(rec)) return;
+
+    const uuid = rec.uuid as string | undefined;
+    if (!uuid || !rec.startTime || !rec.endTime) return;
+
+    const start = new Date(rec.startTime as string).getTime();
+    const end = new Date(rec.endTime as string).getTime();
+    if (isNaN(start) || isNaN(end) || end < start) return;
+    const durationSeconds = Math.round((end - start) / 1000);
+
+    const brush: TransformedToothbrushingSession = {
+      type: 'Toothbrushing',
+      source: HEALTHKIT_SOURCE,
+      source_id: uuid,
+      timestamp: rec.startTime as string,
+      startTime: rec.startTime as string,
+      endTime: rec.endTime as string,
+      duration_seconds: durationSeconds,
+      value: durationSeconds / 60,
+      ...extractTimezoneMetadata(rec),
+    };
+    output.push(brush);
   },
 
   BloodPressure: createBloodPressureTransformer(
@@ -609,6 +698,12 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     }
     if (sleepRec.record_utc_offset_minutes != null) {
       session.record_utc_offset_minutes = sleepRec.record_utc_offset_minutes;
+    }
+    if (typeof sleepRec.avg_overnight_hrv === 'number') {
+      session.avg_overnight_hrv = sleepRec.avg_overnight_hrv;
+    }
+    if (typeof sleepRec.resting_heart_rate === 'number') {
+      session.resting_heart_rate = sleepRec.resting_heart_rate;
     }
     output.push(session);
   },

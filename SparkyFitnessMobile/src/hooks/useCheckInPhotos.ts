@@ -14,33 +14,11 @@ import {
   checkInPhotosRootQueryKey,
 } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
-import type {
-  CheckInPhotoWithWeight,
-  ProgressPhotoDay,
-} from '../types/checkInPhotos';
+import { groupPhotosByDay } from '@workspace/shared';
 
-/**
- * Folds the flat gallery response into one entry per calendar day, newest
- * first. The server already orders by entry_date DESC, so this keeps insertion
- * order rather than re-sorting.
- */
-export function groupPhotosByDay(
-  photos: CheckInPhotoWithWeight[]
-): ProgressPhotoDay[] {
-  const days = new Map<string, ProgressPhotoDay>();
-  for (const photo of photos) {
-    let day = days.get(photo.entry_date);
-    if (!day) {
-      day = { entry_date: photo.entry_date, weight: photo.weight, photos: {} };
-      days.set(photo.entry_date, day);
-    }
-    // Every row for a day carries the same joined weight, but a day whose first
-    // row happened to be null should still pick up a later non-null one.
-    if (day.weight == null) day.weight = photo.weight;
-    day.photos[photo.photo_type] = photo;
-  }
-  return [...days.values()];
-}
+// The day grouping is shared with the web's comparison and time-lapse, so it
+// lives in @workspace/shared. Re-exported so callers keep one import site.
+export { groupPhotosByDay };
 
 /** The whole progress gallery, grouped by day (newest first). */
 export function useCheckInPhotoGallery(enabled = true) {

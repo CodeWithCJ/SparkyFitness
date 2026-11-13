@@ -1,6 +1,7 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealBuilder from '@/components/MealBuilder';
+import { updateFoodEntryMeal } from '@/api/Diary/foodEntryService';
 import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
@@ -92,6 +93,39 @@ describe('MealBuilder', () => {
     jest.clearAllMocks();
   });
 
+  it('saves a detached diary snapshot without recreating its library food', async () => {
+    const ingredient = sampleFoods[0];
+    if (!ingredient) throw new Error('Missing meal fixture ingredient');
+    const detached = {
+      ...ingredient,
+      food_id: undefined,
+      variant_id: undefined,
+    };
+    renderWithClient(
+      <MealBuilder
+        initialFoods={[detached]}
+        source="food-diary"
+        foodEntryId="entry-1"
+        foodEntryDate="2026-10-16"
+        foodEntryMealType="dinner"
+      />
+    );
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'Edited meal' },
+    });
+    fireEvent.click(screen.getByText('Update Entry'));
+    await waitFor(() =>
+      expect(updateFoodEntryMeal).toHaveBeenCalledWith(
+        'entry-1',
+        expect.objectContaining({
+          name: 'Edited meal',
+          foods: [expect.objectContaining(detached)],
+        })
+      )
+    );
+    expect(mockCreateMeal).not.toHaveBeenCalled();
+  });
+
   it('gives a photo-built diary meal the full serving model', async () => {
     // A new custom meal in the diary (no mealId, no foodEntryId) is the photo
     // path: the ingredients are a whole dish, so it gets the same unit +
@@ -113,6 +147,31 @@ describe('MealBuilder', () => {
     ).toBeInTheDocument();
     // The unit is a real choice here, unlike the template-backed diary flows.
     expect(screen.getByRole('combobox')).toBeEnabled();
+  });
+
+  it('calculates the consumed meal quantity and updates nutrition', async () => {
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+    const input = await screen.findByLabelText('Quantity Consumed (serving)');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '1/2' } });
+    fireEvent.blur(input);
+    expect(input).toHaveValue('0.5');
+    expect(
+      screen
+        .getAllByText((_content, element) =>
+          /^Calories:/.test(element?.textContent ?? '')
+        )
+        .at(-1)?.textContent
+    ).toMatch(/48/);
+    fireEvent.change(input, { target: { value: '1/0' } });
+    expect(screen.getByRole('button', { name: 'Update Entry' })).toBeDisabled();
   });
 
   it('toggles diary nutrition between the consumed portion and the whole dish', async () => {

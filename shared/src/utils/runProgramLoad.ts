@@ -1,4 +1,4 @@
-import type { LoadStatus } from "./trainingLoad.ts";
+import type { LoadStatus } from './trainingLoad.ts';
 
 /** A plan change made this recently is not followed by another offer. */
 export const LOAD_OFFER_COOLDOWN_HOURS = 72;
@@ -26,7 +26,7 @@ export function suggestFromLoad(input: {
   nowMs: number;
 }): LoadSuggestion | null {
   const { status, next, total, lastAdjustedAt, nowMs } = input;
-  if (status !== "spike") return null;
+  if (status !== 'spike') return null;
   if (next <= 0 || next >= total) return null;
   if (lastAdjustedAt) {
     const at = Date.parse(lastAdjustedAt);

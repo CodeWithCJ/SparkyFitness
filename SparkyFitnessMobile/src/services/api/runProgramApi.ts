@@ -6,6 +6,8 @@ import type {
   CompleteRunProgramWorkoutBody,
   RateRunProgramWorkoutBody,
   GetRunProgramResponse,
+  RealignRunProgramBody,
+  RealignRunProgramResponse,
   UpsertRunProgramBody,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
@@ -67,6 +69,18 @@ export const adjustRunProgramRunning = (
     method: 'POST',
     body,
   });
+/** Previews (or, with `confirmed`, applies) rebuilding the rest of the plan to finish on the goal day. */
+export const realignRunProgram = (
+  body: RealignRunProgramBody
+): Promise<RealignRunProgramResponse> =>
+  apiFetch<RealignRunProgramResponse>({
+    endpoint: '/api/v2/run-program/realign',
+    serviceName: SERVICE,
+    operation: 'realign run program',
+    method: 'POST',
+    body,
+  });
+
 /** The person's own programs, newest first. */
 export const fetchCustomRunPrograms =
   (): Promise<ListCustomRunProgramsResponse> =>

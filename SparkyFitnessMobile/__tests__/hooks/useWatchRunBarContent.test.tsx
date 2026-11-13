@@ -58,3 +58,15 @@ test('says walk, paused and auto-paused', () => {
       ?.topStatusLine
   ).toBe('Auto-paused');
 });
+
+test('names a jump rope, with no distance or pace line', () => {
+  jest
+    .mocked(useWatchRunLive)
+    .mockReturnValue(run({ kind: 'jumpRope', distanceMeters: 0 }) as never);
+  expect(
+    renderHook(() => useWatchRunBarContent(options)).result.current
+  ).toMatchObject({
+    primaryLine: 'Jump Rope',
+    secondaryLine: '',
+  });
+});

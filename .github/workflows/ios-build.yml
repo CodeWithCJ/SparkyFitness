@@ -24,6 +24,13 @@ on:
         required: false
         default: macos-latest
         type: string
+      key_only:
+        description: >-
+          Only take the screenshots a layout change needs to be checked
+          against (about half), to get them back sooner.
+        required: false
+        default: false
+        type: boolean
 
 # A second push to the same branch makes the first build irrelevant.
 concurrency:
@@ -34,7 +41,7 @@ jobs:
   build:
     name: Compile iOS app and watchOS companion
     runs-on: ${{ inputs.runner == 'xcode-27' && 'xcode-27' || 'macos-latest' }}
-    timeout-minutes: 60
+    timeout-minutes: 100
     permissions:
       contents: read
       actions: write
@@ -131,6 +138,8 @@ jobs:
       # a simulator, so the BPM layout never appears on real hardware here.
       - name: Capture watch screenshots
         working-directory: SparkyFitnessMobile
+        env:
+          KEY_ONLY: ${{ inputs.key_only }}
         run: |
           set -euo pipefail
 
@@ -163,19 +172,24 @@ jobs:
           fi
 
           # $1 = output name, $2 = SPARKY_SCREENSHOT_WORKOUT, $3 = page,
-          # $4 = optional SPARKY_SCREENSHOT_SHEET
+          # $4 = optional SPARKY_SCREENSHOT_SHEET, $5 = optional
+          # SPARKY_SCREENSHOT_OPTIONS (the phone's watch settings)
           shoot() {
             xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
             SIMCTL_CHILD_SPARKY_SCREENSHOT_SEED=1 \
             SIMCTL_CHILD_SPARKY_SCREENSHOT_WORKOUT="$2" \
             SIMCTL_CHILD_SPARKY_SCREENSHOT_PAGE="$3" \
             SIMCTL_CHILD_SPARKY_SCREENSHOT_SHEET="${4:-}" \
+            SIMCTL_CHILD_SPARKY_SCREENSHOT_OPTIONS="${5:-}" \
               xcrun simctl launch "$UDID" "$BUNDLE_ID"
             # SwiftUI needs a moment to settle, and the rest countdown needs
             # to actually be counting before it is worth photographing.
             sleep 8
             xcrun simctl io "$UDID" screenshot "screenshots/$1-$SIZE.png"
           }
+
+          # Screenshots outside the key set are skipped when key_only is on.
+          full() { [ "${KEY_ONLY:-false}" != "true" ]; }
 
           while read -r SIZE UDID; do
             echo "Using ${SIZE}mm watch simulator $UDID"
@@ -185,22 +199,68 @@ jobs:
 
             shoot workout-active active workout
             shoot workout-resting resting workout
-            shoot workout-idle none workout
-            shoot workout-exercises active workout exercises
-            shoot workout-set-options active workout setoptions
-            shoot workout-exercise-options active workout exerciseoptions
-            shoot workout-actions active workout actions
-            shoot workout-rpe active workout rpe
-            shoot workout-update-alert active workout updatealert
-            shoot workout-timed timed workout
-            shoot workout-stopwatch stopwatch workout
-            shoot workout-interval interval workout
-            shoot goals none goals
+            full && shoot workout-no-metrics active workout "" nometrics
+            shoot workout-upnext active workout upnext upnext
+            full && shoot workout-swap active workout swap upnext
+            shoot workout-metrics active workout metrics nometrics
+            full && shoot workout-idle none workout
+            full && shoot workout-exercises active workout exercises
+            full && shoot workout-set-options active workout setoptions
+            full && shoot workout-exercise-options active workout exerciseoptions
+            full && shoot workout-actions active workout actions
+            full && shoot workout-rpe active workout rpe
+            full && shoot workout-update-alert active workout updatealert
+            full && shoot workout-timed timed workout
+            full && shoot workout-stopwatch stopwatch workout
+            full && shoot workout-interval interval workout
+            full && shoot goals none goals
+            full && shoot goals-large none goals "" large
+            full && shoot water none water
+            full && shoot water-large none water "" large
+            full && shoot medications none medications
+            full && shoot medications-dose none medications dose
+            full && shoot fasting none fasting
+            full && shoot fasting-running none fasting "" fast
+
+            # The same pages with larger text on, to compare with the
+            # original look above (this PR's "Larger text on the watch").
+            shoot workout-active-large active workout "" large
+            shoot workout-resting-large resting workout "" large
+            shoot workout-metrics-large active workout metrics large,nometrics
+            shoot workout-upnext-large active workout upnext large,upnext
+            full && shoot workout-exercise-options-large active workout exerciseoptions large
+            shoot workout-rpe-large active workout rpe large
+            full && shoot fasting-running-large none fasting "" large,fast
+
+            # A name too long to fit: the set screen and effort picker
+            # title should scroll rather than be cut off.
+            shoot workout-longname active workout "" longname
+            shoot workout-longname-large active workout "" longname,large
+            # Two later frames of the same screen: a scrolling title moves.
+            sleep 3
+            xcrun simctl io "$UDID" screenshot "screenshots/workout-longname-large-later-$SIZE.png"
+            sleep 3
+            xcrun simctl io "$UDID" screenshot "screenshots/workout-longname-large-later2-$SIZE.png"
+            shoot workout-resting-longname-large resting workout "" longname,large
+            shoot workout-rpe-longname active workout rpe longname
+            shoot workout-rpe-longname-large active workout rpe longname,large
+
+            # Larger text on everywhere else, with the original workout page.
+            shoot workout-active-large-classic active workout "" large,classicworkout
+            shoot workout-longname-large-classic active workout "" longname,large,classicworkout
+            shoot workout-rpe-longname-large-classic active workout rpe longname,large,classicworkout
+
+            # The workout picker and medications follow the text size too.
+            shoot workout-idle-large none workout "" large
+            shoot medications-large none medications "" large
+            shoot medications-dose-large none medications dose large
           done <<< "$DEVICES"
 
           ls -la screenshots
 
+      # Also on a timeout or failure, so the shots taken so far are kept.
       - name: Upload watch screenshots
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: watch-screenshots

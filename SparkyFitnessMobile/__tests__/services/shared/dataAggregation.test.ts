@@ -113,6 +113,124 @@ describe('aggregateByDay', () => {
     });
   });
 
+  describe('min-max-time-avg', () => {
+    // 23 resting samples one minute apart, then a 60-sample burst at one per
+    // second inside a single 5-minute bucket (like a short workout).
+    const restAndBurst = (): TransformedRecord[] => {
+      const start = Date.parse('2024-01-15T06:00:00Z');
+      const rest = Array.from({ length: 23 }, (_, i) => ({
+        value: 60,
+        type: 'heart_rate',
+        date: '2024-01-15',
+        unit: 'bpm',
+        source: 'Health Connect',
+        timestamp: new Date(start + i * 60_000).toISOString(),
+      }));
+      const burstStart = start + 60 * 60_000;
+      const burst = Array.from({ length: 60 }, (_, i) => ({
+        value: 150,
+        type: 'heart_rate',
+        date: '2024-01-15',
+        unit: 'bpm',
+        source: 'Health Connect',
+        timestamp: new Date(burstStart + i * 1000).toISOString(),
+      }));
+      return [...rest, ...burst];
+    };
+
+    test('weights the average by 5-minute buckets, min and max unchanged', () => {
+      const result = aggregateByDay(
+        restAndBurst(),
+        'heart_rate',
+        'bpm',
+        'min-max-time-avg'
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[0]).toMatchObject({ type: 'heart_rate_min', value: 60 });
+      expect(result[1]).toMatchObject({ type: 'heart_rate_max', value: 150 });
+      // 5 rest buckets at 60 + 1 burst bucket at 150 -> 75; plain mean ~ 125.06
+      expect(result[2]).toMatchObject({ type: 'heart_rate_avg', value: 75 });
+    });
+
+    test('plain min-max-avg keeps the sample mean for the same input', () => {
+      const result = aggregateByDay(
+        restAndBurst(),
+        'heart_rate',
+        'bpm',
+        'min-max-avg'
+      );
+
+      expect(result[2]).toMatchObject({
+        type: 'heart_rate_avg',
+        value: 125.06,
+      });
+    });
+
+    test('falls back to the plain mean when a record has no timestamp', () => {
+      const records = restAndBurst();
+      delete records[0].timestamp;
+
+      const result = aggregateByDay(
+        records,
+        'heart_rate',
+        'bpm',
+        'min-max-time-avg'
+      );
+
+      expect(result[2]).toMatchObject({
+        type: 'heart_rate_avg',
+        value: 125.06,
+      });
+    });
+
+    test('falls back to the plain mean when a timestamp is not parseable', () => {
+      const records = restAndBurst();
+      records[0].timestamp = 'not a date';
+
+      const result = aggregateByDay(
+        records,
+        'heart_rate',
+        'bpm',
+        'min-max-time-avg'
+      );
+
+      expect(result[2].value).toBe(125.06);
+    });
+
+    test('groups by record date, so each day gets its own buckets', () => {
+      const records: TransformedRecord[] = [
+        {
+          value: 70,
+          type: 'heart_rate',
+          date: '2024-01-15',
+          unit: 'bpm',
+          source: 'Health Connect',
+          timestamp: '2024-01-15T22:58:00Z',
+        },
+        {
+          value: 80,
+          type: 'heart_rate',
+          date: '2024-01-16',
+          unit: 'bpm',
+          source: 'Health Connect',
+          timestamp: '2024-01-15T23:01:00Z',
+        },
+      ];
+
+      const result = aggregateByDay(
+        records,
+        'heart_rate',
+        'bpm',
+        'min-max-time-avg'
+      );
+
+      expect(result).toHaveLength(6);
+      expect(result[2]).toMatchObject({ date: '2024-01-15', value: 70 });
+      expect(result[5]).toMatchObject({ date: '2024-01-16', value: 80 });
+    });
+  });
+
   test('sum strategy returns 1 record per day with summed value', () => {
     const records: TransformedRecord[] = [
       { value: 100, type: 'step', date: '2024-01-15', unit: 'count' },

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { instantHourMinute, dayToUtcRange } from '@workspace/shared';
+import { instantHourMinute, localDateTimeToUtc } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { TimeInput } from '@/components/ui/TimeInput';
 import {
   Droplet,
   ChevronLeft,
@@ -195,23 +196,30 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const handleTimeChange = (
     entryId: string,
     entryDate: string,
-    newTime: string
+    newTime: string,
+    currentTime: string
   ) => {
+    // Leaving the field without a change saves nothing: re-saving would drop
+    // the stored seconds and, on the day the clocks go back, move a time in
+    // the repeated hour to its second occurrence.
+    if (newTime === currentTime) {
+      setEditingTimeId(null);
+      return;
+    }
     try {
       // entryDate is a Postgres DATE column serialized as UTC midnight
       // (e.g. "2026-05-14T00:00:00.000Z"). Extract the YYYY-MM-DD substring
       // directly — do NOT use instantToDay, which would roll back to the
       // previous day for users west of UTC.
       const datePart = entryDate.substring(0, 10);
-      const timeParts = newTime.split(':');
-      const hours = parseInt(timeParts[0] || '0', 10);
-      const minutes = parseInt(timeParts[1] || '0', 10);
+      const [hours = '0', minutes = '0'] = newTime.split(':');
 
-      // Build a UTC instant from the user's local day + time using dayToUtcRange
-      // dayToUtcRange gives midnight UTC for this day in the user's timezone
-      const { start } = dayToUtcRange(datePart, timezone);
-      const loggedAt = new Date(
-        start.getTime() + hours * 3600000 + minutes * 60000
+      // Convert the wall-clock time on that day in the user's timezone. Adding
+      // elapsed hours to local midnight would be an hour off on the days the
+      // clocks change.
+      const loggedAt = localDateTimeToUtc(
+        `${datePart}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`,
+        timezone
       ).toISOString();
 
       updateLogTime({ logId: entryId, loggedAt });
@@ -474,26 +482,29 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {editingTimeId === entry.id ? (
-                        <input
-                          type="time"
-                          className="text-xs tabular-nums bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[72px]"
+                        <TimeInput
+                          aria-label={t(
+                            'foodDiary.waterIntake.logTime',
+                            'Drink time'
+                          )}
+                          className="h-auto w-auto text-xs bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus-within:ring-1 focus-within:ring-blue-400 focus-within:ring-offset-0"
                           defaultValue={getTimeInputValue(
                             entry.logged_at || entry.created_at
                           )}
-                          onBlur={(e) =>
+                          onBlur={(value) =>
                             handleTimeChange(
                               entry.id,
                               entry.entry_date,
-                              e.target.value
+                              value,
+                              getTimeInputValue(
+                                entry.logged_at || entry.created_at
+                              )
                             )
                           }
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              handleTimeChange(
-                                entry.id,
-                                entry.entry_date,
-                                (e.target as HTMLInputElement).value
-                              );
+                              // Leaving the field saves through onBlur.
+                              (e.target as HTMLElement).blur();
                             } else if (e.key === 'Escape') {
                               setEditingTimeId(null);
                             }

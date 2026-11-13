@@ -66,8 +66,6 @@
       "categoryStrength": "Força",
       "categoryCardio": "Cardio",
       "categoryYoga": "Yoga",
-      "caloriesPerHourLabel": "Calorias/Hora",
-      "caloriesPerHourHint": "Deixe em branco para o sistema calcular as calorias por hora {{newExerciseCalories}} Cal/Hora.",
       "descriptionLabel": "Descrição",
       "sourceLabel": "Fonte",
       "forceLabel": "Força",
@@ -147,7 +145,6 @@
       "exerciseLabel": "Exercício",
       "unknownExercise": "Exercício desconhecido",
       "addSetButton": "Adicionar Série",
-      "caloriesBurnedOptionalLabel": "Calorias Queimadas (Opcional)",
       "caloriesBurnedPlaceholder": "Insira calorias queimadas para substituir o cálculo",
       "caloriesBurnedHint": "Se não preenchido as calorias serão calculadas automaticamente quando gravar.",
       "distanceLabel": "Distância",
@@ -866,7 +863,6 @@
     "searchFoodsToYour": "Procure comidas para adicionar ao seu"
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Como se sente hoje?",
     "neutral": "Neutral",
     "anyThoughtsOrFeelings": "Há pensamentos ou sentimentos que gostaria de acrescentar?",
     "sleepTracking": "Rastreamento do dormir",

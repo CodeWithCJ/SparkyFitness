@@ -21,8 +21,10 @@ import {
 import {
   CheckInMeasurementsResponse,
   CustomMeasurementsResponse,
+  entryCaloriesCounted,
 } from '@workspace/shared';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { formatHeight, formatWeight } from './unitConversions';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 /**
@@ -670,7 +672,7 @@ export const exportExerciseEntries = async ({
       entry.exercises.name,
       entry.duration_minutes.toString(),
       Math.round(
-        convertEnergy(entry.calories_burned, 'kcal', energyUnit)
+        convertEnergy(entryCaloriesCounted(entry), 'kcal', energyUnit)
       ).toString(),
       entry.sets.map((set) => set.set_number).join('; ') || '', // Display set numbers
       entry.sets.map((set) => set.reps).join('; ') || '', // Display reps for each set
@@ -725,6 +727,8 @@ export const exportBodyMeasurements = async ({
   defaultWeightUnit,
   defaultMeasurementUnit,
   formatDateInUserTimezone,
+  convertWeight,
+  convertMeasurement,
 }: {
   loggingLevel: LoggingLevel;
   startDate: string | null;
@@ -733,6 +737,12 @@ export const exportBodyMeasurements = async ({
   defaultWeightUnit: WeightUnit;
   defaultMeasurementUnit: MeasurementUnit;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
+  convertMeasurement: (
+    value: number,
+    from: MeasurementUnit,
+    to: MeasurementUnit
+  ) => number;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export body measurements.');
   try {
@@ -758,34 +768,58 @@ export const exportBodyMeasurements = async ({
       `Reports: Fetched ${measurements.length} body measurement entries for export.`
     );
 
+    // As in the Reports table: ft_in applies to height only, so the other
+    // lengths stay in cm.
+    const circumferenceUnit =
+      defaultMeasurementUnit === 'ft_in' ? 'cm' : defaultMeasurementUnit;
+
     const csvHeaders = [
       i18n.t('reports.bodyMeasurementsExportHeaders.date', 'Date'),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.weight',
-        `Weight(${defaultWeightUnit})`
+        'Weight ({{unit}})',
+        { unit: defaultWeightUnit }
       ),
-      i18n.t(
-        'reports.bodyMeasurementsExportHeaders.neck',
-        `Neck(${defaultMeasurementUnit})`
-      ),
+      i18n.t('reports.bodyMeasurementsExportHeaders.neck', 'Neck ({{unit}})', {
+        unit: circumferenceUnit,
+      }),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.waist',
-        `Waist(${defaultMeasurementUnit})`
+        'Waist ({{unit}})',
+        { unit: circumferenceUnit }
       ),
-      i18n.t(
-        'reports.bodyMeasurementsExportHeaders.hips',
-        `Hips(${defaultMeasurementUnit})`
-      ),
+      i18n.t('reports.bodyMeasurementsExportHeaders.hips', 'Hips ({{unit}})', {
+        unit: circumferenceUnit,
+      }),
       i18n.t('reports.bodyMeasurementsExportHeaders.steps', 'Steps'),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.height',
-        `Height(${defaultMeasurementUnit})`
+        'Height ({{unit}})',
+        { unit: defaultMeasurementUnit }
       ),
       i18n.t(
         'reports.bodyMeasurementsExportHeaders.bodyFatPercentage',
         'Body Fat %'
       ),
     ];
+
+    // Stored in kg and cm; the headers name the user's units.
+    const formatLength = (value?: number | null) =>
+      value
+        ? convertMeasurement(value, 'cm', circumferenceUnit).toFixed(1)
+        : '';
+    // Stones and pounds, and feet and inches, are written as the table shows them.
+    const formatBodyWeight = (value?: number | null) => {
+      if (!value) return '';
+      if (defaultWeightUnit === 'st_lbs') return formatWeight(value, 'st_lbs');
+      return convertWeight(value, 'kg', defaultWeightUnit).toFixed(1);
+    };
+    const formatBodyHeight = (value?: number | null) => {
+      if (!value) return '';
+      if (defaultMeasurementUnit === 'ft_in')
+        return formatHeight(value, 'ft_in');
+      return formatLength(value);
+    };
 
     const csvRows = measurements
       .filter(
@@ -800,19 +834,21 @@ export const exportBodyMeasurements = async ({
       )
       .map((measurement) => [
         formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
-        measurement.weight ? measurement.weight.toFixed(1) : '',
-        measurement.neck ? measurement.neck.toFixed(1) : '',
-        measurement.waist ? measurement.waist.toFixed(1) : '',
-        measurement.hips ? measurement.hips.toFixed(1) : '',
+        formatBodyWeight(measurement.weight),
+        formatLength(measurement.neck),
+        formatLength(measurement.waist),
+        formatLength(measurement.hips),
         measurement.steps || '',
-        measurement.height ? measurement.height.toFixed(1) : '',
+        formatBodyHeight(measurement.height),
         measurement.body_fat_percentage
           ? measurement.body_fat_percentage.toFixed(1)
           : '',
       ]);
 
     const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      )
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

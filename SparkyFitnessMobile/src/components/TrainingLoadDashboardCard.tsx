@@ -10,6 +10,7 @@ import type { LoadStatus } from '@workspace/shared';
 import Icon from './Icon';
 import { formatLocalizedNumber } from '../localization';
 import { useTrainingLoad } from '../hooks/useTrainingLoad';
+import { useFitnessFatigue } from '../hooks/useFitnessFatigue';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
@@ -46,6 +47,8 @@ const TrainingLoadDashboardCard: React.FC<TrainingLoadDashboardCardProps> = ({
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const visible = useAppPreferencesStore((s) => s.trainingLoadCardVisible);
   const { load, isError } = useTrainingLoad(visible);
+  const { data: fitness } = useFitnessFatigue(visible);
+  const readiness = fitness?.readiness;
 
   // A failed first request leaves no data, and the card would simply vanish.
   // An empty response stays hidden, a failure says so.
@@ -148,6 +151,29 @@ const TrainingLoadDashboardCard: React.FC<TrainingLoadDashboardCardProps> = ({
               {t('trainingLoadCard.ready', {
                 defaultValue: 'You are rested and ready.',
               })}
+            </Text>
+          ) : null}
+          {readiness && readiness.score !== null ? (
+            <Text
+              testID="training-load-dashboard-readiness"
+              className="text-text-primary text-sm mt-1"
+            >
+              {t('trainingLoadCard.readiness', {
+                score: formatLocalizedNumber(readiness.score),
+                defaultValue: 'Readiness {{score}}',
+              })}
+              {' · '}
+              {readiness.level === 'high'
+                ? t('trainingLoadCard.readinessHigh', {
+                    defaultValue: 'ready for a hard session',
+                  })
+                : readiness.level === 'moderate'
+                  ? t('trainingLoadCard.readinessModerate', {
+                      defaultValue: 'fine for a normal session',
+                    })
+                  : t('trainingLoadCard.readinessLow', {
+                      defaultValue: 'go easy today',
+                    })}
             </Text>
           ) : null}
           <Text className="text-text-muted text-xs mt-2">

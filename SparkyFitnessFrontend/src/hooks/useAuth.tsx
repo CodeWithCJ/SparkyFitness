@@ -81,6 +81,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const [lastManualSignIn, setLastManualSignIn] = useState<number>(0);
 
+  // Most query keys are not scoped to the account, so the cache holds data
+  // fetched for whoever was signed in at the time. When a different account
+  // takes over without a sign-out in between (it signed in from another browser
+  // tab, or a second sign-in landed over the first), drop that data so the new
+  // account never sees the previous one's. Sign-out and an expired session
+  // already clear the cache, and the page's first account has nothing to drop.
+  const clearCacheOnAccountChange = useCallback(
+    (previousId: string | undefined, nextId: string) => {
+      if (previousId !== undefined && previousId !== nextId) {
+        queryClient.clear();
+      }
+    },
+    [queryClient]
+  );
+
   // 1. Sync Effect: Updates User state when Session changes or invalidates
   useEffect(() => {
     // Log when session changes to identify refresh triggers
@@ -117,6 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // a regular user can never inherit the demo sandbox's cached "no".
       if (user?.id !== extUser.id) {
         clearDemoRestrictions();
+        clearCacheOnAccountChange(user?.id, extUser.id);
       }
       setUser(sessionUser);
 
@@ -171,7 +187,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Same user - just update 2FA status if changed
       setIsSyncing(false);
     }
-  }, [session, user]);
+  }, [session, user, clearCacheOnAccountChange]);
 
   // 1b. Identity Backstop: the sync effect above only fetches the authoritative
   // identity when the session's user id or MFA flags actually change. A manual
@@ -298,6 +314,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Endpoint restrictions are per-account; the next session may well be
       // allowed everything this one was refused.
       clearDemoRestrictions();
+      clearCacheOnAccountChange(currentUserRef.current?.id, userId);
       // Force a fresh identity lookup: this may be a different account than the
       // one the previous lookup answered for.
       identityLookupRef.current = null;
@@ -316,7 +333,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         navigate('/');
       }
     },
-    [navigate]
+    [navigate, clearCacheOnAccountChange]
   );
 
   const switchContext = useCallback(

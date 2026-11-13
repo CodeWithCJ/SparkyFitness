@@ -30,7 +30,7 @@ export const NOTES_MAX_LENGTH = 4000;
 export function sanitizeNotes(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (typeof value !== "string") return null;
+  if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
   return trimmed.slice(0, NOTES_MAX_LENGTH);

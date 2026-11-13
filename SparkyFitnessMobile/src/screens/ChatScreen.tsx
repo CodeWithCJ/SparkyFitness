@@ -12,9 +12,11 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView as RNKeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   TextInput,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -33,6 +35,7 @@ import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -43,6 +46,7 @@ import {
   useAui,
   useAuiEvent,
   useAuiState,
+  type Attachment,
   type MessageRole,
 } from '@assistant-ui/react-native';
 import {
@@ -51,12 +55,16 @@ import {
 } from '@assistant-ui/react-ai-sdk';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import Icon from '../components/Icon';
+import ActionSheet, { type ActionSheetRef } from '../components/ActionSheet';
+import SafeImage from '../components/SafeImage';
+import ImageLightbox from '../components/ImageLightbox';
 import AskUserToolCard from '../components/chat/AskUserToolCard';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
 import VoiceWaveform from '../components/chat/VoiceWaveform';
 import AiVoiceDictationButton from '../components/chat/AiVoiceDictationButton';
+import { useImageLightbox } from '../hooks/useImageLightbox';
 import { useVoicePreferencesRefresh } from '../hooks/useVoicePreferencesRefresh';
 import {
   useVoiceInputLifecycle,
@@ -71,7 +79,14 @@ import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
+import {
+  MAX_CHAT_ATTACHMENTS,
+  pickChatImageFromCamera,
+  pickChatImagesFromLibrary,
+  type PickedChatImage,
+} from '../utils/pickImage';
 import { resolveSpeechLocale } from '../utils/speechLocale';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useActiveAiServiceSetting,
@@ -104,6 +119,24 @@ const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 // How close (px) to the bottom still counts as "at the bottom" for auto-scroll.
 const SCROLL_PIN_THRESHOLD = 40;
 
+const EMPTY_HEADERS: Record<string, string> = {};
+function getDirectImageSource(uri: string) {
+  return uri ? { uri, headers: EMPTY_HEADERS } : null;
+}
+
+function getAttachmentImageUri(attachment: Attachment): string | null {
+  if (attachment.type !== 'image') return null;
+  for (const part of attachment.content ?? []) {
+    if (part.type === 'image' && typeof part.image === 'string' && part.image) {
+      return part.image;
+    }
+    if (part.type === 'file' && typeof part.data === 'string' && part.data) {
+      return part.data;
+    }
+  }
+  return null;
+}
+
 function ChatKeyboardAvoidingView(
   props: React.ComponentProps<typeof RNKeyboardAvoidingView>
 ) {
@@ -129,10 +162,12 @@ function ChatKeyboardAvoidingView(
 function useSparkyChatRuntime({
   baseUrl,
   serviceConfigId,
+  conversationId,
   initialMessages,
 }: {
   baseUrl: string;
   serviceConfigId: string;
+  conversationId: string;
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
@@ -153,15 +188,14 @@ function useSparkyChatRuntime({
             : {};
         },
         // Merged into the request body alongside `messages`; the server reads it.
-        body: { service_config_id: serviceConfigId },
+        body: { service_config_id: serviceConfigId, conversationId },
       }),
-    [baseUrl, serviceConfigId]
+    [baseUrl, serviceConfigId, conversationId]
   );
 
   // Thread-level safety net: a per-message error box can't render if the stream
-  // fails before any assistant message exists, so surface a toast too. (AI SDK 6
-  // redacts mid-stream server errors to a generic message on the client unless the
-  // server supplies an onError mapper to its stream response — out of mobile scope.)
+  // fails before any assistant message exists, so surface a toast too. The server's
+  // stream onError mapper passes provider error messages through, so this shows them.
   return useChatRuntime({
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
@@ -182,7 +216,13 @@ function useSparkyChatRuntime({
 }
 
 /** A single chat bubble. Rendered inside the message context. */
-function MessageBubble({ role }: { role: MessageRole }) {
+function MessageBubble({
+  role,
+  onOpenLightbox,
+}: {
+  role: MessageRole;
+  onOpenLightbox: (images: string[], index?: number) => void;
+}) {
   const { t } = useTranslation();
   const isUser = role === 'user';
   const [dangerBg, dangerIcon, dangerText, muted] = useCSSVariable([
@@ -212,6 +252,26 @@ function MessageBubble({ role }: { role: MessageRole }) {
       s.message.role === 'assistant' && s.message.status?.type === 'running'
   );
 
+  const messageAttachments = useAuiState((s) =>
+    s.message.role === 'user' ? s.message.attachments : undefined
+  );
+
+  const hasText = useAuiState((s) =>
+    s.message.content.some(
+      (part) => part.type === 'text' && part.text.trim().length > 0
+    )
+  );
+
+  const messageImageUris = useMemo(() => {
+    if (!isUser || !messageAttachments) return [];
+    return messageAttachments
+      .map(getAttachmentImageUri)
+      .filter((uri): uri is string => Boolean(uri));
+  }, [isUser, messageAttachments]);
+
+  const showBubble = !isUser || messageImageUris.length === 0 || hasText;
+  const showUserCopy = messageImageUris.length === 0 || hasText;
+
   return (
     <MessagePrimitive.Root
       style={{
@@ -220,32 +280,64 @@ function MessageBubble({ role }: { role: MessageRole }) {
         marginBottom: 12,
       }}
     >
-      <View
-        className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface border border-border-subtle'}`}
-      >
-        {isThinking ? (
-          <TypingIndicator />
-        ) : (
-          <MessagePrimitive.Content
-            // User text is plain (white on the accent bubble); assistant text
-            // renders as themed markdown.
-            renderText={({ part }) =>
-              isUser ? (
-                <Text className="text-base text-white">{part.text}</Text>
-              ) : (
-                <MarkdownMessage text={part.text} streaming={isStreaming} />
-              )
-            }
-            renderToolCall={({ part }) =>
-              part.toolName === ASK_USER_TOOL_NAME ? (
-                <AskUserToolCard part={part} />
-              ) : (
-                <ToolCallCard part={part} />
-              )
-            }
-          />
-        )}
-      </View>
+      {isUser && messageImageUris.length > 0 && (
+        <View
+          className={`flex-row flex-wrap justify-end gap-1.5 ${showBubble ? 'mb-1.5' : ''}`}
+        >
+          {messageImageUris.map((uri, index) => (
+            <Pressable
+              key={`${index}:${uri.slice(0, 32)}`}
+              testID={`message-attachment-${index}`}
+              accessibilityRole="button"
+              accessibilityLabel={t('chat.attachments.previewPhoto', {
+                defaultValue: 'Preview photo',
+              })}
+              onPress={() => onOpenLightbox(messageImageUris, index)}
+              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+            >
+              <SafeImage
+                source={getDirectImageSource(uri)}
+                style={{
+                  width: messageImageUris.length === 1 ? 180 : 120,
+                  height: messageImageUris.length === 1 ? 180 : 120,
+                  borderRadius: 16,
+                }}
+                contentFit="cover"
+              />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {showBubble && (
+        <View
+          testID={isUser ? 'user-message-bubble' : 'assistant-message-bubble'}
+          className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface border border-border-subtle'}`}
+        >
+          {isThinking ? (
+            <TypingIndicator />
+          ) : (
+            <MessagePrimitive.Content
+              // User text is plain (white on the accent bubble); assistant text
+              // renders as themed markdown.
+              renderText={({ part }) =>
+                isUser ? (
+                  <Text className="text-base text-white">{part.text}</Text>
+                ) : (
+                  <MarkdownMessage text={part.text} streaming={isStreaming} />
+                )
+              }
+              renderToolCall={({ part }) =>
+                part.toolName === ASK_USER_TOOL_NAME ? (
+                  <AskUserToolCard part={part} />
+                ) : (
+                  <ToolCallCard part={part} />
+                )
+              }
+            />
+          )}
+        </View>
+      )}
 
       {/* Error box + actions sit below the bubble and only apply to assistant
           messages. ErrorPrimitive.Root self-gates (renders null with no error). */}
@@ -306,28 +398,30 @@ function MessageBubble({ role }: { role: MessageRole }) {
 
       {/* User messages aren't selectable either, so give them their own Copy
           button — right-aligned to sit under the right-aligned user bubble. */}
-      <MessagePrimitive.If user>
-        <View className="flex-row justify-end mt-1.5 mr-1">
-          <ActionBarPrimitive.Copy
-            copyToClipboard={(text) => Clipboard.setString(text)}
-          >
-            {({ isCopied }) => (
-              <View className="flex-row items-center gap-1">
-                <Icon
-                  name={isCopied ? 'checkmark' : 'copy'}
-                  size={15}
-                  color={muted}
-                />
-                <Text className="text-text-secondary text-xs">
-                  {isCopied
-                    ? t('chat.copied', { defaultValue: 'Copied' })
-                    : t('chat.copy', { defaultValue: 'Copy' })}
-                </Text>
-              </View>
-            )}
-          </ActionBarPrimitive.Copy>
-        </View>
-      </MessagePrimitive.If>
+      {showUserCopy && (
+        <MessagePrimitive.If user>
+          <View className="flex-row justify-end mt-1.5 mr-1">
+            <ActionBarPrimitive.Copy
+              copyToClipboard={(text) => Clipboard.setString(text)}
+            >
+              {({ isCopied }) => (
+                <View className="flex-row items-center gap-1">
+                  <Icon
+                    name={isCopied ? 'checkmark' : 'copy'}
+                    size={15}
+                    color={muted}
+                  />
+                  <Text className="text-text-secondary text-xs">
+                    {isCopied
+                      ? t('chat.copied', { defaultValue: 'Copied' })
+                      : t('chat.copy', { defaultValue: 'Copy' })}
+                  </Text>
+                </View>
+              )}
+            </ActionBarPrimitive.Copy>
+          </View>
+        </MessagePrimitive.If>
+      )}
     </MessagePrimitive.Root>
   );
 }
@@ -639,19 +733,305 @@ function SystemVoiceDictationButton({
   );
 }
 
+function ComposerAttachmentStrip({
+  onOpenLightbox,
+}: {
+  onOpenLightbox: (images: string[], index?: number) => void;
+}) {
+  const { t } = useTranslation();
+  const aui = useAui();
+  const composerAttachments = useAuiState(
+    (state) => state.composer.attachments
+  );
+
+  const composerImageAttachments = useMemo(() => {
+    if (!composerAttachments) return [];
+    return composerAttachments
+      .map((attachment) => {
+        const uri = getAttachmentImageUri(attachment);
+        return uri ? { id: attachment.id, uri } : null;
+      })
+      .filter((item): item is { id: string; uri: string } => item !== null);
+  }, [composerAttachments]);
+
+  const composerImageUris = useMemo(
+    () => composerImageAttachments.map((item) => item.uri),
+    [composerImageAttachments]
+  );
+
+  if (composerImageAttachments.length === 0) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 8, paddingTop: 4, paddingRight: 4 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      {composerImageAttachments.map((item, index) => (
+        <View
+          key={item.id}
+          style={{ width: 64, height: 64 }}
+          className="relative"
+        >
+          <Pressable
+            testID={`composer-attachment-${index}`}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.attachments.previewPhoto', {
+              defaultValue: 'Preview photo',
+            })}
+            onPress={() => onOpenLightbox(composerImageUris, index)}
+            style={({ pressed }) => (pressed ? { opacity: 0.8 } : null)}
+          >
+            <SafeImage
+              source={getDirectImageSource(item.uri)}
+              style={{ width: 64, height: 64, borderRadius: 12 }}
+              contentFit="cover"
+            />
+          </Pressable>
+          <Pressable
+            testID={`composer-attachment-remove-${index}`}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.attachments.removePhoto', {
+              defaultValue: 'Remove photo',
+            })}
+            hitSlop={8}
+            onPress={() => {
+              void aui.composer().attachment({ id: item.id }).remove();
+            }}
+            className="absolute top-1 right-1 bg-black/70 rounded-full w-5 h-5 items-center justify-center"
+          >
+            <Icon name="close" size={12} color="#ffffff" />
+          </Pressable>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function ComposerPhotoPickerButton({
+  disabled,
+  pickerBusy,
+  onBusyChange,
+  raised,
+  textPrimary,
+}: {
+  disabled: boolean;
+  pickerBusy: boolean;
+  onBusyChange: (busy: boolean) => void;
+  raised: string;
+  textPrimary: string;
+}) {
+  const { t } = useTranslation();
+  const aui = useAui();
+  const pickerLockRef = useRef(false);
+  const pickerSessionRef = useRef(0);
+  const photoSheetRef = useRef<ActionSheetRef>(null);
+  const sheetOpenRef = useRef(false);
+  const pendingSourceRef = useRef<'camera' | 'library' | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const composerAttachments = useAuiState(
+    (state) => state.composer.attachments
+  );
+
+  const imageCount = useMemo(() => {
+    if (!composerAttachments) return 0;
+    return composerAttachments.filter((a) => Boolean(getAttachmentImageUri(a)))
+      .length;
+  }, [composerAttachments]);
+
+  const attachmentCountRef = useRef(imageCount);
+  useEffect(() => {
+    attachmentCountRef.current = imageCount;
+  }, [imageCount]);
+
+  const remainingSlots = Math.max(0, MAX_CHAT_ATTACHMENTS - imageCount);
+  const attachDisabled = disabled || pickerBusy || remainingSlots === 0;
+
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        pickerSessionRef.current += 1;
+        pendingSourceRef.current = null;
+        if (sheetOpenRef.current) {
+          sheetOpenRef.current = false;
+          photoSheetRef.current?.dismiss();
+        }
+      },
+      []
+    )
+  );
+
+  const runPick = useCallback(
+    async (pick: () => Promise<PickedChatImage[]>) => {
+      if (pickerLockRef.current) return;
+      pickerLockRef.current = true;
+      const session = pickerSessionRef.current;
+      onBusyChange(true);
+      try {
+        const picked = await pick();
+        if (pickerSessionRef.current !== session || picked.length === 0) return;
+        const availableSlots = Math.max(
+          0,
+          MAX_CHAT_ATTACHMENTS - attachmentCountRef.current
+        );
+        for (const photo of picked.slice(0, availableSlots)) {
+          await aui.composer().addAttachment({
+            type: 'image',
+            name: photo.name,
+            contentType: photo.mimeType,
+            content: [
+              {
+                type: 'image',
+                image: photo.dataUrl,
+                filename: photo.name,
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        if (pickerSessionRef.current !== session) return;
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[Chat Image Picker] Picking failed: ${message}`, 'ERROR');
+        Toast.show({
+          type: 'error',
+          text1: t('chat.attachments.addFailed', {
+            defaultValue: 'Could not add photo',
+          }),
+        });
+      } finally {
+        pickerLockRef.current = false;
+        onBusyChange(false);
+      }
+    },
+    [aui, onBusyChange, t]
+  );
+
+  const addFromCamera = useCallback(
+    () =>
+      runPick(async () => {
+        const result = await pickChatImageFromCamera();
+        if (result.status === 'denied') {
+          Toast.show({
+            type: 'error',
+            text1: t('chat.attachments.cameraPermission', {
+              defaultValue: 'Camera permission needed',
+            }),
+            text2: t('chat.attachments.cameraPermissionBody', {
+              defaultValue: 'Enable camera access to add a photo.',
+            }),
+          });
+          return [];
+        }
+        return result.status === 'ok' ? [result.image] : [];
+      }),
+    [runPick, t]
+  );
+
+  const addFromLibrary = useCallback(
+    () =>
+      runPick(() =>
+        pickChatImagesFromLibrary(
+          Math.max(1, MAX_CHAT_ATTACHMENTS - attachmentCountRef.current)
+        )
+      ),
+    [runPick]
+  );
+
+  const promptAddPhoto = useCallback(() => {
+    if (attachDisabled || pickerLockRef.current || sheetOpenRef.current) return;
+    sheetOpenRef.current = true;
+    setSheetOpen(true);
+    Keyboard.dismiss();
+    photoSheetRef.current?.present();
+  }, [attachDisabled]);
+
+  const selectSource = (source: 'camera' | 'library') => {
+    if (attachDisabled || pendingSourceRef.current || pickerLockRef.current)
+      return;
+    pendingSourceRef.current = source;
+    photoSheetRef.current?.dismiss();
+  };
+
+  const handleSheetDismiss = useCallback(() => {
+    sheetOpenRef.current = false;
+    setSheetOpen(false);
+    const source = pendingSourceRef.current;
+    pendingSourceRef.current = null;
+    if (attachDisabled) return;
+    if (source === 'camera') void addFromCamera();
+    if (source === 'library') void addFromLibrary();
+  }, [addFromCamera, addFromLibrary, attachDisabled]);
+
+  return (
+    <>
+      <Pressable
+        testID="composer-attach-photo"
+        accessibilityRole="button"
+        accessibilityLabel={t('chat.attachments.addPhoto', {
+          defaultValue: 'Add photo',
+        })}
+        accessibilityState={{ disabled: attachDisabled, expanded: sheetOpen }}
+        disabled={attachDisabled}
+        onPress={promptAddPhoto}
+        className="rounded-full w-10 h-10 items-center justify-center"
+        style={{
+          backgroundColor: raised,
+          opacity: attachDisabled ? 0.5 : 1,
+        }}
+      >
+        <Icon
+          name={sheetOpen ? 'close' : 'add'}
+          size={22}
+          color={textPrimary}
+        />
+      </Pressable>
+      <ActionSheet
+        ref={photoSheetRef}
+        title={t('chat.attachments.addPhoto', { defaultValue: 'Add photo' })}
+        layout="grid"
+        items={[
+          {
+            key: 'camera',
+            icon: 'camera',
+            label: t('chat.attachments.takePhoto', {
+              defaultValue: 'Take Photo',
+            }),
+            dismissOnPress: false,
+            onPress: () => selectSource('camera'),
+          },
+          {
+            key: 'library',
+            icon: 'photo-library',
+            label: t('chat.attachments.chooseFromLibrary', {
+              defaultValue: 'Choose from Library',
+            }),
+            dismissOnPress: false,
+            onPress: () => selectSource('library'),
+          },
+        ]}
+        onDismiss={handleSheetDismiss}
+      />
+    </>
+  );
+}
+
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer({
   autoFocusReady,
   voiceServiceConfigId,
   voiceInputEnabled,
+  onOpenLightbox,
 }: {
   autoFocusReady: boolean;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
+  onOpenLightbox: (images: string[], index?: number) => void;
 }) {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [pickerBusy, setPickerBusy] = useState(false);
   const running = useAuiState((state) => state.thread.isRunning);
   const voiceLevel = useSharedValue(0);
   const handleVoiceVolume = useCallback(
@@ -690,76 +1070,94 @@ function Composer({
   return (
     <ComposerPrimitive.Root
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
         margin: 12,
         gap: 8,
       }}
     >
-      {recording ? (
-        <VoiceWaveform level={voiceLevel} raised={raised} accent={accent} />
-      ) : (
-        <LocalComposerInput
-          autoFocusReady={autoFocusReady && !voiceBusy}
-          editable={!voiceBusy}
-          placeholder={t('chat.placeholder', {
-            defaultValue: 'Message Sparky…',
-          })}
-          placeholderTextColor={muted}
-          multiline
-          style={{
-            flex: 1,
-            color: textPrimary,
-            backgroundColor: raised,
-            borderRadius: 20,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            maxHeight: 120,
-            fontSize: 16,
-          }}
-        />
-      )}
-      {voiceInputEnabled && (
-        // Keep the controller mounted while run-start cancellation finishes;
-        // unmounting here would strand the parent's recording/busy state.
-        <View style={running ? { display: 'none' } : undefined}>
-          {voiceServiceConfigId ? (
-            <AiVoiceDictationButton
-              serviceConfigId={voiceServiceConfigId}
-              textPrimary={textPrimary}
-              recording={recording}
-              onRecordingChange={handleRecordingChange}
-              onBusyChange={setVoiceBusy}
-              onVolumeChange={handleVoiceVolume}
-            />
-          ) : (
-            <SystemVoiceDictationButton
-              textPrimary={textPrimary}
-              recording={recording}
-              busy={voiceBusy}
-              onRecordingChange={handleRecordingChange}
-              onBusyChange={setVoiceBusy}
-              onVolumeChange={handleVoiceVolume}
-            />
-          )}
-        </View>
-      )}
-      {/* Keep the arrow visible, but disable it until recording has
-          stopped so recognition can never continue invisibly after a send. */}
-      <ThreadPrimitive.If running={false}>
-        <ComposerPrimitive.Send disabled={recording || voiceBusy}>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
-            <Icon name="arrow-up" size={20} color="#ffffff" />
+      <ComposerAttachmentStrip onOpenLightbox={onOpenLightbox} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        {!recording && (
+          <ComposerPhotoPickerButton
+            disabled={!!running || recording || voiceBusy}
+            pickerBusy={pickerBusy}
+            onBusyChange={setPickerBusy}
+            raised={raised}
+            textPrimary={textPrimary}
+          />
+        )}
+        {recording ? (
+          <VoiceWaveform level={voiceLevel} raised={raised} accent={accent} />
+        ) : (
+          <LocalComposerInput
+            autoFocusReady={autoFocusReady && !voiceBusy}
+            editable={!voiceBusy}
+            placeholder={t('chat.placeholder', {
+              defaultValue: 'Message Sparky…',
+            })}
+            placeholderTextColor={muted}
+            multiline
+            style={{
+              flex: 1,
+              color: textPrimary,
+              backgroundColor: raised,
+              borderRadius: 20,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              maxHeight: 120,
+              fontSize: 16,
+            }}
+          />
+        )}
+        {voiceInputEnabled && (
+          // Keep the controller mounted while run-start cancellation finishes;
+          // unmounting here would strand the parent's recording/busy state.
+          <View style={running ? { display: 'none' } : undefined}>
+            {voiceServiceConfigId ? (
+              <AiVoiceDictationButton
+                serviceConfigId={voiceServiceConfigId}
+                textPrimary={textPrimary}
+                recording={recording}
+                onRecordingChange={handleRecordingChange}
+                onBusyChange={setVoiceBusy}
+                onVolumeChange={handleVoiceVolume}
+              />
+            ) : (
+              <SystemVoiceDictationButton
+                textPrimary={textPrimary}
+                recording={recording}
+                busy={voiceBusy}
+                onRecordingChange={handleRecordingChange}
+                onBusyChange={setVoiceBusy}
+                onVolumeChange={handleVoiceVolume}
+              />
+            )}
           </View>
-        </ComposerPrimitive.Send>
-      </ThreadPrimitive.If>
-      <ThreadPrimitive.If running>
-        <ComposerPrimitive.Cancel>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
-            <Icon name="stop" size={18} color="#ffffff" />
-          </View>
-        </ComposerPrimitive.Cancel>
-      </ThreadPrimitive.If>
+        )}
+        {/* Keep the arrow visible, but disable it until recording has
+            stopped so recognition can never continue invisibly after a send. */}
+        <ThreadPrimitive.If running={false}>
+          <ComposerPrimitive.Send
+            disabled={recording || voiceBusy || pickerBusy ? true : undefined}
+          >
+            <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+              <Icon name="arrow-up" size={20} color="#ffffff" />
+            </View>
+          </ComposerPrimitive.Send>
+        </ThreadPrimitive.If>
+        <ThreadPrimitive.If running>
+          <ComposerPrimitive.Cancel>
+            <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+              <Icon name="stop" size={18} color="#ffffff" />
+            </View>
+          </ComposerPrimitive.Cancel>
+        </ThreadPrimitive.If>
+      </View>
     </ComposerPrimitive.Root>
   );
 }
@@ -814,6 +1212,7 @@ function ChatThread({
   serviceConfigId,
   voiceServiceConfigId,
   voiceInputEnabled,
+  conversationId,
   initialMessages,
   onRunningChange,
   autoFocusReady,
@@ -822,14 +1221,17 @@ function ChatThread({
   serviceConfigId: string;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
+  conversationId: string;
   initialMessages: InitialMessages;
   onRunningChange: (running: boolean) => void;
   autoFocusReady: boolean;
 }) {
   const { t } = useTranslation();
+  const { lightboxProps, openLightbox } = useImageLightbox();
   const runtime = useSparkyChatRuntime({
     baseUrl,
     serviceConfigId,
+    conversationId,
     initialMessages,
   });
 
@@ -949,7 +1351,12 @@ function ChatThread({
             onContentSizeChange={scrollToBottomIfPinned}
             onLayout={scrollToBottomIfPinned}
           >
-            {({ message }) => <MessageBubble role={message.role} />}
+            {({ message }) => (
+              <MessageBubble
+                role={message.role}
+                onOpenLightbox={openLightbox}
+              />
+            )}
           </ThreadMessages>
         </View>
 
@@ -958,8 +1365,14 @@ function ChatThread({
           autoFocusReady={autoFocusReady}
           voiceServiceConfigId={voiceServiceConfigId}
           voiceInputEnabled={voiceInputEnabled}
+          onOpenLightbox={openLightbox}
         />
       </ThreadPrimitive.Root>
+      <ImageLightbox
+        {...lightboxProps}
+        getImageSource={getDirectImageSource}
+        autoPlay={false}
+      />
     </AssistantRuntimeProvider>
   );
 }
@@ -997,6 +1410,17 @@ export default function ChatScreen({
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
+  // Kept across reopening the chat so session-affine providers keep their
+  // session; rotated when the history is cleared or the provider changes.
+  const chatConversationId = useAppPreferencesStore(
+    (s) => s.chatConversationId
+  );
+  const chatConversationServiceId = useAppPreferencesStore(
+    (s) => s.chatConversationServiceId
+  );
+  const startChatConversation = useAppPreferencesStore(
+    (s) => s.startChatConversation
+  );
   const { data: setting, isLoading: loadingSetting } =
     useActiveAiServiceSetting();
   const { preferences, refetch: refetchPreferences } = usePreferences({
@@ -1046,6 +1470,27 @@ export default function ChatScreen({
 
   const serviceConfigId = setting?.id ?? null;
 
+  useEffect(() => {
+    if (!serviceConfigId) return;
+    if (!chatConversationId || chatConversationServiceId !== serviceConfigId) {
+      let cancelled = false;
+      void (async () => {
+        // The history is global, not per provider; refetch so the new thread seeds from the latest messages.
+        await queryClient.refetchQueries({ queryKey: chatHistoryQueryKey });
+        if (!cancelled) startChatConversation(serviceConfigId);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [
+    queryClient,
+    serviceConfigId,
+    chatConversationId,
+    chatConversationServiceId,
+    startChatConversation,
+  ]);
+
   const handleClear = useCallback(() => {
     Alert.alert(
       t('chat.clearTitle', { defaultValue: 'Clear chat' }),
@@ -1066,6 +1511,7 @@ export default function ChatScreen({
               await clearAllChatHistory();
               // Reset the raw (pre-select) cache so a remount seeds an empty thread.
               queryClient.setQueryData(chatHistoryQueryKey, []);
+              startChatConversation(serviceConfigId);
               setThreadKey((k) => k + 1);
             } catch (error) {
               addLog('Failed to clear chat history', 'ERROR', [
@@ -1085,7 +1531,7 @@ export default function ChatScreen({
         },
       ]
     );
-  }, [queryClient, t]);
+  }, [queryClient, serviceConfigId, startChatConversation, t]);
 
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.
@@ -1147,6 +1593,11 @@ export default function ChatScreen({
                 'No active AI provider. Configure one in the web app first.',
             })}
           />
+        ) : !chatConversationId ||
+          chatConversationServiceId !== serviceConfigId ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color={accent} />
+          </View>
         ) : (
           <ChatThread
             key={threadKey}
@@ -1156,6 +1607,7 @@ export default function ChatScreen({
             voiceInputEnabled={
               !!preferences && preferences.voice_input_enabled !== false
             }
+            conversationId={chatConversationId}
             initialMessages={initialMessages}
             onRunningChange={setRunning}
             autoFocusReady={transitionComplete}

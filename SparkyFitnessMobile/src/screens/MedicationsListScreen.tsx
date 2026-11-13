@@ -22,8 +22,11 @@ import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import MedicationRow from '../components/medications/MedicationRow';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { Medication } from '@workspace/shared';
-import { filterMedsBySubtype, type MedSubtype } from '../utils/supplements';
+import {
+  filterMedsBySubtype,
+  type Medication,
+  type MedSubtype,
+} from '@workspace/shared';
 
 type MedicationsListScreenProps = RootStackScreenProps<'MedicationsList'>;
 
@@ -241,6 +244,31 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({
           }
           ListHeaderComponent={
             <View>
+              <TouchableOpacity
+                className="mx-4 mb-3 flex-row items-center rounded-xl bg-surface px-4 py-3 shadow-sm"
+                onPress={() => navigation.navigate('MedicationAdherence')}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('medications.adherence.openA11y', {
+                  defaultValue: 'Open adherence overview and dose log',
+                })}
+              >
+                <Icon name="checkmark-circle" size={20} color={accentColor} />
+                <View className="ml-3 flex-1">
+                  <Text className="text-base font-semibold text-text-primary">
+                    {t('medications.adherence.openTitle', {
+                      defaultValue: 'Adherence & log',
+                    })}
+                  </Text>
+                  <Text className="mt-0.5 text-xs text-text-secondary">
+                    {t('medications.adherence.openSubtitle', {
+                      defaultValue:
+                        'Checklist, streaks, month calendar and dose history',
+                    })}
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={14} color={iconDecorative} />
+              </TouchableOpacity>
               {hasSupplements && (
                 <View className="px-4 pb-2">
                   <SegmentedControl

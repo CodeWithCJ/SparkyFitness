@@ -3,12 +3,12 @@
 // custom_nutrients) were added manually for the meal_foods nutrition snapshot
 // migration. There is no configured regen script — if ts-to-zod is run ad hoc
 // in the future, re-add these fields.
-import { z } from "zod";
+import { z } from 'zod';
 
 export const mealFoodsIdSchema = z.string().and(
   z.object({
-    __brand: z.literal("public.meal_foods"),
-  }),
+    __brand: z.literal('public.meal_foods'),
+  })
 );
 
 const mealsIdSchema = z.any();
@@ -52,7 +52,7 @@ const mealFoodsNutritionSnapshotSchema = {
 // food (item_type='food', food_id set) or another meal (item_type='meal',
 // child_meal_id set). Added manually for the meal-to-meal composition migration
 // (20260701000000_add_child_meal_to_meal_foods) — re-add if ts-to-zod is rerun.
-export const mealFoodsItemTypeSchema = z.enum(["food", "meal"]);
+export const mealFoodsItemTypeSchema = z.enum(['food', 'meal']);
 
 export const mealFoodsSchema = z.object({
   id: mealFoodsIdSchema,

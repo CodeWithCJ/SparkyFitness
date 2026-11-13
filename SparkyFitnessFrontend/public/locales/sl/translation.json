@@ -45,8 +45,6 @@
       "categoryStrength": "Moč",
       "categoryCardio": "Kardio",
       "categoryYoga": "Joga",
-      "caloriesPerHourLabel": "Kalorije/uro",
-      "caloriesPerHourHint": "Pustite prazno za uporabo sistemsko izračunanih kalorij na uro ({{newExerciseCalories}} kal/uro).",
       "descriptionLabel": "Opis",
       "sourceLabel": "Vir",
       "forceLabel": "Sila",
@@ -126,7 +124,6 @@
       "exerciseLabel": "Vaja",
       "unknownExercise": "Neznana vaja",
       "addSetButton": "Dodaj serijo",
-      "caloriesBurnedOptionalLabel": "Porabljene kalorije (neobvezno)",
       "caloriesBurnedPlaceholder": "Vnesite porabljene kalorije za preglasitev izračuna",
       "caloriesBurnedHint": "Če je polje prazno, se kalorije samodejno izračunajo ob shranjevanju.",
       "distanceLabel": "Razdalja",
@@ -853,7 +850,6 @@
     "searchFoodsToYour": "Išči hrano, ki jo želiš dodati k svojemu"
   },
   "checkIn": {
-    "howAreYouFeelingToday": "Kako se počutiš danes?",
     "neutral": "Nevtralno",
     "anyThoughtsOrFeelings": "Bi želel/a dodati kakšne misli ali občutke?",
     "sleepTracking": "Sledenje spanju",

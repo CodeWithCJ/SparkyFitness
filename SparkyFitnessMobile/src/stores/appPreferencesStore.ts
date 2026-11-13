@@ -1,19 +1,37 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  DEFAULT_GUIDED_COUNTDOWN_SEC,
-  DEFAULT_GUIDED_SPEECH_RATE,
+  DEFAULT_CHECKIN_REMINDER_TIME,
+  DEFAULT_ORAL_CARE_REMINDER_TIMES,
+  normalizeCheckinReminderTimes,
+  normalizeOralCareReminderTimes,
+} from '../utils/checkinReminderTimes';
+import {
   clampGuidedCountdownSec,
   clampGuidedSpeechRate,
-} from '@workspace/shared';
-import {
+  type CompareQuestion,
+  DEFAULT_GUIDED_COUNTDOWN_SEC,
+  DEFAULT_GUIDED_SPEECH_RATE,
   DEFAULT_WARMUP_DUMBBELL_ROUNDING,
   DEFAULT_WARMUP_METHOD,
   DEFAULT_WARMUP_PLATE_ROUNDING,
   normalizeWarmupMethod,
+  type PaceReferenceRace,
   type WarmupMethodStep,
+  withRecentQuestion,
 } from '@workspace/shared';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import {
+  ADD_MENU_ITEM_KEYS,
+  ADD_MENU_ITEM_ROW_STYLES,
+  DEFAULT_ADD_MENU_CARDS,
+  type AddMenuItemKey,
+  type AddMenuRowStyle,
+} from '../constants/addMenuItems';
+import {
+  resolveAddMenuCards,
+  type AddMenuRowStyleOverrides,
+} from '../utils/addMenu';
 import {
   DASHBOARD_CARD_KEYS,
   type DashboardCardKey,
@@ -38,6 +56,7 @@ import {
 import type { LanguagePreference } from '../localization';
 import type { TrendRange } from '../utils/trendRange';
 import type { OwnershipFilter } from '../utils/shareStatus';
+import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -60,6 +79,9 @@ const LEGACY_KEYS = {
 
 type LegacyKey = keyof typeof LEGACY_KEYS;
 
+export type ActiveWorkoutView = 'list' | 'focus';
+export type FocusMediaDefault = 'expanded' | 'minimized';
+
 /** Which stat the active-workout log shows in its per-set metric column. */
 export type ActiveWorkoutMetricColumn =
   'rpe' | 'rir' | 'volume' | 'e1rm' | 'tenrm';
@@ -68,6 +90,11 @@ export type ActiveWorkoutMetricColumn =
 export const WATER_REMINDER_INTERVAL_OPTIONS = [1, 2, 3, 4] as const;
 export type WaterReminderIntervalHours =
   (typeof WATER_REMINDER_INTERVAL_OPTIONS)[number];
+
+/** Minutes before a snoozed ("Remind in") medication reminder fires again. */
+export const MEDICATION_REMINDER_SNOOZE_OPTIONS = [10, 15, 30, 60] as const;
+export type MedicationReminderSnoozeMinutes =
+  (typeof MEDICATION_REMINDER_SNOOZE_OPTIONS)[number];
 
 /** Factory default rest period between sets, in seconds. */
 export const DEFAULT_REST_SEC = 90;
@@ -93,25 +120,35 @@ export const PREFERENCE_DEFAULTS = {
   onDeviceLabelScanEnabled: true,
   healthTrendsCardVisible: true,
   mindfulnessCardVisible: true,
+  oralCareCardVisible: false,
+  labResultsCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
   medicationReminderRepeats: true,
   medicationReminderHideNames: false,
   medicationReminderConsolidate: true,
+  medicationReminderSnoozeMinutes: 30 as MedicationReminderSnoozeMinutes,
   waterReminderEnabled: false,
   waterReminderIntervalHours: 2 as WaterReminderIntervalHours,
   waterReminderWindowStart: '08:00' as string,
   waterReminderWindowEnd: '22:00' as string,
+  checkinRemindersEnabled: false,
+  checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
+  oralCareRemindersEnabled: false,
+  oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
+  paceReferenceRace: null as PaceReferenceRace | null,
+  paceReferenceOnWatch: false,
   restTimerSoundEnabled: true,
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
+  plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
   warmupPlateRounding: { ...DEFAULT_WARMUP_PLATE_ROUNDING },
@@ -123,17 +160,31 @@ export const PREFERENCE_DEFAULTS = {
   languagePreference: 'system' as LanguagePreference,
   healthTrendOrder: [...HEALTH_TREND_KEYS] as HealthTrendKey[],
   hiddenHealthTrends: [] as HealthTrendKey[],
+  addMenuCards: [...DEFAULT_ADD_MENU_CARDS] as AddMenuItemKey[],
+  addMenuOrder: [...ADD_MENU_ITEM_KEYS] as AddMenuItemKey[],
+  hiddenAddMenuItems: [] as AddMenuItemKey[],
+  addMenuRowStyles: {} as AddMenuRowStyleOverrides,
   watchPageOrder: [...WATCH_PAGE_KEYS] as WatchPageKey[],
   hiddenWatchPages: [] as WatchPageKey[],
   watchDoubleTapEnabled: true,
   watchRpeEnabled: false,
+  watchSetScreenMetrics: true,
+  watchUpNextPage: false,
+  watchLargerText: false,
+  watchClassicWorkout: false,
+  activeWorkoutNowCard: false,
+  activeWorkoutView: 'list' as ActiveWorkoutView,
+  focusMediaDefault: 'expanded' as FocusMediaDefault,
   watchNutrientOrder: [] as string[],
   shownWatchNutrients: [...DEFAULT_WATCH_NUTRIENTS] as string[],
-  watchSetInputStyle: 'keypad' as WatchSetInputStyle,
+  watchSetInputStyle: 'crown' as WatchSetInputStyle,
   reportOrder: [...REPORT_KEYS] as ReportKey[],
   hiddenReports: [] as ReportKey[],
   reportDefaultRange: DEFAULT_REPORT_RANGE as TrendRange,
   hiddenReportSections: [] as ReportSectionKey[],
+  compareRecentQuestions: [] as CompareQuestion[],
+  chatConversationId: null as string | null,
+  chatConversationServiceId: null as string | null,
   reportNutrientOrder: [] as string[],
   shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS] as string[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
@@ -166,21 +217,35 @@ export type AppPreferencesData = {
   onDeviceLabelScanEnabled: boolean;
   healthTrendsCardVisible: boolean;
   mindfulnessCardVisible: boolean;
+  oralCareCardVisible: boolean;
+  labResultsCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
   medicationReminderRepeats: boolean;
   medicationReminderHideNames: boolean;
   medicationReminderConsolidate: boolean;
+  medicationReminderSnoozeMinutes: MedicationReminderSnoozeMinutes;
   waterReminderEnabled: boolean;
   waterReminderIntervalHours: WaterReminderIntervalHours;
   waterReminderWindowStart: string;
   waterReminderWindowEnd: string;
+  checkinRemindersEnabled: boolean;
+  checkinReminderTimes: string[];
+  oralCareRemindersEnabled: boolean;
+  oralCareReminderTimes: string[];
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
+  /**
+   * A recent race result the training paces are worked out from (device-local),
+   * or null to use the pace of recent sessions.
+   */
+  paceReferenceRace: PaceReferenceRace | null;
+  /** Also put the race-based pace ranges on the program workout offered on the Apple Watch. */
+  paceReferenceOnWatch: boolean;
   restTimerSoundEnabled: boolean;
   /**
    * Play the rest chime even with the ringer/silent switch off (#2506). On iOS
@@ -194,6 +259,13 @@ export type AppPreferencesData = {
    */
   duckMusicDuringCues: boolean;
   workoutKeepAwakeEnabled: boolean;
+  /**
+   * Live workouts started from a plan or saved workout show its planned
+   * values as placeholders before last session's (#3417). Read once at live
+   * start. Off by default: placeholders follow the last session and
+   * progression.
+   */
+  plannedValuesAsPlaceholders: boolean;
   /** Offer "Add warm-ups" on an exercise's menu. */
   warmupCalculatorEnabled: boolean;
   /** The warm-up ramp: percent of the working weight x reps, ascending. */
@@ -211,6 +283,14 @@ export type AppPreferencesData = {
   languagePreference: LanguagePreference;
   healthTrendOrder: HealthTrendKey[];
   hiddenHealthTrends: HealthTrendKey[];
+  /** The four items in the + sheet's big card slots, in order. */
+  addMenuCards: AddMenuItemKey[];
+  /** Order of the rows under the cards in the + sheet. */
+  addMenuOrder: AddMenuItemKey[];
+  /** + sheet rows turned off in Settings → Quick Actions. */
+  hiddenAddMenuItems: AddMenuItemKey[];
+  /** Items shown as another style than their default (list, pair or button). */
+  addMenuRowStyles: AddMenuRowStyleOverrides;
   /** Swipe order of the Apple Watch app's pages; sent to the watch. */
   watchPageOrder: WatchPageKey[];
   /** Watch pages turned off in Settings → Apple Watch. */
@@ -223,6 +303,14 @@ export type AppPreferencesData = {
   reportDefaultRange: TrendRange;
   /** Sections turned off inside a report, namespaced by report (`sleep.stages`). */
   hiddenReportSections: ReportSectionKey[];
+  /** Recent Compare questions, newest first (at most five). */
+  compareRecentQuestions: CompareQuestion[];
+  addCompareRecentQuestion: (q: CompareQuestion) => void;
+  /** The Sparky chat conversation ID, kept across reopening the chat; null until first use. */
+  chatConversationId: string | null;
+  /** The AI provider the conversation ID was started with; a new provider starts a new conversation. */
+  chatConversationServiceId: string | null;
+  startChatConversation: (serviceConfigId: string | null) => void;
   /** Order of the nutrients the Nutrition report can average; unknown ones follow in catalog order. */
   reportNutrientOrder: string[];
   /** Nutrients (standard keys or custom names) the Nutrition report's "Your nutrients" card shows. */
@@ -231,6 +319,23 @@ export type AppPreferencesData = {
   watchDoubleTapEnabled: boolean;
   /** Whether the watch asks for an effort (RPE) after each logged set. */
   watchRpeEnabled: boolean;
+  /**
+   * Whether the watch's set screen shows elapsed time, heart rate and
+   * calories. Off moves them to a metrics page one swipe away.
+   */
+  watchSetScreenMetrics: boolean;
+  /** Whether the watch workout has the Up Next page after the set screen. */
+  watchUpNextPage: boolean;
+  /** Whether the watch's Goals and Water pages use the larger-text layout. */
+  watchLargerText: boolean;
+  /** Keep the original workout page while larger text is on. */
+  watchClassicWorkout: boolean;
+  /** Whether the active workout pins the Now card under the exercise rail. */
+  activeWorkoutNowCard: boolean;
+  /** Active workout layout: every exercise in one list, or one at a time. */
+  activeWorkoutView: ActiveWorkoutView;
+  /** Whether the focus view opens with the large photo card or a thumbnail. */
+  focusMediaDefault: FocusMediaDefault;
   /**
    * Order of the nutrients the watch's Goals page can list (standard keys and
    * custom nutrient names). Empty until the wearer drags one.
@@ -270,24 +375,36 @@ export interface AppPreferencesState extends AppPreferencesData {
   setOnDeviceLabelScanEnabled: (value: boolean) => void;
   setHealthTrendsCardVisible: (value: boolean) => void;
   setMindfulnessCardVisible: (value: boolean) => void;
+  setOralCareCardVisible: (value: boolean) => void;
+  setLabResultsCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
   setMedicationReminderRepeats: (value: boolean) => void;
   setMedicationReminderHideNames: (value: boolean) => void;
   setMedicationReminderConsolidate: (value: boolean) => void;
+  setMedicationReminderSnoozeMinutes: (
+    value: MedicationReminderSnoozeMinutes
+  ) => void;
   setWaterReminderEnabled: (value: boolean) => void;
   setWaterReminderIntervalHours: (value: WaterReminderIntervalHours) => void;
   setWaterReminderWindow: (start: string, end: string) => void;
+  setCheckinRemindersEnabled: (enabled: boolean) => void;
+  setCheckinReminderTimes: (times: string[]) => void;
+  setOralCareRemindersEnabled: (enabled: boolean) => void;
+  setOralCareReminderTimes: (times: string[]) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
+  setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
+  setPaceReferenceOnWatch: (value: boolean) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
   setWarmupPlateRounding: (unit: 'kg' | 'lbs', value: number) => void;
@@ -299,6 +416,12 @@ export interface AppPreferencesState extends AppPreferencesData {
   setLanguagePreference: (value: LanguagePreference) => void;
   setHealthTrendOrder: (order: HealthTrendKey[]) => void;
   setHealthTrendHidden: (key: HealthTrendKey, isHidden: boolean) => void;
+  setAddMenuCards: (cards: AddMenuItemKey[]) => void;
+  setAddMenuOrder: (order: AddMenuItemKey[]) => void;
+  setAddMenuItemHidden: (key: AddMenuItemKey, isHidden: boolean) => void;
+  /** Shows an item as `style`; its own default style clears the choice. */
+  setAddMenuRowStyle: (key: AddMenuItemKey, style: AddMenuRowStyle) => void;
+  resetAddMenu: () => void;
   setWatchPageOrder: (order: WatchPageKey[]) => void;
   setWatchPageHidden: (key: WatchPageKey, isHidden: boolean) => void;
   setReportOrder: (order: ReportKey[]) => void;
@@ -310,6 +433,13 @@ export interface AppPreferencesState extends AppPreferencesData {
   resetReportCustomization: () => void;
   setWatchDoubleTapEnabled: (value: boolean) => void;
   setWatchRpeEnabled: (value: boolean) => void;
+  setWatchSetScreenMetrics: (value: boolean) => void;
+  setWatchUpNextPage: (value: boolean) => void;
+  setWatchLargerText: (value: boolean) => void;
+  setWatchClassicWorkout: (value: boolean) => void;
+  setActiveWorkoutNowCard: (value: boolean) => void;
+  setActiveWorkoutView: (value: ActiveWorkoutView) => void;
+  setFocusMediaDefault: (value: FocusMediaDefault) => void;
   setWatchNutrientOrder: (order: string[]) => void;
   setWatchNutrientShown: (key: string, isShown: boolean) => void;
   setWatchSetInputStyle: (value: WatchSetInputStyle) => void;
@@ -404,6 +534,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ healthTrendsCardVisible: value }),
       setMindfulnessCardVisible: (value) =>
         set({ mindfulnessCardVisible: value }),
+      setOralCareCardVisible: (value) => set({ oralCareCardVisible: value }),
+      setLabResultsCardVisible: (value) =>
+        set({ labResultsCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -415,11 +548,21 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ medicationReminderHideNames: value }),
       setMedicationReminderConsolidate: (value) =>
         set({ medicationReminderConsolidate: value }),
+      setMedicationReminderSnoozeMinutes: (value) =>
+        set({ medicationReminderSnoozeMinutes: value }),
       setWaterReminderEnabled: (value) => set({ waterReminderEnabled: value }),
       setWaterReminderIntervalHours: (value) =>
         set({ waterReminderIntervalHours: value }),
       setWaterReminderWindow: (start, end) =>
         set({ waterReminderWindowStart: start, waterReminderWindowEnd: end }),
+      setCheckinRemindersEnabled: (enabled) =>
+        set({ checkinRemindersEnabled: enabled }),
+      setCheckinReminderTimes: (times) =>
+        set({ checkinReminderTimes: normalizeCheckinReminderTimes(times) }),
+      setOralCareRemindersEnabled: (enabled) =>
+        set({ oralCareRemindersEnabled: enabled }),
+      setOralCareReminderTimes: (times) =>
+        set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -427,6 +570,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
+      setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
+      setPaceReferenceOnWatch: (value) => set({ paceReferenceOnWatch: value }),
       setRestTimerSoundEnabled: (value) =>
         set({ restTimerSoundEnabled: value }),
       setRestChimeThroughSilent: (value) =>
@@ -434,6 +579,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
+      setPlannedValuesAsPlaceholders: (value) =>
+        set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
         set({ warmupCalculatorEnabled: value }),
       setWarmupMethod: (steps) =>
@@ -465,6 +612,43 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
+      setAddMenuCards: (cards) =>
+        set((state) => {
+          const resolved = resolveAddMenuCards(cards);
+          return {
+            addMenuCards: resolved,
+            // An item given a card is shown, whatever its row switch said.
+            hiddenAddMenuItems: state.hiddenAddMenuItems.filter(
+              (key) => !resolved.includes(key)
+            ),
+          };
+        }),
+      setAddMenuOrder: (order) => set({ addMenuOrder: order }),
+      setAddMenuItemHidden: (key, isHidden) =>
+        set((state) => ({
+          hiddenAddMenuItems: withMembership(
+            state.hiddenAddMenuItems,
+            key,
+            isHidden
+          ),
+        })),
+      setAddMenuRowStyle: (key, style) =>
+        set((state) => {
+          const { [key]: _previous, ...rest } = state.addMenuRowStyles;
+          return {
+            addMenuRowStyles:
+              style === ADD_MENU_ITEM_ROW_STYLES[key]
+                ? rest
+                : { ...rest, [key]: style },
+          };
+        }),
+      resetAddMenu: () =>
+        set({
+          addMenuCards: [...DEFAULT_ADD_MENU_CARDS],
+          addMenuOrder: [...ADD_MENU_ITEM_KEYS],
+          hiddenAddMenuItems: [],
+          addMenuRowStyles: {},
+        }),
       setWatchPageOrder: (order) => set({ watchPageOrder: order }),
       setReportOrder: (order) => set({ reportOrder: order }),
       setReportHidden: (key, isHidden) =>
@@ -472,6 +656,13 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           hiddenReports: withMembership(state.hiddenReports, key, isHidden),
         })),
       setReportDefaultRange: (value) => set({ reportDefaultRange: value }),
+      addCompareRecentQuestion: (q) =>
+        set((state) => ({
+          compareRecentQuestions: withRecentQuestion(
+            state.compareRecentQuestions,
+            q
+          ),
+        })),
       setReportSectionHidden: (key, isHidden) =>
         set((state) => ({
           hiddenReportSections: withMembership(
@@ -480,6 +671,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
+      startChatConversation: (serviceConfigId) =>
+        set({
+          chatConversationId: newUuid(),
+          chatConversationServiceId: serviceConfigId,
+        }),
       setReportNutrientOrder: (order) => set({ reportNutrientOrder: order }),
       setReportNutrientShown: (key, isShown) =>
         set((state) => ({
@@ -511,6 +707,14 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWatchDoubleTapEnabled: (value) =>
         set({ watchDoubleTapEnabled: value }),
       setWatchRpeEnabled: (value) => set({ watchRpeEnabled: value }),
+      setWatchSetScreenMetrics: (value) =>
+        set({ watchSetScreenMetrics: value }),
+      setWatchUpNextPage: (value) => set({ watchUpNextPage: value }),
+      setWatchLargerText: (value) => set({ watchLargerText: value }),
+      setWatchClassicWorkout: (value) => set({ watchClassicWorkout: value }),
+      setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
+      setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
+      setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
       setWatchPageHidden: (key, isHidden) =>
         set((state) => ({
           hiddenWatchPages: withMembership(
@@ -559,16 +763,23 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         onDeviceLabelScanEnabled: state.onDeviceLabelScanEnabled,
         healthTrendsCardVisible: state.healthTrendsCardVisible,
         mindfulnessCardVisible: state.mindfulnessCardVisible,
+        oralCareCardVisible: state.oralCareCardVisible,
+        labResultsCardVisible: state.labResultsCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
         medicationReminderRepeats: state.medicationReminderRepeats,
         medicationReminderHideNames: state.medicationReminderHideNames,
         medicationReminderConsolidate: state.medicationReminderConsolidate,
+        medicationReminderSnoozeMinutes: state.medicationReminderSnoozeMinutes,
         waterReminderEnabled: state.waterReminderEnabled,
         waterReminderIntervalHours: state.waterReminderIntervalHours,
         waterReminderWindowStart: state.waterReminderWindowStart,
         waterReminderWindowEnd: state.waterReminderWindowEnd,
+        checkinRemindersEnabled: state.checkinRemindersEnabled,
+        checkinReminderTimes: state.checkinReminderTimes,
+        oralCareRemindersEnabled: state.oralCareRemindersEnabled,
+        oralCareReminderTimes: state.oralCareReminderTimes,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.
@@ -576,10 +787,13 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
+        paceReferenceRace: state.paceReferenceRace,
+        paceReferenceOnWatch: state.paceReferenceOnWatch,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
         warmupMethod: state.warmupMethod,
         warmupPlateRounding: state.warmupPlateRounding,
@@ -591,10 +805,21 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         languagePreference: state.languagePreference,
         healthTrendOrder: state.healthTrendOrder,
         hiddenHealthTrends: state.hiddenHealthTrends,
+        addMenuCards: state.addMenuCards,
+        addMenuOrder: state.addMenuOrder,
+        hiddenAddMenuItems: state.hiddenAddMenuItems,
+        addMenuRowStyles: state.addMenuRowStyles,
         watchPageOrder: state.watchPageOrder,
         hiddenWatchPages: state.hiddenWatchPages,
         watchDoubleTapEnabled: state.watchDoubleTapEnabled,
         watchRpeEnabled: state.watchRpeEnabled,
+        watchSetScreenMetrics: state.watchSetScreenMetrics,
+        watchUpNextPage: state.watchUpNextPage,
+        watchLargerText: state.watchLargerText,
+        watchClassicWorkout: state.watchClassicWorkout,
+        activeWorkoutNowCard: state.activeWorkoutNowCard,
+        activeWorkoutView: state.activeWorkoutView,
+        focusMediaDefault: state.focusMediaDefault,
         watchNutrientOrder: state.watchNutrientOrder,
         shownWatchNutrients: state.shownWatchNutrients,
         watchSetInputStyle: state.watchSetInputStyle,
@@ -602,6 +827,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         hiddenReports: state.hiddenReports,
         reportDefaultRange: state.reportDefaultRange,
         hiddenReportSections: state.hiddenReportSections,
+        compareRecentQuestions: state.compareRecentQuestions,
+        chatConversationId: state.chatConversationId,
+        chatConversationServiceId: state.chatConversationServiceId,
         reportNutrientOrder: state.reportNutrientOrder,
         shownReportNutrients: state.shownReportNutrients,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,

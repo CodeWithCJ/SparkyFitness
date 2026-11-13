@@ -1,17 +1,12 @@
 ---
-id: 20261012-sparkyfitness-sponsorship
+id: 20261024-sparkyfitness-github-apk
 active: true
-title: SparkyFitness Sponsorship! 🌟
+title: Android App - Github APK! 🌟
 ---
 
-## 🌍 Please cancel your Github & Ko-fi Sponsorship if you are a sponsor
-
-## Please skip this if you are not a active sponsor, 
+## 🌍 Only for Android users installing APK from Github
 
 
-Thank you so much for sponsoring the project! 🙏 I really appreciate your support. Could you please cancel your active sponsorship for now?
+Signing certificate is updated to PROD release instead of debug. So there could be a warning when you install. So you might need to uninstall and install or ignore the warning. 
 
-I'll be pausing sponsorships for the next few months and plan to enable them again in the future. Thanks for your understanding and for supporting SparkyFitness!
-
-Meanwhile you can support the project in otherways such as reporting bug, raising enhancement request, submitting PR, updating documentation or helping other members etc. 
 

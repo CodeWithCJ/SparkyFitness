@@ -1,13 +1,13 @@
-import type { SharedScheduleRule } from "./schedules.ts";
+import type { SharedScheduleRule } from './schedules.ts';
 
 export const DAY_LABELS = [
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
+  'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
 ] as const;
 
 /** Minimal medication fields needed by the dose formatters. */
@@ -24,7 +24,7 @@ export interface MedicationDoseFields {
  * stores a sentinel instead of asking for a unit it does not have. Supplements created
  * before the wording settled hold 'dose'; ones created since hold 'serving'.
  */
-const SUPPLEMENT_UNIT_SENTINELS = new Set(["dose", "serving", "servings"]);
+const SUPPLEMENT_UNIT_SENTINELS = new Set(['dose', 'serving', 'servings']);
 
 /**
  * The word to show after a supplement's amount.
@@ -36,25 +36,25 @@ const SUPPLEMENT_UNIT_SENTINELS = new Set(["dose", "serving", "servings"]);
  */
 function supplementUnit(
   amount: number,
-  unit: string | null | undefined,
+  unit: string | null | undefined
 ): string | null {
   if (
     unit != null &&
-    unit !== "" &&
+    unit !== '' &&
     !SUPPLEMENT_UNIT_SENTINELS.has(unit.toLowerCase())
   ) {
     return unit;
   }
-  return amount === 1 ? "serving" : "servings";
+  return amount === 1 ? 'serving' : 'servings';
 }
 
 function joinAmountUnit(
   amount: number,
   unit: string | null | undefined,
-  isSupplement?: boolean | null,
+  isSupplement?: boolean | null
 ): string {
   const resolved = isSupplement ? supplementUnit(amount, unit) : unit;
-  return resolved != null && resolved !== ""
+  return resolved != null && resolved !== ''
     ? `${amount} ${resolved}`
     : `${amount}`;
 }
@@ -68,13 +68,13 @@ function joinAmountUnit(
  */
 export function formatDose(
   med: MedicationDoseFields,
-  schedule?: Pick<SharedScheduleRule, "dose_amount"> | null,
+  schedule?: Pick<SharedScheduleRule, 'dose_amount'> | null
 ): string | null {
   if (schedule != null && schedule.dose_amount != null) {
     return joinAmountUnit(
       schedule.dose_amount,
       med.dose_unit,
-      med.is_supplement,
+      med.is_supplement
     );
   }
   if (med.dose_amount != null) {
@@ -94,7 +94,7 @@ export function formatDose(
  * mirrors the strength (web-created rows) and repeating it would be noise.
  */
 export function formatStrengthPerUnit(
-  med: MedicationDoseFields,
+  med: MedicationDoseFields
 ): string | null {
   if (med.strength_value == null) return null;
   if (med.dose_amount == null) return null;
@@ -102,27 +102,27 @@ export function formatStrengthPerUnit(
   const sameUnit = (med.dose_unit ?? null) === (med.strength_unit ?? null);
   if (sameValue && sameUnit) return null;
   const strength = joinAmountUnit(med.strength_value, med.strength_unit);
-  return med.dose_unit != null && med.dose_unit !== ""
+  return med.dose_unit != null && med.dose_unit !== ''
     ? `${strength} per ${med.dose_unit}`
     : strength;
 }
 
 /** Formats an "HH:MM"(":SS") time-of-day string for display in the device locale. */
 export function formatTimeOfDay(timeOfDay: string): string {
-  const [h, m] = timeOfDay.split(":").map(Number);
+  const [h, m] = timeOfDay.split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return timeOfDay;
   return new Date(2000, 0, 1, h, m).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
 /** Formats a schedule's meal-timing value ('before' | 'with' | 'after' | 'away_from_meals') for display. */
 export function formatWithMeal(withMeal: string): string {
-  if (withMeal === "before") return "Before meal";
-  if (withMeal === "with") return "With meal";
-  if (withMeal === "after") return "After meal";
-  if (withMeal === "away_from_meals") return "Away from meals";
+  if (withMeal === 'before') return 'Before meal';
+  if (withMeal === 'with') return 'With meal';
+  if (withMeal === 'after') return 'After meal';
+  if (withMeal === 'away_from_meals') return 'Away from meals';
   return withMeal;
 }
 
@@ -133,20 +133,20 @@ export function formatWithMeal(withMeal: string): string {
 export function describeSchedule(
   schedule: Pick<
     SharedScheduleRule,
-    | "schedule_type_id"
-    | "time_of_day"
-    | "days_of_week"
-    | "interval_days"
-    | "day_of_month"
-    | "cycle_on_days"
-    | "cycle_off_days"
-  >,
+    | 'schedule_type_id'
+    | 'time_of_day'
+    | 'days_of_week'
+    | 'interval_days'
+    | 'day_of_month'
+    | 'cycle_on_days'
+    | 'cycle_off_days'
+  >
 ): string {
   const frequency = describeFrequency(schedule);
   if (
-    schedule.schedule_type_id !== "prn" &&
+    schedule.schedule_type_id !== 'prn' &&
     schedule.time_of_day != null &&
-    schedule.time_of_day !== ""
+    schedule.time_of_day !== ''
   ) {
     return `${frequency} at ${formatTimeOfDay(schedule.time_of_day)}`;
   }
@@ -165,28 +165,28 @@ export function describeSchedules(
   schedules: Array<
     Pick<
       SharedScheduleRule,
-      | "schedule_type_id"
-      | "time_of_day"
-      | "days_of_week"
-      | "interval_days"
-      | "day_of_month"
-      | "cycle_on_days"
-      | "cycle_off_days"
-      | "active"
+      | 'schedule_type_id'
+      | 'time_of_day'
+      | 'days_of_week'
+      | 'interval_days'
+      | 'day_of_month'
+      | 'cycle_on_days'
+      | 'cycle_off_days'
+      | 'active'
     >
-  >,
+  >
 ): string {
-  if (schedules.length === 0) return "As needed";
+  if (schedules.length === 0) return 'As needed';
   const activeSchedules = schedules.filter((s) => s.active !== false);
-  if (activeSchedules.length === 0) return "";
+  if (activeSchedules.length === 0) return '';
   const timesByFrequency = new Map<string, string[]>();
   for (const schedule of activeSchedules) {
     const frequency = describeFrequency(schedule);
     const times = timesByFrequency.get(frequency) ?? [];
     if (
-      schedule.schedule_type_id !== "prn" &&
+      schedule.schedule_type_id !== 'prn' &&
       schedule.time_of_day != null &&
-      schedule.time_of_day !== ""
+      schedule.time_of_day !== ''
     ) {
       times.push(schedule.time_of_day);
     }
@@ -196,56 +196,56 @@ export function describeSchedules(
     .map(([frequency, times]) => {
       if (times.length === 0) return frequency;
       const formatted = [...times].sort().map(formatTimeOfDay);
-      return `${frequency} at ${formatted.join(" & ")}`;
+      return `${frequency} at ${formatted.join(' & ')}`;
     })
-    .join("; ");
+    .join('; ');
 }
 
 function describeFrequency(
   schedule: Pick<
     SharedScheduleRule,
-    | "schedule_type_id"
-    | "days_of_week"
-    | "interval_days"
-    | "day_of_month"
-    | "cycle_on_days"
-    | "cycle_off_days"
-  >,
+    | 'schedule_type_id'
+    | 'days_of_week'
+    | 'interval_days'
+    | 'day_of_month'
+    | 'cycle_on_days'
+    | 'cycle_off_days'
+  >
 ): string {
   const type = schedule.schedule_type_id;
-  if (type === "daily") return "Daily";
-  if (type === "weekly" || type === "specific_days") {
+  if (type === 'daily') return 'Daily';
+  if (type === 'weekly' || type === 'specific_days') {
     if (schedule.days_of_week == null || schedule.days_of_week.length === 0)
-      return "Weekly";
+      return 'Weekly';
     return [...schedule.days_of_week]
       .sort((a, b) => a - b)
       .map((d) => DAY_LABELS[d])
       .filter((label) => label != null)
-      .join(", ");
+      .join(', ');
   }
   if (
-    type === "every_n_days" &&
+    type === 'every_n_days' &&
     schedule.interval_days != null &&
     schedule.interval_days > 0
   ) {
     return schedule.interval_days === 1
-      ? "Daily"
+      ? 'Daily'
       : `Every ${schedule.interval_days} days`;
   }
-  if (type === "monthly") {
+  if (type === 'monthly') {
     return schedule.day_of_month != null
       ? `Monthly on day ${schedule.day_of_month}`
-      : "Monthly";
+      : 'Monthly';
   }
   if (
-    type === "cyclic" &&
+    type === 'cyclic' &&
     schedule.cycle_on_days != null &&
     schedule.cycle_on_days > 0
   ) {
     return `${schedule.cycle_on_days} days on, ${schedule.cycle_off_days ?? 0} days off`;
   }
-  if (type === "prn") return "As needed";
-  if (type === "taper") return "Taper";
-  const words = type.replace(/_/g, " ");
+  if (type === 'prn') return 'As needed';
+  if (type === 'taper') return 'Taper';
+  const words = type.replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

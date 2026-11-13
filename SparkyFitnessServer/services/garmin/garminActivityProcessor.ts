@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import { log } from '../../config/logging.js';
 import { getClient } from '../../db/poolManager.js';
+import { describeError } from '../../utils/errors.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
@@ -184,6 +185,7 @@ async function attachHrZones(
       exercise_entry_id: exerciseEntryId,
       entry_date: entryDate,
       ...zone,
+      zone_method: 'device',
     }))
   );
 }
@@ -257,16 +259,6 @@ export async function processActivitiesAndWorkouts(
       }
     }
 
-    // Process standalone Workouts (definitions)
-    if (workouts && Array.isArray(workouts)) {
-      for (const workoutData of workouts) {
-        await processGarminWorkoutDefinition(
-          userId,
-          workoutData as GarminWorkoutDefinitionDto
-        );
-        processedCount++;
-      }
-    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -274,7 +266,30 @@ export async function processActivitiesAndWorkouts(
   } finally {
     client.release();
   }
-  return { processedEntries: processedCount };
+
+  // Workout definitions are library rows written outside the transaction, so
+  // a failure here must not roll back the activities committed above. Each
+  // definition is isolated so one bad workout neither hides the committed
+  // activities from the caller nor skips the definitions after it.
+  let failedDefinitions = 0;
+  if (workouts && Array.isArray(workouts)) {
+    for (const workoutData of workouts) {
+      try {
+        await processGarminWorkoutDefinition(
+          userId,
+          workoutData as GarminWorkoutDefinitionDto
+        );
+        processedCount++;
+      } catch (error) {
+        failedDefinitions++;
+        log(
+          'error',
+          `[garminActivityProcessor] Failed to process Garmin workout definition for user ${userId}: ${describeError(error)}`
+        );
+      }
+    }
+  }
+  return { processedEntries: processedCount, failedDefinitions };
 }
 
 export async function processGarminWorkoutSession(
@@ -808,11 +823,15 @@ export async function processGarminWorkoutDefinition(
               // converting unconditionally stored ~45% of the true load for
               // accounts configured in kilograms. WorkoutReportVisualizer.tsx
               // reads the same DTO shape and must stay in sync with this.
-              const stepWeightKg = individualStep.weightValue
-                ? individualStep.weightUnit?.unitKey === 'pound'
-                  ? individualStep.weightValue * 0.453592
-                  : individualStep.weightValue
-                : 0;
+              // Garmin sends weightValue -1 when a step has no weight set, so
+              // anything that is not a positive number means "no weight".
+              const rawStepWeight = individualStep.weightValue;
+              const stepWeightKg =
+                typeof rawStepWeight === 'number' && rawStepWeight > 0
+                  ? individualStep.weightUnit?.unitKey === 'pound'
+                    ? rawStepWeight * 0.453592
+                    : rawStepWeight
+                  : 0;
 
               const sets = [
                 {

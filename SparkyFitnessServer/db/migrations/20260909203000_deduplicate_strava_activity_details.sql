@@ -2,7 +2,6 @@
 -- Keep complete detail ahead of summaries, then the latest acquired snapshot.
 -- Preserve creator boundaries and leave an entire group untouched if any
 -- snapshot has an unknown shape, activity identity, resource state or creator.
-BEGIN;
 
 -- Match the runtime writer's parent-before-detail lock order. Reads continue;
 -- parent updates and detail writes wait until survivor selection commits.
@@ -35,4 +34,3 @@ DELETE FROM public.exercise_entry_activity_details d
 USING ranked r
 WHERE d.id = r.id AND r.recognized_group AND r.position > 1;
 
-COMMIT;

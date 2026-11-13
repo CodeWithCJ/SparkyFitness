@@ -2,7 +2,6 @@
 -- Description: Renames is_global column to is_public for consistency with other tables
 -- Date: 2026-02-16
 
-BEGIN;
 
 -- Rename the column
 ALTER TABLE public.ai_service_settings 
@@ -33,4 +32,3 @@ CREATE INDEX IF NOT EXISTS idx_ai_service_settings_active_public
 ON public.ai_service_settings(is_active, is_public) 
 WHERE is_active = TRUE AND is_public = TRUE;
 
-COMMIT;

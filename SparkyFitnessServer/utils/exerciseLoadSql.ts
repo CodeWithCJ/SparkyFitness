@@ -32,3 +32,30 @@ export function setLoadSql(entryAlias: string, setAlias: string): string {
           THEN GREATEST(0, COALESCE(bw.weight, 0) + COALESCE(${setAlias}.weight, 0))
           ELSE ${setAlias}.weight END`;
 }
+
+/**
+ * Whether an exercise entry counts as cardio, the way Exercise Statistics'
+ * Cardio view decides. `entryAlias` qualifies the columns; omit it when they
+ * are in scope unqualified.
+ *
+ * Word boundaries, not substrings: "crunch" contains "run" and was showing up
+ * as cardio. Strength is out even when an old row was stored with category
+ * Cardio, or when a gym session has a little distance from walking between
+ * sets. Past those exclusions, any positive distance counts: a synced paddle
+ * can reuse a "General" reps-only custom exercise and still carry a route.
+ */
+export function cardioPredicateSql(entryAlias?: string): string {
+  const c = (column: string) =>
+    entryAlias ? `${entryAlias}.${column}` : column;
+  return `(
+        COALESCE(${c('modality')}, '') NOT IN ('weight_reps', 'weight_duration', 'weight_distance')
+        AND LOWER(COALESCE(${c('category')}, '')) NOT IN ('strength', 'powerlifting', 'olympic weightlifting', 'strongman')
+        AND LOWER(${c('exercise_name')}) !~* '\\m(strength|crunch|sit-?up|plank)\\M'
+        AND (
+          COALESCE(${c('modality')}, '') IN ('duration', 'duration_distance')
+          OR LOWER(COALESCE(${c('category')}, '')) IN ('cardio', 'running', 'cycling', 'walking', 'swimming', 'endurance', 'garmin')
+          OR LOWER(${c('exercise_name')}) ~* '\\m(run(ning|s)?|walk(ing|s)?|cycl(e|ing)|bike|biking|swim(ming)?|hik(e|ing)|treadmill|elliptical|rower|rowing|cardio|stairs?)\\M'
+          OR COALESCE(${c('distance')}, 0) > 0
+        )
+      )`;
+}

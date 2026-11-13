@@ -29,6 +29,11 @@ jest.mock('@/hooks/useSymptoms', () =>
   jest.requireActual('./symptomTestKit').buildHooksMock()
 );
 
+// The episode date/time fields render in the user's time format.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({ timeFormat: 'HH:mm' }),
+}));
+
 // buildHooksMock is only referenced so the mock factory above has one import
 // path; keep it from being tree-shaken as unused.
 void buildHooksMock;

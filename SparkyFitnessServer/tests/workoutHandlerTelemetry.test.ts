@@ -37,6 +37,23 @@ vi.mock('../services/healthMetricSampleWriter.js', () => ({
   upsertSamplesByDay: vi.fn(),
 }));
 vi.mock('../models/measurementRepository.js', () => ({ default: {} }));
+// The person's zones: a date of birth of 1990-08-04 on 2026-08-04 and nothing
+// set, so max heart rate is the age estimate (Nes, 188).
+vi.mock('../services/heartRateZoneService.js', async () => {
+  const shared = await import('@workspace/shared');
+  return {
+    default: {
+      resolveZonesForUser: vi.fn(
+        async (_userId: string, observedMaxBpm?: number) =>
+          shared.resolveHeartRateZones({
+            dateOfBirth: '1990-08-04',
+            today: '2026-08-04',
+            observedMaxBpm,
+          })
+      ),
+    },
+  };
+});
 vi.mock('../models/waterContainerRepository.js', () => ({ default: {} }));
 
 const { HEALTH_TYPE_HANDLERS } =

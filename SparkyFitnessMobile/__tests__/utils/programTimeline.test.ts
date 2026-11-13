@@ -1,7 +1,4 @@
-import {
-  buildProgramTimeline,
-  itemsByDay,
-} from '../../src/utils/programTimeline';
+import { buildProgramTimeline, itemsByDay } from '@workspace/shared';
 
 // 2026-10-13 is a Tuesday.
 const TODAY = '2026-10-13';

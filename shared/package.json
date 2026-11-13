@@ -1,16 +1,24 @@
 {
   "name": "@workspace/shared",
-  "version": "1.8.0",
+  "version": "1.12.1",
   "main": "src/index.ts",
   "type": "module",
   "types": "./src/index.ts",
   "dependencies": {
     "papaparse": "^5.7.0",
-    "zod": "^4.6.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/papaparse": "^5.5.2",
+    "prettier": "3.9.10",
     "ts-to-zod": "^5.1.0",
     "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "format": "prettier . --write --log-level warn",
+    "format:check": "prettier . --check",
+    "validate": "pnpm run typecheck && pnpm run i18n:audit && pnpm run format:check",
+    "typecheck": "tsc --noEmit",
+    "i18n:audit": "node scripts/audit-user-facing-strings.mjs"
   }
 }

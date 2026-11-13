@@ -207,7 +207,7 @@ const userRepository = {
 #### Migration Guidelines
 - **Version control**: All schema changes through migrations
 - **Backwards compatibility**: Ensure migrations don't break existing data
-- **Transaction wrapping**: Wrap migrations in transactions
+- **Transactions**: Each migration file already runs in one transaction; do not add `BEGIN;`/`COMMIT;`, and use two files to commit steps separately
 - **Rollback scripts**: Provide rollback capabilities
 
 #### Naming Conventions
@@ -317,9 +317,12 @@ Our PR validation workflow automatically checks your submission:
 **What it validates:**
 - ✅ Integrity & License checkbox (MANDATORY for all PRs)
 - ✅ Alignment checkbox (MANDATORY for new features)
-- ✅ Frontend Quality checkbox (MANDATORY for Frontend changes)
-- ✅ Backend Code Quality checkbox (MANDATORY for Backend changes)
-- ✅ Screenshots checkbox (MANDATORY for UI changes)
+- ✅ Mobile "Tested on device or emulator" checkbox (MANDATORY for Mobile changes)
+- ✅ Validation proof: if ticked, screenshots or a recording must be attached
+- ✅ AI assistance: pick exactly one option (helps maintainers choose review depth)
+- ✅ PR title starts with a type prefix such as `feat:` or `fix:`
+- ✅ Only one SQL migration file per PR
+- ℹ️ Typecheck, lint, format and tests run in CI and are not checkboxes
 - ⚠️ PR type selection (Issue/Feature/Documentation)
 - ⚠️ Linked issue reference
 - ⚠️ Description completeness
@@ -334,8 +337,8 @@ Our PR validation workflow automatically checks your submission:
 **Common issues:**
 - **Don't remove checkboxes**: Keep all checkboxes in the PR template
 - **Check the right boxes**: Make sure to check boxes that apply to your changes
-- **Backend changes**: Must confirm TypeScript, Zod schemas, and tests for new code
-- **UI changes**: Must include before/after screenshots
+- **Backend changes**: New code should use TypeScript, Zod schemas, and tests (reviewed, not a checkbox)
+- **UI changes**: Include validation proof (screenshots or a screen recording)
 
 ### After Your PR is Merged
 

@@ -62,6 +62,15 @@ function toCamelCase(snake: string): string {
 // System/internal tables that do not have app-level Zod models
 const SYSTEM_IGNORED_TABLES = new Set(['schema_migrations', 'spatial_ref_sys']);
 
+// Some table schemas deliberately export a singular model name.
+const TABLE_SCHEMA_ALIASES: Readonly<Record<string, string>> = {
+  user: 'userSchema',
+  users: 'usersSchema',
+  food_assistant_preferences: 'foodAssistantPreferenceSchema',
+  food_assistant_tasks: 'foodAssistantTaskSchema',
+  food_assistant_operations: 'foodAssistantOperationSchema',
+};
+
 const sharedDbSchemasDir = path.resolve(
   __dirname,
   '../../shared/src/schemas/database'
@@ -151,8 +160,8 @@ describe('Database Schema ↔ Zod Parity', () => {
         ];
 
         // Special aliases if table name differs slightly in pluralization
-        if (table === 'user') possibleNames.push('userSchema');
-        if (table === 'users') possibleNames.push('usersSchema');
+        const schemaAlias = TABLE_SCHEMA_ALIASES[table];
+        if (schemaAlias) possibleNames.push(schemaAlias);
 
         let foundShape: z.ZodRawShape | null = null;
         let matchedName = '';

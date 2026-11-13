@@ -1,9 +1,10 @@
-import { z } from "zod";
+import { z } from 'zod';
 import {
   ACTIVITY_SPORTS,
   PR_SPORT_GROUPS,
   SPORT_CONFIDENCES,
-} from "../../utils/activitySport.ts";
+} from '../../utils/activitySport.ts';
+import { exerciseModalitySchema } from './Exercises.api.zod.ts';
 
 /** Canonical sport, named after the ANT+/FIT SDK `sport` enum. */
 export const activitySportSchema = z.enum(ACTIVITY_SPORTS);
@@ -15,13 +16,13 @@ export const prSportGroupSchema = z.enum(PR_SPORT_GROUPS);
 export const sportConfidenceSchema = z.enum(SPORT_CONFIDENCES);
 
 export const exerciseStatsIntervalSchema = z.enum([
-  "day",
-  "week",
-  "month",
-  "year",
-  "ytd",
-  "lifetime",
-  "custom",
+  'day',
+  'week',
+  'month',
+  'year',
+  'ytd',
+  'lifetime',
+  'custom',
 ]);
 
 export type ExerciseStatsInterval = z.infer<typeof exerciseStatsIntervalSchema>;
@@ -29,17 +30,17 @@ export type ExerciseStatsInterval = z.infer<typeof exerciseStatsIntervalSchema>;
 /** Query params for GET /api/exercise-stats/summary */
 export const exerciseStatsSummaryQuerySchema = z.object({
   userId: z.string().uuid().optional(),
-  interval: exerciseStatsIntervalSchema.default("month"),
+  interval: exerciseStatsIntervalSchema.default('month'),
   startDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format must be YYYY-MM-DD")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD')
     .optional(),
   endDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format must be YYYY-MM-DD")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD')
     .optional(),
   category: z.string().optional(),
-  unitSystem: z.enum(["metric", "imperial"]).default("metric"),
+  unitSystem: z.enum(['metric', 'imperial']).default('metric'),
 });
 
 export type ExerciseStatsSummaryQuery = z.infer<
@@ -71,7 +72,7 @@ export const exerciseStatsSummaryResponseSchema = z.object({
   interval: exerciseStatsIntervalSchema,
   startDate: z.string(),
   endDate: z.string(),
-  unitSystem: z.enum(["metric", "imperial"]),
+  unitSystem: z.enum(['metric', 'imperial']),
   totals: z.object({
     totalDistanceMeters: z.number(),
     totalDistanceFormatted: z.number(),
@@ -112,31 +113,31 @@ export const exerciseActivityQueryRequestSchema = z.object({
   distanceMaxMeters: z.number().optional(),
   distanceStandard: z
     .enum([
-      "1k",
-      "1mi",
-      "5k",
-      "10k",
-      "15k",
-      "half_marathon",
-      "marathon",
-      "custom",
+      '1k',
+      '1mi',
+      '5k',
+      '10k',
+      '15k',
+      'half_marathon',
+      'marathon',
+      'custom',
     ])
     .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   searchKeyword: z.string().optional(),
-  unitSystem: z.enum(["metric", "imperial"]).optional().default("metric"),
+  unitSystem: z.enum(['metric', 'imperial']).optional().default('metric'),
   sortBy: z
     .enum([
-      "entry_date",
-      "distance",
-      "duration_minutes",
-      "calories_burned",
-      "avg_pace",
-      "avg_heart_rate",
+      'entry_date',
+      'distance',
+      'duration_minutes',
+      'calories_burned',
+      'avg_pace',
+      'avg_heart_rate',
     ])
-    .default("entry_date"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+    .default('entry_date'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
 });
@@ -167,9 +168,21 @@ export const exerciseActivityQueryItemSchema = z.object({
   floorsClimbed: z.number().nullable().optional(),
   /** Total ascent in metres, whatever the unit system of the request. */
   elevationGainMeters: z.number().nullable().optional(),
+  /** Air temperature at the start, in °C whatever the unit system of the request. */
+  weatherTempCelsius: z.number().nullable().optional(),
+  /** Short description such as "Light rain". */
+  weatherCondition: z.string().nullable().optional(),
+  /** The person's own 1 (easy) to 10 (maximal) rating of the workout. */
+  workoutEffort: z.number().int().min(1).max(10).nullable().optional(),
+  /** Average running cadence in steps per minute. */
+  avgCadence: z.number().nullable().optional(),
+  /** Average stride length in centimetres. */
+  strideLengthCm: z.number().nullable().optional(),
   source: z.string().nullable(),
   notes: z.string().nullable(),
   hasGpsTrack: z.boolean(),
+  /** Optional: a server older than this field simply omits it. */
+  modality: exerciseModalitySchema.nullable().optional(),
 });
 
 export type ExerciseActivityQueryItem = z.infer<
@@ -204,16 +217,24 @@ export const exercisePersonalRecordItemSchema = z.object({
   sportGroup: prSportGroupSchema.optional(),
   sportConfidence: sportConfidenceSchema.optional(),
   distanceStandard: z.enum([
-    "1k",
-    "1mi",
-    "5k",
-    "10k",
-    "15k",
-    "half_marathon",
-    "marathon",
-    "custom",
+    '1k',
+    '1mi',
+    '5k',
+    '10k',
+    '15k',
+    'half_marathon',
+    'marathon',
+    'custom',
   ]),
   label: z.string(), // e.g. "Half Marathon (21.1 km)"
+  /**
+   * Time for the standard distance itself, never a longer activity's total.
+   * `best_split`: the fastest stretch of that distance measured inside the
+   * activity (GPS track or distance series). `activity_pace`: an activity with
+   * no measured split that nearly matches the distance, scaled to it by its
+   * average pace. Optional because an older server omits it.
+   */
+  timeBasis: z.enum(['best_split', 'activity_pace']).optional(),
   bestTimeSeconds: z.number(),
   formattedTime: z.string(), // e.g. "1:42:15"
   avgPaceSecondsPerKm: z.number(),
@@ -241,7 +262,7 @@ export const exercisePRMatrixResponseSchema = z.object({
       weightKg: z.number(),
       reps: z.number(),
       achievedAt: z.string(),
-    }),
+    })
   ),
 });
 
@@ -269,7 +290,7 @@ export const matchedCourseGroupSchema = z.object({
       durationMinutes: z.number(),
       avgPaceFormatted: z.string(),
       avgHeartRate: z.number().nullable(),
-    }),
+    })
   ),
 });
 

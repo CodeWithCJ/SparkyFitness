@@ -4,6 +4,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
+import type {
+  FoodCreateProgress,
+  ManagedFoodPortion,
+} from '@/api/Foods/enhancedCustomFoodFormService';
 
 /** The three outcomes of the "Sync Past Entries?" prompt. */
 export type SyncPastEntriesChoice =
@@ -35,6 +39,11 @@ import {
   getConversionFactor,
   shouldOfferAiConversion,
   convertNutrientAmount,
+  buildNamedFoodPortion,
+  getFoodPortionUnit,
+  isCalculatedFoodPortion,
+  parseNamedFoodPortion,
+  type FoodPortionDefinition,
 } from '@workspace/shared';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import type {
@@ -62,6 +71,8 @@ type VariantMeta = {
   aiEstimatedUnit: string | null;
   autoScaleIntent: boolean;
   hasTrustedCompatibilityBase: boolean;
+  managedPortion: boolean;
+  initiallyProportionalPortion: boolean;
   error: string;
 };
 
@@ -70,6 +81,8 @@ const DEFAULT_VARIANT_META: VariantMeta = {
   aiEstimatedUnit: null,
   autoScaleIntent: false,
   hasTrustedCompatibilityBase: false,
+  managedPortion: false,
+  initiallyProportionalPortion: false,
   error: '',
 };
 
@@ -217,6 +230,13 @@ function groupEquivalentVariants(
 
   for (const variant of variants) {
     const matchIndex = grouped.findIndex((g) => {
+      // Named portions carry their own measured definition, even when their
+      // nutrients happen to equal the reference (100g portions, water, etc.).
+      if (
+        parseNamedFoodPortion(g.serving_unit) ||
+        parseNamedFoodPortion(variant.serving_unit)
+      )
+        return false;
       for (const field of nutrientFields) {
         if (g[field] !== variant[field]) return false;
       }
@@ -244,6 +264,21 @@ function groupEquivalentVariants(
   }
 
   return grouped;
+}
+
+function portionReferenceSignature(
+  variant: FormFoodVariant | undefined
+): string {
+  if (!variant) return '';
+  return JSON.stringify([
+    variant.serving_size,
+    variant.serving_unit,
+    ...nutrientFields.map((field) => variant[field]),
+    variant.glycemic_index,
+    Object.entries(variant.custom_nutrients ?? {}).sort(([left], [right]) =>
+      left.localeCompare(right)
+    ),
+  ]);
 }
 
 function tryExactUnitSwap(
@@ -407,7 +442,60 @@ export function useCustomFoodForm({
   const { mutateAsync: saveFood } = useSaveFoodMutation();
 
   const [loading, setLoading] = useState(false);
+  const partiallySavedFoodRef = useRef<Food | null>(null);
+  const createProgressRef = useRef<FoodCreateProgress>({});
+  const initialPortionReferenceRef = useRef('');
+  const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [variants, setVariants] = useState<GroupedFormFoodVariant[]>([]);
+  const portionReference =
+    variants.find(
+      (variant) =>
+        variant.is_default && getFoodPortionUnit(variant.serving_unit)
+    ) ?? variants.find((variant) => getFoodPortionUnit(variant.serving_unit));
+  const referenceChanged =
+    portionReferenceSignature(portionReference) !==
+    initialPortionReferenceRef.current;
+  const managedPortionRows = useMemo(
+    () =>
+      variants.map(
+        (variant, index) =>
+          !!parseNamedFoodPortion(variant.serving_unit) &&
+          (variantMeta[index]?.managedPortion ||
+            (referenceChanged &&
+              variantMeta[index]?.initiallyProportionalPortion)) === true
+      ),
+    [variants, variantMeta, referenceChanged]
+  );
+  // Derive measured portions from the current reference, including unsaved
+  // nutrition edits. Keep identity and grouping metadata on persisted rows.
+  const resolvedVariants = useMemo(
+    () =>
+      variants.map((variant, index) => {
+        const definition = parseNamedFoodPortion(variant.serving_unit);
+        if (!definition || !portionReference || !managedPortionRows[index])
+          return variant;
+        const portion = buildNamedFoodPortion(
+          {
+            ...formVariantToFoodVariant(portionReference),
+            serving_size: Number(portionReference.serving_size),
+          },
+          definition
+        );
+        return portion
+          ? {
+              ...variant,
+              ...portion,
+              glycemic_index: portionReference.glycemic_index,
+              // A portion can also be logged/edited as multiples of its definition.
+              ...(variant.serving_size !== 1
+                ? scaleVariantNutrition(portion, Number(variant.serving_size))
+                : {}),
+              serving_size: variant.serving_size,
+            }
+          : variant;
+      }),
+    [variants, portionReference, managedPortionRows]
+  );
   const [originalVariants, setOriginalVariants] = useState<
     GroupedFormFoodVariant[]
   >([]);
@@ -416,7 +504,6 @@ export function useCustomFoodForm({
   const [loadedVariants, setLoadedVariants] = useState<
     (GroupedFormFoodVariant | null)[]
   >([]);
-  const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [savedFoodResult, setSavedFoodResult] = useState<Food | null>(null);
   // Whether the save that triggered the sync prompt also replaced the food's
@@ -493,6 +580,15 @@ export function useCustomFoodForm({
       options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
     ) => {
       const withMatches = applyProviderMatchesToVariants(grouped);
+      const reference =
+        withMatches.find(
+          (variant) =>
+            variant.is_default && getFoodPortionUnit(variant.serving_unit)
+        ) ??
+        withMatches.find((variant) => getFoodPortionUnit(variant.serving_unit));
+      initialPortionReferenceRef.current = portionReferenceSignature(reference);
+      partiallySavedFoodRef.current = null;
+      createProgressRef.current = {};
       const trustedSnapshot = deepClone(withMatches);
       const scalingSnapshot = deepClone(withMatches);
       setVariants(withMatches);
@@ -505,6 +601,21 @@ export function useCustomFoodForm({
           aiEstimatedUnit: v.source === 'ai_estimate' ? v.serving_unit : null,
           autoScaleIntent: options.autoScaleIntent,
           hasTrustedCompatibilityBase: options.hasTrustedBase,
+          // Classify each row independently: identical units may have custom nutrition.
+          initiallyProportionalPortion:
+            !!reference &&
+            isCalculatedFoodPortion(
+              {
+                ...formVariantToFoodVariant(reference),
+                glycemic_index: sanitizeGlycemicIndexFrontend(
+                  reference.glycemic_index
+                ),
+              },
+              {
+                ...formVariantToFoodVariant(v),
+                glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
+              }
+            ),
         }))
       );
     },
@@ -691,6 +802,52 @@ export function useCustomFoodForm({
     setVariantMeta((prev) => [...prev, { ...DEFAULT_VARIANT_META }]);
   };
 
+  const addNamedPortion = (definition: FoodPortionDefinition): boolean => {
+    if (!portionReference) return false;
+    const portion = buildNamedFoodPortion(
+      {
+        ...formVariantToFoodVariant(portionReference),
+        serving_size: Number(portionReference.serving_size),
+      },
+      definition
+    );
+    if (!portion) return false;
+    const normalizeUnit = (unit: string) =>
+      unit.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+    const key = normalizeUnit(portion.serving_unit);
+    if (
+      variants.some(
+        (variant) =>
+          normalizeUnit(variant.serving_unit) === key ||
+          variant.equivalents?.some(
+            (equivalent) => normalizeUnit(equivalent.serving_unit) === key
+          )
+      )
+    )
+      return false;
+    const next: GroupedFormFoodVariant = {
+      ...portion,
+      glycemic_index: portionReference.glycemic_index,
+      allergens: portionReference.allergens,
+      traces: portionReference.traces,
+      is_default: false,
+      is_locked: false,
+      equivalents: [],
+    };
+    setVariants((previous) => [...previous, next]);
+    setOriginalVariants((previous) => [...previous, deepClone(next)]);
+    setServingSizeScalingBaseVariants((previous) => [
+      ...previous,
+      deepClone(next),
+    ]);
+    setLoadedVariants((previous) => [...previous, null]);
+    setVariantMeta((previous) => [
+      ...previous,
+      { ...DEFAULT_VARIANT_META, managedPortion: true },
+    ]);
+    return true;
+  };
+
   const duplicateVariant = (index: number) => {
     const src = variants[index];
     const sourceOriginalVariant = originalVariants[index];
@@ -732,10 +889,13 @@ export function useCustomFoodForm({
     setVariantMeta((prev) => [
       ...prev,
       {
+        ...DEFAULT_VARIANT_META,
         manualUnitConversionPending: sourceRequiresManualConversion,
         aiEstimatedUnit: src.source === 'ai_estimate' ? src.serving_unit : null,
         autoScaleIntent: sourceAutoScaleIntent,
         hasTrustedCompatibilityBase: sourceMeta.hasTrustedCompatibilityBase,
+        managedPortion: sourceMeta.managedPortion,
+        initiallyProportionalPortion: sourceMeta.initiallyProportionalPortion,
         error: '',
       },
     ]);
@@ -777,7 +937,7 @@ export function useCustomFoodForm({
       | EquivalentUnit[]
       | string[]
   ) => {
-    const updatedVariants = [...variants];
+    const updatedVariants = [...resolvedVariants];
     const updatedOriginalVariants = [...originalVariants];
     const updatedServingSizeScalingBaseVariants = [
       ...servingSizeScalingBaseVariants,
@@ -800,6 +960,10 @@ export function useCustomFoodForm({
     const isNutrientField =
       nutrientFields.includes(field as NumericFoodVariantKeys) ||
       isCustomNutrient;
+
+    if (isNutrientField || field === 'glycemic_index') {
+      metaPatch.initiallyProportionalPortion = false;
+    }
 
     let newVariant: FormFoodVariant & { equivalents?: EquivalentUnit[] };
 
@@ -1355,7 +1519,7 @@ export function useCustomFoodForm({
         splitPickerImages(imageItems);
 
       const foodData: Food = {
-        id: food?.id || '',
+        id: food?.id || partiallySavedFoodRef.current?.id || '',
         name: formData.name,
         brand: formData.brand,
         is_quick_food: formData.is_quick_food,
@@ -1372,9 +1536,17 @@ export function useCustomFoodForm({
       };
 
       const expandedVariants: FormFoodVariant[] = [];
+      const managedPortions: ManagedFoodPortion[] = [];
 
-      variants.forEach((variant) => {
+      resolvedVariants.forEach((variant, index) => {
         const { equivalents, ...baseVariant } = variant;
+        if (managedPortionRows[index]) {
+          managedPortions.push(
+            variant.id
+              ? { id: variant.id }
+              : { draftIndex: expandedVariants.length }
+          );
+        }
         expandedVariants.push(baseVariant as FormFoodVariant);
 
         if (equivalents && equivalents.length > 0) {
@@ -1394,8 +1566,14 @@ export function useCustomFoodForm({
         foodData,
         variants: expandedVariants.map(formVariantToFoodVariant),
         userId: user.id,
-        foodId: food?.id,
+        foodId: food?.id || partiallySavedFoodRef.current?.id,
+        createProgress: !food?.id ? createProgressRef.current : undefined,
+        managedPortions,
         imageFiles,
+        onFoodPersisted: (persistedFood: Food) => {
+          partiallySavedFoodRef.current = persistedFood;
+          setImageItems(toSavedImages(persistedFood.images));
+        },
       });
 
       const photosChanged = pickerImagesDiffer(imageItems, food?.images);
@@ -1417,7 +1595,17 @@ export function useCustomFoodForm({
     } finally {
       setLoading(false);
     }
-  }, [food, formData, imageItems, onSave, resetForm, saveFood, user, variants]);
+  }, [
+    food,
+    formData,
+    imageItems,
+    onSave,
+    resetForm,
+    saveFood,
+    user,
+    resolvedVariants,
+    managedPortionRows,
+  ]);
 
   const handleBarcodeConflictConfirm = async () => {
     setShowBarcodeConflictConfirmation(false);
@@ -1432,15 +1620,24 @@ export function useCustomFoodForm({
     }
 
     const barcode = formData.barcode ? formData.barcode.trim() : '';
-    if (barcode) {
+    // Separate provider products may intentionally share a barcode. The server
+    // deduplicates imports by their explicit source identity instead.
+    const isProviderImport =
+      !food?.id && !!food?.provider_type && !!food?.provider_external_id;
+    if (barcode && !isProviderImport) {
       try {
         const lookup = await queryClient.fetchQuery(
-          searchBarcodeV2Options(barcode)
+          searchBarcodeV2Options(
+            barcode,
+            undefined,
+            user?.id,
+            user?.activeUserId
+          )
         );
         if (
           lookup?.source === 'local' &&
           lookup?.food &&
-          lookup?.food?.id !== food?.id
+          lookup?.food?.id !== (food?.id || partiallySavedFoodRef.current?.id)
         ) {
           setBarcodeConflictFoodName(lookup.food.name || 'another food');
           setShowBarcodeConflictConfirmation(true);
@@ -1497,7 +1694,8 @@ export function useCustomFoodForm({
 
   return {
     formData,
-    variants,
+    variants: resolvedVariants,
+    managedPortionRows,
     variantErrors,
     loading,
     showSyncConfirmation,
@@ -1512,6 +1710,10 @@ export function useCustomFoodForm({
     updateField,
     applyProviderRefresh,
     addVariant,
+    addNamedPortion,
+    portionUnit: portionReference
+      ? getFoodPortionUnit(portionReference.serving_unit)
+      : null,
     duplicateVariant,
     removeVariant,
     updateVariant,

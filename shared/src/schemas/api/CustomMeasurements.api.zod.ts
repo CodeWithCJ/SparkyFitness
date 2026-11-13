@@ -2,9 +2,14 @@ import {
   customMeasurementsInitializerSchema,
   customMeasurementsMutatorSchema,
   customMeasurementsSchema,
-} from "../database/CustomMeasurements.zod.ts";
-import { z } from "zod";
-import { customCategoriesResponseSchema } from "./CustomCategories.api.zod.ts";
+} from '../database/CustomMeasurements.zod.ts';
+import { z } from 'zod';
+import { customCategoriesResponseSchema } from './CustomCategories.api.zod.ts';
+
+// Opt-in timestamp-day reads leave the existing diary endpoint semantics intact.
+export const customMeasurementDayQuerySchema = z.object({
+  byTimestamp: z.enum(['true', 'false']).optional(),
+});
 
 export const customMeasurementsResponseSchema = customMeasurementsSchema.extend(
   {
@@ -15,7 +20,7 @@ export const customMeasurementsResponseSchema = customMeasurementsSchema.extend(
     entry_timestamp: z.string().optional(),
     created_at: z.string(),
     updated_at: z.string(),
-  },
+  }
 );
 
 export const updateCustomMeasurementsRequestSchema =

@@ -159,4 +159,59 @@ describe('CaffeineCard (mobile)', () => {
     );
     expect(screen.getByText('Some dose times were estimated')).toBeTruthy();
   });
+
+  it('prefixes crossing time with Tomorrow when crossing occurs next calendar day', () => {
+    const bedtimeDate = new Date(baseKinetics.bedtime_at);
+    const lateDoseIso = new Date(
+      bedtimeDate.getFullYear(),
+      bedtimeDate.getMonth(),
+      bedtimeDate.getDate(),
+      22,
+      0,
+      0,
+      0
+    ).toISOString();
+
+    render(
+      <CaffeineCard
+        kinetics={{
+          ...baseKinetics,
+          doses: [
+            {
+              at: lateDoseIso,
+              mg: 200,
+              name: 'Late Coffee',
+              is_estimated: false,
+            },
+          ],
+        }}
+        nowMs={NOW}
+        isLoading={false}
+      />
+    );
+    expect(screen.getByText(/Back under 100mg from Tomorrow,/)).toBeTruthy();
+  });
+
+  it('shows under threshold tonight when crossing occurred prior to viewed day', () => {
+    // Dose at 2026-09-03 10:00 (2 days before 2026-09-05), decayed back on 2026-09-03
+    render(
+      <CaffeineCard
+        kinetics={{
+          ...baseKinetics,
+          doses: [
+            {
+              at: '2026-09-03T10:00:00.000Z',
+              mg: 200,
+              name: 'Past Coffee',
+              is_estimated: false,
+            },
+          ],
+        }}
+        nowMs={NOW}
+        isLoading={false}
+      />
+    );
+    expect(screen.queryByText(/Back under 100mg from/)).toBeNull();
+    expect(screen.getByText('Stays under 100mg tonight')).toBeTruthy();
+  });
 });

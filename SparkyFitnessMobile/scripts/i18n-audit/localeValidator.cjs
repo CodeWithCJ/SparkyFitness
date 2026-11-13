@@ -67,7 +67,11 @@ function groupPluralKeys(keys) {
 
 function placeholderNames(value) {
   return typeof value === 'string'
-    ? [...value.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
+    ? [
+        ...new Set(
+          [...value.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1])
+        ),
+      ].sort()
     : [];
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BackHandler, Platform } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import Icon from '../../src/components/Icon';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
@@ -21,10 +22,19 @@ const mockModal: {
 } = { present: jest.fn(), dismiss: jest.fn(), props: null };
 
 jest.mock('@gorhom/bottom-sheet', () => {
-  const React = require('react');
-  const { View, ScrollView } = require('react-native');
+  const React: typeof import('react') = require('react');
+  const {
+    View,
+    ScrollView,
+  }: typeof import('react-native') = require('react-native');
+  type MockModalProps = React.PropsWithChildren<
+    NonNullable<typeof mockModal.props>
+  >;
   return {
-    BottomSheetModal: React.forwardRef((props: any, ref: any) => {
+    BottomSheetModal: React.forwardRef<
+      { present: () => void; dismiss: () => void },
+      MockModalProps
+    >((props, ref) => {
       React.useEffect(() => {
         mockModal.props = props;
       });
@@ -34,7 +44,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
       }));
       return React.createElement(View, null, props.children);
     }),
-    BottomSheetScrollView: ({ children }: any) =>
+    BottomSheetScrollView: ({ children }: React.PropsWithChildren) =>
       React.createElement(ScrollView, null, children),
     BottomSheetBackdrop: () => null,
   };
@@ -50,6 +60,7 @@ function makeItems() {
 
 function renderSheet(overrides?: {
   items?: ActionSheetItem[];
+  layout?: 'list' | 'grid';
   onBack?: () => void;
   onDismiss?: () => void;
 }) {
@@ -76,6 +87,7 @@ function renderSheet(overrides?: {
       ref={ref}
       title="Bench Press"
       items={items}
+      layout={overrides?.layout}
       onBack={overrides?.onBack}
       onDismiss={onDismiss}
     />
@@ -124,6 +136,52 @@ describe('ActionSheet', () => {
       'button'
     );
     expect(getByLabelText('Remove exercise')).toBeTruthy();
+  });
+
+  it('renders accessible icon tiles and a close button in grid mode', () => {
+    const onCamera = jest.fn();
+    const screen = renderSheet({
+      layout: 'grid',
+      items: [
+        { key: 'camera', label: 'Camera', icon: 'camera', onPress: onCamera },
+        {
+          key: 'library',
+          label: 'Photos',
+          icon: 'photo-library',
+          onPress: jest.fn(),
+        },
+      ],
+    });
+    expect(screen.getByRole('header', { name: 'Bench Press' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Camera' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Photos' })).toBeTruthy();
+    expect(
+      screen.UNSAFE_getAllByType(Icon).map((icon) => icon.props.name)
+    ).toEqual(expect.arrayContaining(['camera', 'photo-library', 'close']));
+    fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(mockModal.dismiss).toHaveBeenCalledTimes(1);
+    expect(onCamera).not.toHaveBeenCalled();
+  });
+
+  it('retains row actions and hardware-back dismissal in grid mode', () => {
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    let onHardwareBack: (() => boolean | null | undefined) | undefined;
+    jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation((_event, handler) => {
+        onHardwareBack = handler;
+        return { remove: jest.fn() };
+      });
+    const screen = renderSheet({ layout: 'grid' });
+    act(() => screen.ref.current?.present());
+    act(() => mockModal.props?.onChange?.(0));
+    act(() => {
+      expect(onHardwareBack?.()).toBe(true);
+    });
+    expect(mockModal.dismiss).toHaveBeenCalledTimes(1);
+    fireDismissed();
+    expect(screen.onDismiss).toHaveBeenCalledTimes(1);
+    osSpy.restore();
   });
 
   it('renders a destructive row', () => {

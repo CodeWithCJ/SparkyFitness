@@ -3,22 +3,12 @@ import {
   type ChatHistoryEntry,
 } from '../../../src/services/api/chatApi';
 
-// The mapper is pure; importing chatApi must not pull in the assistant-ui
-// runtime (the `useChatRuntime` reference is a type-only import).
-
-type MappedMessage = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  parts: { type: string; text?: string }[];
-};
-
-const entry = (over: Partial<ChatHistoryEntry>): ChatHistoryEntry => ({
+const entry = (overrides: Partial<ChatHistoryEntry>): ChatHistoryEntry => ({
   id: 'id-1',
   message_type: 'user',
   content: 'hello',
   created_at: '2026-06-26T00:00:00.000Z',
-  ...over,
+  ...overrides,
 });
 
 describe('mapHistoryToInitialMessages', () => {
@@ -26,76 +16,164 @@ describe('mapHistoryToInitialMessages', () => {
     expect(mapHistoryToInitialMessages([])).toEqual([]);
   });
 
-  it('maps user/assistant message_type to role', () => {
+  it('maps user and assistant roles and preserves ids', () => {
     const result = mapHistoryToInitialMessages([
-      entry({ message_type: 'user', content: 'hi' }),
-      entry({ message_type: 'assistant', content: 'hey' }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].role).toBe('user');
-    expect(result[1].role).toBe('assistant');
+      entry({ id: 'user-id', message_type: 'user', content: 'hi' }),
+      entry({ id: 'assistant-id', message_type: 'assistant', content: 'hey' }),
+    ]);
+    expect(result).toMatchObject([
+      { id: 'user-id', role: 'user', content: 'hi' },
+      { id: 'assistant-id', role: 'assistant', content: 'hey' },
+    ]);
   });
 
-  it('builds a text part from content when parts are absent', () => {
-    const result = mapHistoryToInitialMessages([
-      entry({ content: 'just text' }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].parts).toEqual([{ type: 'text', text: 'just text' }]);
-    expect(result[0].content).toBe('just text');
+  it.each([
+    undefined,
+    null,
+    [],
+    {},
+    'invalid',
+    [null, 1, { type: 'text', text: 123 }],
+  ])('falls back to content for unusable parts: %j', (parts) => {
+    const [result] = mapHistoryToInitialMessages([
+      entry({ content: 'keep me', parts }),
+    ]);
+    expect(result.parts).toEqual([{ type: 'text', text: 'keep me' }]);
+    expect(result.content).toBe('keep me');
   });
 
-  it('passes through parts when they are a text-only array', () => {
+  it('preserves text-only parts', () => {
     const parts = [
       { type: 'text', text: 'one' },
       { type: 'text', text: 'two' },
     ];
-    const result = mapHistoryToInitialMessages([
+    const [result] = mapHistoryToInitialMessages([
       entry({ content: 'fallback', parts }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].parts).toBe(parts);
+    ]);
+    expect(result.parts).toEqual(parts);
   });
 
-  it('falls back to content when parts contain a non-text part', () => {
-    const result = mapHistoryToInitialMessages([
+  it.each([
+    { type: 'image', image: 'data:image/png;base64,IMAGE' },
+    { type: 'image_url', image_url: 'data:image/png;base64,IMAGE' },
+    { type: 'image_url', image_url: { url: 'data:image/png;base64,IMAGE' } },
+    {
+      type: 'file',
+      data: 'data:image/png;base64,IMAGE',
+      mediaType: 'image/png',
+    },
+    {
+      type: 'file',
+      url: 'data:image/png;base64,IMAGE',
+      mediaType: 'image/png',
+    },
+    { type: 'file', url: 'data:image/png;base64,IMAGE', mimeType: 'image/png' },
+  ])('normalizes persisted image formats alongside text: %j', (image) => {
+    const [result] = mapHistoryToInitialMessages([
       entry({
-        content: 'surrounding text',
-        parts: [
-          { type: 'text', text: 'caption' },
-          { type: 'image', image: 'data:image/png;base64,xxx' },
-        ],
+        content: 'caption',
+        parts: [{ type: 'text', text: 'caption' }, image],
       }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].parts).toEqual([
-      { type: 'text', text: 'surrounding text' },
+    ]);
+    expect(result.parts).toEqual([
+      { type: 'text', text: 'caption' },
+      {
+        type: 'file',
+        mediaType: 'image/png',
+        url: 'data:image/png;base64,IMAGE',
+      },
     ]);
   });
 
-  it('falls back to content for an empty parts array (no parts dropped)', () => {
-    const result = mapHistoryToInitialMessages([
-      entry({ content: 'keep me', parts: [] }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].parts).toEqual([{ type: 'text', text: 'keep me' }]);
+  it('preserves image-only turns and filenames without adding a text placeholder', () => {
+    const [result] = mapHistoryToInitialMessages([
+      entry({
+        content: '[Image message]',
+        parts: [
+          {
+            type: 'file',
+            data: 'data:image/jpeg;base64,IMAGE',
+            mediaType: 'image/jpeg',
+            filename: ' lunch.jpg ',
+          },
+        ],
+      }),
+    ]);
+    expect(result.parts).toEqual([
+      {
+        type: 'file',
+        mediaType: 'image/jpeg',
+        url: 'data:image/jpeg;base64,IMAGE',
+        filename: 'lunch.jpg',
+      },
+    ]);
   });
 
-  it('falls back to an index-based id when the row id is missing', () => {
-    const result = mapHistoryToInitialMessages([
-      entry({ id: '', content: 'a' }),
-      entry({ id: '', content: 'b' }),
-    ]) as unknown as MappedMessage[];
-
-    expect(result[0].id).toBe('history-0');
-    expect(result[1].id).toBe('history-1');
+  it('removes the synthetic text placeholder when an image is present', () => {
+    const [result] = mapHistoryToInitialMessages([
+      entry({
+        content: '[Image message]',
+        parts: [
+          { type: 'text', text: '[Image message]' },
+          {
+            type: 'image_url',
+            image_url: { url: 'https://example.com/menu.WEBP?size=1024#image' },
+          },
+        ],
+      }),
+    ]);
+    expect(result.parts).toEqual([
+      {
+        type: 'file',
+        mediaType: 'image/webp',
+        url: 'https://example.com/menu.WEBP?size=1024#image',
+      },
+    ]);
   });
 
-  it('keeps a present id', () => {
-    const result = mapHistoryToInitialMessages([
-      entry({ id: 'real-id' }),
-    ]) as unknown as MappedMessage[];
+  it('keeps placeholder text when its image is unavailable', () => {
+    const [result] = mapHistoryToInitialMessages([
+      entry({
+        content: '[Image message]',
+        parts: [
+          { type: 'text', text: '[Image message]' },
+          { type: 'file', mediaType: 'image/jpeg' },
+        ],
+      }),
+    ]);
+    expect(result.parts).toEqual([{ type: 'text', text: '[Image message]' }]);
+  });
 
-    expect(result[0].id).toBe('real-id');
+  it('ignores malformed or non-image parts without dropping valid text', () => {
+    const [result] = mapHistoryToInitialMessages([
+      entry({
+        content: 'fallback',
+        parts: [
+          null,
+          { type: 'text', text: 'caption' },
+          { type: 'text', text: '   ' },
+          { type: 'unknown' },
+          {
+            type: 'file',
+            mediaType: 'application/pdf',
+            url: 'https://example.com/a.pdf',
+          },
+          { type: 'image', image: '   ' },
+          { type: 'image_url', image_url: { url: 42 } },
+        ],
+      }),
+    ]);
+    expect(result.parts).toEqual([{ type: 'text', text: 'caption' }]);
+  });
+
+  it('falls back to distinct index-based ids for missing row ids', () => {
+    const result = mapHistoryToInitialMessages([
+      entry({ id: '' }),
+      entry({ id: '' }),
+    ]);
+    expect(result.map((message) => message.id)).toEqual([
+      'history-0',
+      'history-1',
+    ]);
   });
 });

@@ -77,14 +77,22 @@ enum ContextPayloadMapper {
                 ? payload["workoutServerId"] as? String
                 : previous.workoutServerId,
             distanceUnit: payload["distanceUnit"] as? String ?? previous.distanceUnit,
+            energyUnit: payload["energyUnit"] as? String ?? previous.energyUnit,
             doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled,
             rpeEnabled: payload["rpeEnabled"] as? Bool ?? previous.rpeEnabled,
             medications: medications(from: payload),
+            medicationSkip: payload["medicationSkip"] as? Bool,
+            exerciseDoNow: payload["exerciseDoNow"] as? Bool,
+            setScreenMetrics: payload["setScreenMetrics"] as? Bool ?? previous.setScreenMetrics,
+            upNextPage: payload["upNextPage"] as? Bool ?? previous.upNextPage,
+            largerText: payload["largerText"] as? Bool ?? previous.largerText,
+            classicWorkout: payload["classicWorkout"] as? Bool ?? previous.classicWorkout,
             fast: fastKnown(in: payload) ? fast(from: payload["fast"]) : previous.fast,
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
             steps: steps(from: payload["steps"]),
             stepGoal: (payload["stepGoal"] as? NSNumber)?.intValue ?? previous.stepGoal,
             runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues,
+            appLanguage: payload["appLanguage"] as? String ?? previous.appLanguage,
             runAutoPause: payload["runAutoPause"] as? Bool ?? previous.runAutoPause,
             runCheckInMinutes: (payload["runCheckInMinutes"] as? NSNumber)?.intValue ?? previous.runCheckInMinutes,
             runPaceBand: WatchPaceBand.normalized(
@@ -224,8 +232,49 @@ enum ContextPayloadMapper {
             place: place,
             requestedAt: Date(timeIntervalSince1970: at / 1000),
             plan: (payload["plan"] as? [String: Any]).flatMap { runPlan(from: $0) },
-            settings: runSettings(from: payload)
+            settings: runSettings(from: payload),
+            route: route(from: payload["route"])
         )
+    }
+
+    /// The saved route a start request carries. Points arrive flat, as
+    /// `[lat, lon, lat, lon, …]` in millionths of a degree. Nil when absent or
+    /// unusable (fewer than two points, an odd count); a cue with an unknown
+    /// kind or a point past the end is skipped rather than failing the route.
+    static func route(from raw: Any?) -> WatchRoute? {
+        guard
+            let dict = raw as? [String: Any],
+            let id = dict["id"] as? String, !id.isEmpty,
+            let flat = numberArray(dict["points"]),
+            flat.count >= 4, flat.count % 2 == 0
+        else { return nil }
+        let points = stride(from: 0, to: flat.count, by: 2).map {
+            WatchRoutePoint(lat: flat[$0] / 1_000_000, lon: flat[$0 + 1] / 1_000_000)
+        }
+        let cues: [WatchRouteCue] = (dictionaryArray(dict["cues"]) ?? []).compactMap { row in
+            guard
+                let index = intValue(row["index"]), index >= 0, index < points.count,
+                let kind = (row["kind"] as? String).flatMap(WatchRouteCueKind.init(rawValue:))
+            else { return nil }
+            let text = (row["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            return WatchRouteCue(index: index, kind: kind, text: text)
+        }
+        return WatchRoute(id: id, name: dict["name"] as? String ?? "", points: points, cues: cues)
+    }
+
+    /// A route the phone wants kept on the watch (`routeSync`). Nil when the
+    /// route cannot be read or carries no revision stamp.
+    static func routeSync(from payload: [String: Any]) -> WatchRouteSync? {
+        guard
+            let route = route(from: payload["route"]),
+            let updatedAt = doubleValue(payload["updatedAt"])
+        else { return nil }
+        return WatchRouteSync(route: route, updatedAt: updatedAt)
+    }
+
+    /// The route id a `routeRemove` names.
+    static func routeRemoveId(from payload: [String: Any]) -> String? {
+        (payload["routeId"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// The switches a start request carries; nil unless both are there.
@@ -422,7 +471,8 @@ enum ContextPayloadMapper {
                 name: name,
                 detail: entry["detail"] as? String ?? "",
                 time: entry["time"] as? String ?? "",
-                status: status
+                status: status,
+                supplement: entry["supplement"] as? Bool
             )
         }
         return MedicationSnapshot(day: day(from: payload), doses: doses)
@@ -739,6 +789,14 @@ enum ContextPayloadMapper {
         if let i = raw as? Int { return Double(i) }
         if let n = raw as? NSNumber { return n.doubleValue }
         return nil
+    }
+
+    /// A JS `number[]`, which arrives as an `NSArray` of `NSNumber`. Nil if any
+    /// element is not a number, so a damaged route is dropped whole.
+    private static func numberArray(_ raw: Any?) -> [Double]? {
+        guard let any = raw as? [Any] else { return nil }
+        let numbers = any.compactMap { doubleValue($0) }
+        return numbers.count == any.count ? numbers : nil
     }
 
     /// Same NSArray bridging as heart-rate samples: JS `string[]` arrives as

@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import GlucoseUnitSetting from '../components/GlucoseUnitSetting';
 import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
@@ -161,6 +162,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({
             />
           }
         />
+
+        <GlucoseUnitSetting />
 
         {isIOS ? (
           <SettingsRow

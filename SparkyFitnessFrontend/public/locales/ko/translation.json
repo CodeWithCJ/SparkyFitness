@@ -52,8 +52,6 @@
       "categoryStrength": "근력",
       "categoryCardio": "유산소",
       "categoryYoga": "요가",
-      "caloriesPerHourLabel": "시간당 칼로리",
-      "caloriesPerHourHint": "비워 두면 시스템이 계산한 시간당 칼로리({{newExerciseCalories}} cal/hour)를 사용합니다.",
       "descriptionLabel": "설명",
       "sourceLabel": "출처",
       "forceLabel": "힘 방향",
@@ -127,8 +125,6 @@
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} 섭취 - {{finalTotalCaloriesBurned}} 소모",
       "dailyProgress": "일일 진행 상황",
       "targetBand": "목표 {{min}}–{{max}}",
-      "bmrSourceMeasured": "측정됨",
-      "bmrSourceAlgorithm": "알고리즘",
       "adaptiveTdee": "적응형 TDEE",
       "adjustment": "조정",
       "burnedEnergyBreakdown": "소모 에너지 내역:",
@@ -171,7 +167,6 @@
       "exerciseLabel": "운동",
       "unknownExercise": "알 수 없는 운동",
       "addSetButton": "세트 추가",
-      "caloriesBurnedOptionalLabel": "소모 칼로리 (선택사항)",
       "caloriesBurnedPlaceholder": "계산값을 덮어쓸 소모 칼로리 입력",
       "caloriesBurnedHint": "비워 두면 저장 시 칼로리가 자동 계산됩니다.",
       "distanceLabel": "거리",
@@ -1290,7 +1285,6 @@
       "title": "알레르기 유발 물질 설정"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* 실제 신진대사에 따라 일일 목표를 자동으로 조정합니다. 정확도를 높이려면 음식 섭취량과 체중을 꾸준히 기록해야 합니다.",
       "burnedActivity": "활동(운동 및 걸음 수만)",
       "burnedBmr": "활동 + BMR(기초대사량)",
       "burnedTdee": "Health Connect 총 칼로리(BMR + 활동 칼로리 대체값)",
@@ -1429,7 +1423,6 @@
       "safetyFloorStandardHint": "추정 안정 시 대사량(RMR)과 임상적 최소 기준(여성 1,200 kcal, 남성 1,500 kcal) 중 더 높은 값을 사용합니다.",
       "safetyFloorValueLabel": "사용자 지정 최솟값",
       "awaitingCalibrationTitle": "적응형 TDEE 보정 대기 중",
-      "modeUnreachableSuffix": "연결할 수 없음",
       "customPercentageUnreachable": "안전 하한이 허용하는 ~{{percent}}%보다 깊으므로 목표값이 해당 하한까지 상향 조정됩니다.",
       "deficitCeilingHintEstimated": "현재 활동 수준에서 도달할 수 있는 최대 적자는 약 {{percent}}%입니다. 더 큰 적자 모드는 안전 하한선에 맞춰 상향 조정됩니다.",
       "deficitCeilingHintMeasured": "측정된 TDEE를 기준으로 도달 가능한 최대 적자율은 약 {{percent}}%입니다. 이보다 큰 적자를 유도하는 모드는 안전 하한선에 맞춰 조정됩니다.",
@@ -1453,9 +1446,6 @@
       "unsafeGainText": "주당 체중 증가율이 0.5%를 넘으면 늘어난 체중의 대부분은 근육이 아니라 지방입니다. 칼로리 잉여를 더 천천히 늘리면 지방 증가는 훨씬 줄이면서도 비슷한 양의 근육을 늘릴 수 있습니다.",
       "unsafeLossTitle": "위험한 체중 감량률",
       "unsafeLossText": "주당 체중의 1.5%를 초과해 감량하는 것은 과도한 것으로 간주됩니다. 이 속도는 심각한 근육 손실, 무기력, 호르몬 불균형 및 영양 결핍의 위험을 크게 높입니다. 보다 완만한 목표 모드를 선택하십시오.",
-      "calibrationDescription": "Sparky의 적응형 TDEE 엔진이 대사량을 정확히 계산하려면 최소 {{required}}일 동안 꾸준히 기록해야 합니다(현재는 대체 추정치를 사용하고 있습니다). 보정 속도를 높이려면:",
-      "calibrationWeightTip": "체중을 주 3~4회 이상 기록합니다.",
-      "calibrationFoodTip": "매일 음식 섭취량 기록(하루 200kcal 초과)",
       "livePreviewSavedNote": "설정을 변경하면 기초대사량(BMR)과 체지방률이 업데이트됩니다. 칼로리 소모량은 저장된 설정을 기준으로 서버에서 계산되므로, 저장한 후에야 칼로리 소모량과 최종 목표치가 변경됩니다."
     },
     "mfa": {
@@ -2121,7 +2111,6 @@
       "calorieLogRequirement": "• TDEE 계산을 위한 칼로리 기록(200 kcal 이상인 날이 7일 이상)",
       "daysMissing": "❌ 누락 ({{days}}/{{required}}일 기록됨)",
       "daysMet": "✓ 충족 ({{days}}/{{required}}일 기록됨)",
-      "stabilityRequirement": "• 목표 예산 안정성을 위한 칼로리 기록({{required}}일 이상, 하루 200kcal 이상)",
       "daysWarning": "⚠️ 누락 ({{days}}/{{required}}일 기록됨)",
       "usingFallbackBmr": "대체 기초대사량(BMR) × 활동 계수 사용:",
       "fallbackMath": "계산: BMR ({{bmr}} kcal) × 활동 계수 ({{multiplier}}) = {{result}} {{unit}}",
@@ -2279,7 +2268,6 @@
     "editingTemporarilyUnavailable": "스키마 변경으로 인해 음식 세부정보를 일시적으로 편집할 수 없습니다."
   },
   "checkIn": {
-    "howAreYouFeelingToday": "오늘 기분이 어떤가요?",
     "neutral": "보통",
     "anyThoughtsOrFeelings": "추가하고 싶은 생각이나 감정이 있나요?",
     "sleepTracking": "수면 추적",
@@ -2361,17 +2349,13 @@
     "failedToLoadRecentCustom": "최근 사용자 지정 측정값을 불러오지 못했습니다.",
     "failedToLoadRecentStandard": "최근 표준 측정값을 불러오지 못했습니다.",
     "failedToSaveCustomMeasurement": "사용자 지정 측정값을 저장하지 못했습니다.",
-    "failedToSaveMood": "기분을 저장하지 못했습니다.",
     "failedToUpdateMeasurement": "측정값을 업데이트하지 못했습니다.",
     "level": "수준",
     "measurementUpdatedSuccessfully": "측정이 성공적으로 업데이트되었습니다.",
-    "moodSaved": "기분이 저장되었습니다.",
-    "moodSavedSuccessfully": "기분을 저장했습니다.",
     "muscleMass": "근육량",
     "recentFasts": "최근 단식",
     "recentFastsDescription": "최근 단식 기록 및 상태",
     "recentMeasurementsDescription": "측정값, 완료한 단식, 동기화된 건강 데이터가 포함된 최신 로그입니다.",
-    "saveMood": "무드 저장",
     "stressLevel": "스트레스 수준",
     "tabs": {
       "fasting": "단식 및 기분",
@@ -4359,7 +4343,6 @@
       "prnReason": "사유(선택 사항)",
       "prnReasonPlaceholder": "예: 통증",
       "prnMax": "하루 최대 복용 횟수",
-      "supplementDoseScalingCalories": "각 기록은 {{dose}}인분으로 계산됩니다: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "각 기록은 {{dose}}인분으로 계산되므로, 1인분 기준으로 입력한 영양 정보에 {{dose}}를 곱합니다.",
       "servingUnit": "제공",
       "servingsPerLog": "기록당 인분 수",
@@ -5336,7 +5319,6 @@
   "mood": {
     "dailyMood": "오늘의 기분",
     "date": "날짜",
-    "deletedSuccessfully": "기분 항목이 성공적으로 삭제되었습니다.",
     "failedAddCustom": "분위기를 추가할 수 없습니다.",
     "failedDeleteCustom": "무드를 삭제할 수 없습니다.",
     "failedLoadPrefs": "기분 설정을 불러오지 못했습니다.",
@@ -5344,17 +5326,13 @@
     "failedToDelete": "기분 항목을 삭제하지 못했습니다.",
     "failedToLoadCustom": "분위기를 불러오지 못했습니다.",
     "failedToLoadEntries": "기분 항목을 불러오지 못했습니다.",
-    "failedToLoadEntry": "기분 항목을 불러오지 못했습니다.",
     "failedToSave": "기분 기록을 저장하지 못했습니다.",
     "failedToUpdate": "기분 기록을 업데이트하지 못했습니다.",
     "intensityTrend": "시간에 따른 전반적인 기분",
     "mood": "기분",
     "moodValue": "분위기 값",
     "mostCommon": "가장 많이 사용되는 분위기",
-    "noMoodData": "이 기간에는 기분 데이터가 없습니다.",
-    "notes": "메모: ",
-    "savedSuccessfully": "기분 기록이 성공적으로 저장되었습니다.",
-    "updatedSuccessfully": "기분 기록이 성공적으로 업데이트되었습니다."
+    "noMoodData": "이 기간에는 기분 데이터가 없습니다."
   },
   "preferences": {
     "resetError": "기본 설정을 초기화하지 못했습니다."

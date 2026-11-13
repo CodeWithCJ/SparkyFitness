@@ -1,4 +1,3 @@
-BEGIN;
 
 -- Add ON DELETE CASCADE to foreign keys that should be removed when a user is deleted.
 -- Add ON DELETE SET NULL to foreign keys that should be kept, but dissociated from the deleted user.
@@ -19,4 +18,3 @@ ALTER TABLE public.water_intake DROP CONSTRAINT IF EXISTS water_intake_updated_b
 ALTER TABLE public.food_entries DROP CONSTRAINT IF EXISTS food_entries_user_id_fkey, ADD CONSTRAINT food_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
-COMMIT;

@@ -12,6 +12,7 @@ describe('resolveHealthTrendOrder', () => {
       'hydration',
       'weight',
       'calories',
+      'heartRate',
       'vo2max',
     ];
 
@@ -27,6 +28,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'heartRate',
       'vo2max',
     ]);
   });
@@ -41,6 +43,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'heartRate',
       'vo2max',
     ]);
   });
@@ -55,6 +58,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'heartRate',
       'vo2max',
     ]);
   });

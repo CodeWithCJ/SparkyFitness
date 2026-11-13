@@ -6,6 +6,8 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import { getOrCreateGarminExercise } from '../services/garminService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import { importFitFiles } from '../services/fitImportService.js';
 
 vi.mock('../db/poolManager.js', () => ({
@@ -18,6 +20,18 @@ vi.mock('../models/exerciseEntry.js', () => ({
     updateExerciseEntryTelemetryOnly: vi.fn(),
     // Telemetry now writes inside persistFitEntry's transaction.
     _updateExerciseEntryTelemetryOnlyWithClient: vi.fn(),
+  },
+}));
+vi.mock('../models/workoutPresetRepository.js', () => ({
+  default: {
+    getWorkoutPresetByName: vi.fn(),
+    createWorkoutPreset: vi.fn(),
+    addExerciseToWorkoutPreset: vi.fn(),
+  },
+}));
+vi.mock('../models/exercisePresetEntryRepository.js', () => ({
+  default: {
+    createExercisePresetEntryWithClient: vi.fn(),
   },
 }));
 vi.mock('../models/workoutTelemetryRepository.js', () => ({
@@ -80,6 +94,59 @@ function encodeMinimalFit(sessionCount: number, withActivityMesg = false) {
   return Buffer.from(encoder.close());
 }
 
+function encodeStrengthFit() {
+  const start = new Date('2026-01-15T02:00:00Z');
+  const encoder = new Encoder();
+  encoder.writeMesg({
+    mesgNum: Profile.MesgNum.FILE_ID,
+    type: 'activity',
+    manufacturer: 'garmin',
+    serialNumber: 101,
+    timeCreated: Utils.convertDateToDateTime(start),
+  });
+  encoder.writeMesg({
+    mesgNum: Profile.MesgNum.SESSION,
+    timestamp: Utils.convertDateToDateTime(start),
+    startTime: Utils.convertDateToDateTime(start),
+    totalTimerTime: 600,
+    totalCalories: 59,
+    metabolicCalories: 21,
+    trainingLoadPeak: 2.58,
+    sport: 'training',
+    subSport: 'strengthTraining',
+  });
+  encoder.writeMesg({
+    mesgNum: Profile.MesgNum.WORKOUT,
+    wktName: 'Upper Body',
+    sport: 'training',
+    subSport: 'strengthTraining',
+    numValidSteps: 1,
+  });
+  encoder.writeMesg({
+    mesgNum: Profile.MesgNum.SET,
+    timestamp: Utils.convertDateToDateTime(start),
+    startTime: Utils.convertDateToDateTime(start),
+    duration: 30,
+    repetitions: 10,
+    weight: 20,
+    category: ['benchPress'],
+    categorySubtype: [0],
+    setType: 'active',
+  });
+  encoder.writeMesg({
+    mesgNum: Profile.MesgNum.SET,
+    timestamp: Utils.convertDateToDateTime(new Date(start.getTime() + 60000)),
+    startTime: Utils.convertDateToDateTime(new Date(start.getTime() + 60000)),
+    duration: 30,
+    repetitions: 12,
+    weight: 15,
+    category: ['tricepsExtension'],
+    categorySubtype: [0],
+    setType: 'active',
+  });
+  return Buffer.from(encoder.close());
+}
+
 const mockClient = { query: vi.fn(), release: vi.fn() };
 
 beforeEach(() => {
@@ -98,6 +165,22 @@ beforeEach(() => {
   vi.mocked(
     activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient
   ).mockResolvedValue({ message: 'ok' });
+  vi.mocked(workoutPresetRepository.getWorkoutPresetByName).mockResolvedValue(
+    null
+  );
+  vi.mocked(workoutPresetRepository.createWorkoutPreset).mockResolvedValue({
+    id: 'preset-1',
+    user_id: 'user-1',
+    name: 'Upper Body',
+  } as never);
+  vi.mocked(
+    exercisePresetEntryRepository.createExercisePresetEntryWithClient
+  ).mockResolvedValue({
+    id: 'preset-entry-1',
+    user_id: 'user-1',
+    workout_preset_id: 'preset-1',
+    entry_date: '2026-01-14',
+  } as never);
   vi.mocked(getOrCreateGarminExercise).mockResolvedValue({ id: 'exercise-1' });
   vi.mocked(loadUserTimezone).mockResolvedValue('America/New_York');
 });
@@ -253,6 +336,70 @@ describe('importFitFiles', () => {
       'user-1',
       'tennis',
       'tennis'
+    );
+  });
+
+  it('imports a strength workout into presets, preset entries, and exercises with sets and training_load', async () => {
+    const strengthBuffer = encodeStrengthFit();
+    const response = await importFitFiles('user-1', 'actor-1', [
+      { originalname: 'strength.fit', buffer: strengthBuffer },
+    ]);
+
+    expect(response.results[0]).toMatchObject({
+      status: 'created',
+      fileName: 'strength.fit',
+      activityName: 'Upper Body',
+    });
+    expect(
+      exercisePresetEntryRepository.createExercisePresetEntryWithClient
+    ).toHaveBeenCalled();
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenNthCalledWith(
+      1,
+      mockClient,
+      'user-1',
+      expect.objectContaining({
+        training_load: 2.58,
+        calories_burned: 30,
+        exercise_preset_entry_id: 'preset-entry-1',
+        sets: expect.arrayContaining([
+          expect.objectContaining({
+            reps: 10,
+            weight: 20,
+            set_type: 'Working Set',
+          }),
+        ]),
+      }),
+      'actor-1',
+      'garmin_fit',
+      'preset-entry-1',
+      { skipDuplicateCheck: true }
+    );
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenNthCalledWith(
+      2,
+      mockClient,
+      'user-1',
+      expect.objectContaining({
+        training_load: null,
+        calories_burned: 30,
+        exercise_preset_entry_id: 'preset-entry-1',
+      }),
+      'actor-1',
+      'garmin_fit',
+      'preset-entry-1',
+      { skipDuplicateCheck: true }
+    );
+    expect(
+      activityDetailsRepository._createActivityDetailWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      expect.objectContaining({
+        detail_type: 'full_workout_data',
+        exercise_preset_entry_id: 'preset-entry-1',
+      })
     );
   });
 });

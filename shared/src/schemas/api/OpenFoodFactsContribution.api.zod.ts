@@ -1,10 +1,10 @@
-import { z } from "zod";
-import { OpenFoodFactsProductLanguageSchema } from "./OpenFoodFactsAutomaticSync.api.zod.ts";
+import { z } from 'zod';
+import { OpenFoodFactsProductLanguageSchema } from './OpenFoodFactsAutomaticSync.api.zod.ts';
 
 export const OpenFoodFactsPreviewRequestSchema = z
   .object({
     productLanguage: OpenFoodFactsProductLanguageSchema,
-    imageType: z.enum(["front", "nutrition", "packaging"]),
+    imageType: z.enum(['front', 'nutrition', 'packaging']),
     imageBase64: z
       .string()
       .min(4)
@@ -25,20 +25,20 @@ export const OpenFoodFactsPreviewResponseSchema = z
     previewToken: z.string(),
     expiresAt: z.string(),
     productUrl: z.string().url(),
-    providerScope: z.enum(["personal", "global"]),
+    providerScope: z.enum(['personal', 'global']),
     fields: z.record(z.string(), z.string()),
     imageBase64: z.string(),
-    imageType: z.enum(["front", "nutrition", "packaging"]),
+    imageType: z.enum(['front', 'nutrition', 'packaging']),
     existingProduct: z.boolean(),
   })
   .strict();
 
 export const OpenFoodFactsConfirmResponseSchema = z
   .object({
-    status: z.enum(["success", "partial"]),
+    status: z.enum(['success', 'partial']),
     message: z.string(),
     productUrl: z.string().url(),
-    providerScope: z.enum(["personal", "global"]),
+    providerScope: z.enum(['personal', 'global']),
   })
   .strict();
 

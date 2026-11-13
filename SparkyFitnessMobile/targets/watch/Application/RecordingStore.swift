@@ -41,6 +41,16 @@ final class RecordingStore: ObservableObject {
         healthKit.onLiveReading = { [weak self] bpm, at in
             Task { @MainActor in self?.receiveLiveHeartRate(bpm, at: at) }
         }
+        healthKit.onAppleZones = { sessionId, zones in
+            Task { @MainActor in
+                WatchSessionManager.shared.sendRecordingHeartRate(
+                    sessionId: sessionId,
+                    clientId: UUID().uuidString,
+                    samples: [],
+                    appleZones: zones
+                )
+            }
+        }
     }
 
     func apply(_ update: RecordingUpdate) {

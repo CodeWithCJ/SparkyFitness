@@ -22,6 +22,9 @@ describe('metricReadKind', () => {
     expect(metricReadKind({ aggregationStrategy: 'min-max-avg' })).toBe(
       'min-max-avg-day'
     );
+    expect(metricReadKind({ aggregationStrategy: 'min-max-time-avg' })).toBe(
+      'min-max-avg-day'
+    );
     const heartRate = HEALTH_METRICS.find(
       (metric) => metric.recordType === 'HeartRate'
     );

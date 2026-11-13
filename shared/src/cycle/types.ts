@@ -2,25 +2,16 @@
 // server and the web (and, later, mobile) can depend on them.
 
 export type CycleMode =
-  | "standard"
-  | "ttc"
-  | "pregnant"
-  | "postpartum"
-  | "menopause";
+  'standard' | 'ttc' | 'pregnant' | 'postpartum' | 'menopause';
 
-export type FlowLevel = "none" | "spotting" | "light" | "medium" | "heavy";
+export type FlowLevel = 'none' | 'spotting' | 'light' | 'medium' | 'heavy';
 
 export type CyclePhase =
-  | "menstrual"
-  | "follicular"
-  | "fertile"
-  | "ovulation"
-  | "luteal"
-  | "unknown";
+  'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'unknown';
 
-export type PredictionConfidence = "high" | "medium" | "low";
+export type PredictionConfidence = 'high' | 'medium' | 'low';
 
-export type RegularityLabel = "regular" | "somewhat" | "irregular" | "unknown";
+export type RegularityLabel = 'regular' | 'somewhat' | 'irregular' | 'unknown';
 
 export interface SharedCycleSettings {
   id?: string;
@@ -35,7 +26,7 @@ export interface SharedCycleSettings {
   show_fertile_window: boolean;
   preferred_products: string[];
   dismissed_prompts: string[];
-  terminology: "default" | "neutral";
+  terminology: 'default' | 'neutral';
   discreet_mode: boolean;
   onboarded_at?: string | null;
 }
@@ -79,7 +70,7 @@ export interface SharedCycle {
   period_length?: number | null;
   cycle_length?: number | null;
   is_excluded: boolean;
-  source: "derived" | "manual";
+  source: 'derived' | 'manual';
   birth_control_method?: string | null;
 }
 
@@ -111,7 +102,7 @@ export interface PredictedCycle {
 
 export interface CyclePrediction {
   cycles: PredictedCycle[];
-  basis: "history" | "settings" | "bc-bleed";
+  basis: 'history' | 'settings' | 'bc-bleed';
   confidence: PredictionConfidence;
 }
 

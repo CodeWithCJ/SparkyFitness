@@ -49,7 +49,6 @@
 -- it makes the all-or-nothing guarantee obvious without relying on knowing
 -- that detail — if any UPDATE below fails, every table stays consistent
 -- with every other (and the helper function never lingers half-applied).
-BEGIN;
 
 CREATE OR REPLACE FUNCTION normalize_exercise_json_array(
     value text,
@@ -256,4 +255,3 @@ WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.images;
 DROP FUNCTION normalize_exercise_json_array(text, boolean);
 DROP FUNCTION exercise_json_array_is_valid(text);
 
-COMMIT;

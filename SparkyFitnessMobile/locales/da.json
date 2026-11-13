@@ -1,1 +1,8 @@
-{}
+{
+  "ios": {
+    "NSCameraUsageDescription": "SparkyFitness skal bruge adgang til dit kamera for at kunne scanne madvarernes stregkoder og etiketter.",
+    "NSHealthShareUsageDescription": "SparkyFitness læser sundhedsdata (såsom aktivitet, træning og kropsmål) for at vise dem i appen og synkronisere dem til din selvhostede SparkyFitness-server.",
+    "NSHealthUpdateUsageDescription": "SparkyFitness skriver den ernæring og væske, du logger i appen, til Apple Health, så de to holdes synkroniserede.",
+    "NSLocalNetworkUsageDescription": "SparkyFitness opretter forbindelse til selvhostede servere på dit lokale netværk."
+  }
+}

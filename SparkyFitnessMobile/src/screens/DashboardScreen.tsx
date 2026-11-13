@@ -44,10 +44,14 @@ import MedicationsCard from '../components/MedicationsCard';
 import { MindfulnessCard } from '../components/mindfulness/MindfulnessCard';
 import SymptomsCard from '../components/SymptomsCard';
 import MoodCard from '../components/mood/MoodCard';
+import LabResultsCard from '../components/labs/LabResultsCard';
+import OralCareCard from '../components/oralCare/OralCareCard';
+import { oralCareQueryKeyRoot } from '../hooks/useOralCare';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
   caffeineActiveRootQueryKey,
@@ -68,14 +72,18 @@ import {
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
 import {
   moodEntriesRootQueryKey,
+  labLatestQueryKey,
+  labMarkersQueryKey,
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
+import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
   useMindfulnessMutations,
 } from '../hooks/useMindfulness';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { HealthTrendDateRange } from '../types/healthTrends';
@@ -154,6 +162,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   );
   const usesNativeTabs = useNativeIOSTabsActive();
   const insets = useSafeAreaInsets();
+  // The system's own vertical bar, not just side insets: a notched iPhone in
+  // landscape has insets and keeps horizontal bars.
+  const verticalBar = useVerticalBar();
+  // A live activity lengthens the status cluster in a side-bar pose and can
+  // push the date buttons onto the Add button; then only the calendar stays.
+  const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const datePastColor =
     (useCSSVariable('--color-date-past') as string) || '#f97316';
@@ -180,6 +194,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         dateTintColor,
+        compactCalendarButton: verticalBar,
+        collapseToCalendar: dateColumnCollapsed,
         accessibilityLabel: t('dashboard.chooseDate', {
           defaultValue: 'Choose dashboard date',
         }),
@@ -204,6 +220,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectedDate,
     t,
     usesNativeTabs,
+    verticalBar,
+    dateColumnCollapsed,
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -305,7 +323,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // from here rather than each resolving the fallback chain themselves.
   const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
   useWidgetSync(summary, {
-    drinkMl: servingVolume ?? null,
+    drinkMl: servingVolume,
     unit: waterDisplayUnit,
     canLog: true,
   });
@@ -388,6 +406,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const mindfulnessCardVisible = useAppPreferencesStore(
     (s) => s.mindfulnessCardVisible
   );
+  const labResultsCardVisible = useAppPreferencesStore(
+    (s) => s.labResultsCardVisible
+  );
+  const oralCareCardVisible = useAppPreferencesStore(
+    (s) => s.oralCareCardVisible
+  );
   const trainingLoadCardVisible = useAppPreferencesStore(
     (s) => s.trainingLoadCardVisible
   );
@@ -432,6 +456,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: ['mindfulness'] }),
       // MoodCard owns its own query.
       queryClient.invalidateQueries({ queryKey: moodEntriesRootQueryKey }),
+      // LabResultsCard reads the lab markers and their latest values.
+      queryClient.invalidateQueries({ queryKey: labMarkersQueryKey }),
+      queryClient.invalidateQueries({ queryKey: labLatestQueryKey }),
+      queryClient.invalidateQueries({ queryKey: oralCareQueryKeyRoot }),
       // TrainingLoadDashboardCard owns its query, and a pull is not a focus.
       trainingLoadCardVisible
         ? queryClient.invalidateQueries({ queryKey: trainingLoadRootQueryKey })
@@ -463,25 +491,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               </Text>
             </View>
           )}
-          <StatusView
-            icon="cloud-offline"
-            iconTone="muted"
-            iconSize={64}
-            title={t('dashboard.noServerConfigured', {
-              defaultValue: 'No server configured',
-            })}
-            subtitle={t('dashboard.configureServer', {
-              defaultValue:
-                'Configure your server connection in Settings to view your daily summary.',
-            })}
-            action={{
-              label: t('dashboard.goToSettings', {
-                defaultValue: 'Go to Settings',
-              }),
-              onPress: () => navigation.navigate('Settings'),
-              variant: 'primary',
-            }}
-          />
+          <ServerStatusView />
         </View>
       );
     }
@@ -540,6 +550,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
+          // Room under the large title when a side bar is present.
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 0,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}
@@ -573,7 +585,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   key="calorieRing"
                   caloriesConsumed={eaten}
                   caloriesBurned={burned}
-                  calorieGoal={goal}
+                  calorieGoal={eaten + remaining}
                   remainingCalories={remaining}
                   progressPercent={progress / 100}
                 />
@@ -780,6 +792,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       ? () => navigation.navigate('WaterContainers')
                       : undefined
                   }
+                  onPressHistory={() =>
+                    navigation.navigate('WaterLog', { date: selectedDate })
+                  }
                   onIncrement={isContainersLoaded ? incrementWater : undefined}
                   onDecrement={isContainersLoaded ? decrementWater : undefined}
                   disableDecrement={summary.waterConsumed <= 0}
@@ -882,6 +897,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     sleep={trends.sleep}
                     hydration={trends.hydration}
                     calories={trends.calories}
+                    heartRate={trends.heartRate}
                     vo2max={trends.vo2max}
                     range={trendsRange}
                     weightUnit={weightUnit}
@@ -900,6 +916,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 <TrainingLoadDashboardCard
                   key="trainingLoad"
                   navigation={navigation}
+                />
+              ) : null;
+            case 'labResults':
+              return labResultsCardVisible ? (
+                <LabResultsCard key="labResults" navigation={navigation} />
+              ) : null;
+            case 'oralCare':
+              return oralCareCardVisible ? (
+                <OralCareCard
+                  key="oralCare"
+                  navigation={navigation}
+                  selectedDate={selectedDate}
                 />
               ) : null;
             case 'mindfulness':

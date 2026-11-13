@@ -1,4 +1,6 @@
 import { getClient } from '../db/poolManager.js';
+import { DAILY_MOOD_VALUE_SQL } from './moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
 
 // Aggregate queries backing the chatbot coach tools (sparky_get_health_summary,
 // sparky_analyze_trends, sparky_get_30day_trends, sparky_detect_patterns,
@@ -177,11 +179,17 @@ async function get30DayMoodAggregates(userId: string, endDate: string) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT
+      `WITH daily_mood AS (
+        SELECT entry_date, ${DAILY_MOOD_VALUE_SQL} AS mood_value
+        FROM mood_entries
+        WHERE user_id = $1 AND entry_date > ($2::date - INTERVAL '30 days') AND entry_date <= $2::date
+        GROUP BY entry_date
+        HAVING ${DAILY_MOOD_VALUE_SQL} IS NOT NULL
+      )
+      SELECT
         COUNT(*)::int AS entries,
         COALESCE(AVG(mood_value), 0)::numeric AS avg_mood
-       FROM mood_entries
-       WHERE user_id = $1 AND entry_date > ($2::date - INTERVAL '30 days') AND entry_date <= $2::date`,
+      FROM daily_mood`,
       [userId, endDate]
     );
     return result.rows[0];
@@ -198,8 +206,12 @@ async function get30DaySleepAggregates(userId: string, endDate: string) {
         COUNT(*)::int AS entries,
         COALESCE(AVG(duration_in_seconds), 0)::numeric AS avg_duration_seconds,
         COALESCE(AVG(sleep_score), 0)::numeric AS avg_sleep_score
-       FROM sleep_entries
-       WHERE user_id = $1 AND entry_date > ($2::date - INTERVAL '30 days') AND entry_date <= $2::date`,
+       FROM (
+         SELECT DISTINCT ON (entry_date) duration_in_seconds, sleep_score
+         FROM sleep_entries
+         WHERE user_id = $1 AND entry_date > ($2::date - INTERVAL '30 days') AND entry_date <= $2::date
+         ORDER BY ${MAIN_SLEEP_ORDER_SQL}
+       ) main_sleep`,
       [userId, endDate]
     );
     return result.rows[0];
@@ -257,14 +269,17 @@ async function getDailyCorrelationRows(
         GROUP BY entry_date
       ),
       daily_sleep AS (
-        SELECT entry_date, duration_in_seconds, sleep_score
+        SELECT DISTINCT ON (entry_date) entry_date, duration_in_seconds, sleep_score
         FROM sleep_entries
         WHERE user_id = $1 AND entry_date >= $3::date - $2::int
+        ORDER BY ${MAIN_SLEEP_ORDER_SQL}
       ),
       daily_mood AS (
-        SELECT entry_date, mood_value
+        SELECT entry_date, ${DAILY_MOOD_VALUE_SQL} AS mood_value
         FROM mood_entries
         WHERE user_id = $1 AND entry_date >= $3::date - $2::int
+        GROUP BY entry_date
+        HAVING ${DAILY_MOOD_VALUE_SQL} IS NOT NULL
       )
       SELECT
         f.*,

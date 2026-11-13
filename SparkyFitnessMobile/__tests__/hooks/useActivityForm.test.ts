@@ -208,6 +208,48 @@ describe('activityFormReducer', () => {
     });
   });
 
+  describe('SET_CALORIES_APPLIED', () => {
+    it('stores the override without touching calories', () => {
+      const state: ActivityDraft = {
+        ...makeEmptyDraft(),
+        calories: '425',
+        caloriesManuallySet: true,
+      };
+      const result = activityFormReducer(state, {
+        type: 'SET_CALORIES_APPLIED',
+        value: '0',
+      });
+
+      expect(result.caloriesApplied).toBe('0');
+      expect(result.calories).toBe('425');
+    });
+  });
+
+  describe('getActivityDraftSubmission calories counted', () => {
+    it('sends 0 as an override and blank as no override', () => {
+      const base: ActivityDraft = {
+        ...makeEmptyDraft(),
+        exerciseId: 'ex-1',
+        exerciseName: 'Running',
+        calories: '425',
+      };
+      expect(
+        getActivityDraftSubmission({ ...base, caloriesApplied: '0' }, 'km')
+          .caloriesApplied
+      ).toBe(0);
+      expect(
+        getActivityDraftSubmission({ ...base, caloriesApplied: '' }, 'km')
+          .caloriesApplied
+      ).toBeNull();
+      expect(
+        getActivityDraftSubmission(
+          { ...base, caloriesApplied: undefined },
+          'km'
+        ).caloriesApplied
+      ).toBeNull();
+    });
+  });
+
   describe('SET_CALORIES', () => {
     it('updates calories and sets caloriesManuallySet to true', () => {
       const state = makeEmptyDraft();
@@ -579,6 +621,7 @@ describe('activityFormReducer', () => {
         exerciseName: 'Morning Run',
         durationMinutes: 45,
         caloriesBurned: 450,
+        caloriesApplied: null,
         entryDate: '2026-03-12',
         distanceKm: 10,
         avgHeartRate: 155,
@@ -610,6 +653,7 @@ describe('activityFormReducer', () => {
         exerciseName: 'Cycling',
         durationMinutes: 0,
         caloriesBurned: 0,
+        caloriesApplied: null,
         entryDate: '2026-03-12',
         distanceKm: null,
         avgHeartRate: null,

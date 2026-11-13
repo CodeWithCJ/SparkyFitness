@@ -5,12 +5,12 @@ import RouteLine from './RouteLine';
 import RouteTileMap from './RouteTileMap';
 
 interface RouteMapProps {
-  points: readonly GpsTrackPoint[];
+  points: readonly Pick<GpsTrackPoint, 'lat' | 'lon'>[];
   accessibilityLabel: string;
 }
 
 /**
- * A cardio session's route: over a real map where this build can draw one,
+ * A route (a cardio session's or a saved one): over a real map where this build can draw one,
  * otherwise as a plain line.
  */
 const RouteMap: React.FC<RouteMapProps> = (props) =>

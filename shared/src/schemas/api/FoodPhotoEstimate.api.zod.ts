@@ -1,9 +1,9 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const foodPhotoEstimateConfidenceSchema = z.enum([
-  "high",
-  "medium",
-  "low",
+  'high',
+  'medium',
+  'low',
 ]);
 
 /**
@@ -83,15 +83,15 @@ export const foodPhotoEstimateMatchSchema = z.object({
   /** 0..1, from `scoreFoodMatch`. Below MATCH_MIN_SCORE is never attached. */
   match_score: z.number().min(0).max(1),
   match_source: z.enum([
-    "exact_name",
-    "token_overlap",
-    "recent_usage",
+    'exact_name',
+    'token_overlap',
+    'recent_usage',
     /**
      * From the external provider cascade. `prompts/chatbot-full-food.md` makes
      * verified provider data preferred over an AI guess; this carries the same
      * rule into the photo flow.
      */
-    "provider",
+    'provider',
   ]),
   is_own_food: z.boolean(),
   /** False when the matched variant is measured in cups/slices/etc. */
@@ -187,17 +187,17 @@ export const foodPhotoEstimateResponseSchema = z
   .passthrough();
 
 export const foodPhotoEstimateErrorCodeSchema = z.enum([
-  "INVALID_REQUEST",
-  "IMAGE_TOO_LARGE",
-  "UNSUPPORTED_MIME_TYPE",
-  "NO_AI_CONFIGURED",
-  "UNSUPPORTED_PROVIDER",
-  "API_KEY_MISSING",
-  "CONTENT_BLOCKED",
-  "PARSE_ERROR",
-  "UPSTREAM_ERROR",
-  "PRIVATE_NETWORK_FORBIDDEN",
-  "TIMEOUT",
+  'INVALID_REQUEST',
+  'IMAGE_TOO_LARGE',
+  'UNSUPPORTED_MIME_TYPE',
+  'NO_AI_CONFIGURED',
+  'UNSUPPORTED_PROVIDER',
+  'API_KEY_MISSING',
+  'CONTENT_BLOCKED',
+  'PARSE_ERROR',
+  'UPSTREAM_ERROR',
+  'PRIVATE_NETWORK_FORBIDDEN',
+  'TIMEOUT',
 ]);
 
 export const foodPhotoEstimateErrorResponseSchema = z.object({
@@ -215,7 +215,7 @@ export type FoodPhotoEstimateMatch = z.infer<
   typeof foodPhotoEstimateMatchSchema
 >;
 export type FoodPhotoEstimateMatchSource =
-  FoodPhotoEstimateMatch["match_source"];
+  FoodPhotoEstimateMatch['match_source'];
 export type FoodPhotoEstimateItem = z.infer<typeof foodPhotoEstimateItemSchema>;
 export type FoodPhotoEstimateTotals = z.infer<
   typeof foodPhotoEstimateTotalsSchema

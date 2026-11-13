@@ -25,6 +25,10 @@ export interface ReorderSwitchRowProps {
   lastIndex: number;
   title: string;
   subtitle?: string;
+  /** Shown between the drag handle and the title, e.g. an icon tile. */
+  leading?: React.ReactNode;
+  /** Shown under the title, where `subtitle` would be, e.g. a tappable choice. */
+  detail?: React.ReactNode;
   isEnabled: boolean;
   /** Locks the switch, e.g. on the last item that must stay shown. */
   switchDisabled?: boolean;
@@ -51,6 +55,8 @@ export const ReorderSwitchRow: React.FC<ReorderSwitchRowProps> = ({
   lastIndex,
   title,
   subtitle,
+  leading,
+  detail,
   isEnabled,
   switchDisabled = false,
   onToggle,
@@ -139,6 +145,8 @@ export const ReorderSwitchRow: React.FC<ReorderSwitchRowProps> = ({
         </View>
       </GestureDetector>
 
+      {leading ? <View className="mr-3">{leading}</View> : null}
+
       <View className="flex-1 pr-3 justify-center">
         <View className="flex-row items-center">
           <Text
@@ -162,6 +170,7 @@ export const ReorderSwitchRow: React.FC<ReorderSwitchRowProps> = ({
             </Pressable>
           )}
         </View>
+        {detail ?? null}
         {subtitle ? (
           <Text
             className="text-xs text-text-secondary mt-0.5"

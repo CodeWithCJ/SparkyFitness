@@ -2,6 +2,7 @@ import express from 'express';
 import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import measurementRepository from '../models/measurementRepository.js';
+import { publicErrorMessage } from '../utils/errors.js';
 const router = express.Router();
 /**
  * @swagger
@@ -96,8 +97,7 @@ router.get('/withings/data', authenticate, async (req, res) => {
     );
     res.status(500).json({
       message: 'Error retrieving Withings data',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
+      error: publicErrorMessage(error),
     });
   }
 });

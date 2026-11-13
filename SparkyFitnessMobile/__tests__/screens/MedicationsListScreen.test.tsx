@@ -175,6 +175,14 @@ describe('MedicationsListScreen', () => {
     });
   });
 
+  it('opens the adherence overview from the list', () => {
+    const screen = setupScreen([buildMedication()]);
+
+    expect(screen.getByText('Adherence & log')).toBeTruthy();
+    fireEvent.press(screen.getByText('Adherence & log'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationAdherence');
+  });
+
   it('collapses inactive medications behind a disclosure row', () => {
     const screen = setupScreen([
       buildMedication(),

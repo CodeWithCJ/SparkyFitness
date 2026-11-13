@@ -1,4 +1,4 @@
-import { daysBetween } from "./timezone.ts";
+import { daysBetween } from './timezone.ts';
 
 /** Days since the last program workout at which easing back in is offered. */
 export const BREAK_SHORT_DAYS = 14;

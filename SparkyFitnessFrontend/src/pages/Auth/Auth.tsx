@@ -16,7 +16,11 @@ import { Zap, Loader2, Fingerprint, AlertCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import { authClient } from '@/lib/auth-client';
+import {
+  authClient,
+  followOAuthRedirect,
+  followOAuthRedirectOrThrow,
+} from '@/lib/auth-client';
 
 import { useAuth } from '@/hooks/useAuth';
 import useToggle from '@/hooks/use-toggle';
@@ -43,6 +47,7 @@ const Auth = () => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const { signIn, user: authUser, loading: authLoading } = useAuth();
+  const isOAuthFlow = new URLSearchParams(window.location.search).has('sig');
   debug(loggingLevel, 'Auth: Component rendered.');
 
   const [loading, setLoading] = useState(false);
@@ -61,10 +66,12 @@ const Auth = () => {
     useState(false);
   const [isDemoDisclaimerOpen, setIsDemoDisclaimerOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const oauthContinuationStartedRef = useRef(false);
 
   const queryClient = useQueryClient();
   const { data: loginSettings } = useAuthSettings();
   const passkeyEnabled = loginSettings?.passkey?.enabled !== false;
+  const magicLinkEnabled = loginSettings?.magic_link?.enabled !== false;
   const { mutateAsync: loginUser } = useLoginUserMutation();
   const { mutateAsync: demoLogin, isPending: isDemoLoginPending } =
     useDemoLoginMutation();
@@ -76,7 +83,21 @@ const Auth = () => {
     const fetchAuthSettings = async () => {
       // PREVENT AUTO-REDIRECT: If we already have a user or are still loading auth status
       if (authUser || authLoading) {
-        if (authUser) {
+        if (authUser && isOAuthFlow && !oauthContinuationStartedRef.current) {
+          oauthContinuationStartedRef.current = true;
+          try {
+            const { data, error: continuationError } =
+              await authClient.oauth2.continue({ postLogin: true });
+            if (continuationError) throw continuationError;
+            followOAuthRedirectOrThrow(
+              data,
+              t('auth.oauth.missingRedirectUrl')
+            );
+          } catch (reason) {
+            setFormError(getErrorMessage(reason));
+            oauthContinuationStartedRef.current = false;
+          }
+        } else if (authUser && !isOAuthFlow) {
           navigate('/');
         }
         return;
@@ -133,6 +154,8 @@ const Auth = () => {
     navigate,
     loginSettings,
     initiateOidcLogin,
+    isOAuthFlow,
+    t,
   ]);
 
   // Passkey Conditional UI (Autofill)
@@ -193,7 +216,8 @@ const Auth = () => {
         await authClient.signIn.passkey({
           autoFill: true,
           fetchOptions: {
-            onSuccess() {
+            onSuccess(ctx) {
+              if (followOAuthRedirect(ctx.data)) return;
               info(
                 loggingLevelRef.current,
                 'Auth: Passkey autofill successful.'
@@ -413,8 +437,9 @@ const Auth = () => {
     }
     setLoading(true);
     try {
-      const { error } = await authClient.signIn.passkey();
+      const { data, error } = await authClient.signIn.passkey();
       if (error) throw error;
+      if (followOAuthRedirect(data)) return;
 
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
       toast({
@@ -599,16 +624,20 @@ const Auth = () => {
                           : t('auth.signIn', 'Sign In')}
                       </Button>
                     </form>
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                    {(passkeyEnabled ||
+                      magicLinkEnabled ||
+                      loginSettings?.oidc.enabled) && (
+                      <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background px-2 text-muted-foreground">
+                            {t('auth.orSignInWith', 'Or sign in with')}
+                          </span>
+                        </div>
                       </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          {t('auth.orSignInWith', 'Or sign in with')}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                     {passkeyEnabled && (
                       <Button
                         variant="outline"
@@ -620,14 +649,16 @@ const Auth = () => {
                         {t('auth.signInWithPasskey', 'Sign in with Passkey')}
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
-                      onClick={() => setIsMagicLinkRequestDialogOpen(true)}
-                    >
-                      <Zap className="h-4 w-4 mr-2" />{' '}
-                      {t('auth.requestMagicLink', 'Request Magic Link')}
-                    </Button>
+                    {magicLinkEnabled && (
+                      <Button
+                        variant="outline"
+                        className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
+                        onClick={() => setIsMagicLinkRequestDialogOpen(true)}
+                      >
+                        <Zap className="h-4 w-4 mr-2" />{' '}
+                        {t('auth.requestMagicLink', 'Request Magic Link')}
+                      </Button>
+                    )}
                     {loginSettings?.oidc.enabled && (
                       <>
                         {loginSettings.oidc.providers?.map((provider) => (
@@ -772,11 +803,21 @@ const Auth = () => {
                       {t('auth.signInWithPasskey', 'Sign in with Passkey')}
                     </Button>
                   )}
+                  {magicLinkEnabled && (
+                    <Button
+                      variant="outline"
+                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                      onClick={() => setIsMagicLinkRequestDialogOpen(true)}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />{' '}
+                      {t('auth.requestMagicLink', 'Request Magic Link')}
+                    </Button>
+                  )}
 
                   {loginSettings?.oidc?.enabled &&
                     loginSettings.oidc.providers?.length > 0 && (
                       <>
-                        {passkeyEnabled && (
+                        {(passkeyEnabled || magicLinkEnabled) && (
                           <div className="flex items-center my-4">
                             <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
                             <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">

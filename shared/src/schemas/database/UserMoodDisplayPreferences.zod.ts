@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const userMoodDisplayPreferencesIdSchema = z.string().or(z.number());
 

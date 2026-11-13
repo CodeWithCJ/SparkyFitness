@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { FOOD_VARIANT_NUTRIENT_FIELDS } from "../../constants/foodVariantNutrients.ts";
+import { z } from 'zod';
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '../../constants/foodVariantNutrients.ts';
 
 /** GET /api/v2/medications/supplement-lookup?upc=… */
 export const supplementLookupQuerySchema = z.object({
@@ -32,13 +32,13 @@ export const supplementLookupUnmatchedSchema = z.object({
 export const supplementLookupProductSchema = z.object({
   /** `dsld` for a database label, `label` for one read from a photo, `off` for an
    * Open Food Facts product. */
-  source: z.enum(["dsld", "label", "off"]),
+  source: z.enum(['dsld', 'label', 'off']),
   sourceId: z.string(),
   name: z.string(),
   brand: z.string().nullable(),
   /** The dose form, as one of the app's supplement forms, when the label gives one. */
   form: z
-    .enum(["tablet", "capsule", "softgel", "gummy", "powder", "liquid"])
+    .enum(['tablet', 'capsule', 'softgel', 'gummy', 'powder', 'liquid'])
     .nullable(),
   /** The label's serving, such as "2 Capsule(s)". */
   serving: z.string().nullable(),

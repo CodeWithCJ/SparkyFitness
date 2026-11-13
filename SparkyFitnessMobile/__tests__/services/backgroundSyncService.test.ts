@@ -1,5 +1,6 @@
 import {
   triggerManualSync,
+  performBackgroundSync,
   flushPendingHealthSyncCacheRefresh,
 } from '../../src/services/backgroundSyncService';
 import {
@@ -29,6 +30,7 @@ jest.mock('../../src/services/api/dailySummaryApi', () => ({
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   ensureTimezoneBootstrapped: jest.fn(),
+  fetchPreferences: jest.fn(() => Promise.resolve({ energy_unit: 'kcal' })),
 }));
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({
@@ -37,6 +39,8 @@ jest.mock('../../src/services/CalorieWidgetBridge', () => ({
     reloadWidget: jest.fn(() => Promise.resolve()),
     setMacroSnapshot: jest.fn(() => Promise.resolve()),
     reloadMacroWidget: jest.fn(() => Promise.resolve()),
+    setWaterSnapshot: jest.fn(() => Promise.resolve()),
+    reloadWaterWidget: jest.fn(() => Promise.resolve()),
     isAvailable: true,
   },
 }));
@@ -184,6 +188,7 @@ jest.mock('../../src/services/healthConnectService', () => {
   };
 
   return {
+    initHealthConnect: jest.fn().mockResolvedValue(true),
     loadHealthPreference: jest.fn(),
     resetDatabaseInaccessibleCount: jest.fn(),
     getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
@@ -226,6 +231,7 @@ const storage = require('../../src/services/storage') as {
 };
 const healthService = {
   ...(require('../../src/services/healthConnectService') as {
+    initHealthConnect: jest.Mock;
     loadHealthPreference: jest.Mock;
     readHealthRecords: jest.Mock;
     readMinMaxAvgByDayDetailed: jest.Mock;
@@ -273,6 +279,14 @@ const mockReloadMacroWidget =
   CalorieWidgetBridge.reloadMacroWidget as jest.MockedFunction<
     typeof CalorieWidgetBridge.reloadMacroWidget
   >;
+const mockSetWaterSnapshot =
+  CalorieWidgetBridge.setWaterSnapshot as jest.MockedFunction<
+    typeof CalorieWidgetBridge.setWaterSnapshot
+  >;
+const mockReloadWaterWidget =
+  CalorieWidgetBridge.reloadWaterWidget as jest.MockedFunction<
+    typeof CalorieWidgetBridge.reloadWaterWidget
+  >;
 const widgetSummaryResponse: Awaited<ReturnType<typeof fetchDailySummary>> = {
   goals: {
     calories: 2100,
@@ -280,6 +294,7 @@ const widgetSummaryResponse: Awaited<ReturnType<typeof fetchDailySummary>> = {
     carbs: 220,
     fat: 70,
     dietary_fiber: 30,
+    water_goal_ml: 3000,
   },
   foodEntries: [
     {
@@ -296,7 +311,13 @@ const widgetSummaryResponse: Awaited<ReturnType<typeof fetchDailySummary>> = {
     },
   ],
   exerciseSessions: [],
-  waterIntake: 0,
+  waterIntake: 1250,
+  waterIntakeBreakdown: {
+    water_ml: 1250,
+    manual_ml: 1000,
+    ledger_ml: 1000,
+    food_ml: 250,
+  },
   stepCalories: 0,
   calorieBalance: {
     eaten: 350,
@@ -329,6 +350,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
     // identity default so per-test mockReturnValue overrides cannot leak forward
     // (the real aggregateByDay returns [] for empty input, matching identity here).
     healthService.aggregateByDay.mockImplementation((data: unknown[]) => data);
+    healthService.initHealthConnect.mockResolvedValue(true);
     api.syncHealthData.mockResolvedValue(undefined);
     storage.savePendingHealthSyncCacheRefresh.mockResolvedValue(undefined);
     storage.consumePendingHealthSyncCacheRefresh.mockResolvedValue(false);
@@ -338,6 +360,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
     mockReloadCalorieWidget.mockReset().mockResolvedValue(undefined);
     mockSetMacroSnapshot.mockReset().mockResolvedValue(undefined);
     mockReloadMacroWidget.mockReset().mockResolvedValue(undefined);
+    mockSetWaterSnapshot.mockReset().mockResolvedValue(undefined);
+    mockReloadWaterWidget.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(Platform, 'OS', {
       configurable: true,
       value: 'ios',
@@ -391,9 +415,11 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       ) as Record<string, number | string>;
       expect(caloriePayload).toMatchObject({
         date: '2024-01-15',
+        food: 350,
+        burned: 100,
         remaining: 1850,
         goal: 2100,
-        progress: 0.17,
+        progress: 0.16,
       });
       expect(mockReloadCalorieWidget).toHaveBeenCalledTimes(1);
 
@@ -412,6 +438,22 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         fatGoal: 70,
       });
       expect(mockReloadMacroWidget).toHaveBeenCalledTimes(1);
+
+      // Only the totals: the drink and the unit are the dashboard's to send,
+      // and the native side keeps the ones it last got.
+      const waterPayload = JSON.parse(
+        mockSetWaterSnapshot.mock.calls[0][0]
+      ) as Record<string, number | string>;
+      expect(waterPayload).toMatchObject({
+        date: '2024-01-15',
+        consumedMl: 1250,
+        goalMl: 3000,
+        manualMl: 1000,
+      });
+      expect(waterPayload).not.toHaveProperty('drinkMl');
+      expect(waterPayload).not.toHaveProperty('unit');
+      expect(waterPayload).not.toHaveProperty('canLog');
+      expect(mockReloadWaterWidget).toHaveBeenCalledTimes(1);
     });
 
     test('keeps a successful background sync successful when the widget refresh fails', async () => {
@@ -506,6 +548,48 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(logsMatching('Health Connect was unavailable')).toHaveLength(0);
+    });
+
+    test.each(['manual-sync', 'healthDataSync'])(
+      'initializes Health Connect before collecting health data for %s',
+      async (taskId) => {
+        storage.loadLastSyncedTime.mockResolvedValue(null);
+        healthService.loadHealthPreference.mockResolvedValue(true);
+        healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+        setAppState('background');
+
+        await performBackgroundSync(taskId);
+
+        expect(
+          healthService.initHealthConnect.mock.invocationCallOrder[0]
+        ).toBeLessThan(
+          healthService.getAggregatedStepsByDate.mock.invocationCallOrder[0]
+        );
+      }
+    );
+
+    test('leaves the sync cursor unchanged and skips reads when initialization fails', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue('2024-01-14T14:30:00Z');
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.initHealthConnect.mockResolvedValue(false);
+      setAppState('background');
+
+      await performBackgroundSync('healthDataSync');
+
+      expect(healthService.readCumulativeByDay).not.toHaveBeenCalled();
+      expect(healthService.readHealthRecords).not.toHaveBeenCalled();
+      expect(healthService.readMinMaxAvgByDayDetailed).not.toHaveBeenCalled();
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+      expect(logsMatching('initialization failed')).toHaveLength(1);
+    });
+
+    test('does not initialize Health Connect when no metrics are enabled', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(false);
+
+      await performBackgroundSync('healthDataSync');
+
+      expect(healthService.initHealthConnect).not.toHaveBeenCalled();
     });
   });
 

@@ -1,18 +1,140 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
+  SLEEP_STAGE_CLUSTER_GAP_MS,
   sleepStageMergeWindow,
   scoredStageRemaindersOutsideWindow,
 } from '../utils/sleepStageAggregates.js';
 
+/**
+ * Orders sleep rows so `DISTINCT ON (entry_date)` keeps each day's main sleep:
+ * the longest record, the earlier bedtime on a tie. A day can hold several
+ * rows (one per source, and a nap beside the night), so a per-day sleep value
+ * read this way never counts a night two sources recorded twice, nor a nap as
+ * the night.
+ *
+ * This is deliberately not the reports' `keepMostDetailedSleepEntries` rule.
+ * One value per day has to pick the night over a nap from another source,
+ * which ranking by detail could get wrong (a staged nap over an unstaged
+ * night). So when the same night's more detailed record is the shorter one,
+ * these per-day values can differ from the report's by up to the 20% that rule
+ * allows.
+ */
+export const MAIN_SLEEP_ORDER_SQL =
+  'entry_date, duration_in_seconds DESC, bedtime ASC, id';
+
+export interface SleepEntryUpsertInput {
+  id?: string;
+  entry_date: string;
+  bedtime: Date | string | null;
+  wake_time: Date | string | null;
+  duration_in_seconds: number;
+  time_asleep_in_seconds?: number | null;
+  sleep_score?: number | null;
+  source: string;
+  deep_sleep_seconds?: number | null;
+  light_sleep_seconds?: number | null;
+  rem_sleep_seconds?: number | null;
+  awake_sleep_seconds?: number | null;
+  average_spo2_value?: number | null;
+  lowest_spo2_value?: number | null;
+  highest_spo2_value?: number | null;
+  average_respiration_value?: number | null;
+  lowest_respiration_value?: number | null;
+  highest_respiration_value?: number | null;
+  awake_count?: number | null;
+  avg_sleep_stress?: number | null;
+  restless_moments_count?: number | null;
+  avg_overnight_hrv?: number | null;
+  body_battery_change?: number | null;
+  resting_heart_rate?: number | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
+  [key: string]: unknown;
+}
+
+export interface SleepStageEventInput {
+  stage_type: string;
+  start_time: Date | string;
+  end_time: Date | string;
+  duration_in_seconds: number;
+  [key: string]: unknown;
+}
+
+/** An entry handed to processSleepEntry: the upsert fields plus its stage events. */
+export interface SleepEntryInput extends SleepEntryUpsertInput {
+  bedtime: Date | string;
+  wake_time: Date | string;
+  stage_events?: SleepStageEventInput[] | null;
+}
+
+export interface SleepEntryUpsertOptions {
+  // When true, an incoming null HRV / resting heart rate keeps the stored value
+  // instead of overwriting it. Only syncs that fetch these separately from the
+  // sleep record (and can fail to) should opt in.
+  keepExistingBiometrics?: boolean;
+}
+
+/**
+ * Finds the stored entry a write for this session belongs to: same night and
+ * source, and no more than the stage cluster gap (4 hours) apart, so a re-sync
+ * or a partial fragment of a night updates it while a nap gets its own entry
+ * (#3240). The closest one wins when several qualify. Without times on either
+ * side the night and source alone decide, as before.
+ *
+ * Takes a transaction-scoped lock on the night and source first, so two
+ * overlapping writes of one session cannot both insert. Call inside a
+ * transaction.
+ */
+async function findSameSessionEntryId(
+  client: Awaited<ReturnType<typeof getClient>>,
+  userId: string,
+  entryDate: string,
+  source: string,
+  bedtime: Date | string | null | undefined,
+  wakeTime: Date | string | null | undefined
+): Promise<string | undefined> {
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtext('sleep-entry:' || $1 || ':' || $2::date::text || ':' || $3))",
+    [userId, entryDate, source]
+  );
+  const result = await client.query(
+    `SELECT id
+     FROM sleep_entries
+     WHERE user_id = $1
+       AND entry_date = $2
+       AND source = $3
+       AND (
+         $4::timestamptz IS NULL OR $5::timestamptz IS NULL
+         OR bedtime IS NULL OR wake_time IS NULL
+         OR (bedtime <= $5::timestamptz + make_interval(secs => $6)
+             AND wake_time >= $4::timestamptz - make_interval(secs => $6))
+       )
+     ORDER BY
+       COALESCE(EXTRACT(EPOCH FROM LEAST(wake_time, $5::timestamptz) - GREATEST(bedtime, $4::timestamptz)), 0) DESC,
+       updated_at DESC NULLS LAST,
+       id
+     LIMIT 1
+     FOR UPDATE`,
+    [
+      userId,
+      entryDate,
+      source,
+      bedtime ?? null,
+      wakeTime ?? null,
+      SLEEP_STAGE_CLUSTER_GAP_MS / 1000,
+    ]
+  );
+  return result.rows[0]?.id;
+}
+
 async function upsertSleepEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sleepEntryData: any
-) {
+  userId: string,
+  _actingUserId: string,
+  sleepEntryData: SleepEntryUpsertInput,
+  options: SleepEntryUpsertOptions = {}
+): Promise<{ id: string; created: boolean } & Record<string, unknown>> {
+  const keepBiometrics = options.keepExistingBiometrics === true;
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -44,13 +166,34 @@ async function upsertSleepEntry(
       record_timezone,
       record_utc_offset_minutes,
     } = sleepEntryData;
-    let sleepEntryId = id;
+    let sleepEntryId =
+      id ??
+      (await findSameSessionEntryId(
+        client,
+        userId,
+        entry_date,
+        source,
+        bedtime,
+        wake_time
+      ));
+    const created = !sleepEntryId;
     if (sleepEntryId) {
       // Attempt to update existing entry. The recording-zone columns use
       // COALESCE so a payload without zone metadata (older mobile client,
       // provider fallback branch) preserves a previously captured zone
       // instead of erasing it; clearing to NULL is only possible through
       // updateSleepEntry's explicit-null path.
+      //
+      // The measurements below are optional per source (one sends SpO2,
+      // another only HRV). A field the payload leaves out keeps its stored
+      // value, so a re-sync with less detail does not erase it; an explicit
+      // null still clears it.
+      const sentFields = Object.keys(sleepEntryData).filter(
+        (key) =>
+          sleepEntryData[key as keyof SleepEntryUpsertInput] !== undefined
+      );
+      const ifSent = (column: string, value: string) =>
+        `CASE WHEN '${column}' = ANY($28::text[]) THEN ${value} ELSE sleep_entries.${column} END`;
       const updateQuery = `
                 UPDATE sleep_entries
                 SET
@@ -65,18 +208,18 @@ async function upsertSleepEntry(
                     light_sleep_seconds = $11,
                     rem_sleep_seconds = $12,
                     awake_sleep_seconds = $13,
-                    average_spo2_value = $14,
-                    lowest_spo2_value = $15,
-                    highest_spo2_value = $16,
-                    average_respiration_value = $17,
-                    lowest_respiration_value = $18,
-                    highest_respiration_value = $19,
-                    awake_count = $20,
-                    avg_sleep_stress = $21,
-                    restless_moments_count = $22,
-                    avg_overnight_hrv = $23,
-                    body_battery_change = $24,
-                    resting_heart_rate = $25,
+                    average_spo2_value = ${ifSent('average_spo2_value', '$14')},
+                    lowest_spo2_value = ${ifSent('lowest_spo2_value', '$15')},
+                    highest_spo2_value = ${ifSent('highest_spo2_value', '$16')},
+                    average_respiration_value = ${ifSent('average_respiration_value', '$17')},
+                    lowest_respiration_value = ${ifSent('lowest_respiration_value', '$18')},
+                    highest_respiration_value = ${ifSent('highest_respiration_value', '$19')},
+                    awake_count = ${ifSent('awake_count', '$20')},
+                    avg_sleep_stress = ${ifSent('avg_sleep_stress', '$21')},
+                    restless_moments_count = ${ifSent('restless_moments_count', '$22')},
+                    avg_overnight_hrv = ${ifSent('avg_overnight_hrv', keepBiometrics ? 'COALESCE($23, sleep_entries.avg_overnight_hrv)' : '$23')},
+                    body_battery_change = ${ifSent('body_battery_change', '$24')},
+                    resting_heart_rate = ${ifSent('resting_heart_rate', keepBiometrics ? 'COALESCE($25, sleep_entries.resting_heart_rate)' : '$25')},
                     record_timezone = COALESCE($26, record_timezone),
                     record_utc_offset_minutes = COALESCE($27, record_utc_offset_minutes),
                     updated_at = CURRENT_TIMESTAMP
@@ -111,47 +254,23 @@ async function upsertSleepEntry(
         resting_heart_rate,
         record_timezone,
         record_utc_offset_minutes,
+        sentFields,
       ]);
       if (updateResult.rows.length > 0) {
         sleepEntryId = updateResult.rows[0].id;
         log('info', `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
       } else {
-        // If it was supposed to update but the ID (from param) didn't exist for this user,
-        // we fall back to insert if id was explicitly provided but not found.
-        // But in our case of sync, if we found it via existingCheck, it WILL update.
+        // An explicit id that doesn't belong to this user, or a matched
+        // session that vanished under the lock: nothing to update.
         throw new Error(`Failed to update sleep entry ${sleepEntryId}.`);
       }
     } else {
-      // One entry per user, night and source. Inserting through the unique key
-      // makes a concurrent write for the same night update it, not add another.
+      // A new session for this night and source: a nap, or a second manual
+      // session. findSameSessionEntryId holds the lock, so a concurrent write
+      // of the same session waits and then updates this row instead.
       const insertQuery = `
                 INSERT INTO sleep_entries (user_id, entry_date, bedtime, wake_time, duration_in_seconds, time_asleep_in_seconds, sleep_score, source, deep_sleep_seconds, light_sleep_seconds, rem_sleep_seconds, awake_sleep_seconds, average_spo2_value, lowest_spo2_value, highest_spo2_value, average_respiration_value, lowest_respiration_value, highest_respiration_value, awake_count, avg_sleep_stress, restless_moments_count, avg_overnight_hrv, body_battery_change, resting_heart_rate, record_timezone, record_utc_offset_minutes)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
-                ON CONFLICT (user_id, entry_date, source) DO UPDATE SET
-                    bedtime = EXCLUDED.bedtime,
-                    wake_time = EXCLUDED.wake_time,
-                    duration_in_seconds = EXCLUDED.duration_in_seconds,
-                    time_asleep_in_seconds = EXCLUDED.time_asleep_in_seconds,
-                    sleep_score = EXCLUDED.sleep_score,
-                    deep_sleep_seconds = EXCLUDED.deep_sleep_seconds,
-                    light_sleep_seconds = EXCLUDED.light_sleep_seconds,
-                    rem_sleep_seconds = EXCLUDED.rem_sleep_seconds,
-                    awake_sleep_seconds = EXCLUDED.awake_sleep_seconds,
-                    average_spo2_value = EXCLUDED.average_spo2_value,
-                    lowest_spo2_value = EXCLUDED.lowest_spo2_value,
-                    highest_spo2_value = EXCLUDED.highest_spo2_value,
-                    average_respiration_value = EXCLUDED.average_respiration_value,
-                    lowest_respiration_value = EXCLUDED.lowest_respiration_value,
-                    highest_respiration_value = EXCLUDED.highest_respiration_value,
-                    awake_count = EXCLUDED.awake_count,
-                    avg_sleep_stress = EXCLUDED.avg_sleep_stress,
-                    restless_moments_count = EXCLUDED.restless_moments_count,
-                    avg_overnight_hrv = EXCLUDED.avg_overnight_hrv,
-                    body_battery_change = EXCLUDED.body_battery_change,
-                    resting_heart_rate = EXCLUDED.resting_heart_rate,
-                    record_timezone = COALESCE(EXCLUDED.record_timezone, sleep_entries.record_timezone),
-                    record_utc_offset_minutes = COALESCE(EXCLUDED.record_utc_offset_minutes, sleep_entries.record_utc_offset_minutes),
-                    updated_at = CURRENT_TIMESTAMP
                 RETURNING id;
             `;
       const insertResult = await client.query(insertQuery, [
@@ -186,7 +305,7 @@ async function upsertSleepEntry(
       log('info', `Saved sleep entry ${sleepEntryId} for user ${userId}.`);
     }
     await client.query('COMMIT');
-    return { id: sleepEntryId, ...sleepEntryData };
+    return { ...sleepEntryData, id: sleepEntryId as string, created };
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error upserting sleep entry for user ${userId}: `, error);
@@ -504,6 +623,53 @@ async function mergeSleepStageEvents(
     log(
       'error',
       `Error merging sleep stage events for entry ${entryId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes the stages a new session's entry now holds from the other entries of
+ * that night and source. Before #3240 a nap was merged into the night's entry,
+ * so its stages sit there too; the next sync of that night gives the nap its own
+ * entry and this takes them out of the night. Returns the entries that lost
+ * stages so their aggregates can be recomputed.
+ */
+async function removeSessionStagesFromSiblingEntries(
+  userId: string,
+  entryId: string,
+  entryDate: string,
+  source: string,
+  windowStart: Date | string,
+  windowEnd: Date | string
+): Promise<string[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM sleep_entry_stages stage
+       USING sleep_entries sibling
+       WHERE stage.entry_id = sibling.id
+         AND sibling.user_id = $1
+         AND sibling.entry_date = $2
+         AND sibling.source = $3
+         AND sibling.id <> $4
+         AND stage.start_time >= $5::timestamptz
+         AND stage.end_time <= $6::timestamptz
+       RETURNING stage.entry_id`,
+      [userId, entryDate, source, entryId, windowStart, windowEnd]
+    );
+    return [
+      ...new Set<string>(
+        result.rows.map((row: { entry_id: string }) => row.entry_id)
+      ),
+    ];
+  } catch (error) {
+    log(
+      'error',
+      `Error removing session stages from sibling sleep entries of ${entryId} for user ${userId}: `,
       error
     );
     throw error;
@@ -966,12 +1132,9 @@ async function deleteSleepEntriesByEntrySourceAndDate(
   }
 }
 async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any
+  userId: string,
+  startDate: string,
+  endDate: string
 ) {
   const client = await getClient(userId);
   try {
@@ -1074,6 +1237,61 @@ async function deleteSleepEntry(userId: any, entryId: any) {
     client.release();
   }
 }
+/**
+ * Deletes a sleep entry only if it still holds no stages, atomically. Used by
+ * the nap heal path: an entry whose every stage moved to a new session would
+ * otherwise be left without a bedtime, which the session lookup treats as
+ * matching any later write of that night.
+ *
+ * Locks the entry row with FOR UPDATE before checking. A stage insert takes
+ * FOR KEY SHARE on the parent through the ON DELETE CASCADE foreign key, which
+ * conflicts with FOR UPDATE, so a concurrent stage write for this entry waits
+ * behind this check instead of landing after it and being lost to the cascade.
+ * Returns true when the entry was deleted.
+ */
+async function deleteSleepEntryIfEmpty(
+  userId: string,
+  entryId: string
+): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    await client.query('BEGIN');
+    const locked = await client.query(
+      'SELECT id FROM sleep_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [entryId, userId]
+    );
+    if (locked.rows.length === 0) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const stages = await client.query(
+      'SELECT 1 FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2 LIMIT 1',
+      [entryId, userId]
+    );
+    if (stages.rows.length > 0) {
+      await client.query('COMMIT');
+      return false;
+    }
+    await client.query(
+      'DELETE FROM sleep_entries WHERE id = $1 AND user_id = $2',
+      [entryId, userId]
+    );
+    await client.query('COMMIT');
+    log('info', `Deleted emptied sleep entry ${entryId} for user ${userId}.`);
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    log(
+      'error',
+      `Error deleting emptied sleep entry ${entryId} for user ${userId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export { upsertSleepEntry };
 export { upsertSleepStageEvent };
 export { mergeSleepStageEvents };
@@ -1083,18 +1301,21 @@ export { getSleepEntriesByUserIdAndDateRange };
 export { updateSleepEntry };
 export { deleteSleepStageEventsByEntryId };
 export { deleteSleepEntry };
+export { deleteSleepEntryIfEmpty };
 export { getSleepEntriesWithAllDetailsByUserIdAndDateRange };
 export { deleteSleepEntriesByEntrySourceAndDate };
 export default {
   upsertSleepEntry,
   upsertSleepStageEvent,
   mergeSleepStageEvents,
+  removeSessionStagesFromSiblingEntries,
   getSleepStageEventsByEntryId,
   updateSleepEntryAggregates,
   getSleepEntriesByUserIdAndDateRange,
   updateSleepEntry,
   deleteSleepStageEventsByEntryId,
   deleteSleepEntry,
+  deleteSleepEntryIfEmpty,
   getSleepEntriesWithAllDetailsByUserIdAndDateRange,
   deleteSleepEntriesByEntrySourceAndDate,
 };

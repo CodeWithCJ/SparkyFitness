@@ -85,10 +85,13 @@ module.exports = (config) => {
   return {
     type: 'watch',
     name: 'SparkyFitnessWatch',
+    // Dev builds read "DevSparkyFitness" so they differ from the production app.
+    ...(isDev ? { displayName: 'DevSparkyFitness' } : {}),
     bundleIdentifier,
-    // Reuses the phone app's adaptive icon for now — swap for a dedicated
-    // Watch icon (has its own required sizes) once the design is settled.
-    icon: '../../assets/icons/adaptiveicon.png',
+    // Its own icon: the phone's adaptive icon is a small logo on white, which
+    // reads as a white disc on the watch face. This one fills the round mask
+    // on a dark background.
+    icon: '../../assets/icons/watchicon.png',
     // watchOS 10 is the floor for the SwiftUI APIs used in this target.
     // Lower this if your physical Watch is running an older watchOS.
     deploymentTarget: '10.0',

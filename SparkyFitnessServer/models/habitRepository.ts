@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import { lockCustomMeasurementDaysWithClient } from './measurementRepository.js';
 
 // Habits are custom_categories rows with data_type = 'boolean'; completions
 // are custom_measurements rows with value 'true'/'false'. Used by the chatbot
@@ -28,6 +29,15 @@ async function upsertHabitLog(
 ) {
   const client = await getClient(userId);
   try {
+    await client.query('BEGIN');
+    // Same lock as the other custom measurement writers, so a concurrent log
+    // for this day finds the row this one inserts instead of adding another.
+    await lockCustomMeasurementDaysWithClient(
+      client,
+      userId,
+      [habitId],
+      [entryDate]
+    );
     // Check if an entry exists first to avoid ON CONFLICT errors if the
     // unique constraint is missing
     const existing = await client.query(
@@ -47,6 +57,10 @@ async function upsertHabitLog(
         [userId, habitId, value, entryDate]
       );
     }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }

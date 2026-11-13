@@ -9,6 +9,9 @@ import bmrService from '../services/bmrService.js';
 import adaptiveTdeeService from '../services/AdaptiveTdeeService.js';
 import { computeCalorieTarget } from '@workspace/shared';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/goalRepository.js');
 vi.mock('../models/weeklyGoalPlanRepository.js');
 vi.mock('../models/goalPresetRepository.js');
@@ -68,8 +71,8 @@ describe('goalService adaptive TDEE maturity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
-    ).mockResolvedValue(null);
+      weeklyGoalPlanRepository.getActiveWeeklyGoalPlansInRange
+    ).mockResolvedValue([]);
     vi.mocked(goalRepository.getGoalsInRange).mockResolvedValue([]);
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: STORED_GOAL,
@@ -151,4 +154,35 @@ describe('goalService adaptive TDEE maturity', () => {
     expect(preview.baselineTdee).toBe(ESTIMATED_BASELINE);
     expect(goal).toBe(preview.baselineTdee + OFFSET);
   });
+
+  it.each([
+    ['dynamic', true, 2000],
+    ['dynamic', false, 2540],
+    ['adaptive', true, 2540],
+  ])(
+    'selects the learned activity-free baseline only for %s with separation=%s',
+    async (mode, enabled, expected) => {
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        calorie_goal_adjustment_mode: mode,
+        goal_mode: 'maintain',
+        goal_mode_calculation_method: 'adaptive',
+        adaptive_activity_separate: enabled,
+        activity_level: 'not_much',
+        calorie_safety_floor_mode: 'disabled',
+      });
+      vi.mocked(
+        adaptiveTdeeService.calculateAdaptiveTdeeRange
+      ).mockResolvedValue({
+        [date]: {
+          tdee: 2540,
+          activityAdjustedTdee: 2000,
+          confidence: 'HIGH',
+          isFallback: false,
+          daysOfData: 28,
+          lastCalculated: date,
+        },
+      });
+      expect(await caloriesForDate()).toBe(expected);
+    }
+  );
 });

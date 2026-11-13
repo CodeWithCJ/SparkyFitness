@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import { MealType } from '../../types/mealTypes';
+import type { FamilyMealTypesResponse } from '@workspace/shared';
 
 /**
  * Fetches all meal types for the current user.
@@ -10,6 +11,21 @@ export const fetchMealTypes = async (): Promise<MealType[]> => {
     serviceName: 'Meal Types API',
     operation: 'fetch meal types',
   });
+};
+
+export const fetchFamilyMealTypes = async (
+  familyUserId: string
+): Promise<MealType[]> => {
+  const mealTypes = await apiFetch<FamilyMealTypesResponse>({
+    endpoint: `/api/meal-types/family/${encodeURIComponent(familyUserId)}`,
+    serviceName: 'Meal Types API',
+    operation: 'fetch family meal types',
+  });
+  return mealTypes.map((mealType) => ({
+    ...mealType,
+    sort_order: mealType.sort_order ?? 0,
+    created_at: mealType.created_at ?? '',
+  }));
 };
 
 /**

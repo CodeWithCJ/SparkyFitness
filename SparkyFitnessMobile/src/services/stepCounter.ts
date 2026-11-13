@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
+import { queryStatisticsForQuantity } from '@kingstinct/react-native-healthkit';
 
 import { readStepCounterSinceBoot } from '../../modules/step-counter';
 
@@ -86,6 +87,39 @@ export async function getStepsBetween(
       new Date(endMs)
     );
     return Number.isFinite(steps) && steps >= 0 ? steps : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Steps Apple Health holds over a window, from every source it merges (the
+ * Apple Watch included), or null when it has none to give: not iOS, Health
+ * access not granted for steps (Apple reports that the same as no data), or a
+ * window with no steps. Never raises a prompt. This is what covers a run
+ * recorded on the watch while the phone sat on a shelf, where the phone's own
+ * pedometer saw almost nothing.
+ */
+export async function getHealthStepsBetween(
+  startMs: number,
+  endMs: number
+): Promise<number | null> {
+  if (Platform.OS !== 'ios' || !(endMs > startMs)) return null;
+  try {
+    const stats = await queryStatisticsForQuantity(
+      'HKQuantityTypeIdentifierStepCount',
+      ['cumulativeSum'],
+      {
+        filter: {
+          date: { startDate: new Date(startMs), endDate: new Date(endMs) },
+        },
+        unit: 'count',
+      }
+    );
+    const steps = stats?.sumQuantity?.quantity;
+    return typeof steps === 'number' && Number.isFinite(steps) && steps > 0
+      ? Math.round(steps)
+      : null;
   } catch {
     return null;
   }

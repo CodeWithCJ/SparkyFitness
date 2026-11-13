@@ -5,7 +5,7 @@ import {
   type LapWindow,
   type TelemetryGpsPoint,
 } from '../services/workoutTelemetryDerivation.js';
-import type { HrSample } from '../services/hrZoneCalculator.js';
+import type { HrSample } from '@workspace/shared';
 
 const at = (seconds: number): string =>
   new Date(

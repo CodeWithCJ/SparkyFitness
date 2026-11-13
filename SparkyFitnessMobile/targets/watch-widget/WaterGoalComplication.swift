@@ -203,7 +203,11 @@ struct WaterGoalComplicationEntryView: View {
             .widgetURL(ComplicationLink.water.url)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-                "Water \(Int((max(0, min(1, entry.snapshot.progress)) * 100).rounded()))% of goal."
+                String(
+                    localized: "watch.water.accessibility",
+                    defaultValue:
+                        "Water \(Int((max(0, min(1, entry.snapshot.progress)) * 100).rounded()))% of goal."
+                )
             )
     }
 }

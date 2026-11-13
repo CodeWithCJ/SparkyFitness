@@ -9,7 +9,6 @@
 -- - Borbély, A. A. (1982) - Two process model of sleep regulation
 -- =========================================================
 
-BEGIN;
 
 -- 1. New columns on profiles table for calculated parameters
 ALTER TABLE profiles
@@ -227,4 +226,3 @@ FULL OUTER JOIN freeday_stats f ON w.user_id = f.user_id;
 
 COMMENT ON VIEW v_mctq_stats IS 'Aggregated MCTQ stats per user with ideal Sleep Need calculation';
 
-COMMIT;

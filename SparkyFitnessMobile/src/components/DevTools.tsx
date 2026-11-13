@@ -650,10 +650,12 @@ const DevTools: React.FC = () => {
         </View>
       </View>
 
-      {Platform.OS === 'ios' && (
+      {(Platform.OS === 'ios' || Platform.OS === 'android') && (
         <View className="mt-5">
           <Text className="text-sm text-text-primary">
-            {t('devTools.watch.title', { defaultValue: 'Apple Watch' })}
+            {Platform.OS === 'android'
+              ? t('devTools.watch.wearOsTitle', { defaultValue: 'Wear OS' })
+              : t('devTools.watch.title', { defaultValue: 'Apple Watch' })}
           </Text>
           <Text className="text-text-muted mb-3 text-[13px]">
             {t('devTools.watch.description', {

@@ -1,0 +1,174 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.updateAll
+import com.sparkyapps.sparkyfitness.backgroundwater.ACTION_WATER_TOTALS
+import com.sparkyapps.sparkyfitness.backgroundwater.EXTRA_ACCOUNT_EPOCH
+import com.sparkyapps.sparkyfitness.backgroundwater.EXTRA_MANUAL_ML
+import com.sparkyapps.sparkyfitness.backgroundwater.EXTRA_TOTAL_ML
+import com.sparkyapps.sparkyfitness.backgroundwater.WATER_WIDGET_PREFS
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+
+/**
+ * The water widget's receiver: the midnight and language refreshes the other
+ * widgets have, plus the day's total after a drink logged from the "Log
+ * water" shortcut or Quick Settings tile (LogWaterActivity.kt).
+ */
+class WaterWidgetReceiver : GlanceAppWidgetReceiver() {
+
+    override val glanceAppWidget: GlanceAppWidget = WaterWidget()
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_WATER_TOTALS) {
+            if (!intent.hasExtra(EXTRA_TOTAL_ML)) return
+            val total = intent.getDoubleExtra(EXTRA_TOTAL_ML, 0.0)
+            val manual = if (intent.hasExtra(EXTRA_MANUAL_ML)) intent.getDoubleExtra(EXTRA_MANUAL_ML, 0.0) else null
+            val accountEpoch =
+                if (intent.hasExtra(EXTRA_ACCOUNT_EPOCH)) intent.getLongExtra(EXTRA_ACCOUNT_EPOCH, 0L) else null
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    WidgetSnapshotLock.mutex.withLock {
+                        WaterWidgetStore.applyTotalsLocked(context, total, manual, accountEpoch)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // The app's next push brings the total.
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        if (intent.action == ACTION_MIDNIGHT_REFRESH) {
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    glanceAppWidget.updateAll(context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // The next tap or app push redraws it.
+                } finally {
+                    // The alarm fires once, so the next one is set even when
+                    // this redraw failed.
+                    try {
+                        scheduleMidnightRefresh(context)
+                    } catch (e: Exception) {
+                        // Set again at the next onUpdate.
+                    } finally {
+                        pending.finish()
+                    }
+                }
+            }
+            return
+        }
+        if (intent.action == Intent.ACTION_LOCALE_CHANGED) {
+            // Out-of-app language change (Android Settings App Languages, also
+            // device-wide). The provider XML is registered for this broadcast
+            // by the config plugin; re-render every placed instance so the
+            // localized resources / WidgetLocale context refresh immediately
+            // without the app foregrounding.
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    WidgetLocale.refreshEffectiveRenderLocaleFromBroadcast(context, intent)
+                    val manager = GlanceAppWidgetManager(context)
+                    manager.getGlanceIds(WaterWidget::class.java).forEach { id ->
+                        WidgetLocale.bumpLocaleRenderRevision(context, id)
+                    }
+                    glanceAppWidget.updateAll(context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // A system broadcast must not crash the receiver; the next
+                    // locale/snapshot refresh can retry the invalidation.
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        super.onReceive(context, intent)
+    }
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        scheduleMidnightRefresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        cancelMidnightRefresh(context)
+    }
+
+    companion object {
+        const val PREFS_NAME = WATER_WIDGET_PREFS
+        const val PREFS_KEY_SNAPSHOT = "waterSnapshot"
+        const val ACTION_MIDNIGHT_REFRESH =
+            "com.sparkyapps.sparkyfitness.widget.ACTION_WATER_MIDNIGHT_REFRESH"
+        private const val MIDNIGHT_BUFFER_MS = 1_000L
+        private const val MIDNIGHT_REQUEST_CODE = 3
+
+        fun scheduleMidnightRefresh(context: Context) {
+            if (allWidgetIds(context).isEmpty()) return
+
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                ?: return
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC,
+                nextMidnightMillis(),
+                midnightPendingIntent(context),
+            )
+        }
+
+        fun cancelMidnightRefresh(context: Context) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                ?: return
+            alarmManager.cancel(midnightPendingIntent(context))
+        }
+
+        fun allWidgetIds(context: Context): IntArray {
+            val manager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, WaterWidgetReceiver::class.java)
+            return manager.getAppWidgetIds(component)
+        }
+
+        private fun midnightPendingIntent(context: Context): PendingIntent {
+            val intent = Intent(context, WaterWidgetReceiver::class.java).apply {
+                action = ACTION_MIDNIGHT_REFRESH
+            }
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            return PendingIntent.getBroadcast(context, MIDNIGHT_REQUEST_CODE, intent, flags)
+        }
+
+        private fun nextMidnightMillis(): Long {
+            val zone = ZoneId.systemDefault()
+            val tomorrowMidnight = LocalDate.now(zone)
+                .plusDays(1)
+                .atStartOfDay(zone)
+                .toInstant()
+                .toEpochMilli()
+            return tomorrowMidnight + MIDNIGHT_BUFFER_MS
+        }
+    }
+}

@@ -33,6 +33,8 @@ export interface HistoryImportEntry {
   calories_burned?: number;
   distance?: number;
   avg_heart_rate?: number;
+  /** The person's own 1 (easy) to 10 (maximal) rating of the workout. */
+  workout_effort?: number | null;
   exercise_category?: string;
   calories_per_hour?: number;
   exercise_description?: string;
@@ -203,6 +205,8 @@ export interface HistoryGroupedExerciseEntry {
   calories_burned?: number;
   distance?: number;
   avg_heart_rate?: number;
+  /** The person's own 1 (easy) to 10 (maximal) rating of the workout. */
+  workout_effort?: number | null;
   exercise_category?: string;
   calories_per_hour?: number;
   exercise_description?: string;

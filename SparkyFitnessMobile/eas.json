@@ -27,14 +27,30 @@
       },
       "ios": {
         "resourceClass": "medium",
-        "image": "macos-tahoe-26.6-xcode-27.0"
+        "image": "macos-tahoe-26.6-xcode-27.2"
+      }
+    },
+    "wearos": {
+      "extends": "production",
+      "autoIncrement": false,
+      "android": {
+        "gradleCommand": ":wearos:bundleRelease",
+        "applicationArchivePath": "android/wearos/build/outputs/bundle/release/*.aab"
       }
     }
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "alpha"
+      },
       "ios": {
         "ascAppId": "6757314392"
+      }
+    },
+    "wearos": {
+      "android": {
+        "track": "wear:WearAlpha"
       }
     }
   }

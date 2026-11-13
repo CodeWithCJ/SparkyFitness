@@ -1,0 +1,24 @@
+{
+  "email": {
+    "passwordReset": {
+      "subject": "Redefinição de senha do SparkyFitness",
+      "intro": "Você pediu a redefinição da senha da sua conta do SparkyFitness.",
+      "actionPrompt": "Clique no link a seguir para redefinir a sua senha:",
+      "expiry": "Este link expira em {{expiresInHours}} hora.",
+      "ignoreNotice": "Se você não pediu a redefinição de senha, ignore este e-mail."
+    },
+    "mfaCode": {
+      "subject": "Seu código MFA do SparkyFitness",
+      "intro": "Seu código de autenticação multifator é:",
+      "expiry": "Este código é válido por {{expiresInMinutes}} minutos.",
+      "ignoreNotice": "Se você não pediu este código, ignore este e-mail."
+    },
+    "magicLink": {
+      "subject": "Seu link de login do SparkyFitness",
+      "intro": "Você pediu um login sem senha na sua conta do SparkyFitness.",
+      "actionPrompt": "Clique no link a seguir para entrar:",
+      "expiry": "Este link expira em {{expiresInMinutes}} minutos e só pode ser usado uma vez.",
+      "ignoreNotice": "Se você não pediu isto, ignore este e-mail."
+    }
+  }
+}

@@ -5,30 +5,30 @@
  * MuscleHeatmap) and the mobile muscle figure read this one map.
  */
 export const svgClassToSchemaName: Record<string, string> = {
-  abdominal: "abdominals",
-  obliques: "abdominals",
-  lowerback: "lower back",
-  quads: "quadriceps",
-  biceps: "biceps",
-  calves: "calves",
-  chest: "chest",
-  forearms: "forearms",
-  glutes: "glutes",
-  hamstrings: "hamstrings",
+  abdominal: 'abdominals',
+  obliques: 'abdominals',
+  lowerback: 'lower back',
+  quads: 'quadriceps',
+  biceps: 'biceps',
+  calves: 'calves',
+  chest: 'chest',
+  forearms: 'forearms',
+  glutes: 'glutes',
+  hamstrings: 'hamstrings',
   // Posterior "wings" on muscle-male.svg. The file ships them as obliques,
   // which painted ab sets onto the lats. Those paths are retagged `lats`.
-  lats: "lats",
-  shoulders: "shoulders",
-  traps: "traps",
-  triceps: "triceps",
+  lats: 'lats',
+  shoulders: 'shoulders',
+  traps: 'traps',
+  triceps: 'triceps',
 };
 
 const MUSCLE_ALIASES: Record<string, string[]> = {
-  abdominals: ["abs", "abdominal", "obliques"],
-  quadriceps: ["quads"],
-  "lower back": ["lowerback"],
-  traps: ["trapezius"],
-  lats: ["latissimus dorsi"],
+  abdominals: ['abs', 'abdominal', 'obliques'],
+  quadriceps: ['quads'],
+  'lower back': ['lowerback'],
+  traps: ['trapezius'],
+  lats: ['latissimus dorsi'],
 };
 
 export function muscleKey(name: string): string {
@@ -41,7 +41,7 @@ export function svgClassToMuscleKey(svgClass: string): string {
 
 export function setsForMuscleKey(
   key: string,
-  setsByMuscle: Record<string, number>,
+  setsByMuscle: Record<string, number>
 ): number {
   const names = new Set([key, ...(MUSCLE_ALIASES[key] ?? [])]);
   let total = 0;
@@ -52,12 +52,12 @@ export function setsForMuscleKey(
 }
 
 const DRAWN_MUSCLE_KEYS = new Set(
-  Object.keys(svgClassToSchemaName).map(svgClassToMuscleKey),
+  Object.keys(svgClassToSchemaName).map(svgClassToMuscleKey)
 );
 
 /** Largest per-path total on the body map, with aliases combined as drawn. */
 export function maxDrawnMuscleSets(
-  setsByMuscle: Record<string, number>,
+  setsByMuscle: Record<string, number>
 ): number {
   let max = 0;
   for (const key of DRAWN_MUSCLE_KEYS) {
@@ -83,7 +83,7 @@ export function figureKeyForMuscle(name: string): string | null {
 
 /** Muscles with sets that no figure path draws, largest first. */
 export function unmappedMuscleSets(
-  setsByMuscle: Record<string, number>,
+  setsByMuscle: Record<string, number>
 ): { muscle: string; sets: number }[] {
   return Object.entries(setsByMuscle)
     .filter(([name, sets]) => sets > 0 && figureKeyForMuscle(name) === null)
@@ -102,7 +102,7 @@ export function heatLevel(count: number, max: number): number {
 }
 
 /** Which drawn body the heat map shows. Both use the same region classes. */
-export type BodyFigure = "male" | "female";
+export type BodyFigure = 'male' | 'female';
 
 /**
  * The figure to start on, from the gender stored for BMR. Only a stored
@@ -110,7 +110,7 @@ export type BodyFigure = "male" | "female";
  * back to the profile.
  */
 export function defaultBodyFigure(
-  gender: string | null | undefined,
+  gender: string | null | undefined
 ): BodyFigure {
-  return gender?.trim().toLowerCase() === "female" ? "female" : "male";
+  return gender?.trim().toLowerCase() === 'female' ? 'female' : 'male';
 }

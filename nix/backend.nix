@@ -2,8 +2,8 @@
 #
 # The server has no compile step: `index.ts` is executed directly with `tsx`.
 # We therefore install the (filtered) pnpm workspace, copy the resulting tree
-# into the store and expose a small wrapper that runs `tsx index.ts` from the
-# server directory (matching the Docker image).
+# into the store and expose a small wrapper that runs `node --import tsx
+# index.ts` from the server directory (matching the Docker image).
 {
   lib,
   stdenv,
@@ -34,7 +34,7 @@ stdenv.mkDerivation (finalAttrs: {
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src pnpmWorkspaces;
     fetcherVersion = 3;
-    hash = "sha256-d/GYQVPF88vL29t7W6Cj/gGEF0KK6Lp0P7B1g1d7psU=";
+    hash = "sha256-8rWfvkY7bH4U95K3x1gbBCI4zoDBJGbnGcFEXxoPBCQ=";
   };
 
   nativeBuildInputs = [
@@ -65,11 +65,14 @@ stdenv.mkDerivation (finalAttrs: {
     mkdir -p "$appDir"
     cp -r . "$appDir/"
 
-    # Run the server exactly like the Docker image does: tsx executes the
-    # TypeScript entrypoint directly, no separate build step.
-    makeWrapper "$appDir/SparkyFitnessServer/node_modules/.bin/tsx" "$out/bin/sparkyfitness-server" \
+    # Run the server exactly like the Docker image does: node executes the
+    # TypeScript entrypoint with tsx loaded as a hook, no separate build step.
+    # Not the tsx CLI: it runs the server as a child and SIGKILLs it when it
+    # does not answer a relayed SIGTERM within ~30 ms, skipping the graceful
+    # shutdown of a busy server.
+    makeWrapper "${nodejs}/bin/node" "$out/bin/sparkyfitness-server" \
       --chdir "$appDir/SparkyFitnessServer" \
-      --add-flags "index.ts" \
+      --add-flags "--import tsx index.ts" \
       --prefix PATH : ${
         lib.makeBinPath [
           nodejs

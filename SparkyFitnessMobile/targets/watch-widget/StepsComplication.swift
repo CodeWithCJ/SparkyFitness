@@ -73,7 +73,7 @@ struct StepsComplicationView: View {
         content
             .widgetURL(ComplicationLink.steps.url)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(entry.count) of \(entry.goal) steps.")
+            .accessibilityLabel(String(localized: "watch.steps.accessibility", defaultValue: "\(entry.count) of \(entry.goal) steps."))
     }
 
     @ViewBuilder
@@ -88,7 +88,7 @@ struct StepsComplicationView: View {
                 }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Label("Steps", systemImage: "figure.walk")
+                Label(String(localized: "watch.steps.title", defaultValue: "Steps"), systemImage: "figure.walk")
                     .font(.headline)
                     .foregroundStyle(.mint)
                 Text(entry.count.formatted())
@@ -97,7 +97,7 @@ struct StepsComplicationView: View {
                 ProgressView(value: entry.progress).tint(.mint)
             }
         case .accessoryInline:
-            Label("\(entry.count.formatted()) steps", systemImage: "figure.walk")
+            Label(String(localized: "watch.steps.countLabel", defaultValue: "\(entry.count.formatted()) steps"), systemImage: "figure.walk")
         default:
             Gauge(value: entry.progress) {
                 Image(systemName: "figure.walk")

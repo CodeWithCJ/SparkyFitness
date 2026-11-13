@@ -1,9 +1,9 @@
 import type { MealFoodPayload } from './meals';
 
 export interface FoodEntryMealFood {
-  food_id: string;
+  food_id: string | null;
   food_name: string;
-  variant_id: string;
+  variant_id: string | null;
   quantity: number;
   unit: string;
   serving_size: number;

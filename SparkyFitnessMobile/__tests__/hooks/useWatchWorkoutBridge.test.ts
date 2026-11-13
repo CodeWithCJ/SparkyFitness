@@ -10,9 +10,11 @@ import {
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import {
+  getWorkout,
   updateWorkout,
   deleteWorkout,
   attachExerciseEntryWatchTelemetry,
+  setExerciseEntryEffort,
 } from '../../src/services/api/exerciseApi';
 import { addLog } from '../../src/services/LogService';
 import {
@@ -28,9 +30,11 @@ import { ApiError } from '../../src/services/api/errors';
 import { clearServerConfigCache } from '../../src/services/storage';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
+  getWorkout: jest.fn(),
   updateWorkout: jest.fn(),
   deleteWorkout: jest.fn(),
   attachExerciseEntryWatchTelemetry: jest.fn(),
+  setExerciseEntryEffort: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/invalidateExerciseCache', () => ({
@@ -86,10 +90,14 @@ jest.mock('../../modules/watch-connectivity', () => {
 const mockUpdateWorkout = updateWorkout as jest.MockedFunction<
   typeof updateWorkout
 >;
+const mockGetWorkout = getWorkout as jest.MockedFunction<typeof getWorkout>;
 const mockAttachTelemetry =
   attachExerciseEntryWatchTelemetry as jest.MockedFunction<
     typeof attachExerciseEntryWatchTelemetry
   >;
+const mockSetEffort = setExerciseEntryEffort as jest.MockedFunction<
+  typeof setExerciseEntryEffort
+>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 const mockStopWorkout = (
   jest.requireMock('../../modules/watch-connectivity') as {
@@ -173,6 +181,7 @@ function makeSession(
     description: null,
     notes: null,
     source: 'sparky',
+    revision: 1,
     total_duration_minutes: 60,
     activity_details: [],
     exercises: [
@@ -2782,6 +2791,51 @@ describe('useWatchWorkoutBridge across sessions, failures and watch finishes', (
     expect(Object.keys(celebration?.completedSetIds ?? {})).toEqual(['101']);
   });
 
+  it('fetches the server revision before stamping when a restored session lacks one', async () => {
+    const onWatchFinished = jest.fn();
+    mockUpdateWorkout.mockResolvedValue(null);
+    mockGetWorkout.mockResolvedValue({ ...makeSession(), revision: 3 });
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout({ ...makeSession(), revision: null } as any);
+    });
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+
+    expect(mockGetWorkout).toHaveBeenCalledWith('session-1');
+    expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    const [stampId, stampPayload] = mockUpdateWorkout.mock.calls[0];
+    expect(stampId).toBe('session-1');
+    expect(stampPayload.revision).toBe(3);
+    expect(getStore().sessionId).toBeNull();
+    expect(onWatchFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the phone workout open when the server has no revision for a restored session', async () => {
+    const onWatchFinished = jest.fn();
+    mockUpdateWorkout.mockResolvedValue(null);
+    mockGetWorkout.mockResolvedValue({ ...makeSession(), revision: null });
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout({ ...makeSession(), revision: null } as any);
+    });
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+
+    expect(mockGetWorkout).toHaveBeenCalledWith('session-1');
+    expect(mockUpdateWorkout).not.toHaveBeenCalled();
+    expect(getStore().sessionId).toBe('session-1');
+    expect(onWatchFinished).not.toHaveBeenCalled();
+  });
+
   it('does not report a watch finish for a stop the phone already handled', async () => {
     const onWatchFinished = jest.fn();
     renderHook(() =>
@@ -2800,5 +2854,96 @@ describe('useWatchWorkoutBridge across sessions, failures and watch finishes', (
       await Promise.resolve();
     });
     expect(onWatchFinished).not.toHaveBeenCalled();
+  });
+});
+
+describe('useWatchWorkoutBridge workout effort from the watch', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockSetEffort.mockReset();
+    mockSetEffort.mockResolvedValue(undefined);
+    mockAttachTelemetry.mockResolvedValue(undefined);
+    act(() => {
+      getStore().clearWorkout();
+    });
+  });
+
+  const batch = () =>
+    fire('onHeartRateBatch', {
+      clientId: 'hr-effort-1',
+      sessionId: 'session-1',
+      exerciseEntryId: 'ex-uuid-1',
+      samples: [
+        { t: '2026-09-17T10:00:00.000Z', bpm: 120 },
+        { t: '2026-09-17T10:00:10.000Z', bpm: 128 },
+      ],
+    });
+
+  it("files the rating on one of the session's entries once the workout has ended", async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    act(() => {
+      batch();
+    });
+    await act(async () => {
+      getStore().clearWorkout();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fire('onWorkoutEffort', { sessionId: 'session-1', rating: 8 });
+      await Promise.resolve();
+    });
+
+    expect(mockSetEffort).toHaveBeenCalledTimes(1);
+    expect(mockSetEffort).toHaveBeenCalledWith('ex-uuid-1', 8);
+  });
+
+  it('holds a rating that arrives while the workout is still live, then files it', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    act(() => {
+      batch();
+    });
+
+    await act(async () => {
+      fire('onWorkoutEffort', { sessionId: 'session-1', rating: 6 });
+      await Promise.resolve();
+    });
+    expect(mockSetEffort).not.toHaveBeenCalled();
+
+    await act(async () => {
+      getStore().clearWorkout();
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mockSetEffort).toHaveBeenCalledWith('ex-uuid-1', 6);
+  });
+
+  it('ignores a rating outside 1-10', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    act(() => {
+      batch();
+    });
+    await act(async () => {
+      getStore().clearWorkout();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fire('onWorkoutEffort', { sessionId: 'session-1', rating: 0 });
+      fire('onWorkoutEffort', { sessionId: 'session-1', rating: 11 });
+      await Promise.resolve();
+    });
+
+    expect(mockSetEffort).not.toHaveBeenCalled();
   });
 });

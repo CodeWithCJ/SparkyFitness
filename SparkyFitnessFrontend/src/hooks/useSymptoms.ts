@@ -12,6 +12,7 @@ import type {
   CreateSymptomEntryBody,
   CreateSymptomOptionBody,
   EndSymptomEpisodeBody,
+  SymptomImpact,
   SymptomOptionKind,
   UpdateSymptomDefinitionBody,
   UpdateSymptomEntryBody,
@@ -290,8 +291,15 @@ export const useEndEpisodeMutation = () => {
 export const useAddSeverityMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, severity }: { id: string; severity: number }) =>
-      symptomService.addSymptomSeverity(id, severity),
+    mutationFn: ({
+      id,
+      severity,
+      impact,
+    }: {
+      id: string;
+      severity: number;
+      impact?: SymptomImpact;
+    }) => symptomService.addSymptomSeverity(id, severity, impact),
     onSuccess: () => invalidateEntryFamily(queryClient),
     meta: {
       errorMessage: i18n.t(

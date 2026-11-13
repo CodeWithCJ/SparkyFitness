@@ -3,6 +3,8 @@ import {
   View,
   Text,
   Pressable,
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -72,6 +74,8 @@ interface SettingsRowProps {
   iconBackgroundColor?: string;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  accessibilityActions?: AccessibilityActionInfo[];
+  onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
   disabled?: boolean;
   testID?: string;
 }
@@ -87,6 +91,8 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
   iconBackgroundColor,
   accessibilityLabel,
   accessibilityHint,
+  accessibilityActions,
+  onAccessibilityAction,
   disabled,
   testID,
 }) => {
@@ -159,6 +165,8 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
       disabled={disabled}
       testID={testID}
       style={({ pressed }) =>

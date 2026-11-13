@@ -1,7 +1,9 @@
 import type React from 'react';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { parseISO, differenceInMinutes } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatTimeWithPreference } from '@/utils/timeFormatters';
 import {
   Tooltip,
   TooltipContent,
@@ -58,6 +60,7 @@ const EatingWindowBar: React.FC<EatingWindowBarProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+  const { timeFormat } = usePreferences();
 
   const start = typeof startTime === 'string' ? parseISO(startTime) : startTime;
   const end = targetEndTime
@@ -91,7 +94,7 @@ const EatingWindowBar: React.FC<EatingWindowBarProps> = ({
       <div className="flex justify-between items-center text-xs">
         <span className="text-muted-foreground font-medium">
           {t('fasting.startedAt', 'Started {{time}}', {
-            time: format(start, 'h:mm a'),
+            time: formatTimeWithPreference(start, timeFormat),
           })}
         </span>
         <span
@@ -105,7 +108,7 @@ const EatingWindowBar: React.FC<EatingWindowBarProps> = ({
         </span>
         <span className="text-muted-foreground font-medium">
           {t('fasting.closesAt', 'Closes {{time}}', {
-            time: format(end, 'h:mm a'),
+            time: formatTimeWithPreference(end, timeFormat),
           })}
         </span>
       </div>

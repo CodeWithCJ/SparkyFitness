@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  localDateTimeToUtc,
   isDayString,
   dayOfWeek,
   addDays,
   compareDays,
+  daysInRange,
   dayToPickerDate,
   localDateToDay,
   isValidTimeZone,
@@ -17,6 +19,7 @@ import {
   utcOffsetMinutesFromIsoString,
   dayToUtcRange,
   dayRangeToUtcRange,
+  instantForDay,
 } from '@workspace/shared';
 // ---------------------------------------------------------------------------
 // isDayString
@@ -82,6 +85,22 @@ describe('compareDays', () => {
     expect(compareDays('2024-01-01', '2024-01-01')).toBe(0);
     expect(compareDays('2024-01-02', '2024-01-01')).toBe(1);
     expect(compareDays('2023-12-31', '2024-01-01')).toBe(-1);
+  });
+});
+// ---------------------------------------------------------------------------
+// daysInRange
+// ---------------------------------------------------------------------------
+describe('daysInRange', () => {
+  it('lists every day from start to end inclusive, across a month end', () => {
+    expect(daysInRange('2024-02-28', '2024-03-01')).toEqual([
+      '2024-02-28',
+      '2024-02-29',
+      '2024-03-01',
+    ]);
+    expect(daysInRange('2024-05-05', '2024-05-05')).toEqual(['2024-05-05']);
+  });
+  it('is empty when end is before start', () => {
+    expect(daysInRange('2024-05-05', '2024-05-04')).toEqual([]);
   });
 });
 // ---------------------------------------------------------------------------
@@ -536,5 +555,79 @@ describe('utcOffsetMinutesFromIsoString', () => {
     expect(utcOffsetMinutesFromIsoString('2024-06-15 22:15:00-04:00')).toBe(
       -240
     );
+  });
+});
+// ---------------------------------------------------------------------------
+// instantForDay
+// ---------------------------------------------------------------------------
+describe('instantForDay', () => {
+  // 02:30 UTC on the 21st is still the evening of the 20th in Chicago (CDT).
+  const now = new Date('2026-10-21T02:30:00Z');
+
+  it('returns now when the day is today in the zone', () => {
+    expect(instantForDay('2026-10-20', 'America/Chicago', now)).toBe(now);
+  });
+  it('returns local noon for any other day, not UTC noon', () => {
+    expect(
+      instantForDay('2026-10-21', 'America/Chicago', now).toISOString()
+    ).toBe('2026-10-21T17:00:00.000Z');
+    expect(
+      instantForDay('2026-01-15', 'America/Chicago', now).toISOString()
+    ).toBe('2026-01-15T18:00:00.000Z');
+  });
+  it('lands on local noon on the days the clocks change', () => {
+    // 2026-03-08 springs forward to CDT; 2026-11-01 falls back to CST.
+    expect(
+      instantForDay('2026-03-08', 'America/Chicago', now).toISOString()
+    ).toBe('2026-03-08T17:00:00.000Z');
+    expect(
+      instantForDay('2026-11-01', 'America/Chicago', now).toISOString()
+    ).toBe('2026-11-01T18:00:00.000Z');
+  });
+  it('always falls on the requested day in the zone', () => {
+    for (const tz of [
+      'Pacific/Kiritimati',
+      'Pacific/Pago_Pago',
+      'Asia/Kolkata',
+      'UTC',
+    ]) {
+      expect(instantToDay(instantForDay('2026-06-01', tz, now), tz)).toBe(
+        '2026-06-01'
+      );
+    }
+  });
+});
+
+describe('localDateTimeToUtc on clock-change days', () => {
+  // One rule east and west of UTC: a time in the missing hour moves forward
+  // by the change, and a time in the repeated hour is its second occurrence.
+  it.each([
+    ['Europe/Berlin', '2026-03-29T02:30', '2026-03-29T01:30:00.000Z'],
+    ['America/New_York', '2026-03-08T02:30', '2026-03-08T07:30:00.000Z'],
+    ['America/Los_Angeles', '2026-03-08T02:30', '2026-03-08T10:30:00.000Z'],
+    ['Australia/Sydney', '2026-10-04T02:30', '2026-10-03T16:30:00.000Z'],
+    // A 30-minute change: 02:15 becomes 02:45.
+    ['Australia/Lord_Howe', '2026-10-04T02:15', '2026-10-03T15:45:00.000Z'],
+  ])('moves %s %s in the missing hour forward', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
+  });
+
+  it.each([
+    ['Europe/Berlin', '2026-10-25T02:30', '2026-10-25T01:30:00.000Z'],
+    ['America/New_York', '2026-11-01T01:30', '2026-11-01T06:30:00.000Z'],
+    ['America/Los_Angeles', '2026-11-01T01:30', '2026-11-01T09:30:00.000Z'],
+    ['Australia/Sydney', '2026-04-05T02:30', '2026-04-04T16:30:00.000Z'],
+    ['Australia/Lord_Howe', '2026-04-05T01:45', '2026-04-04T15:15:00.000Z'],
+  ])('takes the second occurrence of %s %s', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
+  });
+
+  it.each([
+    ['Europe/Berlin', '2026-10-25T09:30', '2026-10-25T08:30:00.000Z'],
+    ['America/New_York', '2026-11-01T09:30', '2026-11-01T14:30:00.000Z'],
+    ['Asia/Kolkata', '2026-06-01T23:59', '2026-06-01T18:29:00.000Z'],
+    ['UTC', '2026-06-01T00:00', '2026-06-01T00:00:00.000Z'],
+  ])('converts %s %s outside a change as before', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
   });
 });

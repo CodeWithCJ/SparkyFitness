@@ -1,0 +1,17 @@
+"widget.calorie.name" = "Kalori";
+"widget.calorie.description" = "Bugünkü kalori alımınız bir bakışta.";
+"widget.macro.name" = "Makrolar";
+"widget.macro.description" = "Bugünkü protein, karbonhidrat ve yağ bir bakışta.";
+"widget.kcal_left" = "kcal kaldı";
+"widget.kcal" = "kcal";
+"widget.food" = "Besin";
+"widget.burned" = "Yakılan";
+"widget.goal" = "Hedef";
+"widget.protein" = "Protein";
+"widget.carbs" = "Karbonhidrat";
+"widget.fat" = "Yağ";
+"widget.grams" = "%@ g";
+"widget.a11y.kcal_left" = "%@ kcal kaldı";
+"widget.a11y.kcal" = "%@ kcal";
+"widget.search_food" = "Besin ara";
+"widget.scan_barcode" = "Barkod tara";

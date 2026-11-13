@@ -11,6 +11,7 @@ import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { useTranslation } from 'react-i18next';
+import { dayToPickerDate } from '@workspace/shared';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
@@ -35,6 +36,12 @@ interface CalendarSheetProps {
    * day cell, so existing callers are untouched.
    */
   markedDates?: string[];
+  /**
+   * The first and last selectable days (YYYY-MM-DD); days outside are greyed
+   * out. Optional: without them every day can be picked.
+   */
+  minDate?: string;
+  maxDate?: string;
 }
 
 interface CalendarContentProps extends CalendarSheetProps {
@@ -61,6 +68,8 @@ const CalendarContent = ({
   textMuted,
   accentPrimary,
   markedDates,
+  minDate,
+  maxDate,
 }: CalendarContentProps) => {
   const { appLocale, presentation } = useCalendarPresentation();
   const { t } = useTranslation();
@@ -247,6 +256,8 @@ const CalendarContent = ({
         onMonthChange={handleMonthChange}
         onYearChange={handleYearChange}
         initialView={pickerView}
+        minDate={minDate ? dayToPickerDate(minDate) : undefined}
+        maxDate={maxDate ? dayToPickerDate(maxDate) : undefined}
         hideHeader
         locale={presentation.locale}
         firstDayOfWeek={presentation.firstDayOfWeek}
@@ -301,7 +312,7 @@ const CalendarContent = ({
 };
 
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
-  ({ selectedDate, onSelectDate, markedDates }, ref) => {
+  ({ selectedDate, onSelectDate, markedDates, minDate, maxDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
       useCSSVariable([
@@ -344,6 +355,8 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
           textMuted={textMuted}
           accentPrimary={accentPrimary}
           markedDates={markedDates}
+          minDate={minDate}
+          maxDate={maxDate}
         />
       </BottomSheetModal>
     );

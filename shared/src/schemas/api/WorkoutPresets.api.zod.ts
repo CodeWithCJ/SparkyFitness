@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
+import { z } from 'zod';
+import { exerciseModalitySchema } from './Exercises.api.zod.ts';
 
 // --- Response contracts ---
 //
@@ -35,9 +35,12 @@ export const workoutPresetExerciseResponseSchema = z.object({
   modality: exerciseModalitySchema.optional(),
   superset_group: z.number().int().nullable(),
   // Progression & Equipment Fields
-  progression_mode: z.enum(["rep_goal", "fixed", "step_load", "manual"]).nullable().optional(),
+  progression_mode: z
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .nullable()
+    .optional(),
   rep_goal: z.number().int().nullable().optional(),
-  increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+  increment_type: z.enum(['weight', 'reps']).nullable().optional(),
   increment_value: z.number().nullable().optional(),
   equipment_brand: z.string().nullable().optional(),
   /**
@@ -55,12 +58,12 @@ export const workoutPresetExerciseResponseSchema = z.object({
 });
 
 export const workoutFormatSchema = z.enum([
-  "standard",
-  "interval",
-  "tabata",
-  "amrap",
-  "emom",
-  "for_time",
+  'standard',
+  'interval',
+  'tabata',
+  'amrap',
+  'emom',
+  'for_time',
 ]);
 
 export const workoutPresetResponseSchema = z.object({
@@ -69,7 +72,7 @@ export const workoutPresetResponseSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   is_public: z.boolean().nullable(),
-  workout_format: workoutFormatSchema.default("standard"),
+  workout_format: workoutFormatSchema.default('standard'),
   time_cap_seconds: z.number().int().nullable().optional(),
   /** Absent from search results, present on list/detail responses. */
   created_at: z.string().optional(),
@@ -115,11 +118,11 @@ export const workoutPresetExerciseRequestSchema = z
     superset_group: z.number().int().nullable().optional(),
     // Progression & Equipment Fields
     progression_mode: z
-      .enum(["rep_goal", "fixed", "step_load", "manual"])
+      .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
       .nullable()
       .optional(),
     rep_goal: z.number().int().positive().nullable().optional(),
-    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_type: z.enum(['weight', 'reps']).nullable().optional(),
     increment_value: z.number().positive().nullable().optional(),
     equipment_brand: z.string().nullable().optional(),
     // Kg per working set within one session; bounded by numeric(6,2).
@@ -133,14 +136,14 @@ export const workoutPresetExerciseRequestSchema = z
   })
   .superRefine((val, ctx) => {
     if (
-      val.increment_type === "reps" &&
+      val.increment_type === 'reps' &&
       val.increment_value != null &&
       !Number.isInteger(val.increment_value)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Rep increment must be a whole number integer",
-        path: ["increment_value"],
+        message: 'Rep increment must be a whole number integer',
+        path: ['increment_value'],
       });
     }
   });
@@ -151,7 +154,7 @@ export const workoutPresetCreateRequestSchema = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   is_public: z.boolean().optional(),
-  workout_format: workoutFormatSchema.optional().default("standard"),
+  workout_format: workoutFormatSchema.optional().default('standard'),
   time_cap_seconds: z.number().int().positive().nullable().optional(),
   exercises: z.array(workoutPresetExerciseRequestSchema).default([]),
 });

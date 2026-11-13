@@ -7,7 +7,6 @@ import exerciseEntryRepository, {
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
-import userRepository from '../models/userRepository.js';
 import { parseISO, isValid } from 'date-fns';
 import {
   instantToDay,
@@ -17,10 +16,12 @@ import {
   type AttachExerciseEntryDistanceSeriesRequest,
   type HeartRateSampleRequest,
   type SetExerciseEntryDistanceRequest,
+  type SetExerciseEntryEffortRequest,
 } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { describeError } from '../utils/errors.js';
+import { attachWeatherToExerciseEntry } from './weatherService.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import {
@@ -30,10 +31,13 @@ import {
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
 import {
-  computeHrZones,
-  resolveMaxHr,
+  computeTimeInZones,
+  bucketsFromAppleWorkoutZones,
+  appleWorkoutZonesFromWire,
+  observedMaxBpm,
   type HrSample,
-} from './hrZoneCalculator.js';
+} from '@workspace/shared';
+import heartRateZoneService from './heartRateZoneService.js';
 async function importExerciseEntriesFromCsv(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -261,11 +265,17 @@ async function importExerciseEntriesFromCsv(
  * HealthKit/Health Connect/Garmin sync path (healthDataHandlers.ts's
  * persistWorkoutTelemetry), this never creates the entry itself, so it
  * recomputes the zone breakdown directly with the same hrZoneCalculator
- * rather than routing through that entry-creating function.
+ * rather than routing through that entry-creating function. Apple's own
+ * zone group, when the watch sends one, is stored instead: those seconds
+ * already include time below the first boundary, which the calculator drops.
  *
  * `activeEnergyKcal` overwrites `calories_burned`, which the server otherwise
  * derives from duration and sets. A watch on the wearer's wrist measured it;
  * the derivation is a formula, so the measurement wins.
+ *
+ * `seriesSource` names the provider the stored heart rate series is kept
+ * under; the Google Health sync passes its own name when it attaches a
+ * tracker's readings to a workout logged in SparkyFitness.
  */
 async function attachWatchTelemetryToExerciseEntry(
   userId: string,
@@ -273,7 +283,10 @@ async function attachWatchTelemetryToExerciseEntry(
   exerciseEntryId: string,
   hrSamples: HeartRateSampleRequest[] | undefined,
   activeEnergyKcal?: number,
-  durationMinutes?: number
+  durationMinutes?: number,
+  appleZones?: unknown,
+  strideLengthCm?: number | null,
+  seriesSource = 'SparkyFitness Watch'
 ): Promise<void> {
   // Fail closed: family/delegate diary *read* can SELECT another user's
   // entry via RLS, but this route must not 204 after an UPDATE that
@@ -322,24 +335,40 @@ async function attachWatchTelemetryToExerciseEntry(
   if (typeof durationMinutes === 'number' && durationMinutes > 0) {
     fields.duration_minutes = Math.round(durationMinutes * 100) / 100;
   }
+  if (strideLengthCm !== undefined) {
+    fields.stride_length_cm = strideLengthCm;
+  }
 
-  // Zones need the series; a calories-only post has nothing to bucket.
-  // Stale-snapshot rejection (and the zone write) happens under FOR UPDATE
-  // inside applyWatchTelemetryAtomically so two in-flight flushes cannot
-  // both pass the check against the same pre-lock row. The series write is
-  // the same hook: it runs only when that snapshot was accepted, and before
-  // the lock is released, so an older flush cannot store samples afterwards.
+  // Apple's finished-workout zones win over a fresh bucketing of the series.
+  // They are the whole session, so the write also clears the other exercises
+  // of that session; otherwise the workout chart would add them on top.
   let zones: WatchTelemetryZoneSpec[] | null = null;
-  if (hrSamples && hrSamples.length > 0) {
+  let sessionZones = false;
+  const deviceZones = bucketsFromAppleWorkoutZones(
+    appleWorkoutZonesFromWire(appleZones)
+  );
+  if (deviceZones) {
+    sessionZones = true;
+    zones = deviceZones.map((zone) => ({
+      ...zone,
+      zone_method: 'device' as const,
+    }));
+  } else if (hrSamples && hrSamples.length > 0) {
     const samples: HrSample[] = hrSamples;
-    // The same date of birth the sync path reads (healthDataHandlers.ts's
-    // persistWorkoutTelemetry). Without it this path fell back to the observed
-    // sample max, so one user's zones depended on where the workout came from:
-    // a 55-year-old got a 190 ceiling from the wrist and 176 from a synced
-    // copy of the same session, shifting every zone floor between them.
-    const profile = await userRepository.getUserProfile(userId);
-    const { maxHr } = resolveMaxHr(profile?.date_of_birth, samples);
-    zones = computeHrZones(samples, maxHr);
+    // The same resolution the sync path uses (healthDataHandlers.ts's
+    // persistWorkoutTelemetry): the person's own max heart rate or their date
+    // of birth. Without it this path fell back to the observed sample max, so
+    // one user's zones depended on where the workout came from: a 55-year-old
+    // got a 190 ceiling from the wrist and 176 from a synced copy of the same
+    // session, shifting every zone floor between them.
+    const resolved = await heartRateZoneService.resolveZonesForUser(
+      userId,
+      observedMaxBpm(samples)
+    );
+    zones = computeTimeInZones(samples, resolved.floors).map((zone) => ({
+      ...zone,
+      zone_method: resolved.effectiveMethod,
+    }));
   }
 
   if (hrSamples && hrSamples.length > 0) {
@@ -351,7 +380,14 @@ async function attachWatchTelemetryToExerciseEntry(
       fields,
       zones,
       () =>
-        storeHeartRateSeries(userId, actingUserId, exerciseEntryId, accepted)
+        storeHeartRateSeries(
+          userId,
+          actingUserId,
+          exerciseEntryId,
+          accepted,
+          seriesSource
+        ),
+      sessionZones
     );
   } else {
     await exerciseEntryRepository.applyWatchTelemetryAtomically(
@@ -359,7 +395,9 @@ async function attachWatchTelemetryToExerciseEntry(
       userId,
       actingUserId,
       fields,
-      zones
+      zones,
+      undefined,
+      sessionZones
     );
   }
 }
@@ -376,7 +414,8 @@ async function storeHeartRateSeries(
   userId: string,
   actingUserId: string,
   exerciseEntryId: string,
-  hrSamples: HeartRateSampleRequest[]
+  hrSamples: HeartRateSampleRequest[],
+  source: string
 ): Promise<void> {
   try {
     const tz = await loadUserTimezone(userId);
@@ -387,7 +426,7 @@ async function storeHeartRateSeries(
       userId,
       actingUserId,
       'heart_rate',
-      'SparkyFitness Watch',
+      source,
       valid.map((s) => ({
         entry_date: instantToDay(s.t, tz),
         timestamp: new Date(s.t),
@@ -547,6 +586,15 @@ async function attachGpsTrackToExerciseEntry(
   } finally {
     client.release();
   }
+
+  // After the response's own work is done and without waiting on it: a slow
+  // weather service must not hold up saving a run. It never throws.
+  const first = points[0]!;
+  void attachWeatherToExerciseEntry(userId, exerciseEntryId, {
+    lat: first.lat,
+    lon: first.lon,
+    t: first.t,
+  });
 }
 
 /**
@@ -730,6 +778,19 @@ async function setExerciseEntryDistance(
   const client = await getClient(userId, actingUserId);
   try {
     await client.query('BEGIN');
+    // The laps and pace chart are scaled from the distance being replaced,
+    // so read it under the row lock: another correction or edit that commits
+    // in between would otherwise be scaled from a value it already changed.
+    const locked = (await client.query(
+      'SELECT distance FROM exercise_entries WHERE id = $1 FOR NO KEY UPDATE',
+      [exerciseEntryId]
+    )) as { rows: { distance: string | null }[] };
+    if (locked.rows.length === 0) {
+      const error = new Error('Exercise entry not found.');
+      // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
+      error.status = 404;
+      throw error;
+    }
     // A route gives the distance; overriding it would leave the track, the
     // splits and the entry disagreeing.
     const track = (await client.query(
@@ -744,7 +805,7 @@ async function setExerciseEntryDistance(
       error.status = 409;
       throw error;
     }
-    const previousKm = Number(entry.distance) || 0;
+    const previousKm = Number(locked.rows[0]!.distance) || 0;
     await client.query(
       'UPDATE exercise_entries SET distance = $2, updated_at = NOW() WHERE id = $1',
       [exerciseEntryId, body.distance_km]
@@ -787,6 +848,44 @@ async function setExerciseEntryDistance(
   }
 }
 
+/**
+ * Records how hard the person rated a workout. An entry that belongs to a
+ * preset session (a strength workout) carries it for every entry of that
+ * session, so the rating reads the same from whichever exercise is opened.
+ */
+async function setExerciseEntryEffort(
+  userId: string,
+  actingUserId: string,
+  exerciseEntryId: string,
+  body: SetExerciseEntryEffortRequest
+): Promise<void> {
+  const ownerId = await exerciseEntryRepository.getExerciseEntryOwnerId(
+    exerciseEntryId,
+    userId
+  );
+  if (!ownerId || ownerId !== userId) {
+    const error = new Error('Exercise entry not found.');
+    // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
+    error.status = 404;
+    throw error;
+  }
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query(
+      `UPDATE exercise_entries SET workout_effort = $2, updated_at = NOW()
+       WHERE user_id = $3
+         AND (id = $1
+           OR (exercise_preset_entry_id IS NOT NULL
+             AND exercise_preset_entry_id = (
+               SELECT exercise_preset_entry_id FROM exercise_entries
+               WHERE id = $1 AND user_id = $3)))`,
+      [exerciseEntryId, body.rating, userId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
 export {
   importExerciseEntriesFromCsv,
   attachWatchTelemetryToExerciseEntry,
@@ -795,6 +894,7 @@ export {
   attachDistanceSeriesToExerciseEntry,
   getExerciseEntryDistanceSeries,
   setExerciseEntryDistance,
+  setExerciseEntryEffort,
 };
 export default {
   importExerciseEntriesFromCsv,
@@ -804,4 +904,5 @@ export default {
   attachDistanceSeriesToExerciseEntry,
   getExerciseEntryDistanceSeries,
   setExerciseEntryDistance,
+  setExerciseEntryEffort,
 };

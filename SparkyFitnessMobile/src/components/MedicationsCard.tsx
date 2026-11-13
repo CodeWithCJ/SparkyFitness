@@ -15,13 +15,14 @@ import {
 } from '../hooks/useMedications';
 import { usePreferences } from '../hooks/usePreferences';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getDueDosesForDate, formatDose } from '@workspace/shared';
+import { getDueDosesForDate } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
 
-import { medicationTypeLabel } from '../utils/medicationLocalization';
+import { medicationDoseSubtitle } from '../utils/medicationLocalization';
 import { doseSlotStatus } from '../utils/medications';
+import { selectPrnMedications } from '../utils/medicationAdherence';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Dashboard'>,
@@ -31,11 +32,6 @@ type MedicationsCardNavigation = CompositeNavigationProp<
 interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
-
-const typeLabelFor = (
-  typeId: string | null,
-  t: Parameters<typeof medicationTypeLabel>[1]
-): string => medicationTypeLabel(typeId, t);
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const { t } = useTranslation();
@@ -63,14 +59,10 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     return getDueDosesForDate(medications, selectedDate, getDeviceTimezone());
   }, [medications, selectedDate]);
 
-  const prnMeds = useMemo(() => {
-    if (!medications) return [];
-    return medications.filter((med) => {
-      if (!med.is_active) return false;
-      if (!med.schedules || med.schedules.length === 0) return true;
-      return med.schedules.some((s) => s.schedule_type_id === 'prn');
-    });
-  }, [medications]);
+  const prnMeds = useMemo(
+    () => selectPrnMedications(medications ?? []),
+    [medications]
+  );
 
   if (isLoadingMeds || isLoadingEntries) {
     return (
@@ -116,12 +108,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
       {dueDoses.map((due) => {
         const med = due.medication;
-        const subtitle = [
-          typeLabelFor(med.type_id, t),
-          formatDose(med, due.schedule),
-        ]
-          .filter(Boolean)
-          .join(' · ');
+        const subtitle = medicationDoseSubtitle(med, due.schedule, t);
         return (
           <DoseRow
             key={`${med.id}-${due.schedule.id}`}
@@ -156,9 +143,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
               e.status === 'prn_taken' &&
               e.entry_date === selectedDate
           ).length ?? 0;
-        const subtitle = [typeLabelFor(med.type_id, t), formatDose(med)]
-          .filter(Boolean)
-          .join(' · ');
+        const subtitle = medicationDoseSubtitle(med, undefined, t);
         return (
           <DoseRow
             key={med.id}

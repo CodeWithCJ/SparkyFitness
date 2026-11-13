@@ -1,4 +1,8 @@
-import cron, { type ScheduledTask } from 'node-cron';
+import {
+  isValidCronExpression,
+  scheduleJob,
+  type ScheduledTask,
+} from './scheduledJobs.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
 import { performBackup, applyRetentionPolicy } from './backupService.js';
 import { log } from '../config/logging.js';
@@ -59,7 +63,7 @@ const readBackupExpression = async (): Promise<string | null> => {
     settings.backup_time ?? '02:00',
     settings.backup_days ?? []
   );
-  if (!cron.validate(expr)) {
+  if (!isValidCronExpression(expr)) {
     throw new Error(
       `[CRON] Invalid backup cron expression: ${expr} — cannot schedule`
     );
@@ -76,7 +80,8 @@ const applyBackupExpression = (expr: string | null): void => {
   const newTask =
     expr === null
       ? null
-      : cron.schedule(
+      : scheduleJob(
+          'backup',
           expr,
           async () => {
             const result = await performBackup();
@@ -108,7 +113,8 @@ export const scheduleBackupsOnStartup = async (): Promise<void> => {
   // When the web instances leave jobs to this one, a schedule saved there only
   // reaches this instance through this re-check.
   if (!settingsRecheckTask) {
-    settingsRecheckTask = cron.schedule(
+    settingsRecheckTask = scheduleJob(
+      'backup-settings-recheck',
       SETTINGS_RECHECK_CRON,
       async () => {
         try {
@@ -117,7 +123,7 @@ export const scheduleBackupsOnStartup = async (): Promise<void> => {
           log('error', '[CRON] Failed to re-check backup settings:', err);
         }
       },
-      { noOverlap: true, timezone: 'UTC' }
+      { noOverlap: true, timezone: 'UTC', local: true }
     );
   }
 };

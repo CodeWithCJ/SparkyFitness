@@ -17,12 +17,10 @@ This directory contains all GitHub Actions workflows for the SparkyFitness proje
 - Detects which components changed using path filters
 - Runs component-specific test suites:
   - **Frontend**: `pnpm run validate` + `pnpm run test:ci` (type check, lint, format, tests)
-  - **Backend**: Format check, lint, tests (currently disabled)
+  - **Backend**: Format check, lint, tests
   - **Mobile**: Lint + `pnpm run test:ci`
   - **Garmin**: Python pytest with coverage
 - Uploads coverage reports as artifacts
-
-**Note**: Backend tests are currently disabled (`if: false`) per maintainer request.
 
 ---
 
@@ -38,9 +36,13 @@ This directory contains all GitHub Actions workflows for the SparkyFitness proje
 - Validates required checkboxes based on change type:
   - **All PRs**: Integrity & License checkbox
   - **New Features**: Alignment checkbox (issue approval)
-  - **Frontend Changes**: Quality checkbox (`pnpm run validate`)
-  - **Backend Changes**: Code Quality checkbox (TypeScript, Zod, Tests)
-  - **UI Changes**: Screenshots checkbox with before/after images
+  - **Mobile Changes**: Tested on device or emulator checkbox
+  - **UI Changes**: If the Validation proof checkbox is ticked, the body must contain an image or video
+  - **AI assistance**: exactly one of four review-depth options. The last two (partly understood / tested only) add the neutral `needs-extra-review` label, which is add-only. Owner and bots are exempt.
+- Enforces the PR title prefix (`feat:`, `fix:`, `docs:`, ...), because labels and the changelog are built from it
+- Fails PRs that touch more than one SQL migration under `SparkyFitnessServer/db/migrations/` (one idempotent migration per PR)
+- Warns when a migration creates a table but `rls_policies.sql` was not updated
+- Typecheck, lint, format, knip and tests are not checkbox items; `ci-tests.yml` enforces them
 - Posts validation results as a comment on the PR
 - Fails the check if required checkboxes are missing
 - Updates the same comment on subsequent edits (no spam)
@@ -61,11 +63,13 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 - ❌ **ERRORS** (fail the check):
   - Missing "Integrity & License" checkbox (ALL)
   - Missing "Alignment" checkbox (NEW FEATURES)
-  - Missing "Quality" checkbox (FRONTEND)
-  - Missing "Code Quality" checkbox (BACKEND)
+  - Missing "Tested on device or emulator" checkbox (MOBILE)
+  - Missing or unknown PR title prefix
+  - More than one SQL migration file in the PR
+  - Zero or more than one "AI assistance" option ticked
+  - "Validation proof" ticked but no image or video in the body
 - ⚠️ **WARNINGS** (informational):
-  - Missing "Screenshots" checkbox (UI)
-  - Missing/incomplete screenshots sections
+  - Migration creates a table without an `rls_policies.sql` change
   - Missing description
   - Missing linked issue
 
@@ -87,9 +91,19 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 - Re-formats the JSON version files on the release PR branch with Prettier, since release-please writes them with plain `JSON.stringify`
 - When the release PR is merged, creates a **draft** release and its tag, and replaces the body with `.github/release-preamble.md` + GitHub's generated notes (the same body `draft-release.yml` builds)
 
-Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below run on that publish, as before.
+Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below start on that publish, but the Docker images and the Android build wait for a maintainer to approve them in the `release` environment (Actions tab, **Review deployments**). The Helm chart, the Umbrel package PR and the release notifications follow once the Docker images are pushed; the Helm chart waits for a second approval in the same environment. The Umbrel App Store submission also waits for approval, after its package PR is merged.
 
-Config lives in `release-please-config.json`; the current version in `.release-please-manifest.json`. By default it runs with `GITHUB_TOKEN`, so CI does not run on the release PR. Set a `RELEASE_PLEASE_TOKEN` secret (PAT or GitHub App token with `contents` and `pull-requests` write) to get CI on it.
+**Release order**: the tag is created on the release PR's merge commit, and the workflows that build the release (Docker images, Android APK, release assets, Helm chart, docs) check out that tag. Anything merged after the release PR misses the release, even if the draft is published later. Before merging it:
+
+1. In Weblate, commit the pending translations (repository maintenance), so the last day of work reaches SparkyFitnessTranslations.
+2. Run **Sync Translations** from `main` (it also runs every night), wait for it to finish, and merge its `chore(i18n): sync translations from Weblate` PR if one is open. If the summary shows that the translations PR step failed, fix the cause and run it again. "Unchanged" with no PR means there is nothing to merge, and a failure on the English PR does not block this step.
+3. Wait for CI and Release Please on `main` to finish.
+4. Merge the release PR and wait for its Release Please run to finish, because it rewrites the draft's body. Then add the Key Highlights and publish the draft.
+5. In the Actions tab, approve the waiting `release` deployments of **Publish Docker Images** and **Build Android APK**. Approve only runs you started: the environment's secrets sign the app and push the images.
+
+The `pull-request-header` in `release-please-config.json` repeats these steps at the top of the release PR. It is missing when the release notes are too long for a PR body, because release-please then replaces the whole body with a link to them.
+
+Config lives in `release-please-config.json`; the current version in `.release-please-manifest.json`. It runs with the SparkyFitness-Sync app token from the `sync-app` environment (only `main` can use it), so CI runs on the release PR. The app is the only actor besides admins that the `Release tags` ruleset lets create, move or delete `v*` tags, so a workflow pushed on another branch cannot mint a release tag with `GITHUB_TOKEN`. Its version-file formatting runs with no token on disk; only the push after it gets the token.
 
 ---
 
@@ -105,9 +119,11 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 #### `auto-docker-deploy.yml`
 
-**Purpose**: Automatically deploy Docker images on version tag pushes
+**Purpose**: Build and push the Docker images for a release
 
-**Triggers**: Push of tags matching `v*.*.*`
+**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. A run from a tag names the images after that tag. Only the newest release moves the `latest` tag, so approving an older release's run late, or dispatching an older tag, does not move it back.
+
+**Requires**: `DOCKER_USERNAME`, `DOCKER_PASSWORD` and `GHCR_TOKEN` in the `release` environment. See [GHCR publishing](#ghcr-publishing).
 
 ---
 
@@ -115,7 +131,7 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Manual Docker deployment workflow
 
-**Triggers**: Manual workflow dispatch
+**Triggers**: Manual workflow dispatch, from `main` or a `v*` tag only. Its job runs in the `release` environment and waits for a maintainer's approval; a dispatch from any other branch fails before it can read the Docker Hub or GHCR credentials.
 
 ---
 
@@ -123,7 +139,20 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Create Helm chart releases
 
-**Triggers**: Release publication
+**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, and manual workflow dispatch (pushes a `0.0.0-dev` chart). It waits for the images rather than running on `release: published`, so the chart never points at image tags that do not exist yet. Its job runs in the `release` environment, so it waits for a maintainer's approval and a dispatch from a branch other than `main` cannot push a chart.
+
+**Requires**: `GHCR_TOKEN` in the `release` environment. See [GHCR publishing](#ghcr-publishing).
+
+#### GHCR publishing
+
+The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, but that alone does not stop a workflow pushed on another branch from asking for it. **Required setup**, on each package's **Package settings** page (`sparkyfitness-frontend`, `-server`, `-garmin`, `-mcp`, `charts/sparkyfitness`):
+
+- **Manage Actions access**: set this repository's role to **Read**, or remove it. Only then can `GITHUB_TOKEN` not push the package.
+- **Inherited access**: untick **Inherit access from source repository**. While it is ticked, everyone with write access to this repository, including collaborators, can push the package directly with their own token, with no workflow or approval. Unticking it copies those people into **Manage access** with their roles, so then **Remove** each of them there; the list should end up empty, since the owning account needs no entry.
+
+Check both again after adding a package: a new package starts with inherited access unless the account's default package setting has it unticked.
+
+Create the token at <https://github.com/settings/tokens/new?scopes=write:packages> (that link leaves `repo` unticked; ticking `write:packages` by hand ticks `repo` too, which this token must not have). Rotate it before it expires, or the next release's pushes fail at the GHCR login.
 
 ---
 
@@ -160,7 +189,7 @@ Submitting to the App Store is a separate workflow (`umbrel-app-submit.yml`) tha
 
 The initial App Store submission stays manual (see `umbrel/README.md`): `submission:` has to name a PR that doesn't exist yet, and the Umbrel team wants screenshots on it. This workflow only ever patches a package that already exists upstream, so it is a no-op until that first PR has been merged by the Umbrel team.
 
-**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope). Without it, the step is skipped with a warning.
+**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope) in the `release` environment, so the job waits for a maintainer's approval. Do not keep a repository-level copy: a workflow pushed on any branch can read repository secrets. Without it, the step is skipped with a warning.
 
 ---
 
@@ -188,7 +217,7 @@ The initial App Store submission stays manual (see `umbrel/README.md`): `submiss
 
 **Purpose**: Build the signed Android APK and AAB and attach them to the release
 
-**Triggers**: Release publication, and manual workflow dispatch. A manual dispatch only attaches the APK and AAB when run against a release tag; from a branch it builds them without uploading. Not the `v*` tag push: `release-please.yml` creates the tag with the draft, before the release is approved.
+**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, which holds the signing keystore and Maps key, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. A manual dispatch creates or updates the `v<version>` release with the APK and AAB, so it is not a dry run. Not the `v*` tag push: `release-please.yml` creates the tag with the draft, before the release is approved.
 
 ---
 
@@ -214,33 +243,46 @@ The initial App Store submission stays manual (see `umbrel/README.md`): `submiss
 
 **Purpose**: Bidirectional sync with [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations), the repository Weblate is connected to. Pushes the English sources out and pulls every other language back, opening one PR on each side (`i18n/update-english-locales` there, `i18n/sync-weblate-translations` here).
 
-Five Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
+Six Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
 
-| Component | In the translations repo | In this repo |
-| --- | --- | --- |
-| Web | `locales/` | `SparkyFitnessFrontend/public/locales/` |
-| Mobile runtime | `mobile/src/localization/locales/` | `SparkyFitnessMobile/src/localization/locales/` |
-| Mobile Expo metadata | `mobile/locales/` | `SparkyFitnessMobile/locales/` |
+| Component              | In the translations repo             | In this repo                                      |
+| ---------------------- | ------------------------------------ | ------------------------------------------------- |
+| Web                    | `locales/`                           | `SparkyFitnessFrontend/public/locales/`           |
+| Server                 | `server/locales/`                    | `SparkyFitnessServer/locales/`                    |
+| Mobile runtime         | `mobile/src/localization/locales/`   | `SparkyFitnessMobile/src/localization/locales/`   |
+| Mobile Expo metadata   | `mobile/locales/`                    | `SparkyFitnessMobile/locales/`                    |
 | Mobile Android widgets | `mobile/targets/android-widget/res/` | `SparkyFitnessMobile/targets/android-widget/res/` |
-| Mobile iOS widgets | `mobile/targets/widget/` | `SparkyFitnessMobile/targets/widget/` |
+| Mobile iOS widgets     | `mobile/targets/widget/`             | `SparkyFitnessMobile/targets/widget/`             |
 
 A mobile surface missing from the translations repo is skipped with a notice, so the workflow is safe to run before all the components exist; the push side seeds each English source on the first run. `pr-validation.yml` rejects a human PR that edits any non-`en` translation file.
 
 Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled. The widget resources are the exception to "sync in": Android compiles every `values-*` directory and the iOS widget target ships every `.lproj` folder, so those two surfaces are pulled for registered locales only and a candidate's widget arrives on the sync after it is registered.
 
-**Triggers**: Manual workflow dispatch only. Requires the `TRANSLATIONS_PAT` secret.
+The workflow merges the English PR there itself, unless it deletes more than 300 lines: once a key leaves the English file, Weblate's cleanup add-on deletes its translations in every language, so a large deletion waits for a maintainer, and the run fails until someone merges it. The PR here is opened as the SparkyFitness-Sync GitHub App, so CI runs on it and `auto-merge-bot-prs.yml` merges it once CI passes. If it is still open when the release PR is ready, merge it first (see `release-please.yml` above). Every run rebuilds both branches, so fix a wrong translation in Weblate, not on the sync branch. The translations repository is treated as untrusted input: the run fails if the copy brings in anything but `.json`, `widget_strings.xml` and `Localizable.strings` files or any symbolic link, Prettier always uses this repository's config (a config file found next to a synced file would be code), and the app token is created only after those steps.
+
+**Triggers**: Every night at 21:41 UTC, and manual workflow dispatch. It runs from `main` only, and the nightly run only in `CodeWithCJ/SparkyFitness`. Requires the `SYNC_APP_PRIVATE_KEY` secret (in the `sync-app` environment) of the SparkyFitness-Sync GitHub App, whose Client ID is written in the workflows, which is installed on both repositories (Contents and Pull requests write, Checks and Commit statuses read) and is on the bypass list of `main`'s ruleset. GitHub sends notifications for scheduled runs only to the user who last modified the `cron` line.
 
 ---
 
 #### `auto-merge-bot-prs.yml`
 
-**Purpose**: Automatically and safely merges clean automated PRs for Translations (`i18n/*`) and Nix hashes (`nix/*`) once all CI checks pass. If there are any merge conflicts, the PR is held untouched for manual review.
+**Purpose**: Automatically and safely merges the clean translations PR (`i18n/*`) once all CI checks pass. The Nix hashes and schema backup PRs merge themselves in their own workflows (below). If there are any merge conflicts, the PR is held untouched for manual review.
 
-Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** in the allowlist, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` and `'umbrel'` to `ALLOWED_LABELS` only if that gate should be removed.
+It merges with the SparkyFitness-Sync GitHub App token (`SYNC_APP_PRIVATE_KEY`), because `main`'s ruleset requires a review and only the app is on its bypass list. Since that token skips review, a PR qualifies only by its branch prefix, which needs write access to push, and not by a label, which anyone with triage access can add. Every changed file must also match the allowlist in `.github/scripts/automation-allowlist.cjs` (non-English locale files only, listed with the compare API at the exact head merged). The `i18n automation branches` ruleset lets only the app and admins create or push `i18n/**` branches, so a write collaborator cannot push onto the sync branch at all. Web catalogues may put no attributes in a tag (`<Trans>` lets them override a link's `href`, `target` and `rel`), and server email catalogues must be plain text with no HTML tags; mobile shows values as plain text and is not subject to the attribute check. A value that adds a link, web address or email (one that neither its English text nor its version on `main` has) holds the PR for manual review in any catalogue, mobile included: the bot posts one comment listing them, and a maintainer checks and merges by hand. A finished, passing `CI Tests` run for the exact head is required, since `main` has no required status checks and the app skips review; listing check runs alone would miss the test jobs that only appear once Detect Changes finishes. CI passing is still not the safety gate: anyone with write access can post a commit status. The app secrets live in the `sync-app` environment, limited to `main`, so a workflow pushed on another branch cannot read them. A PR opened with `GITHUB_TOKEN` gets no CI, so nothing here merges it.
 
-Umbrel package PRs (`umbrel/*`) are **not** in the allowlist. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` and `'umbrel'` to `ALLOWED_LABELS` if those should merge themselves too.
+Every workflow that opens a PR in this repository (translations, release-please, Nix hashes, schema backup, Umbrel package, Helm chart version) does it with the app token, so **Settings → Actions → General → Allow GitHub Actions to create and approve pull requests** stays off. With it on, a workflow pushed on any branch could approve its own PR with `GITHUB_TOKEN`, and that approval counts toward `main`'s review rule.
 
-**Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), Check suites completed, and manual workflow dispatch
+Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** auto-merged, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Removing that gate takes `'umbrel/'` in this workflow's `ALLOWED_BRANCH_PREFIXES` and in its job `if` (which only lets `i18n/` branches through), plus an `'umbrel/'` entry in `ALLOWED_FILES` in `automation-allowlist.cjs` listing the package files.
+
+**Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), `CI Tests` runs completed, check suites completed, and manual workflow dispatch. `check_suite` never fires for suites created by GitHub Actions, so `workflow_run` is what catches CI finishing.
+
+---
+
+#### `nix-update-hashes.yml` and `schema-backup.yml`
+
+**Purpose**: Regenerate a derived file on `main` and open a PR with it: the pnpm dependency hashes in `nix/backend.nix` and `nix/frontend.nix` after a lockfile change, and `db_schema_backup.sql` after a migration change. Each PR merges itself right away, because its content is computed from `main` and a review adds nothing. The job that runs the Nix installer or `pnpm install` is read-only and hands the files over as an artifact. A separate `pr` job in the `sync-app` environment opens the PR with the SparkyFitness-Sync app token and merges it with `.github/actions/merge-automation-pr`, pinned to the head commit it pushed and checked against that job's exact file set (`allowed-files`). That job runs only pinned actions. If the merge fails, the run fails and the PR stays open for a maintainer.
+
+**Triggers**: Pushes to `main` that touch `pnpm-lock.yaml` (Nix) or the migrations and schema tooling (schema backup), and manual workflow dispatch
 
 ---
 
@@ -270,9 +312,17 @@ Umbrel package PRs (`umbrel/*`) are **not** in the allowlist. Add `'umbrel/'` to
 
 #### `release-published-notifier.yml`
 
-**Purpose**: When a new release is published, automatically comments on all issues resolved in that release announcing that the release is now live with links to the release notes.
+**Purpose**: When a new release is out, automatically comments on all issues resolved in that release announcing that the release is now live with links to the release notes.
 
-**Triggers**: Release published (`published`)
+**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, so an issue hears about the release only once its images are pushed.
+
+---
+
+#### `whats-new-drift.yml`
+
+**Purpose**: Keeps one open issue ("What's New screen is out of date") listing the `feat` commits that changed the mobile app since `WHATS_NEW_CONTENT_VERSION` was last bumped. It closes itself once the version is bumped. It only reports; the `whats-new` skill writes the cards. The list is a heads-up, not a complete audit: it matches only `feat` commit subjects and shows at most 40, so other mobile commits need a manual look.
+
+**Triggers**: Pushes to `main` that touch `SparkyFitnessMobile/src/**`, and manual dispatch. Run `.github/scripts/whats-new-drift.sh` locally to see the same list.
 
 ---
 
@@ -331,4 +381,4 @@ This document should be updated when:
 - Trigger conditions change
 - Validation rules change
 
-Last updated: 2026-09-30
+Last updated: 2026-11-05

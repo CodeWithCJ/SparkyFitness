@@ -32,7 +32,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
   });
 
   test('skips migration when the stored version is current', async () => {
-    loadHealthPreference.mockResolvedValue(4);
+    loadHealthPreference.mockResolvedValue(5);
 
     const result = await migrateEnabledMetricPermissionsIfNeeded({
       healthMetricStates: { isExerciseSessionSyncEnabled: true },
@@ -64,7 +64,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
     expect(requestHealthPermissions).not.toHaveBeenCalled();
     expect(saveHealthPreference).toHaveBeenCalledWith(
       'healthPermissionsVersion',
-      4
+      5
     );
   });
 
@@ -90,7 +90,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
     );
     expect(saveHealthPreference).toHaveBeenCalledWith(
       'healthPermissionsVersion',
-      4
+      5
     );
   });
 
@@ -170,7 +170,7 @@ describe('writeback directions in the refresh pass', () => {
 
     await migrateEnabledMetricPermissionsIfNeeded({
       ...baseArgs,
-      loadHealthPreference: jest.fn().mockResolvedValue(3),
+      loadHealthPreference: jest.fn().mockResolvedValue(4),
       saveHealthPreference: jest.fn().mockResolvedValue(undefined),
       requestHealthPermissions,
       extraPermissions: [{ accessType: 'write', recordType: 'Hydration' }],

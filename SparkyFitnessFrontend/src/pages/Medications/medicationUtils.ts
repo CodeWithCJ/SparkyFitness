@@ -78,45 +78,6 @@ export const COUNTABLE_SUPPLEMENT_FORMS: string[] = [
 export const isCountableForm = (typeId: string | null | undefined): boolean =>
   !!typeId && COUNTABLE_SUPPLEMENT_FORMS.includes(typeId);
 
-export type MedSubtype = 'all' | 'meds' | 'supplements';
-
-// Partitions the medication list for the `All | Meds | Supplements` segmented filter.
-// Supplements are is_supplement medication rows, so this is a view filter over the same
-// list, not a separate data source — keeping the adherence engine and rollup untouched.
-export const filterMedsBySubtype = <T extends { is_supplement?: boolean }>(
-  meds: T[],
-  subtype: MedSubtype
-): T[] =>
-  meds.filter((med) =>
-    subtype === 'all'
-      ? true
-      : subtype === 'supplements'
-        ? Boolean(med.is_supplement)
-        : !med.is_supplement
-  );
-
-// Whether a logged entry belongs to the subtype currently on screen. `all` always
-// says yes and deliberately never consults the id set: an entry outlives the
-// medication it came from, so an orphan matches no visible id and filtering the
-// mixed view would silently drop history that view exists to show. The narrowed
-// views do filter, because an orphan cannot be classified once its row is gone.
-export const isEntryVisibleForSubtype = (
-  medicationId: string | null | undefined,
-  visibleMedIds: Set<string>,
-  subtype: MedSubtype
-): boolean =>
-  subtype === 'all' || (!!medicationId && visibleMedIds.has(medicationId));
-
-// Array form of the rule above, for the Log view's entry lists.
-export const filterEntriesBySubtype = <T extends { medication_id: string }>(
-  entries: T[],
-  visibleMedIds: Set<string>,
-  subtype: MedSubtype
-): T[] =>
-  entries.filter((entry) =>
-    isEntryVisibleForSubtype(entry.medication_id, visibleMedIds, subtype)
-  );
-
 export const MED_TYPE_ICONS: Record<string, LucideIcon> = {
   pill: Pill,
   tablet: Tablets,
@@ -272,20 +233,6 @@ export const positiveDoseOrNull = (value: string): number | null => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
-
-// Which of the two Log cards to render for the active filter. The medications card
-// doubles as the "nothing scheduled at all" empty state, so it stays in the All view
-// even when the user has no medications — dropping it there would leave a user with
-// only supplements-in-waiting staring at a blank column. The supplement card is only
-// worth its header once there is something to put under it.
-export const visibleDoseCards = (
-  subtype: MedSubtype,
-  hasSupplementContent: boolean
-): { medications: boolean; supplements: boolean } => ({
-  medications: subtype !== 'supplements',
-  supplements:
-    subtype === 'supplements' || (subtype === 'all' && hasSupplementContent),
-});
 
 // How many nutrient rows a supplement's per-dose payload carries. Used for the compact
 // "12 nutrients" badge — a multivitamin has ~26, which is correct but not worth listing

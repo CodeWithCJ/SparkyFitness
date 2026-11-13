@@ -10,10 +10,24 @@ import {
   assertSecureOpenFoodFactsWriteBaseUrl,
   __resetForTests,
   loginToOpenFoodFacts,
+  resolveOffFetch,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
+import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
+import { resolveFoodProviderNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 
 vi.mock('../services/externalProviderService.js');
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdminByUserId: vi.fn(),
+}));
+vi.mock('../utils/outboundUrlPolicy.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../utils/outboundUrlPolicy.js')>();
+  return {
+    ...actual,
+    resolveFoodProviderNetworkPolicy: vi.fn(),
+  };
+});
 
 global.fetch = vi.fn();
 
@@ -505,6 +519,14 @@ describe('assertSecureOpenFoodFactsWriteBaseUrl', () => {
         'https://user:pass@off.example.test'
       )
     ).toThrow(/embedded credentials/);
+    expect(() =>
+      assertSecureOpenFoodFactsWriteBaseUrl(
+        'https://off.example.test/path#fragment'
+      )
+    ).toThrow(/fragment/);
+    expect(() =>
+      assertSecureOpenFoodFactsWriteBaseUrl('https://off.example.test/path#')
+    ).toThrow(/fragment/);
   });
 });
 
@@ -765,5 +787,51 @@ describe('resolveOpenFoodFactsProvider', () => {
       session: null,
       baseUrl: DEFAULT_OFF_BASE_URL,
     });
+  });
+});
+
+describe('resolveOffFetch', () => {
+  it('returns a guarded fetch implementation when authenticatedUserId is omitted', async () => {
+    const fetchImpl = await resolveOffFetch(undefined);
+    expect(fetchImpl).toBeDefined();
+    expect(fetchImpl).not.toBe(global.fetch);
+  });
+
+  it('returns a guarded fetch implementation for non-admin users', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(false);
+    vi.mocked(resolveFoodProviderNetworkPolicy).mockResolvedValue({
+      allowPrivateNetwork: false,
+    } as never);
+
+    const fetchImpl = await resolveOffFetch('user-non-admin');
+    expect(fetchImpl).toBeDefined();
+    expect(fetchImpl).not.toBe(global.fetch);
+  });
+
+  it('returns standard fetch for admin users when policy permits private networks', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+    vi.mocked(resolveFoodProviderNetworkPolicy).mockResolvedValue({
+      allowPrivateNetwork: true,
+    } as never);
+
+    const fetchImpl = await resolveOffFetch('admin-user');
+    expect(fetchImpl).toBe(global.fetch);
+  });
+
+  it('falls back to guarded fetch immediately when given an aborted signal', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    const fetchImpl = await resolveOffFetch('admin-user', controller.signal);
+    expect(fetchImpl).not.toBe(global.fetch);
+  });
+
+  it('falls back to guarded fetch if policy resolution exceeds the deadline', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(true), 500))
+    );
+
+    const fetchImpl = await resolveOffFetch('slow-admin-user', 50);
+    expect(fetchImpl).not.toBe(global.fetch);
   });
 });

@@ -18,17 +18,23 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
-  addDays,
+  adherenceBar,
+  adherenceTier,
+  computeAdherence,
+  computeChecklistProgress,
+  entryMatchesDue,
   getDueDosesForDate,
-  dayToUtcRange,
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
+  visibleDoseCards,
   formatDose,
   INJECTION_SITES,
+  type MedSubtype,
   type SharedScheduleRule,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import {
   Card,
@@ -52,7 +58,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { entryMatchesDue } from '@/utils/medicationUtils';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -64,7 +69,6 @@ import {
   useUpdateInjectionEntryMutation,
   useDeleteInjectionEntryMutation,
 } from '@/hooks/useMedications';
-import { visibleDoseCards, type MedSubtype } from './medicationUtils';
 import type {
   Medication,
   MedicationDetail,
@@ -485,128 +489,22 @@ export default function TodayMedications({
     </Card>
   );
 
-  const completedDosesCount = useMemo(() => {
-    return dueDoses.filter((due) =>
-      entries.some(
-        (e) =>
-          entryMatchesDue(e, due) &&
-          (e.status === 'taken' || e.status === 'skipped')
-      )
-    ).length;
-  }, [dueDoses, entries]);
-
-  const progressPercentage = useMemo(() => {
-    return dueDoses.length > 0
-      ? Math.round((completedDosesCount / dueDoses.length) * 100)
-      : 100;
-  }, [completedDosesCount, dueDoses.length]);
+  const { completed: completedDosesCount, pct: progressPercentage } = useMemo(
+    () => computeChecklistProgress(dueDoses, entries),
+    [dueDoses, entries]
+  );
 
   // True 14-day adherence: evaluate each day's scheduled doses vs. what was taken.
-  const adherence14 = useMemo(() => {
-    let due = 0;
-    let taken = 0;
-    let perfectDays = 0;
-    const days: {
-      date: string;
-      due: number;
-      taken: number;
-      prnTaken: number;
-      pct: number;
-    }[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = addDays(selectedDate, -i);
-      const dayDue = getDueDosesForDate(meds, d, timezone);
-      let dayTaken = 0;
-      for (const dd of dayDue) {
-        const hit = recentEntries.some(
-          (e) =>
-            entryMatchesDue(e, dd) &&
-            e.entry_date === d &&
-            (e.status === 'taken' || e.status === 'prn_taken')
-        );
-        if (hit) dayTaken++;
-      }
-      const dayPrnTaken = recentEntries.filter(
-        (e) => e.entry_date === d && e.status === 'prn_taken'
-      ).length;
-      // Effective completion: scheduled taken + PRN activity (capped at due count)
-      const effectiveTaken =
-        dayDue.length > 0
-          ? Math.min(dayDue.length, dayTaken + dayPrnTaken)
-          : dayPrnTaken;
-      const effectivePct =
-        dayDue.length > 0
-          ? Math.round((effectiveTaken / dayDue.length) * 100)
-          : dayPrnTaken > 0
-            ? 100
-            : -1;
-      days.push({
-        date: d,
-        due: dayDue.length,
-        taken: dayTaken,
-        prnTaken: dayPrnTaken,
-        pct: effectivePct,
-      });
-      if (dayDue.length > 0) {
-        due += dayDue.length;
-        taken += effectiveTaken;
-        if (effectiveTaken >= dayDue.length) perfectDays++;
-      } else if (dayPrnTaken > 0) {
-        // PRN-only day with activity counts as a perfect day
-        due += 1;
-        taken += 1;
-        perfectDays++;
-      }
-    }
-    // Current streak of perfect days (walk back from newest).
-    let streak = 0;
-    let startIndex = days.length - 1;
-    const todayDay = days[startIndex];
-    if (todayDay) {
-      const todayHasSkips = recentEntries.some(
-        (e) => e.entry_date === todayDay.date && e.status === 'skipped'
-      );
-      const todayIsComplete =
-        todayDay.due > 0
-          ? todayDay.taken === todayDay.due
-          : todayDay.prnTaken > 0;
-
-      if (!todayIsComplete && !todayHasSkips) {
-        startIndex = days.length - 2; // start from yesterday
-      }
-    }
-
-    for (let k = startIndex; k >= 0; k--) {
-      const day = days[k];
-      if (!day) continue;
-
-      const hasSkips = recentEntries.some(
-        (e) => e.entry_date === day.date && e.status === 'skipped'
-      );
-
-      if (day.due > 0) {
-        if (day.taken === day.due && !hasSkips) {
-          streak++;
-        } else {
-          break;
-        }
-      } else if (day.prnTaken > 0) {
-        if (!hasSkips) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-    }
-    return {
-      due,
-      taken,
-      perfectDays,
-      days,
-      streak,
-      pct: due > 0 ? Math.round((taken / due) * 100) : 100,
-    };
-  }, [meds, selectedDate, recentEntries, timezone]);
+  const adherence14 = useMemo(
+    () =>
+      computeAdherence({
+        medications: meds,
+        entries: recentEntries,
+        endDate: selectedDate,
+        timezone,
+      }),
+    [meds, selectedDate, recentEntries, timezone]
+  );
 
   // The next GLP-1 dose due today (if any), for the next-injection banner.
   const nextGlpDue = useMemo(() => {
@@ -631,12 +529,12 @@ export default function TodayMedications({
     let scheduledFor = null;
     if (due.schedule.time_of_day) {
       try {
-        const { start } = dayToUtcRange(selectedDate, timezone);
-        const [h, m] = due.schedule.time_of_day.split(':');
-        scheduledFor = new Date(
-          start.getTime() +
-            parseInt(h || '0', 10) * 3600000 +
-            parseInt(m || '0', 10) * 60000
+        // Wall-clock time on the selected day, so a dose on a clock-change day
+        // is not stored an hour off.
+        const [h = '0', m = '0'] = due.schedule.time_of_day.split(':');
+        scheduledFor = localDateTimeToUtc(
+          `${selectedDate}T${h.padStart(2, '0')}:${m.padStart(2, '0')}`,
+          timezone
         ).toISOString();
       } catch (e) {
         console.error(e);
@@ -809,9 +707,10 @@ export default function TodayMedications({
   };
 
   const ringColor = useMemo(() => {
-    return adherence14.pct >= 90
+    const tier = adherenceTier(adherence14.pct);
+    return tier === 'good'
       ? '#22c55e'
-      : adherence14.pct >= 70
+      : tier === 'fair'
         ? '#f59e0b'
         : '#ef4444';
   }, [adherence14.pct]);
@@ -1008,18 +907,17 @@ export default function TodayMedications({
                   {adherence14.days.map((d, i) => {
                     const noScheduled = d.due === 0;
                     const hasPrn = d.prnTaken > 0;
-                    const idle = noScheduled && !hasPrn;
+                    const { level, heightPct } = adherenceBar(d);
+                    const idle = level === 'idle';
 
                     // d.pct already includes PRN contribution
-                    const color = idle
-                      ? 'bg-muted'
-                      : d.pct === 100
-                        ? 'bg-green-500'
-                        : d.pct >= 50
-                          ? 'bg-amber-500'
-                          : d.pct > 0
-                            ? 'bg-orange-500'
-                            : 'bg-red-500';
+                    const color = {
+                      idle: 'bg-muted',
+                      full: 'bg-green-500',
+                      partial: 'bg-amber-500',
+                      low: 'bg-orange-500',
+                      missed: 'bg-red-500',
+                    }[level];
 
                     const tooltip = noScheduled
                       ? hasPrn
@@ -1027,19 +925,13 @@ export default function TodayMedications({
                         : `${d.date}: no doses`
                       : `${d.date}: ${d.taken}/${d.due} taken${d.prnTaken > 0 ? ` + ${d.prnTaken} PRN` : ''}`;
 
-                    const height = idle
-                      ? 18
-                      : noScheduled && hasPrn
-                        ? Math.min(100, 40 + d.prnTaken * 20)
-                        : Math.max(14, d.pct);
-
                     return (
                       <div
                         key={i}
                         title={tooltip}
                         className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${idle ? 'opacity-40' : ''}`}
                         style={{
-                          height: `${height}%`,
+                          height: `${heightPct}%`,
                         }}
                       />
                     );
@@ -1349,13 +1241,16 @@ export default function TodayMedications({
               </p>
             )}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
+              <Label
+                id="medication-taken-at-label"
+                className="text-xs text-muted-foreground"
+              >
                 {t('medications.today.takenAt', 'Taken at')}
               </Label>
-              <Input
-                type="datetime-local"
+              <DateTimeInput
+                aria-labelledby="medication-taken-at-label"
                 value={editTime}
-                onChange={(e) => setEditTime(e.target.value)}
+                onChange={setEditTime}
               />
             </div>
             {editingEntry?.entry_type === 'injection' && (

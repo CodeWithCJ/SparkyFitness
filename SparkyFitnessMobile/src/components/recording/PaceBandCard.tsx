@@ -1,7 +1,11 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { PACE_BAND_MIN_WIDTH_SECONDS } from '@workspace/shared';
+import {
+  PACE_BAND_FASTEST_SECONDS_PER_KM,
+  PACE_BAND_MIN_WIDTH_SECONDS,
+  PACE_BAND_SLOWEST_SECONDS_PER_KM,
+} from '@workspace/shared';
 import { formatClock } from '../../utils/gpsRecording';
 import RangeStepperRow from './RangeStepperRow';
 import RecordingSwitchRow from './RecordingSwitchRow';
@@ -14,9 +18,6 @@ export interface PaceBandChoice {
 
 /** How far one tap moves an edge, in seconds. */
 const STEP_SECONDS = 5;
-/** Shown paces are kept inside this many seconds per unit. */
-const FLOOR_SECONDS = 150;
-const CEILING_SECONDS = 1200;
 
 interface Props {
   enabled: boolean;
@@ -46,12 +47,16 @@ const PaceBandCard: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const unitLabel = unit === 'miles' ? '/mi' : '/km';
+  // The shared limits are per kilometre; a mile takes 1.61 times as long.
+  const perUnit = unit === 'miles' ? 1.609344 : 1;
+  const floorSeconds = Math.round(PACE_BAND_FASTEST_SECONDS_PER_KM * perUnit);
+  const ceilingSeconds = Math.round(PACE_BAND_SLOWEST_SECONDS_PER_KM * perUnit);
 
   const move = (edge: 'fastest' | 'slowest', delta: number) => {
     const next = { ...band, [edge]: band[edge] + delta };
     if (
-      next.fastest < FLOOR_SECONDS ||
-      next.slowest > CEILING_SECONDS ||
+      next.fastest < floorSeconds ||
+      next.slowest > ceilingSeconds ||
       next.slowest - next.fastest < PACE_BAND_MIN_WIDTH_SECONDS * 1.61
     ) {
       return;

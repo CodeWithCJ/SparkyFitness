@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   calculateAge,
+  entryCaloriesCounted,
   isUsableMeasuredBmr,
   todayInZone,
 } from '@workspace/shared';
@@ -58,17 +59,17 @@ export const useDailyExerciseStats = (date: string) => {
         if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
           groupedEntry.exercises.forEach((entry) => {
             if (entry.exercise_snapshot?.name === 'Active Calories') {
-              activeCalories += Number(entry.calories_burned || 0);
+              activeCalories += Number(entryCaloriesCounted(entry));
             } else {
-              otherCalories += Number(entry.calories_burned || 0);
+              otherCalories += Number(entryCaloriesCounted(entry));
             }
             activitySteps += Number(entry.steps || 0);
           });
         } else if (groupedEntry.type === 'individual') {
           if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
-            activeCalories += Number(groupedEntry.calories_burned || 0);
+            activeCalories += Number(entryCaloriesCounted(groupedEntry));
           } else {
-            otherCalories += Number(groupedEntry.calories_burned || 0);
+            otherCalories += Number(entryCaloriesCounted(groupedEntry));
           }
           activitySteps += Number(groupedEntry.steps || 0);
         }

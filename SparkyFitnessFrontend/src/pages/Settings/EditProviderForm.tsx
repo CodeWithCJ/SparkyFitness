@@ -10,6 +10,9 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
+import { RoutingProviderFields } from './RoutingProviderFields';
+import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
+import { WeatherProviderFields } from './WeatherProviderFields';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -222,6 +225,32 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
+      {editData.provider_type === 'valhalla' && (
+        <RoutingProviderFields
+          idPrefix="edit"
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {editData.provider_type === 'open_meteo' && (
+        <WeatherProviderFields
+          idPrefix="edit"
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
       {(editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
         editData.provider_type === 'norish') && (
@@ -383,9 +412,17 @@ export const EditProviderForm = ({
                 <Trans
                   i18nKey="settings.editProviderForm.forMoreInformationClientCredentials2"
                   defaults={
-                    'For more information & client credentials, see <link>saganos/yazio_public_api</link>.'
+                    'For more information & client credentials, see <1>saganos/yazio_public_api</1>.'
                   }
                   components={{
+                    1: (
+                      <a
+                        href="https://github.com/saganos/yazio_public_api"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-800 dark:text-red-200 underline font-medium"
+                      />
+                    ),
                     link: (
                       <a
                         href="https://github.com/saganos/yazio_public_api"
@@ -740,6 +777,28 @@ export const EditProviderForm = ({
                 />
               </p>
             </>
+          )}
+          {provider.garmin_service_reachable === false && (
+            <div
+              role="alert"
+              className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+            >
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                <span className="font-medium">
+                  {t(
+                    'settings.editProviderForm.garminServiceUnreachable',
+                    'Garmin service unreachable'
+                  )}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {t(
+                  'settings.editProviderForm.garminServiceUnreachableDescription',
+                  'SparkyFitness cannot reach the Garmin service, so Garmin data cannot be synced. Check that the Garmin microservice is running.'
+                )}
+              </p>
+            </div>
           )}
         </>
       )}
@@ -1180,51 +1239,60 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
-      {(editData.provider_type === 'withings' ||
-        editData.provider_type === 'garmin' ||
-        editData.provider_type === 'fitbit' ||
-        editData.provider_type === 'oura' ||
-        editData.provider_type === 'googlehealth' ||
-        editData.provider_type === 'strava' ||
-        editData.provider_type === 'polar' ||
-        editData.provider_type === 'coros_mcp' ||
-        editData.provider_type === 'hevy' ||
-        editData.provider_type === 'liftosaur') && (
-        <div>
-          <Label htmlFor="edit_sync_frequency">
-            {t('settings.editProviderForm.syncFrequency', 'Sync Frequency')}
-          </Label>
-          <Select
-            value={editData.sync_frequency || 'manual'}
-            onValueChange={(value) =>
-              setEditData((prev) => ({
-                ...prev,
-                sync_frequency: value as 'hourly' | 'daily' | 'manual',
-              }))
-            }
-          >
-            <SelectTrigger id="edit_sync_frequency">
-              <SelectValue
-                placeholder={t(
-                  'settings.editProviderForm.selectSyncFrequency',
-                  'Select sync frequency'
-                )}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="manual">
-                {t('settings.editProviderForm.manual', 'Manual')}
-              </SelectItem>
-              <SelectItem value="hourly">
-                {t('settings.editProviderForm.hourly', 'Hourly')}
-              </SelectItem>
-              <SelectItem value="daily">
-                {t('settings.editProviderForm.daily', 'Daily')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {editData.provider_type === 'intervals' && (
+        <>
+          <div>
+            <Label>{t('integrations.intervalsAthleteId', 'Athlete ID')}</Label>
+            <Input
+              type="text"
+              value={editData.app_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_id: e.target.value,
+                }))
+              }
+              placeholder={t(
+                'integrations.intervalsAthleteIdPlaceholder',
+                'Enter Athlete ID (i12345)'
+              )}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label>{t('settings.editProviderForm.apiKey', 'API Key')}</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder={t(
+                'integrations.intervalsApiKeyPlaceholder',
+                'Enter API Key'
+              )}
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            {t(
+              'integrations.intervalsCredentialsHelp',
+              'Find your Athlete ID and API Key on intervals.icu under Settings > Developer Settings.'
+            )}
+          </p>
+        </>
       )}
+      <ProviderSyncFrequencyFields
+        idPrefix="edit"
+        providerType={editData.provider_type}
+        frequency={editData.sync_frequency}
+        onFrequencyChange={(value) =>
+          setEditData((prev) => ({ ...prev, sync_frequency: value }))
+        }
+      />
       {editData.provider_type === 'swissfood' && (
         <div className="col-span-2 space-y-2">
           <p className="text-sm text-muted-foreground">

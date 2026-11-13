@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import exerciseRepository from '../models/exercise.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import { processGarminWorkoutDefinition } from '../services/garminService.js';
+import { assertSetWeightSign } from '../utils/setWeightSign.js';
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 vi.mock('../models/exercise.js', () => ({
@@ -45,7 +46,10 @@ vi.mock('../models/mealType.js', () => ({ default: {} }));
 
 const UID = 'user-1';
 
-function buildWorkoutData(weightUnitKey: string | undefined) {
+function buildWorkoutData(
+  weightUnitKey: string | undefined,
+  weightValue = 100
+) {
   return {
     workoutName: 'Strength Plan',
     workoutSegments: [
@@ -57,7 +61,7 @@ function buildWorkoutData(weightUnitKey: string | undefined) {
             category: 'BENCH_PRESS',
             stepType: { stepTypeKey: 'Working Set' },
             endConditionValue: 5,
-            weightValue: 100,
+            weightValue,
             ...(weightUnitKey
               ? { weightUnit: { unitKey: weightUnitKey } }
               : {}),
@@ -106,4 +110,24 @@ describe('processGarminWorkoutDefinition set weights', () => {
     await processGarminWorkoutDefinition(UID, buildWorkoutData(undefined));
     expect(capturedSetWeight()).toBe(100);
   });
+
+  // Garmin sends weightValue -1.0 on steps that have no weight set.
+  it.each(['kilogram', 'pound'])(
+    'stores weight 0 and passes the weight-sign check for weightValue -1 (%s)',
+    async (unitKey) => {
+      // Mirror the real repository, which validates the sets against the
+      // exercise's modality; Garmin-created exercises are weight_reps.
+      vi.mocked(
+        workoutPresetRepository.addExerciseToWorkoutPreset
+      ).mockImplementation(async (_u, _p, _e, _i, sets) => {
+        assertSetWeightSign(sets, 'weight_reps');
+        return 'preset-exercise-1';
+      });
+
+      await expect(
+        processGarminWorkoutDefinition(UID, buildWorkoutData(unitKey, -1))
+      ).resolves.not.toThrow();
+      expect(capturedSetWeight()).toBe(0);
+    }
+  );
 });

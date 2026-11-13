@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDemoPasswordResetToken } from '../middleware/demoGuardMiddleware.js';
+import {
+  isDemoPasswordResetToken,
+  isDemoRestrictedAuthPath,
+} from '../middleware/demoGuardMiddleware.js';
 import * as poolManager from '../db/poolManager.js';
 
 vi.mock('../db/poolManager.js', () => ({
@@ -10,6 +13,19 @@ vi.mock('../db/poolManager.js', () => ({
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
+
+describe('demo restricted Better Auth paths', () => {
+  it('blocks OAuth credentials and grants that would survive the daily reset', () => {
+    expect(isDemoRestrictedAuthPath('/api/auth/oauth2/register')).toBe(true);
+    expect(isDemoRestrictedAuthPath('/api/auth/oauth2/authorize')).toBe(true);
+    expect(isDemoRestrictedAuthPath('/api/auth/oauth2/token')).toBe(true);
+  });
+
+  it('does not block unrelated authentication reads', () => {
+    expect(isDemoRestrictedAuthPath('/api/auth/get-session')).toBe(false);
+    expect(isDemoRestrictedAuthPath('/api/auth/settings')).toBe(false);
+  });
+});
 
 /**
  * `/api/auth/reset-password` is the one recovery endpoint that never names the

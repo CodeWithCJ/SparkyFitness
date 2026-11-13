@@ -37,6 +37,10 @@ export function adaptiveReasonText(
       return t('adaptiveCoaching.reasons.highEffort', {
         defaultValue: 'Holding weight: your last sets were near max effort.',
       });
+    case 'low_effort':
+      return t('adaptiveCoaching.reasons.lowEffort', {
+        defaultValue: 'A step heavier: your last sets were logged as easy.',
+      });
     case 'too_easy_repeated':
       return t('adaptiveCoaching.reasons.tooEasyRepeated', {
         defaultValue: 'A step heavier: too easy two sessions running.',

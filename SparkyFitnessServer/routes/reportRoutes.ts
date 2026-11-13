@@ -1,4 +1,8 @@
-import express from 'express';
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import reportService from '../services/reportService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
@@ -334,6 +338,37 @@ router.get('/training-consistency', authenticate, async (req, res, next) => {
   }
 });
 /**
+ * A GET report keyed on `?userId=`: checks the `reports` permission for another
+ * user's data, then answers with `load(authenticatedUser, targetUser)`.
+ */
+const ownReportHandler =
+  (load: (userId: string, targetUserId: string) => Promise<unknown>) =>
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Target User ID is required.' });
+    }
+    if (userId && userId !== req.userId) {
+      const hasPermission = await canAccessUserData(
+        userId,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
+      if (!hasPermission) {
+        return res.status(403).json({
+          error:
+            'Forbidden: You do not have permission to view reports for this user.',
+        });
+      }
+    }
+    try {
+      res.status(200).json(await load(req.userId, String(targetUserId)));
+    } catch (error) {
+      next(error);
+    }
+  };
+/**
  * @swagger
  * /reports/training-load:
  *   get:
@@ -349,33 +384,51 @@ router.get('/training-consistency', authenticate, async (req, res, next) => {
  *       200:
  *         description: Weekly load, acute/chronic ratio, status and a rest hint.
  */
-router.get('/training-load', authenticate, async (req, res, next) => {
-  const { userId } = req.query;
-  const targetUserId = userId || req.userId;
-  if (!targetUserId) {
-    return res.status(400).json({ error: 'Target User ID is required.' });
-  }
-  if (userId && userId !== req.userId) {
-    const hasPermission = await canAccessUserData(
-      userId,
-      'reports',
-      req.authenticatedUserId || req.userId
-    );
-    if (!hasPermission) {
-      return res.status(403).json({
-        error:
-          'Forbidden: You do not have permission to view reports for this user.',
-      });
-    }
-  }
-  try {
-    const data = await reportService.getTrainingLoad(
-      req.userId,
-      String(targetUserId)
-    );
-    res.status(200).json(data);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get(
+  '/training-load',
+  authenticate,
+  ownReportHandler(reportService.getTrainingLoad)
+);
+/**
+ * @swagger
+ * /reports/fitness-fatigue:
+ *   get:
+ *     summary: Get the fitness / fatigue / form curve and today's readiness score
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: 'string', format: 'uuid' }
+ *     responses:
+ *       200:
+ *         description: The 90-day curve, its status and a 0-100 readiness score with its factors.
+ */
+router.get(
+  '/fitness-fatigue',
+  authenticate,
+  ownReportHandler(reportService.getFitnessFatigue)
+);
+/**
+ * @swagger
+ * /reports/run-estimates:
+ *   get:
+ *     summary: Get estimated VO2 max and running power from recent runs
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: 'string', format: 'uuid' }
+ *     responses:
+ *       200:
+ *         description: An estimated VO2 max (median of runs in the last 6 weeks) and the average running power of the last 4 weeks; each is null without enough data.
+ */
+router.get(
+  '/run-estimates',
+  authenticate,
+  ownReportHandler(reportService.getRunningEstimates)
+);
 export default router;

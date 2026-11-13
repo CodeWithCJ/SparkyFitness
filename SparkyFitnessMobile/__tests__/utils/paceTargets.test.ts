@@ -129,6 +129,82 @@ describe('applyPaceTargets', () => {
     expect(isValidIntervalPlan(result)).toBe(true);
   });
 
+  it('puts the warm-up range on the warm-up and cool-down', () => {
+    const warm = { minSecondsPerKm: 400, maxSecondsPerKm: 860 };
+    const result = applyPaceTargets(plan, { work: fast, easy, warm });
+    expect(result.steps.map((step) => step.pace)).toEqual([
+      warm,
+      fast,
+      easy,
+      warm,
+    ]);
+    expect(isValidIntervalPlan(result)).toBe(true);
+  });
+
+  describe('with efforts', () => {
+    const tempo = { minSecondsPerKm: 320, maxSecondsPerKm: 340 };
+    const stride = { minSecondsPerKm: 250, maxSecondsPerKm: 270 };
+    const effortPlan = {
+      style: 'fastEasy' as const,
+      steps: [
+        { kind: 'warmup' as const, seconds: 300 },
+        { kind: 'work' as const, seconds: 1200, effort: 'tempo' as const },
+        { kind: 'recovery' as const, seconds: 120 },
+        { kind: 'work' as const, seconds: 20, effort: 'stride' as const },
+        { kind: 'work' as const, seconds: 60, effort: 'hill' as const },
+        { kind: 'work' as const, seconds: 180, effort: 'easy' as const },
+        { kind: 'cooldown' as const, seconds: 300 },
+      ],
+    };
+
+    it('gives each effort its own range, and none to hills', () => {
+      const result = applyPaceTargets(effortPlan, {
+        work: fast,
+        easy,
+        byEffort: { tempo, stride },
+      });
+      expect(result.steps.map((step) => step.pace)).toEqual([
+        undefined,
+        tempo,
+        easy,
+        stride,
+        undefined,
+        fast,
+        undefined,
+      ]);
+      expect(isValidIntervalPlan(result)).toBe(true);
+    });
+
+    it('leaves an effort with no range of its own free rather than using the fast range', () => {
+      const result = applyPaceTargets(effortPlan, { work: fast, easy });
+      expect(result.steps.map((step) => step.pace)).toEqual([
+        undefined,
+        undefined,
+        easy,
+        undefined,
+        undefined,
+        fast,
+        undefined,
+      ]);
+    });
+
+    it('gives an easy-effort run its easy range when one is named', () => {
+      const result = applyPaceTargets(effortPlan, {
+        work: fast,
+        byEffort: { easy },
+      });
+      expect(result.steps[5].pace).toEqual(easy);
+    });
+
+    it('refuses an effort name it does not know', () => {
+      const bad = {
+        style: 'fastEasy' as const,
+        steps: [{ kind: 'work' as const, seconds: 60, effort: 'sprint' }],
+      };
+      expect(isValidIntervalPlan(bad)).toBe(false);
+    });
+  });
+
   it('leaves the plan as it was when nothing usable is given', () => {
     expect(applyPaceTargets(plan, {})).toBe(plan);
     expect(

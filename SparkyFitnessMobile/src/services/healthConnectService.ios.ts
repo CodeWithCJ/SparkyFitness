@@ -6,13 +6,13 @@ import * as HealthKitPreferences from './healthkit/preferences';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { healthReadProvider, readCumulativeByDay } from './healthkit/provider';
 import { runForegroundSync } from './shared/healthSyncEngine';
+import { fetchMoveRingActiveCaloriesSetting } from './api/preferencesApi';
 import {
   SyncResult,
   HealthMetricStates,
   type PermissionRequest,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
-import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import {
   enabledWritebackPermissions,
   loadAllEnabledPermissions as loadAllEnabledPermissionsShared,
@@ -30,6 +30,14 @@ try {
 
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
+// HealthKit never reveals which read permissions were granted, so a request
+// either covers everything asked for or nothing.
+export const requestGrantedHealthPermissions = async (
+  permissionsToRequest: PermissionRequest[]
+): Promise<PermissionRequest[]> =>
+  (await HealthKit.requestHealthPermissions(permissionsToRequest))
+    ? permissionsToRequest
+    : [];
 // HealthKit grants unlimited history with the normal read authorization — there is
 // no separate history permission to request (Android Health Connect counterpart).
 export const ensureHistoryReadPermission = async (): Promise<boolean> => true;
@@ -56,12 +64,27 @@ export { alignToLocalDayStart } from '../utils/syncUtils';
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedStepsByDateDetailed =
   HealthKit.getAggregatedStepsByDateDetailed;
-export const getAggregatedActiveCaloriesByDate =
-  HealthKit.getAggregatedActiveCaloriesByDate;
+// The Sync screen's preview shows the same active figure the sync sends.
+export const getAggregatedActiveCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+) =>
+  HealthKit.getAggregatedActiveCaloriesByDate(
+    startDate,
+    endDate,
+    await fetchMoveRingActiveCaloriesSetting()
+  );
 export const getAggregatedActiveCaloriesByDateDetailed =
   HealthKit.getAggregatedActiveCaloriesByDateDetailed;
-export const getAggregatedTotalCaloriesByDate =
-  HealthKit.getAggregatedTotalCaloriesByDate;
+export const getAggregatedTotalCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+) =>
+  HealthKit.getAggregatedTotalCaloriesByDate(
+    startDate,
+    endDate,
+    await fetchMoveRingActiveCaloriesSetting()
+  );
 export const getAggregatedTotalCaloriesByDateDetailed =
   HealthKit.getAggregatedTotalCaloriesByDateDetailed;
 export const getAggregatedDistanceByDate =
@@ -97,19 +120,25 @@ export const saveStringPreference = HealthKitPreferences.saveStringPreference;
 export const loadStringPreference = HealthKitPreferences.loadStringPreference;
 export const saveSyncDuration = HealthKitPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthKitPreferences.loadSyncDuration;
+// iOS asks HealthKit whether any enabled type has never been requested rather than
+// relying on a permission version bump, so a type added to a metric in an update
+// (e.g. caffeine in Nutrition) is requested without one. Android keeps the version.
 export const refreshEnabledMetricPermissions = async (
   healthMetricStates: HealthMetricStates,
   writebackStates: Record<string, boolean> = {}
-): Promise<boolean> =>
-  migrateEnabledMetricPermissionsIfNeeded({
-    healthMetricStates,
-    extraPermissions: enabledWritebackPermissions(writebackStates),
-    metrics: HEALTH_METRICS,
-    loadHealthPreference,
-    saveHealthPreference,
-    requestHealthPermissions,
-    logTag: '[HealthKitService]',
-  });
+): Promise<boolean> => {
+  // Read and write in one request; see shared/healthPermissionSets.
+  const permissions = [
+    ...HEALTH_METRICS.filter(
+      (metric) => healthMetricStates[metric.stateKey]
+    ).flatMap((metric) => metric.permissions),
+    ...enabledWritebackPermissions(writebackStates),
+  ];
+  if (!(await HealthKit.hasUnrequestedHealthPermissions(permissions))) {
+    return true;
+  }
+  return requestHealthPermissions(permissions);
+};
 
 /** Every permission currently enabled (read metrics + writeback), read from storage. */
 export const loadAllEnabledPermissions = (): Promise<PermissionRequest[]> =>

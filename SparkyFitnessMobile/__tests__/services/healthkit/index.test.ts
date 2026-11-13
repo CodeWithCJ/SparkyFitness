@@ -3,6 +3,8 @@ import {
   initHealthConnect,
   getAggregatedStepsByDate,
   getAggregatedStepsByDateDetailed,
+  getAggregatedActiveCaloriesByDate,
+  getAggregatedActiveCaloriesByDateDetailed,
   getAggregatedTotalCaloriesByDate,
   getAggregatedTotalCaloriesByDateDetailed,
   getAggregatedBasalEnergyByDate,
@@ -28,6 +30,7 @@ import {
   queryWorkoutSamples,
   queryCategorySamples,
   queryCorrelationSamples,
+  queryActivitySummary,
 } from '@kingstinct/react-native-healthkit';
 
 import {
@@ -50,6 +53,7 @@ const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
 const mockQueryCorrelationSamples = queryCorrelationSamples as jest.Mock;
+const mockQueryActivitySummary = queryActivitySummary as jest.Mock;
 
 // Local-time date constructor (month is 1-based) — the engine buckets by LOCAL day.
 const localDate = (y: number, m: number, d: number, h = 0, min = 0) =>
@@ -401,6 +405,166 @@ describe('getAggregatedStepsByDate (statistics collection)', () => {
   });
 });
 
+// An activity summary (the Move ring) for a local day, as the library serializes it.
+const ringDay = (y: number, m: number, d: number, kcal: number) => ({
+  dateComponents: { era: 1, year: y, month: m, day: d },
+  activityMoveMode: 1,
+  activeEnergyBurned: { unit: 'kcal', quantity: kcal },
+});
+
+describe('getAggregatedActiveCaloriesByDate (Move ring)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    mockQueryActivitySummary.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
+  });
+
+  // The Health app shows the statistics sum; only an account that chose the ring
+  // gets it.
+  test('keeps the statistics sum and skips the ring query when the setting is off', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1713, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 1835.8)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59)
+    );
+
+    expect(result.map((r) => r.value)).toEqual([1713]);
+    expect(mockQueryActivitySummary).not.toHaveBeenCalled();
+  });
+
+  // Fitness shows the ring, which can differ from the Health app's per-day sum.
+  test('uses the Move ring for a day that has one when the setting is on', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1713, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 1835.8)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        date: '2024-01-15',
+        value: 1836,
+        type: 'active_calories',
+      }),
+    ]);
+  });
+
+  // A denied or unanswered permission reads as no rings at all, and older days
+  // predate the ring; those days keep the statistics sum.
+  test('keeps the statistics sum for days without a ring', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 700, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 16, 650)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 16, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => [r.date, r.value])).toEqual([
+      ['2024-01-15', 500],
+      ['2024-01-16', 650],
+    ]);
+  });
+
+  test('keeps the statistics sum for a day whose ring is 0', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 0)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => [r.date, r.value])).toEqual([['2024-01-15', 500]]);
+  });
+
+  test('asks for the rings of the same window, never past now', async () => {
+    await initHealthConnect();
+
+    const startDate = localDate(2024, 1, 15);
+    const endDate = localDate(2024, 1, 16, 23, 59);
+    await getAggregatedActiveCaloriesByDate(startDate, endDate, true);
+
+    expect(mockQueryActivitySummary).toHaveBeenCalledWith({
+      date: { startDate, endDate },
+    });
+
+    const before = Date.now();
+    await getAggregatedActiveCaloriesByDate(
+      startOfToday(),
+      daysFromToday(2),
+      true
+    );
+    const filterEnd = mockQueryActivitySummary.mock.calls[1][0].date
+      .endDate as Date;
+    expect(filterEnd.getTime()).toBeGreaterThanOrEqual(before);
+    expect(filterEnd.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  // Date components come in the device calendar; a Japanese-calendar year (8)
+  // must not be read as a Gregorian day.
+  test('ignores a ring whose day falls outside the window', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2026, 1, 15), localDate(2026, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(8, 1, 15, 900)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2026, 1, 15),
+      localDate(2026, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => r.value)).toEqual([500]);
+  });
+
+  test('a failed ring query errors the whole metric so the cursor holds', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockRejectedValue(new Error('Ring query failed'));
+
+    const detailed = await getAggregatedActiveCaloriesByDateDetailed(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(detailed.records).toEqual([]);
+    expect(detailed.error).toBe('Ring query failed');
+  });
+});
+
 describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
   const mockByIdentifier = (map: Record<string, unknown[]>) =>
     mockQueryStatisticsCollection.mockImplementation((identifier: string) =>
@@ -411,6 +575,7 @@ describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
     jest.clearAllMocks();
     mockIsHealthDataAvailable.mockResolvedValue(true);
     mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    mockQueryActivitySummary.mockReset().mockResolvedValue([]);
     resetDatabaseInaccessibleCount();
   });
 
@@ -466,6 +631,28 @@ describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
       value: 2000, // 1500 + 500
       type: 'total_calories',
     });
+  });
+
+  test('adds the Move ring, not the active sum, to basal when the setting is on', async () => {
+    await initHealthConnect();
+
+    mockByIdentifier({
+      HKQuantityTypeIdentifierBasalEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1500, 'kcal'),
+      ],
+      HKQuantityTypeIdentifierActiveEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+      ],
+    });
+    mockQueryActivitySummary.mockResolvedValueOnce([ringDay(2024, 1, 15, 620)]);
+
+    const result = await getAggregatedTotalCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => r.value)).toEqual([2120]);
   });
 
   test('emits a day when only one side has data', async () => {
@@ -938,6 +1125,51 @@ describe('readHealthRecords', () => {
           filter: { date: { startDate, endDate } },
         })
       );
+    });
+
+    test('attaches the rating Apple Health holds for the workout, matched by its start and end', async () => {
+      await initHealthConnect();
+
+      const workout = (start: string, end: string) => ({
+        startDate: start,
+        endDate: end,
+        workoutActivityType: 37,
+        duration: 3600,
+        totalEnergyBurned: { unit: 'kcal', quantity: 500 },
+        totalDistance: { unit: 'm', quantity: 5000 },
+        getStatistic: jest.fn().mockResolvedValue(undefined),
+      });
+      mockQueryWorkoutSamples.mockResolvedValue([
+        workout('2024-01-15T08:00:00Z', '2024-01-15T09:00:00Z'),
+        workout('2024-01-15T17:00:00Z', '2024-01-15T17:30:00Z'),
+      ]);
+      mockQueryQuantitySamples.mockImplementation((identifier: string) =>
+        Promise.resolve(
+          identifier === 'HKQuantityTypeIdentifierWorkoutEffortScore'
+            ? [
+                {
+                  startDate: new Date('2024-01-15T08:00:00Z'),
+                  endDate: new Date('2024-01-15T09:00:00Z'),
+                  quantity: 8,
+                },
+              ]
+            : []
+        )
+      );
+
+      const result = (await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      )) as { startTime: string; telemetry?: { workout_effort?: number } }[];
+
+      const rated = result.find((r) => r.startTime === '2024-01-15T08:00:00Z');
+      const unrated = result.find(
+        (r) => r.startTime === '2024-01-15T17:00:00Z'
+      );
+      expect(rated?.telemetry?.workout_effort).toBe(8);
+      expect(unrated?.telemetry?.workout_effort).toBeUndefined();
+      mockQueryQuantitySamples.mockReset();
     });
 
     test('sets telemetry.elapsed_time_seconds from an object-shaped duration (regression: real HealthKit workouts report duration as {unit, quantity}, not a bare number)', async () => {
@@ -1519,6 +1751,130 @@ describe('readHealthRecords', () => {
     });
   });
 
+  describe('skin temperature records (read through to the upload shape)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockIsHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    const ring = (startDate: string, quantity: number, bundle: string) => ({
+      startDate,
+      endDate: startDate,
+      quantity,
+      sourceRevision: { source: { bundleIdentifier: bundle } },
+    });
+
+    test('OvernightBodyTemperature sends one body reading per night, from one source', async () => {
+      await initHealthConnect();
+      mockQueryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          value: 'ASLEEP',
+          metadata: { HKTimeZone: 'UTC' },
+        },
+      ]);
+      mockQueryQuantitySamples.mockResolvedValue([
+        ring('2024-01-15T00:00:00Z', 36.0, 'com.ring'),
+        ring('2024-01-15T02:00:00Z', 36.2, 'com.ring'),
+        ring('2024-01-15T04:00:00Z', 36.4, 'com.ring'),
+        ring('2024-01-15T03:00:00Z', 38.0, 'com.thermometer'),
+      ]);
+
+      // The window starts after bedtime: the night must still be read whole.
+      const windowStart = new Date('2024-01-15T01:00:00Z');
+      const windowEnd = new Date('2024-01-15T23:59:59Z');
+      const raw = await readHealthRecords(
+        'OvernightBodyTemperature',
+        windowStart,
+        windowEnd
+      );
+      const records = transformHealthRecords(raw, {
+        recordType: 'OvernightBodyTemperature',
+        unit: 'celsius',
+        type: 'skin_temperature',
+      }) as TransformedRecord[];
+
+      expect(mockQueryCategorySamples).toHaveBeenCalledWith(
+        'HKCategoryTypeIdentifierSleepAnalysis',
+        expect.objectContaining({
+          filter: {
+            date: {
+              startDate: new Date('2024-01-14T01:00:00Z'),
+              endDate: windowEnd,
+            },
+          },
+        })
+      );
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        type: 'skin_temperature',
+        value: 36.2,
+        site: 'body',
+        date: '2024-01-15',
+        timestamp: expect.stringMatching(/^2024-01-15T06:00:00/),
+      });
+    });
+
+    test('OvernightBodyTemperature sends nothing for a night that ended before the window', async () => {
+      await initHealthConnect();
+      mockQueryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          value: 'ASLEEP',
+        },
+      ]);
+      mockQueryQuantitySamples.mockResolvedValue([
+        ring('2024-01-15T02:00:00Z', 36.2, 'com.ring'),
+      ]);
+
+      const raw = await readHealthRecords(
+        'OvernightBodyTemperature',
+        new Date('2024-01-15T12:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(raw).toEqual([]);
+    });
+
+    test('SleepingWristTemperature sends a wrist reading on the wake day', async () => {
+      await initHealthConnect();
+      mockQueryQuantitySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          quantity: 34.1,
+          metadataTimeZone: 'UTC',
+        },
+      ]);
+
+      // The window opens at midnight, after the sample began: it is matched by its end.
+      const raw = await readHealthRecords(
+        'SleepingWristTemperature',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+      const records = transformHealthRecords(raw, {
+        recordType: 'SleepingWristTemperature',
+        unit: 'celsius',
+        type: 'skin_temperature',
+      }) as TransformedRecord[];
+
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
+        expect.anything()
+      );
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        type: 'skin_temperature',
+        value: 34.1,
+        site: 'wrist',
+        date: '2024-01-15',
+      });
+    });
+  });
+
   describe('Stress records', () => {
     beforeEach(() => {
       jest.clearAllMocks();
@@ -1596,6 +1952,44 @@ describe('readHealthRecords', () => {
       );
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('MindfulnessSession records', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockIsHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    test('keeps uuid, source and timezone for each session', async () => {
+      await initHealthConnect();
+
+      mockQueryCategorySamples.mockResolvedValue([
+        {
+          uuid: 'hk-uuid-1',
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T08:15:00Z',
+          value: 0,
+          metadataTimeZone: 'Europe/Berlin',
+          sourceRevision: { source: { bundleIdentifier: 'com.calm.app' } },
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'MindfulnessSession',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toEqual([
+        {
+          uuid: 'hk-uuid-1',
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T08:15:00Z',
+          metadata: { HKTimeZone: 'Europe/Berlin' },
+          sourceBundleId: 'com.calm.app',
+        },
+      ]);
     });
   });
 
@@ -2021,6 +2415,212 @@ describe('readHealthRecords', () => {
           'com.myfitnesspal.mfp'
       );
       expect((looseEntry as { objects: unknown[] }).objects).toHaveLength(1);
+    });
+
+    test('excludes loose samples matching a correlation bundle and timestamp even when UUIDs differ (prevents double-counting)', async () => {
+      await initHealthConnect();
+      const mfBundle = 'com.macrofactor.app';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-macrofactor-lunch',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          metadataFoodType: undefined,
+          metadata: { HKFoodType: 'Chicken Rice Bowl' },
+          sourceRevision: { source: { bundleIdentifier: mfBundle } },
+          objects: [
+            {
+              uuid: 'corr-obj-protein',
+              quantityType: 'HKQuantityTypeIdentifierDietaryProtein',
+              quantity: 40,
+              unit: 'g',
+            },
+            {
+              uuid: 'corr-obj-energy',
+              quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+              quantity: 542,
+              unit: 'kcal',
+            },
+          ],
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryEnergyConsumed: [
+            // App saved loose sample with DIFFERENT uuid than correlation objects
+            {
+              uuid: 'loose-obj-energy-unmatched-uuid',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 542,
+              unit: 'kcal',
+              source: { bundleIdentifier: mfBundle },
+            },
+          ],
+          HKQuantityTypeIdentifierDietaryProtein: [
+            {
+              uuid: 'loose-obj-protein-unmatched-uuid',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 40,
+              unit: 'g',
+              source: { bundleIdentifier: mfBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Only the correlation entry should be returned — the loose duplicate is excluded
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'corr-macrofactor-lunch',
+        startDate: '2024-01-15T12:30:00Z',
+        metadataFoodType: 'Chicken Rice Bowl',
+        sourceBundleId: mfBundle,
+      });
+    });
+
+    test('extracts foodLabel and timezone from correlation metadata (HKFoodType, HKTimeZone)', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-meta',
+          startDate: '2024-01-15T08:00:00Z',
+          metadataFoodType: undefined,
+          metadataTimeZone: undefined,
+          metadata: {
+            HKFoodType: 'Oatmeal with Berries',
+            HKTimeZone: 'Europe/London',
+          },
+        }),
+      ]);
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'corr-meta',
+        metadataFoodType: 'Oatmeal with Berries',
+        metadata: { HKTimeZone: 'Europe/London' },
+      });
+    });
+
+    test('preserves loose samples from the same source when outside the correlation window', async () => {
+      await initHealthConnect();
+      const appBundle = 'com.example.nutrition';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-lunch',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          sourceRevision: { source: { bundleIdentifier: appBundle } },
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryProtein: [
+            // Same source, but logged 4 hours later as a standalone loose snack
+            {
+              uuid: 'loose-snack-protein',
+              startDate: '2024-01-15T16:30:00Z',
+              quantity: 15,
+              unit: 'g',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Correlation from 12:30 AND standalone snack from 16:30 should both be returned
+      expect(result).toHaveLength(2);
+      const ids = result.map((r) => (r as { uuid: string }).uuid);
+      expect(ids).toContain('corr-lunch');
+      expect(ids).toContain('com.example.nutrition:2024-01-15T16:30:00Z');
+    });
+
+    test('preserves distinct loose nutrient from the same bundle within the correlation window', async () => {
+      await initHealthConnect();
+      const appBundle = 'com.example.nutrition';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-protein-only',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          sourceRevision: { source: { bundleIdentifier: appBundle } },
+          objects: [
+            {
+              uuid: 'corr-protein',
+              quantityType: 'HKQuantityTypeIdentifierDietaryProtein',
+              quantity: 25,
+              unit: 'g',
+            },
+          ],
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryProtein: [
+            // Same nutrient type inside the correlation window -> excluded
+            {
+              uuid: 'loose-duplicate-protein',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 25,
+              unit: 'g',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+          HKQuantityTypeIdentifierDietaryEnergyConsumed: [
+            // Distinct nutrient type NOT in the correlation -> preserved
+            {
+              uuid: 'loose-distinct-energy',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 200,
+              unit: 'kcal',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Should return the correlation record AND the loose record for the distinct nutrient
+      expect(result).toHaveLength(2);
+      const ids = result.map((r) => (r as { uuid: string }).uuid);
+      expect(ids).toContain('corr-protein-only');
+      expect(ids).toContain('com.example.nutrition:2024-01-15T12:30:00Z');
+
+      const looseEntry = result.find(
+        (r) =>
+          (r as { uuid: string }).uuid ===
+          'com.example.nutrition:2024-01-15T12:30:00Z'
+      );
+      expect(
+        (looseEntry as { objects: { quantityType: string }[] }).objects
+      ).toEqual([
+        expect.objectContaining({
+          quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+          quantity: 200,
+        }),
+      ]);
     });
   });
 });

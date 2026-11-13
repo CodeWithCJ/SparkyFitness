@@ -3,6 +3,7 @@
     "NSCameraUsageDescription": "SparkyFitness necesita acceder a tu cámara para escanear códigos de barras y etiquetas de alimentos.",
     "NSHealthShareUsageDescription": "SparkyFitness lee datos de Salud (como actividad, entrenamientos y medidas corporales) para mostrarlos en la app y sincronizarlos con tu servidor SparkyFitness autoalojado.",
     "NSHealthUpdateUsageDescription": "SparkyFitness escribe en Apple Salud la nutrición y la hidratación que registras en la app, manteniendo ambas sincronizadas.",
-    "NSLocalNetworkUsageDescription": "SparkyFitness se conecta a servidores autoalojados en tu red local."
+    "NSLocalNetworkUsageDescription": "SparkyFitness se conecta a servidores autoalojados en tu red local.",
+    "NSLocationWhenInUseUsageDescription": "SparkyFitness utiliza tu ubicación para registrar la ruta, la distancia y el ritmo de tus caminatas, carreras y salidas en bicicleta."
   }
 }

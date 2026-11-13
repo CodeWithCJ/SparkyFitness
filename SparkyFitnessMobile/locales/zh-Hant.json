@@ -3,6 +3,7 @@
     "NSCameraUsageDescription": "SparkyFitness 需要存取你的相機，以掃描食物條碼與標籤.",
     "NSHealthShareUsageDescription": "SparkyFitness 讀取健康資料（例如活動紀錄、訓練項目與身體測量數據），以便在應用程式中顯示，並同步至你自行架設的 SparkyFitness 伺服器.",
     "NSHealthUpdateUsageDescription": "SparkyFitness會將你在App中記錄的營養與水分攝取資料寫入Apple Health，讓兩者保持同步.",
-    "NSLocalNetworkUsageDescription": "SparkyFitness 可連線至區域網路中的自架伺服器."
+    "NSLocalNetworkUsageDescription": "SparkyFitness 可連線至區域網路中的自架伺服器.",
+    "NSLocationWhenInUseUsageDescription": "SparkyFitness 會使用你的位置來記錄步行、跑步和騎乘的路線、距離與配速。"
   }
 }

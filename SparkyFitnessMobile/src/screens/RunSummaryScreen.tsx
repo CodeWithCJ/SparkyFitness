@@ -11,13 +11,19 @@ import RouteMap from '../components/exerciseStats/RouteMap';
 import PaceChart from '../components/exerciseStats/PaceChart';
 import { paceSeriesFromDistance } from '../utils/cardioSession';
 import { SplitRow, Stat } from '../components/recording/SplitRow';
+import SplitsTable from '../components/recording/SplitsTable';
 import {
   EASY_RATING,
   HARD_RATING,
   suggestFromEffort,
   type EffortSuggestion,
 } from '@workspace/shared';
-import { setExerciseEntryDistance } from '../services/api/exerciseApi';
+import {
+  setExerciseEntryDistance,
+  setExerciseEntryStrideLength,
+} from '../services/api/exerciseApi';
+import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   rateProgramWorkout,
   setProgramPosition,
@@ -28,6 +34,8 @@ import { usePersonalRecords } from '../hooks/usePersonalRecords';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatLocalizedNumber } from '../localization';
 import { formatDayLabel } from '../utils/dayLabel';
+import { spmText, strideText } from '../utils/cardioSessionStats';
+import { computeFormMetrics } from '../utils/stride';
 import { parseDecimalInput } from '../utils/numericInput';
 import { distanceStandardLabel, recordsHeldBy } from '../utils/personalRecords';
 import {
@@ -40,6 +48,8 @@ import {
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
 import { learnWatchIndoorScale } from '../services/watchIndoorScale';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type Props = RootStackScreenProps<'RunSummary'>;
 
@@ -52,7 +62,9 @@ const FEET_PER_METER = 3.28084;
  */
 const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const summary = route.params;
   const miles = summary.distanceUnit === 'miles';
   const unitMeters = miles ? METERS_PER_MILE : METERS_PER_KM;
@@ -93,6 +105,26 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [distanceText, setDistanceText] = useState('');
   const [savingDistance, setSavingDistance] = useState(false);
   const [distanceSaved, setDistanceSaved] = useState(false);
+  // Stride is distance over steps, so a corrected distance moves it too.
+  const [strideLengthCm, setStrideLengthCm] = useState(
+    summary.form?.strideLengthCm ?? null
+  );
+  const formSteps = summary.form?.steps;
+  const followStride = async (entryId: string, km: number) => {
+    if (formSteps == null) return;
+    const next =
+      computeFormMetrics(formSteps, summary.activeSeconds, km * METERS_PER_KM)
+        ?.strideLengthCm ?? null;
+    setStrideLengthCm(next);
+    try {
+      await setExerciseEntryStrideLength(entryId, next);
+    } catch (error) {
+      addLog(
+        `[Run Summary] Could not update the stride length: ${String(error)}`,
+        'WARNING'
+      );
+    }
+  };
   const distanceScale =
     summary.distanceMeters > 0 ? distanceMeters / summary.distanceMeters : 1;
   const saveDistance = async () => {
@@ -110,6 +142,7 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       await setExerciseEntryDistance(summary.entryId, km);
       setDistanceMeters(km * METERS_PER_KM);
+      await followStride(summary.entryId, km);
       // The watch's indoor estimate learns from the machine's figure.
       if (summary.watchIndoor) {
         void learnWatchIndoorScale(
@@ -197,7 +230,9 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       ? t('runSummary.walkSaved', { defaultValue: 'Walk saved' })
       : summary.activity === 'ride'
         ? t('runSummary.rideSaved', { defaultValue: 'Ride saved' })
-        : t('runSummary.runSaved', { defaultValue: 'Run saved' });
+        : summary.activity === 'jumpRope'
+          ? t('runSummary.jumpRopeSaved', { defaultValue: 'Jump Rope saved' })
+          : t('runSummary.runSaved', { defaultValue: 'Run saved' });
 
   const avgPace = paceSecondsPerUnit(
     distanceMeters,
@@ -225,7 +260,10 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const fastestLabel = t('recordActivity.fastest', { defaultValue: 'Fastest' });
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -247,20 +285,39 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <View className="flex-row mb-3">
-          <Stat
-            label={t('recordActivity.distance', { defaultValue: 'Distance' })}
-            value={number(distanceMeters / unitMeters)}
-            unit={unitLabel}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.distance', { defaultValue: 'Distance' })}
+              value={number(distanceMeters / unitMeters)}
+              unit={unitLabel}
+            />
+          ) : null}
           <Stat
             label={t('recordActivity.time', { defaultValue: 'Time' })}
             value={formatClock(summary.activeSeconds)}
           />
-          <Stat
-            label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
-            value={formatPace(avgPace)}
-            unit={paceUnit}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
+              value={formatPace(avgPace)}
+              unit={paceUnit}
+            />
+          ) : null}
+          {summary.activity === 'jumpRope' &&
+          summary.activeEnergyKcal != null &&
+          summary.activeEnergyKcal > 0 ? (
+            <Stat
+              label={
+                energyUnit === 'kJ'
+                  ? t('common.energy', { defaultValue: 'Energy' })
+                  : t('watchRunLive.calories', { defaultValue: 'Calories' })
+              }
+              value={String(
+                roundedEnergy(summary.activeEnergyKcal, energyUnit)
+              )}
+              unit={energyUnitLabel(energyUnit, t)}
+            />
+          ) : null}
         </View>
         {summary.elevationGainMeters >= 1 || summary.avgHeartRate != null ? (
           <View className="flex-row mb-3">
@@ -284,6 +341,25 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                 })}
                 value={number(summary.avgHeartRate, 0)}
                 unit={t('recordActivity.unitBpm', { defaultValue: 'bpm' })}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
+        {summary.form ? (
+          <View className="flex-row mb-3">
+            <Stat
+              label={t('exerciseStatistics.cardio.cadence', {
+                defaultValue: 'Avg cadence',
+              })}
+              value={spmText(t, summary.form.avgCadence)}
+            />
+            {strideLengthCm != null ? (
+              <Stat
+                label={t('exerciseStatistics.cardio.strideLength', {
+                  defaultValue: 'Stride length',
+                })}
+                value={strideText(t, strideLengthCm, summary.distanceUnit)}
               />
             ) : null}
           </View>
@@ -509,38 +585,36 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                 ? t('recordActivity.laps', { defaultValue: 'Laps' })
                 : t('recordActivity.splits', { defaultValue: 'Splits' })}
             </Text>
-            {rows.map((row, i) => (
-              <SplitRow
-                key={row.index}
-                label={
-                  usesLaps
-                    ? t('recordActivity.lapLabel', {
-                        defaultValue: 'Lap {{number}}',
-                        number: row.index,
-                      })
-                    : `${
-                        row.partial
-                          ? number(row.distanceMeters / unitMeters)
-                          : String(row.index)
-                      } ${unitLabel}`
-                }
-                detail={
-                  usesLaps
-                    ? `${number(row.distanceMeters / unitMeters, 2)} ${unitLabel} · ${formatClock(row.durationSeconds)}`
-                    : undefined
-                }
-                pace={`${formatPace(
-                  paceSecondsPerUnit(
-                    row.distanceMeters,
-                    row.durationSeconds,
-                    unitMeters
-                  )
-                )} ${paceUnit}`}
-                fraction={bars[i].fraction}
-                fastest={bars[i].fastest}
-                fastestLabel={fastestLabel}
+            {usesLaps ? (
+              <>
+                {rows.map((row, i) => (
+                  <SplitRow
+                    key={row.index}
+                    label={t('recordActivity.lapLabel', {
+                      defaultValue: 'Lap {{number}}',
+                      number: row.index,
+                    })}
+                    detail={`${number(row.distanceMeters / unitMeters, 2)} ${unitLabel} · ${formatClock(row.durationSeconds)}`}
+                    pace={`${formatPace(
+                      paceSecondsPerUnit(
+                        row.distanceMeters,
+                        row.durationSeconds,
+                        unitMeters
+                      )
+                    )} ${paceUnit}`}
+                    fraction={bars[i].fraction}
+                    fastest={bars[i].fastest}
+                    fastestLabel={fastestLabel}
+                  />
+                ))}
+              </>
+            ) : (
+              <SplitsTable
+                splits={rows}
+                unitMeters={unitMeters}
+                unit={summary.distanceUnit}
               />
-            ))}
+            )}
           </View>
         ) : null}
 
@@ -548,7 +622,7 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           {t('runSummary.done', { defaultValue: 'Done' })}
         </Button>
       </ScrollView>
-    </>
+    </View>
   );
 };
 

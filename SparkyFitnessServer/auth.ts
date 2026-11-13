@@ -2,6 +2,10 @@ import { betterAuth } from 'better-auth';
 import { APIError } from 'better-auth/api';
 import pg from 'pg';
 import { log } from './config/logging.js';
+import { handleConnectionLoss } from './db/poolManager.js';
+import { retryPoolConnects } from './db/connectRetry.js';
+import { applicationName } from './db/applicationName.js';
+import { isPoolBusy, trackPoolProgress } from './db/poolBusy.js';
 import bcrypt from 'bcryptjs';
 import { syncUserGroups } from './utils/oidcGroupSync.js';
 import userRepository from './models/userRepository.js';
@@ -11,17 +15,27 @@ import {
   sendMagicLinkEmail,
   sendEmailMfaCode,
 } from './services/emailService.js';
+import { resolveEmailLanguage } from './services/emailTranslations.js';
 import { createDefaultNutrientPreferencesForUser } from './services/nutrientDisplayPreferenceService.js';
 import { isPrivateNetworkAddress } from './utils/corsHelper.js';
 import { apiKey } from '@better-auth/api-key';
 import { v4 } from 'uuid';
-import { emailOTP, magicLink, admin, twoFactor } from 'better-auth/plugins';
+import { magicLink, admin, twoFactor, jwt } from 'better-auth/plugins';
 import { sso } from '@better-auth/sso';
 import { expo } from '@better-auth/expo';
 import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
 import { isDemoMode } from './middleware/demoGuardMiddleware.js';
 import { isEmailLoginDisabled } from './utils/emailLogin.js';
+import { mcp } from '@better-auth/mcp';
+import {
+  createMcpOAuthAuthorizationRedirectValidator,
+  getMcpOAuthAvailability,
+  getMcpResourceUrl,
+  MCP_OAUTH_SCOPE,
+} from './utils/mcpOAuth.js';
+import { jwtSchema, mcpOAuthSchema } from './utils/mcpOAuthSchema.js';
+import { getMcpOAuthAllowedRedirectUris } from './models/globalSettingsRepository.js';
 
 const { Pool } = pg;
 /**
@@ -77,6 +91,10 @@ const authPool = new Pool({
   password: process.env.SPARKY_FITNESS_DB_PASSWORD,
   // @ts-expect-error
   port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
+  application_name: applicationName('auth'),
+  // Without it a connect to an unreachable host waits for the operating
+  // system's TCP timeout, which the connect retry below cannot bound.
+  connectionTimeoutMillis: 5000,
   // pg returns bigint columns as strings, but Better Auth does arithmetic on
   // them as numbers (rate_limit.last_request, epoch milliseconds); a string
   // there turns the 429 retry-after into concatenated digits.
@@ -95,6 +113,10 @@ const authPool = new Pool({
 authPool.on('error', (err) => {
   log('error', 'Unexpected error on idle Better Auth client', err);
 });
+handleConnectionLoss(authPool, 'Better Auth');
+trackPoolProgress(authPool);
+// Better Auth acquires its own connections, so the retry has to live on the pool.
+const connectAuthPoolOnce = retryPoolConnects(authPool);
 // Persistent array reference for trusted providers
 // Mutation of this array will be visible to Better Auth since it holds the reference
 // @ts-expect-error
@@ -288,8 +310,61 @@ try {
   // Fall back to default
 }
 
+// OAuth resource configuration is seeded asynchronously when Better Auth is
+// constructed. Unit tests deliberately run without PostgreSQL, so keep these
+// database-backed plugins out unless the database-backed schema/startup test
+// explicitly enables them. The MCP plugin also rejects non-HTTPS public URLs
+// (except loopback), so an API-key-only LAN install must skip it rather than
+// crashing at module load.
+const shouldInstallMcpOAuthPlugins =
+  process.env.NODE_ENV !== 'test' ||
+  process.env.SPARKY_FITNESS_TEST_MCP_OAUTH_PLUGINS === 'true';
+const mcpOAuthAvailability = getMcpOAuthAvailability();
+const installMcpOAuthPlugins =
+  shouldInstallMcpOAuthPlugins && mcpOAuthAvailability.available;
+if (shouldInstallMcpOAuthPlugins && !mcpOAuthAvailability.available) {
+  log(
+    'warn',
+    `[MCP OAuth] OAuth endpoints are unavailable: ${mcpOAuthAvailability.reason}`
+  );
+}
+const mcpOAuthPlugins = installMcpOAuthPlugins
+  ? (() => {
+      const mcpResourceUrl = getMcpResourceUrl();
+      return [
+        jwt({ schema: jwtSchema, disableSettingJwtHeader: true }),
+        mcp({
+          loginPage: '/login',
+          consentPage: '/oauth/consent',
+          resource: mcpResourceUrl,
+          resources: [
+            {
+              identifier: mcpResourceUrl,
+              name: 'SparkyFitness MCP',
+              allowedScopes: [MCP_OAUTH_SCOPE],
+            },
+          ],
+          scopes: [MCP_OAUTH_SCOPE, 'offline_access'],
+          clientRegistrationDefaultScopes: [MCP_OAUTH_SCOPE, 'offline_access'],
+          allowDynamicClientRegistration: true,
+          allowUnauthenticatedClientRegistration: true,
+          clientRegistrationDefaultApplicationType: 'infer',
+          validateRedirectUri: createMcpOAuthAuthorizationRedirectValidator(
+            getMcpOAuthAllowedRedirectUris
+          ),
+          clientPrivileges: ({ user }) => user?.role === 'admin',
+          resourcePrivileges: ({ user }) => user?.role === 'admin',
+          schema: mcpOAuthSchema,
+        }),
+      ];
+    })()
+  : [];
+
 const auth = betterAuth({
   database: authPool,
+  // The JWT plugin's generic /token endpoint overlaps the OAuth provider's
+  // standards-compliant /oauth2/token endpoint and must not be exposed.
+  disabledPaths: ['/token'],
   // @ts-expect-error
   secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
   secrets: [
@@ -344,7 +419,6 @@ const auth = betterAuth({
     customRules: {
       '/sign-in/email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
       '/two-factor/*': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
-      '/email-otp/verify-email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
     },
   },
   // Email/Password authentication
@@ -361,7 +435,11 @@ const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail(user.email, url);
+      await sendPasswordResetEmail(
+        user.email,
+        url,
+        await resolveEmailLanguage({ userId: user.id })
+      );
     },
     password: {
       // Use bcrypt for compatibility with existing hashes
@@ -469,6 +547,8 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       mfaEmailEnabled: {
         type: 'boolean',
@@ -476,12 +556,16 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       lastLoginAt: {
         type: 'date',
         fieldName: 'last_login_at',
         required: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
     },
   },
@@ -496,10 +580,10 @@ const auth = betterAuth({
       // SparkyFitness has no email-verification flow to satisfy that gate:
       // `requireEmailVerification` is false, no verification email is ever sent,
       // and there is no verify route -- so nothing sets email_verified except
-      // an incidental magic-link or email-OTP sign-in, which itself needs SMTP
-      // that many self-hosted instances never configure. Leaving the gate on
-      // therefore breaks SSO permanently for every existing account rather than
-      // prompting anyone to verify anything.
+      // an incidental magic-link sign-in, which itself needs SMTP that many
+      // self-hosted instances never configure. Leaving the gate on therefore
+      // breaks SSO permanently for every existing account rather than prompting
+      // anyone to verify anything.
       //
       // The residual risk needs signup to be open on this instance AND the
       // attacker to register the victim's address before the victim's first SSO
@@ -835,22 +919,24 @@ const auth = betterAuth({
     },
   },
   plugins: [
+    // OAuth 2.1 authorization for the top-level /mcp protected resource.
+    // API-key and session authentication remain available on /mcp; these
+    // plugins own discovery, authorization, DCR, token issuance, and JWT keys.
+    ...mcpOAuthPlugins,
     // Expo mobile app support: maps the app's expo-origin header to origin and
     // serves /expo-authorization-proxy so the system browser carries the OAuth
     // state cookie. The relay plugin forwards the session cookie to the app on
     // /sso/callback redirects (the official plugin only covers /callback paths).
     expo(),
     expoSsoCookieRelay(),
-    emailOTP({
-      // @ts-expect-error
-      async sendVerificationOTP({ user, otp }) {
-        await sendEmailMfaCode(user.email, otp);
-      },
-    }),
     magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url }) => {
-        await sendMagicLinkEmail(email, url);
+        await sendMagicLinkEmail(
+          email,
+          url,
+          await resolveEmailLanguage({ email })
+        );
       },
     }),
     // The admin plugin contributes its own user/session columns, and those are
@@ -904,7 +990,11 @@ const auth = betterAuth({
       },
       otpOptions: {
         async sendOTP({ user, otp }) {
-          await sendEmailMfaCode(user.email, otp);
+          await sendEmailMfaCode(
+            user.email,
+            otp,
+            await resolveEmailLanguage({ userId: user.id })
+          );
         },
       },
     }),
@@ -979,11 +1069,34 @@ async function cleanupSessions() {
     client.release();
   }
 }
+/**
+ * For the readiness check: a connection from the Better Auth pool without the
+ * connect retry, so a probe reports what a request would see now.
+ */
+function connectAuthPoolForProbe(): Promise<pg.PoolClient> {
+  return connectAuthPoolOnce();
+}
+/**
+ * Rejects while Better Auth has a schema mismatch cached, which fails every
+ * sign-in until the process restarts.
+ */
+async function checkAuthSchema(): Promise<void> {
+  const ctx = await auth.$context;
+  await ctx.checkSchema?.();
+}
+/** Whether the Better Auth pool is full of work that is still finishing. */
+function isAuthPoolBusy(): boolean {
+  return isPoolBusy(authPool);
+}
 export { auth };
+export { checkAuthSchema };
+export { connectAuthPoolForProbe };
+export { isAuthPoolBusy };
 export { syncTrustedProviders };
 export { cleanupSessions };
 export default {
   auth,
+  checkAuthSchema,
   syncTrustedProviders,
   cleanupSessions,
 };

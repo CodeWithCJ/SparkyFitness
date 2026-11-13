@@ -5,8 +5,10 @@ import type {
   LapMesg,
   RecordMesg,
   SessionMesg,
+  SetMesg,
   TimeInZoneMesg,
 } from '@garmin/fitsdk';
+import { Profile } from '@garmin/fitsdk';
 import { instantToDay } from '@workspace/shared';
 
 // FIT timestamps count seconds from 1989-12-31T00:00:00Z.
@@ -14,6 +16,11 @@ const FIT_EPOCH_MS = 631065600000;
 const SEMICIRCLES_TO_DEGREES = 180 / 2 ** 31;
 // A valid-but-pathological file must not exhaust memory or write enormous JSONB.
 const MAX_RECORD_COUNT = 100_000;
+const MAX_SET_COUNT = 10_000;
+// The strength parser resolves exercise titles per set message, so an uncapped
+// title or step count makes decode cost quadratic in adversarial files.
+const MAX_EXERCISE_TITLE_COUNT = 1_000;
+const MAX_WORKOUT_STEP_COUNT = 1_000;
 const MAX_DETAIL_DATA_BYTES = 10 * 1024 * 1024;
 // Sports where FIT cadence is strides/min (one leg); steps/min doubles it.
 const DOUBLED_CADENCE_SPORTS = new Set(['running', 'walking', 'hiking']);
@@ -27,6 +34,7 @@ export interface FitEntryData {
   steps: number | null;
   notes: string;
   source_id: string;
+  training_load?: number | null;
 }
 
 interface MetricDescriptor {
@@ -79,6 +87,50 @@ export interface FitDetailData {
   hr_in_timezones: HrZoneDto[];
 }
 
+export interface FitStrengthSet {
+  set_number: number;
+  set_type: string;
+  reps: number;
+  weight: number;
+  duration: number;
+  rest_time: number;
+  notes: string;
+}
+
+export interface FitStrengthExerciseGroup {
+  name: string;
+  category: string;
+  sets: FitStrengthSet[];
+  totalDuration: number;
+  activeDuration: number;
+  startTime: number | null;
+  endTime: number | null;
+}
+
+export interface FitWorkoutStepDto {
+  type: string;
+  stepId: number;
+  stepOrder: number;
+  exerciseName: string;
+  category: string;
+  weightValue: number;
+  weightUnit: { unitKey: string };
+  endCondition: { conditionTypeKey: string };
+  endConditionValue: number;
+  description: string;
+}
+
+export interface FitWorkoutData {
+  workoutName: string;
+  description?: string;
+  sportType?: { sportTypeKey: string };
+  estimatedDurationInSecs?: number;
+  workoutSegments?: Array<{
+    segmentOrder: number;
+    workoutSteps: FitWorkoutStepDto[];
+  }>;
+}
+
 export type FitTransformResult =
   | {
       ok: true;
@@ -93,6 +145,12 @@ export type FitTransformResult =
       /** Garmin Connect style snake_case type key, e.g. "tennis". */
       sport: string;
       warnings: string[];
+      /** Populated for strength activities when individual exercises and sets are decoded. */
+      strengthWorkout?: {
+        workoutName: string;
+        groupedExercises: FitStrengthExerciseGroup[];
+        workoutData: FitWorkoutData;
+      };
     }
   | { ok: false; reason: string };
 
@@ -140,7 +198,9 @@ function deriveLocalOffsetMs(
   const utcMs = fitTimeToMs(activityMesg.timestamp);
   const localMs = fitTimeToMs(activityMesg.localTimestamp);
   if (utcMs === null || localMs === null) return null;
-  return localMs - utcMs;
+  const offset = localMs - utcMs;
+  // A real timezone offset is within ±14 h; anything else is a bad local timestamp.
+  return Math.abs(offset) <= 14 * 3600 * 1000 ? offset : null;
 }
 
 function buildRecordMetrics(
@@ -276,6 +336,300 @@ function buildHrZones(
   }));
 }
 
+interface ExerciseTitleIndex {
+  byCategoryAndName: Map<string, string>;
+  byCategory: Map<string, string>;
+}
+
+function buildExerciseTitleIndex(
+  exerciseTitles: unknown[]
+): ExerciseTitleIndex {
+  const byCategoryAndName = new Map<string, string>();
+  const byCategory = new Map<string, string>();
+  for (const t of exerciseTitles as Array<Record<string, unknown>>) {
+    if (typeof t.wktStepName === 'string' && t.wktStepName.trim().length > 0) {
+      const name = t.wktStepName.trim();
+      const cat = String(t.exerciseCategory ?? '');
+      if (cat) {
+        if (!byCategory.has(cat)) {
+          byCategory.set(cat, name);
+        }
+        if (t.exerciseName !== null && t.exerciseName !== undefined) {
+          byCategoryAndName.set(`${cat}_${t.exerciseName}`, name);
+        }
+      }
+    }
+  }
+  return { byCategoryAndName, byCategory };
+}
+
+function lookupExerciseTitle(
+  index: ExerciseTitleIndex,
+  category: unknown,
+  exerciseName: unknown
+): string | null {
+  if (!category) return null;
+  const cat = String(category);
+  if (exerciseName !== null && exerciseName !== undefined) {
+    return index.byCategoryAndName.get(`${cat}_${exerciseName}`) ?? null;
+  }
+  return index.byCategory.get(cat) ?? null;
+}
+
+function resolveExerciseName(
+  categoryRaw: unknown,
+  subTypeRaw: unknown,
+  wktStepIndex: number | null,
+  workoutSteps: unknown[],
+  titleIndex: ExerciseTitleIndex
+): { name: string; category: string } {
+  const categoryStr = Array.isArray(categoryRaw) ? categoryRaw[0] : categoryRaw;
+  const subTypeNum = Array.isArray(subTypeRaw) ? subTypeRaw[0] : subTypeRaw;
+
+  // 1. If wktStepIndex is present, check workoutStepMesgs and indexed exerciseTitleMesgs
+  if (wktStepIndex !== null && workoutSteps[wktStepIndex]) {
+    const step = workoutSteps[wktStepIndex] as Record<string, unknown>;
+    const stepCategory =
+      (step.exerciseCategory as string | undefined) ?? categoryStr;
+    const stepNameNum = (step.exerciseName as number | undefined) ?? subTypeNum;
+
+    const titleMatch = lookupExerciseTitle(
+      titleIndex,
+      stepCategory,
+      stepNameNum
+    );
+    if (titleMatch) {
+      return {
+        name: titleMatch,
+        category: typeof stepCategory === 'string' ? stepCategory : 'strength',
+      };
+    }
+
+    if (
+      typeof step.wktStepName === 'string' &&
+      step.wktStepName.trim().length > 0
+    ) {
+      return {
+        name: step.wktStepName.trim(),
+        category: typeof stepCategory === 'string' ? stepCategory : 'strength',
+      };
+    }
+  }
+
+  // 2. Direct match in indexed exerciseTitles by category/subtype
+  const directMatch = lookupExerciseTitle(titleIndex, categoryStr, subTypeNum);
+  if (directMatch) {
+    return {
+      name: directMatch,
+      category: typeof categoryStr === 'string' ? categoryStr : 'strength',
+    };
+  }
+
+  // 3. Profile.types lookup
+  if (
+    typeof categoryStr === 'string' &&
+    subTypeNum !== null &&
+    subTypeNum !== undefined
+  ) {
+    const typeDictName = `${categoryStr}ExerciseName`;
+    // @ts-expect-error fitsdk Profile types dynamically indexed
+    const subTypeName = Profile?.types?.[typeDictName]?.[subTypeNum as number];
+    if (typeof subTypeName === 'string' && subTypeName.length > 0) {
+      const formatted = subTypeName
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      return { name: formatted, category: categoryStr };
+    }
+  }
+
+  // 4. Category string
+  if (typeof categoryStr === 'string' && categoryStr !== 'unknown') {
+    const formatted = categoryStr
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    return { name: formatted, category: categoryStr };
+  }
+
+  return { name: 'Strength Exercise', category: 'strength' };
+}
+
+function isRestSet(set: SetMesg, workoutSteps: unknown[]): boolean {
+  if (set.setType === 'rest') return true;
+  if (typeof set.wktStepIndex === 'number' && workoutSteps[set.wktStepIndex]) {
+    const step = workoutSteps[set.wktStepIndex] as Record<string, unknown>;
+    if (step.intensity === 'rest' || step.intensity === 'recovery') {
+      return true;
+    }
+  }
+  const hasCategory =
+    set.category !== undefined &&
+    set.category !== null &&
+    (Array.isArray(set.category)
+      ? set.category.length > 0 && set.category[0] !== 'unknown'
+      : set.category !== 'unknown');
+  const hasSubtype =
+    set.categorySubtype !== undefined && set.categorySubtype !== null;
+  const reps = typeof set.repetitions === 'number' ? set.repetitions : 0;
+  if (!hasCategory && !hasSubtype && reps <= 0) {
+    return true;
+  }
+  return false;
+}
+
+function parseStrengthSets(
+  messages: FitMessages,
+  defaultWorkoutName: string,
+  durationSeconds: number
+): {
+  workoutName: string;
+  groupedExercises: FitStrengthExerciseGroup[];
+  workoutData: FitWorkoutData;
+} | null {
+  const setMesgs = messages.setMesgs ?? [];
+  if (setMesgs.length === 0) return null;
+
+  const workoutSteps =
+    (messages as unknown as { workoutStepMesgs?: unknown[] })
+      .workoutStepMesgs ?? [];
+  const exerciseTitles =
+    (messages as unknown as { exerciseTitleMesgs?: unknown[] })
+      .exerciseTitleMesgs ?? [];
+  const titleIndex = buildExerciseTitleIndex(exerciseTitles);
+  const workoutMesgs =
+    (
+      messages as unknown as {
+        workoutMesgs?: Array<{ wktName?: string; wktDescription?: string }>;
+      }
+    ).workoutMesgs ?? [];
+
+  const rawWktName = workoutMesgs[0]?.wktName?.trim();
+  const workoutName = rawWktName || defaultWorkoutName || 'Strength Workout';
+  const workoutDescription = workoutMesgs[0]?.wktDescription?.trim() || '';
+
+  const groups: FitStrengthExerciseGroup[] = [];
+  let currentGroup: FitStrengthExerciseGroup | null = null;
+  const executableSteps: FitWorkoutStepDto[] = [];
+
+  for (const set of setMesgs) {
+    const isRest = isRestSet(set, workoutSteps);
+    const duration =
+      typeof set.duration === 'number' ? Math.round(set.duration) : 0;
+    const startTimeMs =
+      set.startTime instanceof Date || typeof set.startTime === 'number'
+        ? fitTimeToMs(set.startTime)
+        : null;
+    const endTimeMs =
+      startTimeMs !== null ? startTimeMs + duration * 1000 : null;
+
+    if (isRest) {
+      if (currentGroup && currentGroup.sets.length > 0) {
+        const lastSet = currentGroup.sets[currentGroup.sets.length - 1];
+        lastSet.rest_time = (lastSet.rest_time || 0) + duration;
+        currentGroup.totalDuration += duration;
+        if (
+          endTimeMs !== null &&
+          (currentGroup.endTime === null || endTimeMs > currentGroup.endTime)
+        ) {
+          currentGroup.endTime = endTimeMs;
+        }
+      }
+      continue;
+    }
+
+    const wktStepIndex =
+      typeof set.wktStepIndex === 'number' ? set.wktStepIndex : null;
+    const { name: resolvedName, category: resolvedCategory } =
+      resolveExerciseName(
+        set.category,
+        set.categorySubtype,
+        wktStepIndex,
+        workoutSteps,
+        titleIndex
+      );
+
+    if (!currentGroup || currentGroup.name !== resolvedName) {
+      currentGroup = {
+        name: resolvedName,
+        category: resolvedCategory,
+        sets: [],
+        totalDuration: 0,
+        activeDuration: 0,
+        startTime: startTimeMs,
+        endTime: endTimeMs,
+      };
+      groups.push(currentGroup);
+    }
+
+    const reps = Number(set.repetitions) || 0;
+    const weight =
+      typeof set.weight === 'number' && Number.isFinite(set.weight)
+        ? parseFloat(set.weight.toFixed(2))
+        : 0;
+
+    const setType = set.setType === 'warmup' ? 'Warmup' : 'Working Set';
+    const setRow: FitStrengthSet = {
+      set_number: currentGroup.sets.length + 1,
+      set_type: setType,
+      reps,
+      weight,
+      duration,
+      rest_time: 0,
+      notes: '',
+    };
+    currentGroup.sets.push(setRow);
+    currentGroup.activeDuration += duration;
+    currentGroup.totalDuration += duration;
+    if (
+      startTimeMs !== null &&
+      (currentGroup.startTime === null || startTimeMs < currentGroup.startTime)
+    ) {
+      currentGroup.startTime = startTimeMs;
+    }
+    if (
+      endTimeMs !== null &&
+      (currentGroup.endTime === null || endTimeMs > currentGroup.endTime)
+    ) {
+      currentGroup.endTime = endTimeMs;
+    }
+
+    executableSteps.push({
+      type: 'ExecutableStepDTO',
+      stepId: executableSteps.length + 1,
+      stepOrder: executableSteps.length + 1,
+      exerciseName: resolvedName,
+      category: resolvedCategory,
+      weightValue: weight,
+      weightUnit: { unitKey: 'kilogram' },
+      endCondition: { conditionTypeKey: 'reps' },
+      endConditionValue: reps,
+      description: '',
+    });
+  }
+
+  if (groups.length === 0) return null;
+
+  const workoutData: FitWorkoutData = {
+    workoutName,
+    description: workoutDescription,
+    sportType: { sportTypeKey: 'training' },
+    estimatedDurationInSecs: durationSeconds,
+    workoutSegments: [
+      {
+        segmentOrder: 1,
+        workoutSteps: executableSteps,
+      },
+    ],
+  };
+
+  return { workoutName, groupedExercises: groups, workoutData };
+}
+
 /**
  * Transforms decoded FIT messages into the exercise-entry row data and the
  * `detail_data` blob the Garmin Connect sync stores, so imports render in the
@@ -303,6 +657,31 @@ function transformFitActivity(
     return {
       ok: false,
       reason: `File contains ${records.length} data records (limit ${MAX_RECORD_COUNT}).`,
+    };
+  }
+  const setCount = messages.setMesgs?.length ?? 0;
+  if (setCount > MAX_SET_COUNT) {
+    return {
+      ok: false,
+      reason: `File contains ${setCount} set messages (limit ${MAX_SET_COUNT}).`,
+    };
+  }
+  const exerciseTitleCount =
+    (messages as unknown as { exerciseTitleMesgs?: unknown[] })
+      .exerciseTitleMesgs?.length ?? 0;
+  if (exerciseTitleCount > MAX_EXERCISE_TITLE_COUNT) {
+    return {
+      ok: false,
+      reason: `File contains ${exerciseTitleCount} exercise title messages (limit ${MAX_EXERCISE_TITLE_COUNT}).`,
+    };
+  }
+  const workoutStepCount =
+    (messages as unknown as { workoutStepMesgs?: unknown[] }).workoutStepMesgs
+      ?.length ?? 0;
+  if (workoutStepCount > MAX_WORKOUT_STEP_COUNT) {
+    return {
+      ok: false,
+      reason: `File contains ${workoutStepCount} workout step messages (limit ${MAX_WORKOUT_STEP_COUNT}).`,
     };
   }
 
@@ -358,13 +737,30 @@ function transformFitActivity(
   // Field names double as the frontend's provider detection: Garmin units are
   // minutes/km, so Strava/Fitbit marker keys (sport_type, moving_time,
   // elapsed_time, activeDuration, averageHeartRate, logId) must never appear.
+  const totalCalories = session.totalCalories ?? 0;
+  const metabolicCalories =
+    typeof session.metabolicCalories === 'number'
+      ? session.metabolicCalories
+      : null;
+  const activeCalories =
+    metabolicCalories !== null
+      ? Math.max(0, totalCalories - metabolicCalories)
+      : totalCalories;
+
+  const trainingLoad =
+    typeof session.trainingLoadPeak === 'number' &&
+    Number.isFinite(session.trainingLoadPeak)
+      ? parseFloat(session.trainingLoadPeak.toFixed(2))
+      : null;
+
   const activity: Record<string, unknown> = {
     activityName,
     activityType: { typeKey: sport },
     duration: durationSeconds / 60,
-    calories: session.totalCalories ?? 0,
-    active_calories: session.totalCalories ?? 0,
+    calories: totalCalories,
+    active_calories: activeCalories,
   };
+  if (trainingLoad !== null) activity.training_load = trainingLoad;
   if (distanceKm !== null) activity.distance = distanceKm;
   if (session.avgHeartRate !== undefined)
     activity.averageHR = session.avgHeartRate;
@@ -426,7 +822,7 @@ function transformFitActivity(
 
   const entryData: FitEntryData = {
     duration_minutes: durationSeconds / 60,
-    calories_burned: Math.round(session.totalCalories ?? 0),
+    calories_burned: Math.round(totalCalories),
     distance: distanceKm,
     avg_heart_rate:
       session.avgHeartRate !== undefined
@@ -435,7 +831,14 @@ function transformFitActivity(
     steps,
     notes: `${notesLabel}: ${activityName} (${sport})`,
     source_id: sourceId,
+    training_load: trainingLoad,
   };
+
+  const strengthWorkout =
+    kind === 'strength'
+      ? (parseStrengthSets(messages, activityName, durationSeconds) ??
+        undefined)
+      : undefined;
 
   return {
     ok: true,
@@ -448,6 +851,7 @@ function transformFitActivity(
     activityName,
     sport,
     warnings,
+    ...(strengthWorkout ? { strengthWorkout } : {}),
   };
 }
 

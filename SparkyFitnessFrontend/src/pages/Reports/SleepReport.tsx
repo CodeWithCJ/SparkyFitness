@@ -14,9 +14,13 @@ import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import {
+  keepMostDetailedSleepEntries,
+  mainSleepEntry,
+} from '@workspace/shared';
+import {
   formatSecondsToHHMM,
   formatTimeInZone,
-  sleepEntryZone,
+  mainSleepZone,
 } from '@/utils/timeFormatters';
 import {
   HIGH_DEBT_THRESHOLD_HOURS,
@@ -34,8 +38,10 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat, timeFormat, timezone } =
     usePreferences();
-  const { data: sleepEntries = [], isLoading: loadingEntries } =
+  const { data: storedEntries = [], isLoading: loadingEntries } =
     useSleepEntriesQuery(startDate, endDate);
+  // A night two sources recorded counts once, from the more detailed record.
+  const sleepEntries = keepMostDetailedSleepEntries(storedEntries);
   const { data: sleepDebtData, isLoading: loadingDebt } = useSleepDebtQuery();
 
   const loading = loadingEntries || loadingDebt;
@@ -74,7 +80,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
         insight = t('sleepReport.goodSleep', 'Good Sleep');
       }
 
-      const zone = sleepEntryZone(sleepEntry, timezone);
+      const zone = mainSleepZone(sleepAnalyticsData, timezone);
       return [
         formatDateInUserTimezone(sleepEntry.entry_date, dateFormat),
         formatTimeInZone(sleepEntry.bedtime, zone, timeFormat),
@@ -140,12 +146,13 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
 
         const mainEntry = sortedEntries[0];
         if (!mainEntry) return null; // Satisfies TypeScript check
+        // Bed and wake times are the day's main sleep (the night), never
+        // a nap's (#3259); the totals below still add every session up.
+        const mainSleep = mainSleepEntry(entries) ?? mainEntry;
 
         let totalDurationInSeconds = 0;
         let totalTimeAsleepInSeconds = 0;
         let weightedScoreSum = 0;
-        let earliestBedtime = mainEntry.bedtime;
-        let latestWakeTime = mainEntry.wake_time;
 
         const allStageEvents: SleepStageEvent[] = [];
         const aggregatedStages = { deep: 0, rem: 0, light: 0, awake: 0 };
@@ -155,11 +162,6 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           totalTimeAsleepInSeconds += entry.time_asleep_in_seconds || 0;
           weightedScoreSum +=
             (entry.sleep_score || 0) * entry.duration_in_seconds;
-
-          if (new Date(entry.bedtime) < new Date(earliestBedtime))
-            earliestBedtime = entry.bedtime;
-          if (new Date(entry.wake_time) > new Date(latestWakeTime))
-            latestWakeTime = entry.wake_time;
 
           if (entry.stage_events) {
             allStageEvents.push(...entry.stage_events);
@@ -206,8 +208,8 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           totalSleepDuration: totalDurationInSeconds,
           timeAsleep: totalTimeAsleepInSeconds,
           sleepScore: avgSleepScore,
-          earliestBedtime,
-          latestWakeTime,
+          mainBedtime: mainSleep.bedtime,
+          mainWakeTime: mainSleep.wake_time,
           sleepEfficiency,
           sleepDebt: totalSleepDebt,
           weight: debtDay?.weight || 0,
@@ -228,6 +230,10 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           // session's zone.
           record_timezone: mainEntry.record_timezone,
           record_utc_offset_minutes: mainEntry.record_utc_offset_minutes,
+          // Bed and wake times come from the main sleep, so they read in
+          // its own recording zone.
+          main_record_timezone: mainSleep.record_timezone,
+          main_record_utc_offset_minutes: mainSleep.record_utc_offset_minutes,
         };
 
         const combinedEntry: SleepEntry & { is_aggregated?: boolean } = {
@@ -236,8 +242,8 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           duration_in_seconds: totalDurationInSeconds,
           time_asleep_in_seconds: totalTimeAsleepInSeconds,
           sleep_score: avgSleepScore,
-          bedtime: earliestBedtime,
-          wake_time: latestWakeTime,
+          bedtime: mainSleep.bedtime,
+          wake_time: mainSleep.wake_time,
           awake_count: analyticsData.awakePeriods,
           source:
             entries.length > 1

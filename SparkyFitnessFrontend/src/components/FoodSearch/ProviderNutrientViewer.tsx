@@ -83,7 +83,7 @@ export const ProviderNutrientViewer = ({
   const { mutateAsync: updateCustomNutrient } =
     useUpdateCustomNutrientMutation();
 
-  const { providerNutrients, providerUnits } = useMemo(() => {
+  const { providerNutrients, providerUnits, providerStandard } = useMemo(() => {
     const variant =
       food?.default_variant ??
       food?.variants?.find((v) => v.is_default) ??
@@ -94,6 +94,7 @@ export const ProviderNutrientViewer = ({
     return {
       providerNutrients: entries,
       providerUnits: variant?.provider_nutrient_units ?? {},
+      providerStandard: variant?.provider_nutrient_standard,
     };
   }, [food]);
 
@@ -223,13 +224,25 @@ export const ProviderNutrientViewer = ({
               const matchedNutrient = matchByNormalizedLabel.get(
                 normalizeNutrientName(label)
               );
+              // A provider that sends its code mapping decides alone, so a row
+              // it leaves out on purpose (e.g. sodium derived from salt) is not
+              // badged through an alias. Label aliases cover providers that
+              // don't send one.
               const standardId = matchedNutrient
                 ? null
-                : getStandardNutrientId(label);
-              const standardLabel = standardId
-                ? (CENTRAL_NUTRIENT_CONFIG[standardId]?.defaultLabel ??
-                  standardId)
-                : null;
+                : providerStandard
+                  ? (providerStandard[label] ?? null)
+                  : getStandardNutrientId(label);
+              // Own keys only: the config is a plain object, so an id named
+              // like an Object.prototype member (e.g. "toString") would find an
+              // inherited method instead of falling back to showing the raw id.
+              const standardMeta =
+                standardId && Object.hasOwn(CENTRAL_NUTRIENT_CONFIG, standardId)
+                  ? CENTRAL_NUTRIENT_CONFIG[standardId]
+                  : undefined;
+              const standardLabel = standardMeta
+                ? t(standardMeta.label, standardMeta.defaultLabel)
+                : standardId;
               return (
                 <div
                   key={label}

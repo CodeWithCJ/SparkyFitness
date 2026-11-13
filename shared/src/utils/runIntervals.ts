@@ -5,27 +5,45 @@
  * and distance, which stop while paused, so a pause never eats into a step.
  */
 
-import { normalizePaceBand, type PaceBand } from "./paceTargets.ts";
+import { normalizePaceBand, type PaceBand } from './paceTargets.ts';
 import {
   normalizeHeartRateBand,
   type HeartRateBand,
-} from "./heartRateTargets.ts";
+} from './heartRateTargets.ts';
 
-export type IntervalStepKind = "warmup" | "work" | "recovery" | "cooldown";
+export type IntervalStepKind = 'warmup' | 'work' | 'recovery' | 'cooldown';
+
+/**
+ * What a stretch is for, where its kind alone does not say: an easy run in a
+ * run/walk plan, a stride, a tempo or marathon-pace effort, a hill repeat, or a
+ * steady Zone 2 run. A step with none is just a fast stretch (work) or an easy
+ * one (recovery). It decides which pace and heart-rate range a step gets.
+ */
+export type StepEffort =
+  'easy' | 'stride' | 'tempo' | 'marathon' | 'hill' | 'zone2';
+
+export const STEP_EFFORTS: readonly StepEffort[] = [
+  'easy',
+  'stride',
+  'tempo',
+  'marathon',
+  'hill',
+  'zone2',
+];
 
 /**
  * The unit a distance step was set in, which is how it is shown and spoken:
  * metres (short track repeats, the default) or miles.
  */
-export type StepDistanceUnit = "m" | "mi";
+export type StepDistanceUnit = 'm' | 'mi';
 
 export const STEP_METERS_PER_MILE = 1609.344;
 
 /**
  * How the steps are spoken: a run/walk plan says "Run" and "Walk", a speed
- * session says "Fast" and "Easy".
+ * session says "Fast" and "Easy", and a brisk walk says "Brisk" and "Easy".
  */
-export type IntervalStyle = "runWalk" | "fastEasy";
+export type IntervalStyle = 'runWalk' | 'fastEasy' | 'briskWalk';
 
 export interface IntervalStep {
   kind: IntervalStepKind;
@@ -43,6 +61,8 @@ export interface IntervalStep {
   heartRate?: HeartRateBand;
   /** How a distance step is shown and spoken; metres when absent. */
   unit?: StepDistanceUnit;
+  /** What the stretch is for, which picks its pace range; absent means just fast or easy. */
+  effort?: StepEffort;
 }
 
 export interface IntervalPlan {
@@ -81,7 +101,7 @@ export const MAX_STEP_METERS = 50_000;
 export const EXPECTED_SECONDS_PER_METER = 0.36;
 
 export const isDistanceStep = (step: IntervalStep): boolean =>
-  typeof step.meters === "number" && step.meters > 0;
+  typeof step.meters === 'number' && step.meters > 0;
 
 /** Whether any step ends on distance, which needs GPS (or the watch's GPS). */
 export const planHasDistanceSteps = (plan: IntervalPlan): boolean =>
@@ -98,7 +118,7 @@ export function distanceStep(
     kind,
     meters: m,
     seconds: clamp(m * EXPECTED_SECONDS_PER_METER, 5, MAX_PROGRAM_STEP_SECONDS),
-    ...(unit === "mi" ? { unit } : {}),
+    ...(unit === 'mi' ? { unit } : {}),
   };
 }
 
@@ -112,21 +132,21 @@ export function buildIntervalPlan(options: IntervalOptions): IntervalPlan {
   const work = clamp(options.workSeconds, 5, MAX_STEP_SECONDS);
   const workStep: IntervalStep =
     options.workMeters !== undefined && options.workMeters > 0
-      ? distanceStep("work", options.workMeters, options.workUnit)
-      : { kind: "work", seconds: work };
+      ? distanceStep('work', options.workMeters, options.workUnit)
+      : { kind: 'work', seconds: work };
   const recovery = clamp(options.recoverySeconds, 0, MAX_STEP_SECONDS);
   const warmup = clamp(options.warmupSeconds, 0, MAX_STEP_SECONDS);
   const cooldown = clamp(options.cooldownSeconds, 0, MAX_STEP_SECONDS);
   const steps: IntervalStep[] = [];
-  if (warmup > 0) steps.push({ kind: "warmup", seconds: warmup });
+  if (warmup > 0) steps.push({ kind: 'warmup', seconds: warmup });
   for (let round = 1; round <= rounds; round++) {
     steps.push({ ...workStep });
     const last = round === rounds;
     if (recovery > 0 && !(last && cooldown > 0)) {
-      steps.push({ kind: "recovery", seconds: recovery });
+      steps.push({ kind: 'recovery', seconds: recovery });
     }
   }
-  if (cooldown > 0) steps.push({ kind: "cooldown", seconds: cooldown });
+  if (cooldown > 0) steps.push({ kind: 'cooldown', seconds: cooldown });
   return { style: options.style, steps };
 }
 
@@ -143,9 +163,9 @@ const MIN = 60;
 // Custom covers anything else.
 export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
   {
-    id: "beginnerRunWalk",
+    id: 'beginnerRunWalk',
     options: {
-      style: "runWalk",
+      style: 'runWalk',
       warmupSeconds: 5 * MIN,
       workSeconds: 60,
       recoverySeconds: 90,
@@ -154,9 +174,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "runWalk2",
+    id: 'runWalk2',
     options: {
-      style: "runWalk",
+      style: 'runWalk',
       warmupSeconds: 5 * MIN,
       workSeconds: 2 * MIN,
       recoverySeconds: 2 * MIN,
@@ -165,9 +185,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "runWalk5",
+    id: 'runWalk5',
     options: {
-      style: "runWalk",
+      style: 'runWalk',
       warmupSeconds: 5 * MIN,
       workSeconds: 5 * MIN,
       recoverySeconds: 2 * MIN,
@@ -176,9 +196,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "short400",
+    id: 'short400',
     options: {
-      style: "fastEasy",
+      style: 'fastEasy',
       warmupSeconds: 10 * MIN,
       workSeconds: 90,
       recoverySeconds: 90,
@@ -187,9 +207,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "threeMinutes",
+    id: 'threeMinutes',
     options: {
-      style: "fastEasy",
+      style: 'fastEasy',
       warmupSeconds: 10 * MIN,
       workSeconds: 3 * MIN,
       recoverySeconds: 2 * MIN,
@@ -198,9 +218,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "fourByFour",
+    id: 'fourByFour',
     options: {
-      style: "fastEasy",
+      style: 'fastEasy',
       warmupSeconds: 10 * MIN,
       workSeconds: 4 * MIN,
       recoverySeconds: 3 * MIN,
@@ -209,9 +229,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "sixBy400m",
+    id: 'sixBy400m',
     options: {
-      style: "fastEasy",
+      style: 'fastEasy',
       warmupSeconds: 10 * MIN,
       workSeconds: 90,
       workMeters: 400,
@@ -221,9 +241,9 @@ export const INTERVAL_PRESETS: readonly IntervalPreset[] = [
     },
   },
   {
-    id: "fiveBy1k",
+    id: 'fiveBy1k',
     options: {
-      style: "fastEasy",
+      style: 'fastEasy',
       warmupSeconds: 10 * MIN,
       workSeconds: 5 * MIN,
       workMeters: 1000,
@@ -307,7 +327,11 @@ export function advanceIntervalCursor(
     } else {
       const end = current.startSeconds + step.seconds;
       if (at < end) break;
-      next = { index: current.index + 1, startSeconds: end, startMeters: meters };
+      next = {
+        index: current.index + 1,
+        startSeconds: end,
+        startMeters: meters,
+      };
     }
     started.push(next);
     current = next;
@@ -330,11 +354,11 @@ export function intervalPosition(
   const at = Math.max(0, activeSeconds);
   const meters = Math.max(0, progress?.meters ?? 0);
   const { cursor } = advanceIntervalCursor(plan, progress?.cursor, at, meters);
-  const rounds = plan.steps.filter((s) => s.kind === "work").length;
+  const rounds = plan.steps.filter((s) => s.kind === 'work').length;
   const roundAt = (index: number) =>
     Math.max(
       1,
-      plan.steps.slice(0, index + 1).filter((s) => s.kind === "work").length
+      plan.steps.slice(0, index + 1).filter((s) => s.kind === 'work').length
     );
   const step = plan.steps[cursor.index];
   if (!step) {
@@ -392,16 +416,18 @@ export function stepStartSeconds(plan: IntervalPlan, index: number): number {
 
 /** Checks a plan read back from storage or built by hand. */
 export function isValidIntervalPlan(value: unknown): value is IntervalPlan {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== 'object') return false;
   const plan = value as IntervalPlan;
   return (
-    (plan.style === "runWalk" || plan.style === "fastEasy") &&
+    (plan.style === 'runWalk' ||
+      plan.style === 'fastEasy' ||
+      plan.style === 'briskWalk') &&
     Array.isArray(plan.steps) &&
     plan.steps.length > 0 &&
     plan.steps.length <= 200 &&
     plan.steps.every(
       (step) =>
-        ["warmup", "work", "recovery", "cooldown"].includes(step.kind) &&
+        ['warmup', 'work', 'recovery', 'cooldown'].includes(step.kind) &&
         Number.isFinite(step.seconds) &&
         step.seconds > 0 &&
         step.seconds <= MAX_PROGRAM_STEP_SECONDS &&
@@ -409,7 +435,8 @@ export function isValidIntervalPlan(value: unknown): value is IntervalPlan {
           (Number.isFinite(step.meters) &&
             step.meters >= MIN_STEP_METERS &&
             step.meters <= MAX_STEP_METERS)) &&
-        (step.unit === undefined || step.unit === "m" || step.unit === "mi") &&
+        (step.unit === undefined || step.unit === 'm' || step.unit === 'mi') &&
+        (step.effort === undefined || STEP_EFFORTS.includes(step.effort)) &&
         (step.pace === undefined || normalizePaceBand(step.pace) !== null) &&
         (step.heartRate === undefined ||
           normalizeHeartRateBand(step.heartRate) !== null)
@@ -424,42 +451,94 @@ export const lastStepStarted = (
 
 /**
  * The plan with a pace range on its fast and easy stretches: `work` goes on
- * every work step and `easy` on every recovery step. Warm-up and cool-down
- * stay free. A band that is not usable is ignored.
+ * every work step, `easy` on every recovery step and `warm` on the warm-up and
+ * cool-down. A step left without a range is not judged by the plan. A band
+ * that is not usable is ignored.
+ *
+ * A work or recovery step with an `effort` gets the range for that effort
+ * instead: `byEffort` names it. An `easy` effort with none follows its kind
+ * like an untagged step, and any other effort with no range of its own gets
+ * none, so a stride or hill repeat is never held to the pace of a long fast
+ * stretch.
  */
 export function applyPaceTargets(
   plan: IntervalPlan,
-  targets: { work?: PaceBand | null; easy?: PaceBand | null }
+  targets: {
+    work?: PaceBand | null;
+    easy?: PaceBand | null;
+    warm?: PaceBand | null;
+    byEffort?: Partial<Record<StepEffort, PaceBand | null>>;
+  }
 ): IntervalPlan {
   const work = normalizePaceBand(targets.work);
   const easy = normalizePaceBand(targets.easy);
-  if (!work && !easy) return plan;
+  const warm = normalizePaceBand(targets.warm);
+  const byEffort: Partial<Record<StepEffort, PaceBand>> = {};
+  for (const effort of STEP_EFFORTS) {
+    const band = normalizePaceBand(targets.byEffort?.[effort]);
+    if (band) byEffort[effort] = band;
+  }
+  if (!work && !easy && !warm && Object.keys(byEffort).length === 0) {
+    return plan;
+  }
   return {
     ...plan,
     steps: plan.steps.map((step) => {
-      const pace =
-        step.kind === "work" ? work : step.kind === "recovery" ? easy : null;
+      let pace: PaceBand | null;
+      if (step.kind !== 'work' && step.kind !== 'recovery') {
+        pace = warm;
+      } else {
+        const byKind = step.kind === 'work' ? work : easy;
+        if (step.effort && byEffort[step.effort]) {
+          pace = byEffort[step.effort] ?? null;
+        } else if (step.effort && step.effort !== 'easy') {
+          pace = null;
+        } else {
+          pace = byKind;
+        }
+      }
       return pace ? { ...step, pace } : step;
     }),
   };
 }
 
 /**
- * The same for heart rate: `work` goes on every work step and `easy` on every
- * recovery step.
+ * The same for heart rate: `work` goes on every work step, `easy` on every
+ * recovery step and `warm` on the warm-up and cool-down. A Zone 2 step gets
+ * `zone2` and nothing else, so it is never held to the hard range; without a
+ * `zone2` range it has no target and is run by the talk test.
  */
 export function applyHeartRateTargets(
   plan: IntervalPlan,
-  targets: { work?: HeartRateBand | null; easy?: HeartRateBand | null }
+  targets: {
+    work?: HeartRateBand | null;
+    easy?: HeartRateBand | null;
+    warm?: HeartRateBand | null;
+    zone2?: HeartRateBand | null;
+  }
 ): IntervalPlan {
   const work = normalizeHeartRateBand(targets.work);
   const easy = normalizeHeartRateBand(targets.easy);
-  if (!work && !easy) return plan;
+  const warm = normalizeHeartRateBand(targets.warm);
+  const zone2 = normalizeHeartRateBand(targets.zone2);
+  if (!work && !easy && !warm && !zone2) return plan;
   return {
     ...plan,
     steps: plan.steps.map((step) => {
-      const heartRate =
-        step.kind === "work" ? work : step.kind === "recovery" ? easy : null;
+      let heartRate: HeartRateBand | null;
+      if (step.kind !== 'work' && step.kind !== 'recovery') {
+        heartRate = warm;
+      } else if (step.effort === 'zone2') {
+        heartRate = zone2;
+      } else if (step.effort === 'stride' || step.effort === 'hill') {
+        // Heart rate lags a short effort, so strides and hill repeats get none.
+        heartRate = null;
+      } else if (step.effort === 'tempo' || step.effort === 'marathon') {
+        // A tempo or marathon-pace effort is held to the hard range.
+        heartRate = work;
+      } else {
+        heartRate = step.kind === 'work' ? work : easy;
+      }
       return heartRate ? { ...step, heartRate } : step;
     }),
   };

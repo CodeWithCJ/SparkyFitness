@@ -30,8 +30,10 @@ services:
       start_period: 30s
 
   server:
-    image: codewithcj/sparkyfitness_server:v1.8.0@sha256:001f173ef46aeb40882516a5f14db73180517b051a82e551c98db48b9263d9e6
+    image: codewithcj/sparkyfitness_server:v1.12.1@sha256:2f064604c2034fa5953cb3e17651aad32e8a9f8362895500cd5d188376215b3a
     restart: on-failure
+    # Longer than the server's 15 s shutdown limit, so running work can finish on stop.
+    stop_grace_period: 20s
     # Safe now that SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY points multer's disk
     # storage at a bind-mounted directory this uid owns. Without that variable
     # multer creates temp_uploads/ inside the image's own root-owned
@@ -108,7 +110,7 @@ services:
       start_period: 120s
 
   frontend:
-    image: codewithcj/sparkyfitness:v1.8.0@sha256:d67af4087e9bb3ca8c462225c0bba7a83517dfe404aa9e347885fd6d2a4f5d4c
+    image: codewithcj/sparkyfitness:v1.12.1@sha256:c4e0769cece9ee70439b86cc457bed14d543edebab7502cd0c5d67174eb11f57
     restart: on-failure
     depends_on:
       server:
@@ -128,7 +130,7 @@ services:
       NGINX_RATE_LIMIT: 20r/s
 
   garmin:
-    image: codewithcj/sparkyfitness_garmin:v1.8.0@sha256:39e120ab1b053b17a0d272525818246bf59301e728472aaa0b325303dad62ee2
+    image: codewithcj/sparkyfitness_garmin:v1.12.1@sha256:d7d9a89bad0ed82954fe6dfbe69022c87adbd33889b36e2cc0c5d00ffc271c1a
     restart: on-failure
     # Stateless: no bind mount, and GARMIN_SERVICE_PORT / GARMIN_SERVICE_IS_CN
     # both default sanely (8000 / false) when unset.

@@ -1,6 +1,5 @@
 -- Migration to fix RLS policies for food_variants and food_entries to correctly handle public foods
 
-BEGIN;
 
 -- Drop the existing restrictive policy on food_variants
 DROP POLICY IF EXISTS food_variants_rls ON public.food_variants;
@@ -35,4 +34,3 @@ USING (
     )
 );
 
-COMMIT;

@@ -9,6 +9,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/TimeInput';
 import {
   Select,
   SelectContent,
@@ -75,10 +76,10 @@ export default function AppointmentsPanel() {
       {adding ? (
         <Card>
           <CardContent className="space-y-2 py-3">
-            <Input
-              type="datetime-local"
+            <DateTimeInput
+              aria-label={t('cycle.care.apptWhen', 'Date and time')}
               value={when}
-              onChange={(e) => setWhen(e.target.value)}
+              onChange={setWhen}
             />
             <Select value={type} onValueChange={setType}>
               <SelectTrigger>

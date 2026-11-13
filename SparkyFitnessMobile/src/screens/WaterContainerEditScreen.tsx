@@ -24,6 +24,10 @@ import {
   plainHydrationExample,
 } from '@workspace/shared';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useActionTagsQuery } from '../hooks/useActionTags';
+import AddNfcTagRow from '../components/AddNfcTagRow';
+import { formatLocalizedNumber } from '../localization';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -114,6 +118,17 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
   );
 
   const { mealTypes } = useMealTypes();
+
+  // NFC tags that log this container (#941). Setting one up is offered only on
+  // a phone with NFC, for a container that is already saved.
+  const { supported: nfcSupported } = useNfcSupport();
+  const { tags: actionTags } = useActionTagsQuery({
+    enabled: isEditing && nfcSupported,
+  });
+  const tagsForContainer = actionTags.filter(
+    (tag) =>
+      tag.action.type === 'water' && tag.action.container_id === containerId
+  ).length;
 
   const [form, setForm] = useState<FormState>(() =>
     formStateFromContainer(existingContainer)
@@ -670,6 +685,35 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
               </>
             ) : null}
           </>
+        ) : null}
+
+        {isEditing && nfcSupported ? (
+          <AddNfcTagRow
+            onPress={() =>
+              navigation.navigate('ActionTagForm', {
+                presetAction: {
+                  type: 'water',
+                  container_id: containerId,
+                  drinks: 1,
+                },
+              })
+            }
+            subtitle={
+              tagsForContainer > 0
+                ? t('actionTags.container.count', {
+                    count: tagsForContainer,
+                    formattedCount: formatLocalizedNumber(tagsForContainer),
+                    defaultValue: '{{formattedCount}} tags log this container',
+                    defaultValue_one:
+                      '{{formattedCount}} tag logs this container',
+                    defaultValue_other:
+                      '{{formattedCount}} tags log this container',
+                  })
+                : t('actionTags.container.hint', {
+                    defaultValue: 'Tap a sticker on this bottle to log a drink',
+                  })
+            }
+          />
         ) : null}
 
         {isEditing ? (

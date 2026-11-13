@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getClientIp, clientIpMiddleware } from '../utils/clientIp.js';
+import { auth } from '../auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -443,9 +444,7 @@ describe('Client IP resolution & Better Auth proxy handling', () => {
       expect(result).toBeUndefined();
     });
 
-    it('configures advanced.ipAddress in auth.ts with x-client-ip and x-forwarded-for', async () => {
-      const authModule = await import('../auth.js');
-      const auth = authModule.default.auth;
+    it('configures advanced.ipAddress in auth.ts with x-client-ip and x-forwarded-for', () => {
       const ipAddressConfig = auth.options.advanced?.ipAddress;
 
       expect(ipAddressConfig).toBeDefined();

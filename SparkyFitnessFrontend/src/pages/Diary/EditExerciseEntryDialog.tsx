@@ -11,6 +11,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -44,10 +45,7 @@ import {
   activityDetailsOptions as fetchActivityDetailsOptions,
   useActivityDetailsQuery,
 } from '@/hooks/Exercises/useExercises';
-import {
-  useUpdateExerciseEntryMutation,
-  exerciseDetailsOptions,
-} from '@/hooks/Exercises/useExerciseEntries';
+import { useUpdateExerciseEntryMutation } from '@/hooks/Exercises/useExerciseEntries';
 import {
   DndContext,
   closestCenter,
@@ -80,6 +78,8 @@ import {
   toSetTableModality,
 } from '@/constants/exercises';
 import { CardioLog } from '../Exercises/CardioLog';
+import { ShoeSelect } from '@/components/Shoes/ShoeSelect';
+import { useAssignShoeMutation } from '@/hooks/Shoes/useShoes';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -88,6 +88,7 @@ import {
   toHourMinute,
   userHourMinute,
 } from '@workspace/shared';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -100,6 +101,22 @@ const RAW_PROVIDER_TYPES = [
   'full_workout_data',
   'fit_file_data',
 ];
+
+// The form shows some stored values rounded: distance to one decimal in the
+// user's unit, duration to two decimals. These are the values it starts with,
+// so saving can tell a field the user left alone from one they edited.
+const seedDistanceInput = (
+  entry: ExerciseEntry,
+  toDisplayUnit: (km: number) => number
+): number | '' =>
+  entry.distance !== undefined && entry.distance !== null
+    ? Number(toDisplayUnit(entry.distance).toFixed(1))
+    : '';
+
+const seedDurationInput = (entry: ExerciseEntry): number | '' =>
+  entry.duration_minutes != null
+    ? Math.round(Number(entry.duration_minutes) * 100) / 100
+    : '';
 
 function extractTelemetry(entry: ExerciseEntry, activityData: unknown) {
   const e = entry as Record<string, unknown>;
@@ -264,8 +281,18 @@ const EditExerciseEntryDialog = ({
   onSave,
 }: EditExerciseEntryDialogProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
-    usePreferences();
+  const {
+    loggingLevel,
+    weightUnit,
+    distanceUnit,
+    convertDistance,
+    timezone,
+    energyUnit,
+    getEnergyUnitString,
+  } = usePreferences();
+  // Energy fields keep kcal in state and show the account's unit
+  // (`shownEnergyInput` / `kcalFromEnergyInput`).
+  const energyLabel = getEnergyUnitString(energyUnit);
 
   const modality = resolveExerciseModality(
     entry.exercise_snapshot?.modality,
@@ -312,18 +339,33 @@ const EditExerciseEntryDialog = ({
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
     entry.calories_burned || ''
   );
-  const [distanceInput, setDistanceInput] = useState<number | ''>(
-    entry.distance !== undefined && entry.distance !== null
-      ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
-      : ''
+  // What the daily balance counts instead of the estimate; blank counts the estimate.
+  const [caloriesAppliedInput, setCaloriesAppliedInput] = useState<number | ''>(
+    entry.calories_applied ?? ''
   );
+  const [distanceInput, setDistanceInput] = useState<number | ''>(() =>
+    seedDistanceInput(entry, (km) => convertDistance(km, 'km', distanceUnit))
+  );
+  const [shoeId, setShoeId] = useState<string | null>(entry.shoe_id ?? null);
+  // Only the fields the calorie estimate and the duration are derived from;
+  // notes, RPE and the like must not count as a change to the sets.
+  const setsSignature = (rows: readonly SortableSet[]) =>
+    JSON.stringify(
+      rows.map(({ reps, weight, duration, rest_time }) => [
+        reps,
+        weight,
+        duration,
+        rest_time,
+      ])
+    );
+  const [initialSetsSignature] = useState(() => setsSignature(sets));
+  const [initialCaloriesInput] = useState(entry.calories_burned || '');
+
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
     entry.avg_heart_rate != null ? entry.avg_heart_rate : ''
   );
-  const [durationInput, setDurationInput] = useState<number | ''>(
-    entry.duration_minutes != null
-      ? Math.round(Number(entry.duration_minutes) * 100) / 100
-      : ''
+  const [durationInput, setDurationInput] = useState<number | ''>(() =>
+    seedDurationInput(entry)
   );
   const providerDumps = useMemo<RawActivityDetailItem[]>(
     () =>
@@ -562,12 +604,13 @@ const EditExerciseEntryDialog = ({
     if (extracted.windSpeed !== '') setWindSpeedInput(extracted.windSpeed);
     if (extracted.humidity !== '') setHumidityInput(extracted.humidity);
     if (entry.duration_minutes != null && entry.duration_minutes > 0) {
-      setDurationInput(Math.round(Number(entry.duration_minutes) * 100) / 100);
+      setDurationInput(seedDurationInput(entry));
     }
   }, [open, entry, activityData, activityDataFetched]);
 
   const { mutateAsync: updateExerciseEntry, isPending: loading } =
     useUpdateExerciseEntryMutation();
+  const { mutateAsync: assignShoe } = useAssignShoeMutation();
   const queryClient = useQueryClient();
 
   const handleCopyRawData = async () => {
@@ -686,28 +729,72 @@ const EditExerciseEntryDialog = ({
   const handleSave = async () => {
     info(loggingLevel, 'EditExerciseEntryDialog: saving entry:', entry.id);
     try {
-      // An entry whose library exercise has been deleted keeps its snapshot but
-      // has nothing left to look up, so skip the fetch and fall back.
-      const exerciseData = entry.exercise_id
-        ? await queryClient.fetchQuery(
-            exerciseDetailsOptions(entry.exercise_id)
-          )
-        : null;
-      const caloriesPerHour =
-        (exerciseData as { calories_per_hour?: number })?.calories_per_hour ||
-        300;
+      // Adding or changing sets makes the stored duration and calorie figures
+      // stale: re-derive the duration from the sets and let the server
+      // re-estimate the calories, unless the user typed their own.
+      const setsChanged = setsSignature(sets) !== initialSetsSignature;
+      const derivedSetsDuration = setsDurationMinutes(sets);
+      const durationEdited =
+        durationInput !== '' && durationInput !== seedDurationInput(entry);
 
-      const totalDuration =
-        durationInput !== ''
+      // Untimed strength sets derive 0 minutes; that is no information, so
+      // keep the stored duration unless every set was removed.
+      const usesDerivedDuration =
+        setsChanged &&
+        !durationEdited &&
+        (derivedSetsDuration > 0 || sets.length === 0);
+
+      const totalDuration = usesDerivedDuration
+        ? derivedSetsDuration
+        : durationInput !== ''
           ? Number(durationInput)
           : cardioForm
             ? 0
-            : setsDurationMinutes(sets);
+            : derivedSetsDuration;
 
-      const caloriesBurned =
-        caloriesBurnedInput !== '' && caloriesBurnedInput !== 0
-          ? caloriesBurnedInput
-          : Math.round((caloriesPerHour / 60) * totalDuration);
+      const caloriesEdited = caloriesBurnedInput !== initialCaloriesInput;
+      const storedCalories =
+        entry.calories_burned != null ? Number(entry.calories_burned) : null;
+      // Untouched calories go back as stored (a stored 0 shows as a blank
+      // input but is still the saved value) unless the sets or the duration
+      // changed, which makes them stale and lets the server re-estimate.
+      // Typed values, including 0, are the user's override; clearing the
+      // field asks for an estimate.
+      const caloriesBurned = caloriesEdited
+        ? caloriesBurnedInput === ''
+          ? undefined
+          : caloriesBurnedInput
+        : setsChanged || durationEdited
+          ? undefined
+          : (storedCalories ?? undefined);
+
+      // A field still showing its starting value goes back as stored, not as
+      // its rounded display value: for a synced workout the server would
+      // count the rounding as the user's edit and keep the field from every
+      // later sync. An empty duration keeps deriving from the sets.
+      const distanceUntouched =
+        distanceInput ===
+        seedDistanceInput(entry, (km) =>
+          convertDistance(km, 'km', distanceUnit)
+        );
+      const seededDuration = seedDurationInput(entry);
+      const durationUntouched =
+        seededDuration !== '' && durationInput === seededDuration;
+      const avgHeartRateUntouched =
+        avgHeartRateInput === (entry.avg_heart_rate ?? '');
+      const seededSteps = extractTelemetry(entry, activityData).steps;
+      const stepsUntouched =
+        stepsInput === (seededSteps !== '' ? seededSteps : (entry.steps ?? ''));
+
+      const durationMinutes =
+        durationUntouched && !usesDerivedDuration
+          ? entry.duration_minutes
+          : totalDuration;
+      const distanceKm = distanceUntouched
+        ? (entry.distance ?? null)
+        : distanceInput === ''
+          ? null
+          : convertDistance(Number(distanceInput), distanceUnit, 'km');
 
       // Cardio performance also lives on its single backing set (issue
       // #1903): duration in seconds + distance in km, no between-set rest.
@@ -718,11 +805,8 @@ const EditExerciseEntryDialog = ({
             duration:
               durationInput === ''
                 ? null
-                : Math.round(Number(durationInput) * 60),
-            distance:
-              distanceInput === ''
-                ? null
-                : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+                : Math.round(Number(durationMinutes) * 60),
+            distance: distanceKm,
             rest_time: 0,
           }
         : null;
@@ -730,8 +814,12 @@ const EditExerciseEntryDialog = ({
       await updateExerciseEntry({
         id: entry.id,
         data: {
-          duration_minutes: totalDuration,
-          calories_burned: caloriesBurned,
+          duration_minutes: durationMinutes,
+          ...(caloriesBurned !== undefined && {
+            calories_burned: caloriesBurned,
+          }),
+          calories_applied:
+            caloriesAppliedInput === '' ? null : Number(caloriesAppliedInput),
           notes,
           entry_time: entryTime || null,
           sets: sets.map(({ _dndId, ...set }) => ({
@@ -741,12 +829,12 @@ const EditExerciseEntryDialog = ({
           })),
           imageFile,
           image_url: imageUrl,
-          distance:
-            distanceInput === ''
-              ? null
-              : convertDistance(Number(distanceInput), distanceUnit, 'km'),
-          avg_heart_rate:
-            avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),
+          distance: distanceKm,
+          avg_heart_rate: avgHeartRateUntouched
+            ? (entry.avg_heart_rate ?? null)
+            : avgHeartRateInput === ''
+              ? 0
+              : Number(avgHeartRateInput),
           max_heart_rate:
             maxHeartRateInput === '' ? null : Number(maxHeartRateInput),
           avg_respiration_brpm:
@@ -782,7 +870,11 @@ const EditExerciseEntryDialog = ({
             tempCelsiusInput === '' ? null : Number(tempCelsiusInput),
           weather_condition: weatherCondInput || null,
           gear_name: gearNameInput || null,
-          steps: stepsInput === '' ? null : Number(stepsInput),
+          steps: stepsUntouched
+            ? (entry.steps ?? null)
+            : stepsInput === ''
+              ? null
+              : Number(stepsInput),
           water_estimated:
             waterEstimatedInput === '' ? null : Number(waterEstimatedInput),
           moving_time_seconds:
@@ -832,6 +924,10 @@ const EditExerciseEntryDialog = ({
           ],
         },
       });
+
+      if (isCardio && shoeId !== (entry.shoe_id ?? null)) {
+        await assignShoe({ exerciseEntryId: entry.id, shoeId });
+      }
 
       info(
         loggingLevel,
@@ -905,6 +1001,19 @@ const EditExerciseEntryDialog = ({
               className="bg-muted"
             />
           </div>
+
+          {isCardio && (
+            <div className="space-y-2">
+              <Label htmlFor="exercise-entry-shoe">
+                {t('shoes.shoe', 'Shoe')}
+              </Label>
+              <ShoeSelect
+                id="exercise-entry-shoe"
+                value={shoeId}
+                onChange={setShoeId}
+              />
+            </div>
+          )}
 
           {/* ── Cardio log or strength sets ── */}
           {cardioForm ? (
@@ -980,7 +1089,7 @@ const EditExerciseEntryDialog = ({
           {/* Start Time (optional) */}
           <div className="space-y-1.5 max-w-[280px]">
             <div className="flex items-center justify-between">
-              <Label htmlFor="entryTime" className="text-sm">
+              <Label id="entryTime-label" className="text-sm">
                 {t(
                   'diary.editExerciseEntryDialog.startTimeOptional',
                   'Start Time (optional)'
@@ -1019,11 +1128,11 @@ const EditExerciseEntryDialog = ({
                 </button>
               </div>
             </div>
-            <Input
+            <TimeInput
               id="entryTime"
-              type="time"
+              aria-labelledby="entryTime-label"
               value={entryTime}
-              onChange={(e) => setEntryTime(e.target.value)}
+              onChange={setEntryTime}
               className="text-sm h-9"
             />
           </div>
@@ -1078,18 +1187,22 @@ const EditExerciseEntryDialog = ({
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
-                      'exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel',
-                      'Calories burned (optional)'
+                      'exercise.editExerciseEntryDialog.caloriesBurnedOptionalWithUnit',
+                      'Calories burned ({{unit}}, optional)',
+                      { unit: energyLabel }
                     )}
                   </Label>
                   <div className="relative">
                     <Input
                       id="calories-burned"
                       type="number"
-                      value={caloriesBurnedInput}
+                      value={shownEnergyInput(caloriesBurnedInput, energyUnit)}
                       onChange={(e) =>
                         setCaloriesBurnedInput(
-                          e.target.value === '' ? '' : Number(e.target.value)
+                          kcalFromEnergyInput(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                            energyUnit
+                          )
                         )
                       }
                       placeholder={t(
@@ -1114,6 +1227,60 @@ const EditExerciseEntryDialog = ({
                   </div>
                 </div>
               )}
+
+              {/* Calories counted in the daily total — any entry */}
+              <div className="space-y-1.5">
+                <Label htmlFor="calories-applied" className="text-sm">
+                  {t(
+                    'exercise.editExerciseEntryDialog.caloriesAppliedWithUnit',
+                    'Calories counted in daily total ({{unit}}, optional)',
+                    { unit: energyLabel }
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="calories-applied"
+                    type="number"
+                    min={0}
+                    value={shownEnergyInput(caloriesAppliedInput, energyUnit)}
+                    disabled={Boolean(entry.calorie_link_id)}
+                    onChange={(e) =>
+                      setCaloriesAppliedInput(
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
+                      )
+                    }
+                    placeholder={t(
+                      'exercise.editExerciseEntryDialog.caloriesAppliedPlaceholder',
+                      'Blank counts the calories burned above'
+                    )}
+                    className="pr-8"
+                  />
+                  {caloriesAppliedInput !== '' && !entry.calorie_link_id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCaloriesAppliedInput('')}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {entry.calorie_link_id
+                    ? t(
+                        'exercise.editExerciseEntryDialog.caloriesAppliedLinkedHint',
+                        'Counted calories come from the workout link. Manage that link from the manual workout.'
+                      )
+                    : t(
+                        'exercise.editExerciseEntryDialog.caloriesAppliedHint',
+                        'Use 0 when a watch workout already counts this session. The calories burned estimate is kept.'
+                      )}
+                </p>
+              </div>
 
               {/* Duration & Avg heart rate — strength only */}
               {!cardioForm && (
@@ -1740,16 +1907,25 @@ const EditExerciseEntryDialog = ({
                     <div>
                       <Label className="text-xs">
                         {t(
-                          'diary.editExerciseEntryDialog.activeCaloriesKcal',
-                          'Active Calories (kcal)'
+                          'diary.editExerciseEntryDialog.activeCaloriesWithUnit',
+                          'Active Calories ({{unit}})',
+                          { unit: energyLabel }
                         )}
                       </Label>
                       <Input
                         type="number"
-                        value={activeCaloriesInput}
+                        value={shownEnergyInput(
+                          activeCaloriesInput,
+                          energyUnit
+                        )}
                         onChange={(e) =>
                           setActiveCaloriesInput(
-                            e.target.value === '' ? '' : Number(e.target.value)
+                            kcalFromEnergyInput(
+                              e.target.value === ''
+                                ? ''
+                                : Number(e.target.value),
+                              energyUnit
+                            )
                           )
                         }
                         placeholder="e.g. 350"
@@ -1759,16 +1935,25 @@ const EditExerciseEntryDialog = ({
                     <div>
                       <Label className="text-xs">
                         {t(
-                          'diary.editExerciseEntryDialog.restingCaloriesKcal',
-                          'Resting Calories (kcal)'
+                          'diary.editExerciseEntryDialog.restingCaloriesWithUnit',
+                          'Resting Calories ({{unit}})',
+                          { unit: energyLabel }
                         )}
                       </Label>
                       <Input
                         type="number"
-                        value={restingCaloriesInput}
+                        value={shownEnergyInput(
+                          restingCaloriesInput,
+                          energyUnit
+                        )}
                         onChange={(e) =>
                           setRestingCaloriesInput(
-                            e.target.value === '' ? '' : Number(e.target.value)
+                            kcalFromEnergyInput(
+                              e.target.value === ''
+                                ? ''
+                                : Number(e.target.value),
+                              energyUnit
+                            )
                           )
                         }
                         placeholder="e.g. 45"

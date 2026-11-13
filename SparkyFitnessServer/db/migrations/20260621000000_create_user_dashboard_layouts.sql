@@ -17,7 +17,6 @@
 -- db/rls_policies.sql (reapplied on every startup). Grants to the app user are
 -- handled dynamically by db/grantPermissions.ts. Guarded so it is safe to re-run.
 
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.user_dashboard_layouts (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
@@ -33,4 +32,3 @@ CREATE TABLE IF NOT EXISTS public.user_dashboard_layouts (
 -- The unique constraint above builds the composite index used for the only
 -- lookup pattern (by user_id + page_key), so no extra index is needed.
 
-COMMIT;

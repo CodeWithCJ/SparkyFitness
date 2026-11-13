@@ -312,6 +312,72 @@ describe('sparky_manage_goals', () => {
     expect(result).toContain('- **Alcohol:** 20 g\n');
   });
 
+  it('get_goals says how calorie cycling changed the day', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2161,
+      calorie_cycling: {
+        status: 'active',
+        baseTarget: 2000,
+        target: 2161,
+        delta: 161,
+        dayType: 'high',
+        floor: 1500,
+        clampedToFloor: false,
+      },
+    });
+    const high = await tools.sparky_manage_goals.execute!(
+      { action: 'get_goals', target_date: '2026-06-01' },
+      opts
+    );
+    expect(high).toBe(
+      '### Goals for 2026-06-01\n\n' +
+        '- **Calories:** 2161 kcal\n' +
+        '- **Calorie cycling:** high day (+161 kcal on a 2000 kcal base)\n'
+    );
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1500,
+      calorie_cycling: {
+        status: 'active',
+        baseTarget: 1800,
+        target: 1500,
+        delta: -300,
+        dayType: 'low',
+        floor: 1500,
+        clampedToFloor: true,
+      },
+    });
+    expect(
+      await tools.sparky_manage_goals.execute!(
+        { action: 'get_goals', target_date: '2026-06-01' },
+        opts
+      )
+    ).toContain(
+      '- **Calorie cycling:** low day (-300 kcal on a 1800 kcal base, held at the safety floor)\n'
+    );
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      calorie_cycling: {
+        status: 'paused_weekly_plan',
+        baseTarget: 2000,
+        target: 2000,
+        delta: 0,
+        dayType: 'even',
+        floor: 1500,
+        clampedToFloor: false,
+      },
+    });
+    expect(
+      await tools.sparky_manage_goals.execute!(
+        { action: 'get_goals', target_date: '2026-06-01' },
+        opts
+      )
+    ).toContain(
+      '- **Calorie cycling:** paused, because a weekly goal plan sets this day\n'
+    );
+  });
+
   it('set_goals without start_date defaults to today', async () => {
     vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
       message: 'ok',
@@ -482,6 +548,37 @@ describe('sparky_get_goal_snapshot', () => {
       '2026-06-01',
       undefined,
       true
+    );
+  });
+
+  it('includes the day of calorie cycling when switched on', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2161,
+      calorie_cycling: {
+        status: 'active',
+        baseTarget: 2000,
+        target: 2161,
+        delta: 161,
+        dayType: 'high',
+        floor: 1500,
+        clampedToFloor: false,
+      },
+    });
+
+    const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
+
+    expect(result).toBe(
+      JSON.stringify({
+        calories: 2161,
+        calorie_cycling: {
+          status: 'active',
+          day_type: 'high',
+          base_calories: 2000,
+          change_kcal: 161,
+          held_at_safety_floor: false,
+        },
+        goal_directions: {},
+      })
     );
   });
 

@@ -8,8 +8,10 @@ import {
   addWorkoutSetToExercise,
   clearWorkoutPlaybackDraftFromStorage,
   buildPresetSessionCreateRequestFromDraft,
+  buildPresetSessionUpdateRequestFromDraft,
   completeCurrentWorkoutSet,
   createWorkoutPlaybackDraftFromExercise,
+  createWorkoutPlaybackDraftFromSession,
   createWorkoutPlaybackDraftFromPreset,
   createWorkoutPlaybackRouteState,
   createWorkoutPlaybackRouteStateFromExercise,
@@ -67,14 +69,66 @@ describe('workoutPlayback utils', () => {
     ).toBe(true);
   });
 
+  it('ignores a stray "[" or quote stored as a preset exercise image', () => {
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise, index) => ({
+        ...exercise,
+        image_url: index === 0 ? '[' : 'Bent_Over_Barbell_Row/0.jpg',
+      })),
+    } as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.image_url).toBeUndefined();
+    expect(draft.exercises[1]?.image_url).toBe('Bent_Over_Barbell_Row/0.jpg');
+  });
+
+  it('keeps the equipment the preset API sends on each exercise', () => {
+    // GET /api/workout-presets returns library equipment on the preset
+    // exercise itself, with no nested `exercise` object. The plate
+    // calculator in playback is offered only when this reaches the draft.
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise, index) => ({
+        ...exercise,
+        equipment: index === 0 ? ['Barbell'] : [],
+      })),
+    } as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.equipment).toEqual(['Barbell']);
+    expect(draft.exercises[1]?.equipment).toEqual([]);
+  });
+
+  it('falls back to the nested exercise equipment when the preset has none', () => {
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise) => ({
+        ...exercise,
+        exercise: { equipment: ['EZ Bar'] },
+      })),
+    } as unknown as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.equipment).toEqual(['EZ Bar']);
+  });
+
   it('builds a route state that carries the draft and return path', () => {
     const routeState = createWorkoutPlaybackRouteState(
       createPresetFixture(),
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.entry_date).toBe('2026-04-27');
     expect(routeState.draft?.name).toBe('Upper Body');
   });
@@ -118,38 +172,89 @@ describe('workoutPlayback utils', () => {
     const routeState = createWorkoutPlaybackRouteStateFromExercise(
       exercise,
       '2026-04-27',
+      'user-1',
       '/diary'
     );
 
     expect(routeState.returnTo).toBe('/diary');
+    expect(routeState.ownerId).toBe('user-1');
     expect(routeState.draft?.name).toBe('Bicep Curl');
     expect(routeState.draft?.exercises[0]?.exercise_id).toBe('ex-123');
   });
 
-  it('saves, loads, and clears a persisted draft by date', () => {
+  it("saves, loads, and clears a person's persisted draft by date", () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
       createPresetFixture(),
       '2026-04-27'
     );
 
-    saveWorkoutPlaybackDraftToStorage(draft);
+    saveWorkoutPlaybackDraftToStorage('user-1', draft);
     expect(
       window.localStorage.getItem(
-        getWorkoutPlaybackDraftStorageKey('2026-04-27')
+        getWorkoutPlaybackDraftStorageKey('user-1', '2026-04-27')
       )
     ).not.toBeNull();
 
-    const restored = loadWorkoutPlaybackDraftFromStorage('2026-04-27');
+    const restored = loadWorkoutPlaybackDraftFromStorage(
+      'user-1',
+      '2026-04-27'
+    );
 
     expect(restored?.preset_id).toBe('preset-1');
     expect(restored?.entry_date).toBe('2026-04-27');
 
-    clearWorkoutPlaybackDraftFromStorage('2026-04-27');
+    clearWorkoutPlaybackDraftFromStorage('user-1', '2026-04-27');
     expect(
       window.localStorage.getItem(
-        getWorkoutPlaybackDraftStorageKey('2026-04-27')
+        getWorkoutPlaybackDraftStorageKey('user-1', '2026-04-27')
       )
     ).toBeNull();
+  });
+
+  it("never offers one person's draft to another on the same browser", () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    saveWorkoutPlaybackDraftToStorage('user-1', draft);
+
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27')
+    ).toBeNull();
+    clearWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27');
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-1', '2026-04-27')
+    ).not.toBeNull();
+  });
+
+  it('ignores and removes drafts saved before they were kept per person', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    window.localStorage.setItem(
+      'sparky.workoutPlaybackDraft.v1:2026-04-27',
+      JSON.stringify(draft)
+    );
+
+    expect(
+      loadWorkoutPlaybackDraftFromStorage('user-2', '2026-04-27')
+    ).toBeNull();
+    expect(
+      window.localStorage.getItem('sparky.workoutPlaybackDraft.v1:2026-04-27')
+    ).toBeNull();
+  });
+
+  it('stores and loads nothing without a person', () => {
+    window.localStorage.clear();
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    saveWorkoutPlaybackDraftToStorage(null, draft);
+
+    expect(window.localStorage.length).toBe(0);
+    expect(loadWorkoutPlaybackDraftFromStorage(null, '2026-04-27')).toBeNull();
   });
 
   it('derives rest remaining from the target end timestamp', () => {
@@ -803,5 +908,67 @@ describe('adaptive draft helpers', () => {
       72.5, 72.5,
     ]);
     expect(setWorkoutAdaptiveDeclined(back, 1, true)).toBe(back);
+  });
+});
+describe('#1995 phase 1 resume lifecycle', () => {
+  const buildResumedSession = (revision: number) =>
+    ({
+      type: 'preset',
+      id: 'session-1',
+      entry_date: '2026-11-10',
+      workout_preset_id: 42,
+      name: 'Evening Workout',
+      description: null,
+      notes: 'half done',
+      location: null,
+      source: 'sparky',
+      status: 'partial',
+      finished_at: '2026-11-10T18:00:00.000Z',
+      revision,
+      total_duration_minutes: 30,
+      exercises: [
+        {
+          id: 'entry-1',
+          exercise_id: 'exercise-1',
+          exercise_snapshot: { name: 'Bench Press' },
+          sets: [
+            {
+              set_number: 1,
+              reps: 8,
+              weight: 80,
+              completed_at: '2026-11-10T17:00:00.000Z',
+            },
+            { set_number: 2, reps: 8, weight: 80, completed_at: null },
+          ],
+        },
+      ],
+      activity_details: [],
+    }) as unknown as Parameters<
+      typeof createWorkoutPlaybackDraftFromSession
+    >[0];
+
+  it('seeds a resumable draft from the reopened response, carrying its fresh revision', () => {
+    // The resume PUT bumps the server revision, so the draft must be
+    // built from the reopened session (revision 5), not the stale
+    // pre-update snapshot (revision 4).
+    const draft = createWorkoutPlaybackDraftFromSession(buildResumedSession(5));
+    expect(draft).not.toBeNull();
+    expect(draft!.session_id).toBe('session-1');
+    expect(draft!.revision).toBe(5);
+    expect(draft!.started_at).toBe('2026-11-10T17:00:00.000Z');
+    expect(draft!.exercises[0]!.sets[0]!.completed).toBe(true);
+    expect(draft!.exercises[0]!.sets[1]!.completed).toBe(false);
+  });
+
+  it('presents the draft revision on the finish update so concurrent edits are refused, not overwritten', () => {
+    const draft = createWorkoutPlaybackDraftFromSession(
+      buildResumedSession(5)
+    )!;
+    const update = buildPresetSessionUpdateRequestFromDraft(draft, 'UTC');
+    expect(update.revision).toBe(5);
+    expect(update.finished_at).toEqual(expect.any(String));
+    expect((update.exercises as unknown as { id?: string }[])[0]!.id).toBe(
+      'entry-1'
+    );
   });
 });

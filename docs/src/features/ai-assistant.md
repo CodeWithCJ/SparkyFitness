@@ -7,6 +7,8 @@
 - **Exercise Logging**: Log exercises with duration, distance, and calorie estimates
 - **Measurement Logging**: Log standard and custom body measurements
 - **Water Intake Logging**: Track daily water consumption
+- **Calorie target review**: Ask whether your calorie target is right. The assistant compares the target with your estimated maintenance (the same adaptive estimate as the Goals screen) and your weight trend, and gives the calories for the weekly change you want. It never lowers a target below the safe minimum and changes your goal only after you agree.
+- **Training, run and plan reviews**: See [Adaptive coaching](/features/exercises/adaptive-coaching) for the strength and run reviews and for plan weight changes.
 
 ### Chat Interface
 - **Image Upload**: Send photos for food analysis
@@ -36,6 +38,14 @@ AI transcription requires an updated client and server, with the database migrat
 - **Nutrition Confirmation**: Review and edit AI suggestions before logging
 - **Meal Context**: Understand meal timing and context for accurate logging
 - **Brand Recognition**: Identify specific food brands and products
+
+## Food Preferences and Saved Tasks
+
+The web chat's **Food preferences and tasks** panel shows lasting food preferences and saved work. Tell Sparky explicitly what to remember, or edit and forget preferences in the panel. A choice for one meal does not replace a lasting preference. These preferences are stored separately from conversation history.
+
+Multi-step food tasks keep their ingredient selections, portion variants, source evidence and next step. Ingredients that still need matching remain in the draft with incomplete nutrition. Saving a draft does not publish a recipe or add food to the diary. Select a task to inspect its checkpoint and operation history, cancel remaining work, or resume it in chat. Resume does not start a background job.
+
+This information belongs to the signed-in person and is not shared with family diary viewers.
 
 ## Troubleshooting AI Providers
 

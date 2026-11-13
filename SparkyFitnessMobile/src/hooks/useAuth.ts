@@ -16,11 +16,13 @@ import {
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { clearBackgroundWater } from '../services/backgroundWater';
+import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
 import {
   deleteWatchTelemetryForConfig,
   notifyWatchTelemetryAccountSwitch,
 } from '../utils/watchTelemetryPersistence';
 import { useFoodSearchSelectionStore } from '../stores/foodSearchSelectionStore';
+import { useGuidedCheckInStore } from '../stores/guidedCheckInStore';
 
 export type AuthModalReason = 'session_expired' | 'no_configs' | null;
 
@@ -59,6 +61,13 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // The widgets' snapshots carry no account either, and the Quick Settings
+      // tile shows the calorie figure on the lock screen. Cleared in the same
+      // turn as the cache, so no summary of the previous account is pushed
+      // after it.
+      void clearAndroidWidgetSnapshots().catch((err: unknown) => {
+        addLog(`Failed to clear the widget snapshots: ${err}`, 'WARNING');
+      });
       // The Siri and Shortcuts copy holds the previous login and proxy
       // headers; the dashboard writes a fresh one once the new identity's
       // preferences and container load.
@@ -72,6 +81,10 @@ export function useAuth() {
       // invalidates any submission still in flight — its outcomes are
       // discarded rather than reconciled into the cleared basket.
       useFoodSearchSelectionStore.getState().cancelBatch();
+      // The guided check-in left part-way belongs to the account that started
+      // it (its saved flags and its mood check-in id), so the next account is
+      // never offered to continue it.
+      useGuidedCheckInStore.getState().clearProgress();
       // The cookie jar is the third thing carrying identity, and the only one
       // that survives dropping every cache: it belongs to the native HTTP
       // client and is keyed by host, not by configured server, so two accounts

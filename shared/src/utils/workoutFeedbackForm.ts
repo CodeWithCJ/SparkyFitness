@@ -1,8 +1,8 @@
-import type { WorkoutFeedbackDifficulty } from "../schemas/database/WorkoutFeedback.zod.ts";
+import type { WorkoutFeedbackDifficulty } from '../schemas/database/WorkoutFeedback.zod.ts';
 import type {
   UpdateWorkoutSessionFeedbackRequest,
   WorkoutSessionFeedbackResponse,
-} from "../schemas/api/WorkoutCoaching.api.zod.ts";
+} from '../schemas/api/WorkoutCoaching.api.zod.ts';
 
 /**
  * The end-of-workout feedback form, shared by web and mobile so both send
@@ -27,13 +27,13 @@ export interface WorkoutFeedbackDraft {
 export const EMPTY_WORKOUT_FEEDBACK_DRAFT: WorkoutFeedbackDraft = {
   difficulty: null,
   pain: false,
-  painNote: "",
+  painNote: '',
   painExerciseEntryIds: [],
   exerciseDifficulty: {},
 };
 
 export function workoutFeedbackDraftFromResponse(
-  response: WorkoutSessionFeedbackResponse | null | undefined,
+  response: WorkoutSessionFeedbackResponse | null | undefined
 ): WorkoutFeedbackDraft {
   if (!response) return EMPTY_WORKOUT_FEEDBACK_DRAFT;
   const exerciseDifficulty: Record<string, WorkoutFeedbackDifficulty | null> =
@@ -48,14 +48,14 @@ export function workoutFeedbackDraftFromResponse(
   return {
     difficulty: response.session?.difficulty ?? null,
     pain: (response.session?.pain ?? false) || painExerciseEntryIds.length > 0,
-    painNote: response.session?.pain_note ?? "",
+    painNote: response.session?.pain_note ?? '',
     painExerciseEntryIds,
     exerciseDifficulty,
   };
 }
 
 export function workoutFeedbackRequestFromDraft(
-  draft: WorkoutFeedbackDraft,
+  draft: WorkoutFeedbackDraft
 ): UpdateWorkoutSessionFeedbackRequest {
   const note = draft.painNote.trim();
   const sessionHasSignal = draft.difficulty != null || draft.pain;

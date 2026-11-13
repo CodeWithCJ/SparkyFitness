@@ -35,7 +35,8 @@ function makeClient(opts: { roleExists: boolean; alterError?: unknown }) {
     }
     return { rowCount: 0, rows: [] };
   });
-  return { client: { query, release: vi.fn() }, queries };
+  const escapeLiteral = (value: string) => `'${value}'`;
+  return { client: { query, release: vi.fn(), escapeLiteral }, queries };
 }
 
 // Minted per run so no password-shaped literal sits in the source; see

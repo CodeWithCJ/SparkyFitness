@@ -172,6 +172,32 @@ describe('CardioEffortForm', () => {
     expect(onCommitField).toHaveBeenCalledWith('101', { distance: null });
   });
 
+  it('commits nothing when untouched fields blur, even where the display rounds', () => {
+    // The drafts show two decimals: 5 km reads 3.11 mi (5.005 km parsed
+    // back) and a watch's 5.1234 km reads 5.12. Re-committing either would
+    // overwrite the stored distance with a rounded one.
+    const cases = [
+      { distance: 5, distanceUnit: 'miles', label: 'Distance in mi for Run' },
+      { distance: 5.1234, distanceUnit: 'km', label: 'Distance in km for Run' },
+    ] as const;
+    for (const { distance, distanceUnit, label } of cases) {
+      const onCommitField = jest.fn();
+      const { getByLabelText, unmount } = render(
+        <CardioEffortForm
+          set={makeSet({ duration: 1801, distance })}
+          exerciseName="Run"
+          mode="live"
+          distanceUnit={distanceUnit}
+          onCommitField={onCommitField}
+        />
+      );
+      fireEvent(getByLabelText('Duration in minutes for Run'), 'blur');
+      fireEvent(getByLabelText(label), 'blur');
+      expect(onCommitField).not.toHaveBeenCalled();
+      unmount();
+    }
+  });
+
   it('commits every keystroke in edit mode so a header Save reads current state', () => {
     const onCommitField = jest.fn();
     const { getByLabelText } = render(

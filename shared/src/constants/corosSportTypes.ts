@@ -65,7 +65,11 @@ export const COROS_SPORT_TYPES: Record<number, CorosSportDefinition> = {
   // Walking & Other Cardio
   900: { name: 'Walk', category: 'cardio', sport: 'walking' },
   901: { name: 'Jump Rope', category: 'cardio', sport: 'other' },
-  902: { name: 'Stair Climbing', category: 'cardio', sport: 'fitness_equipment' },
+  902: {
+    name: 'Stair Climbing',
+    category: 'cardio',
+    sport: 'fitness_equipment',
+  },
   903: { name: 'Elliptical', category: 'cardio', sport: 'fitness_equipment' },
   904: { name: 'Yoga', category: 'cardio', sport: 'other' },
   905: { name: 'Pilates', category: 'cardio', sport: 'other' },

@@ -36,8 +36,11 @@ vi.mock('../utils/timezoneLoader.js', () => ({
   loadUserTimezone: vi.fn().mockResolvedValue('UTC'),
 }));
 
+const upsertDerivedMood = vi.fn().mockResolvedValue(undefined);
 vi.mock('../models/moodRepository.js', () => ({
-  default: { createOrUpdateMoodEntry: vi.fn().mockResolvedValue(undefined) },
+  default: {
+    upsertDerivedMood: (...args: unknown[]) => upsertDerivedMood(...args),
+  },
 }));
 vi.mock('../models/sleepRepository.js', () => ({ default: {} }));
 vi.mock('../models/food.js', () => ({ default: {} }));
@@ -72,6 +75,7 @@ beforeEach(() => {
   getHealthMetricSampleRowForUpdateWithClient.mockClear();
   bulkUpsertVitals.mockClear();
   upsertDailyHealthMetrics.mockClear();
+  upsertDerivedMood.mockClear();
 });
 
 describe('processGarminHealthAndWellnessData - HRV', () => {
@@ -427,5 +431,54 @@ describe('processGarminHealthAndWellnessData - blood pressure', () => {
     expect(instants).toHaveLength(3);
     expect(new Set(instants).size).toBe(3);
     expect(instants).toContain('2026-08-02T12:00:00.000Z');
+  });
+});
+
+describe('processGarminHealthAndWellnessData - derived mood', () => {
+  it("stores the stress-derived mood as the day's garmin derived row", async () => {
+    const notes = 'Derived from Garmin Stress: Average 30 (Calm)';
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      {
+        stress: [
+          {
+            date: '2026-08-01',
+            derived_mood_value: 80,
+            derived_mood_notes: notes,
+          },
+        ],
+      },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    expect(upsertDerivedMood).toHaveBeenCalledTimes(1);
+    expect(upsertDerivedMood).toHaveBeenCalledWith('user-1', 'garmin', {
+      moodValue: 80,
+      notes,
+      entryDate: '2026-08-01',
+      entryTimestamp: new Date('2026-08-01T12:00:00.000Z'),
+    });
+  });
+
+  it("stamps a past day's mood at local noon in the user timezone", async () => {
+    const { loadUserTimezone } = await import('../utils/timezoneLoader.js');
+    (loadUserTimezone as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      'America/Chicago'
+    );
+
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      { stress: [{ date: '2026-08-01', derived_mood_value: 80 }] },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    // Noon CDT, so the mood sits on its own day rather than at sync time.
+    expect(upsertDerivedMood.mock.calls[0]![2].entryTimestamp).toEqual(
+      new Date('2026-08-01T17:00:00.000Z')
+    );
   });
 });

@@ -5,9 +5,7 @@
 -- it finishes, so a second sync for the same account is skipped instead of
 -- saving the same data again. NULL means no sync is running.
 
-BEGIN;
 
 ALTER TABLE public.external_data_providers
   ADD COLUMN IF NOT EXISTS sync_started_at TIMESTAMPTZ NULL;
 
-COMMIT;

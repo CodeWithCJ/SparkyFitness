@@ -3,22 +3,22 @@
 // surfaces honest per-phase patterns. Pure + framework-free; the server feeds
 // it already-fetched rows so it never touches the DB. Association, not causation.
 
-import { phaseForDay } from "./predictions.ts";
-import type { CyclePhase, CyclePrediction, DerivedCycle } from "./types.ts";
+import { phaseForDay } from './predictions.ts';
+import type { CyclePhase, CyclePrediction, DerivedCycle } from './types.ts';
 
 export interface MetricPoint {
   date: string; // YYYY-MM-DD
   value: number;
 }
 
-export type PhaseBucket = Exclude<CyclePhase, "unknown">;
+export type PhaseBucket = Exclude<CyclePhase, 'unknown'>;
 
 export const PHASE_ORDER: readonly PhaseBucket[] = [
-  "menstrual",
-  "follicular",
-  "fertile",
-  "ovulation",
-  "luteal",
+  'menstrual',
+  'follicular',
+  'fertile',
+  'ovulation',
+  'luteal',
 ];
 
 export interface PhaseMean {
@@ -56,7 +56,7 @@ export function correlateMetricWithPhase(
   metric: string,
   points: MetricPoint[],
   cycles: DerivedCycle[],
-  prediction: CyclePrediction,
+  prediction: CyclePrediction
 ): CorrelationResult {
   const buckets: Record<PhaseBucket, number[]> = {
     menstrual: [],
@@ -69,7 +69,7 @@ export function correlateMetricWithPhase(
   for (const p of points) {
     if (!Number.isFinite(p.value)) continue;
     const { phase } = phaseForDay(p.date, cycles, prediction);
-    if (phase === "unknown") continue;
+    if (phase === 'unknown') continue;
     buckets[phase].push(p.value);
   }
 
@@ -78,7 +78,9 @@ export function correlateMetricWithPhase(
 
   const byPhase: PhaseMean[] = PHASE_ORDER.map((phase) => ({
     phase,
-    mean: buckets[phase].length ? Math.round(mean(buckets[phase]) * 100) / 100 : 0,
+    mean: buckets[phase].length
+      ? Math.round(mean(buckets[phase]) * 100) / 100
+      : 0,
     count: buckets[phase].length,
   }));
 
@@ -117,9 +119,9 @@ export interface CoachingTip {
  */
 export function coachingForPhase(
   phase: CyclePhase,
-  correlations: CorrelationResult[],
+  correlations: CorrelationResult[]
 ): CoachingTip | null {
-  if (phase === "unknown") return null;
+  if (phase === 'unknown') return null;
   const p = phase as PhaseBucket;
 
   // Personalized: if a strong correlation exists for this phase, prefer it.
@@ -130,11 +132,11 @@ export function coachingForPhase(
   }
 
   const DEFAULTS: Record<PhaseBucket, string> = {
-    menstrual: "coach_default_menstrual",
-    follicular: "coach_default_follicular",
-    fertile: "coach_default_fertile",
-    ovulation: "coach_default_ovulation",
-    luteal: "coach_default_luteal",
+    menstrual: 'coach_default_menstrual',
+    follicular: 'coach_default_follicular',
+    fertile: 'coach_default_fertile',
+    ovulation: 'coach_default_ovulation',
+    luteal: 'coach_default_luteal',
   };
   return { phase: p, key: DEFAULTS[p], personalized: false };
 }

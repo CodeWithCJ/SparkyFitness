@@ -7,12 +7,14 @@ import {
 
 export const RUN_PROGRAM_ACTIONS = [
   'get_run_program',
+  'get_fitness_tests',
   'start_run_program',
   'set_run_program_enabled',
   'repeat_run_program_week',
   'move_run_program',
   'adjust_run_program_running',
   'set_run_program_schedule',
+  'realign_run_program',
 ] as const;
 
 const confirmedSchema = z
@@ -58,6 +60,7 @@ const daySchema = z
 
 export const manageRunProgramSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('get_run_program') }).strict(),
+  z.object({ action: z.literal('get_fitness_tests') }).strict(),
   z
     .object({
       action: z.literal('start_run_program'),
@@ -67,7 +70,7 @@ export const manageRunProgramSchema = z.discriminatedUnion('action', [
         .max(50)
         .optional()
         .describe(
-          'walkFit, beginner5k, fiveToTenK, faster5k, halfMarathon or marathon. Default beginner5k.'
+          'walkFit, walk10k, returnToRunning, gentle5k, beginner5k, fiveToTenK, zone2Base, faster5k, beginner10k, faster10k, tenKToHalf, halfMarathon, fasterHalf, beginnerMarathon, marathon or advancedMarathon; the Zone 2 base plan, the half marathon and beginner marathon plans also come as zone2Base4, tenKToHalf4, halfMarathon4, fasterHalf4 and beginnerMarathon4 with four runs a week. Default beginner5k.'
         ),
       confirmed: confirmedSchema,
     })
@@ -146,6 +149,24 @@ export const manageRunProgramSchema = z.discriminatedUnion('action', [
         value.end_date !== undefined,
       { message: 'Give run_days, start_date or end_date.' }
     ),
+  z
+    .object({
+      action: z.literal('realign_run_program'),
+      force: z
+        .boolean()
+        .optional()
+        .describe(
+          'Only after the user has chosen to go ahead although the goal day is not realistic for the plan: realigns past the usual cap on dropped workouts.'
+        ),
+      distance: z
+        .enum(['5k', '10k', 'half', 'marathon'])
+        .optional()
+        .describe(
+          'The race distance, when it is not clear from the plan (it is normally read from the longest run).'
+        ),
+      confirmed: confirmedSchema,
+    })
+    .strict(),
 ]);
 
 export type ManageRunProgramInput = z.infer<typeof manageRunProgramSchema>;
@@ -163,5 +184,7 @@ export const manageRunProgramInput = z.object({
   run_days: z.array(z.union([z.string(), z.number()])).optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
+  force: z.boolean().optional(),
+  distance: z.string().max(10).optional(),
   confirmed: z.boolean().optional(),
 });

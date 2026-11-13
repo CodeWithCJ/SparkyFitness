@@ -1,18 +1,24 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 import { ExtensionStorage } from '@bacons/apple-targets';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import {
+  buildAndroidWaterSnapshot,
   buildAndroidWidgetSnapshots,
+  getAndroidWidgetGeneration,
   pushAndroidCalorieSnapshot,
   pushAndroidMacroSnapshot,
+  pushAndroidWaterSnapshot,
+  type WaterWidgetInfo,
 } from '../services/androidWidgetSyncService';
 import BackgroundWaterModule from '../../modules/background-water';
+import { buildCalorieWidgetSnapshot } from '../services/calorieWidgetSnapshot';
 import { addLog } from '../services/LogService';
 import type { DailySummary } from '../types/dailySummary';
 import { getTodayDate } from '../utils/dateUtils';
+import { useEnergyUnit } from './useEnergyUnit';
 
 const WIDGET_KIND = 'widget';
 const CALORIE_SNAPSHOT_KEY = 'calorieSnapshot';
@@ -26,16 +32,6 @@ const CONTROL_KINDS = [
   'com.sparkyapps.sparkyfitness.control.logWater',
 ];
 
-/** What the iOS water widget needs beyond the day's totals. */
-export interface WaterWidgetInfo {
-  /** What one tap of the widget's button adds, in millilitres. */
-  drinkMl: number | null;
-  /** The unit the app shows water in. */
-  unit: string;
-  /** Whether the no-open shortcut is on, so the widget may show its button. */
-  canLog: boolean;
-}
-
 const iosAppGroup = (
   Constants.expoConfig?.extra as { iosAppGroup?: string } | undefined
 )?.iosAppGroup;
@@ -44,23 +40,25 @@ export function useWidgetSync(
   summary: DailySummary | undefined,
   water?: WaterWidgetInfo
 ): void {
-  const drinkMl = water?.drinkMl ?? null;
+  const drinkMl = water?.drinkMl;
   const waterUnit = water?.unit;
   const canLog = water?.canLog ?? false;
   const date = summary?.date;
   const isToday = date === getTodayDate();
+  const energyUnit = useEnergyUnit();
   const lastAndroidCalorieSnapshotKeyRef = useRef<string | null>(null);
   const lastAndroidMacroSnapshotKeyRef = useRef<string | null>(null);
+  const lastAndroidWaterSnapshotKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isToday || !date || !summary) {
       return;
     }
 
-    const balance = summary.calorieBalance;
     const lastUpdated = Math.floor(Date.now() / 1000);
 
     if (Platform.OS === 'ios') {
+      const calorieSnapshot = buildCalorieWidgetSnapshot(summary, energyUnit);
       try {
         if (!iosAppGroup) {
           addLog(
@@ -72,15 +70,9 @@ export function useWidgetSync(
 
         const storage = new ExtensionStorage(iosAppGroup);
 
-        if (balance) {
-          const { eaten, burned, goal, remaining, progress } = balance;
+        if (calorieSnapshot) {
           storage.set(CALORIE_SNAPSHOT_KEY, {
-            date,
-            food: eaten,
-            burned,
-            goal,
-            remaining,
-            progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+            ...calorieSnapshot,
             lastUpdated,
           });
         }
@@ -91,6 +83,7 @@ export function useWidgetSync(
           carbs: summary.carbs.consumed,
           fat: summary.fat.consumed,
           calories: summary.caloriesConsumed,
+          energyUnit,
           lastUpdated,
         });
 
@@ -115,7 +108,7 @@ export function useWidgetSync(
           });
         }
 
-        if (balance) {
+        if (calorieSnapshot) {
           ExtensionStorage.reloadWidget(WIDGET_KIND);
         }
         ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
@@ -132,29 +125,18 @@ export function useWidgetSync(
     }
 
     if (Platform.OS === 'android') {
-      const snapshots = buildAndroidWidgetSnapshots(summary);
+      const snapshots = buildAndroidWidgetSnapshots(summary, energyUnit);
+      // An account change clears the widgets, so the same figures signed in
+      // again (a session renewed by the same person) still have to be pushed.
+      const generation = getAndroidWidgetGeneration();
       if (snapshots.calorie) {
         const calorieSnapshot = snapshots.calorie;
-        const calorieSnapshotKey = JSON.stringify(calorieSnapshot);
-
-        if (lastAndroidCalorieSnapshotKeyRef.current !== calorieSnapshotKey) {
-          lastAndroidCalorieSnapshotKeyRef.current = calorieSnapshotKey;
-          void (async () => {
-            try {
-              await pushAndroidCalorieSnapshot(calorieSnapshot, lastUpdated);
-            } catch (error) {
-              if (
-                lastAndroidCalorieSnapshotKeyRef.current === calorieSnapshotKey
-              ) {
-                lastAndroidCalorieSnapshotKeyRef.current = null;
-              }
-              addLog(
-                `[useWidgetSync] Android calorie widget push failed: ${error}`,
-                'ERROR'
-              );
-            }
-          })();
-        }
+        pushOnce(
+          lastAndroidCalorieSnapshotKeyRef,
+          `${generation}:${JSON.stringify(calorieSnapshot)}`,
+          () => pushAndroidCalorieSnapshot(calorieSnapshot, lastUpdated),
+          'calorie'
+        );
       }
 
       // Goals ride along so the widget's per-macro bars can show progress
@@ -163,23 +145,57 @@ export function useWidgetSync(
       // (#2228). Not sent on iOS: that widget draws a composition ring, where
       // the three shares summing to one is the intended reading.
       const macroSnapshot = snapshots.macro;
-      const macroSnapshotKey = JSON.stringify(macroSnapshot);
-      if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) return;
+      pushOnce(
+        lastAndroidMacroSnapshotKeyRef,
+        `${generation}:${JSON.stringify(macroSnapshot)}`,
+        () => pushAndroidMacroSnapshot(macroSnapshot, lastUpdated),
+        'macro'
+      );
 
-      lastAndroidMacroSnapshotKeyRef.current = macroSnapshotKey;
-      void (async () => {
-        try {
-          await pushAndroidMacroSnapshot(macroSnapshot, lastUpdated);
-        } catch (error) {
-          if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) {
-            lastAndroidMacroSnapshotKeyRef.current = null;
-          }
-          addLog(
-            `[useWidgetSync] Android macro widget push failed: ${error}`,
-            'ERROR'
-          );
-        }
-      })();
+      // Only from a caller that passes the water details (the Dashboard), as
+      // on iOS. A drink still loading is left out, so the widget keeps its
+      // buttons instead of hiding them until the containers arrive.
+      if (waterUnit) {
+        const waterSnapshot = buildAndroidWaterSnapshot(summary, {
+          drinkMl,
+          unit: waterUnit,
+          canLog,
+        });
+        pushOnce(
+          lastAndroidWaterSnapshotKeyRef,
+          `${generation}:${JSON.stringify(waterSnapshot)}`,
+          () => pushAndroidWaterSnapshot(waterSnapshot, lastUpdated),
+          'water'
+        );
+      }
     }
-  }, [summary, date, isToday, drinkMl, waterUnit, canLog]);
+  }, [summary, date, isToday, drinkMl, waterUnit, canLog, energyUnit]);
+}
+
+/**
+ * Pushes an Android widget snapshot unless the same one was already sent. A
+ * failed push forgets its key, so the next render with the same figures
+ * tries again.
+ */
+function pushOnce(
+  lastKeyRef: RefObject<string | null>,
+  key: string,
+  push: () => Promise<void>,
+  widget: string
+): void {
+  if (lastKeyRef.current === key) return;
+  lastKeyRef.current = key;
+  void (async () => {
+    try {
+      await push();
+    } catch (error) {
+      if (lastKeyRef.current === key) {
+        lastKeyRef.current = null;
+      }
+      addLog(
+        `[useWidgetSync] Android ${widget} widget push failed: ${error}`,
+        'ERROR'
+      );
+    }
+  })();
 }

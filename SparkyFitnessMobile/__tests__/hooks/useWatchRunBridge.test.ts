@@ -78,8 +78,25 @@ test('confirms a cue from the watch and says it on the phone', () => {
     id: string;
     text: string;
     interrupt: boolean;
+    language?: string;
   }) => void;
   handler({ id: 'c1', text: 'Paused.', interrupt: true });
   expect(WatchConnectivity!.sendRunCueAck).toHaveBeenCalledWith('c1');
-  expect(speakWatchCue).toHaveBeenCalledWith('Paused.', true);
+  expect(speakWatchCue).toHaveBeenCalledWith('Paused.', true, undefined);
+});
+
+test('passes the language the watch wrote a cue in to the relay', () => {
+  prefs.mockReturnValue({ preferences: {} } as never);
+  renderHook(() => useWatchRunBridge(true, true));
+  const call = jest
+    .mocked(WatchConnectivity!.addListener)
+    .mock.calls.find(([name]) => name === 'onRunCue');
+  const handler = call![1] as (p: {
+    id: string;
+    text: string;
+    interrupt: boolean;
+    language?: string;
+  }) => void;
+  handler({ id: 'c2', text: 'Pausiert.', interrupt: true, language: 'de-DE' });
+  expect(speakWatchCue).toHaveBeenCalledWith('Pausiert.', true, 'de-DE');
 });

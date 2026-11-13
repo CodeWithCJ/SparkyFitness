@@ -1,7 +1,7 @@
 import type {
   RunProgramCompletion,
   RunProgramEffort,
-} from "../schemas/api/RunProgram.api.zod.ts";
+} from '../schemas/api/RunProgram.api.zod.ts';
 
 /** How long after a workout the person is still asked how hard it felt. */
 export const EFFORT_PROMPT_HOURS = 48;
@@ -15,7 +15,7 @@ export const EFFORT_PROMPT_HOURS = 48;
 export function pendingEffortRating(
   completions: readonly RunProgramCompletion[],
   efforts: readonly RunProgramEffort[],
-  nowMs: number,
+  nowMs: number
 ): RunProgramCompletion | null {
   // The newest completion that has no rating: a later one can be rated while
   // an earlier one is still waiting, and that one is still worth asking about.
@@ -23,7 +23,7 @@ export function pendingEffortRating(
     .reverse()
     .find(
       (completion) =>
-        !efforts.some((effort) => effort.index === completion.index),
+        !efforts.some((effort) => effort.index === completion.index)
     );
   if (!latest) return null;
   const doneAt = Date.parse(latest.at);

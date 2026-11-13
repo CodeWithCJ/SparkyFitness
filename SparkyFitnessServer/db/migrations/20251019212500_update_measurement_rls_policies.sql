@@ -1,6 +1,5 @@
 -- Migration to update RLS policies for measurement tables to include delegated access logic
 
-BEGIN;
 
 -- Drop existing generic policies for measurement tables
 DROP POLICY IF EXISTS check_in_measurements_user_policy ON public.check_in_measurements;
@@ -204,4 +203,3 @@ WITH CHECK (
     )
 );
 
-COMMIT;

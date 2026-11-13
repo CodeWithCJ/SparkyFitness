@@ -1,5 +1,6 @@
 import type React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useLayoutEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,15 @@ import {
 } from '@/components/ui/tooltip';
 import {
   Trash2,
+  Link2,
   ChevronDown,
   Flame,
   Clock,
   Activity,
+  Gauge,
   Layers,
   MapPin,
+  Play,
 } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -26,9 +30,46 @@ import {
   formatTimeOfDayString,
 } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
-import { earliestEntryTime, setsDurationMinutes } from '@workspace/shared';
+import {
+  earliestEntryTime,
+  entryCaloriesCounted,
+  isAppLoggedWorkoutSource,
+  setsDurationMinutes,
+} from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import {
+  isPresetSessionConflictError,
+  useUpdatePresetSessionMutation,
+} from '@/hooks/Exercises/useExerciseEntries';
+import { toast } from '@/hooks/use-toast';
+import {
+  createWorkoutPlaybackDraftFromSession,
+  saveWorkoutPlaybackDraftToStorage,
+} from '@/utils/workoutPlayback';
 import WorkoutFeedbackPanel from './WorkoutFeedbackPanel';
+
+/**
+ * Derived lifecycle status of a session (#1995 phase 1), as a badge tone and
+ * English fallback label. The server derives the status from set completion
+ * plus finished_at; see deriveWorkoutSessionStatus in @workspace/shared.
+ */
+const SESSION_STATUS_BADGE_CLASSES: Record<string, string> = {
+  planned:
+    'bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+  in_progress:
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+  partial:
+    'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+  completed:
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+};
+
+const SESSION_STATUS_FALLBACK_LABELS: Record<string, string> = {
+  planned: 'Planned',
+  in_progress: 'In Progress',
+  partial: 'Partial',
+  completed: 'Completed',
+};
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -37,6 +78,8 @@ interface ExercisePresetEntryDisplayProps {
   handleDeleteExerciseEntry: (entryId: string) => void;
   handleEdit: (entry: ExerciseEntry) => void;
   handleEditExerciseDatabase: (exerciseId: string) => void;
+  /** Opens the dialog that links this session to a synced workout; omitted when the diary is read-only. */
+  onLink?: (entryId: string) => void;
   setExerciseToPlay: (exercise: Exercise | null) => void;
   setIsPlaybackModalOpen: (isOpen: boolean) => void;
   energyUnit: 'kcal' | 'kJ';
@@ -55,6 +98,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   handleDeleteExerciseEntry,
   handleEdit,
   handleEditExerciseDatabase,
+  onLink,
   setExerciseToPlay,
   setIsPlaybackModalOpen,
   energyUnit,
@@ -66,8 +110,105 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   // The feedback panel autosaves, so only people who can write the diary
   // get it (#1560); report-only viewers can't save and don't see it here.
-  const { hasWritePermission } = useActiveUser();
+  const { hasWritePermission, activeUserId } = useActiveUser();
   const canGiveFeedback = hasWritePermission('diary');
+  const navigate = useNavigate();
+  const { mutateAsync: updatePresetSession } = useUpdatePresetSessionMutation();
+  const [isResuming, setIsResuming] = useState(false);
+  // Who the page belongs to now, and whether it is still on screen: a reopen
+  // that answers after another account or profile took over, or after the
+  // person left the Diary, must not open the player over what they are doing.
+  // Layout effects, so both change in the same commit as the switch: a
+  // passive effect runs later, and a reply landing in between would still
+  // read the previous person.
+  const activeUserIdRef = useRef(activeUserId);
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    activeUserIdRef.current = activeUserId;
+  }, [activeUserId]);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // #1995 phase 1: derived server-side, guaranteed on preset-session
+  // responses. Partial and unfinished live sessions can be resumed.
+  const sessionStatus = presetEntry.status;
+  const isResumable =
+    (sessionStatus === 'partial' || sessionStatus === 'in_progress') &&
+    canGiveFeedback;
+
+  const handleResumeWorkout = useCallback(async () => {
+    if (isResuming) return;
+    setIsResuming(true);
+    const isStale = () =>
+      !mountedRef.current || activeUserIdRef.current !== activeUserId;
+    try {
+      // Reopen the session server-side first (finished_at: null) so other
+      // devices see it as in progress again, carrying the revision we last
+      // saw; a mismatch means it changed elsewhere and is refused with 409.
+      const reopened = await updatePresetSession({
+        presetEntryId: presetEntry.id,
+        payload: {
+          finished_at: null,
+          ...(presetEntry.revision != null
+            ? { revision: Number(presetEntry.revision) }
+            : {}),
+        },
+      });
+      if (isStale()) return;
+      // The reopen PUT bumped the server revision, so seed the draft
+      // from the response: it carries the fresh revision, and the
+      // finish PUT presents it instead of the stale pre-update one
+      // (which would be refused with 409).
+      const draft = createWorkoutPlaybackDraftFromSession(reopened);
+      if (!draft) {
+        toast({
+          description: t(
+            'exerciseCard.resumeEmptySession',
+            'Nothing to resume in this session.'
+          ),
+        });
+        return;
+      }
+      saveWorkoutPlaybackDraftToStorage(activeUserId, draft);
+      navigate(`/workout-playback?date=${draft.entry_date}`, {
+        state: {
+          draft,
+          ownerId: activeUserId,
+          returnTo: `${window.location.pathname}${window.location.search}`,
+        },
+      });
+    } catch (error) {
+      if (isStale()) return;
+      if (isPresetSessionConflictError(error)) {
+        toast({
+          description: t(
+            'exerciseCard.sessionUpdatedElsewhere',
+            'This workout was updated on another device or tab. Reload the diary and try again.'
+          ),
+        });
+      } else {
+        toast({
+          description: t(
+            'exerciseCard.resumeWorkoutFailed',
+            'Failed to resume this workout. Please try again.'
+          ),
+        });
+      }
+    } finally {
+      setIsResuming(false);
+    }
+  }, [activeUserId, isResuming, navigate, presetEntry, t, updatePresetSession]);
+
+  // Linking works on the whole session, so any of its exercises will do.
+  const linkableEntry = presetEntry.exercises?.[0];
+  const linkableEntryId =
+    linkableEntry && isAppLoggedWorkoutSource(linkableEntry.source)
+      ? linkableEntry.id
+      : null;
 
   const toggleExpansion = useCallback(() => {
     setIsExpanded((prev) => !prev);
@@ -98,12 +239,21 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
       : 0;
   })();
 
+  // A strength session stores the person's rating on every exercise, so any
+  // one that has it speaks for the session.
+  const effort = (() => {
+    const ratings = (presetEntry.exercises ?? [])
+      .map((ex) => ex.workout_effort)
+      .filter((value): value is number => typeof value === 'number');
+    return ratings.length > 0 ? Math.max(...ratings) : null;
+  })();
+
   const earliestTime = earliestEntryTime(presetEntry.exercises ?? []);
 
   const totalCalories = Math.round(
     convertEnergy(
       presetEntry.exercises?.reduce(
-        (sum, ex) => sum + (ex.calories_burned || 0),
+        (sum, ex) => sum + entryCaloriesCounted(ex),
         0
       ) ?? 0,
       'kcal',
@@ -153,6 +303,17 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                   {earliestTime && (
                     <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
                       {formatTimeOfDayString(earliestTime, timeFormat)}
+                    </span>
+                  )}
+                  {sessionStatus && (
+                    <span
+                      className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${SESSION_STATUS_BADGE_CLASSES[sessionStatus] ?? ''}`}
+                    >
+                      {t(
+                        `exerciseCard.sessionStatus.${sessionStatus}`,
+                        SESSION_STATUS_FALLBACK_LABELS[sessionStatus] ??
+                          sessionStatus
+                      )}
                     </span>
                   )}
                   {exerciseCount > 0 && (
@@ -236,7 +397,53 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               </div>
             </button>
 
-            {/* Right: delete */}
+            {/* Right: resume a partial session, link to a synced workout, then delete */}
+            {isResumable && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isResuming}
+                      onClick={handleResumeWorkout}
+                      className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {t('exerciseCard.resumeWorkoutButton', 'Resume Workout')}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {onLink && linkableEntryId && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onLink(linkableEntryId)}
+                      className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {t(
+                        'exercise.calorieLink.action',
+                        'Link a synced workout'
+                      )}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -287,7 +494,9 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
 
           {/* Stats strip */}
           {hasExercises && (
-            <div className="mx-4 mb-4 mt-1 grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/60 rounded-lg overflow-hidden">
+            <div
+              className={`mx-4 mb-4 mt-1 grid ${effort != null ? 'grid-cols-5' : 'grid-cols-4'} divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/60 rounded-lg overflow-hidden`}
+            >
               <StatCell
                 icon={<Layers className="w-3 h-3" />}
                 value={String(totalSets)}
@@ -306,6 +515,17 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                 label={t('common.avgHrUnit', 'Avg HR')}
                 color="text-rose-500 dark:text-rose-400"
               />
+              {effort != null && (
+                <StatCell
+                  icon={<Gauge className="w-3 h-3" />}
+                  value={t('exerciseCard.effortOutOf', {
+                    defaultValue: '{{rating}}/10',
+                    rating: effort,
+                  })}
+                  label={t('exerciseCard.effort', 'Effort')}
+                  color="text-purple-600 dark:text-purple-400"
+                />
+              )}
               <StatCell
                 icon={<Flame className="w-3 h-3" />}
                 value={String(totalCalories)}

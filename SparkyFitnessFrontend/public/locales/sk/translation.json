@@ -1,6 +1,7 @@
 {
   "layout": {
-    "welcome": "Vitajte, {{activeUserName}}"
+    "welcome": "Vitajte, {{activeUserName}}",
+    "translate": "Preložiť"
   },
   "chat": {
     "toolCategories": {
@@ -54,7 +55,9 @@
     "trainingLoad": "Tréningová záťaž",
     "acute": "akútny",
     "empty": "Pre tento deň neboli synchronizované žiadne údaje z nositeľného zariadenia.",
-    "skinTemp": "Teplota pokožky"
+    "skinTemp": "Teplota pokožky",
+    "chronic": "Chronický: {{val}}",
+    "weekly": "týždenný"
   },
   "foodCsvImport": {
     "title": "Importovať údaje o jedle",
@@ -593,7 +596,6 @@
       "prnReason": "Dôvod (voliteľné)",
       "prnReasonPlaceholder": "napr. Bolesť",
       "prnMax": "Max. dávok / deň",
-      "supplementDoseScalingCalories": "Každý záznam počíta {{dose}} porcií: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Každý záznam počítá {{dose}} porcií, teda {{dose}}-krát výživu zadanú na jednu porciu.",
       "servingUnit": "porcia",
       "servingsPerLog": "Porcií na záznam",
@@ -693,7 +695,8 @@
     "pregnancy": "Tehotenstvo",
     "medications": "Lieky",
     "foodLog": "Záznam jedla",
-    "wellness": "Zdravie"
+    "wellness": "Zdravie",
+    "symptoms": "Príznaky"
   },
   "nutrition": {
     "calories": "Kalórie",
@@ -722,7 +725,11 @@
     "autoCalculateSelect": "Zahrnúť do hromadného automatického výpočtu",
     "autoCalculateSelectAll": "Vybrať všetko",
     "autoCalculateSelectNone": "Zrušiť výber všetkých",
-    "autoCalculateApplySelected": "Automaticky vypočítať vybrané ({{count}})"
+    "autoCalculateApplySelected": "Automaticky vypočítať vybrané ({{count}})",
+    "caffeine": "Kofeín",
+    "waterContent": "Obsah vody",
+    "alcohol": "Alkohol",
+    "abv": "Obsah alkoholu (%)"
   },
   "calculationSettings": {
     "showNetCarbs": "Zobraziť čisté sacharidy (sacharidy mínus vláknina)",
@@ -758,7 +765,9 @@
     "saveSuccessDesc": "Nastavenia výpočtu boli úspešne uložené!",
     "selectBmrAlgorithm": "Vyberte algoritmus BMR",
     "selectBodyFatAlgorithm": "Vyberte algoritmus telesného tuku",
-    "selectEnergyUnitPlaceholder": "Vyberte jednotku energie"
+    "selectEnergyUnitPlaceholder": "Vyberte jednotku energie",
+    "useExternalBmr": "Použite nameranú hodnotu BMR z registrácií a synchronizovaných zariadení.",
+    "useExternalBmrHint": "Predvolene vypnuté – vždy sa používa vami zvolený vzorec, pokiaľ túto funkciu neaktivujete. Po aktivácii hodnota BMR zaznamenaná pri registrácii (check-in) alebo synchronizovaná z inteligentnej váhy či od poskytovateľa zdravotnej starostlivosti nahradí pre daný deň vypočítaný vzorec, za predpokladu, že je pre vás fyziologicky reálna. Niektoré zariadenia uvádzajú BMR ako priebežný denný súčet namiesto rýchlosti metabolizmu, a preto je táto funkcia voliteľná."
   },
   "aboutDialog": {
     "title": "O aplikácii SparkyFitness",
@@ -780,7 +789,8 @@
     "gotIt": "Rozumiem",
     "close": "Zavrieť",
     "swissFoodApi": "Swiss Food Composition Database API",
-    "usdaApi": "USDA Food Database API"
+    "usdaApi": "USDA Food Database API",
+    "canadianNutrientFileApi": "Kanadská databáza údajov o výživových hodnotách (Health Canada)"
   },
   "exercise": {
     "title": "Cvičenia",
@@ -801,8 +811,6 @@
       "categoryStrength": "Sila",
       "categoryCardio": "Kardio",
       "categoryYoga": "Jóga",
-      "caloriesPerHourLabel": "Kalórie/hodina",
-      "caloriesPerHourHint": "Ponechajte prázdne pre použitie systémom vypočítaných kalórií za hodinu ({{newExerciseCalories}} cal/hod).",
       "descriptionLabel": "Popis",
       "sourceLabel": "Zdroj",
       "forceLabel": "Sila",
@@ -819,9 +827,9 @@
       "selectMechanicPlaceholder": "Vyberte mechaniku",
       "mechanicIsolation": "Izolovaný cvik",
       "mechanicCompound": "Komplexný cvik",
-      "equipmentLabel": "Vybavenie (oddelené čiarkami)",
-      "primaryMusclesLabel": "Primárne svaly (oddelené čiarkami)",
-      "secondaryMusclesLabel": "Sekundárne svaly (oddelené čiarkami)",
+      "equipmentLabel": "Vybavenie",
+      "primaryMusclesLabel": "Primárne svaly",
+      "secondaryMusclesLabel": "Sekundárne svaly",
       "instructionsLabel": "Pokyny (jeden na riadok)",
       "imagesLabel": "Obrázky",
       "addButton": "Pridať cvičenie",
@@ -829,13 +837,23 @@
       "addError": "Nepodarilo sa pridať cvičenie",
       "importSuccess": "Údaje o cvičeniach boli úspešne importované",
       "importDuplicateTitle": "Import zlyhal: Nájdené duplicitné položky",
-      "importError": "Nepodarilo sa importovať údaje o cvičeniach. Skúste to znova."
+      "importError": "Nepodarilo sa importovať údaje o cvičeniach. Skúste to znova.",
+      "customMuscleBodyMapHint": "Vlastné svaly sa na mape tela nezobrazia.",
+      "tagInputPlaceholder": "Napíšte, ak chcete pridať alebo vyhľadať...",
+      "addCustomTag": "Pridať „{{tag}}“",
+      "importDuplicateDescription": "Nasledujúce položky už existujú: {{duplicateList}}. Odstráňte ich zo súboru a skúste to znova.",
+      "replaceTitle": "Nahradiť cvik",
+      "replaceSuccess": "Cvičenie nahradené",
+      "suggestedTab": "Navrhované"
     },
     "modality": {
       "weightReps": "Váha a opakovania",
       "repsOnly": "Opakovania",
       "duration": "Trvanie",
-      "durationDistance": "Trvanie a vzdialenosť"
+      "durationDistance": "Trvanie a vzdialenosť",
+      "bodyweightReps": "Telesná hmotnosť (+/− závažie)",
+      "weightDistance": "Hmotnosť a vzdialenosť (prenášanie)",
+      "weightDuration": "Hmotnosť a trvanie (výdrže so záťažou)"
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Hľadať vo vašich predvoľbách cvičenia...",
@@ -873,8 +891,6 @@
       "activeCalories": "Aktívne kalórie: {{activeCaloriesFromExercise}} {{energyUnit}}",
       "stepsCalories": "Kroky: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}",
       "bmrCalories": "BMR: {{bmr}} {{energyUnit}}",
-      "bmrSourceMeasured": "Namerané",
-      "bmrSourceAlgorithm": "Algoritmus",
       "totalCaloriesBurned": "Celkom: {{totalCaloriesBurned}} {{energyUnit}}",
       "goal": "cieľ",
       "caloriesBurnedBreakdownTitle": "Rozpis spálených kalórií",
@@ -923,7 +939,6 @@
       "exerciseLabel": "Cvičenie",
       "unknownExercise": "Neznáme cvičenie",
       "addSetButton": "Pridať sériu",
-      "caloriesBurnedOptionalLabel": "Spálené kalórie (voliteľné)",
       "caloriesBurnedPlaceholder": "Zadajte spálené kalórie na prepísanie výpočtu",
       "caloriesBurnedHint": "Ak necháte prázdne, kalórie sa automaticky vypočítajú pri uložení.",
       "distanceLabel": "Vzdialenosť",
@@ -1016,7 +1031,22 @@
       "exercises": "cvičenia",
       "name": "Názov",
       "deleteConfirmationDescription": "Naozaj chcete vymazať toto cvičenie? Túto akciu nie je možné vrátiť späť.",
-      "deleteImpactDescription": "Toto cvičenie sa používa v iných záznamoch alebo tréningových plánoch. Jeho vymazanie môže ovplyvniť tieto záznamy."
+      "deleteImpactDescription": "Toto cvičenie sa používa v iných záznamoch alebo tréningových plánoch. Jeho vymazanie môže ovplyvniť tieto záznamy.",
+      "duplicateExercise": "Duplikuj",
+      "duplicateExerciseDialogTitle": "Duplikovať cvičenie",
+      "duplicateExerciseDialogDescription": "Uložte si kópiu ako vlastné cvičenie. Pôvodný súbor zostane nezmenený.",
+      "saveCopy": "Uložiť kópiu",
+      "copySuffix": "(kópia)",
+      "bulkDeleteDescription": "Odstráňte tieto {{count}} cviky zo svojej knižnice a zo všetkých prednastavených tréningov a plánov. Tréningy, ktoré ste už zaznamenali, zostanú vo vašom denníku.",
+      "cancel": "Zrušiť",
+      "delete": "Odstrániť",
+      "deleteExerciseConfirmTitle": "Odstrániť {{exerciseName}}?",
+      "deleteKeepsDiaryHint": "Odstránenie vymaže cvik z vašej knižnice, predvolieb a plánov. Vaše zaznamenané tréningy si zachovajú svoj názov, obrázok, série aj opakovania.",
+      "deleteWithHistory": "Odstrániť vrátane histórie",
+      "diaryEntriesCount": "{{count}} zaznamenaných tréningov",
+      "exerciseUnused": "Toto cvičenie sa zatiaľ nikde nepoužíva.",
+      "exerciseUsedByOtherUsersWarning": "Toto cvičenie používajú aj iní používatelia. Môžete ho iba skryť. Skrytie spôsobí, že sa odteraz nebude zobrazovať vo výsledkoch vyhľadávania, no neovplyvní históriu, predvoľby ani plány ostatných používateľov.",
+      "exerciseUsedIn": "Toto cvičenie sa používa v:"
     },
     "exerciseImportCSV": {
       "importExerciseData": "Importovať údaje o cvičeniach",
@@ -2005,7 +2035,6 @@
       "title": "Preferencie alergénov"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dynamicky upravuje váš denný cieľ na základe vášho skutočného metabolizmu. Vyžaduje konzistentné sledovanie jedla a hmotnosti pre vysokú presnosť.",
       "burnedActivity": "Aktivita (iba cvičenie a kroky)",
       "burnedBmr": "Aktivita + BMR (váš základný metabolizmus)",
       "burnedTdee": "Celkové kalórie z Health Connect (záloha BMR + aktívne kalórie)",
@@ -2144,7 +2173,6 @@
       "safetyFloorStandardHint": "Používa vyššiu hodnotu z vášho odhadovaného RMR a klinického minima (1200 kcal pre ženy, 1500 kcal pre mužov).",
       "safetyFloorValueLabel": "Vlastné minimum",
       "awaitingCalibrationTitle": "Čaká sa na kalibráciu adaptívneho TDEE",
-      "modeUnreachableSuffix": "nedosiahnuteľné",
       "customPercentageUnreachable": "Hlbší než ~{{percent}} %, ktorý umožňuje vaše bezpečnostné minimum; cieľ bude zvýšený na toto minimum.",
       "deficitCeilingHintEstimated": "Pri vašej aktuálnej úrovni aktivity je najhlbší dosiahnuteľný deficit približne {{percent}} %. Hlbšie režimy sú zvýšené na vaše bezpečnostné minimum.",
       "deficitCeilingHintMeasured": "Na základe vášho nameraného TDEE je najhlbší dosiahnuteľný deficit približne {{percent}} %. Hlbšie režimy sú zvýšené na vaše bezpečnostné minimum.",
@@ -2167,10 +2195,7 @@
       "unsafeGainTitle": "Nebezpečné tempo priberania",
       "unsafeGainText": "Priberanie viac ako 0,5 % telesnej hmotnosti za týždeň znamená, že väčšina pridaného hmotnosti bude tuk namiesto svalov. Pomalší prebytok buduje podobné množstvo svalov s oveľa menším priberaním tuku.",
       "unsafeLossTitle": "Nebezpečné tempo chudnutia",
-      "unsafeLossText": "Chudnutie viac ako 1,5 % telesnej hmotnosti za týždeň sa považuje za nadmerné. Toto tempo dramaticky zvyšuje riziko vážnej straty svalov, letargie, hormonálnej nerovnováhy a nutričných nedostatkov. Vyberte si menej agresívny režim cieľov.",
-      "calibrationDescription": "Motor adaptívneho TDEE Sparky vyžaduje aspoň {{required}} dní konzistentného sledovania na presný výpočet vášho metabolizmu (momentálne sa používajú záložné odhady). Na urýchlenie kalibrácie:",
-      "calibrationWeightTip": "Zaznamenávajte hmotnosť aspoň 3–4 krát týždenne.",
-      "calibrationFoodTip": "Zaznamenávajte príjem jedla denne (>200 kcal/deň)."
+      "unsafeLossText": "Chudnutie viac ako 1,5 % telesnej hmotnosti za týždeň sa považuje za nadmerné. Toto tempo dramaticky zvyšuje riziko vážnej straty svalov, letargie, hormonálnej nerovnováhy a nutričných nedostatkov. Vyberte si menej agresívny režim cieľov."
     },
     "mfa": {
       "confirmPassword": "Na pokračovanie potvrďte heslo",
@@ -2326,5 +2351,9 @@
     "date": "Dátum",
     "add": "Pridať",
     "loading": "Načítava sa..."
+  },
+  "prProgressionChart": {
+    "reps": "Opakovania",
+    "weightKg": "Váha (kg)"
   }
 }

@@ -12,6 +12,7 @@ import {
   syncClaimTarget,
   startProviderSync,
 } from '../services/providerSyncClaim.js';
+import { publicErrorMessage } from '../utils/errors.js';
 const router = express.Router();
 /**
  * @swagger
@@ -68,8 +69,7 @@ router.get(
       log('error', `Error initiating Polar authorization: ${error.message}`);
       res.status(500).json({
         message: 'Error initiating Polar authorization',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: error.message,
+        error: publicErrorMessage(error),
       });
     }
   }
@@ -158,8 +158,7 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     log('error', `Error handling Polar OAuth callback: ${error.message}`);
     res.status(500).json({
       message: 'Error handling Polar OAuth callback',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
+      error: publicErrorMessage(error),
     });
   }
 });
@@ -230,8 +229,7 @@ router.post(
       log('error', `Error initiating manual Polar sync: ${error.message}`);
       res.status(500).json({
         message: 'Error initiating manual Polar sync',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: error.message,
+        error: publicErrorMessage(error),
       });
     }
   }
@@ -278,8 +276,7 @@ router.post(
       log('error', `Error disconnecting Polar account: ${error.message}`);
       res.status(500).json({
         message: 'Error disconnecting Polar account',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: error.message,
+        error: publicErrorMessage(error),
       });
     }
   }
@@ -332,10 +329,10 @@ router.get(
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       log('error', `Error getting Polar status: ${error.message}`);
-      res
-        .status(500)
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        .json({ message: 'Error getting Polar status', error: error.message });
+      res.status(500).json({
+        message: 'Error getting Polar status',
+        error: publicErrorMessage(error),
+      });
     }
   }
 );

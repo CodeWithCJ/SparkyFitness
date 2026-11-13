@@ -78,12 +78,15 @@
       # builds for the host system.
       nixosModules.sparkyfitness =
         { pkgs, ... }:
+        let
+          hostPackages = self.packages.${pkgs.stdenv.hostPlatform.system};
+        in
         {
           imports = [ ./nix/module.nix ];
           config.services.sparkyfitness = {
-            backendPackage = self.packages.${pkgs.system}.sparkyfitness-server;
-            frontendPackage = self.packages.${pkgs.system}.sparkyfitness-frontend;
-            garmin.package = self.packages.${pkgs.system}.sparkyfitness-garmin;
+            backendPackage = hostPackages.sparkyfitness-server;
+            frontendPackage = hostPackages.sparkyfitness-frontend;
+            garmin.package = hostPackages.sparkyfitness-garmin;
           };
         };
     };

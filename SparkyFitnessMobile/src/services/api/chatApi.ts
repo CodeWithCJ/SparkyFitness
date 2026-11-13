@@ -52,40 +52,126 @@ export const clearAllChatHistory = (): Promise<void> =>
     body: {},
   });
 
-/** True when `parts` is a non-empty array of `{ type: 'text', text: string }`. */
-function isTextOnlyParts(
-  parts: unknown
-): parts is { type: 'text'; text: string }[] {
-  return (
-    Array.isArray(parts) &&
-    parts.length > 0 &&
-    parts.every(
-      (part) =>
-        !!part &&
-        typeof part === 'object' &&
-        (part as { type?: unknown }).type === 'text' &&
-        typeof (part as { text?: unknown }).text === 'string'
-    )
-  );
+type NormalizedHistoryPart = Extract<
+  NonNullable<InitialMessages>[number]['parts'][number],
+  { type: 'text' | 'file' }
+>;
+
+interface RawHistoryPart {
+  type?: unknown;
+  text?: unknown;
+  url?: unknown;
+  data?: unknown;
+  image?: unknown;
+  image_url?: unknown;
+  mediaType?: unknown;
+  mimeType?: unknown;
+  filename?: unknown;
 }
 
-/**
- * Maps server history rows to the AI-SDK initial-message shape consumed by
- * `useChatRuntime`. Text-only: assistant rows are stored as a single text part
- * and image-bearing user turns are already flattened to `content` server-side,
- * so normal history maps cleanly. If a row's `parts` contains a non-text part
- * (e.g. a web image attachment) it isn't text-only, so we fall back to the
- * `content` string — the surrounding text is preserved, the image is dropped
- * (mobile can neither render nor send images). The `id` fallback guards a
- * missing key colliding in the AI-SDK store.
- */
+function resolveImageMediaType(
+  rawPart: RawHistoryPart,
+  url: string
+): string | undefined {
+  if (
+    typeof rawPart.mediaType === 'string' &&
+    rawPart.mediaType.startsWith('image/')
+  ) {
+    return rawPart.mediaType;
+  }
+  if (
+    typeof rawPart.mimeType === 'string' &&
+    rawPart.mimeType.startsWith('image/')
+  ) {
+    return rawPart.mimeType;
+  }
+  if (url.startsWith('data:image/')) {
+    const match = /^data:(image\/[a-zA-Z0-9.+-]+);/i.exec(url);
+    return match ? match[1].toLowerCase() : 'image/jpeg';
+  }
+  if (rawPart.type === 'image' || rawPart.type === 'image_url') {
+    const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+    if (cleanUrl.endsWith('.png')) return 'image/png';
+    if (cleanUrl.endsWith('.webp')) return 'image/webp';
+    if (cleanUrl.endsWith('.gif')) return 'image/gif';
+    if (cleanUrl.endsWith('.avif')) return 'image/avif';
+    if (cleanUrl.endsWith('.svg')) return 'image/svg+xml';
+    return 'image/jpeg';
+  }
+  return undefined;
+}
+
+function extractImageUrl(rawPart: RawHistoryPart): string {
+  if (typeof rawPart.image_url === 'string') return rawPart.image_url.trim();
+  if (
+    rawPart.image_url &&
+    typeof rawPart.image_url === 'object' &&
+    'url' in rawPart.image_url &&
+    typeof rawPart.image_url.url === 'string'
+  ) {
+    return rawPart.image_url.url.trim();
+  }
+  if (typeof rawPart.image === 'string') return rawPart.image.trim();
+  if (typeof rawPart.url === 'string') return rawPart.url.trim();
+  if (typeof rawPart.data === 'string') return rawPart.data.trim();
+  return '';
+}
+
+function normalizeHistoryPart(part: unknown): NormalizedHistoryPart | null {
+  if (!part || typeof part !== 'object') return null;
+  const raw = part as RawHistoryPart;
+
+  if (raw.type === 'text' && typeof raw.text === 'string') {
+    return raw.text.trim().length > 0 ? { type: 'text', text: raw.text } : null;
+  }
+
+  if (raw.type === 'image' || raw.type === 'image_url' || raw.type === 'file') {
+    const url = extractImageUrl(raw);
+    if (!url) return null;
+    const mediaType = resolveImageMediaType(raw, url);
+    if (!mediaType) return null;
+    const filename =
+      typeof raw.filename === 'string' && raw.filename.trim().length > 0
+        ? raw.filename.trim()
+        : undefined;
+    return {
+      type: 'file',
+      mediaType,
+      url,
+      ...(filename ? { filename } : {}),
+    };
+  }
+
+  return null;
+}
+
+function normalizeHistoryParts(parts: unknown): NormalizedHistoryPart[] | null {
+  if (!Array.isArray(parts) || parts.length === 0) return null;
+  const normalized = parts
+    .map(normalizeHistoryPart)
+    .filter((part): part is NormalizedHistoryPart => part !== null);
+  if (normalized.length === 0) return null;
+
+  const hasImage = normalized.some((part) => part.type === 'file');
+  if (hasImage) {
+    const withoutSyntheticPlaceholder = normalized.filter(
+      (part) => !(part.type === 'text' && part.text === '[Image message]')
+    );
+    if (withoutSyntheticPlaceholder.length > 0) {
+      return withoutSyntheticPlaceholder;
+    }
+  }
+
+  return normalized;
+}
+
 export function mapHistoryToInitialMessages(
   entries: ChatHistoryEntry[]
-): InitialMessages {
+): NonNullable<InitialMessages> {
   return entries.map((entry, i) => {
-    const parts = isTextOnlyParts(entry.parts)
-      ? entry.parts
-      : [{ type: 'text' as const, text: entry.content }];
+    const parts = normalizeHistoryParts(entry.parts) ?? [
+      { type: 'text' as const, text: entry.content },
+    ];
 
     return {
       id: entry.id || `history-${i}`,
@@ -96,5 +182,5 @@ export function mapHistoryToInitialMessages(
       content: entry.content,
       parts,
     };
-  }) as unknown as InitialMessages;
+  });
 }

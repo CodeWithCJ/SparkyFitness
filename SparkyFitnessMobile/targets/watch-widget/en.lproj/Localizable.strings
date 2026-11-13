@@ -1,0 +1,7 @@
+"watch.energy.accessibility" = "Calories %@ of goal. Fat %@, carbs %@, protein %@ of their goals.";
+"watch.fasting.noFast" = "No fast";
+"watch.fasting.notFasting" = "Not fasting";
+"watch.steps.accessibility" = "%lld of %lld steps.";
+"watch.steps.countLabel" = "%@ steps";
+"watch.steps.title" = "Steps";
+"watch.water.accessibility" = "Water %lld%% of goal.";

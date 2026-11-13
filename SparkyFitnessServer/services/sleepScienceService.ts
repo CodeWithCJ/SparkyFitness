@@ -5,6 +5,7 @@ import {
   dayOfWeek,
   instantHourMinuteInZone,
   localDateToDay,
+  mainSleepEntry,
   resolveRecordZone,
   userHourMinute,
 } from '@workspace/shared';
@@ -124,6 +125,48 @@ function getTST(entry: any) {
   if (entry.sleepDurationHours) return Number(entry.sleepDurationHours);
   return null;
 }
+
+type SleepHistoryEntry = SleepZoneEntry & {
+  date: string | Date;
+  duration_in_seconds?: number | string | null;
+  bedtime?: string | Date | null;
+};
+
+/**
+ * One row per day from the sleep history, which holds a row per sleep: since
+ * #3240 a nap is its own entry on the night's `entry_date`. Each day keeps its
+ * main sleep (`mainSleepEntry`), so wake and bed times are the night's, plus
+ * `dayAsleepHours`, the time asleep of all its sleeps, which sleep debt counts.
+ * Days keep their order.
+ */
+function sleepDays<T extends SleepHistoryEntry>(
+  history: readonly T[]
+): (T & { dayAsleepHours: number | null })[] {
+  const byDay = new Map<string, T[]>();
+  for (const entry of history) {
+    const day =
+      typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
+    const sessions = byDay.get(day);
+    if (sessions) sessions.push(entry);
+    else byDay.set(day, [entry]);
+  }
+  return [...byDay.values()].map((sessions) => {
+    const asleep = sessions
+      .map((session) => getTST(session))
+      .filter((hours): hours is number => hours !== null);
+    return {
+      ...(mainSleepEntry(sessions) ?? sessions[0]),
+      dayAsleepHours:
+        asleep.length > 0 ? asleep.reduce((sum, h) => sum + h, 0) : null,
+    };
+  });
+}
+
+async function getSleepDays(userId: string, days: number, timezone: string) {
+  return sleepDays(
+    await sleepScienceRepository.getSleepHistory(userId, days, timezone)
+  );
+}
 // ==========================================
 // SLEEP DEBT CALCULATION
 // ==========================================
@@ -135,11 +178,7 @@ async function calculateSleepDebt(userId: any) {
   const sleepNeed = profile?.baseline_sleep_need
     ? Number(profile.baseline_sleep_need)
     : DEFAULT_SLEEP_NEED_HOURS;
-  const history = await sleepScienceRepository.getSleepHistory(
-    userId,
-    DEBT_WINDOW_DAYS,
-    tz
-  );
+  const history = await getSleepDays(userId, DEBT_WINDOW_DAYS, tz);
   if (history.length === 0) {
     return {
       currentDebt: 0,
@@ -155,7 +194,7 @@ async function calculateSleepDebt(userId: any) {
   const dailyBreakdown = [];
   for (let i = 0; i < history.length; i++) {
     const entry = history[i];
-    const tst = getTST(entry);
+    const tst = entry.dayAsleepHours;
     if (tst === null) continue;
     const weight = calculateDayWeight(i);
     const deviation = sleepNeed - tst;
@@ -248,11 +287,7 @@ async function calculateBaseline(
     'info',
     `Calculating MCTQ baseline for user ${userId}, window=${windowDays} days`
   );
-  const history = await sleepScienceRepository.getSleepHistory(
-    userId,
-    windowDays,
-    timezone
-  );
+  const history = await getSleepDays(userId, windowDays, timezone);
   if (history.length < 14) {
     return {
       success: false,
@@ -578,7 +613,7 @@ async function getDailyNeed(userId: any, targetDate: any) {
 async function getEnergyCurve(userId: any) {
   log('info', `Generating energy curve for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-  const history = await sleepScienceRepository.getSleepHistory(userId, 14, tz);
+  const history = await getSleepDays(userId, 14, tz);
   if (history.length < 3) {
     return {
       success: false,
@@ -739,7 +774,7 @@ async function getEnergyCurve(userId: any) {
 async function getChronotype(userId: any) {
   log('info', `Getting chronotype for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-  const history = await sleepScienceRepository.getSleepHistory(userId, 30, tz);
+  const history = await getSleepDays(userId, 30, tz);
   if (history.length < 7) {
     return {
       success: false,
@@ -816,7 +851,7 @@ async function getChronotype(userId: any) {
 async function checkDataSufficiency(userId: any) {
   log('info', `Checking data sufficiency for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-  const history = await sleepScienceRepository.getSleepHistory(userId, 90, tz);
+  const history = await getSleepDays(userId, 90, tz);
   const entriesWithTimestamps = history.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (e: any) => e.sleepStartTimestampGMT && e.sleepEndTimestampGMT

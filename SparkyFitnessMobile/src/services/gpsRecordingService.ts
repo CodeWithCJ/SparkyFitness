@@ -23,7 +23,7 @@ import {
   type RecordingActivity,
 } from '../utils/gpsRecording';
 import { programSpokenCues } from '../utils/programCues';
-import { isStepActivity } from '../utils/stride';
+import { isStepActivity, type FormMetrics } from '../utils/stride';
 import { captureStepCounterBaseline } from './stepCounter';
 import {
   INITIAL_AUTO_PAUSE_STATE,
@@ -31,6 +31,7 @@ import {
   type AutoPauseState,
 } from '../utils/autoPause';
 import {
+  type AppleWorkoutZoneDuration,
   advanceIntervalCursor,
   INITIAL_HEART_RATE_ALERT_STATE,
   INITIAL_INTERVAL_CURSOR,
@@ -42,6 +43,8 @@ import {
   planHasDistanceSteps,
   stepHeartRateAlert,
   stepPaceAlert,
+  type FitnessTestType,
+  zone2LiveBand,
   type HeartRateAlertState,
   type HeartRateBand,
   type IntervalCursor,
@@ -165,6 +168,8 @@ export interface RecordingSession {
   coaching?: CoachingState;
   /** The program workout this recording is, so finishing it can tick it off. */
   program?: { id: string; index: number };
+  /** The fitness test this recording is, so saving it can work out the result. */
+  fitnessTest?: FitnessTestType;
   /**
    * A pace band to stay inside: the phone buzzes, and speaks when voice cues
    * are on, after the pace has been outside it for a few seconds.
@@ -181,6 +186,11 @@ export interface RecordingSession {
   heartRateStepsOff?: boolean;
   /** Set once the diary entry exists, so a retried save never duplicates it. */
   savedEntryId: string | null;
+  /**
+   * The cadence and stride put on that entry, kept so a retry after a failed
+   * track upload can still show them instead of measuring again.
+   */
+  savedForm?: FormMetrics | null;
   /**
    * A treadmill or other indoor session: no location task and no route, just
    * the clock (and a paired watch's heart rate). Absent on sessions saved by
@@ -230,6 +240,14 @@ let session: RecordingSession | null = null;
 let points: RecordedPoint[] = [];
 let snapshot: RecordingSnapshot = { session: null, points: [] };
 let heartRate: StoredHeartRate = { samples: [], batchIds: [] };
+/** Saved entry ids by recording, for Apple zones that arrive after the session is cleared. */
+const savedEntriesBySession = new Map<string, string>();
+const MAX_SAVED_ENTRY_IDS = 5;
+/** Apple's zone group for the recording, held until the diary entry can take it. */
+let appleZonesForSession: {
+  sessionId: string;
+  zones: AppleWorkoutZoneDuration[];
+} | null = null;
 let hydrated: Promise<void> | null = null;
 // Detector memory for auto-pause. Not persisted: after a relaunch it just
 // starts watching again.
@@ -739,7 +757,17 @@ export function noteLiveHeartRate(
       );
       if (position && !position.done) {
         stepIndex = position.index;
-        if (!session.heartRateStepsOff) band = position.step.heartRate ?? band;
+        if (!session.heartRateStepsOff && position.step.heartRate) {
+          // A Zone 2 stretch is judged by the range loosened for settling and
+          // drift, so a long steady run is not nagged for a few beats.
+          band =
+            position.step.effort === 'zone2'
+              ? zone2LiveBand(
+                  position.step.heartRate,
+                  position.step.seconds - position.remaining
+                )
+              : position.step.heartRate;
+        }
       }
     }
     if (stepIndex !== heartRateAlertStep) {
@@ -1108,6 +1136,8 @@ export interface StartRecordingOptions {
   indoor?: boolean;
   /** The program workout the plan came from, if any. */
   program?: { id: string; index: number };
+  /** The fitness test being run (5K, 30-minute run or Cooper), outdoors or on a treadmill. */
+  fitnessTest?: FitnessTestType;
   /** Text for the Android foreground-service notification. */
   notification: { title: string; body: string };
 }
@@ -1227,6 +1257,7 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
         ? { heartRateBand: normalizeHeartRateBand(options.heartRateBand)! }
         : {}),
       ...(options.program && intervals ? { program: options.program } : {}),
+      ...(options.fitnessTest ? { fitnessTest: options.fitnessTest } : {}),
       savedEntryId: null,
       ...(indoor && { indoor: true }),
       ...(stepCounterAtStart != null && { stepCounterAtStart }),
@@ -1630,11 +1661,62 @@ export async function getHeartRateSamples(): Promise<RecordedHeartRate[]> {
   return heartRate.samples.slice();
 }
 
-/** Records that the diary entry exists, so a retried save only re-sends the track. */
-export function markRecordingSaved(entryId: string): Promise<void> {
+/** Remembers Apple's zone group until the saved entry can store it. */
+export function noteAppleWorkoutZones(
+  sessionId: string,
+  zones: AppleWorkoutZoneDuration[]
+): void {
+  appleZonesForSession = { sessionId, zones };
+}
+
+/** The diary entry id for this recording, once Finish has created it. */
+export function savedRecordingEntryId(sessionId: string): string | null {
+  if (session?.id === sessionId && session.savedEntryId)
+    return session.savedEntryId;
+  return savedEntriesBySession.get(sessionId) ?? null;
+}
+
+/** Drops the remembered entry id once a late callback has used it. */
+export function clearSavedRecordingEntryId(sessionId: string): void {
+  savedEntriesBySession.delete(sessionId);
+}
+
+/**
+ * Zones noted for this recording. Left in place so a late message and the
+ * save can both see them; `clearAppleWorkoutZones` drops them after a post.
+ */
+export function peekAppleWorkoutZones(
+  sessionId: string
+): AppleWorkoutZoneDuration[] | null {
+  return appleZonesForSession?.sessionId === sessionId
+    ? appleZonesForSession.zones
+    : null;
+}
+
+export function clearAppleWorkoutZones(sessionId: string): void {
+  if (appleZonesForSession?.sessionId === sessionId)
+    appleZonesForSession = null;
+}
+
+/**
+ * Records that the diary entry exists, so a retried save only re-sends the
+ * track, along with the form metrics saved on it.
+ */
+export function markRecordingSaved(
+  entryId: string,
+  form: FormMetrics | null = null
+): Promise<void> {
   return enqueue(async () => {
     if (!session) return;
-    session = { ...session, savedEntryId: entryId };
+    // Kept outside the session, which is cleared right after the save, so
+    // Apple zones that arrive late can still find the diary entry.
+    savedEntriesBySession.delete(session.id);
+    savedEntriesBySession.set(session.id, entryId);
+    if (savedEntriesBySession.size > MAX_SAVED_ENTRY_IDS) {
+      const oldest = savedEntriesBySession.keys().next().value;
+      if (oldest !== undefined) savedEntriesBySession.delete(oldest);
+    }
+    session = { ...session, savedEntryId: entryId, savedForm: form };
     await persistSession();
     publish();
   });

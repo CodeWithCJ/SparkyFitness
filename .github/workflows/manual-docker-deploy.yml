@@ -21,8 +21,13 @@ jobs:
   push_to_registries:
     name: Push Docker image to multiple registries
     runs-on: ubuntu-latest
+    # The Docker Hub and GHCR credentials live in this environment, which only
+    # main and v* tags can use and which waits for a maintainer's approval. Run
+    # this from main: a run from another branch cannot reach the credentials.
+    environment: release
+    # Pushes to GHCR with GHCR_TOKEN, not GITHUB_TOKEN. The attestations are
+    # pushed with the same login.
     permissions:
-      packages: write
       contents: read
       attestations: write
       id-token: write
@@ -30,28 +35,34 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+        with:
+          # Nothing here pushes with git, so no token stays in .git/config.
+          persist-credentials: false
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # GHCR_TOKEN (a classic PAT with only write:packages) lives in the release
+      # environment. The packages give this repository's Actions no write
+      # access, so GITHUB_TOKEN cannot push them from a branch workflow.
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       # ── Frontend ─────────────────────────────────────────────────────────────
       - name: Metadata frontend
         id: meta-frontend
         if: ${{ inputs.service == 'all' || inputs.service == 'frontend' }}
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             codewithcj/sparkyfitness
@@ -62,11 +73,12 @@ jobs:
       - name: Build and push frontend
         id: push-frontend
         if: ${{ inputs.service == 'all' || inputs.service == 'frontend' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.frontend
           push: true
+          pull: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -85,7 +97,7 @@ jobs:
       - name: Metadata server
         id: meta-server
         if: ${{ inputs.service == 'all' || inputs.service == 'server' }}
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             codewithcj/sparkyfitness_server
@@ -96,11 +108,12 @@ jobs:
       - name: Build and push server
         id: push-server
         if: ${{ inputs.service == 'all' || inputs.service == 'server' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.backend
           push: true
+          pull: true
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -119,7 +132,7 @@ jobs:
       - name: Metadata Garmin Microservice
         id: meta-garmin
         if: ${{ inputs.service == 'all' || inputs.service == 'garmin' }}
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             codewithcj/sparkyfitness_garmin
@@ -130,11 +143,12 @@ jobs:
       - name: Build and push Garmin Microservice
         id: push-garmin
         if: ${{ inputs.service == 'all' || inputs.service == 'garmin' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: SparkyFitnessGarmin
           file: docker/Dockerfile.garmin_microservice
           push: true
+          pull: true
           tags: ${{ steps.meta-garmin.outputs.tags }}
           labels: ${{ steps.meta-garmin.outputs.labels }}
           platforms: linux/amd64,linux/arm64

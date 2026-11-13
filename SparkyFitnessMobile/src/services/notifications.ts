@@ -3,6 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
+import {
+  BRUSHING_TIMER_KIND,
+  MEDITATION_TIMER_KIND,
+  MOOD_CHECKIN_KIND,
+  ORAL_CARE_REMINDER_KIND,
+} from '../utils/checkinReminderTimes';
 import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
 import {
@@ -19,16 +25,26 @@ import {
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
 const HYDRATION_CHANNEL_ID = 'hydration';
+export const MOOD_CHECKIN_CHANNEL_ID = 'mood-checkin';
+export const ORAL_CARE_CHANNEL_ID = 'oral-care';
+const MINDFULNESS_CHANNEL_ID = 'mindfulness';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
-function notificationCopy(
+export function notificationCopy(
   key: string,
   defaultValue: string,
   options?: Record<string, unknown>
 ): string {
   // i18n-audit-ignore-next-line dynamic-i18n-key -- all call sites use literal notification catalog keys.
-  return i18n.t(key, { defaultValue, ...options });
+  const translated = i18n.t(key, { defaultValue, ...options });
+  if (typeof translated === 'string' && translated.length > 0) {
+    return translated;
+  }
+  if (!options) return defaultValue;
+  return defaultValue.replace(/\{\{(\w+)\}\}/g, (_, token: string) =>
+    options[token] !== undefined ? String(options[token]) : `{{${token}}}`
+  );
 }
 
 const REST_COMPLETE_CATEGORY = 'rest-complete';
@@ -43,6 +59,7 @@ export const MEDICATION_REMINDER_CATEGORY = 'medication-reminder';
 export const MEDICATION_REMINDER_GROUP_CATEGORY = 'medication-reminder-group';
 export const MEDICATION_TAKEN_ACTION = 'medication-taken';
 export const MEDICATION_SKIP_ACTION = 'medication-skip';
+export const MEDICATION_SNOOZE_ACTION = 'medication-snooze';
 
 export type AppNotificationPermission = 'granted' | 'denied' | 'undetermined';
 
@@ -77,6 +94,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       importance: Notifications.AndroidImportance.HIGH,
       enableVibrate: true,
     });
+    await ensureMoodCheckinChannel();
     await Notifications.setNotificationChannelAsync(
       MEDICATION_REMINDER_CHANNEL_ID,
       {
@@ -89,6 +107,14 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       }
     );
   }
+
+  const snoozeMinutes =
+    useAppPreferencesStore.getState()?.medicationReminderSnoozeMinutes ?? 30;
+  const remindInTitle = notificationCopy(
+    'notifications.actions.remindInMinutes',
+    'Remind in {{minutes}}m',
+    { minutes: snoozeMinutes }
+  );
 
   await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
     {
@@ -119,6 +145,11 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         ),
         options: { opensAppToForeground: false },
       },
+      {
+        identifier: MEDICATION_SNOOZE_ACTION,
+        buttonTitle: remindInTitle,
+        options: { opensAppToForeground: false },
+      },
     ]
   );
   await Notifications.setNotificationCategoryAsync(
@@ -137,8 +168,49 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         buttonTitle: notificationCopy('notifications.actions.skip', 'Skip'),
         options: { opensAppToForeground: false },
       },
+      {
+        identifier: MEDICATION_SNOOZE_ACTION,
+        buttonTitle: remindInTitle,
+        options: { opensAppToForeground: false },
+      },
     ]
   );
+}
+
+export async function ensureMoodCheckinChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(MOOD_CHECKIN_CHANNEL_ID, {
+    name: notificationCopy(
+      'notifications.channels.moodCheckin',
+      'Mood check-ins'
+    ),
+    importance: Notifications.AndroidImportance.HIGH,
+    enableVibrate: true,
+  });
+}
+
+export async function ensureOralCareChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ORAL_CARE_CHANNEL_ID, {
+    name: notificationCopy(
+      'notifications.channels.oralCare',
+      'Brushing reminders'
+    ),
+    importance: Notifications.AndroidImportance.HIGH,
+    enableVibrate: true,
+  });
+}
+
+async function ensureMindfulnessChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(MINDFULNESS_CHANNEL_ID, {
+    name: notificationCopy(
+      'notifications.channels.mindfulness',
+      'Meditation timer'
+    ),
+    importance: Notifications.AndroidImportance.HIGH,
+    enableVibrate: true,
+  });
 }
 
 export async function ensureMedicationReminderChannel(): Promise<void> {
@@ -220,16 +292,34 @@ export async function initNotifications(): Promise<void> {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
         const category = notification.request.content.categoryIdentifier;
-        const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
+        const isMedReminder =
+          category === MEDICATION_REMINDER_CATEGORY ||
+          category === MEDICATION_REMINDER_GROUP_CATEGORY;
         const isRestPing = category === REST_COMPLETE_CATEGORY;
+        const kind = notification.request.content.data?.kind;
+        const isMoodCheckin =
+          kind === MOOD_CHECKIN_KIND || kind === ORAL_CARE_REMINDER_KIND;
         // iOS also runs this while the app is frontmost-but-inactive (screen
         // locking, app switcher), where the chime never plays — so there the
         // ping carries the cue itself instead of being hidden as a duplicate.
         const restPingOwnsCue =
           isRestPing && AppState.currentState !== 'active';
+        // The brushing and meditation timers cue in the app; their pings are
+        // for when it is not.
+        const brushingPingOwnsCue =
+          (kind === BRUSHING_TIMER_KIND || kind === MEDITATION_TIMER_KIND) &&
+          AppState.currentState !== 'active';
         return {
-          shouldShowBanner: isMedReminder || restPingOwnsCue,
-          shouldShowList: isMedReminder || restPingOwnsCue,
+          shouldShowBanner:
+            isMedReminder ||
+            isMoodCheckin ||
+            restPingOwnsCue ||
+            brushingPingOwnsCue,
+          shouldShowList:
+            isMedReminder ||
+            isMoodCheckin ||
+            restPingOwnsCue ||
+            brushingPingOwnsCue,
           // Muted only while the chime owns the cue, so the two never double up.
           shouldPlaySound: !(isRestPing && willPlayRestCompleteSound()),
           shouldSetBadge: false,
@@ -428,6 +518,128 @@ export async function scheduleRestNotification(
     return null;
   }
 }
+
+interface TimerDoneNotification {
+  logName: string;
+  kind: string;
+  channelId: string;
+  ensureChannel: () => Promise<void>;
+  titleKey: string;
+  titleFallback: string;
+  bodyKey: string;
+  bodyFallback: string;
+}
+
+/**
+ * A one-shot "timer done" ping for an in-app timer that counts from the wall
+ * clock. JS timers stop while the phone is locked (Android suspends them), so
+ * this is the cue when the target passes outside the app; in the app the
+ * timer's own chime or haptic is the cue. Scheduling replaces any earlier ping
+ * of the same timer, and nothing is scheduled without notifications or
+ * permission.
+ */
+function createTimerDoneNotification(config: TimerDoneNotification) {
+  let scheduledId: string | null = null;
+  // Bumped by every schedule and cancel. A schedule that was overtaken while
+  // it awaited permission or the channel (a pause, close or a second start)
+  // must not leave its ping behind.
+  let generation = 0;
+
+  const cancelId = async (id: string): Promise<void> => {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    } catch {
+      // already fired or cancelled
+    }
+  };
+
+  /** Cancels the held ping without touching the generation. */
+  const clearScheduled = async (): Promise<void> => {
+    const id = scheduledId;
+    scheduledId = null;
+    if (id) await cancelId(id);
+  };
+
+  const cancel = async (): Promise<void> => {
+    generation += 1;
+    await clearScheduled();
+  };
+
+  const schedule = async (seconds: number): Promise<void> => {
+    // Claim a generation before the first await, so a cancel or a newer
+    // schedule made while the old ping is being cancelled makes this one stale.
+    const token = ++generation;
+    const isStale = () => token !== generation;
+    await clearScheduled();
+    if (isStale()) return;
+    if (seconds <= 0) return;
+    if (!useAppPreferencesStore.getState().notificationsEnabled) return;
+    if (!(await hasNotificationPermission()) || isStale()) return;
+    try {
+      await config.ensureChannel();
+      if (isStale()) return;
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notificationCopy(config.titleKey, config.titleFallback),
+          body: notificationCopy(config.bodyKey, config.bodyFallback),
+          sound: true,
+          data: { kind: config.kind },
+          interruptionLevel: 'timeSensitive',
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(1, Math.round(seconds)),
+          channelId: config.channelId,
+        },
+      });
+      if (isStale()) {
+        await cancelId(id);
+        return;
+      }
+      scheduledId = id;
+    } catch (err) {
+      addLog(`${config.logName} failed: ${(err as Error).message}`, 'ERROR');
+    }
+  };
+
+  return { schedule, cancel };
+}
+
+const brushingTimerNotification = createTimerDoneNotification({
+  logName: 'scheduleBrushingTimerNotification',
+  kind: BRUSHING_TIMER_KIND,
+  channelId: ORAL_CARE_CHANNEL_ID,
+  ensureChannel: ensureOralCareChannel,
+  titleKey: 'notifications.brushingTimer.title',
+  titleFallback: 'Brushing done',
+  bodyKey: 'notifications.brushingTimer.body',
+  bodyFallback: 'Open SparkyFitness to save the brush.',
+});
+
+/** Pings when the brushing timer reaches its target outside the app. */
+export const scheduleBrushingTimerNotification =
+  brushingTimerNotification.schedule;
+export const cancelBrushingTimerNotification = brushingTimerNotification.cancel;
+
+const meditationTimerNotification = createTimerDoneNotification({
+  logName: 'scheduleMeditationTimerNotification',
+  kind: MEDITATION_TIMER_KIND,
+  channelId: MINDFULNESS_CHANNEL_ID,
+  ensureChannel: ensureMindfulnessChannel,
+  titleKey: 'notifications.meditationTimer.title',
+  titleFallback: 'Meditation complete',
+  bodyKey: 'notifications.meditationTimer.body',
+  bodyFallback: 'Open SparkyFitness to save your session.',
+});
+
+/**
+ * Pings when the meditation countdown ends while the screen is off or the
+ * app is in the background.
+ */
+export const scheduleMeditationTimerNotification =
+  meditationTimerNotification.schedule;
+export const cancelMeditationTimerNotification =
+  meditationTimerNotification.cancel;
 
 /** Dismiss every already-delivered rest ping from the tray. */
 async function dismissDeliveredRestNotifications(): Promise<void> {

@@ -18,7 +18,7 @@ export interface Glp1DrugProfile {
   /** time to peak concentration in days (approximate) */
   tMaxDays: number;
   /** typical dosing cadence */
-  cadence: "weekly" | "daily";
+  cadence: 'weekly' | 'daily';
 }
 
 /**
@@ -27,58 +27,58 @@ export interface Glp1DrugProfile {
  */
 export const GLP1_DRUG_PROFILES: Record<string, Glp1DrugProfile> = {
   semaglutide: {
-    id: "semaglutide",
-    displayName: "Semaglutide",
-    brands: ["Ozempic", "Wegovy"],
+    id: 'semaglutide',
+    displayName: 'Semaglutide',
+    brands: ['Ozempic', 'Wegovy'],
     halfLifeDays: 7,
     tMaxDays: 1.5,
-    cadence: "weekly",
+    cadence: 'weekly',
   },
   oral_semaglutide: {
-    id: "oral_semaglutide",
-    displayName: "Semaglutide (oral)",
-    brands: ["Rybelsus"],
+    id: 'oral_semaglutide',
+    displayName: 'Semaglutide (oral)',
+    brands: ['Rybelsus'],
     halfLifeDays: 7,
     tMaxDays: 1,
-    cadence: "daily",
+    cadence: 'daily',
   },
   tirzepatide: {
-    id: "tirzepatide",
-    displayName: "Tirzepatide",
-    brands: ["Mounjaro", "Zepbound"],
+    id: 'tirzepatide',
+    displayName: 'Tirzepatide',
+    brands: ['Mounjaro', 'Zepbound'],
     halfLifeDays: 5,
     tMaxDays: 1.5,
-    cadence: "weekly",
+    cadence: 'weekly',
   },
   dulaglutide: {
-    id: "dulaglutide",
-    displayName: "Dulaglutide",
-    brands: ["Trulicity"],
+    id: 'dulaglutide',
+    displayName: 'Dulaglutide',
+    brands: ['Trulicity'],
     halfLifeDays: 4.7,
     tMaxDays: 2,
-    cadence: "weekly",
+    cadence: 'weekly',
   },
   liraglutide: {
-    id: "liraglutide",
-    displayName: "Liraglutide",
-    brands: ["Saxenda", "Victoza"],
+    id: 'liraglutide',
+    displayName: 'Liraglutide',
+    brands: ['Saxenda', 'Victoza'],
     halfLifeDays: 0.54, // ~13 hours
     tMaxDays: 0.46, // ~8-12 hours
-    cadence: "daily",
+    cadence: 'daily',
   },
   retatrutide: {
-    id: "retatrutide",
-    displayName: "Retatrutide",
+    id: 'retatrutide',
+    displayName: 'Retatrutide',
     brands: [],
     halfLifeDays: 6,
     tMaxDays: 1.5,
-    cadence: "weekly",
+    cadence: 'weekly',
   },
 };
 
 /** Resolve a drug profile by id or (case-insensitive) brand name. */
 export function resolveGlp1Profile(
-  idOrBrand: string,
+  idOrBrand: string
 ): Glp1DrugProfile | undefined {
   const key = idOrBrand.trim().toLowerCase();
   const byId = GLP1_DRUG_PROFILES[key];
@@ -86,7 +86,7 @@ export function resolveGlp1Profile(
   return Object.values(GLP1_DRUG_PROFILES).find(
     (p) =>
       p.id.toLowerCase() === key ||
-      p.brands.some((b) => b.toLowerCase() === key),
+      p.brands.some((b) => b.toLowerCase() === key)
   );
 }
 
@@ -144,7 +144,7 @@ export interface DoseEvent {
 export function serumLevelAt(
   day: number,
   doses: DoseEvent[],
-  profile: Pick<Glp1DrugProfile, "halfLifeDays" | "tMaxDays">,
+  profile: Pick<Glp1DrugProfile, 'halfLifeDays' | 'tMaxDays'>
 ): number {
   const ke = eliminationRate(profile.halfLifeDays);
   const ka = absorptionRate(profile.halfLifeDays, profile.tMaxDays);
@@ -176,10 +176,10 @@ export interface SerumPoint {
  */
 export function simulateSerumCurve(
   doses: DoseEvent[],
-  profile: Pick<Glp1DrugProfile, "halfLifeDays" | "tMaxDays">,
+  profile: Pick<Glp1DrugProfile, 'halfLifeDays' | 'tMaxDays'>,
   fromDay: number,
   toDay: number,
-  stepDays = 0.25,
+  stepDays = 0.25
 ): SerumPoint[] {
   const raw: { day: number; level: number }[] = [];
   for (let day = fromDay; day <= toDay + 1e-9; day += stepDays) {
@@ -200,116 +200,116 @@ export function simulateSerumCurve(
 export interface InjectionSite {
   id: string;
   label: string;
-  region: "abdomen" | "thigh" | "arm" | "hip" | "other";
-  side: "left" | "mid" | "right" | "none";
+  region: 'abdomen' | 'thigh' | 'arm' | 'hip' | 'other';
+  side: 'left' | 'mid' | 'right' | 'none';
   svgClass: string;
 }
 
 export const INJECTION_SITES: InjectionSite[] = [
   {
-    id: "stomach_upper_left",
-    label: "Stomach – Upper Left",
-    region: "abdomen",
-    side: "left",
-    svgClass: "stomach_upper_left",
+    id: 'stomach_upper_left',
+    label: 'Stomach – Upper Left',
+    region: 'abdomen',
+    side: 'left',
+    svgClass: 'stomach_upper_left',
   },
   {
-    id: "stomach_upper_mid",
-    label: "Stomach – Upper Mid",
-    region: "abdomen",
-    side: "mid",
-    svgClass: "stomach_upper_mid",
+    id: 'stomach_upper_mid',
+    label: 'Stomach – Upper Mid',
+    region: 'abdomen',
+    side: 'mid',
+    svgClass: 'stomach_upper_mid',
   },
   {
-    id: "stomach_upper_right",
-    label: "Stomach – Upper Right",
-    region: "abdomen",
-    side: "right",
-    svgClass: "stomach_upper_right",
+    id: 'stomach_upper_right',
+    label: 'Stomach – Upper Right',
+    region: 'abdomen',
+    side: 'right',
+    svgClass: 'stomach_upper_right',
   },
   {
-    id: "stomach_mid_left",
-    label: "Stomach – Left Mid",
-    region: "abdomen",
-    side: "left",
-    svgClass: "stomach_mid_left",
+    id: 'stomach_mid_left',
+    label: 'Stomach – Left Mid',
+    region: 'abdomen',
+    side: 'left',
+    svgClass: 'stomach_mid_left',
   },
   {
-    id: "stomach_mid_right",
-    label: "Stomach – Right Mid",
-    region: "abdomen",
-    side: "right",
-    svgClass: "stomach_mid_right",
+    id: 'stomach_mid_right',
+    label: 'Stomach – Right Mid',
+    region: 'abdomen',
+    side: 'right',
+    svgClass: 'stomach_mid_right',
   },
   {
-    id: "stomach_lower_left",
-    label: "Stomach – Lower Left",
-    region: "abdomen",
-    side: "left",
-    svgClass: "stomach_lower_left",
+    id: 'stomach_lower_left',
+    label: 'Stomach – Lower Left',
+    region: 'abdomen',
+    side: 'left',
+    svgClass: 'stomach_lower_left',
   },
   {
-    id: "stomach_lower_mid",
-    label: "Stomach – Lower Mid",
-    region: "abdomen",
-    side: "mid",
-    svgClass: "stomach_lower_mid",
+    id: 'stomach_lower_mid',
+    label: 'Stomach – Lower Mid',
+    region: 'abdomen',
+    side: 'mid',
+    svgClass: 'stomach_lower_mid',
   },
   {
-    id: "stomach_lower_right",
-    label: "Stomach – Lower Right",
-    region: "abdomen",
-    side: "right",
-    svgClass: "stomach_lower_right",
+    id: 'stomach_lower_right',
+    label: 'Stomach – Lower Right',
+    region: 'abdomen',
+    side: 'right',
+    svgClass: 'stomach_lower_right',
   },
   {
-    id: "left_arm",
-    label: "Left Arm",
-    region: "arm",
-    side: "left",
-    svgClass: "left_arm",
+    id: 'left_arm',
+    label: 'Left Arm',
+    region: 'arm',
+    side: 'left',
+    svgClass: 'left_arm',
   },
   {
-    id: "right_arm",
-    label: "Right Arm",
-    region: "arm",
-    side: "right",
-    svgClass: "right_arm",
+    id: 'right_arm',
+    label: 'Right Arm',
+    region: 'arm',
+    side: 'right',
+    svgClass: 'right_arm',
   },
   {
-    id: "left_thigh",
-    label: "Left Thigh",
-    region: "thigh",
-    side: "left",
-    svgClass: "left_thigh",
+    id: 'left_thigh',
+    label: 'Left Thigh',
+    region: 'thigh',
+    side: 'left',
+    svgClass: 'left_thigh',
   },
   {
-    id: "right_thigh",
-    label: "Right Thigh",
-    region: "thigh",
-    side: "right",
-    svgClass: "right_thigh",
+    id: 'right_thigh',
+    label: 'Right Thigh',
+    region: 'thigh',
+    side: 'right',
+    svgClass: 'right_thigh',
   },
   {
-    id: "left_hip",
-    label: "Left Hip",
-    region: "hip",
-    side: "left",
-    svgClass: "left_hip",
+    id: 'left_hip',
+    label: 'Left Hip',
+    region: 'hip',
+    side: 'left',
+    svgClass: 'left_hip',
   },
   {
-    id: "right_hip",
-    label: "Right Hip",
-    region: "hip",
-    side: "right",
-    svgClass: "right_hip",
+    id: 'right_hip',
+    label: 'Right Hip',
+    region: 'hip',
+    side: 'right',
+    svgClass: 'right_hip',
   },
   {
-    id: "unknown",
-    label: "Unknown",
-    region: "other",
-    side: "none",
-    svgClass: "unknown",
+    id: 'unknown',
+    label: 'Unknown',
+    region: 'other',
+    side: 'none',
+    svgClass: 'unknown',
   },
 ];
 
@@ -339,13 +339,13 @@ export interface SiteRotationResult {
  */
 export function suggestNextSite(
   recent: RecentSiteUse[],
-  activeSiteIds?: string[],
+  activeSiteIds?: string[]
 ): SiteRotationResult {
   const candidates = (
     activeSiteIds && activeSiteIds.length > 0
       ? activeSiteIds
       : INJECTION_SITES.map((s) => s.id)
-  ).filter((id) => id !== "unknown");
+  ).filter((id) => id !== 'unknown');
 
   const lastUsed = new Map<string, number>();
   let mostRecentId: string | undefined;
@@ -361,11 +361,11 @@ export function suggestNextSite(
   }
 
   const restingSiteIds = candidates.filter(
-    (id) => (lastUsed.get(id) ?? Infinity) < SITE_REST_DAYS,
+    (id) => (lastUsed.get(id) ?? Infinity) < SITE_REST_DAYS
   );
 
   if (candidates.length === 0) {
-    return { suggestedSiteId: "unknown", restingSiteIds };
+    return { suggestedSiteId: 'unknown', restingSiteIds };
   }
 
   // Rotate forward from the site used most recently.
@@ -392,7 +392,7 @@ export function suggestNextSite(
   }
 
   return {
-    suggestedSiteId: suggested ?? candidates[0] ?? "unknown",
+    suggestedSiteId: suggested ?? candidates[0] ?? 'unknown',
     restingSiteIds,
   };
 }

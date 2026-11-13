@@ -17,4 +17,24 @@
     <string name="widget_preview_grams_protein">51 克</string>
     <string name="widget_preview_grams_carbs">136 克</string>
     <string name="widget_preview_grams_fat">32 克</string>
+    <string name="tile_log_water">記錄飲水</string>
+    <string name="tile_calories_left">剩餘卡路里</string>
+    <string name="sparky_water_widget_name">水份</string>
+    <string name="widget_water_title">水份</string>
+    <string name="widget_water_amount">%1$s / %2$s %3$s</string>
+    <string name="widget_water_amount_no_goal">%1$s %2$s</string>
+    <string name="widget_water_amount_empty">- %1$s</string>
+    <string name="widget_water_unit_ml">ml</string>
+    <string name="widget_water_unit_oz">oz</string>
+    <string name="widget_water_unit_liter">L</string>
+    <string name="widget_water_add">加一杯</string>
+    <string name="widget_water_remove">減一杯</string>
+    <string name="widget_water_status_sign_in">打開 SparkyFitness 登入</string>
+    <string name="widget_water_status_pick_container">喺 SparkyFitness 揀水杯</string>
+    <string name="widget_water_status_expired">登入已過期。請打開 SparkyFitness</string>
+    <string name="widget_water_status_unreachable">連唔到您嘅伺服器</string>
+    <string name="widget_water_status_failed">記錄唔到飲水</string>
+    <string name="widget_water_status_nothing_to_remove">呢度冇記錄任何飲水可以移除</string>
+    <string name="sparky_water_widget_description">今日水份，附有加或者減一杯水嘅按鈕</string>
+    <string name="widget_preview_water_amount">1,250 / 2,000 ml</string>
 </resources>

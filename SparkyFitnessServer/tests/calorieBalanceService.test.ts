@@ -9,12 +9,56 @@ import {
   type CalorieBalanceInputs,
 } from '../services/calorieBalanceService.js';
 import bmrService from '../services/bmrService.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 
 vi.mock('../services/bmrService.js', () => ({
   default: { calculateBmr: vi.fn() },
 }));
 
 const BMR = 2000;
+
+describe('weekly goal on device projection', () => {
+  test('applies the configured floor to a weekly goal with a manual calculation baseline', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        adjustedGoalCalories: 2200,
+        deviceTotalCalories: 2200,
+        deviceTotalDayFraction: 1,
+        userPreferences: {
+          calorie_goal_adjustment_mode: 'tdee',
+          goal_mode: 'weekly',
+          goal_mode_calculation_method: 'manual',
+          goal_mode_weekly_change_kg: -2,
+          calorie_safety_floor_mode: 'custom',
+          calorie_safety_floor_value: 1500,
+        },
+      })
+    );
+    expect(balance.goal).toBe(1500);
+  });
+
+  test.each([-0.5, 0, 0.25])(
+    'applies %s kg/week once to device TDEE',
+    (rate) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 2200,
+          eatenCalories: 1000,
+          deviceTotalCalories: 3000,
+          deviceTotalDayFraction: 1,
+          userPreferences: {
+            calorie_goal_adjustment_mode: 'tdee',
+            goal_mode: 'weekly',
+            goal_mode_weekly_change_kg: rate,
+          },
+        })
+      );
+      const expectedTarget = Math.round(3000 + (rate * 6000) / 7);
+      expect(balance.goal).toBe(expectedTarget);
+      expect(balance.remaining).toBe(expectedTarget - 1000);
+    }
+  );
+});
 
 beforeEach(() => {
   vi.mocked(bmrService.calculateBmr).mockReturnValue(BMR);
@@ -23,6 +67,7 @@ beforeEach(() => {
 const inputs = (
   overrides: Partial<CalorieBalanceInputs> = {}
 ): CalorieBalanceInputs => ({
+  date: '2026-10-01',
   eatenCalories: 2000,
   exercise: { activeCalories: 0, otherCalories: 0, activitySteps: 0 },
   backgroundStepCalories: 0,
@@ -37,6 +82,106 @@ const inputs = (
   measurements: { weight: 80, height: 180 },
   dayFraction: 1,
   ...overrides,
+});
+
+describe('ageOnDay', () => {
+  test.each([
+    ['1990-06-15', '2026-06-14', 35],
+    ['1990-06-15', '2026-06-15', 36],
+    ['2000-02-29', '2026-02-28', 25],
+    ['2000-02-29', '2026-03-01', 26],
+    ['1990-12-31', '2026-12-31', 36],
+    ['1990-12-31', '2027-01-01', 36],
+  ])('born %s is the right age on %s', (dob, day, age) => {
+    expect(ageOnDay(dob, day)).toBe(age);
+  });
+
+  // pg reads a DATE column as local midnight.
+  test('takes a date of birth read from the database', () => {
+    expect(ageOnDay(new Date(1990, 5, 15), '2026-06-14')).toBe(35);
+    expect(ageOnDay(new Date(1990, 5, 15), '2026-06-15')).toBe(36);
+  });
+
+  test('is null without a date of birth', () => {
+    expect(ageOnDay(null, '2026-06-15')).toBeNull();
+  });
+});
+
+describe('age in the BMR formula', () => {
+  test.each([
+    ['2026-06-14', 35],
+    ['2026-06-15', 36],
+  ])('on %s is the age that day', (date, age) => {
+    computeCalorieBalance(
+      inputs({
+        date,
+        userProfile: { date_of_birth: '1990-06-15', gender: 'male' },
+      })
+    );
+
+    expect(bmrService.calculateBmr).toHaveBeenCalledWith(
+      expect.any(String),
+      80,
+      180,
+      age,
+      'male',
+      undefined
+    );
+  });
+});
+
+describe('food budget progress', () => {
+  test.each([
+    ['dynamic', 100, 1256, 49],
+    ['percentage', 50, 915.5, 57],
+    ['fixed', 100, 575, 68],
+    ['adaptive', 100, 575, 68],
+  ] as const)(
+    '%s credits only the configured activity in progress',
+    (mode, percentage, remaining, progress) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 1800,
+          eatenCalories: 1225,
+          backgroundStepCalories: 681,
+          userPreferences: {
+            calorie_goal_adjustment_mode: mode,
+            exercise_calorie_percentage: percentage,
+          },
+        })
+      );
+
+      expect(balance.eaten).toBe(1225);
+      expect(balance.burned).toBe(681);
+      expect(balance.remaining).toBe(Math.round(remaining));
+      expect(balance.goal).toBe(1800);
+      expect(balance.progress).toBe(progress);
+    }
+  );
+
+  test('activity cannot erase food progress when burn exceeds intake', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        adjustedGoalCalories: 1800,
+        eatenCalories: 500,
+        backgroundStepCalories: 1000,
+      })
+    );
+    expect(balance.remaining).toBe(2300);
+    expect(balance.progress).toBe(18);
+  });
+
+  test('preserves overflow after the activity-adjusted budget is exceeded', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        adjustedGoalCalories: 1800,
+        eatenCalories: 3000,
+        backgroundStepCalories: 600,
+      })
+    );
+    expect(balance.remaining).toBe(-600);
+    expect(balance.progress).toBe(125);
+  });
 });
 
 describe('resolveExerciseCalories via computeCalorieBalance', () => {
@@ -213,6 +358,72 @@ describe('adjustment modes', () => {
 
     expect(balance.eaten + balance.remaining).toBe(1962 + 250);
   });
+});
+
+describe('adaptive calculation with activity earn-back', () => {
+  test.each(['dynamic', 'percentage'] as const)(
+    '%s does not add activity or BMR to a target based on full-day TDEE',
+    (mode) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 2400,
+          eatenCalories: 2100,
+          exercise: { activeCalories: 0, otherCalories: 600, activitySteps: 0 },
+          backgroundStepCalories: 200,
+          userPreferences: {
+            ...inputs().userPreferences,
+            calorie_goal_adjustment_mode: mode,
+            goal_mode_calculation_method: 'adaptive',
+            include_bmr_in_net_calories: true,
+            exercise_calorie_percentage: 50,
+          },
+        })
+      );
+
+      expect(balance.goal).toBe(2400);
+      expect(balance.remaining).toBe(300);
+      expect(balance.progress).toBe(88);
+      // Activity still belongs in the burn/net statistics, even though the
+      // full-day target already includes it.
+      expect(balance.burned).toBe(2800);
+      expect(balance.net).toBe(-700);
+    }
+  );
+
+  test('the default dynamic mode also respects the adaptive baseline', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        backgroundStepCalories: 300,
+        userPreferences: { goal_mode_calculation_method: 'adaptive' },
+      })
+    );
+    expect(balance.remaining).toBe(1962 - 2000);
+  });
+
+  test.each([
+    ['dynamic', 700],
+    ['percentage', 450],
+  ] as const)(
+    '%s preserves manual-target credit when BMR is unavailable',
+    (mode, expectedRemaining) => {
+      vi.mocked(bmrService.calculateBmr).mockReturnValue(0);
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 2000,
+          eatenCalories: 1800,
+          exercise: { activeCalories: 0, otherCalories: 500, activitySteps: 0 },
+          userPreferences: {
+            ...inputs().userPreferences,
+            calorie_goal_adjustment_mode: mode,
+            goal_mode_calculation_method: 'adaptive',
+            exercise_calorie_percentage: 50,
+          },
+        })
+      );
+      // goalService cannot replace the stored target when BMR is zero.
+      expect(balance.remaining).toBe(expectedRemaining);
+    }
+  );
 });
 
 describe('dayFraction / tdee projection', () => {
@@ -467,6 +678,32 @@ describe('extractExerciseStats', () => {
       activeCalories: 774,
       otherCalories: 641,
       activitySteps: 4000,
+    });
+  });
+
+  test('counts calories_applied instead of the estimate, including zero', () => {
+    const sessions = [
+      {
+        type: 'individual',
+        name: 'Other workout',
+        calories_burned: 425,
+        calories_applied: null,
+        steps: 0,
+      },
+      {
+        type: 'preset',
+        name: 'Strength',
+        exercises: [
+          { calories_burned: 475, calories_applied: 0, steps: 0 },
+          { calories_burned: 100, calories_applied: 60, steps: 0 },
+        ],
+      },
+    ] as unknown as ExerciseSessionResponse[];
+
+    expect(extractExerciseStats(sessions)).toEqual({
+      activeCalories: 0,
+      otherCalories: 485,
+      activitySteps: 0,
     });
   });
 

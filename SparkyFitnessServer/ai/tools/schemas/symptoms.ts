@@ -108,6 +108,7 @@ const logEntrySchema = z
     symptom_id: z
       .string()
       .uuid()
+      .meta({ pattern: undefined })
       .optional()
       .describe('Optional custom symptom ID'),
     severity: z.number().min(0).max(10).optional().describe('Severity rating'),
@@ -167,6 +168,7 @@ const startEpisodeSchema = z
     symptom_id: z
       .string()
       .uuid()
+      .meta({ pattern: undefined })
       .optional()
       .describe('Custom symptom definition ID if known'),
     severity: z.number().min(0).max(10).optional().describe('Initial severity'),
@@ -195,6 +197,12 @@ const updateSeveritySchema = z
       .datetime({ offset: true })
       .optional()
       .describe('ISO timestamp of measurement, defaults to now'),
+    impact: z
+      .enum(['none', 'mild', 'moderate', 'severe'])
+      .optional()
+      .describe(
+        'Impact on daily life at the same moment; omit to leave it unchanged'
+      ),
   })
   .strict();
 

@@ -1,10 +1,10 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const OpenFoodFactsProductLanguageSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z]{2}$/, "Use a two-letter product language code.");
+  .regex(/^[a-z]{2}$/, 'Use a two-letter product language code.');
 
 export const OpenFoodFactsAutomaticSyncRequestSchema = z
   .object({
@@ -37,7 +37,7 @@ export const OpenFoodFactsAutomaticSyncResponseSchema = z
     serverEnabled: z.boolean(),
     userEnabled: z.boolean(),
     productLanguage: OpenFoodFactsProductLanguageSchema,
-    providerScope: z.enum(["personal", "global"]).nullable(),
+    providerScope: z.enum(['personal', 'global']).nullable(),
     status: OpenFoodFactsSyncStatusCountsSchema,
     recentFailures: z.array(OpenFoodFactsSyncFailureSchema),
   })

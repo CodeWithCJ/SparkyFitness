@@ -1,4 +1,4 @@
-import { isIgnoredEquipment, normalizeEquipment } from "./exerciseTaxonomy.ts";
+import { isIgnoredEquipment, normalizeEquipment } from './exerciseTaxonomy.ts';
 
 /**
  * Exercise modality selects which per-set editor clients render
@@ -21,20 +21,20 @@ import { isIgnoredEquipment, normalizeEquipment } from "./exerciseTaxonomy.ts";
  *   table for multi-set entries
  */
 export const EXERCISE_MODALITIES = [
-  "weight_reps",
-  "reps_only",
-  "bodyweight_reps",
-  "weight_duration",
-  "weight_distance",
-  "duration",
-  "duration_distance",
+  'weight_reps',
+  'reps_only',
+  'bodyweight_reps',
+  'weight_duration',
+  'weight_distance',
+  'duration',
+  'duration_distance',
 ] as const;
 
 export type ExerciseModality = (typeof EXERCISE_MODALITIES)[number];
 
 export function isExerciseModality(value: unknown): value is ExerciseModality {
   return (
-    typeof value === "string" &&
+    typeof value === 'string' &&
     (EXERCISE_MODALITIES as readonly string[]).includes(value)
   );
 }
@@ -45,17 +45,17 @@ export function isExerciseModality(value: unknown): value is ExerciseModality {
  * (holds are duration-like but never cardio).
  */
 export function isCardioModality(modality: ExerciseModality): boolean {
-  return modality === "duration_distance";
+  return modality === 'duration_distance';
 }
 
 /** Loaded holds: a weight and a duration per set, no reps. */
 export function isWeightDurationModality(modality: ExerciseModality): boolean {
-  return modality === "weight_duration";
+  return modality === 'weight_duration';
 }
 
 /** Carries and sled work: a weight and a distance per set, no reps. */
 export function isWeightDistanceModality(modality: ExerciseModality): boolean {
-  return modality === "weight_distance";
+  return modality === 'weight_distance';
 }
 
 /**
@@ -65,15 +65,15 @@ export function isWeightDistanceModality(modality: ExerciseModality): boolean {
  */
 export function modalityRecordsReps(modality: ExerciseModality): boolean {
   return (
-    modality === "weight_reps" ||
-    modality === "reps_only" ||
-    modality === "bodyweight_reps"
+    modality === 'weight_reps' ||
+    modality === 'reps_only' ||
+    modality === 'bodyweight_reps'
   );
 }
 
 /** Whether sets of this modality carry a signed added/assisting weight. */
 export function isBodyweightModality(modality: ExerciseModality): boolean {
-  return modality === "bodyweight_reps";
+  return modality === 'bodyweight_reps';
 }
 
 /**
@@ -90,30 +90,30 @@ export function isBodyweightModality(modality: ExerciseModality): boolean {
  */
 export function deriveExerciseModality(
   category: string | null | undefined,
-  equipment?: readonly (string | null | undefined)[] | string | null,
+  equipment?: readonly (string | null | undefined)[] | string | null
 ): ExerciseModality {
   const normalized = category?.trim().toLowerCase();
-  if (normalized === "cardio") return "duration_distance";
-  if (normalized === "isometric" || normalized === "isometrics")
-    return "duration";
-  if (isBodyweightOnlyEquipment(equipment)) return "bodyweight_reps";
-  return "weight_reps";
+  if (normalized === 'cardio') return 'duration_distance';
+  if (normalized === 'isometric' || normalized === 'isometrics')
+    return 'duration';
+  if (isBodyweightOnlyEquipment(equipment)) return 'bodyweight_reps';
+  return 'weight_reps';
 }
 
 function isBodyweightOnlyEquipment(
-  equipment: readonly (string | null | undefined)[] | string | null | undefined,
+  equipment: readonly (string | null | undefined)[] | string | null | undefined
 ): boolean {
   const values =
-    typeof equipment === "string" ? [equipment] : (equipment ?? []);
+    typeof equipment === 'string' ? [equipment] : (equipment ?? []);
   const present = values.filter(
     (value): value is string =>
-      value != null && value.trim() !== "" && !isIgnoredEquipment(value),
+      value != null && value.trim() !== '' && !isIgnoredEquipment(value)
   );
   // An unknown name is not "no equipment". Dropping it would leave "body
   // only" and mark a loaded custom attachment as bodyweight.
   return (
     present.length > 0 &&
-    present.every((value) => normalizeEquipment(value) === "body only")
+    present.every((value) => normalizeEquipment(value) === 'body only')
   );
 }
 
@@ -126,7 +126,7 @@ function isBodyweightOnlyEquipment(
 export function resolveExerciseModality(
   modality: string | null | undefined,
   category: string | null | undefined,
-  equipment?: readonly (string | null | undefined)[] | string | null,
+  equipment?: readonly (string | null | undefined)[] | string | null
 ): ExerciseModality {
   return isExerciseModality(modality)
     ? modality
@@ -134,7 +134,7 @@ export function resolveExerciseModality(
 }
 
 // Workout sources that support nested exercise editing after creation.
-const EDITABLE_SOURCES = new Set(["manual", "sparky", "workout plan"]);
+const EDITABLE_SOURCES = new Set(['manual', 'sparky', 'workout plan']);
 
 function normalizeSource(source: string | null | undefined): string | null {
   if (source == null) return null;
@@ -149,11 +149,111 @@ function normalizeSource(source: string | null | undefined): string | null {
  * Garmin, Strava, etc.).
  */
 export function canEditGroupedWorkout(
-  source: string | null | undefined,
+  source: string | null | undefined
 ): boolean {
   const normalized = normalizeSource(source);
   if (normalized == null) {
     return true;
   }
   return EDITABLE_SOURCES.has(normalized);
+}
+
+// --- Workout session lifecycle status (#1995 phase 1) ---
+
+export const WORKOUT_SESSION_STATUSES = [
+  'planned',
+  'in_progress',
+  'partial',
+  'completed',
+] as const;
+
+export type WorkoutSessionStatus = (typeof WORKOUT_SESSION_STATUSES)[number];
+
+export function isWorkoutSessionStatus(
+  value: unknown
+): value is WorkoutSessionStatus {
+  return (
+    typeof value === 'string' &&
+    (WORKOUT_SESSION_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+/** Source stamped on diary rows a prefill workout plan generates. */
+export const WORKOUT_PLAN_ENTRY_SOURCE = 'Workout Plan';
+
+/** Whether the session was generated by a scheduled workout plan. */
+export function isWorkoutPlanGeneratedSource(
+  source: string | null | undefined
+): boolean {
+  return normalizeSource(source) === 'workout plan';
+}
+
+/** Whether the session is a live workout started from the mobile app. */
+export function isLiveWorkoutSource(
+  source: string | null | undefined
+): boolean {
+  return normalizeSource(source) === 'sparky';
+}
+
+/**
+ * Minimal per-set completion shape the status derivation needs, so callers can
+ * feed preset-session children, diary rows or live snapshots alike.
+ */
+export interface WorkoutSessionStatusSet {
+  completed_at?: string | Date | null;
+}
+
+export interface WorkoutSessionStatusInput {
+  /** The session's stored source, verbatim ('Workout Plan', 'sparky', ...). */
+  source: string | null | undefined;
+  /** exercise_preset_entries.finished_at; NULL while planned or in progress. */
+  finishedAt: string | Date | null | undefined;
+  /** Whether any child exercise is linked to a workout plan assignment. */
+  hasPlanAssignment: boolean;
+  /** Every set across the session, in any order. */
+  sets: readonly WorkoutSessionStatusSet[];
+}
+
+/**
+ * Derives a grouped workout session's lifecycle status from persisted data.
+ *
+ * The status is never stored; the server derives it per request from the same
+ * rows that define it, and clients can reuse this helper as an old-server
+ * fallback (see #1995):
+ * - finished + every set checked off -> completed
+ * - finished + at least one set missing -> partial
+ * - unfinished + at least one checked-off set -> in_progress
+ * - plan-generated or plan-linked, untouched -> planned
+ * - live-started (source 'sparky'), untouched -> in_progress; manual
+ *   form logs now stamp finished_at at creation, so an unfinished sparky
+ *   session is a live workout that was started and not yet ended
+ * - finished + no set checked off -> completed: form logs, imports and
+ *   provider syncs record what was done without per-set timestamps
+ * - everything else (imports, provider syncs, legacy manual entries) ->
+ *   completed; those rows are done by definition
+ */
+export function deriveWorkoutSessionStatus(
+  input: WorkoutSessionStatusInput
+): WorkoutSessionStatus {
+  const { source, finishedAt, hasPlanAssignment, sets } = input;
+  const completedSets = sets.filter((set) => set.completed_at != null).length;
+  if (finishedAt != null) {
+    if (completedSets === 0) {
+      // Finished with nothing checked off: a manual form log, import or
+      // provider sync recorded what was done without per-set timestamps, so
+      // it is completed rather than a half-done live workout (#1995).
+      return 'completed';
+    }
+    return completedSets === sets.length ? 'completed' : 'partial';
+  }
+  if (completedSets > 0) {
+    return 'in_progress';
+  }
+  if (isWorkoutPlanGeneratedSource(source) || hasPlanAssignment) {
+    return 'planned';
+  }
+  if (isLiveWorkoutSource(source)) {
+    return 'in_progress';
+  }
+  return 'completed';
 }

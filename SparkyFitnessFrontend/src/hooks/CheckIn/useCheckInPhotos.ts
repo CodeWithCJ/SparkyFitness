@@ -1,9 +1,14 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { groupPhotosByDay } from '@workspace/shared';
+import { checkInKeys } from '@/api/keys/checkin';
 import { toast } from '@/hooks/use-toast';
 import {
   fetchCheckInPhotos,
   fetchCheckInPhotoDates,
+  fetchCheckInPhotoGallery,
+  checkInPhotoFileUrl,
   uploadCheckInPhoto,
   deleteCheckInPhoto,
   type PhotoType,
@@ -11,6 +16,7 @@ import {
 } from '@/api/CheckIn/checkInPhotoService';
 
 export type { PhotoType, CheckInPhoto };
+export { checkInPhotoFileUrl };
 
 // Mirror the server's multer limit so oversized files are rejected up front
 // with immediate feedback instead of after a round-trip.
@@ -37,6 +43,22 @@ export const useCheckInPhotoDates = () => {
   return photoDates;
 };
 
+/**
+ * The whole progress gallery, one entry per calendar day (newest first).
+ * `enabled` lets a caller hold the request until it is actually needed.
+ */
+export const useCheckInPhotoGallery = (enabled = true) => {
+  const { data, isLoading, isError } = useQuery({
+    // Every photo with its day's weight. The key sits under checkInKeys, so a
+    // weight logged or cleared refreshes it along with the photo mutations.
+    queryKey: checkInKeys.photoGallery(),
+    queryFn: fetchCheckInPhotoGallery,
+    enabled,
+  });
+  const days = useMemo(() => groupPhotosByDay(data ?? []), [data]);
+  return { days, isLoading, isError };
+};
+
 export const useCheckInPhotos = (selectedDate: string) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -53,6 +75,7 @@ export const useCheckInPhotos = (selectedDate: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: PHOTO_DATES_KEY });
+      queryClient.invalidateQueries({ queryKey: checkInKeys.photoGallery() });
       toast({ title: t('checkIn.photos.uploadSuccess', 'Photo saved') });
     },
     onError: (err: Error) => {
@@ -69,6 +92,7 @@ export const useCheckInPhotos = (selectedDate: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: PHOTO_DATES_KEY });
+      queryClient.invalidateQueries({ queryKey: checkInKeys.photoGallery() });
       toast({ title: t('checkIn.photos.deleteSuccess', 'Photo removed') });
     },
     onError: () => {

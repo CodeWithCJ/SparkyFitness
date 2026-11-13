@@ -27,7 +27,7 @@
  * in every consuming package rather than a bug report three weeks later.
  */
 
-import { parseSearchTerms } from "./search.ts";
+import { parseSearchTerms } from './search.ts';
 
 // --------------------------------------------------------------------------
 // Basis brands
@@ -62,12 +62,12 @@ export interface EstimateMacros {
 
 /** Macros describing one specific portion — what the vision model returns. */
 export type PortionMacros = EstimateMacros & {
-  readonly [NUTRITION_BASIS]: "portion";
+  readonly [NUTRITION_BASIS]: 'portion';
 };
 
 /** Macros per 100 g — what `food_variants` rows store. */
 export type Per100gMacros = EstimateMacros & {
-  readonly [NUTRITION_BASIS]: "per100g";
+  readonly [NUTRITION_BASIS]: 'per100g';
 };
 
 /**
@@ -77,23 +77,23 @@ export type Per100gMacros = EstimateMacros & {
  * whose sodium did not move would log twice the food with the same salt.
  */
 export const ESTIMATE_MACRO_KEYS = [
-  "calories_kcal",
-  "protein_g",
-  "carbs_g",
-  "fat_g",
-  "fiber_g",
-  "sugar_g",
-  "saturated_fat_g",
-  "polyunsaturated_fat_g",
-  "monounsaturated_fat_g",
-  "trans_fat_g",
-  "cholesterol_mg",
-  "sodium_mg",
-  "potassium_mg",
-  "calcium_mg",
-  "iron_mg",
-  "vitamin_a_mcg",
-  "vitamin_c_mg",
+  'calories_kcal',
+  'protein_g',
+  'carbs_g',
+  'fat_g',
+  'fiber_g',
+  'sugar_g',
+  'saturated_fat_g',
+  'polyunsaturated_fat_g',
+  'monounsaturated_fat_g',
+  'trans_fat_g',
+  'cholesterol_mg',
+  'sodium_mg',
+  'potassium_mg',
+  'calcium_mg',
+  'iron_mg',
+  'vitamin_a_mcg',
+  'vitamin_c_mg',
 ] as const satisfies readonly (keyof EstimateMacros)[];
 
 /** Reference weight every stored food variant this flow creates is based on. */
@@ -112,7 +112,7 @@ function pickMacros(source: Partial<EstimateMacros>): EstimateMacros {
 }
 
 function finite(value: number | undefined | null): number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
     ? value
     : 0;
 }
@@ -123,7 +123,7 @@ function finite(value: number | undefined | null): number {
  * a type error further in.
  */
 export function asPortionMacros(
-  source: Partial<EstimateMacros>,
+  source: Partial<EstimateMacros>
 ): PortionMacros {
   return pickMacros(source) as PortionMacros;
 }
@@ -133,14 +133,14 @@ export function asPortionMacros(
  * `food_variants` row whose `serving_size` is 100 and `serving_unit` is `g`.
  */
 export function asPer100gMacros(
-  source: Partial<EstimateMacros>,
+  source: Partial<EstimateMacros>
 ): Per100gMacros {
   return pickMacros(source) as Per100gMacros;
 }
 
 /** Strip the brand for serialization. */
 export function unbrandMacros(
-  macros: PortionMacros | Per100gMacros,
+  macros: PortionMacros | Per100gMacros
 ): EstimateMacros {
   return pickMacros(macros);
 }
@@ -167,19 +167,19 @@ function scaleBy(macros: EstimateMacros, factor: number): EstimateMacros {
  */
 export function toPer100g(
   portion: PortionMacros,
-  estimatedGrams: number,
+  estimatedGrams: number
 ): Per100gMacros | null {
   if (!Number.isFinite(estimatedGrams) || estimatedGrams <= 0) return null;
   return scaleBy(
     portion,
-    PER_100G_BASIS_GRAMS / estimatedGrams,
+    PER_100G_BASIS_GRAMS / estimatedGrams
   ) as Per100gMacros;
 }
 
 /** Per-100 g basis -> portion basis for a given weight. */
 export function fromPer100g(
   per100g: Per100gMacros,
-  grams: number,
+  grams: number
 ): PortionMacros | null {
   if (!Number.isFinite(grams) || grams <= 0) return null;
   return scaleBy(per100g, grams / PER_100G_BASIS_GRAMS) as PortionMacros;
@@ -196,7 +196,7 @@ export function fromPer100g(
 export function scalePortionMacros(
   macros: PortionMacros,
   fromGrams: number,
-  toGrams: number,
+  toGrams: number
 ): PortionMacros | null {
   if (!Number.isFinite(fromGrams) || fromGrams <= 0) return null;
   if (!Number.isFinite(toGrams) || toGrams < 0) return null;
@@ -217,7 +217,7 @@ export function scaleVariantToGrams(
   variantServingSize: number,
   variantServingUnit: string,
   targetGrams: number,
-  getGramFactor: (from: string, to: string) => number | null,
+  getGramFactor: (from: string, to: string) => number | null
 ): PortionMacros | null {
   if (!Number.isFinite(variantServingSize) || variantServingSize <= 0)
     return null;
@@ -226,7 +226,7 @@ export function scaleVariantToGrams(
   // `getConversionFactor(from, to)` returns how many `from` units make one
   // `to` unit, so this is variantServingUnits-per-gram — NOT grams per unit.
   // Hence the division below: 4 oz / (1/28.3495) = 113.4 g.
-  const factor = getGramFactor(variantServingUnit, "g");
+  const factor = getGramFactor(variantServingUnit, 'g');
   if (factor === null || !Number.isFinite(factor) || factor <= 0) return null;
 
   const servingGrams = variantServingSize / factor;
@@ -240,7 +240,7 @@ export function scaleVariantToGrams(
 
 /** Sum portion macros across the ingredient rows. Totals are always derived. */
 export function sumPortionMacros(
-  items: readonly { macros: PortionMacros }[],
+  items: readonly { macros: PortionMacros }[]
 ): PortionMacros {
   const total = pickMacros({});
   for (const item of items) {
@@ -253,7 +253,7 @@ export function sumPortionMacros(
 
 /** Sum the gram weights of the ingredient rows. */
 export function sumGrams(
-  items: readonly { estimated_grams: number }[],
+  items: readonly { estimated_grams: number }[]
 ): number {
   return items.reduce(
     (sum, item) =>
@@ -261,14 +261,14 @@ export function sumGrams(
       (Number.isFinite(item.estimated_grams) && item.estimated_grams > 0
         ? item.estimated_grams
         : 0),
-    0,
+    0
   );
 }
 
 /** Round macros for display/storage without accumulating drift mid-pipeline. */
 export function roundMacros<T extends PortionMacros | Per100gMacros>(
   macros: T,
-  decimals = 2,
+  decimals = 2
 ): T {
   const factor = 10 ** decimals;
   const rounded: EstimateMacros = { ...unbrandMacros(macros) };
@@ -288,7 +288,7 @@ export function roundMacros<T extends PortionMacros | Per100gMacros>(
  */
 export function roundedMacros(
   macros: PortionMacros | Per100gMacros,
-  decimals = 2,
+  decimals = 2
 ): EstimateMacros {
   return unbrandMacros(roundMacros(macros, decimals));
 }
@@ -324,7 +324,7 @@ export interface FoodNutritionFields {
 /** Round for storage and rename onto the food columns in one step. */
 export function toFoodNutritionFields(
   macros: PortionMacros | Per100gMacros,
-  decimals = 2,
+  decimals = 2
 ): FoodNutritionFields {
   const m = roundedMacros(macros, decimals);
   return {
@@ -352,7 +352,7 @@ export function toFoodNutritionFields(
 // Food matching score
 // --------------------------------------------------------------------------
 
-export type FoodMatchSource = "exact_name" | "token_overlap" | "recent_usage";
+export type FoodMatchSource = 'exact_name' | 'token_overlap' | 'recent_usage';
 
 export interface FoodMatchScoreInput {
   /** Name of the candidate food row. */
@@ -378,7 +378,7 @@ export const MATCH_MIN_SCORE = 0.55;
 export const MATCH_PRESELECT_SCORE = 0.9;
 
 function normalizeForMatch(value: string): string {
-  return value.toLowerCase().normalize("NFKD").replace(/\s+/g, " ").trim();
+  return value.toLowerCase().normalize('NFKD').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -392,14 +392,14 @@ export function scoreFoodMatch(input: FoodMatchScoreInput): FoodMatchScore {
   const candidate = normalizeForMatch(input.candidateName);
   const query = normalizeForMatch(input.queryName);
 
-  if (!candidate || !query) return { score: 0, source: "token_overlap" };
+  if (!candidate || !query) return { score: 0, source: 'token_overlap' };
 
-  let source: FoodMatchSource = "token_overlap";
+  let source: FoodMatchSource = 'token_overlap';
   let base: number;
 
   if (candidate === query) {
     base = 1;
-    source = "exact_name";
+    source = 'exact_name';
   } else {
     const candidateTokens = new Set(parseSearchTerms(candidate));
     const queryTokens = new Set(parseSearchTerms(query));
@@ -452,10 +452,10 @@ export function scoreFoodMatch(input: FoodMatchScoreInput): FoodMatchScore {
 
   // Recency: something logged this week beats something logged last year.
   const days = input.daysSinceLastUsed;
-  if (typeof days === "number" && Number.isFinite(days) && days >= 0) {
+  if (typeof days === 'number' && Number.isFinite(days) && days >= 0) {
     if (days <= 7) {
       score += 0.08;
-      if (source === "token_overlap") source = "recent_usage";
+      if (source === 'token_overlap') source = 'recent_usage';
     } else if (days <= 30) {
       score += 0.04;
     }

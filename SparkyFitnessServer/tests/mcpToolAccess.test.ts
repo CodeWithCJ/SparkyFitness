@@ -84,6 +84,21 @@ describe('MCP_TOOL_READ_ACCESS (#2678)', () => {
     ] as const) {
       expect(isToolCallAllowedReadOnly(tool, { action }), action).toBe(false);
     }
+    // Reading the run program is allowed; rebuilding it is not.
+    expect(
+      isToolCallAllowedReadOnly('sparky_manage_run_program', {
+        action: 'get_run_program',
+      })
+    ).toBe(true);
+    for (const action of [
+      'realign_run_program',
+      'adjust_run_program_running',
+    ]) {
+      expect(
+        isToolCallAllowedReadOnly('sparky_manage_run_program', { action }),
+        action
+      ).toBe(false);
+    }
     expect(isReadOnlyTool('sparky_manage_food')).toBe(false);
     expect(isReadOnlyTool('sparky_get_food_diary')).toBe(true);
   });

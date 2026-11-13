@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { paginationSchema } from "./Pagination.api.zod.ts";
-import { EXERCISE_MODALITIES } from "../../constants/exercise.ts";
+import { z } from 'zod';
+import { paginationSchema } from './Pagination.api.zod.ts';
+import { EXERCISE_MODALITIES } from '../../constants/exercise.ts';
 
 /**
  * Wire enum for exercise modality. Optional on response schemas so
@@ -40,7 +40,9 @@ const exerciseStringArrayFieldSchema = z
   .union([z.array(z.string()), z.string()])
   .nullable()
   .optional()
-  .transform((value) => (value == null || Array.isArray(value) ? value : [value]));
+  .transform((value) =>
+    value == null || Array.isArray(value) ? value : [value]
+  );
 
 /**
  * The subset of the create/update exercise payload (`POST /exercises`,

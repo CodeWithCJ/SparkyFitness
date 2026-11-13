@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MoodMeter from '@/pages/CheckIn/MoodMeter';
 
@@ -38,19 +38,31 @@ const stops = Array.from(
   (_, i) => MOOD_MIN + i * MOOD_STEP
 );
 
-const renderMeter = (mood = 50) => {
+const renderMeter = (
+  mood: number | null = 50,
+  ratings: { energy?: number | null; focus?: number | null } = {}
+) => {
   const onMoodChange = jest.fn();
+  const onEnergyChange = jest.fn();
+  const onFocusChange = jest.fn();
+  const onSubmit = jest.fn((e: React.FormEvent) => e.preventDefault());
   const { container } = render(
-    <MoodMeter
-      mood={mood}
-      notes=""
-      moodTags={[]}
-      onMoodChange={onMoodChange}
-      onNotesChange={jest.fn()}
-      onTagsChange={jest.fn()}
-    />
+    <form onSubmit={onSubmit}>
+      <MoodMeter
+        mood={mood}
+        notes=""
+        moodTags={[]}
+        energy={ratings.energy ?? null}
+        focus={ratings.focus ?? null}
+        onMoodChange={onMoodChange}
+        onNotesChange={jest.fn()}
+        onTagsChange={jest.fn()}
+        onEnergyChange={onEnergyChange}
+        onFocusChange={onFocusChange}
+      />
+    </form>
   );
-  return { container, onMoodChange };
+  return { container, onMoodChange, onEnergyChange, onFocusChange, onSubmit };
 };
 
 /** The nine legend faces: the only buttons in the meter carrying a `title`. */
@@ -156,6 +168,75 @@ describe('MoodMeter header', () => {
   });
 });
 
+describe('MoodMeter with no mood yet', () => {
+  test('says no mood is selected and highlights no face', () => {
+    const { container } = renderMeter(null);
+
+    expect(container.querySelector('span.font-medium')).toHaveTextContent(
+      'No mood selected'
+    );
+    expect(
+      legendFaces(container).some((face) =>
+        face.className.includes('scale-125')
+      )
+    ).toBe(false);
+    expect(
+      screen.queryByRole('button', { name: 'Clear mood' })
+    ).not.toBeInTheDocument();
+  });
+
+  test('parks the thumb in the middle until a mood is picked', () => {
+    const { container } = renderMeter(null);
+    const thumb = container.querySelector('[role="slider"]')!;
+
+    expect(thumb.getAttribute('aria-valuenow')).toBe('50');
+  });
+
+  test('the first face tapped sets the mood', () => {
+    const { container, onMoodChange } = renderMeter(null);
+    fireEvent.click(legendFaces(container)[2]!);
+
+    // The third face sits at 23.53% of 10-95: a mood of 30.
+    expect(onMoodChange).toHaveBeenCalledWith(30);
+  });
+
+  test('with no mood the slider shows no fill and announces that', () => {
+    const { container } = renderMeter(null);
+    const thumb = container.querySelector('[role="slider"]')!;
+
+    expect(thumb.getAttribute('aria-valuetext')).toBe('No mood selected');
+    expect(
+      container.querySelector('[data-orientation] > .hidden')
+    ).not.toBeNull();
+  });
+
+  test('with a mood the slider announces its number', () => {
+    const { container } = renderMeter(65);
+    const thumb = container.querySelector('[role="slider"]')!;
+
+    expect(thumb.hasAttribute('aria-valuetext')).toBe(false);
+  });
+
+  test('a key on the slider sets the first mood, as a press does', () => {
+    const { container, onMoodChange } = renderMeter(null);
+    const thumb = container.querySelector<HTMLElement>('[role="slider"]')!;
+
+    fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(onMoodChange).toHaveBeenLastCalledWith(55);
+
+    fireEvent.keyDown(thumb, { key: 'Home' });
+    expect(onMoodChange).toHaveBeenLastCalledWith(10);
+  });
+
+  test('"Clear mood" sets the mood back to none', () => {
+    const { onMoodChange, onSubmit } = renderMeter(65);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear mood' }));
+
+    expect(onMoodChange).toHaveBeenCalledWith(null);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
 describe('MoodMeter with a value from outside the picker', () => {
   // A CSV import may carry 96-100, and rows logged before the picker stopped at
   // 95 still hold them. Radix reports the controlled value verbatim, so passing
@@ -186,5 +267,43 @@ describe('MoodMeter with a value from outside the picker', () => {
 
     // Clamping is for display: a day opened and saved untouched keeps its 100.
     expect(onMoodChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('MoodMeter energy, focus and journal', () => {
+  test('offers energy and focus as five optional taps each', () => {
+    renderMeter();
+    const energy = screen.getByRole('group', { name: 'Energy' });
+    expect(within(energy).getAllByRole('button')).toHaveLength(5);
+    expect(screen.getByText('Drained')).toBeInTheDocument();
+    expect(screen.getByText('Locked in')).toBeInTheDocument();
+  });
+
+  test('tapping a rating selects it without submitting the form', () => {
+    const { onEnergyChange, onSubmit } = renderMeter();
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Energy' })).getByRole(
+        'button',
+        { name: '4' }
+      )
+    );
+    expect(onEnergyChange).toHaveBeenCalledWith(4);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test('tapping the selected rating again clears it', () => {
+    const { onFocusChange } = renderMeter(50, { focus: 2 });
+    const two = within(screen.getByRole('group', { name: 'Focus' })).getByRole(
+      'button',
+      { name: '2' }
+    );
+    expect(two).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(two);
+    expect(onFocusChange).toHaveBeenCalledWith(null);
+  });
+
+  test('labels the notes box as the journal', () => {
+    renderMeter();
+    expect(screen.getByLabelText('Journal (optional)')).toBeInTheDocument();
   });
 });

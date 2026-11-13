@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * GET /api/reports/training-consistency: how regularly the user trains.
@@ -25,7 +25,7 @@ export const trainingConsistencySchema = z.object({
       weekStart: z.string(),
       /** Distinct days with at least one logged workout. */
       workoutDays: z.number(),
-    }),
+    })
   ),
   /** Distinct days with a logged workout inside `weeks`, ascending. */
   trainingDays: z.array(z.string()),

@@ -16,6 +16,8 @@ export const DASHBOARD_CARD_KEYS = [
   'progressPhotos',
   'healthTrends',
   'mindfulness',
+  'oralCare',
+  'labResults',
 ] as const;
 
 export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
@@ -55,6 +57,10 @@ export const DASHBOARD_CARD_TITLES: Record<
     t('dashboardSettings.healthTrends', { defaultValue: 'Health Trends' }),
   mindfulness: (t) =>
     t('dashboardSettings.mindfulness', { defaultValue: 'Mindfulness' }),
+  oralCare: (t) =>
+    t('dashboardSettings.oralCare', { defaultValue: 'Oral care' }),
+  labResults: (t) =>
+    t('dashboardSettings.labResults', { defaultValue: 'Lab Results' }),
 };
 
 export const DASHBOARD_CARD_SUBTITLES: Record<
@@ -122,5 +128,13 @@ export const DASHBOARD_CARD_SUBTITLES: Record<
     t('dashboardSettings.mindfulnessSubtitle', {
       defaultValue:
         'Show mindfulness sessions, breathing, and meditation on the Dashboard',
+    }),
+  oralCare: (t) =>
+    t('dashboardSettings.oralCareSubtitle', {
+      defaultValue: 'Show brushing against your goal and your streak',
+    }),
+  labResults: (t) =>
+    t('dashboardSettings.labResultsSubtitle', {
+      defaultValue: 'Show your latest lab results and which are out of range',
     }),
 };

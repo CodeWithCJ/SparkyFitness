@@ -235,12 +235,19 @@ export function finishCue(
   });
 }
 
-/** The word for a step: "Run" and "Walk", or "Fast" and "Easy". */
+/**
+ * The word for a step: "Run" and "Walk", "Fast" and "Easy", or "Brisk" and
+ * "Easy". A Zone 2 run (`effort` 'zone2') is named for what it is.
+ */
 export function intervalStepName(
   t: TFunction,
   kind: IntervalStep['kind'],
-  style: IntervalStyle
+  style: IntervalStyle,
+  effort?: IntervalStep['effort']
 ): string {
+  if (kind === 'work' && effort === 'zone2') {
+    return t('recordActivity.intervals.zone2', { defaultValue: 'Zone 2 run' });
+  }
   switch (kind) {
     case 'warmup':
       return t('recordActivity.intervals.warmup', { defaultValue: 'Warm up' });
@@ -249,9 +256,13 @@ export function intervalStepName(
         defaultValue: 'Cool down',
       });
     case 'work':
-      return style === 'runWalk'
-        ? t('recordActivity.intervals.run', { defaultValue: 'Run' })
-        : t('recordActivity.intervals.fast', { defaultValue: 'Fast' });
+      if (style === 'runWalk') {
+        return t('recordActivity.intervals.run', { defaultValue: 'Run' });
+      }
+      if (style === 'briskWalk') {
+        return t('recordActivity.intervals.brisk', { defaultValue: 'Brisk' });
+      }
+      return t('recordActivity.intervals.fast', { defaultValue: 'Fast' });
     case 'recovery':
       return style === 'runWalk'
         ? t('recordActivity.intervals.walk', { defaultValue: 'Walk' })
@@ -266,7 +277,7 @@ export function intervalCue(
 ): string {
   const { step } = options;
   return t('recordActivity.cues.interval', {
-    name: intervalStepName(t, step.kind, options.style),
+    name: intervalStepName(t, step.kind, options.style, step.effort),
     time:
       step.meters !== undefined && step.meters > 0
         ? spokenStepDistance(t, step.meters, step.unit)
@@ -363,7 +374,12 @@ export function stepWarningCue(
 ): string {
   return options.next
     ? t('recordActivity.cues.stepWarning', {
-        name: intervalStepName(t, options.next.kind, options.style),
+        name: intervalStepName(
+          t,
+          options.next.kind,
+          options.style,
+          options.next.effort
+        ),
         defaultValue: 'Ten seconds. Next, {{name}}.',
       })
     : t('recordActivity.cues.stepWarningLast', {

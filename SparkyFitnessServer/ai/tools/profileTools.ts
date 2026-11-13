@@ -29,7 +29,7 @@ Actions:
 - action: 'get_profile' — returns user account details
 - action: 'update_profile' (fields: display_name?, image?) — updates account details
 - action: 'get_preferences' — returns user preferences (timezone, units)
-- action: 'update_preferences' (fields: timezone?, energy_unit?, default_weight_unit?, default_distance_unit?, default_measurement_unit?, water_display_unit?) — updates preferences`,
+- action: 'update_preferences' (fields: timezone?, energy_unit?, default_weight_unit?, default_distance_unit?, default_temperature_unit?, default_measurement_unit?, water_display_unit?) — updates preferences`,
       inputSchema: manageProfileInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -43,6 +43,7 @@ Actions:
               args.default_weight_unit !== undefined ||
               args.default_measurement_unit !== undefined ||
               args.default_distance_unit !== undefined ||
+              args.default_temperature_unit !== undefined ||
               args.water_display_unit !== undefined
             ) {
               return 'update_preferences';
@@ -90,17 +91,21 @@ Actions:
               text += `- **Energy Unit:** ${prefs.energy_unit || 'kcal'}\n`;
               text += `- **Weight Unit:** ${prefs.default_weight_unit || 'kg'}\n`;
               text += `- **Distance Unit:** ${prefs.default_distance_unit || 'km'}\n`;
+              text += `- **Temperature Unit:** ${prefs.default_temperature_unit || 'celsius'}\n`;
               return text;
             }
 
             case 'update_preferences': {
               const preferenceData = {
-                timezone: args.timezone ?? null,
-                energy_unit: args.energy_unit ?? null,
-                default_weight_unit: args.default_weight_unit ?? null,
-                default_measurement_unit: args.default_measurement_unit ?? null,
-                default_distance_unit: args.default_distance_unit ?? null,
-                water_display_unit: args.water_display_unit ?? null,
+                timezone: args.timezone ?? undefined,
+                energy_unit: args.energy_unit ?? undefined,
+                default_weight_unit: args.default_weight_unit ?? undefined,
+                default_measurement_unit:
+                  args.default_measurement_unit ?? undefined,
+                default_distance_unit: args.default_distance_unit ?? undefined,
+                default_temperature_unit:
+                  args.default_temperature_unit ?? undefined,
+                water_display_unit: args.water_display_unit ?? undefined,
               };
               try {
                 await preferenceService.updateUserPreferences(

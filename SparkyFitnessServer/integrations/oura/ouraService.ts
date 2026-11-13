@@ -127,7 +127,7 @@ async function getAuthorizationUrl(userId: string, redirectUri: string) {
       app_id_tag,
       ENCRYPTION_KEY
     );
-    const scope = 'personal daily heartrate workout spo2 heart_health';
+    const scope = 'personal daily heartrate workout spo2 heart_health stress';
     const state = userId;
     return `${OURA_AUTHORIZE_URL}?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
   } finally {

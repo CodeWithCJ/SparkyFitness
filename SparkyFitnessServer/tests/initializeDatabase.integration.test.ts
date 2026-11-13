@@ -74,6 +74,27 @@ describe.runIf(RUN)('database initialization integration', () => {
         [[holderPid, initializerPid]]
       );
       expect(remaining.rows).toEqual([]);
+
+      // The lock session returns to the pool; a vanished holder must be dropped
+      // within about a minute, not after the operating system's keepalive.
+      const lockSession = await getSystemClient();
+      try {
+        const settings = await lockSession.query(
+          `SELECT pg_backend_pid() AS pid,
+                  current_setting('tcp_keepalives_idle') AS idle,
+                  current_setting('tcp_keepalives_interval') AS interval,
+                  current_setting('tcp_keepalives_count') AS count`
+        );
+        // PostgreSQL ignores keepalives on a Unix socket and reports 0.
+        const tcp = !process.env.SPARKY_FITNESS_DB_HOST!.startsWith('/');
+        expect(settings.rows).toEqual([
+          tcp
+            ? { pid: initializerPid, idle: '30', interval: '10', count: '3' }
+            : { pid: initializerPid, idle: '0', interval: '0', count: '0' },
+        ]);
+      } finally {
+        lockSession.release();
+      }
     } finally {
       // Closing the holder also releases its lock if an assertion failed early.
       holder.release(true);

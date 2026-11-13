@@ -19,18 +19,27 @@ import {
   setRestTimerNotificationsEnabled,
 } from '../services/notifications';
 import {
+  MEDICATION_REMINDER_SNOOZE_OPTIONS,
   WATER_REMINDER_INTERVAL_OPTIONS,
   useAppPreferencesStore,
+  type MedicationReminderSnoozeMinutes,
   type WaterReminderIntervalHours,
 } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
+import { markCheckinReminderOfferShown } from '../services/checkinReminderOffer';
+import {
+  MAX_CHECKIN_REMINDERS,
+  MAX_ORAL_CARE_REMINDERS,
+} from '../utils/checkinReminderTimes';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { useReminderTimeRows } from '../components/ReminderTimeRows';
 import { isValidReminderWindow } from '../utils/hydrationReminder';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type IntervalKey = `${WaterReminderIntervalHours}`;
+type SnoozeMinutesKey = `${MedicationReminderSnoozeMinutes}`;
 
 type NotificationSettingsScreenProps =
   RootStackScreenProps<'NotificationSettings'>;
@@ -77,6 +86,12 @@ const NotificationSettingsScreen: React.FC<
   const setMedicationReminderConsolidate = useAppPreferencesStore(
     (s) => s.setMedicationReminderConsolidate
   );
+  const medicationReminderSnoozeMinutes = useAppPreferencesStore(
+    (s) => s.medicationReminderSnoozeMinutes
+  );
+  const setMedicationReminderSnoozeMinutes = useAppPreferencesStore(
+    (s) => s.setMedicationReminderSnoozeMinutes
+  );
   const waterReminderEnabled = useAppPreferencesStore(
     (s) => s.waterReminderEnabled
   );
@@ -98,6 +113,18 @@ const NotificationSettingsScreen: React.FC<
   const setWaterReminderWindow = useAppPreferencesStore(
     (s) => s.setWaterReminderWindow
   );
+  const checkinRemindersEnabled = useAppPreferencesStore(
+    (s) => s.checkinRemindersEnabled
+  );
+  const setCheckinRemindersEnabled = useAppPreferencesStore(
+    (s) => s.setCheckinRemindersEnabled
+  );
+  const checkinReminderTimes = useAppPreferencesStore(
+    (s) => s.checkinReminderTimes
+  );
+  const setCheckinReminderTimes = useAppPreferencesStore(
+    (s) => s.setCheckinReminderTimes
+  );
   const { preferences } = usePreferences();
   const startTimeSheetRef = useRef<TimeSheetRef>(null);
   const endTimeSheetRef = useRef<TimeSheetRef>(null);
@@ -109,9 +136,12 @@ const NotificationSettingsScreen: React.FC<
       await setNotificationsEnabled(false);
       return;
     }
-    await setNotificationsEnabled(true);
-    await requestNotificationPermission();
+    // Ask first: switching on without permission would let reminders be
+    // rescheduled (and cancelled) before the grant arrives, and a denial
+    // would leave the toggle showing on. The banner explains a denial.
+    const status = await requestNotificationPermission();
     bannerRef.current?.refresh();
+    if (status === 'granted') await setNotificationsEnabled(true);
   }, []);
 
   const handleMedicationRemindersToggle = useCallback(
@@ -149,6 +179,105 @@ const NotificationSettingsScreen: React.FC<
     },
     [setWaterReminderEnabled]
   );
+
+  const handleCheckinRemindersToggle = useCallback(
+    async (value: boolean) => {
+      // Whoever uses this toggle has made their choice; skip the one-time offer.
+      void markCheckinReminderOfferShown();
+      if (!value) {
+        setCheckinRemindersEnabled(false);
+        return;
+      }
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      // Same rule as the other reminders: never show "on" while the OS would
+      // silently drop every reminder.
+      if (status === 'granted') setCheckinRemindersEnabled(true);
+    },
+    [setCheckinRemindersEnabled]
+  );
+
+  const oralCareRemindersEnabled = useAppPreferencesStore(
+    (s) => s.oralCareRemindersEnabled
+  );
+  const setOralCareRemindersEnabled = useAppPreferencesStore(
+    (s) => s.setOralCareRemindersEnabled
+  );
+  const oralCareReminderTimes = useAppPreferencesStore(
+    (s) => s.oralCareReminderTimes
+  );
+  const setOralCareReminderTimes = useAppPreferencesStore(
+    (s) => s.setOralCareReminderTimes
+  );
+
+  const handleOralCareRemindersToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setOralCareRemindersEnabled(false);
+        return;
+      }
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      if (status === 'granted') setOralCareRemindersEnabled(true);
+    },
+    [setOralCareRemindersEnabled]
+  );
+
+  const oralCareReminderRows = useReminderTimeRows({
+    times: oralCareReminderTimes,
+    onChangeTimes: setOralCareReminderTimes,
+    maxTimes: MAX_ORAL_CARE_REMINDERS,
+    timeFormat: preferences?.time_format,
+    labels: {
+      reminder: (number) =>
+        t('notificationSettings.oralCareReminderTime', {
+          defaultValue: 'Reminder {{number}}',
+          number,
+        }),
+      reminderA11y: (number, time) =>
+        t('notificationSettings.oralCareReminderTimeAccessibility', {
+          defaultValue: 'Brushing reminder {{number}}, {{time}}',
+          number,
+          time,
+        }),
+      remove: (number) =>
+        t('notificationSettings.oralCareRemoveReminder', {
+          defaultValue: 'Remove brushing reminder {{number}}',
+          number,
+        }),
+      add: t('notificationSettings.oralCareAddReminder', {
+        defaultValue: 'Add reminder',
+      }),
+    },
+  });
+
+  const checkinReminderRows = useReminderTimeRows({
+    times: checkinReminderTimes,
+    onChangeTimes: setCheckinReminderTimes,
+    maxTimes: MAX_CHECKIN_REMINDERS,
+    timeFormat: preferences?.time_format,
+    labels: {
+      reminder: (number) =>
+        t('notificationSettings.moodCheckinReminderTime', {
+          defaultValue: 'Reminder {{number}}',
+          number,
+        }),
+      reminderA11y: (number, time) =>
+        t('notificationSettings.moodCheckinReminderTimeAccessibility', {
+          defaultValue: 'Reminder {{number}}, {{time}}',
+          number,
+          time,
+        }),
+      remove: (number) =>
+        t('notificationSettings.moodCheckinRemoveReminder', {
+          defaultValue: 'Remove reminder {{number}}',
+          number,
+        }),
+      add: t('notificationSettings.moodCheckinAddReminder', {
+        defaultValue: 'Add reminder',
+      }),
+    },
+  });
 
   const intervalSegments = useMemo(
     () =>
@@ -206,6 +335,18 @@ const NotificationSettingsScreen: React.FC<
   const endTimeLabel =
     formatTimeLabel(waterReminderWindowEnd, preferences?.time_format) ??
     waterReminderWindowEnd;
+
+  const snoozeSegments = useMemo(
+    () =>
+      MEDICATION_REMINDER_SNOOZE_OPTIONS.map((minutes) => ({
+        key: String(minutes) as SnoozeMinutesKey,
+        label: t('notificationSettings.snoozeMinutesOption', {
+          defaultValue: '{{minutes}}m',
+          minutes,
+        }),
+      })),
+    [t]
+  );
 
   const header = useScreenHeader({
     title: t('notificationSettings.title', { defaultValue: 'Notifications' }),
@@ -391,6 +532,30 @@ const NotificationSettingsScreen: React.FC<
                 }
               />
             )}
+            {medicationRemindersEnabled && (
+              <SettingsRow
+                title={t('notificationSettings.medicationSnoozeInterval', {
+                  defaultValue: 'Remind In',
+                })}
+                subtitle={
+                  <View className="mt-2">
+                    <SegmentedControl
+                      segments={snoozeSegments}
+                      activeKey={
+                        String(
+                          medicationReminderSnoozeMinutes
+                        ) as SnoozeMinutesKey
+                      }
+                      onSelect={(key) =>
+                        setMedicationReminderSnoozeMinutes(
+                          Number(key) as MedicationReminderSnoozeMinutes
+                        )
+                      }
+                    />
+                  </View>
+                }
+              />
+            )}
           </SettingsRowGroup>
         )}
 
@@ -473,8 +638,68 @@ const NotificationSettingsScreen: React.FC<
             )}
           </SettingsRowGroup>
         )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.moodCheckins', {
+              defaultValue: 'Mood check-ins',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.moodCheckinReminders', {
+                defaultValue: 'Check-in reminders',
+              })}
+              subtitle={t('notificationSettings.moodCheckinRemindersSubtitle', {
+                defaultValue: 'A daily nudge to log how you feel',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t(
+                    'notificationSettings.moodCheckinReminders',
+                    { defaultValue: 'Check-in reminders' }
+                  )}
+                  value={checkinRemindersEnabled}
+                  onValueChange={handleCheckinRemindersToggle}
+                />
+              }
+            />
+            {checkinRemindersEnabled && checkinReminderRows.rows}
+          </SettingsRowGroup>
+        )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.oralCare', {
+              defaultValue: 'Oral care',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.oralCareReminders', {
+                defaultValue: 'Brushing reminders',
+              })}
+              subtitle={t('notificationSettings.oralCareRemindersSubtitle', {
+                defaultValue: 'A daily nudge to brush your teeth',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t(
+                    'notificationSettings.oralCareReminders',
+                    { defaultValue: 'Brushing reminders' }
+                  )}
+                  value={oralCareRemindersEnabled}
+                  onValueChange={handleOralCareRemindersToggle}
+                />
+              }
+            />
+            {oralCareRemindersEnabled && oralCareReminderRows.rows}
+          </SettingsRowGroup>
+        )}
       </ScrollView>
 
+      {checkinReminderRows.sheet}
+      {oralCareReminderRows.sheet}
       <TimeSheet
         ref={startTimeSheetRef}
         value={waterReminderWindowStart}

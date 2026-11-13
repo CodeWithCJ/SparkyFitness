@@ -42,6 +42,8 @@ import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate
 import { NutrientAutoCalculate } from '@/pages/Goals/NutrientAutoCalculate';
 import { AutoCalculateToolbar } from '@/pages/Goals/AutoCalculateToolbar';
 import { useTranslation } from 'react-i18next';
+import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
+import { useCalorieCyclingForDay } from '@/hooks/Goals/useCalorieCyclingActive';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -65,13 +67,18 @@ const calculateGrams = (
  */
 const EditGoalsForm = ({
   initialData,
+  selectedDate,
   onSave,
   isSaving,
   customNutrients,
 }: {
   initialData: ExpandedGoals;
   selectedDate: string;
-  onSave: (goals: ExpandedGoals, clear?: boolean) => Promise<void>;
+  onSave: (
+    goals: ExpandedGoals,
+    clear?: boolean,
+    initialCalories?: number
+  ) => Promise<void>;
   isSaving: boolean;
   customNutrients: UserCustomNutrient[];
 }) => {
@@ -89,6 +96,12 @@ const EditGoalsForm = ({
     ...DEFAULT_GOALS,
     ...initialData,
   });
+  // Baseline captured at mount; initialData can change on refetch while open.
+  const [initialCalories] = useState(goals.calories);
+  const calorieCycling = useCalorieCyclingForDay(
+    selectedDate,
+    goals.calories !== initialCalories
+  );
 
   const {
     algorithms,
@@ -228,11 +241,17 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>
-            {t(
-              'goals.goalsSettings.calories2',
-              'Calories ({{energyUnitString}})',
-              { energyUnitString: getEnergyUnitString(energyUnit) }
-            )}
+            {calorieCycling.typedIsBase
+              ? t(
+                  'goals.calorieCycling.baseCalories',
+                  'Base calories ({{energyUnitString}})',
+                  { energyUnitString: getEnergyUnitString(energyUnit) }
+                )
+              : t(
+                  'goals.goalsSettings.calories2',
+                  'Calories ({{energyUnitString}})',
+                  { energyUnitString: getEnergyUnitString(energyUnit) }
+                )}
           </Label>
           <NumericInput
             id="calories"
@@ -246,6 +265,11 @@ const EditGoalsForm = ({
                 calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
               }))
             }
+          />
+          <CalorieCyclingGoalHint
+            calories={goals.calories}
+            day={selectedDate}
+            cycling={calorieCycling}
           />
         </div>
         <div className="space-y-1.5">
@@ -438,7 +462,7 @@ const EditGoalsForm = ({
               finalGoals.carbs_percentage = null;
               finalGoals.fat_percentage = null;
             }
-            onSave(finalGoals);
+            onSave(finalGoals, false, initialCalories);
           }}
           disabled={isSaving || !isMacroValid || !isTotalPercentageValid}
           className="w-full"
@@ -467,7 +491,11 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
   const { mutateAsync: saveGoals, isPending: saving } = useSaveGoalsMutation();
   const { data: customNutrients = [] } = useCustomNutrients();
 
-  const handleSave = async (goalsToSave: ExpandedGoals, clear = false) => {
+  const handleSave = async (
+    goalsToSave: ExpandedGoals,
+    clear = false,
+    initialCalories?: number
+  ) => {
     if (!user) return;
 
     // Logic to convert percentages if needed before sending to API
@@ -491,7 +519,14 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       );
     }
 
-    if (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain') {
+    // Only a manual calorie edit overrides the adaptive/goal-mode setup;
+    // changing macros alone must leave it intact. Compare against the value
+    // the form started with, since serverGoals can refetch while it is open.
+    const caloriesEdited = clear || finalGoals.calories !== initialCalories;
+    if (
+      caloriesEdited &&
+      (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain')
+    ) {
       try {
         await saveAllPreferences({
           goalMode: 'maintain',

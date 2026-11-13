@@ -31,6 +31,60 @@ const clockLabel = (instant: string | number) =>
     minute: '2-digit',
   });
 
+/**
+ * Formats an instant relative to the diary day being viewed (YYYY-MM-DD).
+ * - Same day: "HH:MM"
+ * - Yesterday: "Yesterday, HH:MM"
+ * - Tomorrow: "Tomorrow, HH:MM"
+ * - Other days: "MMM D, HH:MM"
+ */
+const formatRelativeDateTime = (
+  instant: string | number | Date,
+  viewedDateStr: string,
+  labels?: {
+    yesterday?: string;
+    tomorrow?: string;
+  }
+) => {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  const time = clockLabel(d.getTime());
+
+  const [y, m, day] = viewedDateStr.split('-').map(Number);
+  if (!y || !m || !day) return time;
+
+  const viewedMidnight = new Date(y, m - 1, day, 0, 0, 0, 0).getTime();
+  const instantMidnight = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    0,
+    0,
+    0,
+    0
+  ).getTime();
+
+  const diffDays = Math.round(
+    (instantMidnight - viewedMidnight) / (24 * 60 * 60 * 1000)
+  );
+
+  if (diffDays === 0) {
+    return time;
+  }
+  if (diffDays === -1) {
+    const yLabel = labels?.yesterday || 'Yesterday';
+    return `${yLabel}, ${time}`;
+  }
+  if (diffDays === 1) {
+    const tLabel = labels?.tomorrow || 'Tomorrow';
+    return `${tLabel}, ${time}`;
+  }
+  const dateStr = d.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  });
+  return `${dateStr}, ${time}`;
+};
+
 interface CaffeineCardProps {
   date: string;
   userId?: string | null;
@@ -55,6 +109,17 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   // render, and the card returns null on a day with no caffeine.
   const bedtimeMs = data ? new Date(data.bedtime_at).getTime() : 0;
 
+  // The calendar start of the viewed day in local time
+  const [yearNum, monthNum, dayNum] = useMemo(
+    () => date.split('-').map(Number),
+    [date]
+  );
+  const dayStartMs = useMemo(() => {
+    return yearNum && monthNum && dayNum
+      ? new Date(yearNum, monthNum - 1, dayNum, 0, 0, 0, 0).getTime()
+      : bedtimeMs - 24 * 60 * 60 * 1000;
+  }, [yearNum, monthNum, dayNum, bedtimeMs]);
+
   // The plotted window belongs to the day on screen: an hour before its first
   // dose to two hours past its bedtime, so the curve shows where it is heading
   // rather than stopping at the moment of most interest.
@@ -68,13 +133,6 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   const windowMs = useMemo(() => {
     if (!data || data.doses.length === 0) return null;
     const rawEnd = bedtimeMs + 2 * 60 * 60 * 1000;
-
-    // The calendar start of the viewed day in local time
-    const [y, m, d] = date.split('-').map(Number);
-    const dayStartMs =
-      y && m && d
-        ? new Date(y, m - 1, d, 0, 0, 0, 0).getTime()
-        : bedtimeMs - 24 * 60 * 60 * 1000;
     const nowBelongsToDay = nowMs >= dayStartMs && nowMs <= rawEnd;
 
     // Doses belonging to the day on screen:
@@ -114,7 +172,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
       end,
       nowBelongsToDay,
     };
-  }, [data, bedtimeMs, nowMs, date]);
+  }, [data, bedtimeMs, nowMs, dayStartMs]);
 
   // Consistent 1-hour interval ticks across the plotted window
   const ticks = useMemo(() => {
@@ -174,6 +232,20 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     [data]
   );
 
+  // Doses strictly within 48h of the reference time, up to window end
+  const recentDoses = useMemo(() => {
+    if (!data?.doses || data.doses.length === 0) return [];
+    const fortyEightHoursMs = 48 * 60 * 60 * 1000;
+    const windowStart = referenceMs - fortyEightHoursMs;
+    const windowEnd = windowMs
+      ? Math.min(windowMs.end, referenceMs)
+      : referenceMs;
+    return data.doses.filter((dose) => {
+      const doseMs = new Date(dose.at).getTime();
+      return doseMs >= windowStart && doseMs <= windowEnd;
+    });
+  }, [data, referenceMs, windowMs]);
+
   if (isLoading) {
     return (
       <Card>
@@ -220,6 +292,42 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   } = data;
 
   const currentActiveMg = activeCaffeineAt(doses, referenceMs, half_life_hours);
+
+  const crossingAtMs = crossingAt ? new Date(crossingAt).getTime() : null;
+  // If the crossing occurred before the viewed day started, caffeine was already
+  // under the threshold for the entire day being viewed.
+  const isCrossingRelevant =
+    crossingAtMs !== null && crossingAtMs >= dayStartMs;
+
+  const formatTick = (instant: number) => {
+    const d = new Date(instant);
+    if (!yearNum || !monthNum || !dayNum) return clockLabel(instant);
+
+    const instantMidnight = new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+      0,
+      0,
+      0,
+      0
+    ).getTime();
+    const diffDays = Math.round(
+      (instantMidnight - dayStartMs) / (24 * 60 * 60 * 1000)
+    );
+
+    const time = clockLabel(instant);
+    if (diffDays === 0) {
+      return time;
+    }
+    if (d.getHours() === 0 && d.getMinutes() === 0) {
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+    if (diffDays > 0) {
+      return `+${diffDays}d ${time}`;
+    }
+    return `${diffDays}d ${time}`;
+  };
 
   // A long half-life against a small headroom can push the cutoff a day or
   // more into the past, outside the plotted window. The marker is already
@@ -403,7 +511,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                     : ['dataMin', 'dataMax']
                 }
                 ticks={ticks}
-                tickFormatter={clockLabel}
+                tickFormatter={formatTick}
                 stroke={isDark ? '#888' : '#666'}
                 fontSize={11}
                 minTickGap={30}
@@ -421,7 +529,12 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                labelFormatter={(value) => clockLabel(Number(value))}
+                labelFormatter={(value) =>
+                  formatRelativeDateTime(Number(value), date, {
+                    yesterday: t('common.yesterday', 'Yesterday'),
+                    tomorrow: t('common.tomorrow', 'Tomorrow'),
+                  })
+                }
                 formatter={(
                   value:
                     string | number | ReadonlyArray<string | number> | undefined
@@ -529,7 +642,10 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 {t('diary.caffeine.legendCutoff', {
                   defaultValue: 'Last {{dose}}mg dose {{time}}',
                   dose: Math.round(cutoff_dose_mg),
-                  time: clockLabel(cutoffMs),
+                  time: formatRelativeDateTime(cutoffMs, date, {
+                    yesterday: t('common.yesterday', 'Yesterday'),
+                    tomorrow: t('common.tomorrow', 'Tomorrow'),
+                  }),
                 })}
               </span>
             )}
@@ -546,11 +662,14 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
           </div>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            {crossingAt
+            {isCrossingRelevant && crossingAt
               ? t('diary.caffeine.crossingNote', {
                   defaultValue: 'Back under {{threshold}}mg from {{time}}',
                   threshold: threshold_mg,
-                  time: clockLabel(crossingAt),
+                  time: formatRelativeDateTime(crossingAt, date, {
+                    yesterday: t('common.yesterday', 'Yesterday'),
+                    tomorrow: t('common.tomorrow', 'Tomorrow'),
+                  }),
                 })
               : t('diary.caffeine.underThreshold', {
                   defaultValue: 'Stays under {{threshold}}mg tonight',
@@ -560,32 +679,34 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
         </div>
 
         {/* Dose list strip */}
-        <div className="space-y-1.5 pt-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            {t('diary.caffeine.contributingDoses', 'Recent Doses (48h)')}
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {doses.map((dose, idx) => (
-              <div
-                key={`${dose.at}-${idx}`}
-                className="text-xs px-2 py-1 rounded bg-muted flex items-center gap-1.5"
-              >
-                <span className="font-medium">
-                  {dose.name || t('diary.caffeineCard.dose', 'Dose')}:
-                </span>
-                <span>{dose.mg}mg</span>
-                <span className="text-[10px] text-muted-foreground">
-                  (
-                  {new Date(dose.at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  )
-                </span>
-              </div>
-            ))}
+        {recentDoses.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {t('diary.caffeine.contributingDoses', 'Recent Doses (48h)')}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {recentDoses.map((dose, idx) => (
+                <div
+                  key={`${dose.at}-${idx}`}
+                  className="text-xs px-2 py-1 rounded bg-muted flex items-center gap-1.5"
+                >
+                  <span className="font-medium">
+                    {dose.name || t('diary.caffeineCard.dose', 'Dose')}:
+                  </span>
+                  <span>{dose.mg}mg</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    (
+                    {formatRelativeDateTime(dose.at, date, {
+                      yesterday: t('common.yesterday', 'Yesterday'),
+                      tomorrow: t('common.tomorrow', 'Tomorrow'),
+                    })}
+                    )
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

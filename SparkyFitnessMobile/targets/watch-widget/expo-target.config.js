@@ -54,6 +54,8 @@ module.exports = (config) => {
     // which the explicit `entitlements` below makes unambiguous.
     type: 'watch-widget',
     name: 'SparkyFitnessWatchWidget',
+    // Dev builds read "DevSparkyFitness" so they differ from the production app.
+    ...(isDev ? { displayName: 'DevSparkyFitness' } : {}),
     // Convention: "<watch-app-bundle-id>.watch-widget", same relationship
     // targets/widget has to the phone app.
     bundleIdentifier: isDev

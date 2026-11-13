@@ -196,6 +196,31 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({
           />
         </SettingsRowGroup>
 
+        <SettingsRowGroup
+          title={t('foodSettings.nutrients.title', {
+            defaultValue: 'Nutrients',
+          })}
+        >
+          <SettingsRow
+            title={t('foodSettings.nutrients.custom', {
+              defaultValue: 'Custom Nutrients',
+            })}
+            subtitle={t('foodSettings.nutrients.customSubtitle', {
+              defaultValue: 'Create and edit your own nutrients',
+            })}
+            onPress={() => navigation.navigate('CustomNutrients')}
+          />
+          <SettingsRow
+            title={t('foodSettings.nutrients.display', {
+              defaultValue: 'Nutrient Display',
+            })}
+            subtitle={t('foodSettings.nutrients.displaySubtitle', {
+              defaultValue: 'Choose and order the nutrients shown in each view',
+            })}
+            onPress={() => navigation.navigate('NutrientDisplaySettings')}
+          />
+        </SettingsRowGroup>
+
         {/* {t('foodSettings.netCarbs.title', { defaultValue: 'Show Net Carbs' })} */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

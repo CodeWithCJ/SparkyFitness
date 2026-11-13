@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const foodEntryResponseSchema = z.object({
   id: z.string(),
@@ -41,7 +41,9 @@ export const foodEntryResponseSchema = z.object({
   water_ml: z.number().nullable(),
   alcohol_g: z.number().nullable(),
   glycemic_index: z.string().nullable(),
-  custom_nutrients: z.record(z.string(), z.union([z.string(), z.number()])).nullable(),
+  custom_nutrients: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable(),
   // Provider that produced this entry (e.g. 'health_connect'); NULL/absent for
   // manual entries. Not every food-entry query selects it, so keep it optional.
   source: z.string().nullish(),

@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isEntryVisibleForSubtype, type MedSubtype } from './medicationUtils';
-import { buildMonthGrid } from '@workspace/shared';
+import {
+  buildMonthGrid,
+  dayDoseTotal,
+  dayLogStatus,
+  isEntryVisibleForSubtype,
+  monthDoseTotal,
+  tallyEntriesByDay,
+  tallySymptomsByDay,
+  type DayLogStatus,
+  type MedSubtype,
+} from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useMedicationEntries } from '@/hooks/useMedications';
 import { useSymptomEntries } from '@/hooks/useSymptoms';
@@ -15,20 +24,6 @@ import {
 } from '@/components/ui/select';
 import MonthCalendar, { type DayCellRender } from '@/components/MonthCalendar';
 import type { Medication, MedicationEntry } from '@/types/medications';
-
-interface DayCounts {
-  taken: number;
-  prn: number;
-  skipped: number;
-  snoozed: number;
-}
-
-interface DaySymptomInfo {
-  sideEffect: boolean;
-  general: boolean;
-  /** Deduped symptom names logged that day, for the hover tooltip. */
-  names: string[];
-}
 
 // Ratio-based coloring: a day's fill reflects how complete that day's doses
 // were (taken+PRN vs. skipped), not just "was anything taken" — so a day with
@@ -45,27 +40,12 @@ const GENERAL_SYMPTOM_COLOR = '#8b5cf6'; // violet-500
 /** Sentinel dropdown value meaning "aggregate across every medication". */
 const ALL_MEDS = '__all__';
 
-interface DayColor {
-  fill: string;
-  textColor?: string;
-}
-
-/** Colors a day by completion ratio: taken+PRN vs. skipped, not by a single dominant status. */
-const getDayColor = (counts: DayCounts): DayColor | null => {
-  const active = counts.taken + counts.prn;
-  const total = active + counts.skipped;
-
-  if (total === 0) {
-    return counts.snoozed > 0
-      ? { fill: COLOR_SNOOZED_ONLY, textColor: '#fff' }
-      : null;
-  }
-
-  const pct = (active / total) * 100;
-  if (pct === 100) return { fill: COLOR_ALL_TAKEN, textColor: '#fff' };
-  if (pct >= 50) return { fill: COLOR_PARTIAL_TAKEN, textColor: '#fff' };
-  if (pct > 0) return { fill: COLOR_MOSTLY_SKIPPED, textColor: '#fff' };
-  return { fill: COLOR_ALL_SKIPPED, textColor: '#fff' };
+const DAY_STATUS_COLOR: Record<DayLogStatus, string> = {
+  all_taken: COLOR_ALL_TAKEN,
+  partial: COLOR_PARTIAL_TAKEN,
+  mostly_skipped: COLOR_MOSTLY_SKIPPED,
+  all_skipped: COLOR_ALL_SKIPPED,
+  snoozed_only: COLOR_SNOOZED_ONLY,
 };
 
 interface MedicationLogCalendarProps {
@@ -190,57 +170,31 @@ export default function MedicationLogCalendar({
     toDate: fetchTo,
   });
 
-  const entriesByDay = useMemo(() => {
-    const map: Record<string, DayCounts> = {};
-    (entries as MedicationEntry[]).forEach((e) => {
-      if (!isAllSelected && e.medication_id !== activeMedId) return;
-      if (isAllSelected && !entryIsVisible(e.medication_id)) return;
-      const day = e.entry_date.split('T')[0];
-      if (!day) return;
-      if (!map[day]) map[day] = { taken: 0, prn: 0, skipped: 0, snoozed: 0 };
-      if (e.status === 'taken') map[day].taken++;
-      else if (e.status === 'prn_taken') map[day].prn++;
-      else if (e.status === 'skipped') map[day].skipped++;
-      else if (e.status === 'snoozed') map[day].snoozed++;
-    });
-    return map;
-  }, [entries, activeMedId, isAllSelected, entryIsVisible]);
+  const entriesByDay = useMemo(
+    () =>
+      tallyEntriesByDay(entries as MedicationEntry[], {
+        medicationId: activeMedId,
+        include: entryIsVisible,
+      }),
+    [entries, activeMedId, entryIsVisible]
+  );
 
-  const symptomsByDay = useMemo(() => {
-    const map: Record<string, DaySymptomInfo> = {};
-    symptomEntries.forEach((s) => {
-      const day = s.entry_date.split('T')[0];
-      if (!day) return;
-      // A symptom linked to an item the subtype filter hides belongs to the other
-      // kind, so drop it outright. Reclassifying it as "general" would keep its dot
-      // and its name on a calendar that is meant to exclude it. Symptoms with no
-      // medication at all are genuinely general and always stay.
-      if (s.medication_id && !entryIsVisible(s.medication_id)) return;
-      if (!map[day])
-        map[day] = { sideEffect: false, general: false, names: [] };
-      // In catch-all mode any medication-linked symptom counts as a side effect;
-      // otherwise only symptoms linked to the selected item do.
-      const isSideEffect = isAllSelected
-        ? !!s.medication_id
-        : s.medication_id === activeMedId;
-      if (isSideEffect) {
-        map[day].sideEffect = true;
-      } else {
-        map[day].general = true;
-      }
-      if (!map[day].names.includes(s.symptom_name_snapshot)) {
-        map[day].names.push(s.symptom_name_snapshot);
-      }
-    });
-    return map;
-  }, [symptomEntries, activeMedId, isAllSelected, entryIsVisible]);
+  // A symptom linked to an item the subtype filter hides belongs to the other
+  // kind, so it is dropped outright rather than reclassified as "general".
+  // Symptoms with no medication at all are genuinely general and always stay.
+  const symptomsByDay = useMemo(
+    () =>
+      tallySymptomsByDay(symptomEntries, {
+        medicationId: activeMedId,
+        include: entryIsVisible,
+      }),
+    [symptomEntries, activeMedId, entryIsVisible]
+  );
 
-  const monthTotal = useMemo(() => {
-    return Object.entries(entriesByDay).reduce((sum, [day, counts]) => {
-      if (day.slice(0, 7) !== month) return sum;
-      return sum + counts.taken + counts.prn;
-    }, 0);
-  }, [entriesByDay, month]);
+  const monthTotal = useMemo(
+    () => monthDoseTotal(entriesByDay, month),
+    [entriesByDay, month]
+  );
 
   const weekdayLabels = useMemo(() => {
     const days = [
@@ -354,13 +308,13 @@ export default function MedicationLogCalendar({
       renderDay={(day): DayCellRender => {
         const counts = entriesByDay[day];
         const symptoms = symptomsByDay[day];
-        const color = counts ? getDayColor(counts) : null;
-        const total = counts ? counts.taken + counts.prn : 0;
+        const status = counts ? dayLogStatus(counts) : null;
+        const total = counts ? dayDoseTotal(counts) : 0;
 
         const cell: DayCellRender = {};
-        if (color) {
-          cell.fill = color.fill;
-          cell.textColor = color.textColor;
+        if (status) {
+          cell.fill = DAY_STATUS_COLOR[status];
+          cell.textColor = '#fff';
         }
 
         // Hover tooltip: exact breakdown, since the fill color alone can't

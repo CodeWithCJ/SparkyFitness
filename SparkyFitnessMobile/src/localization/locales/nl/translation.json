@@ -180,7 +180,10 @@
       "beforeMeal": "Voor maaltijd",
       "withMeal": "Met maaltijd",
       "afterMeal": "Na maaltijd",
-      "awayFromMeals": "Buiten maaltijden om"
+      "awayFromMeals": "Buiten maaltijden om",
+      "softgel": "Softgel",
+      "gummy": "Gummy",
+      "powder": "Poeder"
     },
     "weekdays": {
       "title": "Dagen van de Week",
@@ -218,7 +221,45 @@
     "inactiveA11y_one": "Inactief medicijn ({{count}})",
     "inactiveA11y_other": "Inactieve medicijnen ({{count}})",
     "inactiveCount_one": "Inactief ({{count}})",
-    "inactiveCount_other": "Inactief ({{count}})"
+    "inactiveCount_other": "Inactief ({{count}})",
+    "notificationScheduledDoses_one": "U hebt {{count}} geplande doses",
+    "notificationScheduledDoses_other": "",
+    "notificationScheduledDosesNamed": "Geplande doses: {{names}}",
+    "notificationScheduledDosesOverflow_one": "Geplande doses: {{names}} en nog {{count}}",
+    "notificationScheduledDosesOverflow_other": "",
+    "filter": {
+      "all": "Alles",
+      "meds": "Medicijnen",
+      "supplements": "Supplementen"
+    },
+    "supplement": {
+      "add": "Supplement Toevoegen",
+      "none": "Nog geen supplementen",
+      "toggle": "Dit is een supplement",
+      "form": "Vorm",
+      "formTitle": "Supplementvorm",
+      "newTitle": "Nieuw Supplement",
+      "editTitle": "Supplement Bewerken",
+      "nameRequired": "Voer een naam voor het supplement in.",
+      "invalidAmount": "Hoeveelheden voedingsstoffen moeten getallen zijn die nul of hoger zijn.",
+      "nutrientsFailed": "De voedingsstoffen konden niet worden ingesteld: {{error}}",
+      "nutritionTitle": "Voeding per portie",
+      "nutritionHint": "Voer de hoeveelheden van het etiket in voor één portie. Elke dosis die u registreert, voegt deze toe aan uw dag.",
+      "energyAndMacros": "Energie en macro's",
+      "vitaminsAndMinerals": "Vitamines, mineralen en meer",
+      "addNutrient": "Voedingsstof toevoegen",
+      "multivitaminPanel": "Multivitaminepaneel",
+      "amountA11y": "Hoeveelheid {{name}} in {{unit}}",
+      "removeNutrient": "{{name}} verwijderen",
+      "nutrientCount_one": "{{count}} voedingsstoffen",
+      "nutrientCount_other": "",
+      "scheduleResetFailed": "De doses van het schema konden niet worden gereset: {{error}}",
+      "scheduleRestoreFailed": "De dosis voor {{schedules}} kon niet worden hersteld. Stel deze opnieuw in op het schema.",
+      "unnamedSchedule": "een schema",
+      "modeUpdateNotApplied": "De gevraagde supplementmodus is niet toegepast.",
+      "nutrientsNotSaved": "Het supplement is aangemaakt, maar de waarden van de voedingsstoffen zijn niet opgeslagen omdat dit account geen dagboektoegang heeft.",
+      "nutrientsNotUpdated": "De wijzigingen in voedingsstoffen zijn niet opgeslagen."
+    }
   },
   "common": {
     "save": "Opslaan",
@@ -282,7 +323,11 @@
     "selectOption": "Selecteer een optie",
     "requestTimedOut": "Verzoek timed out. Controleer de verbinding van de server.",
     "nextStep": "Volgende stap",
-    "notNow": "Niet nu"
+    "notNow": "Niet nu",
+    "more": "meer",
+    "undo": "Ongedaan maken",
+    "all": "Alles",
+    "builtIn": "Ingebouwd"
   },
   "settings": {
     "app": "App-instellingen",
@@ -297,7 +342,20 @@
       "managedByIOS": "Beheerd door iOS",
       "iosSettingsHint": "Wijzig de taal van deze app in de iOS-instellingen",
       "openSettingsFailed": "Kon de iOS-instellingen niet openen",
-      "iosSubtitle": "{{language}} · {{managedBy}}"
+      "iosSubtitle": "{{language}} · {{managedBy}}",
+      "simplifiedChinese": "简体中文",
+      "traditionalChinese": "正體中文",
+      "cantoneseTraditional": "正體粵語",
+      "german": "Deutsch",
+      "french": "Français",
+      "hungarian": "Magyar",
+      "italian": "Italiano",
+      "latvian": "Latviešu",
+      "norwegianBokmal": "Norsk bokmål",
+      "dutch": "Nederlands",
+      "brazilianPortuguese": "Português (Brasil)",
+      "russian": "Русский",
+      "turkish": "Turks"
     },
     "lastSynced": "Laatst gesynchroniseerd {{time}}",
     "addServer": "Tik om een server toe te voegen",
@@ -321,7 +379,12 @@
       "whatsNew": "Wat is er nieuw",
       "logs": "Logs bekijken",
       "about": "Over",
-      "shareReport": "Diagnostisch rapport delen"
+      "shareReport": "Diagnostisch rapport delen",
+      "watch": "Apple Watch",
+      "ai": "AI",
+      "fasting": "Vasten",
+      "goals": "Doelen",
+      "reports": "Reportages"
     },
     "theme": {
       "title": "Thema",
@@ -368,12 +431,17 @@
     "channels": {
       "medicationReminders": "Medicatieherinneringen",
       "workoutTimer": "Trainingstimer",
-      "fasting": "Vasten"
+      "fasting": "Vasten",
+      "ongoingWorkout": "Lopende training",
+      "hydration": "Hydratatieherinneringen"
     },
     "actions": {
       "completeSet": "Set voltooien",
       "logAsTaken": "Als ingenomen registreren",
-      "skip": "Overslaan"
+      "skip": "Overslaan",
+      "logAllAsTaken": "Alles als ingenomen registreren",
+      "skipAll": "Alles overslaan",
+      "remindInMinutes": "Herinner mij in {{minutes}}min"
     },
     "permission": {
       "notificationsOff": "Meldingen uitgeschakeld",
@@ -396,6 +464,14 @@
     "fasting": {
       "title": "Vastendoel bereikt",
       "body": "U heeft uw vastendoel bereikt. Goed gedaan!"
+    },
+    "fastingPreEnd": {
+      "title": "Vastendoel bijna bereikt",
+      "body": "Uw vasten bereikt over {{minutes}} minuten het doel."
+    },
+    "hydration": {
+      "title": "Tijd om te drinken 💧",
+      "body": "U hebt al een tijdje geen water geregistreerd."
     }
   },
   "auth": {
@@ -471,9 +547,6 @@
   },
   "dashboard": {
     "chooseDate": "Kies dashboarddatum",
-    "noServerConfigured": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagelijkse samenvatting te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loadingSummary": "Samenvatting laden...",
     "loadFailed": "Laden van samenvatting mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -484,7 +557,6 @@
     "healthTrends": "Gezondheidstrends",
     "consumed": "Verbruikt",
     "remaining": "resterend",
-    "ofCalories": "van {{value}} kcal",
     "burned": "Verbrand",
     "hydration": "Hydratatie",
     "ofVolume": "van {{value}} {{unit}}",
@@ -496,7 +568,14 @@
     "removeWater": "Water verwijderen",
     "addWater": "Water toevoegen",
     "selectContainer": "Selecteer {{container}}",
-    "perContainer": "{{value}} {{unit}} per verpakking"
+    "perContainer": "{{value}} {{unit}} per verpakking",
+    "waterFromFood": "Bevat {{value}} {{unit}} uit voeding",
+    "chooseWaterContainer": "Kies een watercontainer om snel toevoegen/verwijderen in te schakelen",
+    "quickAddDrinks": "Snel toevoegen",
+    "logDrink": "{{drink}} registreren",
+    "perPress": "{{value}} {{unit}}",
+    "logDrinkFailed": "Die drank kon niet worden geregistreerd",
+    "exerciseStatistics": "Statistieken"
   },
   "notificationSettings": {
     "title": "Meldingen",
@@ -518,7 +597,19 @@
     "openSettings": "Instellingen openen",
     "permissionTitle": "Machtigingen verlenen",
     "permissionBody": "Meldingen van SparkyFitness (rusttimers, vastendoelen, medicatieherinneringen) worden niet weergegeven.",
-    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}.",
+    "consolidateReminders": "Herinneringen Samenvoegen",
+    "consolidateRemindersSubtitle": "Groepeer medicijnen die op hetzelfde tijdstip gepland staan in één melding.",
+    "hydration": "Hydratatie",
+    "waterReminders": "Waterherinneringen",
+    "waterRemindersSubtitle": "Herinnert u eraan te drinken als u al een tijdje geen water hebt geregistreerd.",
+    "waterReminderInterval": "Herinner Na",
+    "waterReminderIntervalOption": "{{hours}} u",
+    "waterReminderStart": "Starttijd",
+    "waterReminderStartAccessibility": "Starttijd, {{time}}",
+    "waterReminderEnd": "Eindtijd",
+    "waterReminderEndAccessibility": "Eindtijd, {{time}}",
+    "waterReminderInvalidWindow": "De eindtijd moet na de starttijd liggen."
   },
   "familyDiary": {
     "title": "Familiedagboeken",
@@ -536,7 +627,6 @@
     "emptyForDate": "Geen voedingsregistraties voor deze datum",
     "diaryForDate": "Familiedagboek · {{date}}",
     "openMeal": "Maaltijd {{meal}} openen",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Naamloos voedingsmiddel",
     "selectAll": "Alles selecteren",
     "deselectAll": "Alles deselecteren",
@@ -544,15 +634,12 @@
     "selectFood": "{{food}} selecteren",
     "deselectFood": "{{food}} deselecteren",
     "continue": "Doorgaan",
-    "nutritionSummary": "{{calories}} kcal · E {{protein}} g · K {{carbs}} g · V {{fat}} g",
-    "selectedNutrition": "Geselecteerd: {{calories}} kcal · E {{protein}} g · K {{carbs}} g · V {{fat}} g",
     "copyReview": "Kopie beoordelen",
     "copyFrom": "Kopiëren van {{name}}",
     "copyMealTitle": "Maaltijd {{meal}}",
     "quantityForFood": "Hoeveelheid voor {{food}}",
     "quantityMustBePositive": "Voer een hoeveelheid groter dan nul in.",
     "copyNutrition": "Voedingswaarde kopiëren",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g eiwit",
     "copyCarbs": "{{carbs}} g koolhydraten",
     "copyFat": "{{fat}} g vet",
@@ -593,7 +680,10 @@
       "workout": "Training",
       "exercise": "Oefening",
       "set": "Set",
-      "setOf": "van"
+      "setOf": "van",
+      "subtractFifteenSecondsShort": "-15s",
+      "skip": "Overslaan",
+      "next": "Volgende"
     },
     "bar": {
       "clearWorkout": "Training wissen",
@@ -631,7 +721,9 @@
       "renameWorkout": "Training hernoemen",
       "reorderExercises": "Oefeningen herschikken",
       "menu": "Trainingsmenu",
-      "settings": "Trainingsinstellingen"
+      "settings": "Trainingsinstellingen",
+      "gymLocation": "Sportschool / Locatie",
+      "gymLocationSet": "Sportschool: {{location}}"
     },
     "exerciseCard": {
       "addNote": "Voeg een notitie toe voor deze oefening…",
@@ -691,7 +783,11 @@
       "incomplete": "Set {{setNumber}} als niet voltooid markeren",
       "weight": "Gewicht",
       "rpe": "RPE",
-      "fillFromPrevious": "Set {{setNumber}} vullen met vorige waarden"
+      "fillFromPrevious": "Set {{setNumber}} vullen met vorige waarden",
+      "distance": "Afstand",
+      "rir": "RIR",
+      "startTimer": "Stopwatch starten",
+      "stopTimer": "Stopwatch stoppen"
     },
     "columns": {
       "set": "Set",
@@ -711,10 +807,39 @@
       "changeMetric": "Metriekkolom wijzigen",
       "notesForSet": "Notities voor set {{number}}",
       "addSet": "Set toevoegen aan {{name}}",
-      "caloriesUnit": "kcal",
-      "addSetLabel": "Set toevoegen"
+      "addSetLabel": "Set toevoegen",
+      "viewImages": "Afbeeldingen van {{name}} bekijken",
+      "heartRateFor": "Gemiddelde hartslag voor {{name}}",
+      "liveHeartRateFor": "Huidige hartslag voor {{name}}",
+      "heartRateUnit": "bpm"
     },
-    "nextSet": "Volgende Set"
+    "nextSet": "Volgende Set",
+    "failedToDeleteWorkout": "De weggegooide trainingssessie kon niet uit het dagboek worden verwijderd.",
+    "progression": {
+      "toggleSettings": "Progressie-instellingen omschakelen",
+      "title": "Progressie",
+      "manualOff": "Handmatig (Uit)",
+      "fixedSummary": "Vast Doel · +{{value}} {{unit}}",
+      "stepLoadSummary": "Stapsgewijze Belasting · {{reps}} herhalingen · +{{value}} herhalingen",
+      "repGoalSummary": "Herhalingsdoel · {{reps}} herhalingen · +{{value}} {{unit}}",
+      "overloadMode": "Overbelastingsmodus",
+      "modeRepGoal": "Herhalingsdoel",
+      "modeFixed": "Vast",
+      "modeStepLoad": "Stapsgewijze Belasting",
+      "modeOff": "Uit",
+      "targetRepsPerSet": "Doelherhalingen / Set",
+      "targetRepsTotal": "Doelherhalingen (Totaal)",
+      "incrementReps": "Toename (Herhalingen)",
+      "incrementWeight": "Toename ({{unit}})",
+      "equipmentBrand": "Apparatuur / Merk Machine",
+      "equipmentBrandPlaceholder": "bijv. Hammer Strength, kabelstack",
+      "rampTitle": "Toevoegen per set (deze training)",
+      "rampUp": "Omhoog",
+      "rampDown": "Omlaag",
+      "rampAmountLabel": "Gewicht toegevoegd per set ({{unit}})",
+      "rampPlaceholder": "Uit ({{unit}})",
+      "rampHint": "Elke werkset na de eerste wordt in dezelfde training zoveel zwaarder (of lichter) vooraf ingevuld. Warming-up- en dropsets worden overgeslagen."
+    }
   },
   "addSheet": {
     "food": "Voeding",
@@ -732,7 +857,10 @@
     "syncHealth": "Gezondheidsgegevens Synchroniseren",
     "logPregnancyEntry": "Zwangerschapsregistratie",
     "logCycle": "Cyclus Registreren",
-    "progressPhotos": "Voortgangsfoto's"
+    "progressPhotos": "Voortgangsfoto's",
+    "symptoms": "Symptomen",
+    "mindfulness": "Mindfulness",
+    "mood": "Gemoedstoestand"
   },
   "screens": {
     "foods": "Voedingsmiddelen",
@@ -787,9 +915,6 @@
     "medications": "Medicijnen",
     "medication": "Medicijn",
     "library": {
-      "noServerConfigured": "Geen server geconfigureerd",
-      "configureServer": "Configureer uw serververbinding in Instellingen om uw bibliotheek te bekijken.",
-      "goToSettings": "Ga naar Instellingen",
       "loading": "Bibliotheek laden...",
       "title": "Bibliotheek",
       "create": "Aanmaken",
@@ -812,13 +937,32 @@
       "noRecentItems": "Nog geen recente items",
       "recentItemsHint": "Voedingsmiddelen, maaltijden en oefeningen die u registreert, verschijnen hier voor snelle toegang.",
       "mealPlans": "Maaltijdplannen",
-      "mealPlansSubtitle": "Maaltijden op bepaalde dagen herhalen"
+      "mealPlansSubtitle": "Maaltijden op bepaalde dagen herhalen",
+      "waterContainers": "Watercontainers",
+      "waterContainersSubtitle": "Flessen, glazen en dranken gekoppeld aan voedingsmiddelen",
+      "reports": "Rapportages",
+      "personalRecords": "Persoonlijke records",
+      "routes": "Routes",
+      "equipment": "Materiaal"
     },
     "sleep": "Slaap",
     "healthTrendsSettings": "Gezondheidstrends",
     "progressPhotos": "Voortgangsfoto's",
     "progressPhotoCompare": "Vergelijken",
-    "progressPhotoTimelapse": "Time-lapse"
+    "progressPhotoTimelapse": "Time-lapse",
+    "duplicateExercise": "Oefening Dupliceren",
+    "symptomLog": "Symptoom Registreren",
+    "symptomHistory": "Symptoomgeschiedenis",
+    "manageSymptoms": "Symptomen Beheren",
+    "symptomDefinition": "Symptoomgegevens",
+    "exerciseStatistics": "Oefenstatistieken",
+    "cardioSession": "Cardiosessie",
+    "watchSettings": "Apple Watch",
+    "aiSettings": "AI",
+    "moodLog": "Gemoedstoestand",
+    "reports": "Rapportages",
+    "moodReport": "Gemoedstoestand",
+    "measurementsReport": "Maten"
   },
   "healthMetrics": {
     "steps": "Stappen",
@@ -880,7 +1024,8 @@
     "appleMoveTime": "Apple Beweegtijd",
     "appleExerciseTime": "Apple Trainingstijd",
     "appleStandTime": "Apple Statijd",
-    "unknown": "Gezondheidsmeting"
+    "unknown": "Gezondheidsmeting",
+    "bodyWaterMass": "Lichaamswatermassa"
   },
   "healthCategories": {
     "Common": "Algemeen",
@@ -1005,6 +1150,14 @@
       "subtitle": "Geanonimiseerde gezondheidsgegevens exporteren voor bugmeldingen",
       "privacy": "Leest de laatste 4 uur aan gegevens uit Health Connect voor probleemoplossing.\nWaarden worden afgerond voor privacy. Er wordt niets automatisch verzonden.",
       "error": "Genereren van rapport met gezondheidsgegevens mislukt: {{error}}"
+    },
+    "syncChoice": {
+      "title": "Synchroniseer {{start}} – {{end}}",
+      "titleSingleDay": "Synchroniseer {{day}}",
+      "quick": "Snelle Synchronisatie",
+      "quickDescription": "Verstuurt al uw gezondheidsgegevens. Trainingen die al zijn gesynchroniseerd, behouden hun kaart en hartslag.",
+      "all": "Volledige Synchronisatie",
+      "allDescription": "Hetzelfde, maar leest ook de kaart en hartslag opnieuw in voor trainingen die al zijn gesynchroniseerd. Langzamer."
     }
   },
   "syncFrequency": {
@@ -1046,7 +1199,6 @@
     "exerciseCaloriesDescription": "Hoeveel van uw trainingscalorieën worden teruggegeven aan uw dagelijkse doel.",
     "activityLevel": "Activiteitsniveau",
     "activityBaseline": "Wordt gebruikt als basislijn voor TDEE.",
-    "adaptiveFallback": "Werkt als terugval totdat u genoeg trackinggegevens heeft.",
     "allowNegative": "Lagere Terugvalprojectie Toestaan",
     "negativeDescription": "Als een apparaattotaal niet beschikbaar is, laat de BMR + actieve calorieën-terugval uw doel verlagen.",
     "includeResting": "Rustcalorieën Meetellen",
@@ -1105,7 +1257,10 @@
       "bulk": "Spiermassa (+20%)",
       "manual": "Handmatig (Aangepast %)",
       "customPercentage": "Aangepast percentage",
-      "customPercentageDescription": "Positief voegt calorieën toe; negatief creëert een tekort. Beperkt tot ±40%."
+      "customPercentageDescription": "Positief voegt calorieën toe; negatief creëert een tekort. Beperkt tot ±40%.",
+      "calculationMethod": "Berekeningsmethode",
+      "methodAdaptive": "Adaptief",
+      "methodManual": "Handmatig"
     },
     "safetyFloor": {
       "title": "Veiligheidsgrens",
@@ -1116,7 +1271,10 @@
       "standardDescription": "Gebruikt het hoogste van uw geschatte RMR en het klinische minimum.",
       "customDescription": "Vervangt de standaardgrens door uw gekozen minimum. Gezondheidsaanbevelingen blijven zichtbaar.",
       "disabledDescription": "Stopt automatische begrenzing van het doel. Gezondheidswaarschuwingen blijven zichtbaar."
-    }
+    },
+    "useExternalBmr": "Gemeten BMR uit check-ins en gesynchroniseerde apparaten gebruiken",
+    "useExternalBmrHint": "Standaard uit — uw gekozen formule wordt altijd gebruikt totdat u dit inschakelt. Indien ingeschakeld vervangt een BMR die is vastgelegd bij een check-in of is gesynchroniseerd vanaf een slimme weegschaal of gezondheidsprovider de formule voor die dag, mits deze fysiologisch plausibel is voor u.",
+    "useExternalBmrIosNote": "De rustenergie van Apple Health bevat al lichte dagelijkse activiteit. Overweeg daarom het activiteitsniveau op Geen (×1,0) te zetten om dubbeltellen te voorkomen."
   },
   "dashboardSettings": {
     "updateFailed": "Bijwerken van instelling mislukt.",
@@ -1137,7 +1295,27 @@
     "healthTrends": "Gezondheidstrends",
     "healthTrendsSubtitle": "Kies welke grafieken op het Dashboard worden getoond en in welke volgorde",
     "progressPhotos": "Voortgangsfoto's",
-    "progressPhotosSubtitle": "Toon de voortgangsfoto's-kaart op het Dashboard"
+    "progressPhotosSubtitle": "Toon de voortgangsfoto's-kaart op het Dashboard",
+    "description": "Sleep een kaart aan de hendel om uw dashboard te herschikken. Schakel uit om kaarten te verbergen die u niet gebruikt.",
+    "calorieRing": "Calorieoverzicht",
+    "calorieRingSubtitle": "Toon de dagelijkse calorieënbalans en voortgangsring",
+    "macros": "Voedingsstoffen",
+    "macrosSubtitle": "Toon macrodoelen en totalen van eigen voedingsstoffen",
+    "exercise": "Oefenvoortgang",
+    "exerciseSubtitle": "Toon trainingsminuten en doelen voor calorieverbruik",
+    "symptoms": "Symptomen",
+    "symptomsSubtitle": "Toon symptoomstatus, actieve episodes en snel registreren",
+    "caffeine": "Cafeïne",
+    "caffeineSubtitle": "Toon de kaart met actieve cafeïne op het dashboard",
+    "mindfulness": "Mindfulness",
+    "mindfulnessSubtitle": "Toon mindfulnesssessies, ademhaling en meditatie op het dashboard",
+    "reorder": "{{name}} herschikken",
+    "reorderHint": "Herschik deze kaart op uw dashboard",
+    "moveUp": "Omhoog verplaatsen",
+    "moveDown": "Omlaag verplaatsen",
+    "stateShown": "Getoond",
+    "stateHidden": "Verborgen",
+    "configureCard": "{{name}} configureren"
   },
   "diarySettings": {
     "updateFailed": "Bijwerken van instelling mislukt.",
@@ -1178,7 +1356,17 @@
     "keepAwake": "Scherm actief houden",
     "keepAwakeSubtitle": "Voorkomt dat het scherm in slaapstand gaat tijdens een actieve training.",
     "restSoundAccessibility": "Geluid rusttimer",
-    "keepAwakeAccessibility": "Scherm actief houden"
+    "keepAwakeAccessibility": "Scherm actief houden",
+    "restSoundSilent": "Afspelen in stille modus",
+    "restSoundSilentSubtitleIos": "Speel de rustklank af, ook wanneer uw telefoon op stil staat, ook als de app op de achtergrond draait of het scherm is vergrendeld.",
+    "restSoundSilentSubtitle": "Speel de rustklank af, ook wanneer uw telefoon op stil of trillen staat.",
+    "restSoundSilentAccessibility": "Geluid van rusttimer afspelen in stille modus",
+    "adaptiveCoaching": "Adaptieve suggesties",
+    "adaptiveCoachingSubtitle": "Past komende sets en oefeningsuggesties aan op basis van de feedback op uw geregistreerde sessies.",
+    "adaptiveCoachingAccessibility": "Adaptieve suggesties",
+    "duckMusic": "Muziek zachter tijdens aanwijzingen",
+    "duckMusicSubtitle": "Zet muziek van andere apps kort zachter terwijl een trainingspiep of gesproken aanwijzing wordt afgespeeld.",
+    "duckMusicAccessibility": "Muziek zachter tijdens aanwijzingen"
   },
   "restPeriod": {
     "title": "Rustperiode",
@@ -1191,9 +1379,6 @@
   },
   "diary": {
     "chooseDate": "Kies dagboekdatum",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagboek te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Dagboek laden...",
     "loadFailed": "Laden van dagboek mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -1315,6 +1500,15 @@
         "late": "Menstruatie te laat — dag 31",
         "unknown": "Cyclusfase"
       }
+    },
+    "watch": {
+      "title": "Apple Watch",
+      "description": "Status van de koppeling met de watch-app. Check-ins die op de watch zijn vastgelegd, worden in de wachtrij gezet en afgeleverd, ook als \"bereikbaar\" uit staat, dus een grijze stip hier betekent niet dat gegevens verloren gaan.",
+      "paired": "Watch gekoppeld",
+      "notPaired": "Geen watch gekoppeld",
+      "unsupported": "Niet ondersteund op dit platform",
+      "reachable": "Watch-app nu bereikbaar",
+      "notReachable": "Watch-app niet op de voorgrond"
     }
   },
   "workout": {
@@ -1531,7 +1725,6 @@
     "forceStatic": "Statisch",
     "mechanicCompound": "Samengesteld",
     "mechanicIsolation": "Isolatie",
-    "caloriesPerHour": "Calorieën per Uur",
     "muscles": "Spieren",
     "classification": "Classificatie",
     "selectValue": "Selecteer…",
@@ -1610,13 +1803,26 @@
     "setCount_one": "{{formattedCount}} set",
     "setCount_other": "{{formattedCount}} sets",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "unknownExercise": "Onbekende oefening",
     "addNotePlaceholder": "Voeg een notitie toe…",
     "setOf_one": "Set {{number}} van {{count}}",
     "setOf_other": "Set {{number}} van {{count}}",
     "repCount_one": "{{formattedCount}} herhaling",
-    "repCount_other": "{{formattedCount}} herhalingen"
+    "repCount_other": "{{formattedCount}} herhalingen",
+    "addDropSets": "{{sets}} dropsets toevoegen (-{{percent}}%)",
+    "dismissLocation": "Locatie sluiten",
+    "gymLocation": "Sportschool / Locatie",
+    "gymLocationDesc": "Markeer deze training met uw huidige sportschool of trainingslocatie",
+    "locationPlaceholder": "bijv. Basic-Fit - Centrum",
+    "metricRir": "RIR",
+    "recentLocations": "Recente Locaties",
+    "tagPlaceholder": "Typ om toe te voegen of te zoeken...",
+    "addCustomTag": "Voeg \"{{tag}}\" toe",
+    "modalityBodyweight": "Lichaamsgewicht (+/− gewicht)",
+    "bodyweightBanner": "Lichaamsgewichtoefening: telt uw lichaamsgewicht ({{bodyWeight}} {{unit}}) plus het gewicht dat u invoert. Gebruik een minteken voor ondersteuning.",
+    "bodyweightBannerNoWeight": "Lichaamsgewichtoefening: telt uw lichaamsgewicht plus het gewicht dat u invoert. Gebruik een minteken voor ondersteuning. Registreer een lichaamsgewicht zodat het volume kan worden berekend.",
+    "modalityWeightDistance": "Gewicht & Afstand (dragen)",
+    "modalityWeightDuration": "Gewicht & Duur (belaste houdingen)"
   },
   "cycleCard": {
     "mode": {
@@ -1694,7 +1900,14 @@
     "lastFast": "Laatste vasten {{duration}}",
     "lastFastWithDate": "Laatste vasten {{duration}} · {{date}}",
     "today": "vandaag",
-    "yesterday": "gisteren"
+    "yesterday": "gisteren",
+    "auto": "Auto",
+    "autoFromMeal": "Auto · {{meal}}",
+    "eatingWindow": "Eetvenster",
+    "eatingWindowOpen": "Eetvenster",
+    "eatingWindowMeal": "Venster · {{meal}}",
+    "eatingWindowProgress": "Nog {{remaining}} in eetvenster",
+    "details": "Details"
   },
   "fastingProtocol": {
     "fastStarted": "Vasten gestart",
@@ -1851,8 +2064,6 @@
     "protein": "eiwit",
     "carbs": "koolhydraten",
     "fat": "vet",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "proteinAmount": "eiwit",
     "carbsAmount": "koolhydraten",
     "fatAmount": "vet",
@@ -1866,19 +2077,25 @@
   "foodSummary": {
     "tapToAddFood": "Tik om voeding toe te voegen",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "nutritionBreakdown": "Voedingswaarde-uitsplitsing van {{label}}"
   },
   "exerciseSummary": {
     "tapToAdd": "Tik om oefening toe te voegen",
     "addExercise": "Oefening toevoegen",
-    "title": "Oefening"
+    "title": "Oefening",
+    "planUpNext": "Schema Volgende",
+    "sessionNumber": "Sessie {{current}} van {{total}}",
+    "sessionNumberIndex": "Sessie {{current}}",
+    "startWorkout": "Start",
+    "switchSession": "Wisselen",
+    "suggestedPlanSession": "Voorgesteld",
+    "scheduledToday": "Vandaag Gepland",
+    "selectSession": "Sessie Selecteren"
   },
   "foodRow": {
     "unknownFood": "Onbekend voedingsmiddel",
     "adjustServing": "Portie aanpassen",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "deleteFood": "Voedingsmiddel verwijderen"
   },
   "exerciseRow": {
@@ -1992,7 +2209,6 @@
       "weightWithUnit": "Gewicht ({{unit}})",
       "muscleMassWithUnit": "Spiermassa ({{unit}})",
       "boneMassWithUnit": "Botmassa ({{unit}})",
-      "bmrWithUnit": "BMR (kcal)",
       "weightStones": "Gewicht in stones",
       "weightPounds": "Gewicht in ponden",
       "heightFeet": "Lengte in voet",
@@ -2010,8 +2226,7 @@
       "invalidHeight": "Ongeldige lengte",
       "feetInchesNumber": "Voer een getal in voor voet en inches.",
       "bodyFatRange": "Lichaamsvet % moet tussen 0 en 100 liggen.",
-      "bodyWaterRange": "Lichaamswater % moet tussen 0 en 100 liggen.",
-      "bmrRange": "BMR moet tussen 300 en 10000 kcal liggen."
+      "bodyWaterRange": "Lichaamswater % moet tussen 0 en 100 liggen."
     },
     "nothingToSave": "Niets om op te slaan",
     "enterValue": "Voer minstens één waarde in of wis deze.",
@@ -2026,7 +2241,8 @@
       "moreCategories": "Meer categorieën ▾",
       "hideCategories": "Categorieën verbergen ▴",
       "hideCategoriesToggle": "Categorieën verbergen ▴",
-      "moreCategoriesToggle": "Meer categorieën ▾"
+      "moreCategoriesToggle": "Meer categorieën ▾",
+      "lastValue": "Laatste: {{value}}"
     },
     "confirm": {
       "measurement": "meting",
@@ -2042,7 +2258,21 @@
       "in": "in"
     },
     "title": "Metingen",
-    "edit": "Metingen bewerken"
+    "edit": "Metingen bewerken",
+    "useLast": "Laatste gebruiken",
+    "useLastFor": "Laatste waarde voor {{label}} gebruiken",
+    "previousUnavailable": "Eerdere waarden konden niet worden geladen. Uw server moet mogelijk worden bijgewerkt.",
+    "bodyFat": {
+      "calculate": "Berekenen",
+      "useRecent": "Recente gebruiken",
+      "calculateFailedTitle": "Lichaamsvet kon niet worden berekend",
+      "calculatedTitle": "Lichaamsvet berekend",
+      "calculatedMessage": "Controleer de waarde en sla daarna op om hem te bewaren.",
+      "profileRequired": "Stel uw geslacht in uw profiel in om deze berekening te gebruiken.",
+      "bmiRequiredFields": "Gewicht, lengte, leeftijd en geslacht zijn vereist voor de BMI-methode.",
+      "navyRequiredFields": "Geslacht, lengte, taille, nek en (bij vrouwen) heupmetingen zijn vereist voor de U.S. Navy-methode.",
+      "uncomputable": "Deze metingen leveren geen geldig lichaamsvetpercentage op. Controleer de waarden voor taille, nek, lengte en heupen."
+    }
   },
   "foodScan": {
     "segment": {
@@ -2057,7 +2287,8 @@
       "analyzeLabel": "Analyseren van voedingswaardetabel mislukt. Probeer het opnieuw.",
       "loadPhoto": "Laden van foto mislukt.",
       "lookupBarcode": "Kon deze streepjescode niet opzoeken. Probeer het opnieuw.",
-      "timeout": "Aanvraag verlopen. Controleer uw serververbinding."
+      "timeout": "Aanvraag verlopen. Controleer uw serververbinding.",
+      "retryOnDevice": "Deze iPhone kon het etiket niet lezen."
     },
     "permission": {
       "camera": "We hebben uw toestemming nodig om de camera te tonen",
@@ -2100,7 +2331,11 @@
       "retakePhoto": "Foto opnieuw maken",
       "takeLabelPhoto": "Foto van voedingswaardetabel maken",
       "takeMealPhoto": "Foto van maaltijd maken"
-    }
+    },
+    "labelReadOnDevice": "Etiket gelezen op deze iPhone",
+    "labelReadByServer": "Etiket gelezen door de server-AI",
+    "retryWithServer": "Opnieuw lezen met de server-AI",
+    "retryOnDevice": "Opnieuw lezen op deze iPhone"
   },
   "cycleToday": {
     "menstrualFlow": "Menstruatiebloeding",
@@ -2331,7 +2566,10 @@
     "glycemicIndexMedium": "Gemiddeld",
     "glycemicIndexHigh": "Hoog",
     "glycemicIndexVeryHigh": "Zeer Hoog",
-    "saturatedFatCompact": "Verz. vet"
+    "saturatedFatCompact": "Verz. vet",
+    "caffeine": "Cafeïne",
+    "waterContent": "Watergehalte",
+    "alcohol": "Alcohol"
   },
   "foodNutrition": {
     "hideExtra": "Extra voedingsstoffen verbergen ▴",
@@ -2341,8 +2579,6 @@
     "remaining": "resterend",
     "over": "te veel",
     "title": "Samenvatting",
-    "projectedTdee": "Geprojecteerde TDEE: {{value}} kcal",
-    "goalModeTarget": "Doel van Doelmodus: {{value}} kcal",
     "healthConnectProjectionSource": "Totale calorieën Health Connect",
     "fallbackProjectionSource": "BMR + actieve calorieën als terugval",
     "legacyProjectionSource": "Apparaatprojectie",
@@ -2377,7 +2613,6 @@
     "servingSize": "Portiegrootte",
     "servingUnit": "Portie-eenheid",
     "autoScaleNutrition": "Voedingswaarde Automatisch Schalen",
-    "caloriesRequired": "Calorieën (kcal) *",
     "ai": {
       "couldNotEstimate": "Kon niet schatten",
       "noTrustedDefault": "Dit voedingsmiddel heeft geen vertrouwde standaard om vanuit te schalen.",
@@ -2558,7 +2793,8 @@
     "iosAuthMethods": "Face ID, Touch ID, of de pincode van uw apparaat",
     "androidAuthMethods": "uw vingerafdruk, gezichtsherkenning, of de pincode van uw apparaat",
     "iosNameExample": "Mijn iPhone",
-    "androidNameExample": "Mijn Android-telefoon"
+    "androidNameExample": "Mijn Android-telefoon",
+    "disabledHint": "Aanmelden met passkey is uitgeschakeld op deze server."
   },
   "whatsNewPage": {
     "title": "Wat is er Nieuw",
@@ -2792,7 +3028,39 @@
         "name": "Diepe ketose",
         "description": "Een fase die vaak samengaat met verhoogde autofagie"
       }
-    }
+    },
+    "tabs": {
+      "fasting": "Vasten",
+      "history": "Geschiedenis"
+    },
+    "startedAt": "Gestart {{time}}",
+    "targetAt": "Doel {{time}}",
+    "closesAt": "Sluit {{time}}",
+    "eatingBands": {
+      "open": {
+        "name": "Venster Open",
+        "shortName": "Open"
+      },
+      "fuel": {
+        "name": "Optimale Brandstof",
+        "shortName": "Brandstof"
+      },
+      "sustain": {
+        "name": "Midden van Venster",
+        "shortName": "Volhouden"
+      },
+      "closing": {
+        "name": "Venster Sluit",
+        "shortName": "Sluit"
+      }
+    },
+    "metabolicState": "Metabolische Toestand",
+    "eatingWindowOpen": "Eetvenster Open",
+    "remainingInEatingWindow": "Resterend in uw eetvenster",
+    "eatingWindowHint": "Het vasten wordt automatisch hervat nadat uw eetvenster sluit.",
+    "startFastEarly": "Nu Beginnen met Vasten",
+    "eatingWindowOpened": "Venster geopend",
+    "eatingWindowCloses": "Venster sluit"
   },
   "exerciseDetail": {
     "sharedPublicly": "Oefening openbaar gedeeld",
@@ -2812,7 +3080,6 @@
     "showMore": "Meer tonen",
     "best": "Beste ({{unit}})",
     "last": "Laatste ({{unit}})",
-    "caloriesPerHour": "Cal / uur",
     "equipment": "Apparatuur",
     "primaryMuscles": "Primaire spieren",
     "secondaryMuscles": "Secundaire spieren",
@@ -2828,7 +3095,11 @@
     "deleting": "Verwijderen...",
     "deleteExercise": "Oefening Verwijderen",
     "makePrivate": "Privé maken",
-    "shareWithPublic": "Delen met publiek"
+    "shareWithPublic": "Delen met publiek",
+    "duplicate": "Oefening dupliceren",
+    "viewImages": "Afbeeldingen op volledig scherm bekijken",
+    "duplicateName": "{{name}} (kopie)",
+    "deleteSheetTitle": "Oefening verwijderen"
   },
   "mealTypeSettings": {
     "reorder": "{{name}} herschikken",
@@ -2864,8 +3135,6 @@
     "makePrivate": "Privé maken",
     "shareWithPublic": "Delen met publiek",
     "editMeal": "Maaltijd bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om maaltijddetails te bekijken.",
     "loading": "Maaltijd laden...",
     "loadFailed": "Laden van maaltijd mislukt",
     "perServing": "Per portie",
@@ -2879,7 +3148,6 @@
     "protein": "eiwit",
     "carbs": "koolhydraten",
     "fat": "vet",
-    "calories": "kcal",
     "viewLinkedMeal": "Gekoppelde maaltijd {{name}} bekijken",
     "logMeal": "Maaltijd Registreren",
     "deleting": "Verwijderen...",
@@ -2956,7 +3224,8 @@
     "title": "Oefeningen",
     "tabs": {
       "search": "Zoeken",
-      "online": "Online"
+      "online": "Online",
+      "suggested": "Voorgesteld"
     },
     "sections": {
       "recent": "Recent",
@@ -3001,6 +3270,30 @@
     "accessibility": {
       "provider": "Oefeningprovider {{provider}}",
       "loadingMore": "Meer oefeningen laden"
+    },
+    "replaceTitle": "Oefening Vervangen",
+    "alternatives": {
+      "heading": "In plaats van {{name}}",
+      "modes": {
+        "similar": "Vergelijkbaar",
+        "differentEquipment": "Andere apparatuur"
+      },
+      "reasons": {
+        "sameMuscles": "Dezelfde spieren",
+        "sharesMuscle": "Vergelijkbare spieren",
+        "sameEquipment": "Dezelfde apparatuur",
+        "differentEquipment": "Andere apparatuur",
+        "sameMovement": "Dezelfde beweging",
+        "recent": "Onlangs gedaan",
+        "inLibrary": "In uw bibliotheek"
+      },
+      "newBadge": "Nieuw",
+      "searchAll": "Alle oefeningen doorzoeken",
+      "failed": "Alternatieven konden niet worden geladen",
+      "noMuscles": "Geen spieren vastgelegd voor {{name}}",
+      "noMusclesHint": "Voeg de primaire spieren toe in de oefenbibliotheek om suggesties te krijgen.",
+      "empty": "Geen alternatieven gevonden",
+      "catalogUnavailable": "Free Exercise DB is niet beschikbaar, daarom wordt alleen uw bibliotheek getoond."
     }
   },
   "foodSearch": {
@@ -3075,12 +3368,22 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "cal",
       "foods": "voedingsmiddelen",
       "meals": "maaltijden",
       "meal": "Maaltijd",
       "itemCount_one": "{{count}} item",
       "itemCount_other": "{{count}} items"
+    },
+    "multiSelect": {
+      "select": "Selecteren",
+      "cancel": "Annuleren",
+      "clear": "Wissen",
+      "review": "Controleren",
+      "selectAll": "Alles selecteren",
+      "selected_one": "{{count}} geselecteerd",
+      "selected_other": "",
+      "limitReached": "U kunt maximaal {{limit}} voedingsmiddelen selecteren",
+      "foodCheckbox": "{{name}} selecteren"
     }
   },
   "editBarcode": {
@@ -3123,7 +3426,9 @@
       "exercise_other": "Oefeningen",
       "sets": "Sets",
       "volume": "Volume",
-      "calories": "Calorieën"
+      "calories": "Calorieën",
+      "avgHeartRate": "Gem. HR",
+      "maxHeartRate": "Max. HR"
     },
     "errors": {
       "needsExercise": "Training heeft een oefening nodig",
@@ -3133,7 +3438,8 @@
     "labels": {
       "details": "Details",
       "name": "Naam",
-      "notes": "Notities"
+      "notes": "Notities",
+      "location": "Sportschool / Locatie"
     },
     "placeholders": {
       "workoutName": "Naam van de Training",
@@ -3223,7 +3529,9 @@
       "sets": "Sets",
       "calories": "Calorieën",
       "distance": "Afstand",
-      "averageRpe": "Gemiddelde RPE"
+      "averageRpe": "Gemiddelde RPE",
+      "avgHeartRate": "Gem. HR",
+      "maxHeartRate": "Max. HR"
     },
     "labels": {
       "todayAt": " · Vandaag om ",
@@ -3267,6 +3575,9 @@
     "sections": {
       "exercises": "Oefeningen",
       "volume": "Volume"
+    },
+    "units": {
+      "bpm": "bpm"
     }
   },
   "createFood": {
@@ -3306,8 +3617,6 @@
     "makePrivate": "Privé maken",
     "sharePublic": "Delen met publiek",
     "editFood": "Voedingsmiddel bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om voedingsdetails te bekijken.",
     "serving": "Portie",
     "selectServing": "Selecteer Portie",
     "servingOptions": "Portieopties",
@@ -3316,7 +3625,8 @@
     "barcode": "Streepjescode",
     "logFood": "Voeding Registreren",
     "deleteFood": "Voedingsmiddel Verwijderen",
-    "notes": "Notities"
+    "notes": "Notities",
+    "deleteSheetTitle": "Voedingsmiddel verwijderen"
   },
   "foodEntryView": {
     "saveChanges": "Wijzigingen aan voedingsregistratie opslaan",
@@ -3388,7 +3698,16 @@
       "nameRequired": "Voer een naam voor deze voorinstelling in.",
       "addExercise": "Voeg een oefening toe",
       "addExerciseSet": "Voeg minstens één oefening met een set toe voordat u opslaat."
-    }
+    },
+    "formatInterval": "Interval / HIIT",
+    "formatTabata": "Tabata",
+    "formatEmom": "EMOM",
+    "formatAmrap": "AMRAP",
+    "formatForTime": "Op Tijd",
+    "format": "Formaat",
+    "formatStandard": "Standaard",
+    "timeCapMinutes": "Tijdslimiet (minuten)",
+    "timeCapPlaceholder": "bijv. 20"
   },
   "logScreen": {
     "title": "Logboek",
@@ -3480,7 +3799,10 @@
       "goals": "Doelen",
       "lookedUp": "{{name}} opgezocht"
     },
-    "typing": "Sparky is aan het typen"
+    "typing": "Sparky is aan het typen",
+    "voice": {
+      "stop": "Stop dicteren"
+    }
   },
   "foodImagePicker": {
     "photos": "Foto's",
@@ -3558,7 +3880,21 @@
       "deleteActivityTitle": "Activiteit Verwijderen?",
       "deleteActivityMessage": "Deze activiteit wordt permanent verwijderd.",
       "deleteExerciseTitle": "Oefening Verwijderen?",
-      "deleteExerciseMessage": "Deze oefening wordt verwijderd uit uw bibliotheek. Eerder geregistreerde sessies blijven behouden."
+      "deleteExerciseMessage": "Deze oefening wordt verwijderd uit uw bibliotheek. Eerder geregistreerde sessies blijven behouden.",
+      "deleteWithHistoryTitle": "Ook trainingen verwijderen?",
+      "deleteWithHistoryMessage": "Hiermee verwijdert u ook definitief uw geregistreerde trainingen voor deze oefening. Dit kan niet ongedaan worden gemaakt."
+    },
+    "hidden": {
+      "title": "Oefening verborgen",
+      "usedByOthers": "Hij wordt door andere mensen gebruikt, dus hij is verborgen in plaats van verwijderd. Hun geschiedenis blijft ongewijzigd."
+    },
+    "options": {
+      "hide": "Verbergen uit zoekresultaten",
+      "hideDescription": "Laat alles zoals het is. De oefening verschijnt alleen niet meer als u zoekt.",
+      "delete": "Verwijderen",
+      "deleteDescription": "Verwijdert de oefening uit uw bibliotheek, presets en schema's. Uw geregistreerde trainingen blijven behouden.",
+      "deleteWithHistory": "Verwijderen inclusief geschiedenis",
+      "deleteWithHistoryDescription": "Verwijdert ook definitief uw geregistreerde trainingen voor deze oefening."
     }
   },
   "foodPhotoEstimate": {
@@ -3608,11 +3944,8 @@
       "count_one": "{{count}} ingrediënt",
       "count_other": "{{count}} ingrediënten",
       "totals": "Totaal",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}E · {{carbs}}K · {{fat}}V",
       "addFood": "Voeding Toevoegen",
       "addedFood": "Voedingsmiddel",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Toegevoegd vanuit uw voedingsmiddelen. Verwijder het en voeg het opnieuw toe om de hoeveelheid te wijzigen."
     },
     "match": {
@@ -3674,7 +4007,6 @@
       "activity": "Activiteit",
       "duration": "Duur (min)",
       "distance": "Afstand ({{unit}})",
-      "calories": "Calorieën",
       "avgHeartRate": "Gem. Hartslag (bpm)",
       "notes": "Notities",
       "notesPlaceholder": "Optionele notities..."
@@ -3706,8 +4038,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Geen server geconfigureerd",
-      "noServerHint": "Configureer uw serververbinding in Instellingen om maaltijdvoedingswaarde te bekijken.",
       "loading": "Maaltijd laden…",
       "loadFailed": "Laden van maaltijd mislukt",
       "noFoods": "Geen {{meal}}-voedingsmiddelen",
@@ -3719,8 +4049,7 @@
     "accessibility": {
       "addFood": "Voeding Toevoegen",
       "copyMeal": "Maaltijd kopiëren naar andere dag"
-    },
-    "targetCalories": "Doel: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "{{nutrient}}-trends",
@@ -3922,7 +4251,8 @@
       "scoop": "schep",
       "bar": "reep",
       "stick": "stok",
-      "whole": "geheel"
+      "whole": "geheel",
+      "flOz": "fl oz"
     },
     "confidence": {
       "high": "Hoog",
@@ -4005,16 +4335,28 @@
       "empty": "Geen slaapgegevens voor deze periode",
       "avgTimeInBed": "Gem. tijd in bed",
       "avgTimeAsleep": "Gem. tijd geslapen",
-      "rangeLabel": "{{startDate}} – {{endDate}}"
+      "tooltip": "{{timeInBed}} in bed · {{timeAsleep}} geslapen"
     },
-    "allTrendsHidden": "Alle grafieken zijn verborgen. Kies welke u wilt tonen in Dashboardinstellingen."
+    "allTrendsHidden": "Alle grafieken zijn verborgen. Kies welke u wilt tonen in Dashboardinstellingen.",
+    "hydration": {
+      "title": "Hydratatie",
+      "loadFailed": "Hydratatiegegevens konden niet worden geladen",
+      "empty": "Geen hydratatiegegevens voor deze periode",
+      "tooltip": "{{formattedVolume}} {{unit}} · {{date}}"
+    },
+    "calories": {
+      "title": "Calorieën",
+      "loadFailed": "Caloriegegevens konden niet worden geladen",
+      "empty": "Geen caloriegegevens voor deze periode",
+      "tooltipMacro": "{{percent}}% {{macroLabel}}",
+      "otherMacro": "Overig",
+      "avgCalories": "Gem.",
+      "noAverage": "—"
+    }
   },
   "exerciseLibrary": {
     "title": "Oefeningen",
     "search": "Oefeningen zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw oefeningbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Oefeningen laden...",
     "failed": "Laden van oefeningen mislukt",
     "retry": "Opnieuw proberen",
@@ -4030,9 +4372,6 @@
   "foodLibrary": {
     "title": "Voedingsmiddelen",
     "search": "Voeding zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw voedingsbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Voedingsmiddelen laden...",
     "failed": "Laden van voedingsmiddelen mislukt",
     "retry": "Opnieuw proberen",
@@ -4047,9 +4386,6 @@
   "mealLibrary": {
     "title": "Maaltijden",
     "search": "Maaltijden zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw maaltijdbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Maaltijden laden...",
     "failed": "Laden van maaltijden mislukt",
     "searchFailed": "Zoeken naar maaltijden mislukt",
@@ -4064,9 +4400,7 @@
   "presetLibrary": {
     "title": "Trainingsvoorinstellingen",
     "search": "Trainingsvoorinstellingen zoeken...",
-    "noServer": "Geen server geconfigureerd",
     "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Trainingsvoorinstellingen laden...",
     "failed": "Laden van trainingsvoorinstellingen mislukt",
     "retry": "Opnieuw proberen",
@@ -4120,7 +4454,10 @@
     "heartRateZoneModerate": "Gematigd",
     "heartRateZoneIntense": "Intensief",
     "heartRateZonePeak": "Piek",
-    "durationMinutesSeconds": "{{minutes}}m {{seconds}}s"
+    "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+    "wodScoreFormat": "{{format}}-Score",
+    "timeCap": "Tijdslimiet",
+    "scalingNotes": "Schaalnotities"
   },
   "copyMeal": {
     "title": "Maaltijd kopiëren: {{meal}}",
@@ -4209,7 +4546,21 @@
   "foodDelete": {
     "failed": "Verwijderen van voedingsmiddel mislukt",
     "title": "Voedingsmiddel Verwijderen",
-    "message": "Weet u zeker dat u dit voedingsmiddel wilt verwijderen? Bestaande geregistreerde vermeldingen blijven ongewijzigd."
+    "message": "Weet u zeker dat u dit voedingsmiddel wilt verwijderen? Bestaande geregistreerde vermeldingen blijven ongewijzigd.",
+    "hidden": {
+      "title": "Voedingsmiddel verborgen",
+      "usedByOthers": "Het wordt door andere mensen gebruikt, dus het is verborgen in plaats van verwijderd. Hun geschiedenis blijft ongewijzigd."
+    },
+    "confirmWithHistoryTitle": "Ook registraties verwijderen?",
+    "confirmWithHistoryMessage": "Hiermee verwijdert u ook definitief uw geregistreerde dagboekregistraties voor dit voedingsmiddel. Dit kan niet ongedaan worden gemaakt.",
+    "options": {
+      "hide": "Verbergen uit zoekresultaten",
+      "hideDescription": "Laat alles zoals het is. Het voedingsmiddel verschijnt alleen niet meer als u zoekt.",
+      "delete": "Verwijderen",
+      "deleteDescription": "Verwijdert het uit uw bibliotheek, maaltijden en maaltijdplannen. Uw geregistreerde items blijven behouden.",
+      "deleteWithHistory": "Verwijderen inclusief geschiedenis",
+      "deleteWithHistoryDescription": "Verwijdert ook definitief uw geregistreerde dagboekregistraties voor dit voedingsmiddel."
+    }
   },
   "exerciseEditing": {
     "removeTitle": "Oefening Verwijderen?",
@@ -4250,7 +4601,147 @@
   },
   "symptoms": {
     "saveFailed": "Opslaan van symptoom mislukt",
-    "removeFailed": "Verwijderen van symptoom mislukt"
+    "removeFailed": "Verwijderen van symptoom mislukt",
+    "severity": {
+      "mild": "Mild",
+      "moderate": "Matig",
+      "severe": "Ernstig",
+      "unset": "Niet ingesteld",
+      "none": "Geen",
+      "substantial": "Aanzienlijk",
+      "unbearable": "Ondraaglijk"
+    },
+    "categories": {
+      "general": "Algemeen",
+      "pain": "Pijn",
+      "skin": "Huid",
+      "other": "Overig",
+      "head": "Hoofdpijn / Hoofd",
+      "gi": "Maag-darm / Spijsvertering",
+      "respiratory": "Ademhaling",
+      "mental": "Mentaal"
+    },
+    "title": "Symptomen",
+    "history": "Geschiedenis",
+    "historyTitle": "Symptoomgeschiedenis",
+    "logTitle": "Symptoom Registreren",
+    "editTitle": "Symptoom Bewerken",
+    "manageTitle": "Symptomen Beheren",
+    "newDefinitionTitle": "Nieuw Symptoomtype",
+    "editDefinitionTitle": "Symptoomtype Bewerken",
+    "symptom": "Symptoom",
+    "orCustomName": "Of typ een eigen symptoom...",
+    "ongoingEpisode": "Bijhouden als lopende episode",
+    "startedWhen": "Begonnen wanneer:",
+    "endEpisodeNow": "Episode Nu Beëindigen",
+    "severityTitle": "Ernst",
+    "location": "Locatie",
+    "qualities": "Pijnkenmerken",
+    "associated": "Bijkomende Symptomen / Aura",
+    "triggers": "Triggers",
+    "treatments": "Behandelingen & Verlichting",
+    "impact": "Impact op de Dag",
+    "notes": "Notities & Observaties",
+    "notesPlaceholder": "Eventuele aanvullende notities of observaties...",
+    "logSymptom": "Symptoom Registreren",
+    "logAnother": "Nog een symptoom registreren",
+    "logShort": "+ Registreren",
+    "activeEpisode": "Actieve Episode",
+    "noneToday": "Vandaag geen",
+    "anySymptomsQuestion": "Hebt u vandaag symptomen of pijn gehad?",
+    "markedSymptomFreeToday": "Vandaag als symptoomvrij gemarkeerd",
+    "noSymptomsTodayPrompt": "Vandaag geen symptomen?",
+    "markFree": "Markeer Vrij",
+    "noSymptomsLoggedToday": "Vandaag geen symptomen geregistreerd",
+    "sparkline7d": "Trend over 7 Dagen",
+    "freeDaysShort": "vrije dagen",
+    "insights30d": "Inzichten over 30 Dagen",
+    "topTriggers": "Belangrijkste Triggers",
+    "effectiveRelief": "Effectieve Verlichting",
+    "countTimes": "({{times}}x)",
+    "noneRecorded": "Niets geregistreerd",
+    "activeOngoing": "Actieve Lopende Episodes",
+    "noHistory": "Geen symptoomregistraties gevonden",
+    "noHistoryDesc": "Registraties en eerdere episodes van de afgelopen 30 dagen worden hier getoond.",
+    "yourCustomSymptoms": "Uw Eigen Symptomen",
+    "noCustomSymptoms": "Nog geen eigen symptomen aangemaakt.",
+    "createFirst": "+ Eigen Symptoom Aanmaken",
+    "builtInTemplates": "Standaardsjablonen",
+    "namePlaceholder": "bijv. Migraine, knieklachten, zure reflux",
+    "templates": {
+      "generic": "Algemeen",
+      "headache": "Hoofdpijn / Migraine",
+      "pain": "Lichaamspijn",
+      "gi": "Maag-darm / Spijsvertering",
+      "respiratory": "Ademhaling",
+      "skin": "Huiduitslag",
+      "mental": "Mentale Gezondheid"
+    },
+    "scales": {
+      "oneToTen": "Schaal van 1 - 10",
+      "oneToFive": "Schaal van 1 - 5",
+      "noneToSevere": "Geen - Ernstig (5 niveaus)",
+      "count": "Aantal / Frequentie",
+      "text": "Alleen Tekst / Notities"
+    },
+    "impacts": {
+      "none": "Geen",
+      "mild": "Mild",
+      "moderate": "Matig",
+      "severe": "Ernstig"
+    },
+    "timing": {
+      "now": "Nu",
+      "m15": "-15 min",
+      "h1": "-1 u",
+      "h3": "-3 u",
+      "started": "Begonnen",
+      "episode": "Episode"
+    },
+    "name": "Symptoomnaam",
+    "nameRequired": "Voer een naam voor het symptoom in.",
+    "template": "Sjabloon (vooraf ingestelde secties)",
+    "category": "Categorie",
+    "scaleType": "Ernstschaal",
+    "isEpisodic": "Episodes op basis van duur",
+    "isEpisodicDesc": "Houdt starttijd, banner voor lopende episode en totale duur bij",
+    "isPinned": "Bovenaan de lijst vastzetten",
+    "isPinnedDesc": "Wordt als eerste getoond bij de snelle registratiechips",
+    "deleteTitle": "Symptoomregistratie Verwijderen",
+    "deleteConfirm": "Weet u zeker dat u deze registratie wilt verwijderen?",
+    "mapPerspective": "Links en rechts komen overeen met uw lichaam",
+    "addTreatmentPlaceholder": "Voeg medicijn of verlichtingsmethode toe...",
+    "updateFailed": "De symptoomregistratie kon niet worden bijgewerkt",
+    "endFailed": "De episode kon niet worden beëindigd",
+    "saveDefinitionFailed": "Het symptoom kon niet worden opgeslagen",
+    "saveOptionFailed": "De optie kon niet worden opgeslagen",
+    "severityFailed": "De ernst kon niet worden bijgewerkt",
+    "freeFailed": "De symptoomvrije status kon niet worden bijgewerkt",
+    "photoFailed": "De foto kon niet worden geüpload",
+    "views": {
+      "front": "Voorkant",
+      "back": "Achterkant"
+    },
+    "effectiveness": {
+      "helped": "Geholpen",
+      "partly": "Gedeeltelijk",
+      "didntHelp": "Niet geholpen",
+      "unknown": "Onzeker"
+    },
+    "kinds": {
+      "relief": "Verlichting / Zonder Medicatie",
+      "medication": "Medicatie"
+    },
+    "actions": {
+      "endNow": "Nu beëindigen",
+      "stillOngoing": "Nog bezig"
+    },
+    "notification": {
+      "dailyTitle": "Symptoomcheck-in",
+      "dailyBody": "Hoe voelt u zich vandaag? Tik om eventuele symptomen te registreren.",
+      "nudgeTitle": "Episode nog actief?",
+      "nudgeBody": "{{name}} loopt al {{hours}} uur. Is het nog bezig of afgelopen?"
+    }
   },
   "waterIntake": {
     "updateFailed": "Fout",
@@ -4258,7 +4749,10 @@
     "noPrimary": "Geen Primaire Container",
     "noContainers": "Geen Watercontainers",
     "multipleNoPrimary": "U heeft meerdere watercontainers, maar geen daarvan is als primair ingesteld. Stel er een in als primair op de server.",
-    "configure": "Configureer een watercontainer op de server om hydratatie bij te houden."
+    "configure": "Configureer een watercontainer op de server om hydratatie bij te houden.",
+    "multipleNoPrimaryMobile": "U hebt meerdere watercontainers, maar geen enkele is als primair gemarkeerd. Tik om er een te kiezen.",
+    "configureMobile": "Voeg een watercontainer toe om hydratatie bij te houden.",
+    "defaultContainer": "Standaard"
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Training niet opgeslagen",
@@ -4656,9 +5150,6 @@
       "dayCycle_other": "{{count}}-daagse cyclus"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken."
-  },
   "time": {
     "hoursShort": "u",
     "minutesShort": "m"
@@ -4684,7 +5175,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",
@@ -4732,9 +5222,6 @@
     "deleteMessage": "{{name}} verwijderen? Toekomstige dagboekregistraties die door dit plan zijn gegenereerd, worden verwijderd.",
     "deleteFailed": "Verwijderen van maaltijdplan mislukt",
     "deleteSuccess": "Maaltijdplan verwijderd",
-    "noServer": "Geen server geconfigureerd",
-    "noServerSubtitle": "Configureer uw serververbinding om maaltijdplannen te beheren.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Maaltijdplannen laden...",
     "loadFailed": "Laden van maaltijdplannen mislukt",
     "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
@@ -4793,11 +5280,8 @@
     "proteinLabel": "Eiwit",
     "carbsLabel": "Koolhydraten",
     "fatLabel": "Vet",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g E · {{carbs}} g K · {{fat}} g V",
     "dailyNutritionAccessibility": "Dagelijks {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "Totaal {{mealType}}: {{calories}} kcal, {{protein}} g eiwit, {{carbs}} g koolhydraten, {{fat}} g vet",
     "mealTypeMacros": "{{protein}} g E · {{carbs}} g K · {{fat}} g V",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Ontbrekende voedingsdetails laden. Totalen kunnen onvolledig zijn.",
     "nutritionLoadFailed": "Sommige voedingsdetails konden niet worden geladen. Totalen kunnen onvolledig zijn.",
     "assignmentRequired": "Voeg minstens één volledige maaltijdtoewijzing toe.",
@@ -4885,15 +5369,12 @@
   },
   "healthTrendsSettings": {
     "description": "Sleep een grafiek aan de hendel om deze te herschikken. Zet hem onder de lijn Verborgen om hem van het Dashboard te halen.",
-    "hiddenLabel": "Verborgen",
     "reorder": "{{name}} herschikken",
     "reorderHint": "Verplaats onder de lijn Verborgen om deze grafiek te verbergen, of erboven om hem te tonen",
     "moveUp": "Omhoog verplaatsen",
     "moveDown": "Omlaag verplaatsen",
     "stateShown": "Getoond",
-    "stateHidden": "Verborgen",
-    "emptyShown": "Er worden geen grafieken getoond. Sleep er een boven de lijn om hem terug te zetten.",
-    "emptyHidden": "Sleep hier een grafiek naartoe om deze te verbergen."
+    "stateHidden": "Verborgen"
   },
   "progressPhotos": {
     "card": {
@@ -4967,5 +5448,527 @@
     "rangeA11y": "Kies hoe ver terug u wilt afspelen",
     "deltaBadge": "Δ {{value}}",
     "frameCountRanged": "{{current}} van {{total}} · {{range}}"
+  },
+  "mindfulness": {
+    "timer": {
+      "title": "Meditatietimer",
+      "resume": "Hervatten",
+      "pause": "Pauzeren",
+      "countdownSubtitle": "Getimede meditatiesessie",
+      "stopwatchSubtitle": "Open contemplatiesessie",
+      "countdown": "Aftellen",
+      "openStopwatch": "Open Stopwatch",
+      "meditating": "Mediteren...",
+      "peaceful": "Zoek een comfortabele zit",
+      "start": "Begin Meditatie",
+      "finishAndSave": "Afronden & Opslaan"
+    },
+    "actions": {
+      "breathe": "Ademen",
+      "timer": "Timer",
+      "log": "Registreren"
+    },
+    "types": {
+      "meditation": "Meditatie",
+      "breathwork": "Ademwerk",
+      "reflection": "Reflectie",
+      "walking": "Mindful Wandelen",
+      "yoga": "Yoga",
+      "other": "Overig",
+      "guided": "Begeleid",
+      "unguided": "Onbegeleid"
+    },
+    "card": {
+      "title": "Mindfulness",
+      "sessionCount_one": "{{count}} sessies",
+      "sessionCount_other": "",
+      "todayTotal": "vandaag",
+      "minuteUnit": "min",
+      "bpmUnit": "bpm",
+      "msUnit": "ms",
+      "details": "Details",
+      "openDetails": "Mindfulnessdetails openen",
+      "noSessions": "Vandaag geen sessies",
+      "readyPrompt": "Klaar om te oefenen",
+      "latestAt": "Laatste om",
+      "latestSession": "Laatste",
+      "tapToPractice": "Neem een mindful pauze · Ademhaling & timer in Details"
+    },
+    "tools": {
+      "title": "Interactieve Oefening",
+      "breatheTitle": "Gestuurde Ademhaling",
+      "breatheSubtitle": "Box-, 4-7-8- en coherentieprotocollen",
+      "timerTitle": "Meditatietimer",
+      "timerSubtitle": "Getimed aftellen & open stopwatch",
+      "startAction": "Starten"
+    },
+    "detail": {
+      "title": "Mindfulness",
+      "practiceTab": "Oefenen & Registreren",
+      "historyTab": "Geschiedenis",
+      "historyHint": "Tik op bewerken of verwijderen om uw sessies te beheren",
+      "noHistory": "Nog geen mindfulnesssessies",
+      "noHistorySubtitle": "Voltooi een ademhalings- of meditatiesessie om het bijhouden te starten",
+      "logTitle": "Mindful Sessie Registreren",
+      "saveSession": "Mindful Sessie Opslaan",
+      "updateSession": "Mindful Sessie Bijwerken",
+      "sessionSaved": "Sessie succesvol opgeslagen",
+      "sessionDeleted": "Sessie verwijderd",
+      "deletePrompt": "Mindful Sessie Verwijderen",
+      "deleteConfirm": "Weet u zeker dat u deze sessie wilt verwijderen?"
+    },
+    "modal": {
+      "addTitle": "Mindful Sessie Registreren",
+      "editTitle": "Mindful Sessie Bewerken",
+      "type": "Sessietype",
+      "durationMinutes": "Duur (minuten)",
+      "durationMinutesAccessibility": "Duur in minuten",
+      "minutes": "Minuten",
+      "seconds": "Seconden",
+      "durationSecondsAccessibility": "Duur in seconden",
+      "vitalsHeader": "Hartslag & HRV (Optioneel)",
+      "avgHr": "Gem. HR (bpm)",
+      "avgHrAccessibility": "Gemiddelde hartslag",
+      "hrv": "HRV (ms)",
+      "hrvAccessibility": "HRV RMSSD",
+      "startHr": "Start-HR",
+      "startHrAccessibility": "Starthartslag",
+      "endHr": "Eind-HR",
+      "endHrAccessibility": "Eindhartslag",
+      "notes": "Notities (Optioneel)",
+      "notesAccessibility": "Notities",
+      "notesPlaceholder": "Hoe was uw oefening?"
+    },
+    "fields": {
+      "durationMinutes": "Duur (min)",
+      "sessionType": "Type",
+      "notes": "Notities",
+      "heartRateAvg": "Gem. Hartslag (bpm)",
+      "heartRateStart": "Starthartslag (bpm)",
+      "heartRateEnd": "Eindhartslag (bpm)",
+      "hrvRmssd": "HRV RMSSD (ms)"
+    },
+    "breathwork": {
+      "title": "Ademwerk",
+      "boxDescription": "4-4-4-4 • Focus & Kalmte",
+      "relaxDescription": "Diepe kalmte & slaapvoorbereiding",
+      "coherenceDescription": "5-5 • Balans & hartslagdaling",
+      "ready": "Klaar",
+      "inhale": "Inademen",
+      "hold": "Vasthouden",
+      "exhale": "Uitademen",
+      "time": "Tijd",
+      "cycles": "Cycli",
+      "start": "Begin met Ademen",
+      "pause": "Pauzeren",
+      "resume": "Hervatten",
+      "finishAndSave": "Afronden & Opslaan"
+    }
+  },
+  "muscles": {
+    "abdominals": "Buikspieren",
+    "abductors": "Abductoren",
+    "adductors": "Adductoren",
+    "biceps": "Biceps",
+    "calves": "Kuiten",
+    "chest": "Borst",
+    "forearms": "Onderarmen",
+    "glutes": "Bilspieren",
+    "hamstrings": "Hamstrings",
+    "lats": "Lats",
+    "lower back": "Onderrug",
+    "middle back": "Middenrug",
+    "neck": "Nek",
+    "quadriceps": "Quadriceps",
+    "shoulders": "Schouders",
+    "traps": "Trapezius",
+    "triceps": "Triceps"
+  },
+  "equipment": {
+    "barbell": "Halterstang",
+    "dumbbell": "Dumbbell",
+    "kettlebells": "Kettlebells",
+    "cable": "Kabel",
+    "machine": "Machine",
+    "bands": "Weerstandsbanden",
+    "body only": "Alleen Lichaamsgewicht",
+    "medicine ball": "Medicijnbal",
+    "exercise ball": "Gymbal",
+    "foam roll": "Foamroller",
+    "e-z curl bar": "E-Z Curlstang",
+    "other": "Overig"
+  },
+  "interval": {
+    "countdown": "Maak U Klaar",
+    "extraReps": "Extra Herhalingen",
+    "pause": "Pauzeren",
+    "ready": "Klaar",
+    "rest": "Rust",
+    "resume": "Hervatten",
+    "round": "Ronde {{current}}",
+    "roundOfTotal": "Ronde {{current}} van {{total}}",
+    "rx": "Rx",
+    "scaled": "Aangepast",
+    "timeCapLabel": "Limiet: {{cap}}",
+    "wodScoring": "WOD-Score",
+    "work": "Training",
+    "finished": "Voltooid",
+    "roundPlusOne": "+1 Ronde ({{current}})",
+    "timeCap": "Tijdslimiet",
+    "wodScore": "WOD-Score",
+    "amrapScore": "{{rounds}} rondes + {{reps}} herhalingen",
+    "completed": "Voltooid",
+    "roundsCompleted": "{{rounds}} rondes voltooid"
+  },
+  "guidedWorkout": {
+    "cue": {
+      "getReady": "Maak u klaar. {{name}} begint.",
+      "setStartReps_one": "{{name}}. {{count}} herhalingen.",
+      "setStartReps_other": "",
+      "setStartSeconds_one": "{{name}}. {{count}} seconden.",
+      "setStartSeconds_other": "",
+      "setStartOpen": "{{name}}.",
+      "halfway": "Halverwege.",
+      "rest_one": "Rust. {{count}} seconden.",
+      "rest_other": "",
+      "intervalRest": "Rust.",
+      "nextUp": "Hierna: {{name}}.",
+      "workoutComplete": "Training voltooid."
+    },
+    "card": {
+      "badge": "GEGIDST",
+      "getReady": "Maak u klaar",
+      "setOfTotal": "Set {{current}} van {{total}}",
+      "rest": "Rust",
+      "nextUp": "Hierna",
+      "targetReps_one": "{{count}} herhalingen",
+      "targetReps_other": "",
+      "targetSeconds_one": "{{count}} seconden",
+      "targetSeconds_other": "",
+      "paused": "Gepauzeerd",
+      "pause": "Pauzeren",
+      "resume": "Hervatten",
+      "mute": "Stem dempen",
+      "unmute": "Stem inschakelen",
+      "replay": "Instructies opnieuw afspelen",
+      "doneNext": "KLAAR — VOLGENDE",
+      "doneHintReps_one": "Tik wanneer u {{count}} herhalingen hebt gedaan",
+      "doneHintReps_other": "",
+      "doneHint": "Tik wanneer u klaar bent",
+      "done": "Alle sets gedaan. Beëindig de training om hem op te slaan."
+    },
+    "settings": {
+      "section": "Gegidste trainingen",
+      "enabled": "Gegidste modus",
+      "voice": "Stem",
+      "rate": "Spreeksnelheid",
+      "rateValue": "{{rate}}×",
+      "countdown": "Aftellen om klaar te staan",
+      "countdownSubtitle": "Voor de eerste oefening en vóór elke getimede set.",
+      "countdownValue_one": "{{count}} s",
+      "countdownValue_other": "",
+      "sample": "Zo klinken uw gegidste trainingen.",
+      "test": "Stem testen",
+      "enabledSubtitle": "Noemt elke oefening en het doel, telt u in, laat getimede sets zelf lopen en gaat door naar de volgende set. Aanwijzingen klinken ook als de telefoon op stil staat en het scherm blijft aan tijdens de training."
+    }
+  },
+  "workoutFeedback": {
+    "title": "Hoe voelde het?",
+    "subtitle": "Uw volgende suggesties worden hierop afgestemd.",
+    "difficulty": {
+      "tooEasy": "Te makkelijk",
+      "justRight": "Precies goed",
+      "tooHard": "Te zwaar"
+    },
+    "painQuestion": "Pijn of ongemak?",
+    "painWhere": "Bij welke oefeningen? (optioneel)",
+    "painNotePlaceholder": "Wat deed pijn? (optioneel)",
+    "painPrivacy": "Suggesties voor deze oefeningen worden lichter, nooit zwaarder.",
+    "rateExercises": "Beoordeel elke oefening",
+    "saving": "Opslaan…",
+    "saved": "Opgeslagen",
+    "saveFailed": "Uw feedback kon niet worden opgeslagen. Tik om het opnieuw te proberen.",
+    "loadFailed": "Uw feedback kon niet worden geladen. Tik om het opnieuw te proberen."
+  },
+  "adaptiveCoaching": {
+    "reasons": {
+      "painReported": "Lichter vandaag: u meldde de vorige keer pijn hier.",
+      "painRepeated": "Lichter vandaag: twee sessies achter elkaar pijn hier. Overweeg een alternatief.",
+      "sessionPain": "Gewicht aanhouden: u meldde ongemak tijdens uw laatste training.",
+      "tooHard": "Gewicht aanhouden: de vorige keer voelde te zwaar.",
+      "tooHardRepeated": "Lichter vandaag: twee sessies achter elkaar te zwaar.",
+      "highEffort": "Gewicht aanhouden: uw laatste sets waren bijna maximale inspanning.",
+      "tooEasyRepeated": "Een stapje zwaarder: twee sessies achter elkaar te makkelijk."
+    },
+    "declined": "Uw gebruikelijke suggestie wordt gebruikt.",
+    "variation": "U hebt dit in de meeste recente trainingen gedaan. Een variatie proberen?",
+    "useUsual": "Mijn gebruikelijke gebruiken",
+    "useAdjusted": "Aangepaste suggestie gebruiken",
+    "seeAlternatives": "Alternatieven bekijken"
+  },
+  "foodEntryMultiAdd": {
+    "title": "Controleren",
+    "addingToDate": "Toevoegen aan {{date}}",
+    "labels": {
+      "meal": "Maaltijd",
+      "chooseMeal": "Kies maaltijd"
+    },
+    "pickers": {
+      "selectMeal": "Maaltijd Selecteren",
+      "selectServing": "Portie Selecteren"
+    },
+    "accessibility": {
+      "mealForAll": "Maaltijd voor alle items: {{meal}}",
+      "mealForRow": "Maaltijd voor {{food}}: {{meal}}",
+      "increaseQuantity": "Hoeveelheid verhogen",
+      "decreaseQuantity": "Hoeveelheid verlagen",
+      "changeServing": "Portie wijzigen voor {{name}}"
+    },
+    "actions": {
+      "addAll_one": "Alles toevoegen ({{count}})",
+      "addAll_other": "",
+      "remove": "{{name}} verwijderen",
+      "addAnyway": "Toch toevoegen",
+      "addAnywayFor": "{{name}} toch toevoegen"
+    },
+    "banners": {
+      "unknownOutcome": "Sommige items konden niet worden toegevoegd en staan mogelijk al in uw dagboek"
+    },
+    "errors": {
+      "invalidQuantity": "Voer een hoeveelheid groter dan nul in.",
+      "rowRejected": "Dit item kon niet worden toegevoegd. Controleer het en probeer het opnieuw."
+    },
+    "states": {
+      "empty": "Geen voedingsmiddelen geselecteerd"
+    },
+    "toasts": {
+      "added_one": "{{count}} voedingsmiddelen toegevoegd",
+      "added_other": ""
+    }
+  },
+  "waterContainers": {
+    "title": "Watercontainers",
+    "add": "Container toevoegen",
+    "loading": "Watercontainers laden...",
+    "loadFailed": "Watercontainers konden niet worden geladen",
+    "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
+    "emptyTitle": "Nog geen watercontainers",
+    "emptySubtitle": "Voeg een fles of glas toe om hydratatie bij te houden -- eventueel gekoppeld aan een voedingsmiddel zodat één tik beide registreert.",
+    "linkedTo": "Gekoppeld aan {{food}}",
+    "deleteTitle": "Container verwijderen",
+    "deleteMessage": "{{name}} verwijderen?",
+    "deleteNamed": "{{name}} verwijderen",
+    "deleteSuccess": "Container verwijderd",
+    "deleteFailed": "Container kon niet worden verwijderd",
+    "setPrimaryNamed": "{{name}} als primair instellen",
+    "setPrimaryFailed": "Primaire container kon niet worden ingesteld",
+    "moveUp": "{{name}} omhoog verplaatsen",
+    "moveDown": "{{name}} omlaag verplaatsen",
+    "reorderFailed": "Containers konden niet worden herordend",
+    "presets": "Snel-toevoegpresets",
+    "addPresetFailed": "Drankpreset kon niet worden toegevoegd"
+  },
+  "waterContainerEdit": {
+    "createTitle": "Container toevoegen",
+    "editTitle": "Container bewerken",
+    "loading": "Container laden...",
+    "name": "Naam",
+    "namePlaceholder": "bijv. Mijn waterfles",
+    "volume": "Volume",
+    "unit": "Eenheid",
+    "units": {
+      "ml": "ml",
+      "oz": "oz",
+      "liter": "liter"
+    },
+    "servingsPerContainer": "Porties per container",
+    "primary": "Primaire container",
+    "hydrationFactor": "Hydratatiefactor",
+    "hydrationFactorHint": "Schaalt alleen het bijgeschreven water: 1 voor water, ongeveer 0,9 voor koffie of thee, 0 voor een drank die helemaal niet als water moet tellen. Calorieën, cafeïne en alcohol tellen altijd volledig mee.",
+    "linkedFood": "Gekoppeld voedingsmiddel",
+    "selectFood": "Selecteer een voedingsmiddel (optioneel)",
+    "unlinkFood": "Voedingsmiddel ontkoppelen",
+    "linkedMealType": "Maaltijdtype",
+    "noMealType": "Geen (tijdstip van de dag gebruiken)",
+    "delete": "Container verwijderen",
+    "saveSuccess": "Watercontainer opgeslagen",
+    "saveFailed": "Watercontainer kon niet worden opgeslagen",
+    "errors": {
+      "title": "Controleer het formulier",
+      "nameRequired": "Naam is verplicht.",
+      "volumeInvalid": "Volume moet groter zijn dan nul.",
+      "servingsInvalid": "Porties per container moet minimaal 1 zijn.",
+      "factorInvalid": "Hydratatiefactor moet tussen 0 en 2 liggen.",
+      "foodRequired": "Kies het voedingsmiddel dat deze container bevat.",
+      "quantityInvalid": "Hoeveelheid moet groter zijn dan nul."
+    },
+    "tabWater": "Water",
+    "tabDrink": "Drank (gekoppeld voedingsmiddel)",
+    "quantity": "Hoeveelheid",
+    "hydrationFactorExample": "Bij {{factor}} voegt één druk {{credited}} {{unit}} toe aan uw waterring van de {{total}} {{unit}} van de drank. Calorieën, cafeïne en alcohol tellen altijd volledig mee.",
+    "hydrationFactorApplies": "Geldt voor dranken die vanaf nu worden geregistreerd -- eerdere registraties behouden de factor waarmee ze zijn geregistreerd."
+  },
+  "quickActions": {
+    "scanFood": "Voedingsmiddel scannen",
+    "searchFood": "Voedingsmiddel registreren",
+    "logWater": "Water registreren",
+    "fasting": "Vasten",
+    "waterLogged": "Water geregistreerd",
+    "waterFailed": "Water kon niet worden geregistreerd"
+  },
+  "watchSettings": {
+    "gesturesTitle": "Gebaren",
+    "doubleTapTitle": "Dubbeltik om een set te registreren",
+    "doubleTapSubtitle": "Dubbeltikken op een ondersteunde watch (Series 9, Ultra 2 of nieuwer, watchOS 11) registreert tijdens een training de set op het scherm.",
+    "pagesTitle": "Pagina's",
+    "description": "Sleep een pagina aan de hendel om de volgorde te wijzigen waarin u er op uw watch doorheen veegt. Schakel een pagina uit om hem te verbergen. De trainingspagina verschijnt nog steeds terwijl een training loopt.",
+    "reorder": "{{name}} herschikken",
+    "reorderHint": "Wijzigt waar deze pagina op uw watch staat",
+    "pages": {
+      "goals": "Doelen",
+      "water": "Water",
+      "entry": "Gewichtscheck-in",
+      "trend": "Gewichtstrend",
+      "workout": "Training"
+    },
+    "nutrientsTitle": "Voedingsstoffen op doelenpagina",
+    "nutrientsDescription": "Kies de voedingsstoffen die onder de calorieënring op uw watch worden getoond en sleep om de volgorde in te stellen. Elk toont de hoeveelheid van vandaag ten opzichte van het doel.",
+    "nutrientReorderHint": "Wijzigt waar deze voedingsstof op uw watch staat",
+    "setInputTitle": "Setinvoer",
+    "setInputDescription": "Hoe u gewicht en herhalingen op de watch invoert tijdens een training: typ ze op een toetsenblok, of tik op een waarde en draai aan de Digital Crown of sleep, bij gewicht per 0,5.",
+    "setInputKeypad": "Toetsenblok",
+    "setInputCrown": "Digital Crown"
+  },
+  "caffeine": {
+    "title": "Actieve Cafeïne",
+    "activeNow": "Nu actief",
+    "atBedtime": "Om {{time}}",
+    "lastDose": "Laatste dosis uiterlijk",
+    "cutoffPassed": "Te laat",
+    "cutoffOver": "Boven",
+    "anytimeSafe": "Op elk moment",
+    "crossingNote": "Vanaf {{time}} weer onder {{threshold}} mg",
+    "underThreshold": "Blijft vanavond onder {{threshold}} mg",
+    "estimatedTimes": "Sommige doseringstijden zijn geschat",
+    "legendCurve": "Actieve cafeïne",
+    "legendThreshold": "Drempel van {{threshold}} mg",
+    "unitMg": "mg"
+  },
+  "exerciseStatistics": {
+    "title": "Oefenstatistieken",
+    "sets_one": "{{formattedCount}} sets",
+    "sets_other": "",
+    "stats": {
+      "workouts": "Trainingen",
+      "volume": "Volume",
+      "reps": "Herhalingen"
+    },
+    "setsPerMuscle": {
+      "title": "Sets per Spier",
+      "subtitle": "Werksets op primaire spieren in dit bereik",
+      "none": "Nog geen werksets met een primaire spier."
+    },
+    "heatMap": {
+      "title": "Spierheatmap",
+      "subtitle": "Voor- en achterkant, ingekleurd op basis van werksets",
+      "a11y": "Lichaamsfiguur ingekleurd op basis van werksets. Dezelfde aantallen staan onder Sets per Spier, waar het selecteren van een spier die hier markeert.",
+      "tap": "Tik op een spier",
+      "fewer": "Minder",
+      "more": "Meer",
+      "notOnFigure": "Niet op de figuur",
+      "male": "Man",
+      "female": "Vrouw"
+    },
+    "analysis": {
+      "title": "Meer Analyse",
+      "recovery": "Laatst Getraind",
+      "variety": "Oefeningsvariatie",
+      "volume": "Volume per Spier",
+      "exerciseCount_one": "{{count}} oefeningen",
+      "exerciseCount_other": ""
+    },
+    "recovery": {
+      "today": "Vandaag",
+      "yesterday": "Gisteren",
+      "daysAgo_one": "{{count}} dagen geleden",
+      "daysAgo_other": ""
+    },
+    "states": {
+      "loadFailed": "Oefenstatistieken konden niet worden geladen",
+      "empty": "Geen trainingen in dit bereik",
+      "emptyHint": "Registreer een training en de sets verschijnen hier per spier."
+    },
+    "views": {
+      "strength": "Kracht",
+      "cardio": "Cardio"
+    },
+    "cardio": {
+      "hint": "Tik op een training voor de route en hartslag.",
+      "empty": "Geen cardiotrainingen in dit bereik",
+      "loadFailed": "Cardiosessies konden niet worden geladen",
+      "olderSessions": "Oudere sessies",
+      "unitKm": "km",
+      "unitMi": "mi",
+      "minutes_one": "{{formattedCount}} min",
+      "minutes_other": "",
+      "bpm": "{{value}} bpm",
+      "distance": "Afstand",
+      "duration": "Duur",
+      "pace": "Tempo",
+      "avgHeartRate": "Gem. hartslag",
+      "caloriesLabel": "Calorieën",
+      "route": "Route",
+      "routeA11y": "Route van deze training, van de groene stip tot de rode ring",
+      "noRoute": "Geen GPS-route opgeslagen. Indoortrainingen hebben er geen. Een buitenwandeling heeft alleen een route als Apple Health deze heeft gedeeld toen de training werd gesynchroniseerd.",
+      "heartRate": "Hartslag",
+      "average": "Gem. {{value}}",
+      "peak": "Max. {{value}}",
+      "onlyAverage": "Gemiddelde hartslag {{value}}. Slag-voor-slag-metingen zijn niet opgeslagen.",
+      "noHeartRate": "Geen hartslagmetingen voor deze training.",
+      "zones": "Hartslagzones",
+      "zone": "Zone {{zone}}",
+      "zoneFrom": "vanaf {{bpm}} bpm",
+      "minutesAxis": "Minuten sinds start",
+      "underOneMinute": "<1 min"
+    },
+    "consistency": {
+      "title": "Trainingsconsistentie",
+      "subtitle_one": "Laatste {{formattedCount}} weken, {{first}} tot {{last}}",
+      "subtitle_other": "",
+      "legendTrained": "Trainingsdag",
+      "legendRest": "Geen training",
+      "legendHelp": "Elk vierkantje is een dag en elke kolom is een week.",
+      "streak": "Weken op rij",
+      "longest": "Langste",
+      "thisWeek": "Deze week",
+      "lastWeek": "Vorige week",
+      "weeks_one": "{{formattedCount}} weken",
+      "weeks_other": "",
+      "days_one": "{{formattedCount}} dagen",
+      "days_other": "",
+      "calendarA11y_one": "Trainingskalender: {{count}} trainingsdagen in de afgelopen {{weeks}} weken",
+      "calendarA11y_other": "",
+      "setsTitle": "Sets per spier",
+      "noSets": "Deze week of vorige week zijn geen sets geregistreerd.",
+      "loadFailed": "Uw trainingsconsistentie kon niet worden geladen."
+    }
+  },
+  "aiSettings": {
+    "server": {
+      "title": "Server-AI-provider",
+      "loading": "Controleren…",
+      "error": "De AI-provider kon niet worden gecontroleerd.",
+      "none": "Er is geen AI-provider geconfigureerd",
+      "description": "Wordt gebruikt voor etikettenscans, tenzij een on-device-optie hieronder ze afhandelt. Providers worden ingesteld in de webapp."
+    },
+    "onDevice": {
+      "title": "Op het apparaat (Apple Intelligence)",
+      "description": "Deze draaien op deze telefoon. Alles wat het model op het apparaat niet aankan, valt terug op de serverprovider.",
+      "unavailable": "Niet beschikbaar op dit apparaat. Vereist iOS 27 of nieuwer met Apple Intelligence ingeschakeld en gereed.",
+      "labelScan": {
+        "title": "Etiketten Scannen op Apparaat",
+        "description": "Lees voedingsetiketten met Apple Intelligence op dit apparaat. Als een etiket niet kan worden gelezen, wordt de server-AI-provider gebruikt."
+      }
+    }
   }
 }

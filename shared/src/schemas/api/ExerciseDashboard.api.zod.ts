@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Range aggregates from GET /api/reports/exercise-dashboard.

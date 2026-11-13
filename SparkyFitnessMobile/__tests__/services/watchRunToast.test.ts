@@ -68,3 +68,21 @@ test('tapping opens the summary screen with the run', () => {
     })
   );
 });
+
+test('the summary carries the form measured when the run was filed', () => {
+  const form = { avgCadence: 168, strideLengthCm: 112.5, steps: 5000 };
+  announceWatchRun(run, 'km', t, 'entry-1', form);
+  jest.mocked(Toast.show).mock.calls[0][0].onPress?.();
+  expect(navigationRef.navigate).toHaveBeenCalledWith(
+    'RunSummary',
+    expect.objectContaining({ entryId: 'entry-1', form })
+  );
+});
+
+test('names a jump rope and leaves the distance off it', () => {
+  announceWatchRun({ ...run, kind: 'jumpRope', distanceMeters: 0 }, 'km', t);
+  const options = jest.mocked(Toast.show).mock.calls[0][0];
+  expect(options.text1).toBe('Jump Rope from your watch saved');
+  expect(options.text2).not.toContain('km');
+  expect(options.text2).toContain('30:00');
+});

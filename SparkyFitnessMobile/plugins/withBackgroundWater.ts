@@ -7,7 +7,9 @@
 // Android: copies the Kotlin sources (targets/android-background-water), adds
 // the no-UI LogWaterActivity to the manifest, adds WorkManager so the POST
 // outlives that activity, and registers the native module JavaScript uses to
-// store or erase the login and publish the launcher shortcut.
+// store or erase the login and publish the launcher shortcut. Also copies the
+// launcher shortcut icons, which the other app shortcuts
+// (src/hooks/useQuickActions.ts) use too.
 import {
   ConfigPlugin,
   IOSConfig,
@@ -43,6 +45,7 @@ const MODULE_PACKAGE_IMPORT = `import ${MODULE_PACKAGE}.BackgroundWaterPackage`;
 const MODULE_PACKAGE_ADD_LINE = 'add(BackgroundWaterPackage())';
 const ACTIVITY_NAME = `${MODULE_PACKAGE}.LogWaterActivity`;
 const ANDROID_SOURCE_DIR = 'targets/android-background-water/kotlin';
+const ANDROID_RES_DIR = 'targets/android-background-water/res';
 
 async function copyTree(srcDir: string, destDir: string): Promise<void> {
   const entries = await fs.promises.readdir(srcDir, { withFileTypes: true });
@@ -105,6 +108,10 @@ const withBackgroundWater: ConfigPlugin = (config) => {
         path.join(config.modRequest.projectRoot, ANDROID_SOURCE_DIR),
         path.join(config.modRequest.platformProjectRoot, 'app/src/main/java')
       );
+      await copyTree(
+        path.join(config.modRequest.projectRoot, ANDROID_RES_DIR),
+        path.join(config.modRequest.platformProjectRoot, 'app/src/main/res')
+      );
       return config;
     },
   ]);
@@ -146,18 +153,21 @@ const withBackgroundWater: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (config) => {
     const application = config.modResults.manifest.application?.[0];
     if (!application) return config;
-    const activities = application.activity ?? [];
-    if (!activities.some((a) => a.$['android:name'] === ACTIVITY_NAME)) {
-      activities.push({
-        $: {
-          'android:name': ACTIVITY_NAME,
-          'android:exported': 'false',
-          'android:theme': '@android:style/Theme.NoDisplay',
-          'android:excludeFromRecents': 'true',
-          'android:noHistory': 'true',
-        },
-      });
-    }
+    const activities = (application.activity ?? []).filter(
+      (a) => a.$['android:name'] !== ACTIVITY_NAME
+    );
+    activities.push({
+      $: {
+        'android:name': ACTIVITY_NAME,
+        'android:exported': 'false',
+        'android:theme': '@android:style/Theme.NoDisplay',
+        'android:excludeFromRecents': 'true',
+        'android:noHistory': 'true',
+        // A task of its own: sharing the app's would bring the app to the
+        // front whenever it is open in the background.
+        'android:taskAffinity': '',
+      },
+    });
     application.activity = activities;
     return config;
   });

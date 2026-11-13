@@ -3,6 +3,7 @@ import {
   bodyWeightOnDay,
   deriveExerciseModality,
   effectiveLoadKg,
+  effortAdjustedOneRepMaxKg,
   epleyOneRepMaxKg,
   isExerciseModality,
   isWeightDistanceModality,
@@ -37,6 +38,36 @@ describe('effectiveLoadKg', () => {
     expect(epleyOneRepMaxKg(100, 30)).toBe(200);
     expect(epleyOneRepMaxKg(0, 5)).toBe(0);
     expect(epleyOneRepMaxKg(100, 0)).toBe(0);
+  });
+});
+
+describe('effortAdjustedOneRepMaxKg', () => {
+  it('counts the reps left in the tank', () => {
+    // RPE 8 is two reps left: 5 reps is judged as 7.
+    expect(effortAdjustedOneRepMaxKg(100, 5, 8)).toBeCloseTo(
+      epleyOneRepMaxKg(100, 7)
+    );
+    // RPE 10 is a true max set: nothing is added.
+    expect(effortAdjustedOneRepMaxKg(100, 5, 10)).toBe(
+      epleyOneRepMaxKg(100, 5)
+    );
+    expect(effortAdjustedOneRepMaxKg(100, 5, 6)).toBeCloseTo(
+      epleyOneRepMaxKg(100, 9)
+    );
+  });
+
+  it('is plain Epley with no usable RPE', () => {
+    const plain = epleyOneRepMaxKg(100, 5);
+    expect(effortAdjustedOneRepMaxKg(100, 5, null)).toBe(plain);
+    expect(effortAdjustedOneRepMaxKg(100, 5, undefined)).toBe(plain);
+    // More than four reps left is too loose a guess to count.
+    expect(effortAdjustedOneRepMaxKg(100, 5, 4)).toBe(plain);
+    expect(effortAdjustedOneRepMaxKg(100, 5, 11)).toBe(plain);
+  });
+
+  it('is 0 without a load or reps', () => {
+    expect(effortAdjustedOneRepMaxKg(0, 5, 8)).toBe(0);
+    expect(effortAdjustedOneRepMaxKg(100, 0, 8)).toBe(0);
   });
 });
 

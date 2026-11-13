@@ -20,9 +20,9 @@
  * clicks with nothing selected, so a button is still useful from an empty caret.
  */
 export type ToolbarAction =
-  | { kind: "wrap"; before: string; after: string; placeholder: string }
-  | { kind: "linePrefix"; prefix: string | ((index: number) => string) }
-  | { kind: "block"; snippet: string; select?: string };
+  | { kind: 'wrap'; before: string; after: string; placeholder: string }
+  | { kind: 'linePrefix'; prefix: string | ((index: number) => string) }
+  | { kind: 'block'; snippet: string; select?: string };
 
 export interface ToolbarApplyResult {
   text: string;
@@ -38,33 +38,33 @@ export interface ToolbarApplyResult {
  */
 export const NOTE_TOOLBAR_ACTIONS = {
   bold: {
-    kind: "wrap",
-    before: "**",
-    after: "**",
-    placeholder: "bold",
+    kind: 'wrap',
+    before: '**',
+    after: '**',
+    placeholder: 'bold',
   },
-  italic: { kind: "wrap", before: "_", after: "_", placeholder: "italic" },
+  italic: { kind: 'wrap', before: '_', after: '_', placeholder: 'italic' },
   strikethrough: {
-    kind: "wrap",
-    before: "~~",
-    after: "~~",
-    placeholder: "text",
+    kind: 'wrap',
+    before: '~~',
+    after: '~~',
+    placeholder: 'text',
   },
-  code: { kind: "wrap", before: "`", after: "`", placeholder: "code" },
-  link: { kind: "wrap", before: "[", after: "](url)", placeholder: "text" },
-  heading: { kind: "linePrefix", prefix: "## " },
-  quote: { kind: "linePrefix", prefix: "> " },
-  bulletList: { kind: "linePrefix", prefix: "- " },
+  code: { kind: 'wrap', before: '`', after: '`', placeholder: 'code' },
+  link: { kind: 'wrap', before: '[', after: '](url)', placeholder: 'text' },
+  heading: { kind: 'linePrefix', prefix: '## ' },
+  quote: { kind: 'linePrefix', prefix: '> ' },
+  bulletList: { kind: 'linePrefix', prefix: '- ' },
   numberedList: {
-    kind: "linePrefix",
+    kind: 'linePrefix',
     prefix: (index: number) => `${index + 1}. `,
   },
-  taskList: { kind: "linePrefix", prefix: "- [ ] " },
+  taskList: { kind: 'linePrefix', prefix: '- [ ] ' },
   table: {
-    kind: "block",
+    kind: 'block',
     snippet:
-      "| Item | Amount |\n| --- | --- |\n| Ingredient | 1 cup |\n| Ingredient | 2 tbsp |\n",
-    select: "Item",
+      '| Item | Amount |\n| --- | --- |\n| Ingredient | 1 cup |\n| Ingredient | 2 tbsp |\n',
+    select: 'Item',
   },
 } as const satisfies Record<string, ToolbarAction>;
 
@@ -79,9 +79,9 @@ export function applyToolbarAction(
   action: ToolbarAction,
   text: string,
   selectionStart: number,
-  selectionEnd: number,
+  selectionEnd: number
 ): ToolbarApplyResult {
-  if (action.kind === "wrap") {
+  if (action.kind === 'wrap') {
     const selected = text.slice(selectionStart, selectionEnd);
     const body = selected || action.placeholder;
     const inserted = `${action.before}${body}${action.after}`;
@@ -93,12 +93,12 @@ export function applyToolbarAction(
     };
   }
 
-  if (action.kind === "block") {
+  if (action.kind === 'block') {
     // Open a new line unless the caret already sits at the start of one, so a
     // table never gets glued onto the end of a sentence.
     const before = text.slice(0, selectionStart);
-    const needsLeadingBreak = before.length > 0 && !before.endsWith("\n");
-    const prefix = needsLeadingBreak ? "\n" : "";
+    const needsLeadingBreak = before.length > 0 && !before.endsWith('\n');
+    const prefix = needsLeadingBreak ? '\n' : '';
     const inserted = `${prefix}${action.snippet}`;
     const offset = action.select
       ? selectionStart + inserted.indexOf(action.select)
@@ -112,19 +112,19 @@ export function applyToolbarAction(
 
   // Expand the selection to whole lines: a list marker belongs at line start,
   // not wherever the user happened to click.
-  const lineStart = text.lastIndexOf("\n", selectionStart - 1) + 1;
-  const lineEndIndex = text.indexOf("\n", selectionEnd);
+  const lineStart = text.lastIndexOf('\n', selectionStart - 1) + 1;
+  const lineEndIndex = text.indexOf('\n', selectionEnd);
   const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex;
 
   const block = text.slice(lineStart, lineEnd);
   const prefixed = block
-    .split("\n")
+    .split('\n')
     .map((line, index) =>
-      typeof action.prefix === "string"
+      typeof action.prefix === 'string'
         ? `${action.prefix}${line}`
-        : `${action.prefix(index)}${line}`,
+        : `${action.prefix(index)}${line}`
     )
-    .join("\n");
+    .join('\n');
 
   return {
     text: text.slice(0, lineStart) + prefixed + text.slice(lineEnd),
@@ -135,5 +135,5 @@ export function applyToolbarAction(
 
 /** Markdown for embedding one of the entity's photos, referenced by file name. */
 export function noteImageSnippet(alt: string, fileName: string): ToolbarAction {
-  return { kind: "block", snippet: `![${alt}](${fileName})\n`, select: alt };
+  return { kind: 'block', snippet: `![${alt}](${fileName})\n`, select: alt };
 }

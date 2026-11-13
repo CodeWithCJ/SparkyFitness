@@ -12,6 +12,7 @@ jest.mock('../../modules/watch-connectivity', () => ({
   __esModule: true,
   default: {
     isSupported: jest.fn(() => true),
+    startWorkout: jest.fn(async () => {}),
     addListener: jest.fn((_e: string, cb: typeof handler) => {
       handler = cb;
       return { remove: jest.fn() };
@@ -183,6 +184,37 @@ describe('useWatchWorkoutStart plan link', () => {
     await act(async () => {
       release([plan('42')]);
     });
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('re-arms the watch instead of starting a new session when the same preset is already live', async () => {
+    useActiveWorkoutStore.setState({
+      sessionId: 'live-42',
+      sourcePresetId: 42,
+      session: {
+        id: 'live-42',
+        type: 'preset',
+        name: 'Upper',
+        entry_date: '2026-10-19',
+        total_duration_minutes: 0,
+        exercises: [],
+      } as any,
+    });
+    const start = jest.fn(async () => {});
+    renderHook(() => useWatchWorkoutStart(true, true, start));
+    handler?.({ presetId: '42', serverId: 'srv' });
+    await waitFor(() =>
+      expect(getActiveServerConfigId).toHaveBeenCalledTimes(2)
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('ignores a start request missing serverId', async () => {
+    (fetchActiveWorkoutPlans as jest.Mock).mockResolvedValue([]);
+    const start = jest.fn(async () => {});
+    renderHook(() => useWatchWorkoutStart(true, true, start));
+    handler?.({ presetId: '42', serverId: '' });
+    expect(getActiveServerConfigId).not.toHaveBeenCalled();
     expect(start).not.toHaveBeenCalled();
   });
 });

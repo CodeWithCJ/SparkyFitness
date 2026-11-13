@@ -53,6 +53,7 @@ services:
 
       # --- Server Runtime & Admin ---
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-ERROR}
+      SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS: ${SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS:-15} # Most seconds to finish running work on stop; keep below SPARKY_FITNESS_STOP_GRACE_PERIOD
       SPARKY_FITNESS_PUBLIC_API_DOCS: ${SPARKY_FITNESS_PUBLIC_API_DOCS:-false}
       SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP}
       SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL} # User with this email can access the admin panel
@@ -92,6 +93,8 @@ services:
     ports:
       - "3010:3010"
     restart: always
+    # Keep longer than SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS, so running work can finish on stop.
+    stop_grace_period: ${SPARKY_FITNESS_STOP_GRACE_PERIOD:-20s}
     depends_on:
       - sparkyfitness-db
 

@@ -1,4 +1,3 @@
-BEGIN;
 
 -- Deleting a user failed outright, deleting a library item quietly destroyed
 -- other people's diary history, and the audit trail was erased along with the
@@ -267,4 +266,3 @@ ALTER TABLE public.admin_activity_logs
   ADD CONSTRAINT admin_activity_logs_target_user_id_fkey
     FOREIGN KEY (target_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
-COMMIT;

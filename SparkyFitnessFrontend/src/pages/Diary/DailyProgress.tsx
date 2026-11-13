@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -29,71 +30,45 @@ import {
   useDailySteps,
   useAdaptiveTdee,
   useDailySummary,
-  useMostRecentWeightQuery,
-  useMostRecentHeightQuery,
-  useMostRecentBodyFatQuery,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
-import { useAuth } from '@/hooks/useAuth';
-import { useProfileQuery } from '@/hooks/Settings/useProfile';
-import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import {
   ACTIVITY_MULTIPLIERS,
-  calculateAge,
   computeCalorieTarget,
   isAdaptiveTdeeMature,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   calculateBmr,
   computeExerciseCredited,
+  computeCalorieProgress,
   normalizeCalorieGoalAdjustmentMode,
   resolveCalorieSafetyFloor,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  isAdaptiveActivitySeparated,
+  withCalorieRuleDefaults,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { getTargetFallbackNotice } from '@/components/CalorieTargetBreakdown/targetFallbackNotice';
+import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
+import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     loggingLevel,
-    calorieGoalAdjustmentMode: storedCalorieGoalAdjustmentMode,
     energyUnit,
     convertEnergy,
     weightUnit,
-    bmrAlgorithm,
     bodyFatAlgorithm,
-    goalMode,
-    goalModeCalculationMethod,
-    goalModeCustomPercentage,
-    calorieSafetyFloorMode,
-    calorieSafetyFloorValue,
-    activityLevel,
-    timezone,
   } = usePreferences();
 
-  // `smart` computes identically to `tdee` server-side and arrives with a populated
-  // `tdeeProjection`, but it has no UI of its own — so the untranslated value fell
-  // through the `=== 'tdee'` check below and hid the Daily Burn panel entirely.
-  const calorieGoalAdjustmentMode = normalizeCalorieGoalAdjustmentMode(
-    storedCalorieGoalAdjustmentMode
-  );
-
-  const { user } = useAuth();
-  const { data: userProfile } = useProfileQuery(user?.id);
   const { data: goalTypePreferences } = useNutrientGoalPreferences();
-  const { data: weightData } = useMostRecentWeightQuery();
-  const { data: heightData } = useMostRecentHeightQuery();
-  const { data: bodyFatData } = useMostRecentBodyFatQuery();
-  const { data: waistData } = useMostRecentMeasurement('waist');
-  const { data: neckData } = useMostRecentMeasurement('neck');
-  const { data: hipsData } = useMostRecentMeasurement('hips');
-
-  const isLeanMassBmr =
-    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
+  const { hidden: hiddenWebTabs } = useHiddenWebTabs();
 
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
@@ -108,6 +83,31 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     isError: summaryError,
   } = useDailySummary(selectedDate);
 
+  // The calorie settings and measurements this day was worked out from
+  // (#1795), so a past day is not explained with today's settings or weight.
+  const {
+    bmr_algorithm: bmrAlgorithm,
+    goal_mode: goalMode,
+    goal_mode_calculation_method: goalModeCalculationMethod,
+    adaptive_activity_separate: adaptiveActivitySeparate,
+    goal_mode_custom_percentage: goalModeCustomPercentage,
+    goal_mode_weekly_change_kg: goalModeWeeklyChangeKg,
+    calorie_safety_floor_mode: calorieSafetyFloorMode,
+    calorie_safety_floor_value: calorieSafetyFloorValue,
+    activity_level: activityLevel,
+    calorie_goal_adjustment_mode: dayCalorieGoalAdjustmentMode,
+  } = withCalorieRuleDefaults(summaryData?.calorieInputs?.rules);
+
+  // `smart` computes identically to `tdee` server-side and arrives with a populated
+  // `tdeeProjection`, but it has no UI of its own — so the untranslated value fell
+  // through the `=== 'tdee'` check below and hid the Daily Burn panel entirely.
+  const calorieGoalAdjustmentMode = normalizeCalorieGoalAdjustmentMode(
+    dayCalorieGoalAdjustmentMode
+  );
+
+  const isLeanMassBmr =
+    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
+
   const isLoading =
     loadingExercise ||
     loadingSteps ||
@@ -118,7 +118,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     return <DailyProgressSkeleton />;
   }
 
-  if (summaryError || !summaryData?.calorieBalance) {
+  // An older server sends no calorieInputs; show the summary error rather
+  // than crash on it.
+  if (
+    summaryError ||
+    !summaryData?.calorieBalance ||
+    !summaryData.calorieInputs
+  ) {
     return (
       <Card className="h-full">
         <CardContent className="pt-6 pb-4">
@@ -220,34 +226,24 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       ? Math.round(convertEnergy(calorieGoalPref.targetMax, 'kcal', energyUnit))
       : undefined;
 
-  // When a calorie target range is set, the upper bound (targetMax) serves as the budget ceiling.
-  const effectiveTargetGoal = isTargetBand ? targetMaxConverted! : display.goal;
-  const exerciseBonus = Math.max(
-    0,
-    display.remaining - (display.goal - display.eaten)
-  );
+  const calorieBudget = getCalorieBudget(calorieBalance, calorieGoalPref);
+  const targetRemaining = calorieBudget - eatenCalories;
   const effectiveRemaining = isTargetBand
-    ? Math.round(effectiveTargetGoal - display.eaten + exerciseBonus)
+    ? Math.round(convertEnergy(targetRemaining, 'kcal', energyUnit))
     : display.remaining;
-  const effectiveProgress =
-    isTargetBand && effectiveTargetGoal > 0
-      ? Math.max(
-          0,
-          ((effectiveTargetGoal - effectiveRemaining) / effectiveTargetGoal) *
-            100
-        )
-      : calorieProgress;
+  const effectiveProgress = isTargetBand
+    ? computeCalorieProgress(eatenCalories, targetRemaining)
+    : calorieProgress;
 
-  const displayWeight = weightData?.weight || 70;
-  const displayHeight = heightData?.height || 170;
-  const displayBodyFat = bodyFatData?.body_fat_percentage ?? 0;
-  const displayWaist = waistData?.waist;
-  const displayNeck = neckData?.neck;
-  const displayHips = hipsData?.hips;
-  const displayGender = (userProfile?.gender || 'male') as 'male' | 'female';
-  const displayAge = userProfile?.date_of_birth
-    ? calculateAge(userProfile.date_of_birth, timezone)
-    : 30;
+  const calorieInputs = summaryData.calorieInputs;
+  const displayWeight = calorieInputs.weightKg;
+  const displayHeight = calorieInputs.heightCm;
+  const displayBodyFat = calorieInputs.bodyFatPercentage ?? 0;
+  const displayWaist = calorieInputs.waistCm;
+  const displayNeck = calorieInputs.neckCm;
+  const displayHips = calorieInputs.hipsCm;
+  const displayGender = calorieInputs.gender as 'male' | 'female';
+  const displayAge = calorieInputs.age;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
 
@@ -281,13 +277,19 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
         : Math.max(adaptiveGoalFloor, adaptiveGoal);
   }
 
+  const activitySeparated = isAdaptiveActivitySeparated(
+    calorieGoalAdjustmentMode,
+    goalModeCalculationMethod,
+    adaptiveActivitySeparate
+  );
   const previewResult = computeCalorieTarget({
     goalMode,
     calculationMethod: goalModeCalculationMethod,
     customPercentage: goalModeCustomPercentage,
+    weeklyChangeKg: goalModeWeeklyChangeKg,
     bmr,
     activityLevelMultiplier: activityMultiplier,
-    adaptiveTdee: adaptiveTdeeData ? adaptiveTdeeData.tdee : null,
+    adaptiveTdee: getAdaptiveTdeeForGoal(adaptiveTdeeData, activitySeparated),
     adaptiveTdeeFallback: adaptiveTdeeData ? adaptiveTdeeData.isFallback : true,
     adaptiveTdeeDaysOfData: adaptiveTdeeData
       ? (adaptiveTdeeData.daysOfData ?? 0)
@@ -313,33 +315,30 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const daysOfCalorieLogs = adaptiveTdeeData?.daysOfData ?? 0;
 
-  const getTargetFallbackNotice = () => {
-    const fallbackVal = Math.round(
+  // "High day +250" / "Low day −180" when calorie cycling moved this day (#2327).
+  const cycling = summaryData?.calorieCycling;
+  const cyclingAmount =
+    cycling?.status === 'active' && cycling.delta !== 0
+      ? Math.round(convertEnergy(Math.abs(cycling.delta), 'kcal', energyUnit))
+      : 0;
+  const cyclingLabel = !cyclingAmount
+    ? null
+    : cycling?.dayType === 'high'
+      ? t('diary.calorieCycling.highDay', 'High day +{{amount}}', {
+          amount: cyclingAmount,
+        })
+      : t('diary.calorieCycling.lowDay', 'Low day −{{amount}}', {
+          amount: cyclingAmount,
+        });
+
+  const targetFallbackNotice = getTargetFallbackNotice(t, {
+    adaptiveTdeeData,
+    fallbackVal: Math.round(
       convertEnergy(bmr * activityMultiplier, 'kcal', energyUnit)
-    );
-    const unitStr = getEnergyUnitString(energyUnit);
-
-    if (!adaptiveTdeeData) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to insufficient data.`;
-    }
-
-    if (adaptiveTdeeData.isFallback) {
-      const reason = adaptiveTdeeData.fallbackReason?.toLowerCase() || '';
-      if (reason.includes('weight')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because weight logs are missing (requires at least 2 weight logs spanning 7+ days).`;
-      }
-      if (reason.includes('calorie')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because calorie logs are missing (requires at least 7 days with ≥200 kcal).`;
-      }
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
-    }
-
-    if (daysOfCalorieLogs < ADAPTIVE_TDEE_GOAL_MIN_DAYS) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until ${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days of calorie logs are reached (currently ${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged).`;
-    }
-
-    return '';
-  };
+    ),
+    unitStr: getEnergyUnitString(energyUnit),
+    daysOfCalorieLogs,
+  });
 
   return (
     <Card className="h-full">
@@ -519,6 +518,15 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   { energyUnitString: getEnergyUnitString(energyUnit) }
                 )}
               </div>
+              {cyclingLabel && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 whitespace-nowrap"
+                  data-testid="calorie-cycling-badge"
+                >
+                  {cyclingLabel}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -614,26 +622,29 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                         'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
                       )}
                 </span>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
-                  onClick={() =>
-                    isLeanMassBmr
-                      ? navigate('/checkin')
-                      : navigate('/settings?section=profile-information')
-                  }
-                >
-                  {isLeanMassBmr
-                    ? t(
-                        'exercise.dailyProgress.enterMeasurements',
-                        'Enter Measurements'
-                      )
-                    : t(
-                        'exercise.dailyProgress.updateProfile',
-                        'Update Profile'
-                      )}
-                </Button>
+                {/* Check-In is where measurements go; no link once it is hidden. */}
+                {!(isLeanMassBmr && hiddenWebTabs.has('checkin')) && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
+                    onClick={() =>
+                      isLeanMassBmr
+                        ? navigate('/checkin')
+                        : navigate('/settings?section=profile-information')
+                    }
+                  >
+                    {isLeanMassBmr
+                      ? t(
+                          'exercise.dailyProgress.enterMeasurements',
+                          'Enter Measurements'
+                        )
+                      : t(
+                          'exercise.dailyProgress.updateProfile',
+                          'Update Profile'
+                        )}
+                  </Button>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -718,7 +729,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   <div className="flex items-start gap-1 mt-1 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
                     <Info className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                     <span className="text-[10px] text-blue-700 dark:text-blue-300">
-                      {getTargetFallbackNotice()}
+                      {targetFallbackNotice}
                     </span>
                   </div>
                 )}
@@ -758,7 +769,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 {tdeeProjection.source === 'health_connect_total'
                   ? t(
                       'exercise.dailyProgress.healthConnectProjectionSource',
-                      'Health Connect total calories'
+                      'Device total calories'
                     )
                   : tdeeProjection.source === 'active_plus_bmr'
                     ? t(
@@ -812,6 +823,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           {/* Calorie Math Breakdown Dropdown */}
           <div className="pt-3 border-t border-border/40 space-y-2.5">
             <CalorieTargetBreakdown
+              adaptiveActivitySeparate={adaptiveActivitySeparate}
               asDialog
               previewResult={previewResult}
               adaptiveTdeeData={adaptiveTdeeData}
@@ -828,11 +840,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               goalMode={goalMode}
               goalModeCalculationMethod={goalModeCalculationMethod}
               goalModeCustomPercentage={goalModeCustomPercentage}
+              goalModeWeeklyChangeKg={goalModeWeeklyChangeKg}
               calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
               rawManualGoal={rawManualGoal}
               adjustedManualGoal={adjustedManualGoal}
               activityMultiplier={activityMultiplier}
               bmrSource={bmrSource}
+              calorieCycling={summaryData?.calorieCycling}
             />
           </div>
         </div>

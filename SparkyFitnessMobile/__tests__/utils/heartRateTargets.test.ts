@@ -133,6 +133,26 @@ describe('applyHeartRateTargets', () => {
     expect(isValidIntervalPlan(result)).toBe(true);
   });
 
+  it('puts the warm-up range on the warm-up and cool-down', () => {
+    const warm = { minBpm: 100, maxBpm: 125 };
+    const withCooldown = {
+      ...plan,
+      steps: [...plan.steps, { kind: 'cooldown' as const, seconds: 300 }],
+    };
+    const result = applyHeartRateTargets(withCooldown, {
+      work: fast,
+      easy,
+      warm,
+    });
+    expect(result.steps.map((step) => step.heartRate)).toEqual([
+      warm,
+      fast,
+      easy,
+      warm,
+    ]);
+    expect(isValidIntervalPlan(result)).toBe(true);
+  });
+
   it('ignores an unusable range and rejects a plan carrying one', () => {
     expect(
       applyHeartRateTargets(plan, { work: { minBpm: 150, maxBpm: 152 } })
@@ -143,5 +163,46 @@ describe('applyHeartRateTargets', () => {
         steps: [{ ...plan.steps[0], heartRate: { minBpm: 5, maxBpm: 6 } }],
       })
     ).toBe(false);
+  });
+});
+
+describe('applyHeartRateTargets for Zone 2 steps', () => {
+  const zone2 = { minBpm: 111, maxBpm: 129 };
+  const plan = {
+    style: 'runWalk' as const,
+    steps: [
+      { kind: 'warmup' as const, seconds: 300 },
+      { kind: 'work' as const, seconds: 1800, effort: 'zone2' as const },
+      { kind: 'work' as const, seconds: 20, effort: 'stride' as const },
+      { kind: 'recovery' as const, seconds: 70 },
+      { kind: 'cooldown' as const, seconds: 300 },
+    ],
+  };
+
+  it('puts the Zone 2 range on Zone 2 steps and nothing else', () => {
+    const result = applyHeartRateTargets(plan, { zone2 });
+    expect(result.steps.map((step) => step.heartRate)).toEqual([
+      undefined,
+      zone2,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(isValidIntervalPlan(result)).toBe(true);
+  });
+
+  it('never holds a Zone 2 step to the hard or easy range', () => {
+    const result = applyHeartRateTargets(plan, {
+      work: { minBpm: 160, maxBpm: 175 },
+      easy: { minBpm: 120, maxBpm: 140 },
+    });
+    expect(result.steps[1].heartRate).toBeUndefined();
+  });
+
+  it('leaves the plan alone when there is no usable range', () => {
+    expect(applyHeartRateTargets(plan, { zone2: null })).toBe(plan);
+    expect(
+      applyHeartRateTargets(plan, { zone2: { minBpm: 100, maxBpm: 101 } })
+    ).toBe(plan);
   });
 });

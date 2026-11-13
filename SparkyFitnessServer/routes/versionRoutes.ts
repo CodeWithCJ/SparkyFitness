@@ -1,5 +1,6 @@
 import express from 'express';
 import versionService from '../services/versionService.js';
+import { publicErrorMessage } from '../utils/errors.js';
 const router = express.Router();
 /**
  * @swagger
@@ -41,8 +42,7 @@ router.get('/latest-github', async (req, res) => {
     console.error('Error fetching latest GitHub release:', error);
     res.status(500).json({
       error: 'Failed to fetch latest GitHub release',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      details: error.message,
+      details: publicErrorMessage(error),
     });
   }
 });

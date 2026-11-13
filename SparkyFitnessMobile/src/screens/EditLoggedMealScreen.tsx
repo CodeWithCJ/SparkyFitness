@@ -26,7 +26,7 @@ import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
-import { toHourMinute } from '@workspace/shared';
+import { toHourMinute, energyFromKcal } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { usableFoodImages } from '../utils/foodImages';
 import NutritionMacroCard from '../components/NutritionMacroCard';
@@ -56,6 +56,8 @@ import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealIngredientDraft } from '../types/meals';
 import type { FoodEntryMealUpdateData } from '../types/foodEntryMeals';
 import type { RootStackScreenProps } from '../types/navigation';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type EditLoggedMealScreenProps = RootStackScreenProps<'EditLoggedMeal'>;
 
@@ -99,6 +101,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -368,10 +371,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
 
   const canSave =
     dirty &&
+    Number.isFinite(quantity) &&
     quantity > 0 &&
     !!meal &&
     ingredients.length > 0 &&
-    ingredients.every((food) => !!food.variant_id && food.quantity > 0) &&
+    // Diary snapshots remain editable after their library food/variant is
+    // deleted. Zero amounts are retained for unmeasured recipe ingredients.
+    ingredients.every(
+      (food) => Number.isFinite(food.quantity) && food.quantity >= 0
+    ) &&
+    ingredients.some((food) => food.quantity > 0) &&
     !!effectiveDate;
 
   const handleSave = () => {
@@ -692,7 +701,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
                 const scale =
                   food.serving_size > 0 ? scaledQty / food.serving_size : 0;
                 const foodCals = formatCaloriesDisplay(
-                  (food.calories ?? 0) * scale
+                  energyFromKcal((food.calories ?? 0) * scale, energyUnit)
                 );
                 return (
                   <SwipeableIngredientRow
@@ -702,7 +711,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
                       t('common.food', { defaultValue: 'Food' })
                     }
                     quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: 'kcal' })}`}
+                    caloriesLabel={`${foodCals} ${energyUnitLabel(energyUnit, t)}`}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}

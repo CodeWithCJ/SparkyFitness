@@ -7,14 +7,14 @@
  * vocabulary. Widening it is a change for meals everywhere, not for one screen.
  */
 export const MEAL_SERVING_UNITS = [
-  "serving",
-  "g",
-  "ml",
-  "oz",
-  "cup",
-  "tbsp",
-  "tsp",
-  "piece",
+  'serving',
+  'g',
+  'ml',
+  'oz',
+  'cup',
+  'tbsp',
+  'tsp',
+  'piece',
 ] as const;
 
 export type MealServingUnit = (typeof MEAL_SERVING_UNITS)[number];
@@ -24,7 +24,7 @@ export type MealServingUnit = (typeof MEAL_SERVING_UNITS)[number];
  * and the user states the yield directly. Every other unit asks for a total
  * amount and a serving size instead, and derives the yield from the two.
  */
-export const MEAL_SERVING_UNIT_DEFAULT: MealServingUnit = "serving";
+export const MEAL_SERVING_UNIT_DEFAULT: MealServingUnit = 'serving';
 
 /** Decimal places kept when a derived yield or a rescaled quantity is stored. */
 export const MEAL_SERVING_PRECISION = 6;

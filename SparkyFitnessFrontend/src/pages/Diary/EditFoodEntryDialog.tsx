@@ -10,6 +10,8 @@ import {
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { MarkdownView } from '@/components/ui/MarkdownView';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
@@ -436,14 +438,16 @@ const EditFoodEntryDialog = ({
                   <Label htmlFor="quantity">
                     {t('editFoodEntry.quantity', 'Quantity')}
                   </Label>
-                  <Input
+                  <NumericInput
                     id="quantity"
-                    type="number"
+                    allowExpressions
+                    decimals={3}
+                    required
                     step="any"
                     min="0.01"
                     value={quantity}
                     ref={inputRef}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    onValueChange={(value) => setQuantity(value ?? 0)}
                   />
                 </div>
 
@@ -542,7 +546,7 @@ const EditFoodEntryDialog = ({
 
                 <div className="col-span-4 space-y-1 max-w-[280px]">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="entryTime">
+                    <Label id="entryTime-label">
                       {t('editFoodEntry.timeOptional', 'Time (optional)')}
                     </Label>
                     <div className="flex items-center gap-1.5">
@@ -597,11 +601,11 @@ const EditFoodEntryDialog = ({
                       })()}
                     </div>
                   </div>
-                  <Input
+                  <TimeInput
                     id="entryTime"
-                    type="time"
+                    aria-labelledby="entryTime-label"
                     value={entryTime}
-                    onChange={(e) => setEntryTime(e.target.value)}
+                    onChange={setEntryTime}
                   />
                 </div>
               </div>

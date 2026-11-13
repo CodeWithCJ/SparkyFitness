@@ -5,6 +5,7 @@ import type {
   WorkoutLapWindow,
   WorkoutTelemetry,
 } from '../../types/healthRecords';
+import type { AppleWorkoutZoneDuration } from '@workspace/shared';
 
 /**
  * Moves telemetry a provider collected onto the outgoing exercise session.
@@ -20,6 +21,8 @@ export interface RawWorkoutTelemetry {
   hr_samples?: unknown;
   laps?: unknown;
   telemetry?: unknown;
+  /** Apple's heart-rate zone group for this workout, when HealthKit had one. */
+  hr_zones?: unknown;
 }
 
 /** Keys carrying telemetry, stripped from raw_data to avoid sending it twice. */
@@ -28,6 +31,7 @@ const TELEMETRY_KEYS: readonly (keyof RawWorkoutTelemetry)[] = [
   'hr_samples',
   'laps',
   'telemetry',
+  'hr_zones',
 ];
 
 const nonEmptyArray = <T>(value: unknown): T[] | undefined =>
@@ -74,13 +78,16 @@ export function attachWorkoutTelemetry(
     Object.keys(raw.telemetry).length > 0
       ? (raw.telemetry as WorkoutTelemetry)
       : undefined;
+  const hrZones = nonEmptyArray<AppleWorkoutZoneDuration>(raw.hr_zones);
 
-  if (!gpsPoints && !hrSamples && !laps && !telemetry) return session;
+  if (!gpsPoints && !hrSamples && !laps && !telemetry && !hrZones)
+    return session;
 
   if (gpsPoints) session.gps_points = gpsPoints;
   if (hrSamples) session.hr_samples = hrSamples;
   if (laps) session.laps = laps;
   if (telemetry) session.telemetry = telemetry;
+  if (hrZones) session.hr_zones = hrZones;
 
   session.raw_data = stripTelemetryFromRawData(session.raw_data);
 

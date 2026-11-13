@@ -8,6 +8,7 @@ import WatchConnectivity, {
   type WatchSetTimerStartedPayload,
   type WatchSetTimerStoppedPayload,
   type WatchHeartRateBatchPayload,
+  type WatchWorkoutEffortPayload,
   type WatchWorkoutStopPayload,
   type WatchWorkoutDiscardPayload,
 } from '../../modules/watch-connectivity';
@@ -24,9 +25,13 @@ import { saveActiveWorkoutSession } from './useActiveWorkoutAutosave';
 import {
   attachExerciseEntryWatchTelemetry,
   deleteWorkout,
+  getWorkout,
+  setExerciseEntryEffort,
+  updateWorkout,
 } from '../services/api/exerciseApi';
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
+import { appleWorkoutZonesFromWire } from '@workspace/shared';
 import i18n from '../localization/i18n';
 import { queryClient } from './queryClient';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
@@ -309,6 +314,11 @@ export function useWatchWorkoutBridge(
   const discardedSessionsRef = useRef<Set<string>>(new Set());
   const onPendingChangeRef = useRef(onTelemetryPendingChange);
   const onWatchFinishedRef = useRef(onWatchFinishedWorkout);
+  // Ratings from the watch waiting for their session to be saved and its
+  // entries known: session id → the rating and when it arrived.
+  const pendingEffortsRef = useRef<Map<string, { rating: number; at: number }>>(
+    new Map()
+  );
   const pendingRef = useRef(false);
   // Reports "anything, for any session, still waiting on the server" — the
   // caller polls the server connection while this is true.
@@ -320,6 +330,8 @@ export function useWatchWorkoutBridge(
         break;
       }
     }
+    // A rating still to be filed keeps the connection poll alive too.
+    if (pendingEffortsRef.current.size > 0) pending = true;
     if (pendingRef.current === pending) return;
     pendingRef.current = pending;
     onPendingChangeRef.current?.(pending);
@@ -680,6 +692,12 @@ export function useWatchWorkoutBridge(
           session.unposted = true;
         }
       }
+      const appleZones = appleWorkoutZonesFromWire(payload.appleZones);
+      if (appleZones && owned.has(payload.exerciseEntryId)) {
+        session.appleZones = appleZones;
+        session.appleZoneEntryId = payload.exerciseEntryId;
+        session.unposted = true;
+      }
       syncPendingRef.current();
       persistHeartRate();
       // Arrived after the workout already ended, so nothing else is coming to
@@ -692,6 +710,74 @@ export function useWatchWorkoutBridge(
       }
     },
     []
+  );
+
+  // Files each rating the wearer gave a strength workout on the watch. The
+  // server applies it to the whole session from any one of its entries, so a
+  // single entry id is enough. It waits until the phone has ended (and so
+  // saved) the session; one that never finds an entry is dropped after the
+  // same retention as the telemetry.
+  const settleEfforts = useCallback(async (): Promise<void> => {
+    for (const [sessionId, effort] of [
+      ...pendingEffortsRef.current.entries(),
+    ]) {
+      const session = sessionsRef.current.get(sessionId);
+      const expired = Date.now() - effort.at > ENDED_SESSION_RETENTION_MS;
+      if (discardedSessionsRef.current.has(sessionId) || expired) {
+        pendingEffortsRef.current.delete(sessionId);
+        continue;
+      }
+      if (!session || session.endedAt == null) continue;
+      const [exerciseEntryId] = phoneOwnedEntryIds(session, undefined);
+      if (!exerciseEntryId) continue;
+      try {
+        await setExerciseEntryEffort(exerciseEntryId, effort.rating);
+        pendingEffortsRef.current.delete(sessionId);
+        if (session.entryDate) {
+          invalidateExerciseCache(queryClient, session.entryDate);
+        }
+      } catch (error) {
+        const status = error instanceof ApiError ? error.statusCode : undefined;
+        if (
+          status != null &&
+          status >= 400 &&
+          status < 500 &&
+          !RETRYABLE_CLIENT_STATUSES.has(status)
+        ) {
+          pendingEffortsRef.current.delete(sessionId);
+          addLog(
+            `Dropped watch workout effort for session ${sessionId}: server rejected it (${status})`,
+            'WARNING',
+            [String(error)]
+          );
+        } else {
+          addLog(
+            `Failed to save watch workout effort for session ${sessionId}: ${String(error)}`,
+            'WARNING'
+          );
+        }
+      }
+    }
+    syncPendingRef.current();
+  }, []);
+
+  const handleWorkoutEffort = useCallback(
+    async (payload: WatchWorkoutEffortPayload): Promise<void> => {
+      if (
+        !payload.sessionId ||
+        !Number.isInteger(payload.rating) ||
+        payload.rating < 1 ||
+        payload.rating > 10
+      ) {
+        return;
+      }
+      pendingEffortsRef.current.set(payload.sessionId, {
+        rating: payload.rating,
+        at: Date.now(),
+      });
+      await settleEfforts();
+    },
+    [settleEfforts]
   );
 
   // Attaches everything buffered for every session that has something new,
@@ -722,7 +808,19 @@ export function useWatchWorkoutBridge(
         ...session.energy.keys(),
         ...session.durations.keys(),
       ]);
-      for (const exerciseEntryId of entryIds) {
+      if (
+        session.appleZones &&
+        session.appleZoneEntryId &&
+        !entryIds.has(session.appleZoneEntryId)
+      ) {
+        entryIds.add(session.appleZoneEntryId);
+      }
+      const ordered = [...entryIds];
+      if (session.appleZones && session.appleZoneEntryId) {
+        const target = session.appleZoneEntryId;
+        ordered.sort((a, b) => (a === target ? 1 : b === target ? -1 : 0));
+      }
+      for (const exerciseEntryId of ordered) {
         const samples = session.samples.get(exerciseEntryId) ?? [];
         const kcal = session.energy.get(exerciseEntryId);
         const minutes = session.durations.get(exerciseEntryId);
@@ -732,9 +830,19 @@ export function useWatchWorkoutBridge(
         const hrSamples = samples.length >= 2 ? samples : undefined;
         const durationMinutes =
           minutes != null && minutes > 0 ? minutes : undefined;
+        const appleZones =
+          session.appleZones && exerciseEntryId === session.appleZoneEntryId
+            ? session.appleZones
+            : undefined;
         // All absent means there is nothing to say; the server rejects that
         // body, so don't spend a request discovering it.
-        if (!hrSamples && kcal == null && durationMinutes == null) continue;
+        if (
+          !hrSamples &&
+          kcal == null &&
+          durationMinutes == null &&
+          !appleZones
+        )
+          continue;
         // Discarded while an earlier entry of this session was posting.
         if (discardedSessionsRef.current.has(sessionId)) break;
         try {
@@ -742,6 +850,7 @@ export function useWatchWorkoutBridge(
             ...(hrSamples ? { hrSamples } : {}),
             ...(kcal != null ? { activeEnergyKcal: kcal } : {}),
             ...(durationMinutes != null ? { durationMinutes } : {}),
+            ...(appleZones ? { appleZones } : {}),
           });
         } catch (error) {
           const status =
@@ -780,6 +889,7 @@ export function useWatchWorkoutBridge(
         invalidateExerciseCache(queryClient, session.entryDate);
       }
     }
+    await settleEfforts();
     syncPendingRef.current();
     pruneSessions();
     // Before restore finishes, the map does not yet hold the saved buffer.
@@ -789,7 +899,7 @@ export function useWatchWorkoutBridge(
         () => undefined
       );
     }
-  }, [pruneSessions]);
+  }, [pruneSessions, settleEfforts]);
 
   const handleWorkoutStop = useCallback(
     async (payload: WatchWorkoutStopPayload): Promise<void> => {
@@ -818,13 +928,108 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      // The save was asynchronous: the phone may have ended this workout
+      // and started another while it was in flight. A stop that no longer
+      // owns the live session is dropped here; the phone's own Finish flow
+      // has already stamped the ended session, and continuing could act
+      // on ids the store no longer backs.
+      if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+        addLog(
+          `Watch workout-stop ignored: session ${payload.sessionId} stopped being the live one during the save`,
+          'DEBUG'
+        );
+        return;
+      }
+      // #1995 phase 1: same lifecycle stamp as the phone's Finish flow,
+      // so a session ended from the wrist derives partial/completed from
+      // its sets instead of lingering in progress. The stamp presents the
+      // revision the save just adopted from the server (or the one the
+      // session was seeded with, when the flush was clean), so it can
+      // never finish a newer session that another device resumed or
+      // edited in between: the server refuses with 409, the revision is
+      // refreshed once, and a stamp that still fails keeps the session
+      // live so the wearer can finish on the phone, whose Finish flow
+      // retries both the save and the stamp.
+      const stampFromWrist = async (): Promise<boolean> => {
+        let revision = useActiveWorkoutStore.getState().session?.revision;
+        // A session restored from storage can lack the revision, and a
+        // clean save never fetches it: fetch the server's current one
+        // first so the very first stamp is guarded too. Refuse rather
+        // than stamp unguarded.
+        if (revision == null) {
+          try {
+            revision = (await getWorkout(payload.sessionId)).revision;
+          } catch {
+            return false;
+          }
+          if (revision == null) return false;
+        }
+        for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
+          try {
+            await updateWorkout(payload.sessionId, {
+              finished_at: new Date().toISOString(),
+              revision,
+            });
+            return true;
+          } catch (error) {
+            if (
+              stampAttempt === 0 &&
+              error instanceof ApiError &&
+              error.statusCode === 409
+            ) {
+              // Another device changed the session after this phone's save:
+              // adopt the server's current revision and retry once instead
+              // of presenting the stale revision again.
+              try {
+                revision = (await getWorkout(payload.sessionId)).revision;
+                // A session without a revision cannot be guarded:
+                // refuse instead of stamping unguarded.
+                if (revision == null) return false;
+              } catch {
+                return false;
+              }
+              continue;
+            }
+            return false;
+          }
+        }
+        return false;
+      };
+      // Capture the entry date before the async stamp: the store must not
+      // be re-read afterwards, when the session may have been swapped
+      // mid-stamp.
+      const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
+      const stamped = await stampFromWrist();
+      if (!stamped) {
+        addLog(
+          `Watch finish kept the phone workout open: stamping finished_at for session ${payload.sessionId} failed`,
+          'WARNING'
+        );
+        return;
+      }
+      if (entryDate != null) {
+        invalidateExerciseCache(queryClient, entryDate);
+      }
+      // The stamp was one more async gap in which the phone could have
+      // ended this workout and started a new one: recheck before clearing,
+      // so a stale stop never clears the newer live session.
+      if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+        addLog(
+          `Watch workout-stop stamped session ${payload.sessionId} but left the newer live session untouched`,
+          'DEBUG'
+        );
+        await settleEfforts();
+        return;
+      }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
       useActiveWorkoutStore.getState().clearWorkout();
       onWatchFinishedRef.current?.(celebration, payload.sessionId);
+      // The wearer may already have rated it while the save was running.
+      await settleEfforts();
     },
-    [flushHeartRate]
+    [flushHeartRate, settleEfforts]
   );
 
   // The wearer discarded the workout on the watch. Same outcome as the
@@ -900,6 +1105,7 @@ export function useWatchWorkoutBridge(
     handleHeartRateBatch,
     handleWorkoutStop,
     handleWorkoutDiscard,
+    handleWorkoutEffort,
     flushHeartRate,
   });
   useEffect(() => {
@@ -909,6 +1115,7 @@ export function useWatchWorkoutBridge(
       handleHeartRateBatch,
       handleWorkoutStop,
       handleWorkoutDiscard,
+      handleWorkoutEffort,
       flushHeartRate,
     };
     flushHeartRateRef.current = flushHeartRate;
@@ -948,6 +1155,12 @@ export function useWatchWorkoutBridge(
       'onHeartRateBatch',
       (payload) => {
         handlersRef.current.handleHeartRateBatch(payload);
+      }
+    );
+    const workoutEffortSub = WatchConnectivity.addListener(
+      'onWorkoutEffort',
+      (payload) => {
+        void handlersRef.current.handleWorkoutEffort(payload);
       }
     );
     const workoutStopSub = WatchConnectivity.addListener(
@@ -990,6 +1203,7 @@ export function useWatchWorkoutBridge(
       heartRateBatchSub.remove();
       liveHeartRateSub.remove();
       workoutStopSub.remove();
+      workoutEffortSub.remove();
     };
   }, [enabled]);
 

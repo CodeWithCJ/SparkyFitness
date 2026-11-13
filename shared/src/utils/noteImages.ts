@@ -18,7 +18,7 @@
 /** Last path segment of a stored image reference. */
 export function noteImageName(reference: string): string {
   const trimmed = reference.trim();
-  const lastSlash = trimmed.lastIndexOf("/");
+  const lastSlash = trimmed.lastIndexOf('/');
   return lastSlash === -1 ? trimmed : trimmed.slice(lastSlash + 1);
 }
 
@@ -37,7 +37,7 @@ export function noteImageName(reference: string): string {
  */
 export function resolveNoteImage(
   target: string | undefined,
-  candidates: readonly string[],
+  candidates: readonly string[]
 ): string | null {
   if (!target) return null;
   const wanted = noteImageName(target);

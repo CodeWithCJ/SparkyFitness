@@ -181,14 +181,16 @@ struct WorkoutStep: Identifiable, Equatable {
 
     /// "Warmup 1/2" / "Set 2/3" — what sits under the exercise name.
     var label: String {
-        let kind: String
         switch plannedSet.setType?.lowercased() {
-        case "warmup": kind = "Warmup"
-        case "drop": kind = "Drop"
-        case "failure": kind = "Failure"
-        default: kind = "Set"
+        case "warmup":
+            return String(localized: "watch.workout.setLabel.warmup", defaultValue: "Warmup \(setNumber)/\(setCount)")
+        case "drop":
+            return String(localized: "watch.workout.setLabel.drop", defaultValue: "Drop \(setNumber)/\(setCount)")
+        case "failure":
+            return String(localized: "watch.workout.setLabel.failure", defaultValue: "Failure \(setNumber)/\(setCount)")
+        default:
+            return String(localized: "watch.workout.setLabel.set", defaultValue: "Set \(setNumber)/\(setCount)")
         }
-        return "\(kind) \(setNumber)/\(setCount)"
     }
 }
 
@@ -214,6 +216,10 @@ enum WorkoutEditAction: Equatable {
     case setSetType(setId: String, type: String)
     case addExercise(exerciseId: String)
     case deleteExercise(exerciseEntryId: String)
+    /// Moves an upcoming exercise in front of the current one and starts it.
+    /// `anchorEntryId` is the exercise the watch is on, so the phone moves it
+    /// in front of that one even if its own cursor is elsewhere.
+    case doExerciseNow(exerciseEntryId: String, anchorEntryId: String)
 }
 
 /// What the wearer actually did for a set, once they have adjusted the
@@ -275,6 +281,41 @@ struct HeartRateSample: Codable, Equatable {
     let bpm: Double
 }
 
+/// One zone from a finished HealthKit workout. Codable so a heart-rate batch
+/// can carry it; dictionaries of `Any` cannot.
+struct AppleZoneReading: Codable, Equatable {
+    var index: Int
+    var minimumBpm: Double?
+    var maximumBpm: Double?
+    var seconds: Double
+
+    static func parse(_ rows: [[String: Any]]) -> [AppleZoneReading] {
+        rows.compactMap { row in
+            guard let seconds = Self.number(row["seconds"]) else { return nil }
+            return AppleZoneReading(
+                index: Int(Self.number(row["index"]) ?? 0),
+                minimumBpm: Self.number(row["minimumBpm"]),
+                maximumBpm: Self.number(row["maximumBpm"]),
+                seconds: seconds
+            )
+        }
+    }
+
+    func payload() -> [String: Any] {
+        var row: [String: Any] = ["index": index, "seconds": seconds]
+        if let minimumBpm { row["minimumBpm"] = minimumBpm }
+        if let maximumBpm { row["maximumBpm"] = maximumBpm }
+        return row
+    }
+
+    private static func number(_ value: Any?) -> Double? {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        return nil
+    }
+}
+
 /// A batch of heart-rate samples for one exercise, tagged with whichever
 /// exercise was showing on screen when they were captured. Batched (rather
 /// than one message per sample) to keep the transfer rate sane over a
@@ -299,6 +340,9 @@ struct HeartRateBatch: Codable, Equatable {
     /// between its sets. Sent when the exercise is left and again at the end.
     /// Cumulative across return visits. Nil on a batch that is only samples.
     let durationMinutes: Double?
+    /// Apple's time-in-zone for the whole workout. Only the batch sent after
+    /// HealthKit finishes the workout carries it. Nil on every other batch.
+    var appleZones: [AppleZoneReading]? = nil
 }
 
 /// The wearer ended the workout on the watch. Carries no data of its own —

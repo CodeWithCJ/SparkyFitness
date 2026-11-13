@@ -2,8 +2,8 @@ import {
   BUILT_IN_OPTIONS,
   BUILT_IN_SYMPTOM_DEFINITIONS,
   BUILT_IN_TRIGGER_GROUPS,
-} from "./builtIns.ts";
-import { resolveSections } from "./templates.ts";
+} from './builtIns.ts';
+import { resolveSections } from './templates.ts';
 import type {
   SymptomCustomFieldDef,
   SymptomDefinitionCategory,
@@ -11,12 +11,12 @@ import type {
   SymptomScaleType,
   SymptomSection,
   SymptomTemplate,
-} from "./constants.ts";
+} from './constants.ts';
 import type {
   SymptomDefinitionResponse,
   SymptomEntryResponse,
   SymptomOptionResponse,
-} from "../schemas/api/Symptoms.api.zod.ts";
+} from '../schemas/api/Symptoms.api.zod.ts';
 
 /** A symptom the user can log: a built-in, or their own definition. */
 export interface SymptomChoice {
@@ -40,7 +40,7 @@ export interface SymptomChoice {
  * wins over the built-in of the same name, and archived definitions are hidden.
  */
 export function buildSymptomChoices(
-  definitions: SymptomDefinitionResponse[],
+  definitions: SymptomDefinitionResponse[]
 ): SymptomChoice[] {
   const byName = new Map<string, SymptomChoice>();
 
@@ -87,32 +87,32 @@ export function buildSymptomChoices(
 /** The largest value on a symptom's severity scale (`text` has none). */
 export function scaleMax(scale: SymptomScaleType): number {
   switch (scale) {
-    case "1-5":
+    case '1-5':
       return 5;
-    case "none-severe":
+    case 'none-severe':
       return 3;
-    case "count":
+    case 'count':
       return 100;
-    case "text":
+    case 'text':
       return 0;
     default:
       return 10;
   }
 }
 
-export type SeverityBand = "low" | "mid" | "high";
+export type SeverityBand = 'low' | 'mid' | 'high';
 
 /** Which band a value falls in, relative to its own scale. */
 export function severityBand(
   value: number,
-  scale: SymptomScaleType,
+  scale: SymptomScaleType
 ): SeverityBand {
   const max = scaleMax(scale);
-  if (max <= 0) return "low";
+  if (max <= 0) return 'low';
   const ratio = value / max;
-  if (ratio <= 0.34) return "low";
-  if (ratio <= 0.67) return "mid";
-  return "high";
+  if (ratio <= 0.34) return 'low';
+  if (ratio <= 0.67) return 'mid';
+  return 'high';
 }
 
 /** Whole minutes between two instants, never negative. */
@@ -133,10 +133,10 @@ export function formatDuration(minutes: number): string {
 
 /** Chips offered for back-dating an episode's start or end. */
 export const TIME_OFFSET_CHIPS: Array<{ id: string; minutes: number }> = [
-  { id: "now", minutes: 0 },
-  { id: "m15", minutes: 15 },
-  { id: "h1", minutes: 60 },
-  { id: "h3", minutes: 180 },
+  { id: 'now', minutes: 0 },
+  { id: 'm15', minutes: 15 },
+  { id: 'h1', minutes: 60 },
+  { id: 'h3', minutes: 180 },
 ];
 
 export function minutesAgo(minutes: number, now: Date = new Date()): Date {
@@ -158,7 +158,7 @@ export interface OptionItem {
  */
 export function resolveOptionItems(
   kind: SymptomOptionKind,
-  stored: SymptomOptionResponse[],
+  stored: SymptomOptionResponse[]
 ): OptionItem[] {
   const mine = stored.filter((o) => o.kind === kind);
   const builtIn = new Set(BUILT_IN_OPTIONS[kind]);
@@ -182,9 +182,9 @@ export interface TriggerGroup {
 
 /** Built-in trigger groups, with the user's own triggers in a group of their own. */
 export function resolveTriggerGroups(
-  stored: SymptomOptionResponse[],
+  stored: SymptomOptionResponse[]
 ): TriggerGroup[] {
-  const mine = stored.filter((o) => o.kind === "trigger");
+  const mine = stored.filter((o) => o.kind === 'trigger');
   const hidden = new Set(mine.filter((o) => o.is_hidden).map((o) => o.name));
   const builtInLabels = new Set(BUILT_IN_OPTIONS.trigger);
 
@@ -199,27 +199,27 @@ export function resolveTriggerGroups(
     .filter((o) => !o.is_hidden && !builtInLabels.has(o.name))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((o) => ({ label: o.name, isCustom: true, optionId: o.id }));
-  if (custom.length > 0) groups.push({ group: "Mine", items: custom });
+  if (custom.length > 0) groups.push({ group: 'Mine', items: custom });
   return groups;
 }
 
 /** Symptom names ordered by how recently they were last logged, newest first. */
 export function recentSymptomNames(
   entries: SymptomEntryResponse[],
-  limit = 6,
+  limit = 6
 ): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   const sorted = [...entries].sort(
     (a, b) =>
       new Date(b.started_at ?? b.logged_at).getTime() -
-      new Date(a.started_at ?? a.logged_at).getTime(),
+      new Date(a.started_at ?? a.logged_at).getTime()
   );
   for (const e of sorted) {
     const key = e.symptom_name_snapshot
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, "_");
+      .replace(/\s+/g, '_');
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(key);
@@ -229,4 +229,4 @@ export function recentSymptomNames(
 }
 
 export const slugifySymptomName = (label: string): string =>
-  label.trim().toLowerCase().replace(/\s+/g, "_");
+  label.trim().toLowerCase().replace(/\s+/g, '_');

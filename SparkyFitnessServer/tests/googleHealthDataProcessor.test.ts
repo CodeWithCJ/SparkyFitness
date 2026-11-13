@@ -49,9 +49,14 @@ import {
   processGoogleWeight,
   processGoogleSpO2,
   processGoogleHeartRate,
+  processGoogleHRV,
+  dailyHrvByDate,
+  dailyRestingHeartRateByDate,
   processGoogleActiveZoneMinutes,
   processGoogleSleep,
   processGoogleActivities,
+  processGoogleActivityMinutes,
+  processGoogleCoreTemperature,
 } from '../integrations/googlehealth/googleHealthDataProcessor.js';
 import measurementRepository from '../models/measurementRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
@@ -270,7 +275,8 @@ describe('processGoogleSleep — date anchoring', () => {
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
       UID,
       CID,
-      expect.objectContaining({ entry_date: '2026-05-02' })
+      expect.objectContaining({ entry_date: '2026-05-02' }),
+      { keepExistingBiometrics: true }
     );
   });
 
@@ -285,7 +291,8 @@ describe('processGoogleSleep — date anchoring', () => {
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
       UID,
       CID,
-      expect.objectContaining({ entry_date: '2026-05-02' })
+      expect.objectContaining({ entry_date: '2026-05-02' }),
+      { keepExistingBiometrics: true }
     );
   });
 
@@ -305,7 +312,8 @@ describe('processGoogleSleep — date anchoring', () => {
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
       UID,
       CID,
-      expect.objectContaining({ time_asleep_in_seconds: 420 * 60 })
+      expect.objectContaining({ time_asleep_in_seconds: 420 * 60 }),
+      { keepExistingBiometrics: true }
     );
   });
 
@@ -321,7 +329,8 @@ describe('processGoogleSleep — date anchoring', () => {
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
       UID,
       CID,
-      expect.objectContaining({ entry_date: '2026-05-02' })
+      expect.objectContaining({ entry_date: '2026-05-02' }),
+      { keepExistingBiometrics: true }
     );
   });
 
@@ -448,5 +457,302 @@ describe('processGoogleSleep — recording-zone stamp', () => {
     await processGoogleSleep(UID, CID, dataPoints(point));
     const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
     expect(entry.record_utc_offset_minutes).toBeUndefined();
+  });
+});
+
+// ─── Activity minutes ────────────────────────────────────────────────────────
+
+// Each category resolves to an id equal to its name, so an upsert call shows
+// which category it wrote: upsertCustomMeasurement(userId, createdBy, categoryId, value, date, ...).
+const ACTIVITY_CATEGORIES = [
+  'Minutes Sedentary',
+  'Minutes Lightly Active',
+  'Minutes Fairly Active',
+  'Minutes Very Active',
+].map((name) => ({ id: name, name }));
+
+function upsertedValues(): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const call of vi.mocked(measurementRepository.upsertCustomMeasurement)
+    .mock.calls) {
+    const [, , categoryId, value, entryDate] = call as unknown as [
+      string,
+      string,
+      string,
+      number,
+      string,
+    ];
+    out[entryDate] = { ...out[entryDate], [categoryId]: value };
+  }
+  return out;
+}
+
+// dailyRollUp responses recorded from a Fitbit account through the
+// Google Health API (active-minutes and sedentary-period, 2026-10-09 and -10).
+// Rollup points carry no user or device identifiers. On 2026-10-10 Google
+// returned only LIGHT: a level with no minutes is left out of the rollup.
+const RECORDED_ACTIVITY_ROLLUPS = [
+  {
+    civilStartTime: { date: { year: 2026, month: 10, day: 9 }, time: {} },
+    civilEndTime: { date: { year: 2026, month: 10, day: 10 }, time: {} },
+    activeMinutes: {
+      activeMinutesRollupByActivityLevel: [
+        { activityLevel: 'LIGHT', activeMinutesSum: '304' },
+        { activityLevel: 'MODERATE', activeMinutesSum: '86' },
+        { activityLevel: 'VIGOROUS', activeMinutesSum: '27' },
+      ],
+    },
+  },
+  {
+    civilStartTime: { date: { year: 2026, month: 10, day: 10 }, time: {} },
+    civilEndTime: { date: { year: 2026, month: 10, day: 11 }, time: {} },
+    activeMinutes: {
+      activeMinutesRollupByActivityLevel: [
+        { activityLevel: 'LIGHT', activeMinutesSum: '309' },
+      ],
+    },
+  },
+  {
+    civilStartTime: { date: { year: 2026, month: 10, day: 9 }, time: {} },
+    civilEndTime: { date: { year: 2026, month: 10, day: 10 }, time: {} },
+    sedentaryPeriod: { durationSum: '31740s' },
+  },
+  {
+    civilStartTime: { date: { year: 2026, month: 10, day: 10 }, time: {} },
+    civilEndTime: { date: { year: 2026, month: 10, day: 11 }, time: {} },
+    sedentaryPeriod: { durationSum: '32040s' },
+  },
+];
+
+describe('processGoogleActivityMinutes', () => {
+  beforeEach(() => {
+    vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
+      ACTIVITY_CATEGORIES as never
+    );
+  });
+
+  it('stores Google daily totals per day from recorded rollups (issue #2915)', async () => {
+    await processGoogleActivityMinutes(
+      UID,
+      CID,
+      rollupPoints(...RECORDED_ACTIVITY_ROLLUPS)
+    );
+    expect(upsertedValues()).toEqual({
+      '2026-10-09': {
+        'Minutes Lightly Active': 304,
+        'Minutes Fairly Active': 86,
+        'Minutes Very Active': 27,
+        'Minutes Sedentary': 529,
+      },
+      // MODERATE and VIGOROUS were absent from the rollup, so they are 0
+      '2026-10-10': {
+        'Minutes Lightly Active': 309,
+        'Minutes Fairly Active': 0,
+        'Minutes Very Active': 0,
+        'Minutes Sedentary': 534,
+      },
+    });
+  });
+
+  it('writes nothing for a day whose rollup has no activity levels', async () => {
+    const point = {
+      civilStartTime: { date: { year: 2026, month: 10, day: 9 } },
+      activeMinutes: {},
+    };
+    await processGoogleActivityMinutes(UID, CID, rollupPoints(point));
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
+  });
+
+  it('skips a point with no civilStartTime date', async () => {
+    const point = {
+      activeMinutes: {
+        activeMinutesRollupByActivityLevel: [
+          { activityLevel: 'MODERATE', activeMinutesSum: '10' },
+        ],
+      },
+    };
+    await processGoogleActivityMinutes(UID, CID, rollupPoints(point));
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Core body temperature ───────────────────────────────────────────────────
+
+// Shape from the Google Health API v4 discovery document (CoreBodyTemperature):
+// temperatureCelsius is a number, sampleTime.physicalTime the instant.
+describe('processGoogleCoreTemperature', () => {
+  it('reads temperatureCelsius', async () => {
+    const point = {
+      coreBodyTemperature: {
+        sampleTime: { physicalTime: '2026-10-09T14:00:00Z' },
+        temperatureCelsius: 37.1,
+      },
+    };
+    await processGoogleCoreTemperature(UID, CID, dataPoints(point));
+    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
+      UID,
+      CID,
+      'cat-1',
+      37.1,
+      '2026-10-09',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
+    );
+  });
+
+  it('skips a point without temperatureCelsius', async () => {
+    const point = {
+      coreBodyTemperature: {
+        sampleTime: { physicalTime: '2026-10-09T14:00:00Z' },
+      },
+    };
+    await processGoogleCoreTemperature(UID, CID, dataPoints(point));
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('processGoogleSleep — overnight biometrics', () => {
+  const night = () =>
+    dataPoints(sleepPoint('2026-10-14T23:00:00Z', '2026-10-15T07:00:00Z'));
+
+  it('attaches HRV and resting heart rate for the wake day and keeps stored values otherwise', async () => {
+    await processGoogleSleep(UID, CID, night(), 'UTC', {
+      hrvByDate: new Map([['2026-10-15', 42.3]]),
+      restingHrByDate: new Map([['2026-10-15', 58]]),
+    });
+    expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
+      UID,
+      CID,
+      expect.objectContaining({
+        entry_date: '2026-10-15',
+        avg_overnight_hrv: 42.3,
+        resting_heart_rate: 58,
+      }),
+      { keepExistingBiometrics: true }
+    );
+  });
+
+  it('leaves both fields unset when the maps lack the date', async () => {
+    await processGoogleSleep(UID, CID, night(), 'UTC', {
+      hrvByDate: new Map([['2026-10-14', 40]]),
+      restingHrByDate: new Map([['2026-10-16', 60]]),
+    });
+    const [, , entry, options] = vi.mocked(sleepRepository.upsertSleepEntry)
+      .mock.calls[0];
+    expect(entry.avg_overnight_hrv).toBeUndefined();
+    expect(entry.resting_heart_rate).toBeUndefined();
+    expect(options).toEqual({ keepExistingBiometrics: true });
+  });
+
+  it('keeps zero-valued biometrics through the date maps and onto the night', async () => {
+    const hrvByDate = dailyHrvByDate(
+      dataPoints({
+        dailyHeartRateVariability: {
+          date: { year: 2026, month: 10, day: 15 },
+          averageHeartRateVariabilityMilliseconds: 0,
+        },
+      }),
+      'UTC'
+    );
+    const restingHrByDate = dailyRestingHeartRateByDate(
+      dataPoints({
+        dailyRestingHeartRate: {
+          date: { year: 2026, month: 10, day: 15 },
+          beatsPerMinute: 0,
+        },
+      }),
+      'UTC'
+    );
+    await processGoogleSleep(UID, CID, night(), 'UTC', {
+      hrvByDate,
+      restingHrByDate,
+    });
+    expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
+      UID,
+      CID,
+      expect.objectContaining({
+        entry_date: '2026-10-15',
+        avg_overnight_hrv: 0,
+        resting_heart_rate: 0,
+      }),
+      { keepExistingBiometrics: true }
+    );
+  });
+
+  it('leaves both fields unset when no maps are passed', async () => {
+    await processGoogleSleep(UID, CID, night());
+    const [, , entry, options] = vi.mocked(sleepRepository.upsertSleepEntry)
+      .mock.calls[0];
+    expect(entry.avg_overnight_hrv).toBeUndefined();
+    expect(entry.resting_heart_rate).toBeUndefined();
+    expect(options).toEqual({ keepExistingBiometrics: true });
+  });
+});
+
+describe('daily biometric date maps', () => {
+  it('dailyHrvByDate uses the same date key processGoogleHRV stores', async () => {
+    const point = {
+      dailyHeartRateVariability: {
+        date: { year: 2026, month: 10, day: 15 },
+        averageHeartRateVariabilityMilliseconds: 42.3,
+      },
+    };
+    const map = dailyHrvByDate(dataPoints(point), 'UTC');
+    expect([...map.entries()]).toEqual([['2026-10-15', 42.3]]);
+    await processGoogleHRV(UID, CID, dataPoints(point));
+    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
+      UID,
+      CID,
+      'cat-1',
+      42.3,
+      '2026-10-15',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
+    );
+  });
+
+  it('dailyRestingHeartRateByDate uses the same date key processGoogleHeartRate stores', async () => {
+    const point = {
+      dailyRestingHeartRate: {
+        date: { year: 2026, month: 10, day: 15 },
+        beatsPerMinute: 58,
+      },
+    };
+    const map = dailyRestingHeartRateByDate(dataPoints(point), 'UTC');
+    expect([...map.entries()]).toEqual([['2026-10-15', 58]]);
+    await processGoogleHeartRate(UID, CID, dataPoints(point));
+    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
+      UID,
+      CID,
+      'cat-1',
+      58,
+      '2026-10-15',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
+    );
+  });
+
+  it('returns empty maps for null data and skips points without a value', () => {
+    expect(dailyHrvByDate(null, 'UTC').size).toBe(0);
+    expect(dailyRestingHeartRateByDate(undefined, 'UTC').size).toBe(0);
+    const p = {
+      dailyRestingHeartRate: { date: { year: 2026, month: 10, day: 15 } },
+    };
+    expect(dailyRestingHeartRateByDate(dataPoints(p), 'UTC').size).toBe(0);
   });
 });

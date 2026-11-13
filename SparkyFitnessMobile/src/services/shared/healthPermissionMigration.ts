@@ -4,7 +4,7 @@ import type {
   HealthMetricStates,
 } from '../../types/healthRecords';
 
-const REQUIRED_HEALTH_PERMISSION_VERSION = 4;
+const REQUIRED_HEALTH_PERMISSION_VERSION = 5;
 const REQUIRED_HEALTH_PERMISSION_VERSION_KEY = 'healthPermissionsVersion';
 
 type PermissionedMetric = {

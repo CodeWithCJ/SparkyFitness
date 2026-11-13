@@ -1,6 +1,8 @@
 package com.sparkyapps.sparkyfitness.widget
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
+import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.facebook.react.bridge.Promise
@@ -11,43 +13,57 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.Executors
 
 class CalorieWidgetModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
     private val moduleScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    // Snapshot writes and clears run one at a time in the order JS sent them,
+    // so a write for the previous account cannot land after the clear. The
+    // single thread makes each reach the lock in that order; the lock, shared
+    // with the water widget's buttons and worker, keeps the next one out
+    // while a Glance state write is suspended.
+    private val snapshotExecutor = Executors.newSingleThreadExecutor()
+    private val snapshotWrites = snapshotExecutor.asCoroutineDispatcher()
+
     override fun getName(): String = NAME
 
     override fun invalidate() {
         moduleScope.cancel()
+        snapshotExecutor.shutdown()
         super.invalidate()
     }
 
     @ReactMethod
     fun setCalorieSnapshot(json: String, promise: Promise) {
         val ctx = reactApplicationContext
-        moduleScope.launch {
-            try {
-                val prefs = ctx.getSharedPreferences(
-                    CalorieWidgetReceiver.PREFS_NAME,
-                    Context.MODE_PRIVATE,
-                )
-                if (!prefs.edit().putString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, json).commit()) {
-                    throw IllegalStateException("Failed to persist calorie widget snapshot")
-                }
-
-                val manager = GlanceAppWidgetManager(ctx)
-                manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
-                    updateAppWidgetState(ctx, id) { state ->
-                        state[CalorieWidget.SNAPSHOT_STATE_KEY] = json
+        moduleScope.launch(snapshotWrites) {
+            WidgetSnapshotLock.mutex.withLock {
+                try {
+                    val prefs = ctx.getSharedPreferences(
+                        CalorieWidgetReceiver.PREFS_NAME,
+                        Context.MODE_PRIVATE,
+                    )
+                    if (!prefs.edit().putString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, json).commit()) {
+                        throw IllegalStateException("Failed to persist calorie widget snapshot")
                     }
+
+                    val manager = GlanceAppWidgetManager(ctx)
+                    manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                        updateAppWidgetState(ctx, id) { state ->
+                            state[CalorieWidget.SNAPSHOT_STATE_KEY] = json
+                        }
+                    }
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_WRITE_FAILED", e)
                 }
-                promise.resolve(null)
-            } catch (e: Exception) {
-                promise.reject("E_WRITE_FAILED", e)
             }
         }
     }
@@ -55,27 +71,153 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun setMacroSnapshot(json: String, promise: Promise) {
         val ctx = reactApplicationContext
-        moduleScope.launch {
-            try {
-                val prefs = ctx.getSharedPreferences(
-                    MacroWidgetReceiver.PREFS_NAME,
-                    Context.MODE_PRIVATE,
-                )
-                if (!prefs.edit().putString(MacroWidgetReceiver.PREFS_KEY_SNAPSHOT, json).commit()) {
-                    throw IllegalStateException("Failed to persist macro widget snapshot")
-                }
-
-                val manager = GlanceAppWidgetManager(ctx)
-                manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
-                    updateAppWidgetState(ctx, id) { state ->
-                        state[MacroWidget.SNAPSHOT_STATE_KEY] = json
+        moduleScope.launch(snapshotWrites) {
+            WidgetSnapshotLock.mutex.withLock {
+                try {
+                    val prefs = ctx.getSharedPreferences(
+                        MacroWidgetReceiver.PREFS_NAME,
+                        Context.MODE_PRIVATE,
+                    )
+                    if (!prefs.edit().putString(MacroWidgetReceiver.PREFS_KEY_SNAPSHOT, json).commit()) {
+                        throw IllegalStateException("Failed to persist macro widget snapshot")
                     }
+
+                    val manager = GlanceAppWidgetManager(ctx)
+                    manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                        updateAppWidgetState(ctx, id) { state ->
+                            state[MacroWidget.SNAPSHOT_STATE_KEY] = json
+                        }
+                    }
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_WRITE_FAILED", e)
                 }
-                promise.resolve(null)
-            } catch (e: Exception) {
-                promise.reject("E_WRITE_FAILED", e)
             }
         }
+    }
+
+    /**
+     * Stores the water widget's snapshot, keeping the taps it has not sent
+     * yet (WaterWidgetStore). Like the other writes it does not redraw: JS
+     * calls reloadWaterWidget after it.
+     */
+    @ReactMethod
+    fun setWaterSnapshot(json: String, promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch(snapshotWrites) {
+            WidgetSnapshotLock.mutex.withLock {
+                try {
+                    WaterWidgetStore.mergeFromAppLocked(ctx, json)
+                    promise.resolve(null)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    promise.reject("E_WRITE_FAILED", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * Erases the snapshots when the account changes. They carry no account,
+     * and the Quick Settings tile shows the calorie figure on the lock screen,
+     * so the previous account's numbers must not outlive the switch.
+     */
+    @ReactMethod
+    fun clearSnapshots(promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch(snapshotWrites) {
+            WidgetSnapshotLock.mutex.withLock {
+                try {
+                    val failures = clearWidget(
+                        ctx,
+                        CalorieWidgetReceiver.PREFS_NAME,
+                        CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT,
+                        CalorieWidget(),
+                        CalorieWidget.SNAPSHOT_STATE_KEY,
+                    ) + clearWidget(
+                        ctx,
+                        MacroWidgetReceiver.PREFS_NAME,
+                        MacroWidgetReceiver.PREFS_KEY_SNAPSHOT,
+                        MacroWidget(),
+                        MacroWidget.SNAPSHOT_STATE_KEY,
+                    ) + clearWaterWidget(ctx)
+                    if (failures.isEmpty()) {
+                        promise.resolve(null)
+                    } else {
+                        promise.reject(
+                            "E_WRITE_FAILED",
+                            RuntimeException(
+                                "${failures.size} part(s) of the widgets may still hold the previous snapshot; first: ${failures.first()}",
+                                failures.first(),
+                            ),
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    promise.reject("E_WRITE_FAILED", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * The water widget's snapshot goes like the others, and so do the taps it
+     * has not sent: they were made for the previous account.
+     */
+    private suspend fun clearWaterWidget(ctx: Context): List<Exception> {
+        val failures = mutableListOf<Exception>()
+        try {
+            WaterWidgetStore.onAccountChangedLocked(ctx)
+        } catch (e: Exception) {
+            failures += e
+        }
+        return failures + clearWidget(
+            ctx,
+            WaterWidgetReceiver.PREFS_NAME,
+            WaterWidgetReceiver.PREFS_KEY_SNAPSHOT,
+            WaterWidget(),
+            WaterWidget.SNAPSHOT_STATE_KEY,
+        )
+    }
+
+    /**
+     * Removes one widget's stored snapshot, then the copy in every instance's
+     * state, redrawing each. Carries on past any part that fails, so the rest
+     * is still cleared, and returns the failures for the caller to report.
+     */
+    private suspend fun clearWidget(
+        ctx: Context,
+        prefsName: String,
+        prefsKey: String,
+        widget: GlanceAppWidget,
+        stateKey: Preferences.Key<String>,
+    ): List<Exception> {
+        val failures = mutableListOf<Exception>()
+        val prefs = ctx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        if (!prefs.edit().remove(prefsKey).commit()) {
+            failures += IllegalStateException("Failed to clear widget snapshot $prefsKey")
+        }
+        val ids = try {
+            GlanceAppWidgetManager(ctx).getGlanceIds(widget.javaClass)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failures += e
+            emptyList()
+        }
+        ids.forEach { id ->
+            try {
+                updateAppWidgetState(ctx, id) { state -> state.remove(stateKey) }
+                widget.update(ctx, id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failures += e
+            }
+        }
+        return failures
     }
 
     @ReactMethod
@@ -98,6 +240,9 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
                     WidgetLocale.bumpLocaleRenderRevision(ctx, id)
                 }
                 manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                    WidgetLocale.bumpLocaleRenderRevision(ctx, id)
+                }
+                manager.getGlanceIds(WaterWidget::class.java).forEach { id ->
                     WidgetLocale.bumpLocaleRenderRevision(ctx, id)
                 }
 
@@ -166,6 +311,41 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
                     promise.reject(
                         "E_RELOAD_FAILED",
                         RuntimeException("$failures macro widget instance(s) failed to update", firstFailure),
+                    )
+                } else {
+                    promise.resolve(null)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                promise.reject("E_RELOAD_FAILED", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun reloadWaterWidget(promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch {
+            try {
+                val manager = GlanceAppWidgetManager(ctx)
+                val widget = WaterWidget()
+                var failures = 0
+                var firstFailure: Exception? = null
+                manager.getGlanceIds(WaterWidget::class.java).forEach { id ->
+                    try {
+                        widget.update(ctx, id)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        failures++
+                        if (firstFailure == null) firstFailure = e
+                    }
+                }
+                if (failures > 0) {
+                    promise.reject(
+                        "E_RELOAD_FAILED",
+                        RuntimeException("$failures water widget instance(s) failed to update", firstFailure),
                     )
                 } else {
                     promise.resolve(null)

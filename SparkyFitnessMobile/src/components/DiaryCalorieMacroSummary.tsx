@@ -18,7 +18,8 @@ import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
 import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
-import { formatLocalizedNumber } from '../localization';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
 const CORE_MACROS = ['protein', 'carbs', 'fat', 'dietary_fiber'] as const;
 
@@ -36,6 +37,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({
   progressPercent,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
@@ -85,24 +87,24 @@ const CalorieBar: React.FC<CalorieBarProps> = ({
     <View>
       <View className="flex-row justify-between items-baseline mb-3">
         <Text className="text-lg font-bold text-text-primary">
-          {formatLocalizedNumber(Math.round(eaten))}
+          {formatEnergyNumber(eaten, energyUnit)}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
               {/* i18n-audit-ignore-next-line hardcoded-ui-text -- slash and spacing are numeric presentation punctuation. */}
               {t('nutrition.goalSeparator', {
                 defaultValue: ' / {{value}}',
-                value: formatLocalizedNumber(Math.round(goal)),
+                value: formatEnergyNumber(goal, energyUnit),
               })}
             </Text>
           )}
           <Text className="text-sm font-normal text-text-muted">
             {' '}
-            {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+            {energyUnitLabel(energyUnit, t)}
           </Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
-            {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
+            {formatEnergyNumber(Math.abs(remaining), energyUnit)}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
               {remaining >= 0
@@ -174,6 +176,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   customNutrients,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const diarySummaryVisible = useAppPreferencesStore(
     (s) => s.diarySummaryVisible
   );
@@ -201,6 +204,26 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
 
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
   const projection = summary.calorieBalance.tdeeProjection;
+  // "High day +250 kcal" when calorie cycling moved today's goal (#2327).
+  const cycling = summary.calorieCycling;
+  const cyclingAmount =
+    cycling?.status === 'active' && cycling.delta !== 0
+      ? formatEnergyNumber(Math.abs(cycling.delta), energyUnit)
+      : null;
+  const cyclingUnit = energyUnitLabel(energyUnit, t);
+  const cyclingLabel = !cyclingAmount
+    ? null
+    : (cycling?.delta ?? 0) > 0
+      ? t('diarySummary.cycling.highDay', {
+          defaultValue: 'High day +{{amount}} {{unit}}',
+          amount: cyclingAmount,
+          unit: cyclingUnit,
+        })
+      : t('diarySummary.cycling.lowDay', {
+          defaultValue: 'Low day −{{amount}} {{unit}}',
+          amount: cyclingAmount,
+          unit: cyclingUnit,
+        });
 
   const handleToggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -257,16 +280,26 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         }
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">
-            {t('diarySummary.title', { defaultValue: 'Summary' })}
-          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-md font-bold text-text-secondary">
+              {t('diarySummary.title', { defaultValue: 'Summary' })}
+            </Text>
+            {cyclingLabel && (
+              <Text
+                className="ml-2 text-xs font-semibold text-accent-primary"
+                testID="calorie-cycling-label"
+              >
+                {cyclingLabel}
+              </Text>
+            )}
+          </View>
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
         </View>
         <CalorieBar
           eaten={eaten}
-          goal={goal}
+          goal={goal > 0 ? eaten + remaining : 0}
           remaining={remaining}
           progressPercent={progress / 100}
         />
@@ -274,25 +307,26 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
       {projection && (
         <View className="mt-2 rounded-lg bg-surface px-3 py-2">
           <Text className="text-xs font-semibold text-text-primary">
-            {t('diarySummary.projectedTdee', {
-              defaultValue: 'Projected TDEE: {{value}} kcal',
-              value: formatLocalizedNumber(
-                Math.round(projection.projectedBurn)
-              ),
+            {t('diarySummary.projectedTdeeWithUnit', {
+              defaultValue: 'Projected TDEE: {{value}} {{unit}}',
+              value: formatEnergyNumber(projection.projectedBurn, energyUnit),
+              unit: energyUnitLabel(energyUnit, t),
             })}
           </Text>
           <Text className="text-xs text-text-secondary mt-0.5">
-            {t('diarySummary.goalModeTarget', {
-              defaultValue: 'Goal Mode target: {{value}} kcal',
-              value: formatLocalizedNumber(
-                Math.round(projection.targetCalories ?? goal)
+            {t('diarySummary.goalModeTargetWithUnit', {
+              defaultValue: 'Goal Mode target: {{value}} {{unit}}',
+              value: formatEnergyNumber(
+                projection.targetCalories ?? goal,
+                energyUnit
               ),
+              unit: energyUnitLabel(energyUnit, t),
             })}
           </Text>
           <Text className="text-xs text-text-muted mt-0.5">
             {projection.source === 'health_connect_total'
               ? t('diarySummary.healthConnectProjectionSource', {
-                  defaultValue: 'Health Connect total calories',
+                  defaultValue: 'Device total calories',
                 })
               : projection.source === 'active_plus_bmr'
                 ? t('diarySummary.fallbackProjectionSource', {

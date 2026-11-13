@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const symptomEntriesIdSchema = z.string().or(z.number());
 
@@ -27,6 +27,7 @@ export const symptomEntriesSchema = z.object({
   impact: z.string().nullable().optional(),
   peak_severity: z.number().nullable().optional(),
   severity_timeline: z.unknown(),
+  impact_timeline: z.unknown(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });
@@ -56,6 +57,7 @@ export const symptomEntriesInitializerSchema = z.object({
   impact: z.string().nullable().optional(),
   peak_severity: z.number().nullable().optional(),
   severity_timeline: z.unknown().optional(),
+  impact_timeline: z.unknown().optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });

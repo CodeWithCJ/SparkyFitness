@@ -1,5 +1,7 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { trackBackgroundWork } from '../utils/shutdownHooks.js';
+import { beginBulkImport, readBulkImport } from './bulkImports.js';
 import type {
   LivsmedelsverketBulkImportRequest,
   LivsmedelsverketBulkImportStatus,
@@ -11,13 +13,13 @@ import {
 } from '../integrations/livsmedelsverket/livsmedelsverketService.js';
 import { enrichWithCustomNutrients } from './foodProviderDetailService.js';
 
-const activeImports = new Map<string, LivsmedelsverketBulkImportStatus>();
+const KIND = 'livsmedelsverket';
 
-export function getLivsmedelsverketImportStatus(
+export async function getLivsmedelsverketImportStatus(
   userId: string
-): LivsmedelsverketBulkImportStatus {
+): Promise<LivsmedelsverketBulkImportStatus> {
   return (
-    activeImports.get(userId) || {
+    (await readBulkImport<LivsmedelsverketBulkImportStatus>(KIND, userId)) ?? {
       userId,
       isRunning: false,
       status: 'idle',
@@ -48,17 +50,11 @@ export async function deleteLivsmedelsverketLibraryFoods(
   }
 }
 
+/** Starts the import in the background; false while one runs on any instance. */
 export async function startLivsmedelsverketBulkImport(
   userId: string,
   options: LivsmedelsverketBulkImportRequest
-): Promise<void> {
-  const currentStatus = activeImports.get(userId);
-  if (currentStatus?.isRunning) {
-    throw new Error(
-      'A Livsmedelsverket import is already running for this user.'
-    );
-  }
-
+): Promise<boolean> {
   const initialStatus: LivsmedelsverketBulkImportStatus = {
     userId,
     isRunning: true,
@@ -70,10 +66,11 @@ export async function startLivsmedelsverketBulkImport(
     updated: 0,
     lastRunAt: new Date().toISOString(),
   };
-  activeImports.set(userId, initialStatus);
+  const job = await beginBulkImport(KIND, userId, initialStatus);
+  if (!job) return false;
 
   // Run in background asynchronously so request returns immediately
-  (async () => {
+  const importRun = (async () => {
     try {
       const language = options.language || 'sv';
       const sprakCode = resolveSprakCode(language);
@@ -86,6 +83,7 @@ export async function startLivsmedelsverketBulkImport(
 
       const total = itemsToProcess.length;
       initialStatus.total = total;
+      await job.save(initialStatus);
 
       let processedCount = 0;
       let importedCount = 0;
@@ -127,7 +125,7 @@ export async function startLivsmedelsverketBulkImport(
           // Enrich with user's mapped custom nutrients (supports Swedish names and aliases)
           await enrichWithCustomNutrients(userId, validFoods);
 
-          const client = await getSystemClient();
+          const client = job.client;
           try {
             await client.query('BEGIN');
 
@@ -431,8 +429,6 @@ export async function startLivsmedelsverketBulkImport(
             if (!firstFailureError) {
               firstFailureError = batchErrMsg;
             }
-          } finally {
-            client.release();
           }
         }
 
@@ -442,6 +438,7 @@ export async function startLivsmedelsverketBulkImport(
         initialStatus.updated = updatedCount;
         initialStatus.progress =
           total > 0 ? Math.round((processedCount / total) * 100) : 100;
+        await job.save(initialStatus);
       }
 
       initialStatus.isRunning = false;
@@ -470,8 +467,20 @@ export async function startLivsmedelsverketBulkImport(
         'error',
         `Livsmedelsverket bulk import failed for user ${userId}: ${errMsg}`
       );
+    } finally {
+      await job
+        .finish(initialStatus)
+        .catch((error) =>
+          log(
+            'error',
+            'Could not save the Livsmedelsverket import status:',
+            error
+          )
+        );
     }
   })();
+  void trackBackgroundWork(importRun);
+  return true;
 }
 
 export default {

@@ -20,4 +20,5 @@ export const FOOD_VARIANT_NUTRIENT_FIELDS = [
   'alcohol_g',
 ] as const;
 
-export type FoodVariantNutrientField = (typeof FOOD_VARIANT_NUTRIENT_FIELDS)[number];
+export type FoodVariantNutrientField =
+  (typeof FOOD_VARIANT_NUTRIENT_FIELDS)[number];

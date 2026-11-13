@@ -226,6 +226,7 @@ describe('reconcileMedicationReminders', () => {
           data: {
             medicationId: 'med-1',
             scheduleId: 'sched-1',
+            userId: 'user-1',
             entryDate: TODAY,
             key: BASE_KEY,
             baseKey: BASE_KEY,
@@ -764,6 +765,468 @@ describe('reconcileMedicationReminders', () => {
         (c[0].content.data?.key as string)?.includes(TODAY)
       );
       expect(todayScheduled).toHaveLength(0);
+    });
+
+    it('dismisses already-delivered notifications from the tray when a dose is logged', async () => {
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'delivered-base',
+            content: {
+              data: {
+                medicationId: 'med-1',
+                key: BASE_KEY,
+                baseKey: BASE_KEY,
+              },
+            },
+          },
+        },
+        {
+          request: {
+            identifier: 'delivered-repeat-10',
+            content: {
+              data: {
+                medicationId: 'med-1',
+                key: `${BASE_KEY}_10`,
+                baseKey: BASE_KEY,
+              },
+            },
+          },
+        },
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], [buildEntry()]);
+
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'delivered-base'
+      );
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'delivered-repeat-10'
+      );
+    });
+
+    it('dismisses presented medication reminders when notification permission is not granted', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'denied' } as never);
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'delivered-med',
+            content: { data: { medicationId: 'med-1' } },
+          },
+        },
+        {
+          request: {
+            identifier: 'delivered-other',
+            content: { data: { other: 'true' } },
+          },
+        },
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'delivered-med'
+      );
+      expect(Notifications.dismissNotificationAsync).not.toHaveBeenCalledWith(
+        'delivered-other'
+      );
+    });
+
+    it('reloads today entries when flushPendingMedicationNotificationActions processes a queued action', async () => {
+      const handlerMod =
+        require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
+      const apiMod =
+        require('../../src/services/api/medicationsApi') as typeof import('../../src/services/api/medicationsApi');
+
+      const flushSpy = jest
+        .spyOn(handlerMod, 'flushPendingMedicationNotificationActions')
+        .mockResolvedValueOnce(true);
+      const listEntriesSpy = jest
+        .spyOn(apiMod, 'listEntries')
+        .mockResolvedValueOnce([buildEntry()]);
+
+      // Pass stale empty entries snapshot; reloaded entries include today's logged dose
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(flushSpy).toHaveBeenCalledTimes(1);
+      expect(listEntriesSpy).toHaveBeenCalledWith({
+        fromDate: TODAY,
+        toDate: TODAY,
+      });
+
+      // Today's base + repeat reminders should NOT be scheduled since reloaded entries show the dose is logged
+      const scheduledKeys = mockSchedule.mock.calls.map(
+        (c) => (c[0].content.data as { key: string }).key
+      );
+      expect(scheduledKeys).not.toContain(BASE_KEY);
+
+      flushSpy.mockRestore();
+      listEntriesSpy.mockRestore();
+    });
+
+    it('preserves an active snoozed reminder for an unlogged dose without rescheduling its base or repeat slots', async () => {
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('leftover-repeat', {
+          medicationId: 'med-1',
+          key: `${BASE_KEY}_20`,
+          baseKey: BASE_KEY,
+        }),
+        pendingRequest('snoozed-1', {
+          medicationId: 'med-1',
+          key: `${BASE_KEY}_snooze_12345`,
+          baseKey: BASE_KEY,
+          isSnoozed: 'true',
+        }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).not.toHaveBeenCalledWith('snoozed-1');
+      expect(mockCancel).toHaveBeenCalledWith('leftover-repeat');
+      expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
+    });
+
+    it('cancels a pending snoozed reminder once its dose is logged', async () => {
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('snoozed-1', {
+          medicationId: 'med-1',
+          key: `${BASE_KEY}_snooze_12345`,
+          baseKey: BASE_KEY,
+          isSnoozed: 'true',
+        }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], [buildEntry()]);
+
+      expect(mockCancel).toHaveBeenCalledWith('snoozed-1');
+    });
+
+    it('does not reschedule future repeat slots after a snoozed reminder has already fired and is only in presented notifications', async () => {
+      const pastBaseKey = `med_${TODAY}_med-1_sched-1_07:55`;
+      mockGetAllScheduled.mockResolvedValue([]);
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'delivered-snooze',
+            content: {
+              data: {
+                medicationId: 'med-1',
+                key: `${pastBaseKey}_snooze_12345`,
+                baseKey: pastBaseKey,
+                isSnoozed: 'true',
+              },
+            },
+          },
+        },
+      ]);
+
+      await reconcileMedicationReminders(
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: '07:55' })],
+          }),
+        ],
+        []
+      );
+
+      const keys = scheduledKeys();
+      expect(keys).not.toContain(`${pastBaseKey}_10`);
+      expect(keys).not.toContain(`${pastBaseKey}_20`);
+      expect(keys).not.toContain(`${pastBaseKey}_30`);
+      expect(keys.every((k) => !k.startsWith(pastBaseKey))).toBe(true);
+    });
+
+    it('retains a cross-day grouped snooze while at least one represented dose is unlogged, then cancels it once all represented doses are logged', async () => {
+      const apiMod =
+        require('../../src/services/api/medicationsApi') as typeof import('../../src/services/api/medicationsApi');
+      const yesterday = '2026-07-27';
+      const crossDayGroupKey = `med_group_${yesterday}_23:50_med-1:sched-1_med-2:sched-2`;
+      const snoozedRequest = pendingRequest('cross-day-group-snooze', {
+        medicationId: 'med-1',
+        scheduleId: 'sched-1',
+        entryDate: yesterday,
+        key: `${crossDayGroupKey}_snooze_99999`,
+        baseKey: crossDayGroupKey,
+        isGroup: 'true',
+        isSnoozed: 'true',
+        doses: JSON.stringify([
+          { medicationId: 'med-1', scheduleId: 'sched-1' },
+          { medicationId: 'med-2', scheduleId: 'sched-2' },
+        ]),
+      });
+
+      mockGetAllScheduled.mockResolvedValue([snoozedRequest]);
+
+      // First run after midnight: med-1 is taken on yesterday, med-2 is still unlogged
+      const listEntriesSpy = jest
+        .spyOn(apiMod, 'listEntries')
+        .mockResolvedValueOnce([
+          buildEntry({
+            medication_id: 'med-1',
+            schedule_id: 'sched-1',
+            entry_date: yesterday,
+            status: 'taken',
+          }),
+        ]);
+
+      await reconcileMedicationReminders([buildMedication(), med2], []);
+
+      expect(listEntriesSpy).toHaveBeenCalledWith({
+        fromDate: yesterday,
+        toDate: yesterday,
+      });
+      expect(mockCancel).not.toHaveBeenCalledWith('cross-day-group-snooze');
+
+      // Second run after midnight: both med-1 and med-2 have terminal entries for yesterday
+      mockCancel.mockClear();
+      listEntriesSpy.mockResolvedValueOnce([
+        buildEntry({
+          medication_id: 'med-1',
+          schedule_id: 'sched-1',
+          entry_date: yesterday,
+          status: 'taken',
+        }),
+        buildEntry({
+          id: 'entry-2',
+          medication_id: 'med-2',
+          schedule_id: 'sched-2',
+          entry_date: yesterday,
+          status: 'skipped',
+        }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication(), med2], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('cross-day-group-snooze');
+      listEntriesSpy.mockRestore();
+    });
+
+    it('retains a same-day grouped snooze when one of its doses is logged, then cancels it once all represented doses are logged', async () => {
+      const sameDayGroupKey = `med_group_${TODAY}_07:50_med-1:sched-1_med-2:sched-2`;
+      const remainingSingleKey = `med_${TODAY}_med-2_sched-2_07:50`;
+      const snoozedRequest = pendingRequest('same-day-group-snooze', {
+        medicationId: 'med-1',
+        scheduleId: 'sched-1',
+        entryDate: TODAY,
+        key: `${sameDayGroupKey}_snooze_${Date.now() + 900_000}`,
+        baseKey: sameDayGroupKey,
+        isGroup: 'true',
+        isSnoozed: 'true',
+        doses: JSON.stringify([
+          { medicationId: 'med-1', scheduleId: 'sched-1' },
+          { medicationId: 'med-2', scheduleId: 'sched-2' },
+        ]),
+      });
+
+      const pastMed1 = buildMedication({
+        id: 'med-1',
+        schedules: [buildSchedule({ id: 'sched-1', time_of_day: '07:50' })],
+      });
+      const pastMed2 = buildMedication({
+        id: 'med-2',
+        name: 'Lisinopril',
+        schedules: [
+          buildSchedule({
+            id: 'sched-2',
+            medication_id: 'med-2',
+            time_of_day: '07:50',
+          }),
+        ],
+      });
+
+      mockGetAllScheduled.mockResolvedValue([snoozedRequest]);
+
+      // One dose (med-1) in the snoozed group is logged; med-2 remains unlogged.
+      await reconcileMedicationReminders(
+        [pastMed1, pastMed2],
+        [
+          buildEntry({
+            medication_id: 'med-1',
+            schedule_id: 'sched-1',
+            entry_date: TODAY,
+            status: 'taken',
+          }),
+        ]
+      );
+
+      expect(mockCancel).not.toHaveBeenCalledWith('same-day-group-snooze');
+      // The remaining dose (med-2) is covered by the retained group snooze, so
+      // no duplicate repeat notifications for med-2 are scheduled for today.
+      expect(
+        scheduledKeys().some((k) => k.startsWith(remainingSingleKey))
+      ).toBe(false);
+
+      // Once med-2 is also logged, the grouped snooze is cancelled.
+      mockCancel.mockClear();
+      await reconcileMedicationReminders(
+        [pastMed1, pastMed2],
+        [
+          buildEntry({
+            medication_id: 'med-1',
+            schedule_id: 'sched-1',
+            entry_date: TODAY,
+            status: 'taken',
+          }),
+          buildEntry({
+            id: 'entry-2',
+            medication_id: 'med-2',
+            schedule_id: 'sched-2',
+            entry_date: TODAY,
+            status: 'taken',
+          }),
+        ]
+      );
+
+      expect(mockCancel).toHaveBeenCalledWith('same-day-group-snooze');
+    });
+
+    it('replaces pending and delivered named snoozed reminders with generic copy when hideNames is enabled', async () => {
+      useAppPreferencesStore.setState({ medicationReminderHideNames: true });
+      const snoozeFireAt = new Date('2026-07-28T09:45:00');
+      const snoozeKey = `${BASE_KEY}_snooze_${snoozeFireAt.getTime()}`;
+
+      mockGetAllScheduled.mockResolvedValue([
+        {
+          identifier: 'named-snooze',
+          content: {
+            title: 'Medication reminder',
+            body: 'Scheduled dose: Metformin (500 mg)',
+            data: {
+              medicationId: 'med-1',
+              scheduleId: 'sched-1',
+              entryDate: TODAY,
+              key: snoozeKey,
+              baseKey: BASE_KEY,
+              isSnoozed: 'true',
+              hideNames: 'false',
+              locale: 'en',
+            },
+          } as unknown as Notifications.NotificationContent,
+          trigger: {
+            type: 'date',
+            value: snoozeFireAt.getTime(),
+          } as unknown as Notifications.NotificationTrigger,
+        },
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('named-snooze');
+      const rebuiltSnooze = mockSchedule.mock.calls.find(
+        (c) => c[0].content.data?.key === snoozeKey
+      );
+      expect(rebuiltSnooze).toBeDefined();
+      expect(rebuiltSnooze?.[0].content.body).toBe('You have a scheduled dose');
+      expect(rebuiltSnooze?.[0].content.data).toEqual(
+        expect.objectContaining({
+          key: snoozeKey,
+          baseKey: BASE_KEY,
+          isSnoozed: 'true',
+          hideNames: 'true',
+        })
+      );
+      expect(rebuiltSnooze?.[0].trigger).toEqual(
+        expect.objectContaining({
+          date: snoozeFireAt,
+        })
+      );
+      expect(scheduledKeys()).not.toContain(`${BASE_KEY}_10`);
+
+      // Also verify an already-delivered (presented) named snooze is dismissed and re-posted with generic copy
+      mockSchedule.mockClear();
+      mockGetAllScheduled.mockResolvedValue([]);
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'delivered-named-snooze',
+            content: {
+              title: 'Medication reminder',
+              body: 'Scheduled dose: Metformin (500 mg)',
+              data: {
+                medicationId: 'med-1',
+                scheduleId: 'sched-1',
+                entryDate: TODAY,
+                key: snoozeKey,
+                baseKey: BASE_KEY,
+                isSnoozed: 'true',
+                hideNames: 'false',
+                locale: 'en',
+              },
+            },
+          },
+        },
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'delivered-named-snooze'
+      );
+      const repostedSnooze = mockSchedule.mock.calls.find(
+        (c) => c[0].content.data?.baseKey === BASE_KEY
+      );
+      expect(repostedSnooze).toBeDefined();
+      expect(repostedSnooze?.[0].content.body).toBe(
+        'You have a scheduled dose'
+      );
+      expect(repostedSnooze?.[0].content.data).toEqual(
+        expect.objectContaining({
+          baseKey: BASE_KEY,
+          isSnoozed: 'true',
+          hideNames: 'true',
+        })
+      );
+    });
+
+    it('cancels and drops a snoozed reminder whose medication does not belong to the active account', async () => {
+      const AsyncStorage =
+        require('@react-native-async-storage/async-storage') as {
+          setItem: (k: string, v: string) => Promise<void>;
+          getItem: (k: string) => Promise<string | null>;
+        };
+      const yesterday = '2026-07-27';
+      const foreignBaseKey = `med_${yesterday}_other-med_other-sched_23:50`;
+
+      await AsyncStorage.setItem(
+        'snoozed_medication_reminders',
+        JSON.stringify([
+          {
+            baseKey: foreignBaseKey,
+            entryDate: yesterday,
+            doses: [{ medicationId: 'other-med', scheduleId: 'other-sched' }],
+          },
+        ])
+      );
+
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('foreign-snooze', {
+          medicationId: 'other-med',
+          scheduleId: 'other-sched',
+          entryDate: yesterday,
+          key: `${foreignBaseKey}_snooze_${Date.now() + 600_000}`,
+          baseKey: foreignBaseKey,
+          isSnoozed: 'true',
+        }),
+      ]);
+
+      await reconcileMedicationReminders(
+        [buildMedication({ id: 'med-1' })],
+        []
+      );
+
+      expect(mockCancel).toHaveBeenCalledWith('foreign-snooze');
+      const remaining = await AsyncStorage.getItem(
+        'snoozed_medication_reminders'
+      );
+      expect(JSON.parse(remaining ?? '[]')).toEqual([]);
     });
   });
 });

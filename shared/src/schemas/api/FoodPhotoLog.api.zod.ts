@@ -1,6 +1,6 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { MEAL_SERVING_UNIT_DEFAULT } from "../../constants/mealServing.ts";
+import { MEAL_SERVING_UNIT_DEFAULT } from '../../constants/mealServing.ts';
 
 /**
  * Contract for logging a reviewed food-photo estimate to the diary.
@@ -21,7 +21,7 @@ import { MEAL_SERVING_UNIT_DEFAULT } from "../../constants/mealServing.ts";
 
 const dayStringSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "entry_date must be YYYY-MM-DD");
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'entry_date must be YYYY-MM-DD');
 
 /**
  * A food to create for an ingredient that matched nothing in the user's
@@ -73,7 +73,7 @@ export const foodPhotoLogNewFoodSchema = z
      * an "AI estimate" marker, so passing it makes a guessed food visibly
      * distinguishable from a barcode-scanned or provider-sourced one.
      */
-    ai_confidence: z.enum(["high", "medium", "low"]).optional(),
+    ai_confidence: z.enum(['high', 'medium', 'low']).optional(),
   })
   .strict();
 
@@ -85,10 +85,10 @@ export const foodPhotoLogNewFoodSchema = z
  * `new`      — no match (or the user rejected it), so create a hidden quick
  *              food from the reviewed numbers.
  */
-export const foodPhotoLogItemSchema = z.discriminatedUnion("source", [
+export const foodPhotoLogItemSchema = z.discriminatedUnion('source', [
   z
     .object({
-      source: z.literal("existing"),
+      source: z.literal('existing'),
       food_id: z.string().uuid(),
       variant_id: z.string().uuid(),
       quantity: z.number().positive(),
@@ -97,7 +97,7 @@ export const foodPhotoLogItemSchema = z.discriminatedUnion("source", [
     .strict(),
   z
     .object({
-      source: z.literal("new"),
+      source: z.literal('new'),
       food: foodPhotoLogNewFoodSchema,
       quantity: z.number().positive(),
       unit: z.string().min(1),
@@ -110,7 +110,7 @@ export const FOOD_PHOTO_LOG_MAX_ITEMS = 25;
 
 export const foodPhotoLogRequestSchema = z
   .object({
-    mode: z.enum(["grouped", "combined"]),
+    mode: z.enum(['grouped', 'combined']),
     /**
      * Log on behalf of another user (family/friends diary sharing). Omitted
      * for the normal self-logging case. The server still checks `diary`
@@ -165,11 +165,11 @@ export const foodPhotoLogRequestSchema = z
   })
   .strict()
   .superRefine((data, ctx) => {
-    if (data.save_as_meal && data.mode !== "grouped") {
+    if (data.save_as_meal && data.mode !== 'grouped') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "save_as_meal requires grouped mode.",
-        path: ["save_as_meal"],
+        message: 'save_as_meal requires grouped mode.',
+        path: ['save_as_meal'],
       });
     }
 
@@ -186,11 +186,11 @@ export const foodPhotoLogRequestSchema = z
         code: z.ZodIssueCode.custom,
         message:
           "serving_size must be 1 when serving_unit is 'serving'; state the yield in total_servings.",
-        path: ["serving_size"],
+        path: ['serving_size'],
       });
     }
 
-    if (data.mode !== "combined") return;
+    if (data.mode !== 'combined') return;
 
     if (
       data.total_servings !== 1 ||
@@ -202,7 +202,7 @@ export const foodPhotoLogRequestSchema = z
         code: z.ZodIssueCode.custom,
         message:
           "combined mode cannot split servings; scale the single food's serving size instead.",
-        path: ["total_servings"],
+        path: ['total_servings'],
       });
     }
 
@@ -213,23 +213,23 @@ export const foodPhotoLogRequestSchema = z
     if (data.items.length !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "combined mode requires exactly one item.",
-        path: ["items"],
+        message: 'combined mode requires exactly one item.',
+        path: ['items'],
       });
       return;
     }
     const only = data.items[0];
-    if (!only || only.source !== "new") {
+    if (!only || only.source !== 'new') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "combined mode requires a new-food item.",
-        path: ["items", 0, "source"],
+        message: 'combined mode requires a new-food item.',
+        path: ['items', 0, 'source'],
       });
     }
   });
 
 export const foodPhotoLogResponseSchema = z.object({
-  mode: z.enum(["grouped", "combined"]),
+  mode: z.enum(['grouped', 'combined']),
   /** Null in combined mode — there is no parent meal. */
   food_entry_meal_id: z.string().uuid().nullable(),
   /**
@@ -244,11 +244,11 @@ export const foodPhotoLogResponseSchema = z.object({
 });
 
 export const foodPhotoLogErrorCodeSchema = z.enum([
-  "INVALID_REQUEST",
-  "FOOD_NOT_FOUND",
-  "VARIANT_NOT_FOUND",
-  "INVALID_MEAL_TYPE",
-  "FORBIDDEN",
+  'INVALID_REQUEST',
+  'FOOD_NOT_FOUND',
+  'VARIANT_NOT_FOUND',
+  'INVALID_MEAL_TYPE',
+  'FORBIDDEN',
 ]);
 
 export const foodPhotoLogErrorResponseSchema = z.object({

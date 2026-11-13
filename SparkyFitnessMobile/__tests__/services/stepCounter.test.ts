@@ -1,9 +1,11 @@
 import { Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
+import { queryStatisticsForQuantity } from '@kingstinct/react-native-healthkit';
 
 import { readStepCounterSinceBoot } from '../../modules/step-counter';
 import {
   captureStepCounterBaseline,
+  getHealthStepsBetween,
   getStepsBetween,
 } from '../../src/services/stepCounter';
 
@@ -154,5 +156,52 @@ describe('captureStepCounterBaseline', () => {
     pedometer.getPermissionsAsync.mockResolvedValue(permission(false));
     expect(await captureStepCounterBaseline(false)).toBeNull();
     expect(pedometer.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('getHealthStepsBetween', () => {
+  const stats = jest.mocked(queryStatisticsForQuantity);
+  const original = Platform.OS;
+  afterEach(() => {
+    Platform.OS = original;
+  });
+
+  it('sums the steps Apple Health holds over the window', async () => {
+    Platform.OS = 'ios';
+    stats.mockResolvedValue({
+      sumQuantity: { quantity: 5183.4, unit: 'count' },
+    } as never);
+
+    expect(await getHealthStepsBetween(START, END)).toBe(5183);
+    expect(stats).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierStepCount',
+      ['cumulativeSum'],
+      {
+        filter: {
+          date: { startDate: new Date(START), endDate: new Date(END) },
+        },
+        unit: 'count',
+      }
+    );
+  });
+
+  it('is null with no steps, no answer, or an error', async () => {
+    Platform.OS = 'ios';
+    stats.mockResolvedValueOnce({
+      sumQuantity: { quantity: 0, unit: 'count' },
+    } as never);
+    expect(await getHealthStepsBetween(START, END)).toBeNull();
+    stats.mockResolvedValueOnce(undefined as never);
+    expect(await getHealthStepsBetween(START, END)).toBeNull();
+    stats.mockRejectedValueOnce(new Error('denied'));
+    expect(await getHealthStepsBetween(START, END)).toBeNull();
+  });
+
+  it('is null off iOS or for an empty window', async () => {
+    Platform.OS = 'android';
+    expect(await getHealthStepsBetween(START, END)).toBeNull();
+    Platform.OS = 'ios';
+    expect(await getHealthStepsBetween(END, START)).toBeNull();
+    expect(stats).not.toHaveBeenCalled();
   });
 });

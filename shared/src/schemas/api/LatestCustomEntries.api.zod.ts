@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * One row of `GET /measurements/custom-entries/latest-manual-on-or-before-date`:
@@ -26,7 +26,7 @@ export const latestManualCustomEntrySchema = z.object({
 });
 
 export const latestManualCustomEntriesResponseSchema = z.array(
-  latestManualCustomEntrySchema,
+  latestManualCustomEntrySchema
 );
 
 export type LatestManualCustomEntry = z.infer<

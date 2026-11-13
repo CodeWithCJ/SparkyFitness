@@ -3,7 +3,6 @@ import {
   buildNutrients,
   catalogIdsToProvision,
   countNutrients,
-  filterMedsBySubtype,
   macroRow,
   parseAmount,
   pickerCatalogEntries,
@@ -12,7 +11,7 @@ import {
   rowsFromNutrients,
   unmatchedSummary,
 } from '../../src/utils/supplements';
-import { MACRO_PICKER_FIELDS } from '@workspace/shared';
+import { MACRO_PICKER_FIELDS, filterMedsBySubtype } from '@workspace/shared';
 
 describe('filterMedsBySubtype', () => {
   const meds = [

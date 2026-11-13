@@ -12,7 +12,7 @@ import {
   createQueryWrapper,
   type QueryClient,
 } from './queryTestUtils';
-import type { FoodVariantDetail } from '../../src/types/foods';
+import type { FoodItem, FoodVariantDetail } from '../../src/types/foods';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   createFoodEntry: jest.fn(),
@@ -71,6 +71,90 @@ describe('useAddFoodEntry', () => {
   afterEach(() => {
     queryClient.clear();
   });
+
+  test.each(['fresh', 'failed', 'cached'] as const)(
+    'checkpoints only a fresh successful food save: %s',
+    async (scenario) => {
+      const reference: FoodVariantDetail = {
+        id: 'grams',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      };
+      const saved: FoodItem = {
+        id: 'food-1',
+        name: 'Food',
+        brand: null,
+        is_custom: true,
+        default_variant: reference,
+      };
+      mockSaveFood.mockResolvedValue(saved);
+      mockFetchFoodVariants.mockResolvedValue([reference]);
+      let checkpoint: FoodItem | undefined;
+      mockCreateFoodEntry.mockImplementation(async (payload) => {
+        if (scenario === 'fresh') expect(checkpoint).toEqual(saved);
+        return {
+          id: 'entry-1',
+          food_id: payload.food_id,
+          variant_id: payload.variant_id,
+          meal_type: 'breakfast',
+          quantity: payload.quantity,
+          unit: payload.unit,
+          entry_date: payload.entry_date,
+          serving_size: 100,
+          calories: 200,
+        };
+      });
+      const { result } = renderHook(
+        () =>
+          useAddFoodEntry({
+            onFoodSaved: (food) => {
+              checkpoint = food;
+            },
+          }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      const input: Parameters<typeof result.current.addEntryAsync>[0] = {
+        saveFoodPayload: {
+          name: 'Food',
+          brand: null,
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+          is_custom: true,
+        },
+        ...(scenario === 'cached' ? { savedFood: saved } : {}),
+        createEntryPayload: {
+          meal_type_id: 'breakfast',
+          quantity: 100,
+          unit: 'g',
+          entry_date: '2026-04-23',
+        },
+      };
+      if (scenario === 'failed') {
+        mockSaveFood.mockRejectedValue(new Error('offline'));
+        await act(async () => {
+          await expect(result.current.addEntryAsync(input)).rejects.toThrow(
+            'offline'
+          );
+        });
+        expect(mockCreateFoodEntry).not.toHaveBeenCalled();
+      } else {
+        await act(async () => {
+          await result.current.addEntryAsync(input);
+        });
+      }
+      expect(checkpoint).toEqual(scenario === 'fresh' ? saved : undefined);
+      if (scenario === 'cached') expect(mockSaveFood).not.toHaveBeenCalled();
+    }
+  );
 
   test('invalidates recent meals when a meal entry is logged', async () => {
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');

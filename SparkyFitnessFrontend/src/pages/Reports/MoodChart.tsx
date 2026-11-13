@@ -12,8 +12,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getMoodDisplay } from '@/utils/moodUtils';
-import { moodByName } from '@workspace/shared';
-import type { MoodEntry } from '@/types';
+import { dailyMoodSeries, moodByName } from '@workspace/shared';
+import type { MoodEntry } from '@/types/mood';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getTimeXAxisProps, prepareTimeChartData } from '@/utils/chartUtils';
@@ -36,7 +36,7 @@ interface FormattedMoodEntry {
     emoji: string;
     label: string;
   };
-  notes?: string;
+  checkinCount: number;
 }
 
 const MoodChart = ({ data, title }: MoodChartProps) => {
@@ -48,19 +48,26 @@ const MoodChart = ({ data, title }: MoodChartProps) => {
     setIsMounted(true);
   }, []);
 
-  const formattedData = React.useMemo(
-    () =>
-      prepareTimeChartData(
-        data.map((entry) => ({
-          date: entry.entry_date,
-          moodValue: entry.mood_value,
-          moodDisplay: getMoodDisplay(entry.mood_value), // Get both emoji and label
-          notes: entry.notes,
-        })),
-        chartScaleMode
-      ),
-    [data, chartScaleMode]
-  );
+  const formattedData = React.useMemo(() => {
+    const checkinCounts = new Map<string, number>();
+    for (const entry of data) {
+      if (entry.source === 'manual' && entry.mood_value !== null) {
+        checkinCounts.set(
+          entry.entry_date,
+          (checkinCounts.get(entry.entry_date) ?? 0) + 1
+        );
+      }
+    }
+    return prepareTimeChartData(
+      dailyMoodSeries(data).map((day) => ({
+        date: day.date,
+        moodValue: day.mood_value,
+        moodDisplay: getMoodDisplay(day.mood_value), // Get both emoji and label
+        checkinCount: checkinCounts.get(day.date) ?? 0,
+      })),
+      chartScaleMode
+    );
+  }, [data, chartScaleMode]);
 
   // Mood-tag frequency across the range (most common moods).
   const tagFrequency = React.useMemo(() => {
@@ -225,9 +232,12 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
             ? `${t('mood.moodValue', 'Mood Value')}: ${entry.moodValue} ${entry.moodDisplay.emoji} (${entry.moodDisplay.label})`
             : ''}
         </p>
-        {entry?.notes && (
+        {entry && entry.checkinCount > 0 && (
           <p className="desc" style={{ marginTop: '5px' }}>
-            {t('mood.notes', 'Notes: ') + entry.notes}
+            {t('checkIn.checkinCount', '{{count}} check-ins', {
+              count: entry.checkinCount,
+              defaultValue_one: '{{count}} check-in',
+            })}
           </p>
         )}
       </div>

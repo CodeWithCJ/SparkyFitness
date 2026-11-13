@@ -14,6 +14,7 @@ import { useCSSVariable } from 'uniwind';
 import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
 import {
   useDeleteMealPlan,
@@ -52,7 +53,7 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { mealPlans, isLoading, isError, refetch } = useMealPlans({
     enabled: isConnected,
   });
@@ -281,29 +282,7 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
   );
 
   const content = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          title={t('mealPlans.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('mealPlans.noServerSubtitle', {
-            defaultValue:
-              'Configure your server connection to manage meal plans.',
-          })}
-          action={{
-            label: t('mealPlans.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -392,7 +371,7 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {content()}
+      <ServerGate>{content()}</ServerGate>
       {mealPlans.length > 0 && !isLoading && !isError ? (
         <FooterActionBar>
           <Button onPress={() => navigation.navigate('MealPlanForm')}>

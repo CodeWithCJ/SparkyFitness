@@ -1,9 +1,21 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import i18n from 'i18next';
 import {
-  saveMoodEntry,
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+import i18n from 'i18next';
+import type {
+  MoodCheckinCreateBody,
+  MoodCheckinUpdateBody,
+} from '@workspace/shared';
+import { HttpApiError } from '@/api/api';
+import {
+  getMoodCheckinsByDate,
+  createMoodCheckin,
+  updateMoodCheckin,
+  deleteMoodCheckin,
   getMoodEntries,
-  getMoodEntryByDate,
   listCustomMoods,
   createCustomMood,
   deleteCustomMood,
@@ -29,42 +41,71 @@ export const useMoodEntries = (
   });
 };
 
-export const useMoodEntryByDate = (entryDate: string) => {
-  return useQuery({
-    queryKey: moodKeys.byDate(entryDate),
-    queryFn: () => getMoodEntryByDate(entryDate),
+/**
+ * A check-in request's error toast: the server's own message when it sent one
+ * (such as why a check-in was rejected), otherwise `fallback`.
+ */
+const serverMessageOr = (fallback: string) => (err: unknown) =>
+  err instanceof HttpApiError && err.message ? err.message : fallback;
+
+export const useMoodCheckinsByDate = (date: string) =>
+  useQuery({
+    queryKey: moodKeys.byDate(date),
+    queryFn: () => getMoodCheckinsByDate(date),
     meta: {
       errorMessage: i18n.t(
-        'mood.failedToLoadEntry',
-        'Failed to load mood entry.'
+        'mood.failedToLoadEntries',
+        'Failed to load mood entries.'
       ),
+    },
+  });
+
+/** A check-in change reaches the mood views and the cycle correlations. */
+const invalidateMoodCaches = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: moodKeys.all }),
+    queryClient.invalidateQueries({ queryKey: ['cycle-correlations'] }),
+  ]);
+
+export const useCreateMoodCheckinMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: MoodCheckinCreateBody) => createMoodCheckin(body),
+    onSuccess: () => invalidateMoodCaches(queryClient),
+    meta: {
+      errorMessage: serverMessageOr(
+        i18n.t('mood.failedToSave', 'Failed to save mood entry.')
+      ),
+      successMessage: i18n.t('checkIn.checkinSaved', 'Check-in saved'),
     },
   });
 };
 
-export const useSaveMoodEntryMutation = () => {
+export const useUpdateMoodCheckinMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      moodValue,
-      notes,
-      entryDate,
-      moodTags,
-    }: {
-      moodValue: number;
-      notes: string;
-      entryDate: string;
-      moodTags?: string[];
-    }) => saveMoodEntry(moodValue, notes, entryDate, moodTags),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: moodKeys.all });
-    },
+    mutationFn: ({ id, body }: { id: string; body: MoodCheckinUpdateBody }) =>
+      updateMoodCheckin(id, body),
+    onSuccess: () => invalidateMoodCaches(queryClient),
     meta: {
-      errorMessage: i18n.t('mood.failedToSave', 'Failed to save mood entry.'),
-      successMessage: i18n.t(
-        'mood.savedSuccessfully',
-        'Mood entry saved successfully.'
+      errorMessage: serverMessageOr(
+        i18n.t('mood.failedToUpdate', 'Failed to update mood entry.')
       ),
+      successMessage: i18n.t('checkIn.checkinUpdated', 'Check-in updated'),
+    },
+  });
+};
+
+export const useDeleteMoodCheckinMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteMoodCheckin(id),
+    onSuccess: () => invalidateMoodCaches(queryClient),
+    meta: {
+      errorMessage: serverMessageOr(
+        i18n.t('mood.failedToDelete', 'Failed to delete mood entry.')
+      ),
+      successMessage: i18n.t('checkIn.checkinDeleted', 'Check-in deleted'),
     },
   });
 };

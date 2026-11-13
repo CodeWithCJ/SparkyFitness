@@ -53,7 +53,33 @@ export interface SampleWriteOptions {
    * overlapping workouts do not erase each other's charts.
    */
   ex?: string;
+  /**
+   * The site of the samples being written (a skin temperature's `site`). A
+   * merge never replaces a stored sample tagged with another site, so a sync of
+   * one place (wrist) never erases the other's (body) in the shared provider
+   * row, and a write with no site (an older app) replaces only untagged
+   * samples. A stored sample with no site predates the field and is replaced
+   * like a match. Metrics without sites are unaffected: none of their samples
+   * carry one.
+   */
+  site?: string;
+  /**
+   * Days (YYYY-MM-DD) a `merge` also processes when no incoming sample falls
+   * on them, so a resend clears the window on a day that no longer has
+   * readings. A listed day without a stored row is skipped, not created.
+   */
+  days?: string[];
+  /**
+   * Keeps stored samples linked to a workout or sleep session (`ex`/`sl`) in
+   * both modes. For writers whose samples belong to no session, so a write
+   * under a source a workout also used cannot erase that workout's samples.
+   */
+  keepLinked?: boolean;
 }
+
+const isLinked = (sample: Record<string, unknown>): boolean =>
+  (typeof sample.ex === 'string' && sample.ex.length > 0) ||
+  (typeof sample.sl === 'string' && sample.sl.length > 0);
 
 /**
  * Groups flat {entry_date, timestamp, ex, sl, ...fields} samples into one bucket
@@ -63,13 +89,14 @@ export interface SampleWriteOptions {
  * the timestamp here) is what keeps a workout or sleep session that crosses
  * midnight landing on the correct calendar days.
  *
- * The whole batch runs in one transaction. In `merge` mode each bucket's
- * existing row is read with `SELECT ... FOR UPDATE` before being merged and
- * written back, so a concurrent writer targeting the same (user, metric, day,
+ * The whole batch runs in one transaction. In `merge` mode (and in `replace`
+ * with `keepLinked`) each bucket's existing row is read with
+ * `SELECT ... FOR UPDATE` before being merged and written back, so a
+ * concurrent writer targeting the same (user, metric, day,
  * provider) row blocks until this transaction commits instead of reading a
  * stale snapshot and silently dropping this write's samples (or vice versa).
  *
- * Returns the number of day buckets written.
+ * Returns the number of day rows written.
  */
 export async function upsertSamplesByDay(
   userId: string,
@@ -79,9 +106,9 @@ export async function upsertSamplesByDay(
   flatSamples: FlatHealthSample[],
   options: SampleWriteOptions = {}
 ): Promise<number> {
-  if (flatSamples.length === 0) return 0;
-
   const mode: SampleWriteMode = options.mode ?? 'replace';
+  const extraDays = mode === 'merge' ? (options.days ?? []) : [];
+  if (flatSamples.length === 0 && extraDays.length === 0) return 0;
 
   const byDate = new Map<string, SampleBucket>();
   for (const s of flatSamples) {
@@ -101,6 +128,15 @@ export async function upsertSamplesByDay(
     if (!bucket.device_name && device_name) bucket.device_name = device_name;
     byDate.set(entry_date, bucket);
   }
+  // Days with nothing incoming: merged like the others, but only written when
+  // a stored row exists (see the skip below).
+  const daysWithoutIncoming = new Set<string>();
+  for (const day of extraDays) {
+    if (byDate.has(day)) continue;
+    byDate.set(day, { entry_date: day, device_name: null, samples: [] });
+    daysWithoutIncoming.add(day);
+  }
+  let written = 0;
 
   const client = await getClient(userId, actingUserId);
   try {
@@ -116,7 +152,8 @@ export async function upsertSamplesByDay(
     );
 
     for (const bucket of buckets) {
-      if (mode === 'merge') {
+      // Replace only reads the stored row when linked samples must survive it.
+      if (mode === 'merge' || options.keepLinked) {
         // Advisory lock first: FOR UPDATE alone can't serialize a first write
         // (no row exists yet to lock), so a second concurrent "first write" for
         // the same key must block here, not just at the row-lock below.
@@ -138,6 +175,9 @@ export async function upsertSamplesByDay(
             bucket.entry_date,
             sourceProvider
           );
+        if (!existingRow && daysWithoutIncoming.has(bucket.entry_date)) {
+          continue;
+        }
         const existing = Array.isArray(existingRow?.samples)
           ? (existingRow.samples as Record<string, unknown>[])
           : [];
@@ -146,12 +186,18 @@ export async function upsertSamplesByDay(
         // every prior sample and treat the write as purely additive.
         const window = options.window;
         const retained = existing.filter((sample) => {
+          if (options.keepLinked && isLinked(sample)) return true;
+          if (mode === 'replace') return false;
           if (!window) return true;
           const ms = Date.parse(String(sample.t));
           if (!Number.isFinite(ms)) return true;
           if (ms < window.startMs || ms > window.endMs) return true;
-          // Inside the window. Without an entry id, the whole span is replaced.
-          // With one, another entry's samples in that span stay.
+          // Inside the window. A sample tagged with another site stays.
+          if (typeof sample.site === 'string' && sample.site !== options.site) {
+            return true;
+          }
+          // Without an entry id, the whole span is replaced. With one, another
+          // entry's samples in that span stay.
           const ex = options.ex;
           return (
             ex !== undefined &&
@@ -188,6 +234,7 @@ export async function upsertSamplesByDay(
         userId,
         row
       );
+      written++;
     }
 
     await client.query('COMMIT');
@@ -198,5 +245,5 @@ export async function upsertSamplesByDay(
     client.release();
   }
 
-  return byDate.size;
+  return written;
 }

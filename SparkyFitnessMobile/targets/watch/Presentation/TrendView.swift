@@ -23,8 +23,8 @@ struct TrendView: View {
 
         var emptyStateMessage: String {
             switch self {
-            case .weight: return "Log a few days to see your weight trend."
-            case .bodyFat: return "Log body fat a few times to see its trend."
+            case .weight: return String(localized: "watch.trend.emptyWeight", defaultValue: "Log a few days to see your weight trend.")
+            case .bodyFat: return String(localized: "watch.trend.emptyBodyFat", defaultValue: "Log body fat a few times to see its trend.")
             }
         }
     }
@@ -83,7 +83,7 @@ struct TrendView: View {
             isHapticFeedbackEnabled: false
         )
         .onChange(of: currentMetric) {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
         }
     }
 
@@ -138,7 +138,7 @@ struct TrendView: View {
 
     private func emptyState(for metric: Metric) -> some View {
         Text(metric.emptyStateMessage)
-            .font(.caption2)
+            .watchFont(.footnote, classic: .caption2)
             .foregroundStyle(.secondary)
     }
 
@@ -200,7 +200,7 @@ struct TrendView: View {
         .overlay(alignment: .trailing) {
             if let latest = bodyFatPoints.last?.bodyFatPercentage {
                 Text(String(format: "%.1f %%", latest))
-                    .font(.caption2)
+                    .watchFont(.footnote, classic: .caption2)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }

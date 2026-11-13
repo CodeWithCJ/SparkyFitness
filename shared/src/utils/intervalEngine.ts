@@ -1,6 +1,6 @@
-import type { WorkoutFormat } from "../schemas/api/WorkoutPresets.api.zod.ts";
+import type { WorkoutFormat } from '../schemas/api/WorkoutPresets.api.zod.ts';
 
-export type IntervalPhaseKind = "countdown" | "work" | "rest" | "finished";
+export type IntervalPhaseKind = 'countdown' | 'work' | 'rest' | 'finished';
 
 export interface IntervalPhase {
   kind: IntervalPhaseKind;
@@ -45,7 +45,7 @@ export const DEFAULT_COUNTDOWN_SEC = 5;
  */
 export function buildIntervalPhases(
   config: IntervalEngineConfig,
-  startTimestampMs: number,
+  startTimestampMs: number
 ): IntervalPhase[] {
   const {
     format,
@@ -67,7 +67,7 @@ export function buildIntervalPhases(
   if (countdownSeconds > 0) {
     const endsAt = currentMs + countdownSeconds * 1000;
     phases.push({
-      kind: "countdown",
+      kind: 'countdown',
       phaseIndex: phaseIndex++,
       stepIndex: null,
       round: 1,
@@ -81,15 +81,15 @@ export function buildIntervalPhases(
 
   if (
     steps.length === 0 &&
-    format !== "amrap" &&
-    format !== "for_time" &&
-    format !== "tabata" &&
-    format !== "emom"
+    format !== 'amrap' &&
+    format !== 'for_time' &&
+    format !== 'tabata' &&
+    format !== 'emom'
   ) {
     return phases;
   }
 
-  if (format === "tabata") {
+  if (format === 'tabata') {
     const totalRounds = tabataRounds;
     for (let round = 1; round <= totalRounds; round++) {
       for (let sIdx = 0; sIdx < Math.max(1, steps.length); sIdx++) {
@@ -97,7 +97,7 @@ export function buildIntervalPhases(
         // Work
         const workEnd = currentMs + tabataWorkSec * 1000;
         phases.push({
-          kind: "work",
+          kind: 'work',
           phaseIndex: phaseIndex++,
           stepIndex: stepIdx,
           round,
@@ -111,7 +111,7 @@ export function buildIntervalPhases(
         // Rest (even on last round)
         const restEnd = currentMs + tabataRestSec * 1000;
         phases.push({
-          kind: "rest",
+          kind: 'rest',
           phaseIndex: phaseIndex++,
           stepIndex: stepIdx,
           round,
@@ -123,7 +123,7 @@ export function buildIntervalPhases(
         currentMs = restEnd;
       }
     }
-  } else if (format === "emom") {
+  } else if (format === 'emom') {
     // Determine total rounds for EMOM: from emomRounds, or derived from timeCapSeconds, or step count
     const totalRounds =
       emomRounds ??
@@ -141,7 +141,7 @@ export function buildIntervalPhases(
 
       const workEnd = currentMs + configuredWorkSec * 1000;
       phases.push({
-        kind: "work",
+        kind: 'work',
         phaseIndex: phaseIndex++,
         stepIndex: stepIdx,
         round,
@@ -156,7 +156,7 @@ export function buildIntervalPhases(
       if (restSec > 0) {
         const restEnd = currentMs + restSec * 1000;
         phases.push({
-          kind: "rest",
+          kind: 'rest',
           phaseIndex: phaseIndex++,
           stepIndex: stepIdx,
           round,
@@ -168,7 +168,7 @@ export function buildIntervalPhases(
         currentMs = restEnd;
       }
     }
-  } else if (format === "interval") {
+  } else if (format === 'interval') {
     // Interval / HIIT: iterates over each step; work for durationSec, rest for restSec
     const totalSteps = steps.length;
     for (let sIdx = 0; sIdx < totalSteps; sIdx++) {
@@ -179,7 +179,7 @@ export function buildIntervalPhases(
 
       const workEnd = currentMs + workSec * 1000;
       phases.push({
-        kind: "work",
+        kind: 'work',
         phaseIndex: phaseIndex++,
         stepIndex: sIdx,
         round: sIdx + 1,
@@ -193,7 +193,7 @@ export function buildIntervalPhases(
       if (restSec > 0) {
         const restEnd = currentMs + restSec * 1000;
         phases.push({
-          kind: "rest",
+          kind: 'rest',
           phaseIndex: phaseIndex++,
           stepIndex: sIdx,
           round: sIdx + 1,
@@ -205,12 +205,12 @@ export function buildIntervalPhases(
         currentMs = restEnd;
       }
     }
-  } else if (format === "amrap") {
+  } else if (format === 'amrap') {
     // AMRAP: Runs against a global time cap. The work phase spans the entire cap.
     const capSec = timeCapSeconds ?? 1200; // 20 min default if unspecified
     const amrapEnd = currentMs + capSec * 1000;
     phases.push({
-      kind: "work",
+      kind: 'work',
       phaseIndex: phaseIndex++,
       stepIndex: null,
       round: 1,
@@ -220,12 +220,12 @@ export function buildIntervalPhases(
       endsAt: amrapEnd,
     });
     currentMs = amrapEnd;
-  } else if (format === "for_time") {
+  } else if (format === 'for_time') {
     // For Time: Open-ended or capped duration
     const capSec = timeCapSeconds ?? 3600; // 1 hr default cap
     const forTimeEnd = currentMs + capSec * 1000;
     phases.push({
-      kind: "work",
+      kind: 'work',
       phaseIndex: phaseIndex++,
       stepIndex: null,
       round: 1,
@@ -246,7 +246,7 @@ export function buildIntervalPhases(
  */
 export function resolvePhaseAt(
   phases: IntervalPhase[],
-  currentTimestampMs: number,
+  currentTimestampMs: number
 ): { phase: IntervalPhase | null; isFinished: boolean; remainingMs: number } {
   const firstPhase = phases[0];
   if (!firstPhase) {
@@ -282,7 +282,7 @@ export function resolvePhaseAt(
 
   return {
     phase: {
-      kind: "finished",
+      kind: 'finished',
       phaseIndex: phases.length,
       stepIndex: null,
       round,
@@ -302,7 +302,7 @@ export function resolvePhaseAt(
 export function shiftPhasesForPause(
   phases: IntervalPhase[],
   activePhaseIndex: number,
-  pauseDurationMs: number,
+  pauseDurationMs: number
 ): IntervalPhase[] {
   return phases.map((phase) => {
     if (phase.phaseIndex < activePhaseIndex) {

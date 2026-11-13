@@ -117,6 +117,15 @@ describe('entry distance derivation on create', () => {
   });
 });
 
+// The service hands the model a callback that fills the omitted fields from
+// the entry the model reads under its lock; run it against a stored entry.
+const resolvedUpdate = (stored: Record<string, unknown>) => {
+  const resolveUpdate = vi.mocked(exerciseEntryDb.updateExerciseEntry).mock
+    .calls[0][5];
+  expect(resolveUpdate).toBeDefined();
+  return resolveUpdate!(stored);
+};
+
 describe('entry distance contract on individual update', () => {
   const existingEntry = {
     id: 'entry-1',
@@ -143,11 +152,8 @@ describe('entry distance contract on individual update', () => {
     exerciseEntryDb.updateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
   });
 
-  const updatedDistance = () => {
-    const [, , , updateData] = vi.mocked(exerciseEntryDb.updateExerciseEntry)
-      .mock.calls[0];
-    return updateData.distance;
-  };
+  const updatedDistance = () =>
+    resolvedUpdate(existingEntry).updateData.distance;
 
   it('lets an explicit number win over set-derived totals', async () => {
     await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
@@ -186,5 +192,142 @@ describe('entry distance contract on individual update', () => {
       notes: 'still a run',
     });
     expect(updatedDistance()).toBe(7.5);
+  });
+
+  it('fills omitted fields from the locked entry, not the earlier read', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      notes: 'still a run',
+    });
+    const { updateData } = resolvedUpdate({
+      ...existingEntry,
+      distance: 9,
+      avg_heart_rate: 150,
+    });
+    expect(updateData).toMatchObject({
+      notes: 'still a run',
+      distance: 9,
+      avg_heart_rate: 150,
+    });
+  });
+});
+
+describe('calorie estimate on individual update', () => {
+  const existingEntry = {
+    id: 'entry-1',
+    exercise_id: exerciseId,
+    entry_date: '2026-07-26',
+    duration_minutes: 30,
+    calories_burned: 123,
+    notes: null,
+    image_url: null,
+    distance: null,
+    avg_heart_rate: null,
+    steps: null,
+    sort_order: 0,
+    exercise_name: 'Bench Press',
+    superset_group: null,
+    entry_time: null,
+  };
+
+  const savedCalories = () =>
+    resolvedUpdate(existingEntry).updateData.calories_burned;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.getExerciseEntryById.mockResolvedValue(existingEntry);
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.updateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseDb.getExerciseById.mockResolvedValue({ id: exerciseId });
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+      600
+    );
+  });
+
+  it('re-estimates from the stored exercise when sets are sent without exercise_id', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      duration_minutes: 12,
+      sets: [{ set_number: 1, reps: 10, weight: 60 }],
+    });
+    expect(savedCalories()).toBe(120);
+  });
+
+  it('keeps the stored calories when the locked entry has moved to another exercise', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      duration_minutes: 12,
+      sets: [{ set_number: 1, reps: 10, weight: 60 }],
+    });
+    const { updateData } = resolvedUpdate({
+      ...existingEntry,
+      exercise_id: 'another-exercise',
+    });
+    expect(updateData.calories_burned).toBe(123);
+    expect(updateData.exercise_id).toBe('another-exercise');
+  });
+
+  it('keeps the stored calories on a partial update with no sets or exercise_id', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      duration_minutes: 12,
+    });
+    expect(
+      calorieCalculationService.estimateCaloriesBurnedPerHour
+    ).not.toHaveBeenCalled();
+    expect(savedCalories()).toBe(123);
+  });
+});
+
+describe('manual_fields on individual update', () => {
+  const syncedEntry = {
+    id: 'entry-1',
+    exercise_id: exerciseId,
+    entry_date: '2026-10-09',
+    duration_minutes: 66,
+    calories_burned: 546,
+    notes: null,
+    image_url: null,
+    distance: 5.57,
+    avg_heart_rate: null,
+    steps: 6836,
+    sort_order: 0,
+    exercise_name: 'Running',
+    superset_group: null,
+    entry_time: null,
+    source: 'Health Connect',
+    source_id: 'hc-run-1',
+  };
+
+  const markedFields = (stored: Record<string, unknown> = syncedEntry) =>
+    resolvedUpdate(stored).markManualFields;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.updateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
+  });
+
+  it('marks only the fields the edit changed on a synced entry', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.getExerciseEntryById.mockResolvedValue(syncedEntry);
+
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      distance: 6.25,
+      duration_minutes: 66,
+    });
+
+    expect(markedFields()).toEqual(['distance']);
+  });
+
+  it('marks nothing on an entry that did not come from a sync', async () => {
+    const manualEntry = { ...syncedEntry, source: 'manual', source_id: null };
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.getExerciseEntryById.mockResolvedValue(manualEntry);
+
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      distance: 6.25,
+    });
+
+    expect(markedFields(manualEntry)).toEqual([]);
   });
 });

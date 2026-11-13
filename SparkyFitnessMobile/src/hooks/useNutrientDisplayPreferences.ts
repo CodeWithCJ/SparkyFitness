@@ -8,6 +8,8 @@ import { DEFAULT_SUMMARY_NUTRIENTS } from '../constants/nutrients';
 
 export type { NutrientDisplayPreference };
 
+const EMPTY_PREFERENCES: NutrientDisplayPreference[] = [];
+
 interface UseNutrientDisplayPreferencesOptions {
   enabled?: boolean;
 }
@@ -33,7 +35,7 @@ export function useNutrientDisplayPreferences({
     enabled,
   });
 
-  const preferences = query.data ?? [];
+  const preferences = query.data ?? EMPTY_PREFERENCES;
 
   const summaryPref = preferences.find(
     (p) => p.view_group === 'summary' && p.platform === 'mobile'

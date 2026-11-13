@@ -1,8 +1,20 @@
-import { foodKeys, foodVariantKeys } from '@/api/keys/meals';
+import {
+  foodKeys,
+  foodVariantKeys,
+  mealKeys,
+  mealPlanKeys,
+} from '@/api/keys/meals';
+import {
+  foodEntryKeys,
+  foodEntryMealKeys,
+  dailyProgressKeys,
+} from '@/api/keys/diary';
 import {
   createFoodVariant,
   loadFoodVariants,
   saveFood,
+  type FoodCreateProgress,
+  type ManagedFoodPortion,
 } from '@/api/Foods/enhancedCustomFoodFormService';
 import { Food, FoodVariant } from '@/types/food';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -58,6 +70,9 @@ export const useSaveFoodMutation = () => {
       userId,
       foodId,
       imageFiles,
+      onFoodPersisted,
+      createProgress,
+      managedPortions,
     }: {
       foodData: Food;
       variants: FoodVariant[];
@@ -65,12 +80,31 @@ export const useSaveFoodMutation = () => {
       foodId?: string;
       /** Newly attached image files; sent as multipart when present. */
       imageFiles?: File[];
-    }) => saveFood(foodData, variants, userId, foodId, imageFiles),
+      onFoodPersisted?: (food: Food) => void;
+      createProgress?: FoodCreateProgress;
+      managedPortions?: readonly ManagedFoodPortion[];
+    }) =>
+      saveFood(
+        foodData,
+        variants,
+        userId,
+        foodId,
+        imageFiles,
+        onFoodPersisted,
+        { createProgress, managedPortions }
+      ),
 
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: foodKeys.all,
-      });
+      for (const queryKey of [
+        foodKeys.all,
+        mealKeys.all,
+        mealPlanKeys.all,
+        foodEntryKeys.all,
+        foodEntryMealKeys.all,
+        dailyProgressKeys.all,
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
     meta: {
       errorMessage: i18n.t(

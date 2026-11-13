@@ -27,7 +27,7 @@ describe('chart scale mode preference validation', () => {
   it('rejects an unknown mode', async () => {
     await expect(
       preferenceService.updateUserPreferences('user-1', 'user-1', {
-        chart_scale_mode: 'logarithmic',
+        chart_scale_mode: 'logarithmic' as never,
       })
     ).rejects.toMatchObject({ status: 400 });
   });
@@ -55,7 +55,7 @@ describe('chart scale mode preference validation', () => {
     await expect(
       preferenceService.upsertUserPreferences('user-1', {
         user_id: 'user-1',
-        chart_scale_mode: 'sideways',
+        chart_scale_mode: 'sideways' as never,
       })
     ).rejects.toMatchObject({ status: 400 });
   });

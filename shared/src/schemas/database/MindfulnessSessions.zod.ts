@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const mindfulnessSessionsIdSchema = z.string();
 
@@ -33,8 +33,8 @@ export const mindfulnessSessionsInitializerSchema = z.object({
   start_time: z.coerce.date().optional().nullable(),
   end_time: z.coerce.date().optional().nullable(),
   duration_seconds: z.number(),
-  session_type: z.string().optional().default("meditation"),
-  provider: z.string().optional().default("manual"),
+  session_type: z.string().optional().default('meditation'),
+  provider: z.string().optional().default('manual'),
   external_id: z.string().optional().nullable(),
   heart_rate_avg: z.number().optional().nullable(),
   heart_rate_start: z.number().optional().nullable(),

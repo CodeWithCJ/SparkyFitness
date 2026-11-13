@@ -23,14 +23,24 @@ import {
   useUpdateCheckInMeasurementFieldMutation,
 } from '@/hooks/CheckIn/useCheckIn';
 import {
-  useMoodEntryByDate,
-  useSaveMoodEntryMutation,
+  useCreateMoodCheckinMutation,
+  useDeleteMoodCheckinMutation,
+  useMoodCheckinsByDate,
+  useUpdateMoodCheckinMutation,
 } from '@/hooks/CheckIn/useMood';
 import {
   useFastingHistory,
   useDeleteFastMutation,
 } from '@/hooks/Fasting/useFasting';
 import { CheckInPlaceholders, CombinedMeasurement } from '@/types/checkin';
+import type { MoodEntry } from '@/types/mood';
+import {
+  buildCheckinCreateBody,
+  buildCheckinUpdateBody,
+  type CheckinDraft,
+} from '@workspace/shared';
+import { error as logError } from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 import {
   CheckInMeasurementsResponse,
   CustomMeasurementsResponse,
@@ -163,8 +173,12 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     mutateAsync: updateCheckInMeasurementField,
     isPending: isUpdatingField,
   } = useUpdateCheckInMeasurementFieldMutation();
-  const { mutateAsync: saveMoodEntry, isPending: isSavingMood } =
-    useSaveMoodEntryMutation();
+  const { mutateAsync: createMoodCheckin, isPending: isCreatingCheckin } =
+    useCreateMoodCheckinMutation();
+  const { mutateAsync: updateMoodCheckin, isPending: isUpdatingCheckin } =
+    useUpdateMoodCheckinMutation();
+  const { mutateAsync: deleteMoodCheckin } = useDeleteMoodCheckinMutation();
+  const isSavingMoodCheckin = isCreatingCheckin || isUpdatingCheckin;
   const { mutateAsync: deleteFast } = useDeleteFastMutation();
 
   const loading =
@@ -172,7 +186,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     isSavingCustom ||
     isDeletingCustom ||
     isUpdatingField ||
-    isSavingMood;
+    isSavingMoodCheckin;
 
   const { data: customCategories = [] } = useCustomCategories(
     user?.activeUserId
@@ -186,7 +200,8 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   // entries give context without being resubmitted.
   const { data: latestManualCustom = [] } =
     useLatestManualCustomEntriesOnOrBefore(selectedDate);
-  const { data: existingMood } = useMoodEntryByDate(selectedDate);
+  const { data: moodCheckins = [], isLoading: isLoadingMoodCheckins } =
+    useMoodCheckinsByDate(selectedDate);
 
   const { data: recentCustom = [] } = useRecentCustomMeasurements();
   const endDate = todayInZone(timezone);
@@ -292,18 +307,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     return existingCheckIn?.bmr?.toString() || '';
   }, [existingCheckIn?.bmr]);
 
-  const derivedMood = useMemo(() => {
-    return existingMood?.mood_value ?? 50;
-  }, [existingMood?.mood_value]);
-
-  const derivedMoodNotes = useMemo(() => {
-    return existingMood?.notes || '';
-  }, [existingMood?.notes]);
-
-  const derivedMoodTags = useMemo(() => {
-    return existingMood?.mood_tags ?? [];
-  }, [existingMood?.mood_tags]);
-
   const { derivedCustomValues, derivedCustomNotes } = useMemo(() => {
     const newCustomValues: Record<string, string> = {};
     const newCustomNotes: Record<string, string> = {};
@@ -366,15 +369,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const [bmr, setBmr] = useDerivedState<string>(derivedBmr, selectedDate);
   const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
     derivedBodyFat,
-    selectedDate
-  );
-  const [mood, setMood] = useDerivedState<number>(derivedMood, selectedDate);
-  const [moodNotes, setMoodNotes] = useDerivedState<string>(
-    derivedMoodNotes,
-    selectedDate
-  );
-  const [moodTags, setMoodTags] = useDerivedState<string[]>(
-    derivedMoodTags,
     selectedDate
   );
   const [customValues, setCustomValues] = useDerivedState<
@@ -591,36 +585,36 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     }
   };
 
-  const handleSaveMood = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUserId) return;
-
+  // Check-ins: each handler resolves to whether the request succeeded. The
+  // mutations' meta shows the success or error toast.
+  const runCheckinRequest = async (
+    request: () => Promise<unknown>
+  ): Promise<boolean> => {
+    if (!currentUserId) return false;
     try {
-      const moodToSend = mood ?? 50;
-
-      await saveMoodEntry({
-        moodValue: moodToSend,
-        notes: moodNotes,
-        entryDate: selectedDate,
-        moodTags,
-      });
-
-      toast({
-        title: t('checkIn.moodSaved', 'Mood Saved'),
-        description: t(
-          'checkIn.moodSavedSuccessfully',
-          'Mood saved successfully.'
-        ),
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('checkIn.failedToSaveMood', 'Failed to save mood.'),
-        variant: 'destructive',
-      });
+      await request();
+      return true;
+    } catch (err) {
+      logError(getUserLoggingLevel(), 'Mood check-in request failed:', err);
+      return false;
     }
   };
+
+  const handleCreateMoodCheckin = (draft: CheckinDraft) =>
+    runCheckinRequest(() =>
+      createMoodCheckin(buildCheckinCreateBody(draft, selectedDate, timezone))
+    );
+
+  const handleUpdateMoodCheckin = (entry: MoodEntry, draft: CheckinDraft) =>
+    runCheckinRequest(() =>
+      updateMoodCheckin({
+        id: entry.id,
+        body: buildCheckinUpdateBody(entry, draft, selectedDate, timezone),
+      })
+    );
+
+  const handleDeleteMoodCheckin = (entry: MoodEntry) =>
+    runCheckinRequest(() => deleteMoodCheckin(entry.id));
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -838,9 +832,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     height,
     hips,
     loading,
-    mood,
-    moodNotes,
-    moodTags,
     neck,
     placeholders,
     recentMeasurements,
@@ -854,9 +845,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     setCustomValues,
     setHeight,
     setHips,
-    setMood,
-    setMoodNotes,
-    setMoodTags,
     setNeck,
     setSelectedDate,
     setSteps,
@@ -868,7 +856,11 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     useMostRecentForCalculation,
     waist,
     weight,
-    handleSaveMood,
-    isSavingMood,
+    moodCheckins,
+    isLoadingMoodCheckins,
+    isSavingMoodCheckin,
+    handleCreateMoodCheckin,
+    handleUpdateMoodCheckin,
+    handleDeleteMoodCheckin,
   };
 };

@@ -10,11 +10,17 @@ import {
 } from '../../../src/services/healthkit/index';
 import {
   isHealthDataAvailable,
+  queryActivitySummary,
   queryStatisticsCollectionForQuantity,
 } from '@kingstinct/react-native-healthkit';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
+}));
+
+const mockMoveRingSetting = jest.fn().mockResolvedValue(false);
+jest.mock('../../../src/services/api/preferencesApi', () => ({
+  fetchMoveRingActiveCaloriesSetting: () => mockMoveRingSetting(),
 }));
 
 const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
@@ -69,6 +75,44 @@ describe('healthkit provider', () => {
         { day: 1 },
         expect.anything()
       );
+    });
+
+    test.each([
+      [true, 1],
+      [false, 0],
+    ])(
+      'active and total calories read the Move ring only when the account setting is %s',
+      async (setting, ringQueries) => {
+        mockMoveRingSetting.mockResolvedValue(setting);
+        (queryActivitySummary as jest.Mock).mockClear();
+
+        await readCumulativeByDay(
+          { recordType: 'ActiveCaloriesBurned' },
+          start,
+          end
+        );
+        await readCumulativeByDay(
+          { recordType: 'TotalCaloriesBurned' },
+          start,
+          end
+        );
+
+        expect(queryActivitySummary).toHaveBeenCalledTimes(ringQueries * 2);
+        mockMoveRingSetting.mockResolvedValue(false);
+      }
+    );
+
+    test('a failed settings fetch fails the calorie read instead of guessing', async () => {
+      mockMoveRingSetting.mockRejectedValueOnce(new Error('offline'));
+
+      const result = await readCumulativeByDay(
+        { recordType: 'ActiveCaloriesBurned' },
+        start,
+        end
+      );
+
+      expect(result).toEqual({ records: [], error: 'offline' });
+      expect(mockQueryStatisticsCollection).not.toHaveBeenCalled();
     });
 
     test('an unknown record type reports capability missing (null)', async () => {

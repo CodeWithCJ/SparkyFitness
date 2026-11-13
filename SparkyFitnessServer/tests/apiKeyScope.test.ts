@@ -73,6 +73,20 @@ describe('isRequestAllowedForReadOnlyKey (#2678)', () => {
     expect(isRequestAllowedForReadOnlyKey('POST', '/api/mcp')).toBe(false);
   });
 
+  it('refuses the run program realign POST, preview included', () => {
+    // Both the preview and the confirmed call are POSTs to the same path, and
+    // the confirmed one rewrites the plan, so the path is never allowlisted.
+    expect(
+      isRequestAllowedForReadOnlyKey('POST', '/api/v2/run-program/realign')
+    ).toBe(false);
+    expect(
+      isRequestAllowedForReadOnlyKey('POST', '/api/v2/run-program/adjust')
+    ).toBe(false);
+    expect(isRequestAllowedForReadOnlyKey('GET', '/api/v2/run-program')).toBe(
+      true
+    );
+  });
+
   it('classifies mutating methods', () => {
     expect(isMutatingMethod('GET')).toBe(false);
     expect(isMutatingMethod('POST')).toBe(true);

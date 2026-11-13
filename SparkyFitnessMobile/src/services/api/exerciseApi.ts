@@ -21,6 +21,9 @@ import type {
   ExerciseEntryResponse,
   AttachExerciseEntryGpsTrackRequest,
   AttachExerciseEntryLapsRequest,
+  CalorieLinkSuggestionsResponse,
+  SetCalorieLinkRequest,
+  SetCalorieLinkResponse,
   Pagination,
 } from '@workspace/shared';
 
@@ -375,11 +378,16 @@ export interface CreateExerciseEntryPayload {
   duration_minutes: number;
   /** Omit to let the server estimate from the exercise and duration. */
   calories_burned?: number;
+  /** Counted in the daily total instead of `calories_burned`; null clears it. */
+  calories_applied?: number | null;
   entry_date: string;
   /** Local start time, `HH:MM` (24h). */
   entry_time?: string;
   distance?: number | null;
   avg_heart_rate?: number | null;
+  /** Steps per minute. */
+  avg_cadence?: number | null;
+  stride_length_cm?: number | null;
   notes?: string | null;
   sets?: {
     id?: number;
@@ -423,6 +431,45 @@ export const updateExerciseEntry = async (
 };
 
 /**
+ * Synced workouts that may be the same session as a workout logged in the app.
+ * `entryId` can be the entry or any entry of a strength session.
+ */
+export const fetchCalorieLinkSuggestions = async (
+  entryId: string
+): Promise<CalorieLinkSuggestionsResponse> => {
+  return apiFetch<CalorieLinkSuggestionsResponse>({
+    endpoint: `/api/exercise-entries/${encodeURIComponent(entryId)}/calorie-link/suggestions`,
+    serviceName: 'Exercise API',
+    operation: 'fetch calorie link suggestions',
+    method: 'GET',
+  });
+};
+
+/** Links a workout to a synced one so the session's calories count once. */
+export const setCalorieLink = async (
+  entryId: string,
+  body: SetCalorieLinkRequest
+): Promise<SetCalorieLinkResponse> => {
+  return apiFetch<SetCalorieLinkResponse>({
+    endpoint: `/api/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    serviceName: 'Exercise API',
+    operation: 'link synced workout',
+    method: 'PUT',
+    body,
+  });
+};
+
+/** Removes the link; each side counts its own calories again. */
+export const clearCalorieLink = async (entryId: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    serviceName: 'Exercise API',
+    operation: 'unlink synced workout',
+    method: 'DELETE',
+  });
+};
+
+/**
  * Sets the distance of an entry that has no GPS track (a treadmill run) to the
  * figure read off the machine. The server keeps everything else and scales any
  * laps to match; it answers 409 for an entry that has a route.
@@ -438,6 +485,19 @@ export const setExerciseEntryDistance = async (
     method: 'POST',
     body: { distance_km: distanceKm },
   });
+};
+
+/**
+ * Sets the stride length of an entry alone, through the telemetry-only
+ * endpoint so the entry's duration and the rest of its fields are untouched.
+ * This is how a corrected treadmill distance brings the stride along; null
+ * clears a stride the new distance no longer supports.
+ */
+export const setExerciseEntryStrideLength = async (
+  id: string,
+  strideLengthCm: number | null
+): Promise<void> => {
+  return attachExerciseEntryWatchTelemetry(id, { strideLengthCm });
 };
 
 export const getWorkout = async (
@@ -495,6 +555,18 @@ export const attachExerciseEntryWatchTelemetry = async (
     activeEnergyKcal?: number;
     /** Minutes the watch spent on this exercise. Replaces a zero duration. */
     durationMinutes?: number;
+    /**
+     * Apple's time-in-zone for the whole workout. Stored instead of
+     * bucketing the series. Sent on one exercise of the session.
+     */
+    appleZones?: {
+      index?: number;
+      minimumBpm?: number | null;
+      maximumBpm?: number | null;
+      seconds: number;
+    }[];
+    /** Stride length in cm; null clears it. */
+    strideLengthCm?: number | null;
   }
 ): Promise<void> => {
   return apiFetch<void>({
@@ -503,6 +575,24 @@ export const attachExerciseEntryWatchTelemetry = async (
     operation: 'attach exercise entry watch telemetry',
     method: 'POST',
     body: telemetry,
+  });
+};
+
+/**
+ * Stores how hard the person rated a workout, 1 (easy) to 10 (maximal). For an
+ * entry of a strength session the server applies it to the whole session, so
+ * any one entry id is enough. Sending it again replaces it.
+ */
+export const setExerciseEntryEffort = async (
+  exerciseEntryId: string,
+  rating: number
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${exerciseEntryId}/effort`,
+    serviceName: 'Exercise API',
+    operation: 'set exercise entry effort',
+    method: 'POST',
+    body: { rating },
   });
 };
 

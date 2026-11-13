@@ -74,6 +74,8 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       ENTRY_ID,
       hrSamples,
       undefined,
+      undefined,
+      undefined,
       undefined
     );
   });
@@ -130,6 +132,8 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       ENTRY_ID,
       hrSamples,
       87.4,
+      undefined,
+      undefined,
       undefined
     );
   });
@@ -148,6 +152,8 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       ENTRY_ID,
       undefined,
       42,
+      undefined,
+      undefined,
       undefined
     );
   });
@@ -166,8 +172,36 @@ describe('POST /exercise-entries/:id/watch-telemetry', () => {
       ENTRY_ID,
       undefined,
       undefined,
-      12.5
+      12.5,
+      undefined,
+      undefined
     );
+  });
+
+  it('forwards a stride length on its own, and null to clear it', async () => {
+    await request(app)
+      .post(`/exercise-entries/${ENTRY_ID}/watch-telemetry`)
+      .send({ strideLengthCm: 101.5 })
+      .expect(204);
+    await request(app)
+      .post(`/exercise-entries/${ENTRY_ID}/watch-telemetry`)
+      .send({ strideLengthCm: null })
+      .expect(204);
+
+    const calls = vi.mocked(
+      exerciseEntryService.attachWatchTelemetryToExerciseEntry
+    ).mock.calls;
+    expect(calls[0]).toEqual([
+      'user-123',
+      'actor-123',
+      ENTRY_ID,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      101.5,
+    ]);
+    expect(calls[1][7]).toBeNull();
   });
 
   it('rejects a body carrying neither heart rate nor active energy', async () => {

@@ -374,7 +374,9 @@ export async function rateRunProgramWorkout(
 export async function adjustRunProgram(
   userId: string,
   source: RunProgramAdjustment['source'],
-  change: (state: ProgramState & { programId: string }) => AdjustResult,
+  change: (
+    state: ProgramState & { programId: string; program: RunProgramResponse }
+  ) => AdjustResult,
   authenticatedUserId?: string
 ): Promise<RunProgramResponse | null> {
   const client = await getClient(userId, authenticatedUserId);
@@ -393,6 +395,7 @@ export async function adjustRunProgram(
       workouts: program.workouts,
       next: program.next_index,
       programId: program.program_id,
+      program,
     });
     const log: RunProgramAdjustment[] = [
       ...program.adjustment_log,

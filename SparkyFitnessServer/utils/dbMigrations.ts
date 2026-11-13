@@ -45,6 +45,38 @@ async function appRoleCanAuthenticate(): Promise<boolean> {
   }
 }
 
+/**
+ * Runs one migration file and records it in one transaction, sent as one
+ * simple-query string, so a process that dies after sending it cannot leave
+ * the schema changed but the migration unrecorded. Migration files therefore
+ * contain no `BEGIN;`/`COMMIT;` of their own; tests/migrationFiles.test.ts
+ * enforces that.
+ */
+async function applyMigrationFile(
+  client: PoolClient,
+  file: string,
+  sql: string
+) {
+  // The newline ends a trailing `--` comment; the semicolon ends a final
+  // statement written without one.
+  const query = `BEGIN;\n${sql}\n;\nINSERT INTO system.schema_migrations (name) VALUES (${client.escapeLiteral(file)});\nCOMMIT;`;
+  try {
+    await client.query(query);
+  } catch (error) {
+    // Leave no aborted transaction on a client that may go back to the pool.
+    await client.query('ROLLBACK').catch(() => undefined);
+    if ((error as { code?: string } | null)?.code === '25001') {
+      throw new Error(
+        `Migration ${file} contains a statement that cannot run inside a ` +
+          'transaction block, such as CREATE INDEX CONCURRENTLY. Each ' +
+          'migration runs in a transaction; use the non-concurrent form.',
+        { cause: error }
+      );
+    }
+    throw error;
+  }
+}
+
 /** Applies pending migrations and grants; the caller retains any supplied client. */
 async function applyMigrations(existingClient: PoolClient | null = null) {
   const client = existingClient || (await getSystemClient());
@@ -130,13 +162,7 @@ async function applyMigrations(existingClient: PoolClient | null = null) {
         log('info', `Applying migration: ${file}`);
         const filePath = path.join(migrationsDir, file);
         const sql = fs.readFileSync(filePath, 'utf8');
-        // The grantPermissions.js script now handles dynamic permission granting.
-        // We simply execute the original migration script content.
-        await client.query(sql);
-        await client.query(
-          'INSERT INTO system.schema_migrations (name) VALUES ($1)',
-          [file]
-        );
+        await applyMigrationFile(client, file, sql);
         log('info', `Successfully applied migration: ${file}`);
       } else {
         //log("info", `Migration already applied: ${file}`);
@@ -152,7 +178,7 @@ async function applyMigrations(existingClient: PoolClient | null = null) {
     if (!existingClient) client.release();
   }
 }
-export { applyMigrations };
+export { applyMigrations, applyMigrationFile };
 export default {
   applyMigrations,
 };

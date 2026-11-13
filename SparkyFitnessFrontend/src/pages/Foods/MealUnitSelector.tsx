@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
@@ -157,15 +158,17 @@ const MealUnitSelector = ({
                 <Label htmlFor="quantity">
                   {t('foods.mealUnitSelector.quantity', 'Quantity')}
                 </Label>
-                <Input
+                <NumericInput
                   id="quantity"
-                  type="number"
+                  allowExpressions
+                  decimals={3}
+                  required
                   step="any"
                   min="0.01"
                   value={quantity}
                   ref={focusAndSelect}
-                  onChange={(e) => {
-                    const newQuantity = Number(e.target.value);
+                  onValueChange={(value) => {
+                    const newQuantity = value ?? 0;
                     debug(loggingLevel, 'Meal quantity changed:', newQuantity);
                     setQuantity(newQuantity);
                   }}

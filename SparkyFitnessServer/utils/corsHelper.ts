@@ -1,5 +1,23 @@
 import ipaddr from 'ipaddr.js';
 import { log } from '../config/logging.js';
+import { MOOD_MODEL_VERSION_HEADER } from '@workspace/shared';
+
+/** Request headers a browser client may send cross-origin. */
+export const CORS_ALLOWED_HEADERS = [
+  'Content-Type',
+  'Authorization',
+  'x-provider-id',
+  'x-api-key',
+  'x-client-id',
+  'x-requested-with',
+  // Opts a client into several mood check-ins per day.
+  MOOD_MODEL_VERSION_HEADER.toLowerCase(),
+  // MCP StreamableHTTP headers; browser clients fail CORS preflight without
+  // them.
+  'mcp-protocol-version',
+  'mcp-session-id',
+  'last-event-id',
+];
 /**
  * Check if a host is a private network address
  * @param {string} hostname - The hostname to check (e.g., "192.168.1.100", "localhost", "10.0.0.5")

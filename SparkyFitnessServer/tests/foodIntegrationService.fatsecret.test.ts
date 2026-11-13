@@ -133,4 +133,36 @@ describe('getFatSecretNutrients caching and premier fallback', () => {
     expect(urls[2]).toContain('food_id=2');
     expect(urls[2]).not.toContain('include_food_images=true');
   });
+
+  // Uses the real token function: the cooldown depends on the OAuth error code
+  // surviving from the token request to the entitlement check.
+  it('starts the premier cooldown when the premier token is rejected', async () => {
+    const actual = await vi.importActual<
+      typeof import('../integrations/fatsecret/fatsecretService.js')
+    >('../integrations/fatsecret/fatsecretService.js');
+    mockToken.mockImplementation(actual.getFatSecretAccessToken);
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response('{"error":"invalid_scope"}', {
+          status: 400,
+          statusText: 'Bad Request',
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: 'basic', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(jsonResponse(payload(false)))
+      .mockResolvedValueOnce(jsonResponse(payload(false)));
+
+    await getFatSecretNutrients('1', 'client-o', 'secret');
+    await getFatSecretNutrients('2', 'client-o', 'secret');
+
+    const urls = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.map((c) => String(c[0]));
+    // Food 2 reuses the basic token and skips the premier token request.
+    expect(urls[3]).toContain('food_id=2');
+    expect(urls[3]).not.toContain('include_food_images=true');
+  });
 });

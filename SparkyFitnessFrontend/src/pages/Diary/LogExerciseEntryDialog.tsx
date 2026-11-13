@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -55,6 +56,7 @@ import {
   defaultSetForModality,
   toSetTableModality,
 } from '@/constants/exercises';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -66,11 +68,6 @@ interface LogExerciseEntryDialogProps {
   initialNotes?: string;
   initialImageUrl?: string;
   energyUnit: 'kcal' | 'kJ';
-  convertEnergy: (
-    value: number,
-    fromUnit: 'kcal' | 'kJ',
-    toUnit: 'kcal' | 'kJ'
-  ) => number;
   getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
@@ -84,7 +81,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   onSaveSuccess,
   initialSets,
   energyUnit,
-  convertEnergy,
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
@@ -282,7 +278,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         notes,
         entry_date: selectedDate,
         entry_time: entryTime || null,
-        calories_burned: Number(caloriesBurnedInput),
+        // Omit when blank so the server estimates from calories_per_hour;
+        // sending 0 would be stored as-is and skip the auto-calculation.
+        ...(caloriesBurnedInput !== '' && {
+          calories_burned: Number(caloriesBurnedInput),
+        }),
         duration_minutes: totalDuration,
         imageFile,
         distance:
@@ -401,7 +401,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
           {/* Start Time (optional) */}
           <div className="space-y-1.5 max-w-[280px]">
             <div className="flex items-center justify-between">
-              <Label htmlFor="entryTime" className="text-sm">
+              <Label id="entryTime-label" className="text-sm">
                 {t(
                   'diary.logExerciseEntryDialog.startTimeOptional',
                   'Start Time (optional)'
@@ -440,11 +440,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                 </button>
               </div>
             </div>
-            <Input
+            <TimeInput
               id="entryTime"
-              type="time"
+              aria-labelledby="entryTime-label"
               value={entryTime}
-              onChange={(e) => setEntryTime(e.target.value)}
+              onChange={setEntryTime}
               className="text-sm h-9"
             />
           </div>
@@ -503,28 +503,13 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                   <Input
                     id="calories-burned"
                     type="number"
-                    value={
-                      caloriesBurnedInput === ''
-                        ? ''
-                        : Math.round(
-                            convertEnergy(
-                              Number(caloriesBurnedInput),
-                              'kcal',
-                              energyUnit
-                            )
-                          )
-                    }
+                    value={shownEnergyInput(caloriesBurnedInput, energyUnit)}
                     onChange={(e) =>
                       setCaloriesBurnedInput(
-                        e.target.value === ''
-                          ? ''
-                          : Math.round(
-                              convertEnergy(
-                                Number(e.target.value),
-                                energyUnit,
-                                'kcal'
-                              )
-                            )
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
                       )
                     }
                     placeholder={t(

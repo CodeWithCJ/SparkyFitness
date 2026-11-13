@@ -2,7 +2,7 @@ import {
   ExerciseProgressionConfig,
   LastExercisePerformance,
   ProgressionEvaluationResult,
-} from "../types/progression.ts";
+} from '../types/progression.ts';
 
 /**
  * Two decimals: enough for any plate step in kg or lb, and it keeps float
@@ -17,15 +17,15 @@ export function evaluateProgression(
   config: ExerciseProgressionConfig,
   lastPerformance?: LastExercisePerformance | null
 ): ProgressionEvaluationResult {
-  if (config.progressionMode === "manual") {
+  if (config.progressionMode === 'manual') {
     return {
       goalAchieved: false,
-      status: "MANUAL",
+      status: 'MANUAL',
       suggestedWeight: lastPerformance?.baseWeight ?? 0,
       suggestedRepGoal: config.repGoal ?? 0,
       totalRepsAchieved: 0,
       repDifference: 0,
-      message: "Manual progression mode.",
+      message: 'Manual progression mode.',
     };
   }
 
@@ -38,12 +38,12 @@ export function evaluateProgression(
   ) {
     return {
       goalAchieved: false,
-      status: "FIRST_SESSION",
+      status: 'FIRST_SESSION',
       suggestedWeight: 0,
       suggestedRepGoal: effectiveRepGoal,
       totalRepsAchieved: 0,
       repDifference: -effectiveRepGoal,
-      message: "First session for this exercise. Establish baseline.",
+      message: 'First session for this exercise. Establish baseline.',
     };
   }
 
@@ -55,7 +55,7 @@ export function evaluateProgression(
   let goalAchieved = false;
   let repDifference = 0;
 
-  if (config.progressionMode === "fixed") {
+  if (config.progressionMode === 'fixed') {
     const targetPerSet = config.repGoal ?? 8;
     const successfulSets = validSets.filter(
       (s) => s.reps >= targetPerSet
@@ -66,13 +66,13 @@ export function evaluateProgression(
     repDifference = totalRepsAchieved - config.targetSets * targetPerSet;
 
     if (goalAchieved) {
-      if (config.incrementType === "weight") {
+      if (config.incrementType === 'weight') {
         const newWeight = roundSuggestedWeight(
           lastPerformance.baseWeight + config.incrementValue
         );
         return {
           goalAchieved: true,
-          status: "PROGRESSION_WEIGHT_INCREASE",
+          status: 'PROGRESSION_WEIGHT_INCREASE',
           suggestedWeight: newWeight,
           suggestedRepGoal: targetPerSet,
           totalRepsAchieved,
@@ -83,7 +83,7 @@ export function evaluateProgression(
         const newRepGoal = targetPerSet + config.incrementValue;
         return {
           goalAchieved: true,
-          status: "PROGRESSION_REPS_INCREASE",
+          status: 'PROGRESSION_REPS_INCREASE',
           suggestedWeight: lastPerformance.baseWeight,
           suggestedRepGoal: newRepGoal,
           totalRepsAchieved,
@@ -95,7 +95,7 @@ export function evaluateProgression(
 
     return {
       goalAchieved: false,
-      status: "MAINTAIN_TARGET",
+      status: 'MAINTAIN_TARGET',
       suggestedWeight: lastPerformance.baseWeight,
       suggestedRepGoal: targetPerSet,
       totalRepsAchieved,
@@ -110,11 +110,11 @@ export function evaluateProgression(
 
   if (goalAchieved) {
     // Mode: step_load -> Keeps weight locked and steps up the target rep count
-    if (config.progressionMode === "step_load") {
+    if (config.progressionMode === 'step_load') {
       const newRepGoal = effectiveRepGoal + config.incrementValue;
       return {
         goalAchieved: true,
-        status: "PROGRESSION_REPS_INCREASE",
+        status: 'PROGRESSION_REPS_INCREASE',
         suggestedWeight: lastPerformance.baseWeight,
         suggestedRepGoal: newRepGoal,
         totalRepsAchieved,
@@ -124,13 +124,13 @@ export function evaluateProgression(
     }
 
     // Mode: rep_goal with weight increment
-    if (config.incrementType === "weight") {
+    if (config.incrementType === 'weight') {
       const newWeight = roundSuggestedWeight(
         lastPerformance.baseWeight + config.incrementValue
       );
       return {
         goalAchieved: true,
-        status: "PROGRESSION_WEIGHT_INCREASE",
+        status: 'PROGRESSION_WEIGHT_INCREASE',
         suggestedWeight: newWeight,
         suggestedRepGoal: effectiveRepGoal,
         totalRepsAchieved,
@@ -143,7 +143,7 @@ export function evaluateProgression(
     const newRepGoal = effectiveRepGoal + config.incrementValue;
     return {
       goalAchieved: true,
-      status: "PROGRESSION_REPS_INCREASE",
+      status: 'PROGRESSION_REPS_INCREASE',
       suggestedWeight: lastPerformance.baseWeight,
       suggestedRepGoal: newRepGoal,
       totalRepsAchieved,
@@ -154,7 +154,7 @@ export function evaluateProgression(
 
   return {
     goalAchieved: false,
-    status: "MAINTAIN_TARGET",
+    status: 'MAINTAIN_TARGET',
     suggestedWeight: lastPerformance.baseWeight,
     suggestedRepGoal: effectiveRepGoal,
     totalRepsAchieved,
@@ -171,19 +171,22 @@ export function evaluateProgression(
  */
 export function distributeProgressionReps(
   result: ProgressionEvaluationResult | null,
-  progressionMode: ExerciseProgressionConfig["progressionMode"],
+  progressionMode: ExerciseProgressionConfig['progressionMode'],
   workingSetCount: number
 ): number[] | null {
   if (
     result == null ||
     !result.goalAchieved ||
-    result.status !== "PROGRESSION_REPS_INCREASE" ||
+    result.status !== 'PROGRESSION_REPS_INCREASE' ||
     workingSetCount <= 0
   ) {
     return null;
   }
-  if (progressionMode === "fixed") {
-    return Array.from({ length: workingSetCount }, () => result.suggestedRepGoal);
+  if (progressionMode === 'fixed') {
+    return Array.from(
+      { length: workingSetCount },
+      () => result.suggestedRepGoal
+    );
   }
   const base = Math.floor(result.suggestedRepGoal / workingSetCount);
   const remainder = result.suggestedRepGoal % workingSetCount;

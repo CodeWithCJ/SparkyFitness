@@ -25,6 +25,7 @@ export { useWatchWorkoutBridge } from './useWatchWorkoutBridge';
 export { useWatchSetTargetsSync } from './useWatchSetTargetsSync';
 export { useWatchRecordingBridge } from './useWatchRecordingBridge';
 export { useWatchRunBridge } from './useWatchRunBridge';
+export { useWatchRouteBridge } from './useWatchRouteBridge';
 export { useWatchPlanSync } from './useWatchPlanSync';
 export { useWatchWorkoutEdit } from './useWatchWorkoutEdit';
 export { useWatchFastingBridge } from './useWatchFastingBridge';

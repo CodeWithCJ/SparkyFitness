@@ -376,3 +376,51 @@ describe('useWorkoutPresetForm workout_format and time_cap_seconds', () => {
     );
   });
 });
+
+describe('useWorkoutPresetForm exercise image', () => {
+  it('saves the first image path when the exercise carries its images as stored JSON text', () => {
+    const onSave = jest.fn();
+    const { result } = renderHook(() =>
+      useWorkoutPresetForm({ initialPreset: null, onSave })
+    );
+
+    act(() => {
+      result.current.handleAddExercise({
+        id: 'exercise-2',
+        name: 'Squat',
+        category: 'strength',
+        images: '["Barbell_Squat/0.jpg","Barbell_Squat/1.jpg"]',
+      } as unknown as Exercise);
+    });
+    act(() => {
+      result.current.setName('Legs');
+    });
+    act(() => {
+      result.current.handleSubmit();
+    });
+
+    expect(onSave.mock.calls[0][0].exercises[0].image_url).toBe(
+      'Barbell_Squat/0.jpg'
+    );
+  });
+
+  it('drops a stray "[" stored by an earlier save when the preset is saved again', () => {
+    const onSave = jest.fn();
+    const preset = {
+      ...presetWithTimedSet,
+      exercises: presetWithTimedSet.exercises.map((exercise) => ({
+        ...exercise,
+        image_url: '[',
+      })),
+    } as WorkoutPreset;
+    const { result } = renderHook(() =>
+      useWorkoutPresetForm({ initialPreset: preset, onSave })
+    );
+
+    act(() => {
+      result.current.handleSubmit();
+    });
+
+    expect(onSave.mock.calls[0][0].exercises[0].image_url).toBe('');
+  });
+});

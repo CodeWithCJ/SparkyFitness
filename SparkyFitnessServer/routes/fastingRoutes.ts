@@ -10,10 +10,33 @@ import {
   addDays,
   userFastingPreferencesMutatorSchema,
   clampStoredMoodValue,
+  instantToDay,
 } from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 const router = express.Router();
+
+// Logs the optional end-of-fast mood as a manual check-in stamped at the end
+// of the fast and dated in the user's timezone. Writes nothing when the fast
+// ended without a mood value, or when a check-in at that end time already
+// exists: a retried end then neither duplicates the mood nor loses one whose
+// first write failed after the fast had ended.
+async function saveFastingMoodCheckin(
+  userId: string,
+  moodValue: number | null,
+  notes: string | null | undefined,
+  endTime: string
+): Promise<void> {
+  if (moodValue === null) return;
+  if (await moodRepository.hasManualCheckinAt(userId, endTime)) return;
+  const tz = await loadUserTimezone(userId);
+  await moodRepository.createCheckin(userId, {
+    moodValue,
+    notes: notes || null,
+    entryTimestamp: endTime,
+    entryDate: instantToDay(endTime, tz),
+  });
+}
 /**
  * @swagger
  * tags:
@@ -165,12 +188,18 @@ router.post('/start', async (req, res) => {
  *             properties:
  *               id:
  *                 type: string
- *                 format: uuid
- *                 description: The ID of the fast to end.
+ *                 description: The ID of the fast to end (UUID or auto-* identifier).
  *               start_time:
  *                 type: string
  *                 format: date-time
  *                 description: Optional start time to override.
+ *               target_end_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional target end time of the fast.
+ *               fasting_type:
+ *                 type: string
+ *                 description: Optional fasting protocol (e.g. 16:8).
  *               end_time:
  *                 type: string
  *                 format: date-time
@@ -202,14 +231,15 @@ router.post('/start', async (req, res) => {
 // End an active fast
 router.post('/end', async (req, res) => {
   const userId = req.userId;
-  const { id, start_time, end_time, mood } = req.body; // mood: { value, notes }
+  const { id, start_time, end_time, target_end_time, fasting_type, mood } =
+    req.body; // mood: { value, notes }
   if (!id || !end_time) {
     return res.status(400).json({ error: 'Fast ID and end time are required' });
   }
   // The mood lands in the same 10-100 column `POST /api/mood` writes, so it is
-  // brought into range the same way. Checked before either branch writes
-  // anything, so a bad value cannot leave a fast half-ended. A mood with no
-  // value logs nothing, rather than reaching the NOT NULL column as undefined.
+  // brought into range the same way, and an unparseable value is rejected here,
+  // before either branch writes anything, rather than reaching the column. A
+  // mood with no value logs no check-in.
   let storedMoodValue: number | null = null;
   if (mood && mood.value !== null && mood.value !== undefined) {
     storedMoodValue = clampStoredMoodValue(mood.value);
@@ -218,40 +248,48 @@ router.post('/end', async (req, res) => {
     }
   }
   try {
-    if (id === 'auto-current') {
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Valid fast id is required' });
+    }
+    if (id.startsWith('auto-eating-window-')) {
+      return res
+        .status(400)
+        .json({ error: 'Cannot end an eating window as a fast' });
+    }
+    const isAutoFast = id === 'auto-current' || id.startsWith('auto-');
+    if (isAutoFast) {
       const tz = await loadUserTimezone(userId);
       const activeAuto = await fastingAutoCalculationService.getCurrentAutoFast(
         userId,
         tz
       );
-      if (!activeAuto) {
+      if (!activeAuto && !start_time) {
         return res.status(404).json({ error: 'Fast not found' });
       }
 
-      const startUsed = start_time || activeAuto.start_time;
-      if (new Date(startUsed) > new Date(end_time)) {
+      const startUsed = start_time || activeAuto?.start_time;
+      if (!startUsed) {
+        return res.status(400).json({ error: 'Start time is required' });
+      }
+      const startTimeMs = new Date(startUsed).getTime();
+      const endTimeMs = new Date(end_time).getTime();
+      if (isNaN(startTimeMs) || isNaN(endTimeMs)) {
+        return res
+          .status(400)
+          .json({ error: 'Valid start_time and end_time are required' });
+      }
+      if (startTimeMs > endTimeMs) {
         return res
           .status(400)
           .json({ error: 'start_time must be before end_time' });
       }
 
-      if (storedMoodValue !== null) {
-        await moodRepository.createOrUpdateMoodEntry(
-          userId,
-          storedMoodValue,
-          mood.notes || '',
-          end_time
-        );
-      }
-
       const durationMinutes = Math.max(
         0,
-        Math.round(
-          (new Date(end_time).getTime() - new Date(startUsed).getTime()) / 60000
-        )
+        Math.round((endTimeMs - startTimeMs) / 60000)
       );
-      const targetEnd = activeAuto.target_end_time || null;
-      const fastingType = activeAuto.fasting_type || '16:8';
+      const targetEnd = target_end_time || activeAuto?.target_end_time || null;
+      const fastingType = fasting_type || activeAuto?.fasting_type || '16:8';
 
       const completed = await fastingRepository.createCompletedFast(
         userId,
@@ -261,7 +299,38 @@ router.post('/end', async (req, res) => {
         durationMinutes,
         fastingType
       );
-      return res.json(completed);
+      // A retried end finds the fast already recorded (null); the mood write
+      // is keyed on the end time, so it is still made once and only once.
+      await saveFastingMoodCheckin(
+        userId,
+        storedMoodValue,
+        mood?.notes,
+        end_time
+      );
+      let resultFast = completed;
+      if (!resultFast) {
+        const existing = await fastingRepository.findFastNearStartTime(
+          userId,
+          new Date(startUsed),
+          60
+        );
+        if (existing) {
+          if (existing.status === 'ACTIVE') {
+            resultFast = await fastingRepository.endFast(
+              existing.id,
+              userId,
+              end_time,
+              durationMinutes
+            );
+          } else {
+            resultFast = await fastingRepository.getFastingById(
+              existing.id,
+              userId
+            );
+          }
+        }
+      }
+      return res.json(resultFast);
     }
 
     const fast = await fastingRepository.getFastingById(id, userId);
@@ -271,14 +340,6 @@ router.post('/end', async (req, res) => {
       return res
         .status(400)
         .json({ error: 'start_time must be before end_time' });
-    }
-    if (storedMoodValue !== null) {
-      await moodRepository.createOrUpdateMoodEntry(
-        userId,
-        storedMoodValue,
-        mood.notes || '',
-        end_time
-      );
     }
     const durationMinutes = Math.max(
       0,
@@ -293,6 +354,16 @@ router.post('/end', async (req, res) => {
       durationMinutes,
       startUsed
     );
+    // A retry of an already completed fast still reaches here; the mood write
+    // is keyed on the end time, so it is made once and only once.
+    if (updatedFast) {
+      await saveFastingMoodCheckin(
+        userId,
+        storedMoodValue,
+        mood?.notes,
+        end_time
+      );
+    }
     res.json(updatedFast);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

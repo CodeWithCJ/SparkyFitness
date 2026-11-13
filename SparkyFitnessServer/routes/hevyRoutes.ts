@@ -8,6 +8,7 @@ import {
   syncClaimTarget,
   startProviderSync,
 } from '../services/providerSyncClaim.js';
+import { publicErrorMessage } from '../utils/errors.js';
 const router = express.Router();
 /**
  * @swagger
@@ -66,8 +67,7 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     }
     res.status(500).json({
       message: 'Error initiating manual Hevy sync',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
+      error: publicErrorMessage(error),
     });
   }
 });
@@ -86,10 +86,10 @@ router.get('/status', authMiddleware.authenticate, async (req, res) => {
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `Error getting Hevy status: ${error.message}`);
-    res
-      .status(500)
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      .json({ message: 'Error getting Hevy status', error: error.message });
+    res.status(500).json({
+      message: 'Error getting Hevy status',
+      error: publicErrorMessage(error),
+    });
   }
 });
 export default router;

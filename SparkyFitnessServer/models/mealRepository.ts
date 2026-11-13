@@ -42,8 +42,41 @@ import { localizeImages, toImageArray } from '../utils/imageLocalizer.js';
 // A row is polymorphic (item_type 'food' | 'meal'): food rows carry the food
 // nutrition snapshot (falling back to the live variant), meal rows carry the
 // linked child meal's identity/serving metadata for the client to resolve. The
-// only per-call difference is the WHERE clause, so callers append it.
-const MEAL_FOODS_SELECT = `
+// default read retains that fallback; explicit snapshot reads preserve nulls.
+const MEAL_SNAPSHOT_COLUMNS = [
+  'serving_size',
+  'serving_unit',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'glycemic_index',
+  'custom_nutrients',
+] as const;
+// Nutrition sync must retain unknown saved values instead of borrowing later
+// library corrections. Ordinary meal views keep their existing fallback.
+function mealFoodsSelect(snapshotOnly: boolean): string {
+  const nutrition = MEAL_SNAPSHOT_COLUMNS.map(
+    (column) =>
+      `${snapshotOnly ? `mf.${column}` : `COALESCE(mf.${column}, fv.${column})`} AS ${column}`
+  ).join(',\n         ');
+  return `
   SELECT mf.id, mf.meal_id, mf.food_id, mf.child_meal_id, mf.item_type,
          mf.variant_id, mf.quantity, mf.unit,
          f.name AS food_name, f.brand,
@@ -51,42 +84,26 @@ const MEAL_FOODS_SELECT = `
          cm.serving_size AS child_meal_serving_size,
          cm.serving_unit AS child_meal_serving_unit,
          cm.total_servings AS child_meal_total_servings,
-         COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
-         COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
-         COALESCE(mf.calories, fv.calories)                       AS calories,
-         COALESCE(mf.protein, fv.protein)                         AS protein,
-         COALESCE(mf.carbs, fv.carbs)                             AS carbs,
-         COALESCE(mf.fat, fv.fat)                                 AS fat,
-         COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
-         COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
-         COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
-         COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
-         COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
-         COALESCE(mf.sodium, fv.sodium)                           AS sodium,
-         COALESCE(mf.potassium, fv.potassium)                     AS potassium,
-         COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
-         COALESCE(mf.sugars, fv.sugars)                           AS sugars,
-         COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
-         COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
-         COALESCE(mf.calcium, fv.calcium)                         AS calcium,
-         COALESCE(mf.iron, fv.iron)                               AS iron,
-         COALESCE(mf.caffeine_mg, fv.caffeine_mg)                 AS caffeine_mg,
-         COALESCE(mf.water_ml, fv.water_ml)                       AS water_ml,
-         COALESCE(mf.alcohol_g, fv.alcohol_g)                     AS alcohol_g,
-         COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
-         COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
+         ${nutrition}
   FROM meal_foods mf
   LEFT JOIN foods f ON mf.food_id = f.id
   LEFT JOIN food_variants fv ON mf.variant_id = fv.id
   LEFT JOIN meals cm ON mf.child_meal_id = cm.id`;
+}
+const MEAL_FOODS_SELECT = mealFoodsSelect(false);
+const MEAL_FOODS_SNAPSHOT_SELECT = mealFoodsSelect(true);
 
 // Attach the ordered ingredient list (foods and linked meals) to each meal in
 // a single round-trip. Used by every meal read path.
-async function attachFoodsToMeals(client: PoolClient, meals: MealRow[]) {
+async function attachFoodsToMeals(
+  client: PoolClient,
+  meals: MealRow[],
+  snapshotOnly = false
+) {
   if (meals.length === 0) return meals;
   const mealIds = meals.map((m: MealRow) => m.id);
   const mealFoodsResult = await client.query(
-    `${MEAL_FOODS_SELECT} WHERE mf.meal_id = ANY($1::uuid[])`,
+    `${snapshotOnly ? MEAL_FOODS_SNAPSHOT_SELECT : MEAL_FOODS_SELECT} WHERE mf.meal_id = ANY($1::uuid[])`,
     [mealIds]
   );
   // Group the ingredient rows by their meal so each meal gets its own list.
@@ -144,10 +161,10 @@ function buildMealFoodValues(mealId: string) {
   };
 }
 // --- Meal Template CRUD Operations ---
-async function createMeal(mealData: MealInput) {
-  const client = await getClient(mealData.user_id); // User-specific operation
+async function createMeal(mealData: MealInput, transactionClient?: PoolClient) {
+  const client = transactionClient ?? (await getClient(mealData.user_id)); // User-specific operation
   try {
-    await client.query('BEGIN');
+    if (!transactionClient) await client.query('BEGIN');
     const mealResult = await client.query(
       `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at`,
@@ -181,7 +198,8 @@ async function createMeal(mealData: MealInput) {
       );
       await client.query(mealFoodsQuery);
     }
-    await client.query('COMMIT');
+    if (!transactionClient) await client.query('COMMIT');
+    if (transactionClient) return newMeal;
 
     // Pull any externally-hosted images local once the meal has an id. Runs
     // after COMMIT so network latency never holds the transaction open.
@@ -205,11 +223,11 @@ async function createMeal(mealData: MealInput) {
 
     return newMeal;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transactionClient) await client.query('ROLLBACK');
     log('error', 'Error creating meal:', error);
     throw error;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function getMeals(userId: string, filter = 'all') {
@@ -279,8 +297,13 @@ async function searchMeals(
     client.release();
   }
 }
-async function getMealById(mealId: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getMealById(
+  mealId: string,
+  userId: string,
+  transactionClient?: PoolClient,
+  options: { snapshotOnly?: boolean } = {}
+) {
+  const client = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at
@@ -289,11 +312,11 @@ async function getMealById(mealId: string, userId: string) {
     );
     const meal = mealResult.rows[0];
     if (meal) {
-      await attachFoodsToMeals(client, [meal]);
+      await attachFoodsToMeals(client, [meal], options.snapshotOnly);
     }
     return meal;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function updateMeal(

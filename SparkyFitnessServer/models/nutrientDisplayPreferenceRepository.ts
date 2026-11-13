@@ -1,6 +1,7 @@
 import { getClient } from '../db/poolManager.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
+import type { PoolClient } from 'pg';
 const TABLE_NAME = 'user_nutrient_display_preferences';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getNutrientDisplayPreferences(userId: any) {
@@ -87,12 +88,48 @@ async function createDefaultNutrientPreferences(
     client.release();
   }
 }
+/**
+ * Rewrites a nutrient key in every saved display list for the user (all view
+ * groups and platforms), keeping its position. Used when a custom nutrient is
+ * renamed, since its name is the key stored in `visible_nutrients`.
+ */
+async function renameNutrientDisplayPreferenceKey(
+  userId: string,
+  oldKey: string,
+  newKey: string,
+  // When given, the caller owns the transaction and the client's lifetime.
+  sharedClient?: PoolClient
+): Promise<void> {
+  if (oldKey === newKey) return;
+  const client = sharedClient ?? (await getClient(userId));
+  try {
+    // If a list already holds newKey, the old entry is dropped instead of
+    // renamed, so the list never gets the same nutrient twice.
+    await client.query(
+      `UPDATE ${TABLE_NAME}
+       SET visible_nutrients = (
+         SELECT COALESCE(jsonb_agg(
+           CASE WHEN e = to_jsonb($2::text) THEN to_jsonb($3::text) ELSE e END
+           ORDER BY ord
+         ), '[]'::jsonb)
+         FROM jsonb_array_elements(visible_nutrients) WITH ORDINALITY AS x(e, ord)
+         WHERE NOT (e = to_jsonb($2::text) AND visible_nutrients ? $3::text)
+       ), updated_at = NOW()
+       WHERE user_id = $1 AND visible_nutrients ? $2::text`,
+      [userId, oldKey, newKey]
+    );
+  } finally {
+    if (!sharedClient) client.release();
+  }
+}
 export { getNutrientDisplayPreferences };
+export { renameNutrientDisplayPreferenceKey };
 export { upsertNutrientDisplayPreference };
 export { deleteNutrientDisplayPreference };
 export { createDefaultNutrientPreferences };
 export default {
   getNutrientDisplayPreferences,
+  renameNutrientDisplayPreferenceKey,
   upsertNutrientDisplayPreference,
   deleteNutrientDisplayPreference,
   createDefaultNutrientPreferences,

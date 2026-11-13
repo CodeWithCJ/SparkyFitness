@@ -112,6 +112,9 @@ export const exerciseEntryKeys = {
       date,
       ...(userId ? [{ userId }] : []),
     ] as const,
+  /** Synced workouts that may match a logged workout (calorie link). */
+  calorieLink: (entryId: string) =>
+    [...exerciseEntryKeys.all, 'calorieLink', entryId] as const,
   /** Autocomplete source for the workout gym / location field. */
   locations: () => [...exerciseEntryKeys.all, 'locations'] as const,
   history: (exerciseId: string, limit?: number) =>

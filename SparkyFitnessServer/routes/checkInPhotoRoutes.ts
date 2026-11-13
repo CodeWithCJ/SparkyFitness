@@ -24,10 +24,10 @@ const router = express.Router();
  *     description: >
  *       Returns all of the user's progress photos, newest day first, each with
  *       the weight recorded on the same calendar day (null when that day has no
- *       weight). Backs the mobile progress gallery, the side-by-side comparison
- *       and the time-lapse player in a single request. Image bytes are fetched
- *       separately through /file/{id}. Registered before /:date so it is not
- *       shadowed by it.
+ *       weight). Backs the mobile progress gallery and the side-by-side
+ *       comparison and time-lapse player on both mobile and web, in a single
+ *       request. Image bytes are fetched separately through /file/{id}.
+ *       Registered before /:date so it is not shadowed by it.
  *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
@@ -190,9 +190,13 @@ router.get(
       return;
     }
     try {
+      // The photo is looked up by id, so the service checks that the caller
+      // may see its owner's check-in data; pass the real signed-in user, not
+      // only the switched context.
       const absolutePath = await checkInPhotoService.getPhotoFileById(
         req.userId,
-        parsed.data.id
+        parsed.data.id,
+        req.originalUserId || req.authenticatedUserId || req.userId
       );
       if (!absolutePath) {
         res.status(404).json({ error: 'Photo not found' });

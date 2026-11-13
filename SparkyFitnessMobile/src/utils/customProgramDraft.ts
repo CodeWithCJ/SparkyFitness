@@ -93,7 +93,7 @@ export function draftFromBuiltIn(
 }
 
 export function draftToInput(draft: ProgramDraft): CustomRunProgramInput {
-  const style = draft.activity === 'walk' ? 'fastEasy' : 'runWalk';
+  const style = draft.activity === 'walk' ? 'briskWalk' : 'runWalk';
   return {
     name: draft.name.trim(),
     activity: draft.activity,

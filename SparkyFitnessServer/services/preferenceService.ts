@@ -1,23 +1,37 @@
-import preferenceRepository from '../models/preferenceRepository.js';
+import preferenceRepository, {
+  type FeatureChoicesMergeResult,
+} from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import {
   isValidTimeZone,
   SUPPORTED_TIME_FORMATS,
   MAX_GOAL_MODE_PERCENTAGE,
+  MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
   CALORIE_SAFETY_FLOOR_MODES,
   MIN_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   CHART_SCALE_MODES,
+  TEMPERATURE_UNITS,
+  DEFAULT_GLUCOSE_UNIT,
+  isGlucoseUnit,
+  DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  type FeatureChoices,
+  type FeatureChoicesPatch,
   type UserPreferencesMutator,
+  userPreferencesMutatorSchema,
 } from '@workspace/shared';
 
 /** The subset of preference fields `validateGoalMode` inspects. */
 type GoalModePreferenceInput = Partial<
   Pick<
     UserPreferencesMutator,
-    'goal_mode' | 'goal_mode_calculation_method' | 'goal_mode_custom_percentage'
+    | 'goal_mode'
+    | 'goal_mode_calculation_method'
+    | 'goal_mode_custom_percentage'
+    | 'goal_mode_weekly_change_kg'
   >
 >;
 type CalorieSafetyFloorPreferenceInput = Partial<
@@ -29,9 +43,72 @@ type CalorieSafetyFloorPreferenceInput = Partial<
 type ChartScaleModePreferenceInput = Partial<
   Pick<UserPreferencesMutator, 'chart_scale_mode'>
 >;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function validateTimezone(preferenceData: any) {
+
+function validateActivityPreferences(
+  preferences: UserPreferencesMutator
+): void {
   if (
+    !userPreferencesMutatorSchema.shape.adjust_macros_with_exercise.safeParse(
+      preferences.adjust_macros_with_exercise
+    ).success
+  ) {
+    throw Object.assign(
+      new Error('adjust_macros_with_exercise must be a boolean.'),
+      { status: 400 }
+    );
+  }
+  if (
+    !userPreferencesMutatorSchema.shape.adaptive_activity_separate.safeParse(
+      preferences.adaptive_activity_separate
+    ).success
+  ) {
+    throw Object.assign(
+      new Error('adaptive_activity_separate must be a boolean.'),
+      {
+        status: 400,
+      }
+    );
+  }
+}
+/** Calorie cycling (#2327): a known mode and 7 whole weekday percentages within range. */
+function validateCalorieCycling(
+  preferences: Pick<
+    UserPreferencesMutator,
+    'calorie_cycling_mode' | 'calorie_cycling_offsets'
+  >
+): void {
+  if (
+    preferences.calorie_cycling_mode !== undefined &&
+    !userPreferencesMutatorSchema.shape.calorie_cycling_mode.safeParse(
+      preferences.calorie_cycling_mode
+    ).success
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid calorie_cycling_mode: '${String(preferences.calorie_cycling_mode)}'`
+      ),
+      { status: 400 }
+    );
+  }
+  if (
+    preferences.calorie_cycling_offsets !== undefined &&
+    !userPreferencesMutatorSchema.shape.calorie_cycling_offsets.safeParse(
+      preferences.calorie_cycling_offsets
+    ).success
+  ) {
+    throw Object.assign(
+      new Error(
+        'calorie_cycling_offsets must be 7 whole percentages between -40 and 40.'
+      ),
+      { status: 400 }
+    );
+  }
+}
+async function validateTimezone(
+  preferenceData: Pick<UserPreferencesMutator, 'timezone'>
+) {
+  if (
+    preferenceData.timezone !== undefined &&
     preferenceData.timezone !== null &&
     !isValidTimeZone(preferenceData.timezone)
   ) {
@@ -67,6 +144,7 @@ async function validateGoalMode(preferenceData: GoalModePreferenceInput) {
       'lean_bulk',
       'bulk',
       'manual',
+      'weekly',
     ];
     if (!validGoalModes.includes(preferenceData.goal_mode)) {
       throw Object.assign(
@@ -99,6 +177,22 @@ async function validateGoalMode(preferenceData: GoalModePreferenceInput) {
       throw Object.assign(
         new Error(
           `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be an integer between -${MAX_GOAL_MODE_PERCENTAGE} and ${MAX_GOAL_MODE_PERCENTAGE}.`
+        ),
+        { status: 400 }
+      );
+    }
+  }
+  if (preferenceData.goal_mode_weekly_change_kg !== undefined) {
+    const rate = preferenceData.goal_mode_weekly_change_kg;
+    if (
+      typeof rate !== 'number' ||
+      !Number.isFinite(rate) ||
+      Math.abs(rate) > MAX_GOAL_MODE_WEEKLY_CHANGE_KG ||
+      Math.round(rate * 1000) / 1000 !== rate
+    ) {
+      throw Object.assign(
+        new Error(
+          `Invalid goal_mode_weekly_change_kg: '${rate}'. Must be a number between -${MAX_GOAL_MODE_WEEKLY_CHANGE_KG} and ${MAX_GOAL_MODE_WEEKLY_CHANGE_KG}, with at most three decimal places.`
         ),
         { status: 400 }
       );
@@ -155,33 +249,84 @@ async function validateChartScaleMode(
     );
   }
 }
+function assertValidTemperatureUnit(
+  preferenceData: Pick<UserPreferencesMutator, 'default_temperature_unit'>
+) {
+  if (
+    preferenceData.default_temperature_unit !== undefined &&
+    !(TEMPERATURE_UNITS as readonly string[]).includes(
+      preferenceData.default_temperature_unit
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid default_temperature_unit: '${preferenceData.default_temperature_unit}'. Must be one of: ${TEMPERATURE_UNITS.join(', ')}.`
+      ),
+      { status: 400 }
+    );
+  }
+}
+/** Rejects unsupported display units before persistence, while allowing omitted partial updates. */
+function assertValidGlucoseUnit(
+  preferenceData: Pick<UserPreferencesMutator, 'default_glucose_unit'>
+) {
+  if (
+    preferenceData.default_glucose_unit !== undefined &&
+    !isGlucoseUnit(preferenceData.default_glucose_unit)
+  ) {
+    throw Object.assign(
+      new Error('Invalid default_glucose_unit. Must be mmol/L or mg/dL.'),
+      { status: 400 }
+    );
+  }
+}
 function getDefaultPreferences() {
   return {
     voice_input_enabled: true,
     active_voice_ai_service_id: null,
     calorie_goal_adjustment_mode: 'dynamic',
+    adaptive_activity_separate: false,
+    adjust_macros_with_exercise: false,
     show_net_carbs: false,
+    use_move_ring_active_calories: false,
     timezone: null,
     time_format: 'h:mm A',
     calorie_safety_floor_mode: 'standard',
     calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
     chart_scale_mode: DEFAULT_CHART_SCALE_MODE,
+    default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
+    default_glucose_unit: DEFAULT_GLUCOSE_UNIT,
+    goal_mode_weekly_change_kg: 0,
+    calorie_cycling_mode: 'off',
+    calorie_cycling_offsets: [...CALORIE_CYCLING_DEFAULT_OFFSETS],
   };
 }
+/**
+ * Optional feature choices are read through GET /features only: the general
+ * preferences reads fall back to defaults on any error, which would show
+ * features the person turned off (#3487). So no general preferences response
+ * carries them, and an app never picks them up from there.
+ */
+function withoutFeatureChoices<T extends object>(row: T): T {
+  const copy: T & { feature_choices?: unknown } = { ...row };
+  delete copy.feature_choices;
+  return copy;
+}
 async function updateUserPreferences(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  preferenceData: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  preferenceData: UserPreferencesMutator
 ) {
   try {
+    validateActivityPreferences(preferenceData);
     await validateTimezone(preferenceData);
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
+    validateCalorieCycling(preferenceData);
     await validateChartScaleMode(preferenceData);
+    assertValidTemperatureUnit(preferenceData);
+    assertValidGlucoseUnit(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
       preferenceData
@@ -191,7 +336,7 @@ async function updateUserPreferences(
         'User preferences not found or not authorized to update.'
       );
     }
-    return updatedPreferences;
+    return withoutFeatureChoices(updatedPreferences);
   } catch (error) {
     log(
       'error',
@@ -224,18 +369,35 @@ async function deleteUserPreferences(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getUserPreferences(authenticatedUserId: any, targetUserId: any) {
+const OWNER_ONLY_PREFERENCE_FIELDS = [
+  'max_heart_rate',
+  'resting_heart_rate',
+  'hr_zone_method',
+  'hr_zone_custom_floors',
+  'hr_zone_display_count',
+] as const;
+async function getUserPreferences(
+  authenticatedUserId: string | undefined,
+  targetUserId: string
+) {
   try {
     const preferences =
       await preferenceRepository.getUserPreferences(targetUserId);
     if (!preferences) {
       return getDefaultPreferences();
     }
-    return {
+    const result = withoutFeatureChoices({
       ...preferences,
       time_format: preferences.time_format ?? 'h:mm A',
-    };
+    });
+    // Heart rate zone settings are owner-only: a switched delegate reads the
+    // rest of the preferences but never these.
+    if (authenticatedUserId && authenticatedUserId !== targetUserId) {
+      for (const field of OWNER_ONLY_PREFERENCE_FIELDS) {
+        delete result[field];
+      }
+    }
+    return result;
   } catch (error) {
     log(
       'error',
@@ -264,7 +426,7 @@ async function bootstrapUserTimezone(
         'User preferences not found or not authorized to update.'
       );
     }
-    return preferences;
+    return withoutFeatureChoices(preferences);
   } catch (error) {
     log(
       'error',
@@ -276,25 +438,28 @@ async function bootstrapUserTimezone(
 }
 
 async function upsertUserPreferences(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  preferenceData: any
+  authenticatedUserId: string,
+  preferenceData: UserPreferencesMutator
 ) {
   try {
+    validateActivityPreferences(preferenceData);
     await validateTimezone(preferenceData);
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
+    validateCalorieCycling(preferenceData);
     await validateChartScaleMode(preferenceData);
-    preferenceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    assertValidTemperatureUnit(preferenceData);
+    assertValidGlucoseUnit(preferenceData);
     // Provide a default for calorie_goal_adjustment_mode if it's not present
     if (!preferenceData.calorie_goal_adjustment_mode) {
       preferenceData.calorie_goal_adjustment_mode = 'dynamic';
     }
-    const newPreferences =
-      await preferenceRepository.upsertUserPreferences(preferenceData);
-    return newPreferences;
+    const newPreferences = await preferenceRepository.upsertUserPreferences({
+      ...preferenceData,
+      user_id: authenticatedUserId,
+    });
+    return withoutFeatureChoices(newPreferences);
   } catch (error) {
     log(
       'error',
@@ -304,15 +469,52 @@ async function upsertUserPreferences(
     throw error;
   }
 }
+/**
+ * The person's optional-feature choices for both platforms, for the owner or
+ * someone acting for them (they see the account as the owner set it up). A
+ * person without choices gets empty maps. Errors are thrown, never answered
+ * with defaults, so a failed read cannot show features the person turned off.
+ *
+ * Null when someone acting for the person cannot see the row: every account
+ * has a preferences row, so an empty read there means their grant does not
+ * cover preferences, not that there are no choices.
+ */
+async function getFeatureChoices(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<Required<FeatureChoices> | null> {
+  const stored = await preferenceRepository.getFeatureChoices(
+    targetUserId,
+    authenticatedUserId
+  );
+  if (!stored && authenticatedUserId !== targetUserId) return null;
+  return { web: stored?.web ?? {}, mobile: stored?.mobile ?? {} };
+}
+/** Applies a feature-switch patch for the owner; see `mergeFeatureChoices`. */
+async function updateFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  try {
+    return await preferenceRepository.mergeFeatureChoices(userId, patch);
+  } catch (error) {
+    log('error', `Error updating feature choices for user ${userId}:`, error);
+    throw error;
+  }
+}
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
 export { bootstrapUserTimezone };
 export { upsertUserPreferences };
+export { updateFeatureChoices };
+export { getFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
   bootstrapUserTimezone,
   upsertUserPreferences,
+  updateFeatureChoices,
+  getFeatureChoices,
 };

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Branded so a public.medications id cannot be passed where another table's id belongs.
 // z.string().and(z.object(...)) was the shape here, but an intersection of a
@@ -7,7 +7,7 @@ import { z } from "zod";
 export const medicationsIdSchema = z
   .string()
   .uuid()
-  .brand<"public.medications">();
+  .brand<'public.medications'>();
 
 // A user id is a UUID string. z.any() accepted anything and inferred as any,
 // which erased the contract for every consumer of these types.

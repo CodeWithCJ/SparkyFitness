@@ -8,6 +8,7 @@ import {
 import type { Food } from '@/types/food';
 import CustomFoodForm from './CustomFoodForm';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 interface FoodFormDialogProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface FoodFormDialogProps {
   mode: 'add' | 'edit';
   editingProduct?: Food | null;
   onSave: (food: Food) => void;
+  recipeImportProviderId?: string;
 }
 
 export const FoodFormDialog = ({
@@ -23,6 +25,7 @@ export const FoodFormDialog = ({
   mode,
   editingProduct,
   onSave,
+  recipeImportProviderId,
 }: FoodFormDialogProps) => {
   const { t } = useTranslation();
   const getFoodData = (): Food | undefined => {
@@ -67,6 +70,35 @@ export const FoodFormDialog = ({
                 )}
           </DialogDescription>
         </DialogHeader>
+        {foodData?.provider_type === 'mealie' &&
+          foodData.recipe_has_nutrition === false && (
+            <div className="rounded-md border p-3 space-y-2">
+              <p>
+                {t(
+                  'recipeImport.missingNutritionHint',
+                  'This Mealie recipe has no declared nutrition. Calculate it from matched ingredients.'
+                )}
+              </p>
+              {recipeImportProviderId && foodData.provider_external_id && (
+                <Link
+                  reloadDocument
+                  className="text-primary underline"
+                  to={
+                    '/foods?' +
+                    new URLSearchParams({
+                      mealieProvider: recipeImportProviderId,
+                      mealieRecipe: foodData.provider_external_id,
+                    })
+                  }
+                >
+                  {t(
+                    'recipeImport.importAsMeal',
+                    'Import ingredients as a meal'
+                  )}
+                </Link>
+              )}
+            </div>
+          )}
         <CustomFoodForm
           food={foodData}
           initialVariants={foodData?.variants}

@@ -1,24 +1,29 @@
-import { todayInZone } from '@workspace/shared';
+import {
+  normalizeEnergyUnit,
+  todayInZone,
+  type EnergyUnit,
+} from '@workspace/shared';
 import { CalorieWidgetBridge } from './CalorieWidgetBridge';
-import { ensureTimezoneBootstrapped } from './api/preferencesApi';
+import {
+  ensureTimezoneBootstrapped,
+  fetchPreferences,
+} from './api/preferencesApi';
 import {
   buildDailySummary,
   loadDailySummaryRawData,
 } from './dailySummaryService';
 import type { DailySummary } from '../types/dailySummary';
+import {
+  buildCalorieWidgetSnapshot,
+  type CalorieWidgetSnapshot,
+} from './calorieWidgetSnapshot';
 
 /**
  * Android widget snapshot contracts mirrored by `parseSnapshot` in the
  * calorie and macro widget Kotlin templates. Optional fields are omitted by
  * JSON serialization, which the native readers interpret as not supplied.
+ * The calorie snapshot is the one iOS gets too (`CalorieWidgetSnapshot`).
  */
-export interface AndroidCalorieSnapshot {
-  date: string;
-  remaining: number;
-  goal: number;
-  progress: number;
-}
-
 export interface AndroidMacroSnapshot {
   date: string;
   protein: number;
@@ -29,37 +34,88 @@ export interface AndroidMacroSnapshot {
   proteinGoal: number;
   carbsGoal: number;
   fatGoal: number;
+  /** `calories` and `remaining` stay in kcal; this is the unit to show them in. */
+  energyUnit: EnergyUnit;
 }
 
-export function buildAndroidWidgetSnapshots(summary: DailySummary): {
-  calorie?: AndroidCalorieSnapshot;
+/** What the water widgets need beyond the day's totals. */
+export interface WaterWidgetInfo {
+  /**
+   * What one tap of the widget's button adds, in millilitres; null for a
+   * container linked to a food, undefined until a container has loaded (the
+   * Android widget then keeps the drink it has).
+   */
+  drinkMl?: number | null;
+  /** The unit the app shows water in. */
+  unit: string;
+  /**
+   * Set by the Dashboard, so a widget holding only a background refresh's
+   * totals shows no button, as on iOS.
+   */
+  canLog: boolean;
+}
+
+/**
+ * The Android water widget's snapshot (WaterWidgetStore.kt). A background
+ * refresh knows only the totals, so it leaves the rest out and the native
+ * side keeps what the app last sent. A null drink means the container is
+ * linked to a food, which hides the buttons as on iOS. The manual part
+ * (null when the server does not say) is sent every time, as it decides
+ * whether − can remove anything.
+ */
+export interface AndroidWaterSnapshot {
+  date: string;
+  consumedMl: number;
+  goalMl: number;
+  manualMl: number | null;
+  drinkMl?: number | null;
+  unit?: string;
+  canLog?: boolean;
+}
+
+export function buildAndroidWaterSnapshot(
+  summary: DailySummary,
+  water?: WaterWidgetInfo
+): AndroidWaterSnapshot {
+  return {
+    date: summary.date,
+    consumedMl: summary.waterConsumed,
+    goalMl: summary.waterGoal,
+    manualMl: summary.waterManual ?? null,
+    ...(water && {
+      ...(water.drinkMl !== undefined && { drinkMl: water.drinkMl }),
+      unit: water.unit,
+      canLog: water.canLog,
+    }),
+  };
+}
+
+export function buildAndroidWidgetSnapshots(
+  summary: DailySummary,
+  energyUnit: EnergyUnit = 'kcal'
+): {
+  calorie?: CalorieWidgetSnapshot;
   macro: AndroidMacroSnapshot;
 } {
   const balance = summary.calorieBalance;
-  const calorie = balance
-    ? {
-        date: summary.date,
-        remaining: balance.remaining,
-        goal: balance.goal,
-        progress:
-          balance.goal > 0
-            ? Math.max(0, Math.min(1, balance.progress / 100))
-            : 0,
-      }
-    : undefined;
 
   return {
-    calorie,
+    calorie: buildCalorieWidgetSnapshot(summary, energyUnit),
     macro: {
       date: summary.date,
       protein: summary.protein.consumed,
       carbs: summary.carbs.consumed,
       fat: summary.fat.consumed,
-      calories: summary.caloriesConsumed,
+      // From the same balance as `remaining`: the eaten figure the Dashboard
+      // and the calorie widget show. The flat `caloriesConsumed` can differ
+      // from it slightly (it is not rounded, and the server counts a few
+      // entries differently).
+      calories: balance ? balance.eaten : summary.caloriesConsumed,
       remaining: balance?.remaining,
       proteinGoal: summary.protein.goal,
       carbsGoal: summary.carbs.goal,
       fatGoal: summary.fat.goal,
+      energyUnit,
     },
   };
 }
@@ -72,7 +128,7 @@ function serializeWidgetPayload<T extends object>(
 }
 
 export async function pushAndroidCalorieSnapshot(
-  snapshot: AndroidCalorieSnapshot,
+  snapshot: CalorieWidgetSnapshot,
   lastUpdated = Math.floor(Date.now() / 1000)
 ): Promise<void> {
   await CalorieWidgetBridge.setCalorieSnapshot(
@@ -91,22 +147,65 @@ export async function pushAndroidMacroSnapshot(
   await CalorieWidgetBridge.reloadMacroWidget();
 }
 
+export async function pushAndroidWaterSnapshot(
+  snapshot: AndroidWaterSnapshot,
+  lastUpdated = Math.floor(Date.now() / 1000)
+): Promise<void> {
+  await CalorieWidgetBridge.setWaterSnapshot(
+    serializeWidgetPayload(snapshot, lastUpdated)
+  );
+  await CalorieWidgetBridge.reloadWaterWidget();
+}
+
+// Moves on at every account change. A snapshot built for an earlier value
+// belongs to the previous account and is not pushed.
+let widgetGeneration = 0;
+
+export function getAndroidWidgetGeneration(): number {
+  return widgetGeneration;
+}
+
+/**
+ * Erases the widget snapshots when the account changes: they carry no
+ * account, and the Quick Settings tile shows the calorie figure on the lock
+ * screen. The water widget's taps not yet sent go with them.
+ */
+export async function clearAndroidWidgetSnapshots(): Promise<void> {
+  widgetGeneration += 1;
+  await CalorieWidgetBridge.clearSnapshots();
+}
+
 export async function refreshAndroidWidgetsFromServer(): Promise<void> {
+  const generation = widgetGeneration;
   const timezone = await ensureTimezoneBootstrapped({ throwOnFailure: true });
   if (!timezone) {
     throw new Error('Account timezone is unavailable for widget refresh');
   }
   const date = todayInZone(timezone);
-  const raw = await loadDailySummaryRawData(date);
+  const [raw, energyUnit] = await Promise.all([
+    loadDailySummaryRawData(date),
+    // The widget only labels its numbers with this, so a failed read shows
+    // kcal for one refresh rather than failing the whole widget update.
+    Promise.resolve()
+      .then(fetchPreferences)
+      .then((preferences) => normalizeEnergyUnit(preferences.energy_unit))
+      .catch(() => 'kcal' as const),
+  ]);
   const summary = buildDailySummary(date, raw);
-  const snapshots = buildAndroidWidgetSnapshots(summary);
+  const snapshots = buildAndroidWidgetSnapshots(summary, energyUnit);
   const lastUpdated = Math.floor(Date.now() / 1000);
   const updates: Promise<void>[] = [];
+  // The account changed while the summary loaded. Checked in the same turn
+  // as the pushes below, which reach the native module before awaiting.
+  if (generation !== widgetGeneration) return;
 
   if (snapshots.calorie) {
     updates.push(pushAndroidCalorieSnapshot(snapshots.calorie, lastUpdated));
   }
   updates.push(pushAndroidMacroSnapshot(snapshots.macro, lastUpdated));
+  updates.push(
+    pushAndroidWaterSnapshot(buildAndroidWaterSnapshot(summary), lastUpdated)
+  );
 
   const results = await Promise.allSettled(updates);
   const firstFailure = results.find(

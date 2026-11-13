@@ -3,6 +3,7 @@ import {
   extractGarminLaps,
   extractGarminGpsPoints,
   extractGarminHrZones,
+  findGroupForTimestamp,
 } from '../services/garmin/garminTelemetryExtractors.js';
 import { extractStravaLaps } from '../integrations/strava/stravaTelemetryExtractors.js';
 
@@ -242,6 +243,92 @@ describe('activityDetailMetrics cadence resolves across provider shapes', () => 
   });
 });
 
+describe('extractGarminGpsPoints coordinate validation and geoPolylineDTO cross-check', () => {
+  it('sanitizes points with (0, 0) coordinates or missing coordinates to 0 without dropping telemetry', () => {
+    const payload = {
+      details: {
+        metricDescriptors: [
+          { key: 'directTimestamp', metricsIndex: 0 },
+          { key: 'directLatitude', metricsIndex: 1 },
+          { key: 'directLongitude', metricsIndex: 2 },
+          { key: 'directHeartRate', metricsIndex: 3 },
+        ],
+        activityDetailMetrics: [
+          { metrics: [1785225600000, 0, 0, 140] },
+          { metrics: [1785225601000, null, 10, 142] },
+          { metrics: [1785225602000, 51.4, null, 145] },
+          { metrics: [1785225603000, 51.4, 7.0, 148] },
+        ],
+      },
+    };
+    const results = extractGarminGpsPoints(payload);
+    expect(results).toHaveLength(4);
+    expect(results[0].latitude).toBe(0);
+    expect(results[0].longitude).toBe(0);
+    expect(results[0].heart_rate_bpm).toBe(140);
+    expect(results[3].latitude).toBe(51.4);
+    expect(results[3].longitude).toBe(7.0);
+    expect(results[3].heart_rate_bpm).toBe(148);
+  });
+
+  it('prefers unshifted coordinates from geoPolylineDTO when timestamps match', () => {
+    const payload = {
+      details: {
+        metricDescriptors: [
+          { key: 'directTimestamp', metricsIndex: 0 },
+          { key: 'directLatitude', metricsIndex: 1 },
+          { key: 'directLongitude', metricsIndex: 2 },
+          { key: 'directHeartRate', metricsIndex: 3 },
+        ],
+        activityDetailMetrics: [
+          // Simulated shifted row where lat/lon got shifted into wrong columns:
+          { metrics: [1785225600000, 7.028, 2.733, 140] },
+        ],
+        geoPolylineDTO: {
+          polyline: [{ time: 1785225600000, lat: 51.4219, lon: 7.028 }],
+        },
+      },
+    };
+    const results = extractGarminGpsPoints(payload);
+    expect(results).toHaveLength(1);
+    expect(results[0].latitude).toBeCloseTo(51.4219, 4);
+    expect(results[0].longitude).toBeCloseTo(7.028, 3);
+    expect(results[0].heart_rate_bpm).toBe(140);
+  });
+
+  it('safely skips null entries in polyline without throwing', () => {
+    const payload = {
+      details: {
+        geoPolylineDTO: {
+          polyline: [
+            null,
+            { time: 1785225600000, lat: 51.4219, lon: 7.028 },
+            null,
+          ],
+        },
+      },
+    };
+    const results = extractGarminGpsPoints(payload);
+    expect(results).toHaveLength(1);
+    expect(results[0].latitude).toBeCloseTo(51.4219, 4);
+  });
+
+  it('sanitizes out-of-range coordinates (> 90 lat or > 180 lon) to 0', () => {
+    const results = extractGarminGpsPoints({
+      gps_points: [
+        { timestamp: '2026-07-29T08:00:00Z', latitude: 91, longitude: 10 },
+        { timestamp: '2026-07-29T08:00:01Z', latitude: 10, longitude: 185 },
+        { timestamp: '2026-07-29T08:00:02Z', latitude: 51.4, longitude: 7.0 },
+      ],
+    });
+    expect(results).toHaveLength(3);
+    expect(results[0].latitude).toBe(0);
+    expect(results[1].longitude).toBe(0);
+    expect(results[2].latitude).toBe(51.4);
+    expect(results[2].longitude).toBe(7.0);
+  });
+});
+
 describe('extractGarminHrZones keeps a zero-indexed zone 1', () => {
   it('does not drop zone 0 when zones are 0-indexed', () => {
     const zones = extractGarminHrZones({
@@ -260,5 +347,25 @@ describe('extractGarminHrZones keeps a zero-indexed zone 1', () => {
       hr_in_timezones: [{ zoneLowBoundary: 90, secsInZone: 120 }],
     });
     expect(zones).toHaveLength(0);
+  });
+});
+
+describe('findGroupForTimestamp', () => {
+  it('locates group in small and large lists', () => {
+    const smallGroups = [
+      { id: '1', startMs: 1000, endMs: 2000 },
+      { id: '2', startMs: 3000, endMs: 4000 },
+    ];
+    expect(findGroupForTimestamp(smallGroups, 1500)?.id).toBe('1');
+    expect(findGroupForTimestamp(smallGroups, 3500)?.id).toBe('2');
+    expect(findGroupForTimestamp(smallGroups, 5000)?.id).toBe('1');
+
+    const largeGroups = Array.from({ length: 25 }, (_, i) => ({
+      id: String(i),
+      startMs: i * 1000,
+      endMs: i * 1000 + 500,
+    }));
+    expect(findGroupForTimestamp(largeGroups, 10200)?.id).toBe('10');
+    expect(findGroupForTimestamp(largeGroups, 20100)?.id).toBe('20');
   });
 });

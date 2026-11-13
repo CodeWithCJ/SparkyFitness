@@ -39,8 +39,11 @@ enum OutboundPayloads {
         static let fastStart = "fastStart"
         static let fastEnd = "fastEnd"
         static let runFinished = "runFinished"
+        static let runEffort = "runEffort"
+        static let workoutEffort = "workoutEffort"
         static let runLive = "runLive"
         static let runCue = "runCue"
+        static let routeLibrary = "routeLibrary"
     }
 
     /// A morning check-in awaiting a server write.
@@ -83,8 +86,10 @@ enum OutboundPayloads {
 
     /// One dose ticked as taken — the phone logs it the way its own dose row
     /// does — or, with `taken` false, un-ticked, which deletes that entry.
+    /// `skipped` marks it skipped instead; it is left out otherwise, so the
+    /// message an older phone reads is unchanged.
     static func medicationTaken(_ tap: MedicationTap) -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "type": Kind.medicationTaken,
             "clientId": tap.id,
             "entryDate": tap.entryDate,
@@ -92,6 +97,8 @@ enum OutboundPayloads {
             "scheduleId": tap.scheduleId,
             "taken": tap.taken,
         ]
+        if tap.skipped { payload["skipped"] = true }
+        return payload
     }
 
     /// The wearer started a fast from a preset (`presetId` is the phone's id,
@@ -153,7 +160,43 @@ enum OutboundPayloads {
         case .deleteExercise(let exerciseEntryId):
             payload["action"] = "deleteExercise"
             payload["exerciseEntryId"] = exerciseEntryId
+        case .doExerciseNow(let exerciseEntryId, let anchorEntryId):
+            payload["action"] = "doExerciseNow"
+            payload["exerciseEntryId"] = exerciseEntryId
+            payload["anchorEntryId"] = anchorEntryId
         }
+        return payload
+    }
+
+    /// A weight, reps or carry distance the wearer just typed on the watch for
+    /// a set, sent before the set is logged so the phone shows it too. A
+    /// `workoutEdit` like the others (same `clientId` de-duplication), with only
+    /// the edited fields present. `at` orders edits: a queued copy of an older
+    /// one must not undo a newer one that arrived live. `armedAt` is the arm of
+    /// the plan the edit was made in: a saved workout can be armed again under
+    /// the same id, and an edit queued from the earlier arm must not land on it.
+    static func workoutEditSetValues(
+        sessionId: String,
+        clientId: String,
+        setId: String,
+        weightKg: Double?,
+        reps: Double?,
+        distanceKm: Double?,
+        at: Date,
+        armedAt: Date?
+    ) -> [String: Any] {
+        var payload: [String: Any] = [
+            "type": Kind.workoutEdit,
+            "sessionId": sessionId,
+            "clientId": clientId,
+            "action": "setValues",
+            "setId": setId,
+            "at": at.timeIntervalSince1970 * 1000,
+        ]
+        if let weightKg { payload["weightKg"] = weightKg }
+        if let reps { payload["reps"] = reps }
+        if let distanceKm { payload["distanceKm"] = distanceKm }
+        if let armedAt { payload["armedAt"] = armedAt.timeIntervalSince1970 * 1000 }
         return payload
     }
 
@@ -239,6 +282,9 @@ enum OutboundPayloads {
         if let minutes = batch.durationMinutes, minutes > 0 {
             payload["durationMinutes"] = minutes
         }
+        if let zones = batch.appleZones, !zones.isEmpty {
+            payload["appleZones"] = zones.map { $0.payload() }
+        }
         return payload
     }
 
@@ -261,25 +307,52 @@ enum OutboundPayloads {
     static func recordingHeartRate(
         sessionId: String,
         clientId: String,
-        samples: [HeartRateSample]
+        samples: [HeartRateSample],
+        appleZones: [[String: Any]]? = nil
     ) -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "type": Kind.recordingHeartRate,
             "sessionId": sessionId,
             "clientId": clientId,
             "samples": samples.map { ["t": $0.t, "bpm": $0.bpm] },
         ]
+        if let appleZones, !appleZones.isEmpty {
+            payload["appleZones"] = appleZones
+        }
+        return payload
     }
 
     /// A spoken cue for the phone to say instead of the watch, so it comes out
     /// of the headphones paired to the phone. `id` comes back in the phone's
-    /// `runCueAck`; without it the watch says the cue itself.
-    static func runCue(id: String, text: String, interrupt: Bool) -> [String: Any] {
+    /// `runCueAck`; without it the watch says the cue itself. `language` is the
+    /// BCP 47 tag the text is written in, so the phone speaks it with a voice
+    /// for that language.
+    static func runCue(id: String, text: String, interrupt: Bool, language: String) -> [String: Any] {
         [
             "type": Kind.runCue,
             "id": id,
             "text": text,
             "interrupt": interrupt,
+            "language": language,
+        ]
+    }
+
+    /// What the watch's route library holds, for the phone's "On your watch"
+    /// state. `stored` is each route's id and the phone's `updatedAt` it was
+    /// stored at; `rejected` maps a route id the watch could not take to why
+    /// ("full" or "storage"). Queued like the other durable messages, since a
+    /// change made on a wrist out of range still has to reach the phone.
+    static func routeLibrary(
+        stored: [(id: String, updatedAt: Double)],
+        rejected: [String: String],
+        capacity: Int
+    ) -> [String: Any] {
+        [
+            "type": Kind.routeLibrary,
+            "routes": stored.map { ["id": $0.id, "updatedAt": $0.updatedAt] as [String: Any] },
+            "rejected": rejected.map { ["id": $0.key, "reason": $0.value] as [String: Any] },
+            "capacity": capacity,
+            "sentAt": Date().timeIntervalSince1970 * 1000,
         ]
     }
 
@@ -331,6 +404,26 @@ enum OutboundPayloads {
         return payload
     }
 
+    /// How hard the wearer rated a finished strength workout (1-10). Queued,
+    /// and matched to the workout by the session id the plan carried.
+    static func workoutEffort(sessionId: String, rating: Int) -> [String: Any] {
+        [
+            "type": Kind.workoutEffort,
+            "sessionId": sessionId,
+            "rating": rating,
+        ]
+    }
+
+    /// How hard the wearer rated a finished run (1-10), sent after the run
+    /// itself. Queued like `runFinished`, and matched to it by `clientId`.
+    static func runEffort(clientId: String, rating: Int) -> [String: Any] {
+        [
+            "type": Kind.runEffort,
+            "clientId": clientId,
+            "rating": rating,
+        ]
+    }
+
     /// A walk or run recorded on the wrist alone, sent once when it finishes.
     /// The route and heart rate are thinned to what the connection can carry.
     static func runFinished(_ result: WatchRunResult) -> [String: Any] {
@@ -355,12 +448,18 @@ enum OutboundPayloads {
         if let estimated = result.estimatedDistanceMeters {
             payload["estimatedDistanceMeters"] = estimated
         }
+        if let steps = result.steps, steps > 0 {
+            payload["steps"] = steps
+        }
         if let plan = result.plan {
             payload["planId"] = plan.id
             if let programId = plan.programId, let index = plan.programIndex {
                 payload["programId"] = programId
                 payload["programIndex"] = index
             }
+        }
+        if !result.appleZones.isEmpty {
+            payload["appleZones"] = result.appleZones
         }
         return payload
     }

@@ -1,7 +1,6 @@
 -- Migration: Support public sharing and dynamic provider type metadata
 -- Created at: 2026-06-20 14:33:00
 
-BEGIN;
 
 -- 1. Add metadata columns to external_provider_types
 ALTER TABLE public.external_provider_types ADD COLUMN IF NOT EXISTS categories VARCHAR(50)[];
@@ -242,4 +241,3 @@ ALTER TABLE public.ai_service_settings
 
 
 
-COMMIT;

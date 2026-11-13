@@ -74,6 +74,12 @@
       "displayNameKey": "settings.language.russian",
       "defaultDisplayName": "Русский"
     },
+    "tr": {
+      "languageCode": "tr",
+      "intlLocale": "tr-TR",
+      "displayNameKey": "settings.language.turkish",
+      "defaultDisplayName": "Türkçe"
+    },
     "yue-Hant": {
       "languageCode": "yue-Hant",
       "intlLocale": "yue-Hant-HK",

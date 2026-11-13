@@ -1,7 +1,6 @@
 -- Migration: Add Canadian Nutrient File (Health Canada) provider type
 -- File: SparkyFitnessServer/db/migrations/20261004180000_add_canadian_nutrient_file_provider_type.sql
 
-BEGIN;
 
 -- 1. Insert 'canadian-nutrient-file' into external_provider_types lookup table
 INSERT INTO public.external_provider_types (id, display_name, description)
@@ -90,5 +89,4 @@ CREATE INDEX IF NOT EXISTS idx_foods_is_quick_food_name
 CREATE INDEX IF NOT EXISTS idx_foods_shared_public_name
   ON public.foods(shared_with_public, is_quick_food, name);
 
-COMMIT;
 

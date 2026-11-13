@@ -29,6 +29,8 @@ type Vo2MaxLineChartProps = {
   isLoading: boolean;
   isError: boolean;
   range: HealthTrendDateRange;
+  /** The points are estimated from logged runs rather than synced readings. */
+  isEstimate?: boolean;
 };
 
 const UNIT = 'ml/kg/min';
@@ -54,14 +56,15 @@ const Vo2MaxTooltip: React.FC<{ text: string }> = ({ text }) => (
  * a language switch.
  */
 export const buildVo2MaxTooltipText = (
-  point: { vo2max: number; day: string } | undefined
+  point: { vo2max: number; day: string } | undefined,
+  isEstimate = false
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
   const formatted = formatLocalizedNumber(point.vo2max, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
-  return `${formatted} ${UNIT} · ${formatTooltipDate(point.day)}`;
+  return `${isEstimate ? '≈ ' : ''}${formatted} ${UNIT} · ${formatTooltipDate(point.day)}`;
 };
 
 const Vo2MaxLineChart: React.FC<Vo2MaxLineChartProps> = ({
@@ -69,6 +72,7 @@ const Vo2MaxLineChart: React.FC<Vo2MaxLineChartProps> = ({
   isLoading,
   isError,
   range,
+  isEstimate = false,
 }) => {
   const { t } = useTranslation();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
@@ -111,7 +115,7 @@ const Vo2MaxLineChart: React.FC<Vo2MaxLineChartProps> = ({
   // Derive the presentation text from the selected point on every render, so
   // an already-visible tooltip reflects the current app language immediately.
   const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
-  const tooltipText = buildVo2MaxTooltipText(selectedPoint);
+  const tooltipText = buildVo2MaxTooltipText(selectedPoint, isEstimate);
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
@@ -149,8 +153,20 @@ const Vo2MaxLineChart: React.FC<Vo2MaxLineChartProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        {t('charts.vo2max.title', { defaultValue: 'VO2 max' })}
+        {isEstimate
+          ? t('charts.vo2max.estimateTitle', {
+              defaultValue: 'VO2 max (estimated)',
+            })
+          : t('charts.vo2max.title', { defaultValue: 'VO2 max' })}
       </Text>
+      {isEstimate ? (
+        <Text className="text-text-secondary text-xs -mt-1 mb-1">
+          {t('charts.vo2max.estimateNote', {
+            defaultValue:
+              'Estimated from your logged runs. Not a measurement; a synced reading replaces it.',
+          })}
+        </Text>
+      ) : null}
 
       <Vo2MaxTooltip text={tooltipText} />
 

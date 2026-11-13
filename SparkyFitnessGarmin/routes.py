@@ -5,8 +5,6 @@ import asyncio
 import json
 import logging
 import os
-import time
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
@@ -28,9 +26,7 @@ from service import (
     ALL_HEALTH_METRICS,
     GARMIN_DATA_SOURCE,
     IS_CN,
-    MFA_STATE_STORE,
     SAVE_MOCK_DATA,
-    _cleanup_mfa_cache,
     _load_from_local_file,
     _save_to_local_file,
     clean_garmin_data,
@@ -78,14 +74,11 @@ async def garmin_login(request_data: GarminLoginRequest):
         result1, result2 = garmin.login()
 
         if result1 == "needs_mfa":
-            mfa_id = uuid.uuid4().hex
-            # Store the entire garmin instance — MFA state lives on client object
-            MFA_STATE_STORE[mfa_id] = {"garmin": garmin, "ts": time.time()}
-            _cleanup_mfa_cache()
-            logger.info(
-                f"MFA required for user {request_data.user_id}, mfa_id={mfa_id}."
-            )
-            return {"status": "needs_mfa", "client_state": mfa_id}
+            # result2 is the pending sign-in as plain data. It holds Garmin's
+            # session cookies, so it is never logged; the main server seals it
+            # before it leaves for the browser.
+            logger.info(f"MFA required for user {request_data.user_id}.")
+            return {"status": "needs_mfa", "client_state": result2}
         else:
             tokens = json.loads(garmin.client.dumps())
             logger.info(
@@ -113,36 +106,35 @@ async def garmin_login(request_data: GarminLoginRequest):
 
 @router.post("/auth/garmin/resume_login")
 async def garmin_resume_login(request: Request):
+    data = await request.json()
+    client_state = data.get("client_state")
+    mfa_code = data.get("mfa_code")
+    user_id = data.get("user_id")
+
+    if not isinstance(client_state, dict) or not mfa_code or not user_id:
+        raise HTTPException(
+            status_code=400, detail="Missing client_state, mfa_code, or user_id."
+        )
+
     try:
-        data = await request.json()
-        client_state = data.get("client_state")
-        mfa_code = str(data.get("mfa_code"))
-        user_id = data.get("user_id")
-
-        if not client_state or not mfa_code or not user_id:
-            raise HTTPException(
-                status_code=400, detail="Missing client_state, mfa_code, or user_id."
-            )
-
-        item = MFA_STATE_STORE.pop(client_state, None)
-        if not item:
-            raise HTTPException(status_code=400, detail="Invalid or expired mfa_token")
-
-        garmin = item["garmin"]
-
-        garmin.prompt_mfa = lambda: mfa_code
-        garmin.return_on_mfa = False
-
-        garmin.login()
-
+        # Any instance can finish the sign-in from the state login() returned,
+        # so it survives a restart and works with more than one replica.
+        garmin = Garmin(is_cn=IS_CN, return_on_mfa=True)
+        garmin.resume_login(client_state, str(mfa_code))
         tokens = json.loads(garmin.client.dumps())
 
         logger.info(f"Successfully resumed Garmin login for user {user_id}.")
         return {"status": "success", "tokens": tokens}
 
+    # A wrong code or an unusable state is the user's to fix, not a server
+    # fault: a 5xx here would make the main server retry and send the same
+    # code to Garmin again.
     except GarminConnectAuthenticationError as e:
         logger.error(f"Garmin MFA auth error: {e}")
         raise HTTPException(status_code=401, detail=f"Garmin MFA failed: {e}")
+    except GarminConnectTooManyRequestsError as e:
+        logger.error(f"Garmin MFA rate limit error: {e}")
+        raise HTTPException(status_code=429, detail=f"Garmin rate limit hit: {e}")
     except Exception as e:
         logger.error(f"Unexpected error during Garmin MFA: {e}")
         raise HTTPException(

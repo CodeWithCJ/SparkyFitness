@@ -17,6 +17,7 @@ import {
   ExerciseEntryHrZones,
   ExerciseEntryHrZonesInitializer,
   GpsTrackPoint,
+  filterGpsTrackOutliers,
 } from '@workspace/shared';
 
 /**
@@ -234,6 +235,7 @@ export async function _bulkInsertExerciseEntryGpsPointsWithClient(
   }
   for (const group of byEntry.values()) {
     group.points.sort((a, b) => a.t.localeCompare(b.t));
+    group.points = filterGpsTrackOutliers(group.points);
   }
 
   {
@@ -270,7 +272,12 @@ export async function getGpsPointsForExerciseEntry(
       'SELECT * FROM exercise_entry_gps_points WHERE exercise_entry_id = $1',
       [exerciseEntryId]
     )) as { rows: ExerciseEntryGpsPoints[] };
-    return res.rows[0] ?? null;
+    const row = res.rows[0];
+    if (!row) return null;
+    return {
+      ...row,
+      points: filterGpsTrackOutliers(row.points || []),
+    };
   } finally {
     client.release();
   }
@@ -360,16 +367,18 @@ export async function _bulkInsertExerciseEntryHrZonesWithClient(
       zone.zone_lower_bpm ?? null,
       zone.zone_upper_bpm ?? null,
       zone.seconds_in_zone,
+      zone.zone_method ?? null,
     ]);
     const query = format(
       `INSERT INTO exercise_entry_hr_zones
-        (user_id, exercise_entry_id, entry_date, zone_index, zone_lower_bpm, zone_upper_bpm, seconds_in_zone)
+        (user_id, exercise_entry_id, entry_date, zone_index, zone_lower_bpm, zone_upper_bpm, seconds_in_zone, zone_method)
        VALUES %L
        ON CONFLICT (exercise_entry_id, zone_index) DO UPDATE SET
          entry_date = EXCLUDED.entry_date,
          zone_lower_bpm = EXCLUDED.zone_lower_bpm,
          zone_upper_bpm = EXCLUDED.zone_upper_bpm,
-         seconds_in_zone = EXCLUDED.seconds_in_zone
+         seconds_in_zone = EXCLUDED.seconds_in_zone,
+         zone_method = EXCLUDED.zone_method
        RETURNING *`,
       values
     );
@@ -403,5 +412,49 @@ export async function getHrZonesForExerciseEntry(
     );
   } finally {
     if (client && typeof client.release === 'function') client.release();
+  }
+}
+
+/** A workout logged in SparkyFitness that has no heart rate yet. */
+export interface WorkoutEntryWithoutHeartRate {
+  id: string;
+  entry_date: string;
+  entry_time: string;
+  record_timezone: string | null;
+  duration_minutes: number;
+}
+
+/**
+ * Workouts logged in SparkyFitness itself (the live tracker, the web player or
+ * by hand) between two calendar days that carry a start time and a duration
+ * but no heart rate, so a provider sync can fill it in from a tracker worn
+ * during them. Synced entries are left out: their provider already sent its own.
+ */
+export async function getWorkoutEntriesWithoutHeartRate(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<WorkoutEntryWithoutHeartRate[]> {
+  const client = await getClient(userId);
+  try {
+    const res = (await client.query(
+      `SELECT id,
+              to_char(entry_date, 'YYYY-MM-DD') AS entry_date,
+              entry_time::text AS entry_time,
+              record_timezone,
+              duration_minutes::float8 AS duration_minutes
+       FROM exercise_entries
+       WHERE user_id = $1
+         AND entry_date BETWEEN $2::date AND $3::date
+         AND entry_time IS NOT NULL
+         AND duration_minutes > 0
+         AND avg_heart_rate IS NULL
+         AND lower(coalesce(source, '')) IN ('', 'manual', 'sparky')
+       ORDER BY entry_date, entry_time`,
+      [userId, startDate, endDate]
+    )) as { rows: WorkoutEntryWithoutHeartRate[] };
+    return res.rows;
+  } finally {
+    client.release();
   }
 }

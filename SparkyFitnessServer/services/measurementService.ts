@@ -4,6 +4,7 @@ import { getClient } from '../db/poolManager.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
+  dayToUtcRange,
   pickMealTypeForTime,
   userHourMinute,
   clockInZone,
@@ -23,6 +24,12 @@ import {
 } from '../utils/sleepStageAggregates.js';
 import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
+import type {
+  SleepEntryInput,
+  SleepEntryUpsertOptions,
+  SleepStageEventInput,
+} from '../models/sleepRepository.js';
+import type { SleepUserProfile } from '../models/userRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import foodRepository from '../models/foodRepository.js';
@@ -55,7 +62,9 @@ import {
   customMeasurementHandler,
   createCategoryResolver,
   HEALTH_TYPE_DISPLAY_NAMES,
+  invalidWorkoutReason,
 } from './healthDataHandlers.js';
+import { isUserOriginatedSource } from '../models/syncedDataRepository.js';
 import type {
   HandleBatchFn,
   PreparedHealthEntry,
@@ -190,16 +199,19 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
 }
 // Delete-then-insert idempotency for provider-sourced entries: groups the given
 // entries by source, computes each source's [min,max] resolved-day range, and
-// invokes deleteFn(userId, startDate, endDate, source). Shared by the exercise
-// and nutrition pre-cleanup passes so a re-sync of a date range never duplicates
-// rows; manual/web entries (no matching source) are left untouched.
+// invokes deleteFn(userId, startDate, endDate, source) so a re-sync of a date
+// range never duplicates rows.
+//
+// Only provider sources are range-deleted (#2938). An entry with no source, or
+// with a user-originated one ('manual', 'sparky', 'workout preset', ...), is
+// skipped: those rows are what the person logged, and a source-less payload
+// used to default to 'manual' and wipe their logged workout sessions. Entries
+// the handler will reject (see `isRejected`) are skipped too, so a malformed
+// record cannot delete anything before it fails.
 async function preCleanEntriesBySourceAndDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entries: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fallbackTimezone: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
+  entries: Record<string, unknown>[],
+  fallbackTimezone: string,
+  userId: string,
   label: string,
   deleteFn: (
     userId: string,
@@ -208,32 +220,47 @@ async function preCleanEntriesBySourceAndDate(
     source: string,
     excludedExerciseName?: string,
     keepSourceIds?: string[]
-  ) => Promise<unknown>
+  ) => Promise<unknown>,
+  isRejected: (entry: Record<string, unknown>) => boolean = () => false
 ) {
   if (entries.length === 0) return;
-  const daysBySource: Record<string, Set<string>> = {};
+  // Maps, not plain objects: a source such as 'constructor' or '__proto__'
+  // would otherwise resolve to an inherited property and throw.
+  const daysBySource = new Map<string, Set<string>>();
   // Records this payload will re-insert anyway. They are held back from the
   // delete so the write path updates them in place instead, which preserves the
   // telemetry a summary-only re-send does not carry — the route, laps and
   // heart-rate zones hang off exercise_entry_id with ON DELETE CASCADE, so
   // deleting the parent first destroys them and the re-insert cannot restore
   // what the client never sent (#2300).
-  const keepIdsBySource: Record<string, Set<string>> = {};
+  const keepIdsBySource = new Map<string, Set<string>>();
   for (const entry of entries) {
-    const source = entry.source || 'manual';
+    // Kept as sent: the handler stores this exact value, so the delete must
+    // match it. Only the emptiness check ignores surrounding whitespace.
+    const source = typeof entry.source === 'string' ? entry.source : '';
+    if (!source.trim() || isUserOriginatedSource(source)) continue;
+    // Held back even when the record is rejected or its date is unreadable:
+    // it will not be re-inserted, so a valid sibling's span must not sweep
+    // away the copy already stored.
+    if (typeof entry.source_id === 'string' && entry.source_id.length > 0) {
+      const keep = keepIdsBySource.get(source) ?? new Set<string>();
+      keep.add(entry.source_id);
+      keepIdsBySource.set(source, keep);
+    }
+    // A rejected record never widens the span it would have replaced.
+    if (isRejected(entry)) continue;
     const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
     if (!resolved) continue;
-    (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
-    if (typeof entry.source_id === 'string' && entry.source_id.length > 0) {
-      (keepIdsBySource[source] ??= new Set()).add(entry.source_id);
-    }
+    const days = daysBySource.get(source) ?? new Set<string>();
+    days.add(resolved.parsedDate);
+    daysBySource.set(source, days);
   }
-  for (const source of Object.keys(daysBySource)) {
-    const days = [...daysBySource[source]].sort();
+  for (const [source, daySet] of daysBySource) {
+    const days = [...daySet].sort();
     if (days.length === 0) continue;
     const startDate = days[0];
     const endDate = days[days.length - 1];
-    const keepSourceIds = [...(keepIdsBySource[source] ?? [])];
+    const keepSourceIds = [...(keepIdsBySource.get(source) ?? [])];
     log(
       'info',
       `[processHealthData] Pre-cleanup: Deleting existing ${label} for source '${source}' from ${startDate} to ${endDate}` +
@@ -269,8 +296,9 @@ async function processHealthData(
   const tzFallbackByType = {};
   // Loaded at most once per batch and shared across every sleep session so we don't
   // re-query the user profile per record. Lazy so non-sleep syncs pay nothing.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let sleepContext: { tz: string; userProfile: any } | undefined;
+  let sleepContext:
+    | { tz: string; userProfile: SleepUserProfile | null | undefined }
+    | undefined;
   const getSleepContext = async () => {
     if (!sleepContext) {
       sleepContext = {
@@ -295,7 +323,8 @@ async function processHealthData(
     tz,
     userId,
     'exercise entries',
-    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate
+    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate,
+    (entry) => invalidWorkoutReason(entry) !== null
   );
   // Request-scoped dependencies for the handlers: categories are fetched at
   // most once per request (see createCategoryResolver).
@@ -1311,6 +1340,22 @@ async function getCustomMeasurementEntries(
     throw error;
   }
 }
+/** Projects the requested day in the account timezone, independent of imported bucket dates. */
+async function getCustomMeasurementTimelineEntries(
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
+) {
+  const timezone = await loadUserTimezone(targetUserId);
+  const { start, end } = dayToUtcRange(date, timezone);
+  return measurementRepository.getCustomMeasurementTimelineEntries(
+    targetUserId,
+    authenticatedUserId,
+    start,
+    end
+  );
+}
+
 async function getCustomMeasurementEntriesByDate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -1446,7 +1491,7 @@ async function calculateSleepScore(
   sleepEntryData: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   stageEvents: any,
-  age = null
+  age: number | null = null
 ) {
   const { duration_in_seconds, time_asleep_in_seconds } = sleepEntryData;
   if (!duration_in_seconds || duration_in_seconds <= 0) return 0;
@@ -1584,18 +1629,51 @@ async function calculateSleepScore(
   // Ensure score is within 0-100 range
   return Math.round(Math.max(0, Math.min(score, maxScore)));
 }
+/**
+ * Recomputes an entry's bedtime, wake, durations and score from its stored
+ * stages (the primary cluster) and saves them.
+ */
+async function storeSleepAggregatesFromStages(
+  userId: string,
+  entryId: string,
+  actingUserId: string,
+  stages: SleepStageEventInput[],
+  age: number | null
+) {
+  const recomputed = recomputeSleepAggregatesFromStages(stages);
+  const sleepScore = await calculateSleepScore(
+    {
+      duration_in_seconds: recomputed.duration_in_seconds,
+      time_asleep_in_seconds: recomputed.time_asleep_in_seconds,
+    },
+    getPrimarySleepStageCluster(stages),
+    age
+  );
+  const aggregates = {
+    ...recomputed,
+    sleep_score: Number(sleepScore) || 0,
+  };
+  await sleepRepository.updateSleepEntryAggregates(
+    userId,
+    entryId,
+    actingUserId,
+    aggregates
+  );
+  return aggregates;
+}
+
 async function processSleepEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sleepEntryData: any,
+  userId: string,
+  actingUserId: string,
+  sleepEntryData: SleepEntryInput,
   // Batch callers pass an already-loaded profile + timezone to skip a per-session
   // DB round-trip; single-entry callers omit it and load directly below.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  prefetched?: { tz: string; userProfile: any }
-) {
+  prefetched?: {
+    tz: string;
+    userProfile: SleepUserProfile | null | undefined;
+  },
+  options: SleepEntryUpsertOptions = {}
+): Promise<{ id: string } & Record<string, unknown>> {
   log(
     'debug',
     `[processSleepEntry] Received sleepEntryData: ${JSON.stringify(sleepEntryData)}`
@@ -1640,7 +1718,7 @@ async function processSleepEntry(
     // Transient time-asleep to seed the first upsert + score; the recompute below
     // overwrites it from the durable merged stages. Excludes awake/in_bed/unknown.
     const timeAsleepInSeconds = sumAsleepSeconds(stage_events);
-    // User profile (age/gender) + timezone, reusing prefetched values when present.
+    // User profile (age) + timezone, reusing prefetched values when present.
     const userProfile = prefetched
       ? prefetched.userProfile
       : await userRepository.getUserProfile(userId);
@@ -1648,13 +1726,10 @@ async function processSleepEntry(
     const age = userProfile?.date_of_birth
       ? userAge(userProfile.date_of_birth, tz)
       : null;
-    const gender = userProfile?.gender || null;
     const sleepScore = await calculateSleepScore(
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
       stage_events,
-      age,
-      // @ts-expect-error TS(2554): Expected 2-3 arguments, but got 4.
-      gender
+      age
     );
     const entryToUpsert = {
       entry_date: entry_date,
@@ -1676,19 +1751,20 @@ async function processSleepEntry(
       entryToUpsert
     );
     // Pass actingUserId to upsertSleepEntry
-    const newSleepEntry = await sleepRepository.upsertSleepEntry(
-      userId,
-      actingUserId,
-      entryToUpsert
-    );
+    const { created, ...newSleepEntry } =
+      await sleepRepository.upsertSleepEntry(
+        userId,
+        actingUserId,
+        entryToUpsert,
+        options
+      );
     if (originalHadStages && stage_events && stage_events.length > 0) {
       // Stages merge by natural key (entry_id, start_time, end_time) inside one
       // repository transaction so partial-window cleanup and reinserts are atomic.
       await sleepRepository.mergeSleepStageEvents(
         userId,
         newSleepEntry.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stage_events.map((stageEvent: any) => ({
+        stage_events.map((stageEvent) => ({
           ...stageEvent,
           duration_in_seconds:
             Math.round(Number(stageEvent.duration_in_seconds)) || 0,
@@ -1712,8 +1788,7 @@ async function processSleepEntry(
       await sleepRepository.mergeSleepStageEvents(
         userId,
         newSleepEntry.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stage_events.map((stageEvent: any) => ({
+        stage_events.map((stageEvent) => ({
           ...stageEvent,
           duration_in_seconds:
             Math.round(Number(stageEvent.duration_in_seconds)) || 0,
@@ -1730,31 +1805,50 @@ async function processSleepEntry(
         `[processSleepEntry] Preserving ${mergedStages.length} existing stage events for entry ${newSleepEntry.id} because the payload had no authoritative stage data.`
       );
     }
-    const primaryStages = getPrimarySleepStageCluster(mergedStages);
-    const recomputed = recomputeSleepAggregatesFromStages(mergedStages);
-    const recomputedSleepScore = await calculateSleepScore(
-      {
-        duration_in_seconds: recomputed.duration_in_seconds,
-        time_asleep_in_seconds: recomputed.time_asleep_in_seconds,
-      },
-      primaryStages,
-      age,
-      // @ts-expect-error TS(2554): Expected 2-3 arguments, but got 4.
-      gender
-    );
-    await sleepRepository.updateSleepEntryAggregates(
+    const aggregates = await storeSleepAggregatesFromStages(
       userId,
       newSleepEntry.id,
       actingUserId,
-      {
-        ...recomputed,
-        sleep_score: Number(recomputedSleepScore) || 0,
-      }
+      mergedStages,
+      age
     );
+    // A new session whose stages an earlier sync merged into another entry
+    // of this night (a nap stored inside the night before #3240): take them
+    // out of that entry so they are not stored twice.
+    if (created && originalHadStages) {
+      const siblingIds =
+        await sleepRepository.removeSessionStagesFromSiblingEntries(
+          userId,
+          newSleepEntry.id,
+          entry_date,
+          source,
+          bedtime,
+          wake_time
+        );
+      for (const siblingId of siblingIds) {
+        const siblingStages =
+          await sleepRepository.getSleepStageEventsByEntryId(userId, siblingId);
+        if (siblingStages.length > 0) {
+          await storeSleepAggregatesFromStages(
+            userId,
+            siblingId,
+            actingUserId,
+            siblingStages,
+            age
+          );
+        } else {
+          // Every stage it held was this session's, so it was a copy of the
+          // entry above. Recomputing would leave it with no bedtime, and an
+          // entry without times matches any later write of that night. Delete
+          // it only if it is still empty under a row lock, so a concurrent
+          // sync that added stages after the read above is not cascaded away.
+          await sleepRepository.deleteSleepEntryIfEmpty(userId, siblingId);
+        }
+      }
+    }
     return {
       ...newSleepEntry,
-      ...recomputed,
-      sleep_score: Number(recomputedSleepScore) || 0,
+      ...aggregates,
     };
   } catch (error) {
     log('error', `Error in processSleepEntry for user ${userId}:`, error);
@@ -2172,6 +2266,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getCustomMeasurementTimelineEntries,
   getCustomMeasurementEntriesByDateRange,
   getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,

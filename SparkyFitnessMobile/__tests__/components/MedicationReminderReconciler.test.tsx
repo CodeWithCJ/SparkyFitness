@@ -26,6 +26,7 @@ jest.mock('../../src/services/medicationReminderService', () => ({
 
 jest.mock('../../src/services/notifications', () => ({
   maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
+  registerLocalizedNotificationPresentation: jest.fn(async () => undefined),
 }));
 
 const mockUseMedications = useMedications as jest.MockedFunction<

@@ -173,6 +173,7 @@ async function run() {
                   exercise_entry_id: row.exercise_entry_id as string,
                   entry_date: row.entry_date as string,
                   ...zone,
+                  zone_method: 'device',
                 }))
               );
             hrZonesWritten += written.length;
@@ -279,6 +280,7 @@ async function run() {
                   exercise_entry_id: firstChildId,
                   entry_date: row.entry_date as string,
                   ...zone,
+                  zone_method: 'device',
                 }))
               );
             hrZonesWritten += written.length;

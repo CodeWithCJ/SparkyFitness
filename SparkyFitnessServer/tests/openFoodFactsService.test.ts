@@ -9,11 +9,13 @@ import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import { PARTIAL_SERVING_DATA } from '../utils/foodRanking.js';
 import { withOpenFoodFactsProductReadPermit } from '../services/openFoodFactsProductReadRateLimitService.js';
 
 vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
   resolveOpenFoodFactsProvider: vi.fn(),
   invalidateOpenFoodFactsSession: vi.fn(),
+  resolveOffFetch: vi.fn(async () => fetch),
   DEFAULT_OFF_BASE_URL: 'https://world.openfoodfacts.org',
 }));
 vi.mock('../services/openFoodFactsProductReadRateLimitService.js', () => ({
@@ -749,6 +751,15 @@ describe('openFoodFactsService', () => {
         'Current First',
         'Indexed Second',
       ]);
+      // The index has no serving fields; callers must know that hit's 100 g
+      // reference is not the label serving.
+      expect(
+        result.products.map((product) => product[PARTIAL_SERVING_DATA])
+      ).toEqual([undefined, true]);
+      const mapped = mapOpenFoodFactsProduct(result.products[1]);
+      expect(mapped[PARTIAL_SERVING_DATA]).toBe(true);
+      // Server-side only: never serialized into web/mobile responses.
+      expect(JSON.stringify(mapped)).not.toContain('partial');
     });
 
     it('throws a compact error without exposing an upstream HTML response', async () => {
@@ -904,6 +915,224 @@ describe('openFoodFactsService', () => {
         'Current Product',
         'Current Product',
       ]);
+    });
+
+    describe('brand search', () => {
+      const hitsResponse = (hits: object[]) => ({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits, page: 1, page_size: 20, count: hits.length }),
+      });
+      const productsResponse = (products: object[]) => ({
+        ok: true,
+        json: () => Promise.resolve({ products }),
+      });
+      const searchQueries = () =>
+        fetchMock.mock.calls
+          .filter(([url]) => url === 'https://search.openfoodfacts.org/search')
+          .map(([, init]) => JSON.parse(init.body).q as string);
+      const namedKirkland = {
+        code: 'named',
+        product_name: 'Kirkland',
+        nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+      };
+      const kirklandBagel = {
+        code: 'bagel',
+        product_name: 'Everything Bagel',
+        brands: ['Kirkland Signature'],
+        nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+      };
+
+      it('asks again with a word as the brand when no hit has every word', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(
+            productsResponse([
+              { ...namedKirkland },
+              { ...kirklandBagel, brands: 'Kirkland Signature' },
+            ])
+          );
+
+        const result = await searchOpenFoodFacts('Kirkland bagel');
+
+        expect(searchQueries()[1]).toMatch(/^brands:kirkland bagel /);
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'named',
+        ]);
+        // One hydration call for the merged page.
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(String(fetchMock.mock.calls[2][0])).toContain(
+          'code=bagel,named'
+        );
+      });
+
+      it('tries the next word when the first brand guess finds nothing', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('bagel kirkland');
+
+        expect(searchQueries().slice(1)).toEqual([
+          expect.stringMatching(/^brands:bagel kirkland /),
+          expect.stringMatching(/^brands:kirkland bagel /),
+        ]);
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'named',
+        ]);
+      });
+
+      it('strips query syntax from the words it sends as the brand', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('kirkland:* (bagel)');
+
+        expect(searchQueries()[1]).toMatch(/^brands:kirkland bagel /);
+      });
+
+      it('does not ask again when a hit already has every word', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel, namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('kirkland bagel');
+
+        expect(searchQueries()).toHaveLength(1);
+      });
+
+      it('does not ask again for a one-word search or a later page', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('bagel');
+        await searchOpenFoodFacts('kirkland bagel', 2);
+
+        expect(searchQueries()).toHaveLength(2);
+      });
+
+      it('keeps the plain results when the brand search fails', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce({ ok: false, status: 503 })
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.code)).toEqual([
+          'named',
+        ]);
+      });
+
+      it('keeps every plain hit of a full page when brand hits are added', async () => {
+        const plainHits = ['p1', 'p2', 'p3'].map((code) => ({
+          ...namedKirkland,
+          code,
+        }));
+        fetchMock
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                hits: plainHits,
+                page: 1,
+                page_size: 3,
+                count: 9,
+              }),
+          })
+          .mockResolvedValueOnce(
+            hitsResponse([kirklandBagel, { ...namedKirkland, code: 'p2' }])
+          )
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts(
+          'kirkland bagel',
+          1,
+          'en',
+          undefined,
+          undefined,
+          3
+        );
+
+        // Page 2 starts at plain offset 3, so p1 to p3 must all be on page 1;
+        // the brand copy of p2 is not added twice.
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'p1',
+          'p2',
+          'p3',
+        ]);
+        expect(result.pagination).toMatchObject({ page: 1, hasMore: true });
+        // The brand search asks for a fixed, small number of hits.
+        expect(JSON.parse(fetchMock.mock.calls[1][1].body).page_size).toBe(20);
+      });
+
+      it('counts brand hits when the plain search finds nothing', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+        ]);
+        expect(result.pagination.totalCount).toBe(1);
+      });
+
+      it('stops the brand tries once their shared deadline has passed', async () => {
+        let now = 1_000_000;
+        const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+        try {
+          fetchMock
+            .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+            .mockImplementationOnce(async () => {
+              // The first brand try uses up the whole budget.
+              now += 10_001;
+              return hitsResponse([]);
+            })
+            .mockResolvedValueOnce(productsResponse([]));
+
+          const result = await searchOpenFoodFacts('kirkland bagel');
+
+          expect(searchQueries()).toHaveLength(2);
+          expect(result.products.map((product) => product.code)).toEqual([
+            'named',
+          ]);
+        } finally {
+          nowSpy.mockRestore();
+        }
+      });
+
+      it('keeps a brand hit that has no barcode', async () => {
+        const codelessBagel = {
+          product_name: kirklandBagel.product_name,
+          brands: kirklandBagel.brands,
+          nutriments: kirklandBagel.nutriments,
+        };
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([codelessBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.product_name)).toEqual([
+          'Everything Bagel',
+          'Kirkland',
+        ]);
+      });
     });
   });
 
@@ -1277,12 +1506,17 @@ describe('openFoodFactsService', () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
-        text: () => Promise.resolve('rate limited'),
+        text: () => Promise.resolve('SINK-DETAIL-MARKER'),
       });
 
-      await expect(
-        searchOpenFoodFactsByBarcodeFields('12345678')
-      ).rejects.toThrow('OpenFoodFacts API error');
+      let errorThrown: Error | null = null;
+      try {
+        await searchOpenFoodFactsByBarcodeFields('12345678');
+      } catch (err) {
+        errorThrown = err as Error;
+      }
+      expect(errorThrown?.message).toBe('OpenFoodFacts API error (HTTP 429)');
+      expect(errorThrown?.message).not.toContain('SINK-DETAIL-MARKER');
       expect(fetch).toHaveBeenCalledTimes(1);
     });
   });
@@ -1802,6 +2036,131 @@ describe('openFoodFactsService', () => {
       // Same physical serving -> identical nutrient values, no rescaling.
       expect(household!.calories).toBe(metric!.calories);
       expect(household!.fat).toBe(metric!.fat);
+    });
+
+    it('does not add a household variant when auto-scale keeps the 100 g basis', () => {
+      // With auto-scale off the metric variant is 100 g, not the 28 g that
+      // "2 cookies" weigh, so reusing its values would log 100 g as 2 cookies.
+      const result = mapOpenFoodFactsProduct(milanoProduct, {
+        autoScale: false,
+      });
+
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_size).toBe(100);
+      expect(result.default_variant.calories).toBe(500);
+    });
+
+    it('reads a serving_quantity sent as text', () => {
+      const scaled = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_quantity: '28',
+      });
+      expect(scaled.default_variant.serving_size).toBe(28);
+      expect(scaled.variants).toHaveLength(2);
+
+      // "100" is the 100 g basis auto-scale off keeps, so the portion stays.
+      const unscaled = mapOpenFoodFactsProduct(
+        {
+          ...milanoProduct,
+          serving_size: '1 portion (100 g)',
+          serving_quantity: '100',
+        },
+        { autoScale: false }
+      );
+      expect(
+        unscaled.variants?.find((v) => v.serving_unit === 'serving')
+      ).toMatchObject({ serving_size: 1, calories: 500 });
+    });
+
+    it('skips the household variant when its stated weight is not serving_quantity', () => {
+      // "2 cookies (28 g)" against a serving_quantity of 100: the 100 g
+      // values must not be offered as 2 cookies, and nothing says which of
+      // the two weights is right.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_quantity: 100,
+      });
+
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_size).toBe(100);
+    });
+
+    it('allows a stated weight within 5% of serving_quantity', () => {
+      expect(
+        mapOpenFoodFactsProduct({ ...milanoProduct, serving_quantity: 29 })
+          .variants
+      ).toHaveLength(2);
+      expect(
+        mapOpenFoodFactsProduct({ ...milanoProduct, serving_quantity: 30 })
+          .variants
+      ).toBeUndefined();
+    });
+
+    it('does not compare a stated weight in grams with a serving in millilitres', () => {
+      // Honey: a tablespoon is 15 ml and weighs 21 g.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_size: '1 tbsp (21 g)',
+        serving_quantity: 15,
+        serving_quantity_unit: 'ml',
+      });
+
+      expect(
+        result.variants?.find((v) => v.serving_unit === 'tbsp')
+      ).toMatchObject({ serving_size: 1 });
+    });
+
+    it('compares a stated weight in another metric unit with the serving', () => {
+      const bottle = {
+        ...milanoProduct,
+        serving_size: '1 bottle (0.5 l)',
+        serving_quantity: 500,
+        serving_quantity_unit: 'ml',
+      };
+      const can = { ...bottle, serving_size: '1 can (33 cl)' };
+
+      expect(
+        mapOpenFoodFactsProduct(bottle).variants?.find(
+          (v) => v.serving_unit === 'bottle'
+        )
+      ).toMatchObject({ serving_size: 1 });
+      expect(
+        mapOpenFoodFactsProduct({ ...bottle, serving_quantity: 330 }).variants
+      ).toBeUndefined();
+      expect(
+        mapOpenFoodFactsProduct({ ...can, serving_quantity: 330 }).variants
+      ).toHaveLength(2);
+      expect(mapOpenFoodFactsProduct(can).variants).toBeUndefined();
+    });
+
+    it('trusts serving_quantity when the stated weight is in another unit', () => {
+      // OFF reads 16.9 fl oz as 500 ml; there is nothing to compare it with.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_size: '1 bottle (16.9 fl oz)',
+        serving_quantity: 500,
+        serving_quantity_unit: 'ml',
+      });
+
+      expect(
+        result.variants?.find((v) => v.serving_unit === 'bottle')
+      ).toMatchObject({ serving_size: 1 });
+    });
+
+    it('keeps the household variant with auto-scale off when it is the 100 g serving', () => {
+      // #3402: "1 portion (100 g)" is the 100 g reference either way.
+      const product = {
+        ...milanoProduct,
+        serving_size: '1 portion (100 g)',
+        serving_quantity: 100,
+      };
+      const result = mapOpenFoodFactsProduct(product, { autoScale: false });
+      const household = result.variants?.find(
+        (v) => v.serving_unit === 'serving'
+      );
+
+      expect(household).toMatchObject({ serving_size: 1, calories: 500 });
+      expect(result.default_variant.serving_size).toBe(100);
     });
 
     it('does not add a variants array for a plain metric serving_size', () => {

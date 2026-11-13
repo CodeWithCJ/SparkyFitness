@@ -1,4 +1,9 @@
 import type { TFunction } from 'i18next';
+import {
+  formatDose,
+  type Medication,
+  type SharedScheduleRule,
+} from '@workspace/shared';
 
 export function medicationTypeLabel(
   typeId: string | null | undefined,
@@ -166,4 +171,15 @@ export function glp1CheckInMetricLabel(
         defaultValue: 'Energy',
       });
   }
+}
+
+/** 'Tablet · 2 tablets' style secondary line for a dose row. */
+export function medicationDoseSubtitle(
+  med: Medication,
+  schedule: SharedScheduleRule | undefined,
+  t: TFunction
+): string {
+  return [medicationTypeLabel(med.type_id, t), formatDose(med, schedule)]
+    .filter(Boolean)
+    .join(' · ');
 }

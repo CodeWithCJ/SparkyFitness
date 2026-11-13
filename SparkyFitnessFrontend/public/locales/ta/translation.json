@@ -45,8 +45,6 @@
       "categoryStrength": "வலிமை",
       "categoryCardio": "கார்டியோ",
       "categoryYoga": "யோகா",
-      "caloriesPerHourLabel": "கலோரிகள்/மணிநேரம்",
-      "caloriesPerHourHint": "கணக்கிடப்பட்ட கலோரிகளைப் பயன்படுத்த காலியாக விடவும் ({{newExerciseCalories}} கலோரி/மணிநேரம்).",
       "descriptionLabel": "விளக்கம்",
       "sourceLabel": "மூலம்",
       "forceLabel": "விசை",
@@ -126,7 +124,6 @@
       "exerciseLabel": "உடற்பயிற்சி",
       "unknownExercise": "தெரியாத உடற்பயிற்சி",
       "addSetButton": "தொகுப்பைச் சேர்",
-      "caloriesBurnedOptionalLabel": "எரிக்கப்பட்ட கலோரிகள் (விரும்பினால்)",
       "caloriesBurnedPlaceholder": "கணக்கீட்டை மேலெழுத எரிக்கப்பட்ட கலோரிகளை உள்ளிடவும்",
       "caloriesBurnedHint": "காலியாக விடப்பட்டால் சேமிக்கும்போது கலோரிகள் தானாகவே கணக்கிடப்படும்.",
       "distanceLabel": "தூரம்",
@@ -867,7 +864,6 @@
     "searchFoodsToYour": "உங்கள் உணவுகளைத் தேடுங்கள்"
   },
   "checkIn": {
-    "howAreYouFeelingToday": "இன்று எப்படி உணர்கிறீர்கள்?",
     "neutral": "நடுநிலை",
     "anyThoughtsOrFeelings": "ஏதேனும் எண்ணங்கள் அல்லது உணர்வுகள் சேர்க்க விரும்புகிறீர்களா?",
     "sleepTracking": "தூக்க கண்காணிப்பு",

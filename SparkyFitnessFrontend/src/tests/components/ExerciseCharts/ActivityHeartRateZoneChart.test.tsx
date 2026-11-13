@@ -5,7 +5,15 @@ import { ActivityHeartRateZonesChart } from '@/components/ExerciseCharts/Activit
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (_key: string, defaultValue?: string) => defaultValue,
+    t: (
+      _key: string,
+      options?: string | ({ defaultValue?: string } & Record<string, unknown>)
+    ) =>
+      typeof options === 'string'
+        ? options
+        : options?.defaultValue?.replace(/{{(\w+)}}/g, (_m, name) =>
+            String(options[name])
+          ),
   }),
   initReactI18next: {
     type: '3rdParty',
@@ -48,5 +56,55 @@ describe('ActivityHeartRateZonesChart max-HR source note', () => {
     renderWithClient(<ActivityHeartRateZonesChart data={zoneData} />);
 
     expect(screen.queryByText(ESTIMATE_NOTE)).not.toBeInTheDocument();
+  });
+});
+
+describe('ActivityHeartRateZonesChart zone method', () => {
+  it('says which method the stored zones were worked out with', () => {
+    renderWithClient(
+      <ActivityHeartRateZonesChart
+        data={zoneData}
+        providerName="healthkit"
+        zoneMethod="heart_rate_reserve"
+      />
+    );
+
+    expect(screen.getByTestId('hr-zones-method')).toHaveTextContent(
+      'Zones: Heart rate reserve. Changing your zone settings does not change past workouts.'
+    );
+    // A stored method replaces the age-estimate note, which may no longer be true.
+    expect(screen.queryByText(ESTIMATE_NOTE)).not.toBeInTheDocument();
+  });
+
+  it('says the zones came from the device for Garmin', () => {
+    renderWithClient(
+      <ActivityHeartRateZonesChart
+        data={zoneData}
+        providerName="garmin"
+        zoneMethod="device"
+      />
+    );
+
+    expect(screen.getByTestId('hr-zones-method')).toHaveTextContent(
+      'Zones set by your watch or device.'
+    );
+  });
+
+  it('flags a workout whose entries used different methods', () => {
+    renderWithClient(
+      <ActivityHeartRateZonesChart data={zoneData} zoneMethod="mixed" />
+    );
+
+    expect(screen.getByTestId('hr-zones-method')).toHaveTextContent(
+      'more than one method'
+    );
+  });
+
+  it('shows no method line for a workout stored before methods were recorded', () => {
+    renderWithClient(
+      <ActivityHeartRateZonesChart data={zoneData} zoneMethod={null} />
+    );
+
+    expect(screen.queryByTestId('hr-zones-method')).not.toBeInTheDocument();
   });
 });

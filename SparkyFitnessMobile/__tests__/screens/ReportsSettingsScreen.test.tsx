@@ -73,6 +73,9 @@ describe('ReportsSettingsScreen', () => {
       'sleep',
       'measurements',
       'exercise',
+      'heartRate',
+      'oralCare',
+      'compare',
     ]);
   });
 
@@ -96,16 +99,19 @@ describe('ReportsSettingsScreen', () => {
         'sleep',
         'measurements',
         'mood',
+        'exercise',
+        'heartRate',
+        'oralCare',
       ],
     });
 
     renderScreen();
 
     expect(
-      screen.getByTestId('reports-report-switch-exercise').props.disabled
+      screen.getByTestId('reports-report-switch-compare').props.disabled
     ).toBe(true);
     expect(
-      screen.getByTestId('reports-report-switch-mood').props.disabled
+      screen.getByTestId('reports-report-switch-exercise').props.disabled
     ).toBe(false);
   });
 

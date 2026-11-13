@@ -36,7 +36,7 @@ export interface HealthMetric {
   category?: string;
   enabled?: boolean; // Set to false to temporarily disable a metric
   backgroundDeliveryFrequency?: BackgroundDeliveryFrequency; // Default: 'daily'
-  aggregationStrategy?: 'min-max-avg' | 'sum' | 'last';
+  aggregationStrategy?: 'min-max-avg' | 'min-max-time-avg' | 'sum' | 'last';
   readKind?: MetricReadKind; // Default derived by metricReadKind()
   // Day-aligned rolling lookback floor (in days) for raw reads, so records logged
   // after the fact — event time in the past, entered recently — are still picked up.
@@ -47,7 +47,10 @@ export const metricReadKind = (
   metric: Pick<HealthMetric, 'readKind' | 'aggregationStrategy'>
 ): MetricReadKind =>
   metric.readKind ??
-  (metric.aggregationStrategy === 'min-max-avg' ? 'min-max-avg-day' : 'raw');
+  (metric.aggregationStrategy === 'min-max-avg' ||
+  metric.aggregationStrategy === 'min-max-time-avg'
+    ? 'min-max-avg-day'
+    : 'raw');
 
 const ALL_HEALTH_METRICS: HealthMetric[] = [
   {
@@ -112,7 +115,7 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     type: 'heart_rate',
     category: 'Common',
     backgroundDeliveryFrequency: 'hourly',
-    aggregationStrategy: 'min-max-avg',
+    aggregationStrategy: 'min-max-time-avg',
   },
   {
     id: 'weight',
@@ -185,6 +188,44 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     enabled: false,
   },
   {
+    // Health Connect and HealthKit. Each session is sent as a MindfulnessSession
+    // and upserted by its record id into mindfulness_sessions, so the rolling
+    // lookback can re-read sessions entered for an earlier day without
+    // duplicating them.
+    id: 'mindfulness',
+    labelKey: 'healthMetrics.mindfulness',
+    defaultLabel: 'Mindfulness',
+    stateKey: 'isMindfulnessSyncEnabled',
+    preferenceKey: 'syncMindfulnessEnabled',
+    recordType: 'MindfulnessSession',
+    unit: 'min',
+    icon: require('../assets/icons/health-metrics/stress.png'),
+    permissions: [{ accessType: 'read', recordType: 'MindfulnessSession' }],
+    type: 'mindfulness',
+    platforms: ['android', 'ios'],
+    category: 'Common',
+    rollingLookbackDays: 2,
+  },
+  {
+    // iOS only: Health Connect has no toothbrushing record. Smart brushes
+    // (Oral-B, Philips, Colgate) write HKCategoryTypeIdentifierToothbrushingEvent;
+    // each brush is sent as Toothbrushing and upserted by its uuid into
+    // oral_care_sessions (#1862).
+    id: 'toothbrushing',
+    labelKey: 'healthMetrics.toothbrushing',
+    defaultLabel: 'Toothbrushing',
+    stateKey: 'isToothbrushingSyncEnabled',
+    preferenceKey: 'syncToothbrushingEnabled',
+    recordType: 'Toothbrushing',
+    unit: 'min',
+    icon: require('../assets/icons/health-metrics/stress.png'),
+    permissions: [{ accessType: 'read', recordType: 'Toothbrushing' }],
+    type: 'toothbrushing',
+    platforms: ['ios'],
+    category: 'Hygiene',
+    rollingLookbackDays: 2,
+  },
+  {
     id: 'basalBodyTemperature',
     labelKey: 'healthMetrics.basalBodyTemperature',
     defaultLabel: 'Basal Body Temperature',
@@ -251,6 +292,44 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }],
     type: 'body_temperature',
     category: 'Vitals',
+  },
+  {
+    id: 'sleepingWristTemperature',
+    labelKey: 'healthMetrics.sleepingWristTemperature',
+    defaultLabel: 'Sleeping Wrist Temperature',
+    stateKey: 'isSleepingWristTemperatureSyncEnabled',
+    preferenceKey: 'syncSleepingWristTemperatureEnabled',
+    recordType: 'SleepingWristTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    permissions: [
+      { accessType: 'read', recordType: 'SleepingWristTemperature' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // Apple writes the night's value after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
+  },
+  {
+    id: 'overnightBodyTemperature',
+    labelKey: 'healthMetrics.overnightBodyTemperature',
+    defaultLabel: 'Overnight Body Temperature',
+    stateKey: 'isOvernightBodyTemperatureSyncEnabled',
+    preferenceKey: 'syncOvernightBodyTemperatureEnabled',
+    recordType: 'OvernightBodyTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    // Reads Body Temperature inside each sleep session, so it needs both.
+    permissions: [
+      { accessType: 'read', recordType: 'BodyTemperature' },
+      { accessType: 'read', recordType: 'SleepSession' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // The night's value is known only after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
   },
   {
     id: 'distance',
@@ -1092,6 +1171,7 @@ export const CATEGORY_ORDER = [
   'Nutrition',
   'Reproductive',
   'Mobility',
+  'Hygiene',
   'Running',
   'Cycling',
   'Environment',
@@ -1127,6 +1207,12 @@ export function getHealthMetricLabel(
       return t('healthMetrics.sleepSession', { defaultValue: 'Sleep Session' });
     case 'stress':
       return t('healthMetrics.stress', { defaultValue: 'Stress' });
+    case 'mindfulness':
+      return t('healthMetrics.mindfulness', { defaultValue: 'Mindfulness' });
+    case 'toothbrushing':
+      return t('healthMetrics.toothbrushing', {
+        defaultValue: 'Toothbrushing',
+      });
     case 'basalBodyTemperature':
       return t('healthMetrics.basalBodyTemperature', {
         defaultValue: 'Basal Body Temperature',
@@ -1142,6 +1228,14 @@ export function getHealthMetricLabel(
     case 'bodyTemperature':
       return t('healthMetrics.bodyTemperature', {
         defaultValue: 'Body Temperature',
+      });
+    case 'overnightBodyTemperature':
+      return t('healthMetrics.overnightBodyTemperature', {
+        defaultValue: 'Overnight Body Temperature',
+      });
+    case 'sleepingWristTemperature':
+      return t('healthMetrics.sleepingWristTemperature', {
+        defaultValue: 'Sleeping Wrist Temperature',
       });
     case 'distance':
       return t('healthMetrics.distance', { defaultValue: 'Distance' });
@@ -1337,6 +1431,8 @@ export function getHealthCategoryLabel(
       return t('healthCategories.Environment', { defaultValue: 'Environment' });
     case 'Apple':
       return t('healthCategories.Apple', { defaultValue: 'Apple' });
+    case 'Hygiene':
+      return t('healthCategories.Hygiene', { defaultValue: 'Hygiene' });
     default:
       return t('healthCategories.unknown', { defaultValue: 'Other' });
   }

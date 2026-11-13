@@ -1,4 +1,4 @@
-import { isWarmupSetType } from "./dropSetCalculator.ts";
+import { isWarmupSetType } from './dropSetCalculator.ts';
 
 export interface MuscleSet {
   set_type?: string | null;
@@ -18,16 +18,16 @@ export interface MuscleEntry {
 function canonicalMuscleName(name: string): string {
   return name
     .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
+    .replace(/\s+/g, ' ')
+    .split(' ')
     .filter((word) => word.length > 0)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+    .join(' ');
 }
 
 function asMuscleNames(values: unknown[]): string[] {
   const names = values
-    .filter((value): value is string => typeof value === "string")
+    .filter((value): value is string => typeof value === 'string')
     .map(canonicalMuscleName)
     .filter((name) => name.length > 0);
   return [...new Set(names)];
@@ -35,7 +35,7 @@ function asMuscleNames(values: unknown[]): string[] {
 
 function parseJsonArray(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
-  if (typeof value !== "string" || value.length === 0) return [];
+  if (typeof value !== 'string' || value.length === 0) return [];
   try {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : [parsed];
@@ -49,7 +49,7 @@ function workingSetCount(sets: MuscleSet[] | null | undefined): number {
   return sets.filter(
     (set) =>
       !isWarmupSetType(set.set_type) &&
-      ((Number(set.reps) || 0) > 0 || (Number(set.duration) || 0) > 0),
+      ((Number(set.reps) || 0) > 0 || (Number(set.duration) || 0) > 0)
   ).length;
 }
 
@@ -67,7 +67,7 @@ export function primaryMusclesOf(entry: MuscleEntry): string[] {
 }
 
 export function calculateMuscleGroupRecovery(
-  exerciseEntries: MuscleEntry[],
+  exerciseEntries: MuscleEntry[]
 ): Record<string, string> {
   const recoveryData: Record<string, string> = {};
   for (const entry of exerciseEntries) {
@@ -82,7 +82,7 @@ export function calculateMuscleGroupRecovery(
 }
 
 export function calculateExerciseVariety(
-  exerciseEntries: MuscleEntry[],
+  exerciseEntries: MuscleEntry[]
 ): Record<string, number> {
   const muscleExerciseMap: Record<string, Set<string>> = {};
   for (const entry of exerciseEntries) {
@@ -103,7 +103,7 @@ export function calculateExerciseVariety(
 
 /** Hevy-style heat: working sets per primary muscle over the range. */
 export function calculateMuscleGroupSets(
-  exerciseEntries: MuscleEntry[],
+  exerciseEntries: MuscleEntry[]
 ): Record<string, number> {
   const setsByMuscle: Record<string, number> = {};
   for (const entry of exerciseEntries) {

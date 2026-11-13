@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   HEART_RATE_BAND_HIGHEST_BPM,
@@ -85,10 +85,15 @@ const HeartRateBandCard: React.FC<Props> = ({
         }
         description={
           description ??
-          t('recordActivity.heartRateBand.description', {
-            defaultValue:
-              'Needs your Apple Watch. Buzzes, and speaks with voice cues on, when your heart rate stays outside this range.',
-          })
+          (Platform.OS === 'android'
+            ? t('recordActivity.heartRateBand.wearOsDescription', {
+                defaultValue:
+                  'Needs your Wear OS watch. Buzzes, and speaks with voice cues on, when your heart rate stays outside this range.',
+              })
+            : t('recordActivity.heartRateBand.description', {
+                defaultValue:
+                  'Needs your Apple Watch. Buzzes, and speaks with voice cues on, when your heart rate stays outside this range.',
+              }))
         }
         value={enabled}
         onValueChange={onEnabledChange}

@@ -4,6 +4,8 @@ import externalProviderService from '../services/externalProviderService.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 
 vi.mock('../models/externalProviderRepository.js');
 vi.mock('../models/globalSettingsRepository.js');
@@ -29,6 +31,12 @@ vi.mock(
   }
 );
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdminByUserId: vi.fn(),
+}));
+vi.mock('../utils/permissionUtils.js', () => ({
+  canAccessUserData: vi.fn(),
+}));
 
 const OWNER = 'owner-1';
 const VIEWER = 'viewer-2';
@@ -54,6 +62,7 @@ beforeEach(() => {
     productLanguage: 'en',
     backfillPending: false,
   });
+  vi.mocked(canAccessUserData).mockResolvedValue(true);
 });
 
 describe('getExternalDataProvidersForUser - non-owner credential redaction', () => {
@@ -98,6 +107,26 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
     expect(row.app_key_tag).toBeUndefined();
     expect(row.visibility).toBe('public');
     expect(row.is_active).toBe(true);
+    expect(canAccessUserData).toHaveBeenCalledWith(
+      OWNER,
+      'share_external_providers',
+      VIEWER
+    );
+  });
+
+  it('throws Forbidden when viewer does not have share_external_providers access', async () => {
+    vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+    await expect(
+      externalProviderService.getExternalDataProvidersForUser(VIEWER, OWNER)
+    ).rejects.toThrow(
+      'Forbidden: You do not have permission to access external data providers for this user.'
+    );
+    expect(canAccessUserData).toHaveBeenCalledWith(
+      OWNER,
+      'share_external_providers',
+      VIEWER
+    );
   });
 
   it('preserves non-OFF credentials when viewer is the owner', async () => {
@@ -1230,5 +1259,228 @@ describe('getAutomaticOpenFoodFactsProvider', () => {
       scope: 'global',
       configurationIdentity: expect.any(String),
     });
+  });
+});
+
+describe('createExternalDataProvider - Valhalla routing provider', () => {
+  const create = vi.mocked(
+    externalProviderRepository.createExternalDataProvider
+  );
+  const routing = (base_url: string) => ({
+    provider_name: 'Routing',
+    provider_type: 'valhalla',
+    base_url,
+    app_key: 'stadia-key',
+    is_active: true,
+  });
+
+  beforeEach(() => {
+    create.mockResolvedValue({ id: 'new-1' });
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(false);
+  });
+
+  it('stores the base URL and API key for a public server', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      routing('https://8.8.8.8:8002')
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: OWNER,
+        provider_type: 'valhalla',
+        base_url: 'https://8.8.8.8:8002',
+        app_key: 'stadia-key',
+        is_public: false,
+      })
+    );
+  });
+
+  it('refuses an internal address from a non-admin, as for Mealie', async () => {
+    await expect(
+      externalProviderService.createExternalDataProvider(
+        OWNER,
+        routing('http://10.0.0.5:8002')
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin point at a LAN Valhalla', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      routing('http://10.0.0.5:8002')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+});
+
+describe('createExternalDataProvider - Open-Meteo weather provider', () => {
+  const create = vi.mocked(
+    externalProviderRepository.createExternalDataProvider
+  );
+  const weather = (base_url: string) => ({
+    provider_name: 'Weather',
+    provider_type: 'open_meteo',
+    base_url,
+    app_key: 'commercial-key',
+    is_active: true,
+  });
+
+  beforeEach(() => {
+    create.mockResolvedValue({ id: 'new-1' });
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(false);
+  });
+
+  it('stores the base URL and API key for a public server', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('https://8.8.8.8:8080')
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: OWNER,
+        provider_type: 'open_meteo',
+        base_url: 'https://8.8.8.8:8080',
+        app_key: 'commercial-key',
+        is_public: false,
+      })
+    );
+  });
+
+  it('accepts an upper-case scheme without prepending another one', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('HTTP://8.8.8.8:8080')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it('refuses an internal address from a non-admin', async () => {
+    await expect(
+      externalProviderService.createExternalDataProvider(
+        OWNER,
+        weather('http://10.0.0.5:8080')
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin point at a LAN Open-Meteo', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('http://10.0.0.5:8080')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+});
+
+describe('createExternalDataProvider / updateExternalDataProvider - Open Food Facts provider', () => {
+  const create = vi.mocked(
+    externalProviderRepository.createExternalDataProvider
+  );
+  const update = vi.mocked(
+    externalProviderRepository.updateExternalDataProvider
+  );
+  const checkOwnership = vi.mocked(
+    externalProviderRepository.checkExternalDataProviderOwnership
+  );
+  const getById = vi.mocked(
+    externalProviderRepository.getExternalDataProviderById
+  );
+
+  const off = (base_url: string) => ({
+    provider_name: 'Open Food Facts',
+    provider_type: 'openfoodfacts',
+    base_url,
+    is_active: true,
+  });
+
+  beforeEach(() => {
+    create.mockResolvedValue({ id: 'new-off-1' } as never);
+    update.mockResolvedValue({ id: 'existing-off-1' } as never);
+    checkOwnership.mockResolvedValue(true);
+    getById.mockResolvedValue({
+      id: 'existing-off-1',
+      provider_type: 'openfoodfacts',
+      user_id: OWNER,
+      is_public: false,
+    } as never);
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(false);
+  });
+
+  it('stores the base URL for a public server from a non-admin', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      off('https://8.8.8.8:8080')
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: OWNER,
+        provider_type: 'openfoodfacts',
+        base_url: 'https://8.8.8.8:8080',
+        is_public: false,
+      })
+    );
+  });
+
+  it.each([
+    'http://127.0.0.1:8080',
+    'http://localhost:8080',
+    'http://10.0.0.5:8080',
+    'http://192.168.1.100:8080',
+    'http://172.16.0.1:8080',
+    'http://169.254.169.254',
+  ])('refuses internal address %s from a non-admin', async (base_url) => {
+    await expect(
+      externalProviderService.createExternalDataProvider(OWNER, off(base_url))
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it.each(['https://8.8.8.8:8080/path#', 'https://8.8.8.8:8080/path#fragment'])(
+    'refuses base_url with fragment %s',
+    async (base_url) => {
+      await expect(
+        externalProviderService.createExternalDataProvider(OWNER, off(base_url))
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(create).not.toHaveBeenCalled();
+    }
+  );
+
+  it('lets an admin point at a LAN Open Food Facts instance', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      off('http://10.0.0.5:8080')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it('refuses updating to an internal address from a non-admin', async () => {
+    await expect(
+      externalProviderService.updateExternalDataProvider(
+        OWNER,
+        'existing-off-1',
+        {
+          base_url: 'http://10.0.0.5:8080',
+        }
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('refuses updating to a URL with a fragment', async () => {
+    await expect(
+      externalProviderService.updateExternalDataProvider(
+        OWNER,
+        'existing-off-1',
+        {
+          base_url: 'https://8.8.8.8:8080/path#',
+        }
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(update).not.toHaveBeenCalled();
   });
 });

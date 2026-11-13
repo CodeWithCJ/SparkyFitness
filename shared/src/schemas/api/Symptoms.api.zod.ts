@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 import {
   CUSTOM_FIELD_TYPES,
   SYMPTOM_DEFINITION_CATEGORIES,
@@ -9,9 +9,9 @@ import {
   SYMPTOM_TEMPLATES,
   TREATMENT_EFFECTIVENESS,
   TREATMENT_KINDS,
-} from "../../symptoms/constants.ts";
+} from '../../symptoms/constants.ts';
 
-const dayString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD");
+const dayString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
 const uuid = z.string().uuid();
 const optionalNullableString = z.string().nullable().optional();
 const stringList = z.array(z.string().min(1).max(120)).max(60);
@@ -23,7 +23,7 @@ export const symptomCustomFieldDefSchema = z.object({
     .string()
     .min(1)
     .max(40)
-    .regex(/^[a-z0-9_]+$/, "key must be lowercase letters, digits or _"),
+    .regex(/^[a-z0-9_]+$/, 'key must be lowercase letters, digits or _'),
   label: z.string().min(1).max(60),
   type: z.enum(CUSTOM_FIELD_TYPES),
   options: z.array(z.string().min(1).max(60)).max(30).optional(),
@@ -32,11 +32,11 @@ export const symptomCustomFieldDefSchema = z.object({
 
 const sectionOverridesSchema = z.partialRecord(
   z.enum(SYMPTOM_SECTIONS),
-  z.boolean(),
+  z.boolean()
 );
 
 export const createSymptomDefinitionBodySchema = z.object({
-  name: z.string().min(1, "Name is required").max(80),
+  name: z.string().min(1, 'Name is required').max(80),
   display_name: optionalNullableString,
   scale_type: z.enum(SYMPTOM_SCALE_TYPES).optional(),
   unit: optionalNullableString,
@@ -82,7 +82,7 @@ export const symptomDefinitionResponseSchema = z.object({
 
 export const createSymptomOptionBodySchema = z.object({
   kind: z.enum(SYMPTOM_OPTION_KINDS),
-  name: z.string().min(1, "Name is required").max(80),
+  name: z.string().min(1, 'Name is required').max(80),
   sort_order: z.number().int().optional(),
   is_hidden: z.boolean().optional(),
 });
@@ -144,7 +144,7 @@ const phasesSchema = z.record(z.string(), z.array(z.string().min(1).max(60)));
 const entryFields = {
   medication_id: uuid.nullable().optional(),
   symptom_id: uuid.nullable().optional(),
-  symptom_name_snapshot: z.string().min(1, "Symptom name is required").max(120),
+  symptom_name_snapshot: z.string().min(1, 'Symptom name is required').max(120),
   severity: z.number().nullable().optional(),
   severity_label: optionalNullableString,
   logged_at: optionalNullableString,
@@ -177,11 +177,13 @@ export const endSymptomEpisodeBodySchema = z.object({
 export const addSymptomSeverityBodySchema = z.object({
   severity: z.number(),
   at: optionalNullableString,
+  // Impact at the same moment, appended to impact_timeline alongside severity.
+  impact: z.enum(SYMPTOM_IMPACT_LEVELS).nullable().optional(),
 });
 
 const queryBool = z
-  .enum(["true", "false"])
-  .transform((value) => value === "true");
+  .enum(['true', 'false'])
+  .transform((value) => value === 'true');
 
 export const listSymptomEntriesQuerySchema = z.object({
   fromDate: dayString.nullable().optional(),
@@ -191,6 +193,10 @@ export const listSymptomEntriesQuerySchema = z.object({
   medicationId: uuid.optional(),
   source: z.string().max(50).optional(),
   episodesOnly: queryBool.optional(),
+  // Also return episodes that overlap the date range without being logged in
+  // it, such as one that started before fromDate and was still going, so a
+  // calendar can mark every day an episode covers.
+  overlapping: queryBool.optional(),
 });
 
 export const symptomEntryResponseSchema = z.object({
@@ -214,8 +220,12 @@ export const symptomEntryResponseSchema = z.object({
   impact: z.enum(SYMPTOM_IMPACT_LEVELS).nullable(),
   peak_severity: z.number().nullable(),
   severity_timeline: z.array(
-    z.object({ at: z.string(), severity: z.number() }),
+    z.object({ at: z.string(), severity: z.number() })
   ),
+  // Optional so clients keep parsing responses from servers without it.
+  impact_timeline: z
+    .array(z.object({ at: z.string(), impact: z.enum(SYMPTOM_IMPACT_LEVELS) }))
+    .optional(),
   context_text: z.string().nullable(),
   bristol_type: z.number().nullable(),
   source: z.string(),
@@ -261,9 +271,9 @@ export const symptomContextQuerySchema = z.object({
     .string()
     .transform((value) =>
       value
-        .split(",")
+        .split(',')
         .map((id) => id.trim())
-        .filter(Boolean),
+        .filter(Boolean)
     )
     .pipe(z.array(uuid).min(1).max(SYMPTOM_CONTEXT_MAX_IDS)),
 });
@@ -271,7 +281,7 @@ export const symptomContextQuerySchema = z.object({
 /** What the diary holds for one calendar day around an entry. */
 export const symptomContextDaySchema = z.object({
   date: dayString,
-  label: z.enum(["day_before", "day_of"]),
+  label: z.enum(['day_before', 'day_of']),
   /** Names only: what was eaten, in the order it was logged. */
   foods: z.array(z.string()),
   water_ml: z.number().nullable(),
@@ -301,7 +311,7 @@ export const symptomEpisodeContextSchema = z.object({
       name: z.string(),
       dose: z.string().nullable(),
       taken_at: z.string(),
-    }),
+    })
   ),
   /** Owner only, and only when cycle tracking is on. */
   cycle: z

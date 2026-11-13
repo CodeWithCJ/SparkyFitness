@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -494,12 +495,112 @@ describe('EditLoggedMealScreen', () => {
     );
   });
 
+  it.each(['name', 'amount', 'add', 'remove'] as const)(
+    'enables Android Save after a %s edit when an ingredient has no library links',
+    (edit) => {
+      const os = jest.replaceProperty(Platform, 'OS', 'android');
+      try {
+        mockMeal({
+          ...baseMeal,
+          meal_template_id: null,
+          foods: [{ ...chicken, food_id: null, variant_id: null }, rice],
+        });
+        const screen = renderScreen();
+        expect(
+          screen.getByRole('button', { name: 'Save meal' })
+        ).toBeDisabled();
+
+        if (edit === 'name') {
+          fireEvent.changeText(screen.getByTestId('meal-name-input'), 'Lunch');
+        } else if (edit === 'remove') {
+          fireEvent.press(screen.getByTestId('remove-Rice'));
+        } else {
+          mockConsume.mockReturnValueOnce({
+            ingredient: buildIngredient(
+              edit === 'amount' ? { ...rice, quantity: 250 } : {}
+            ),
+            ...(edit === 'amount' ? { ingredientIndex: 1 } : {}),
+          });
+          act(() => focusCallback?.());
+        }
+
+        expect(screen.getByRole('button', { name: 'Save meal' })).toBeEnabled();
+        fireEvent.press(screen.getByRole('button', { name: 'Save meal' }));
+        expect(mockUpdateMeal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            foods: expect.arrayContaining([
+              expect.objectContaining({
+                food_name: 'Chicken',
+                quantity: 100,
+                calories: 165,
+                serving_size: 100,
+              }),
+            ]),
+          })
+        );
+        const saved = mockUpdateMeal.mock.calls[0][0];
+        expect(saved.name).toBe(edit === 'name' ? 'Lunch' : baseMeal.name);
+        expect(saved.foods).toHaveLength(
+          edit === 'add' ? 3 : edit === 'remove' ? 1 : 2
+        );
+        if (edit === 'remove') {
+          expect(saved.foods).not.toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ food_name: 'Rice' }),
+            ])
+          );
+        } else {
+          expect(saved.foods).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                ...rice,
+                quantity: edit === 'amount' ? 250 : 150,
+              }),
+            ])
+          );
+        }
+        if (edit === 'add') {
+          expect(saved.foods).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ food_name: 'Almonds', quantity: 50 }),
+            ])
+          );
+        }
+      } finally {
+        os.restore();
+      }
+    }
+  );
+
   it('opens the meal-builder picker when Add Food is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Add Food'));
     expect(navigation.push).toHaveBeenCalledWith('FoodSearch', {
       pickerMode: 'meal-builder',
     });
+  });
+
+  it('saves a changed meal while preserving a zero-quantity recipe ingredient', () => {
+    mockMeal({ ...baseMeal, foods: [chicken, { ...rice, quantity: 0 }] });
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('meal-name-input'), 'Updated Meal');
+    pressAction(screen, navigation, 'Save');
+    expect(mockUpdateMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        foods: [
+          expect.objectContaining({ quantity: 100 }),
+          expect.objectContaining({ food_id: 'food-2', quantity: 0 }),
+        ],
+      })
+    );
+  });
+
+  it('keeps Save disabled when all ingredient amounts are zero', () => {
+    mockMeal({ ...baseMeal, foods: [{ ...chicken, quantity: 0 }] });
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('meal-name-input'), 'Updated Meal');
+    pressAction(screen, navigation, 'Save');
+    expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 
   it('appends a food picked via the meal builder to the saved payload', () => {

@@ -28,15 +28,15 @@ import { COROS_SPORT_TYPES } from '../constants/corosSportTypes.ts';
 
 /** Canonical sports, named after the ANT+/FIT SDK `sport` enum. */
 export const ACTIVITY_SPORTS = [
-  "running",
-  "cycling",
-  "walking",
-  "hiking",
-  "swimming",
-  "rowing",
-  "fitness_equipment",
-  "strength",
-  "other",
+  'running',
+  'cycling',
+  'walking',
+  'hiking',
+  'swimming',
+  'rowing',
+  'fitness_equipment',
+  'strength',
+  'other',
 ] as const;
 export type ActivitySport = (typeof ACTIVITY_SPORTS)[number];
 
@@ -46,11 +46,11 @@ export type ActivitySport = (typeof ACTIVITY_SPORTS)[number];
  * together for display while the canonical taxonomy stays standards-faithful.
  */
 export const PR_SPORT_GROUPS = [
-  "run",
-  "ride",
-  "walk",
-  "swim",
-  "other",
+  'run',
+  'ride',
+  'walk',
+  'swim',
+  'other',
 ] as const;
 export type PrSportGroup = (typeof PR_SPORT_GROUPS)[number];
 
@@ -58,7 +58,7 @@ export type PrSportGroup = (typeof PR_SPORT_GROUPS)[number];
  * Whether the sport came from the provider's own enum or was inferred from
  * free text. Callers surface this so a guess is distinguishable from a fact.
  */
-export const SPORT_CONFIDENCES = ["declared", "inferred"] as const;
+export const SPORT_CONFIDENCES = ['declared', 'inferred'] as const;
 export type SportConfidence = (typeof SPORT_CONFIDENCES)[number];
 
 export interface ActivitySportInput {
@@ -79,39 +79,39 @@ export interface ActivitySportResult {
 }
 
 const SPORT_TO_PR_GROUP: Record<ActivitySport, PrSportGroup> = {
-  running: "run",
-  cycling: "ride",
-  walking: "walk",
-  hiking: "walk",
-  swimming: "swim",
-  rowing: "other",
-  fitness_equipment: "other",
-  strength: "other",
-  other: "other",
+  running: 'run',
+  cycling: 'ride',
+  walking: 'walk',
+  hiking: 'walk',
+  swimming: 'swim',
+  rowing: 'other',
+  fitness_equipment: 'other',
+  strength: 'other',
+  other: 'other',
 };
 
 const SPORT_LABELS: Record<ActivitySport, string> = {
-  running: "Running",
-  cycling: "Cycling",
-  walking: "Walking",
-  hiking: "Hiking",
-  swimming: "Swimming",
-  rowing: "Rowing",
-  fitness_equipment: "Gym Cardio",
-  strength: "Strength",
-  other: "Other",
+  running: 'Running',
+  cycling: 'Cycling',
+  walking: 'Walking',
+  hiking: 'Hiking',
+  swimming: 'Swimming',
+  rowing: 'Rowing',
+  fitness_equipment: 'Gym Cardio',
+  strength: 'Strength',
+  other: 'Other',
 };
 
 const PR_GROUP_LABELS: Record<PrSportGroup, string> = {
-  run: "Run",
-  ride: "Ride",
-  walk: "Walk",
-  swim: "Swim",
-  other: "Other",
+  run: 'Run',
+  ride: 'Ride',
+  walk: 'Walk',
+  swim: 'Swim',
+  other: 'Other',
 };
 
 export function toPrSportGroup(sport: ActivitySport): PrSportGroup {
-  return SPORT_TO_PR_GROUP[sport] ?? "other";
+  return SPORT_TO_PR_GROUP[sport] ?? 'other';
 }
 
 export function activitySportLabel(sport: ActivitySport): string {
@@ -133,89 +133,89 @@ export function prSportGroupLabel(group: PrSportGroup): string {
 const SPORT_TOKENS: ReadonlyArray<readonly [ActivitySport, readonly string[]]> =
   [
     [
-      "running",
+      'running',
       [
-        "run",
-        "runs",
-        "running",
-        "ran",
-        "jog",
-        "jogs",
-        "jogging",
-        "treadmill",
-        "parkrun",
-        "marathon",
-        "5k",
-        "10k",
-        "sprint",
-        "sprints",
+        'run',
+        'runs',
+        'running',
+        'ran',
+        'jog',
+        'jogs',
+        'jogging',
+        'treadmill',
+        'parkrun',
+        'marathon',
+        '5k',
+        '10k',
+        'sprint',
+        'sprints',
       ],
     ],
     [
-      "cycling",
+      'cycling',
       [
-        "ride",
-        "rides",
-        "riding",
-        "bike",
-        "bikes",
-        "biking",
-        "cycle",
-        "cycles",
-        "cycling",
-        "spin",
-        "spinning",
-        "peloton",
-        "mtb",
-        "bmx",
-        "ebike",
-        "handcycle",
-        "velomobile",
-        "cyclocross",
+        'ride',
+        'rides',
+        'riding',
+        'bike',
+        'bikes',
+        'biking',
+        'cycle',
+        'cycles',
+        'cycling',
+        'spin',
+        'spinning',
+        'peloton',
+        'mtb',
+        'bmx',
+        'ebike',
+        'handcycle',
+        'velomobile',
+        'cyclocross',
       ],
     ],
-    ["walking", ["walk", "walks", "walking", "stroll", "rucking", "ruck"]],
+    ['walking', ['walk', 'walks', 'walking', 'stroll', 'rucking', 'ruck']],
     [
-      "hiking",
-      ["hike", "hikes", "hiking", "trek", "trekking", "mountaineering"],
+      'hiking',
+      ['hike', 'hikes', 'hiking', 'trek', 'trekking', 'mountaineering'],
     ],
     [
-      "swimming",
-      ["swim", "swims", "swimming", "freestyle", "openwater", "pool"],
+      'swimming',
+      ['swim', 'swims', 'swimming', 'freestyle', 'openwater', 'pool'],
     ],
     [
-      "rowing",
-      ["row", "rows", "rowing", "erg", "kayak", "kayaking", "paddling"],
+      'rowing',
+      ['row', 'rows', 'rowing', 'erg', 'kayak', 'kayaking', 'paddling'],
     ],
     [
-      "fitness_equipment",
+      'fitness_equipment',
       [
-        "elliptical",
-        "stairstepper",
-        "stepper",
+        'elliptical',
+        'stairstepper',
+        'stepper',
         // Apple Health names this workout "Stair Climbing" (shown as "Stair
         // Stepper" in Fitness) and a second type "Stairs"; camel-cased
         // "StairMaster" splits into stair + master. "stair" alone is safe
         // because only whole tokens match.
-        "stair",
-        "stairs",
-        "stairclimber",
-        "stairmaster",
+        'stair',
+        'stairs',
+        'stairclimber',
+        'stairmaster',
       ],
     ],
     [
-      "strength",
+      'strength',
       [
-        "strength",
-        "weight",
-        "weights",
-        "weightlifting",
-        "weighttraining",
-        "powerlifting",
-        "crossfit",
-        "calisthenics",
-        "lift",
-        "lifting",
+        'strength',
+        'weight',
+        'weights',
+        'weightlifting',
+        'weighttraining',
+        'powerlifting',
+        'crossfit',
+        'calisthenics',
+        'lift',
+        'lifting',
       ],
     ],
   ];
@@ -228,7 +228,7 @@ const SPORT_TOKENS: ReadonlyArray<readonly [ActivitySport, readonly string[]]> =
  */
 function tokenize(raw: string): string[] {
   return raw
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((token) => token.length > 0);
@@ -239,14 +239,14 @@ function tokenize(raw: string): string[] {
  * one sport ("Bike then Run Brick") or at none.
  */
 function matchSportTokens(tokens: readonly string[]): ActivitySport {
-  const hasSwimContext = tokens.includes("swim") || tokens.includes("pool");
+  const hasSwimContext = tokens.includes('swim') || tokens.includes('pool');
   const matched = new Set<ActivitySport>();
 
   for (const [sport, keywords] of SPORT_TOKENS) {
     for (const token of tokens) {
       // "lap" alone is not a swim ("Lap around the park"); it only counts
       // alongside an explicit swim token.
-      if (token === "lap" && !hasSwimContext) continue;
+      if (token === 'lap' && !hasSwimContext) continue;
       if (keywords.includes(token)) {
         matched.add(sport);
         break;
@@ -262,26 +262,26 @@ function matchSportTokens(tokens: readonly string[]): ActivitySport {
 
   // A treadmill run tokenizes to {running} twice over; a genuine multi-sport
   // name hits two different tables, and we refuse to guess.
-  return "other";
+  return 'other';
 }
 
 /** Maps a single provider sport enum value to a canonical sport. */
 export function mapRawSportValue(
-  raw: string | null | undefined,
+  raw: string | null | undefined
 ): ActivitySport {
-  if (!raw) return "other";
+  if (!raw) return 'other';
   return matchSportTokens(tokenize(raw));
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
 }
 
 function asString(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 /**
@@ -289,9 +289,9 @@ function asString(value: unknown): string | null {
  * column, so they read back as a JSON string rather than an object.
  */
 function normalizeDetailData(
-  detailData: unknown,
+  detailData: unknown
 ): Record<string, unknown> | null {
-  if (typeof detailData === "string") {
+  if (typeof detailData === 'string') {
     try {
       return asRecord(JSON.parse(detailData));
     } catch {
@@ -308,72 +308,68 @@ function normalizeDetailData(
  */
 function extractProviderSport(
   providerName: string,
-  detailData: unknown,
+  detailData: unknown
 ): string | null {
   const data = normalizeDetailData(detailData);
   if (!data) return null;
 
   switch (providerName.toLowerCase()) {
-    case "garmin":
-    case "garmin_fit":
-      {
-        const activity = asRecord(data["activity"]) ?? data;
-        const activityType = asRecord(activity["activityType"]);
-        return (
-          asString(activityType?.["typeKey"]) ?? asString(activity["sport"])
-        );
-      }
-    case "coros":
-    case "coros_mcp": {
+    case 'garmin':
+    case 'garmin_fit': {
+      const activity = asRecord(data['activity']) ?? data;
+      const activityType = asRecord(activity['activityType']);
+      return asString(activityType?.['typeKey']) ?? asString(activity['sport']);
+    }
+    case 'coros':
+    case 'coros_mcp': {
       if (
-        typeof data["sportType"] === "number" ||
-        typeof data["sportType"] === "string"
+        typeof data['sportType'] === 'number' ||
+        typeof data['sportType'] === 'string'
       ) {
         const num =
-          typeof data["sportType"] === "number"
-            ? data["sportType"]
-            : parseInt(data["sportType"], 10);
+          typeof data['sportType'] === 'number'
+            ? data['sportType']
+            : parseInt(data['sportType'], 10);
         const match = COROS_SPORT_TYPES[num];
         if (match) {
           return match.sport;
         }
       }
-      const activity = asRecord(data["activity"]) ?? data;
-      const activityType = asRecord(activity["activityType"]);
+      const activity = asRecord(data['activity']) ?? data;
+      const activityType = asRecord(activity['activityType']);
+      return asString(activityType?.['typeKey']) ?? asString(activity['sport']);
+    }
+    case 'strava':
+    case 'intervals.icu':
+      return asString(data['sport_type']) ?? asString(data['type']);
+    case 'fitbit':
       return (
-        asString(activityType?.["typeKey"]) ?? asString(activity["sport"])
+        asString(data['activityParentName']) ?? asString(data['activityName'])
+      );
+    case 'polar':
+      return (
+        asString(data['detailed-sport-info']) ??
+        asString(data['detailed_sport_info']) ??
+        asString(data['sport'])
+      );
+    case 'oura':
+      return asString(data['activity']);
+    case 'google health': {
+      const exercise = asRecord(data['exercise']);
+      return (
+        asString(exercise?.['exerciseType']) ?? asString(data['exerciseType'])
       );
     }
-    case "strava":
-      return asString(data["sport_type"]) ?? asString(data["type"]);
-    case "fitbit":
-      return (
-        asString(data["activityParentName"]) ?? asString(data["activityName"])
-      );
-    case "polar":
-      return (
-        asString(data["detailed-sport-info"]) ??
-        asString(data["detailed_sport_info"]) ??
-        asString(data["sport"])
-      );
-    case "oura":
-      return asString(data["activity"]);
-    case "google health": {
-      const exercise = asRecord(data["exercise"]);
-      return (
-        asString(exercise?.["exerciseType"]) ?? asString(data["exerciseType"])
-      );
-    }
-    case "hevy":
-    case "liftosaur":
+    case 'hevy':
+    case 'liftosaur':
       // Hevy and Liftosaur are strength-training apps; they have no cardio sport enum.
-      return "strength";
-    case "healthkit":
-    case "health connect":
+      return 'strength';
+    case 'healthkit':
+    case 'health connect':
       return (
-        asString(data["workoutActivityType"]) ??
-        asString(data["activityType"]) ??
-        asString(data["exerciseType"])
+        asString(data['workoutActivityType']) ??
+        asString(data['activityType']) ??
+        asString(data['exerciseType'])
       );
     default:
       return null;
@@ -386,28 +382,28 @@ function extractProviderSport(
  * catalog row as `withings-workout-<n>`.
  */
 const WITHINGS_CATEGORY_SPORTS: Record<number, ActivitySport> = {
-  1: "walking",
-  2: "running",
-  3: "hiking",
-  5: "cycling", // BMX
-  6: "cycling",
-  7: "swimming",
-  16: "strength",
-  17: "strength",
-  18: "fitness_equipment",
-  187: "rowing",
-  306: "walking",
-  307: "running",
-  308: "cycling",
+  1: 'walking',
+  2: 'running',
+  3: 'hiking',
+  5: 'cycling', // BMX
+  6: 'cycling',
+  7: 'swimming',
+  16: 'strength',
+  17: 'strength',
+  18: 'fitness_equipment',
+  187: 'rowing',
+  306: 'walking',
+  307: 'running',
+  308: 'cycling',
 };
 
 function sportFromWithingsSourceId(
-  sourceId: string | null | undefined,
+  sourceId: string | null | undefined
 ): ActivitySport | null {
   if (!sourceId) return null;
   const match = /^withings-workout-(\d+)$/.exec(sourceId);
   if (!match) return null;
-  return WITHINGS_CATEGORY_SPORTS[Number(match[1])] ?? "other";
+  return WITHINGS_CATEGORY_SPORTS[Number(match[1])] ?? 'other';
 }
 
 /**
@@ -420,7 +416,7 @@ const NOTES_SPORT_PATTERNS: readonly RegExp[] = [
   /^garmin activity:.*\(([^)]+)\)\s*$/i,
   /^garmin fit import:.*\(([^)]+)\)\s*$/i,
   /logged from coros(?: \(summary only\))?:\s*([^.(]+)/i,
-  /synced from strava\.\s*type:\s*([^.]+)\./i,
+  /synced from (?:strava|intervals\.icu)\.\s*type:\s*([^.]+)\./i,
   /logged from polar flow:\s*([^.]+)\./i,
   /logged from oura workout:\s*([^.]+)\./i,
   /logged from withings workout:\s*([^.]+)\./i,
@@ -432,10 +428,10 @@ function sportFromNotes(notes: string): ActivitySport {
     const match = pattern.exec(notes);
     if (match?.[1]) {
       const sport = mapRawSportValue(match[1]);
-      if (sport !== "other") return sport;
+      if (sport !== 'other') return sport;
     }
   }
-  return "other";
+  return 'other';
 }
 
 /**
@@ -446,11 +442,11 @@ function sportFromNotes(notes: string): ActivitySport {
 function sportFromCategory(category: string): ActivitySport {
   const normalized = category.trim().toLowerCase();
   if (
-    normalized === "cardio" ||
-    normalized === "general" ||
-    normalized === "other"
+    normalized === 'cardio' ||
+    normalized === 'general' ||
+    normalized === 'other'
   ) {
-    return "other";
+    return 'other';
   }
   return mapRawSportValue(normalized);
 }
@@ -460,43 +456,43 @@ function sportFromCategory(category: string): ActivitySport {
  * signal-precedence rationale.
  */
 export function classifyActivitySport(
-  input: ActivitySportInput,
+  input: ActivitySportInput
 ): ActivitySportResult {
   // 1. The provider's own enum — authoritative.
   if (input.providerName) {
     const raw = extractProviderSport(input.providerName, input.detailData);
     if (raw) {
       if ((ACTIVITY_SPORTS as readonly string[]).includes(raw)) {
-        return { sport: raw as ActivitySport, confidence: "declared" };
+        return { sport: raw as ActivitySport, confidence: 'declared' };
       }
       const sport = mapRawSportValue(raw);
-      if (sport !== "other") return { sport, confidence: "declared" };
+      if (sport !== 'other') return { sport, confidence: 'declared' };
     }
   }
 
   const withingsSport = sportFromWithingsSourceId(input.exerciseSourceId);
-  if (withingsSport && withingsSport !== "other") {
-    return { sport: withingsSport, confidence: "declared" };
+  if (withingsSport && withingsSport !== 'other') {
+    return { sport: withingsSport, confidence: 'declared' };
   }
 
   // 2. The provider's notes template, which embeds the same enum.
   if (input.notes) {
     const sport = sportFromNotes(input.notes);
-    if (sport !== "other") return { sport, confidence: "inferred" };
+    if (sport !== 'other') return { sport, confidence: 'inferred' };
   }
 
   // 3. Free-text name. Covers manual and CSV entries, and providers whose
   //    exercise_name IS their sport enum (Polar, Oura, Withings, Garmin FIT).
   if (input.exerciseName) {
     const sport = matchSportTokens(tokenize(input.exerciseName));
-    if (sport !== "other") return { sport, confidence: "inferred" };
+    if (sport !== 'other') return { sport, confidence: 'inferred' };
   }
 
   // 4. Category, on the rare occasion it is specific.
   if (input.category) {
     const sport = sportFromCategory(input.category);
-    if (sport !== "other") return { sport, confidence: "inferred" };
+    if (sport !== 'other') return { sport, confidence: 'inferred' };
   }
 
-  return { sport: "other", confidence: "inferred" };
+  return { sport: 'other', confidence: 'inferred' };
 }

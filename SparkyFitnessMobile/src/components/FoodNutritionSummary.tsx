@@ -18,7 +18,12 @@ import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, {
   type NutritionGoalPercentages,
 } from './NutritionMacroCard';
-import { useCustomNutrients, useServerConnection } from '../hooks';
+import {
+  useCustomNutrients,
+  useNutrientDisplayPreferences,
+  useServerConnection,
+} from '../hooks';
+import { applyNutrientDisplayPreference } from '../utils/nutrientUtils';
 
 interface FoodNutritionHeaderProps {
   name: string;
@@ -104,6 +109,15 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
     enabled: isConnected,
   });
 
+  const { preferences } = useNutrientDisplayPreferences({
+    enabled: isConnected,
+  });
+  // The Food Database list the user chose in Nutrient Display; with none saved
+  // the full list shows, as before.
+  const visibleNutrients = preferences.find(
+    (p) => p.view_group === 'food_database' && p.platform === 'mobile'
+  )?.visible_nutrients;
+
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
   const { t } = useTranslation();
@@ -115,16 +129,21 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
   // bar falls back to total carbs and the row would otherwise duplicate it.
   const useNetCarbs = showNetCarbs && values.fiber !== undefined;
   const { primary: primaryNutrients, additional: additionalNutrients } =
-    useMemo(
-      () =>
-        buildNutrientDisplayList(values, {
-          showNetCarbs: useNetCarbs,
-          // Pass raw carbs; renderRow scales by `servings` like every other row.
-          carbs: useNetCarbs ? values.carbs : undefined,
-          t,
-        }),
-      [values, useNetCarbs, t]
-    );
+    useMemo(() => {
+      const list = buildNutrientDisplayList(values, {
+        showNetCarbs: useNetCarbs,
+        // Pass raw carbs; renderRow scales by `servings` like every other row.
+        carbs: useNetCarbs ? values.carbs : undefined,
+        t,
+      });
+      return {
+        primary: applyNutrientDisplayPreference(list.primary, visibleNutrients),
+        additional: applyNutrientDisplayPreference(
+          list.additional,
+          visibleNutrients
+        ),
+      };
+    }, [values, useNetCarbs, t, visibleNutrients]);
 
   // Build custom nutrient rows: show ALL user-defined custom nutrients (from defs),
   // using values from the prop when available and 0 otherwise. Also include any
@@ -145,6 +164,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
         label: def.name,
         value: isNaN(value) ? 0 : value,
         unit: def.unit,
+        preferenceKey: def.name,
       });
       seen.add(def.name);
     }
@@ -161,8 +181,8 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
       }
     }
 
-    return rows;
-  }, [customNutrients, customNutrientDefs]);
+    return applyNutrientDisplayPreference(rows, visibleNutrients);
+  }, [customNutrients, customNutrientDefs, visibleNutrients]);
 
   const renderRow = (nutrient: NutrientDisplayItem, showBorder: boolean) => (
     <View

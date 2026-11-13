@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { ExerciseSessionResponse } from '@workspace/shared';
-import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
+import type { CalorieRules, ExerciseSessionResponse } from '@workspace/shared';
+import {
+  CALORIE_CALCULATION_CONSTANTS,
+  CALORIE_RULE_DEFAULTS,
+  EMPTY_SUPPLEMENT_TOTALS,
+} from '@workspace/shared';
 import { getDailySummary } from '../services/dailySummaryService.js';
 import goalService from '../services/goalService.js';
 import foodEntryService from '../services/foodEntryService.js';
@@ -11,7 +15,11 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodMisc.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import bmrService from '../services/bmrService.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: vi.fn(async () => []) },
+}));
 vi.mock('../services/goalService.js', () => ({
   default: {
     getUserGoals: vi.fn(),
@@ -56,7 +64,7 @@ vi.mock('../models/foodMisc.js', () => ({
 }));
 
 vi.mock('../models/genericHealthRepository.js', () => ({
-  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
+  getDeviceTotalCaloriesByDateRange: vi.fn(),
 }));
 
 vi.mock('../services/bmrService.js', () => ({
@@ -139,7 +147,7 @@ describe('dailySummaryService', () => {
       dietary_fiber: 0,
     });
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).mockResolvedValue([]);
     vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
       activeCaloriesSession,
@@ -177,6 +185,116 @@ describe('dailySummaryService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test('reports the settings and measurements the day was worked out from', async () => {
+    const dayRules: CalorieRules = {
+      goal_mode: 'cut',
+      goal_mode_calculation_method: 'manual',
+      goal_mode_custom_percentage: 0,
+      goal_mode_weekly_change_kg: 0,
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      tdee_allow_negative_adjustment: false,
+      calorie_safety_floor_mode: 'standard',
+      calorie_safety_floor_value: 1200,
+      adaptive_activity_separate: false,
+      bmr_algorithm: 'Oxford',
+      activity_level: 'active',
+      use_external_bmr: false,
+      include_bmr_in_net_calories: false,
+      adjust_macros_with_exercise: false,
+      calorie_cycling_mode: 'off',
+      calorie_cycling_offsets: [0, 0, 0, 0, 0, 0, 0],
+    };
+    vi.mocked(
+      calorieRuleHistoryRepository.getCalorieRuleHistory
+    ).mockResolvedValueOnce([{ ...dayRules, effective_date: '-infinity' }]);
+    vi.mocked(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({
+      weight: '92',
+      height: '181',
+      body_fat_percentage: '18.5',
+      waist: '88',
+      neck: null,
+    });
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieInputs).toEqual({
+      rules: dayRules,
+      age: 34,
+      gender: 'male',
+      weightKg: 92,
+      heightCm: 181,
+      bodyFatPercentage: 18.5,
+      waistCm: 88,
+      neckCm: null,
+      hipsCm: null,
+    });
+    // The balance used the same inputs the summary reports.
+    expect(bmrService.calculateBmr).toHaveBeenCalledWith(
+      'Oxford',
+      92,
+      181,
+      34,
+      'male',
+      18.5
+    );
+  });
+
+  test('reports the defaults when there are no preferences or check-ins', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(null);
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: false,
+    });
+
+    expect(result.calorieInputs).toEqual({
+      rules: CALORIE_RULE_DEFAULTS,
+      age: 34,
+      gender: 'male',
+      weightKg: CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+      heightCm: CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+      bodyFatPercentage: null,
+      waistCm: null,
+      neckCm: null,
+      hipsCm: null,
+    });
+  });
+
+  test('returns adjusted macro targets even when the calorie goal is unchanged', async () => {
+    const savedGoals = { calories: 2000, protein: 150, carbs: 250, fat: 44.4 };
+    vi.mocked(goalService.getUserGoals)
+      .mockResolvedValueOnce(savedGoals)
+      .mockResolvedValueOnce({
+        ...savedGoals,
+        protein: 187.5,
+        carbs: 312.5,
+        fat: 55.6,
+      });
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: false,
+    });
+    expect(result.goals).toEqual(savedGoals);
+    expect(result.adjustedGoals).toEqual({
+      calories: 2000,
+      protein: 188,
+      carbs: 313,
+      fat: 56,
+    });
   });
 
   test('does not double-count Garmin active calories with workouts and steps', async () => {
@@ -224,8 +342,14 @@ describe('dailySummaryService', () => {
 
   test('uses Health Connect total burn as the Goal Mode TDEE baseline', async () => {
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
-    ).mockResolvedValue([{ entry_date: date, total_calories: 1200 }]);
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
+    ).mockResolvedValue([
+      {
+        entry_date: date,
+        source_provider: 'health_connect',
+        total_calories: 1200,
+      },
+    ]);
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'not_much',
@@ -254,17 +378,18 @@ describe('dailySummaryService', () => {
     expect(result.calorieBalance.goal).toBe(2160);
     expect(result.calorieBalance.remaining).toBe(1660);
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).toHaveBeenCalledWith(targetUserId, actorUserId, date, date);
   });
 
   test('projects a stale view from the Health Connect capture time', async () => {
     vi.setSystemTime(new Date('2024-06-15T20:00:00Z'));
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).mockResolvedValue([
       {
         entry_date: date,
+        source_provider: 'health_connect',
         total_calories: 1200,
         captured_at: new Date('2024-06-15T12:00:00Z'),
       },
@@ -551,6 +676,57 @@ describe('dailySummaryService', () => {
         fat: 67,
         water_goal_ml: 2800,
       });
+    });
+  });
+
+  describe('calorieCycling', () => {
+    test('passes the day of calorie cycling through, and leaves it out when off', async () => {
+      const cycling = {
+        status: 'active',
+        baseTarget: 2000,
+        target: 2161,
+        delta: 161,
+        dayType: 'high',
+        floor: 1500,
+        clampedToFloor: false,
+      };
+      vi.mocked(goalService.getUserGoals).mockImplementation(
+        (_userId, _date, _endDate, adjust) =>
+          Promise.resolve(
+            adjust
+              ? {
+                  calories: 2161,
+                  protein: 150,
+                  carbs: 240,
+                  fat: 67,
+                  calorie_cycling: cycling,
+                }
+              : { calories: 2000, protein: 150, carbs: 200, fat: 67 }
+          )
+      );
+
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+      expect(result.calorieCycling).toEqual(cycling);
+      expect(result.adjustedGoals?.calories).toBe(2161);
+
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({
+        calories: 2000,
+        protein: 150,
+        carbs: 200,
+        fat: 67,
+      });
+      const off = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+      expect(off).not.toHaveProperty('calorieCycling');
     });
   });
 });
