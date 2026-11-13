@@ -738,6 +738,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const [plateCalc, setPlateCalc] = useState<{
     weightKg: number | null;
     equipment: readonly string[] | null;
+    exerciseName?: string;
+    setNumber?: number;
   } | null>(null);
   // The plate calculator's target for a set: only a barbell exercise has one.
   // Reads the store so a weight committed a moment ago (a row flushing its
@@ -755,6 +757,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       return {
         weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
         equipment,
+        exerciseName: ex.exercise_snapshot?.name,
+        setNumber: set?.set_number,
       };
     },
     [plannedSetValues]
@@ -1641,6 +1645,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           }
           weightUnit={weightUnit}
           equipment={plateCalc?.equipment}
+          page={focusMode}
+          exerciseName={plateCalc?.exerciseName}
+          setNumber={plateCalc?.setNumber}
         />
       )}
 

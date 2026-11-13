@@ -10,6 +10,7 @@ import {
   type PlateUnit,
 } from '@workspace/shared';
 import { navigationRef } from './ActiveWorkoutBar';
+import FocusPage, { FocusPageButton } from './FocusPage';
 import { PlateSide } from './PlateBarGraphic';
 import { usePlateInventory } from '../hooks/usePlateInventory';
 import { barLabel, formatPlateWeight } from '../utils/plateFormat';
@@ -21,6 +22,14 @@ interface PlateCalculatorSheetProps {
   targetWeight: number | null;
   weightUnit: PlateUnit;
   equipment?: readonly string[] | null;
+  /**
+   * The focus view's full-screen Plate calculator page (Phone-Plate board)
+   * instead of the bottom sheet; the maths is the same.
+   */
+  page?: boolean;
+  /** Names the set under the target weight on the page. */
+  exerciseName?: string;
+  setNumber?: number;
 }
 
 /** A bottom sheet: the bar drawn with the plates for each side, and what is owned. */
@@ -30,6 +39,9 @@ export default function PlateCalculatorSheet({
   targetWeight,
   weightUnit,
   equipment,
+  page = false,
+  exerciseName,
+  setNumber,
 }: PlateCalculatorSheetProps) {
   const { t } = useTranslation();
   const { inventory } = usePlateInventory(weightUnit);
@@ -59,6 +71,197 @@ export default function PlateCalculatorSheet({
     onClose();
     if (navigationRef?.isReady?.()) navigationRef.navigate('PlateInventory');
   };
+
+  if (page) {
+    const eyebrow =
+      'text-[13px] font-extrabold uppercase tracking-wider text-text-secondary';
+    const perSide =
+      result?.status === 'exact' && result.load
+        ? result.load.plates
+            .flatMap((plate) =>
+              Array.from({ length: plate.count }, () =>
+                formatPlateWeight(plate.weight)
+              )
+            )
+            .join(' + ')
+        : null;
+    return (
+      <FocusPage
+        visible={visible}
+        onClose={onClose}
+        title={t('plates.calculatorTitle', {
+          defaultValue: 'Plate calculator',
+        })}
+        footer={
+          <FocusPageButton
+            variant="neutral"
+            label={t('plates.editInventory', {
+              defaultValue: 'Edit plate inventory',
+            })}
+            onPress={handleManage}
+          />
+        }
+      >
+        <View>
+          <Text className={eyebrow}>
+            {t('plates.targetWeightLabel', { defaultValue: 'Target weight' })}
+          </Text>
+          {targetWeight != null ? (
+            <Text
+              className="text-[48px] font-extrabold leading-[56px] text-text-primary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {`${formatPlateWeight(targetWeight)} ${weightUnit}`}
+            </Text>
+          ) : (
+            <Text className="text-[17px] text-text-secondary">
+              {t('plates.enterWeight', {
+                defaultValue: 'Enter a weight for the set first.',
+              })}
+            </Text>
+          )}
+          {exerciseName != null && (
+            <Text className="text-[15px] text-text-secondary">
+              {setNumber != null
+                ? t('plates.setOf', {
+                    defaultValue: '{{name}} · set {{number}}',
+                    name: exerciseName,
+                    number: setNumber,
+                  })
+                : exerciseName}
+            </Text>
+          )}
+        </View>
+
+        {inventory.bars.length > 1 && (
+          <View className="flex-row flex-wrap gap-1.5 rounded-3xl bg-surface p-1.5">
+            {inventory.bars.map((b) => {
+              const selected = b.id === bar?.id;
+              return (
+                <Pressable
+                  key={b.id}
+                  onPress={() => setChosenBarId(b.id)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  className={`h-11 min-w-[45%] flex-1 items-center justify-center rounded-full ${selected ? 'bg-accent-primary' : ''} active:opacity-70`}
+                >
+                  <Text
+                    numberOfLines={1}
+                    className={`text-[16px] font-bold ${selected ? 'text-white' : 'text-text-secondary'}`}
+                  >
+                    {`${barLabel(t, b)} ${formatPlateWeight(b.weight)} ${unit}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {shown && bar && (
+          <View
+            className="items-center rounded-3xl bg-surface px-4 py-6"
+            accessible
+            accessibilityLabel={t('plates.graphicLabel', {
+              defaultValue:
+                '{{perSide}} {{unit}} per side on a {{bar}} {{unit}} bar',
+              perSide: formatPlateWeight(shown.perSideWeight),
+              bar: formatPlateWeight(bar.weight),
+              unit,
+            })}
+          >
+            <View
+              className="items-center justify-center"
+              style={{ minHeight: 96 }}
+            >
+              <View style={{ transform: [{ scale: 1.9 }] }}>
+                <PlateSide load={shown} barWeight={bar.weight} />
+              </View>
+            </View>
+            {perSide != null && (
+              <Text className="mt-4 text-[20px] font-extrabold text-text-primary">
+                {t('plates.perSideSummary', {
+                  defaultValue: '{{plates}} per side',
+                  plates: perSide === '' ? '0' : perSide,
+                })}
+              </Text>
+            )}
+            {result?.status === 'exact' && result.load && (
+              <Text className="text-center text-[14px] text-text-secondary">
+                {t('plates.pageBreakdown', {
+                  defaultValue:
+                    'collars {{collars}} {{unit}} · bar {{bar}} {{unit}} · {{plates}} {{unit}} of plates',
+                  collars: formatPlateWeight(result.collarsWeight),
+                  bar: formatPlateWeight(bar.weight),
+                  plates: formatPlateWeight(result.load.perSideWeight * 2),
+                  unit,
+                })}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {result?.status === 'inexact' && (
+          <View className="gap-1.5 rounded-3xl bg-surface p-4">
+            <Text className={eyebrow}>
+              {t('plates.cantBeMade', {
+                defaultValue: "When the weight can't be made",
+              })}
+            </Text>
+            <Text className="text-[15px] text-text-primary">
+              {result.below
+                ? `${t('plates.nearestBelow', {
+                    defaultValue: 'Nearest below: {{weight}} {{unit}}',
+                    weight: formatPlateWeight(result.below.totalWeight),
+                    unit,
+                  })} · ${t('plates.shortBy', {
+                    defaultValue: '{{diff}} {{unit}} short of the target',
+                    diff: formatPlateWeight(result.shortBy ?? 0),
+                    unit,
+                  })}`
+                : t('plates.nothingBelow', {
+                    defaultValue:
+                      'The target is lighter than the empty bar, collars included.',
+                  })}
+            </Text>
+            <Text className="text-[15px] text-text-primary">
+              {result.above
+                ? `${t('plates.nearestAbove', {
+                    defaultValue: 'Nearest above: {{weight}} {{unit}}',
+                    weight: formatPlateWeight(result.above.totalWeight),
+                    unit,
+                  })} · ${t('plates.overBy', {
+                    defaultValue: '{{diff}} {{unit}} over the target',
+                    diff: formatPlateWeight(result.overBy ?? 0),
+                    unit,
+                  })}`
+                : t('plates.nothingAbove', {
+                    defaultValue:
+                      'The target is heavier than your plates can load.',
+                  })}
+            </Text>
+          </View>
+        )}
+
+        {result?.status === 'too_large' && (
+          <Text className="text-[15px] text-text-danger-subtle">
+            {t('plates.tooLarge', {
+              defaultValue:
+                'This inventory is too large to search. Remove some plates or pairs.',
+            })}
+          </Text>
+        )}
+
+        <View className="gap-1.5 rounded-3xl bg-surface p-4">
+          <Text className={eyebrow}>
+            {t('plates.platesYouOwn', { defaultValue: 'Plates you own' })}
+          </Text>
+          <Text className="text-[18px] font-extrabold text-text-primary">
+            {`${ownedPlates.map((plate) => formatPlateWeight(plate.weight)).join(' · ')} ${unit}`}
+          </Text>
+        </View>
+      </FocusPage>
+    );
+  }
 
   return (
     <Modal
