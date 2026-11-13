@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
@@ -177,14 +177,15 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
   // When the resolved unit changes (e.g. the preference loads after the
   // presets are cached), drop the retained weight text so each field falls
   // back to its stored kg value rendered in the new unit. The stored value
-  // itself is never touched by this reconciliation.
-  const prevWeightUnit = useRef<'kg' | 'lbs' | null>(null);
-  useEffect(() => {
-    if (
-      prevWeightUnit.current != null &&
-      weightUnit != null &&
-      prevWeightUnit.current !== weightUnit
-    ) {
+  // itself is never touched by this reconciliation. Adjusted during render
+  // rather than in an effect, so the first paint after the change already
+  // shows the reconciled value instead of flashing the stale text.
+  const [prevWeightUnit, setPrevWeightUnit] = useState<'kg' | 'lbs' | null>(
+    null
+  );
+  if (prevWeightUnit !== weightUnit) {
+    setPrevWeightUnit(weightUnit);
+    if (prevWeightUnit != null && weightUnit != null) {
       setRawSetInputs((current) => {
         const next: Record<string, string> = {};
         for (const entry of Object.entries(current)) {
@@ -193,8 +194,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
         return next;
       });
     }
-    prevWeightUnit.current = weightUnit;
-  }, [weightUnit]);
+  }
 
   const clearRawSetInputs = useCallback((key: string) => {
     const prefix = key + ':';
