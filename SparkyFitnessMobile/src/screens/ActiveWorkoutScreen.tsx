@@ -26,6 +26,7 @@ import {
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCSSVariable } from 'uniwind';
 
 import ActiveWorkoutHeader, {
   ActiveWorkoutStripButtons,
@@ -59,6 +60,7 @@ import ExerciseSetRestSheet from '../components/ExerciseSetRestSheet';
 import WorkoutDurationSheet, {
   type WorkoutDurationSheetRef,
 } from '../components/WorkoutDurationSheet';
+import FocusExercisesSheet from '../components/FocusExercisesSheet';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
 import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
@@ -155,6 +157,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
+  const focusGroupColor = String(useCSSVariable('--color-superset'));
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
@@ -381,6 +384,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         );
     },
     [warmupWeightKg, weightUnit, session]
+  );
+
+  const handleReorderMove = useCallback((from: number, to: number) => {
+    useActiveWorkoutStore.getState().reorderExercises(from, to);
+  }, []);
+  const [exercisesSheetVisible, setExercisesSheetVisible] = useState(false);
+  const handleOpenExercisesSheet = useCallback(() => {
+    Keyboard.dismiss();
+    setExercisesSheetVisible(true);
+  }, []);
+  const handleCloseExercisesSheet = useCallback(
+    () => setExercisesSheetVisible(false),
+    []
   );
 
   const handleOpenReorder = useCallback(() => {
@@ -1094,6 +1110,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       latest == null || at > completedSetIds[latest] ? id : latest,
     null
   );
+  const undoDescription = describeActiveSet(session, lastLoggedSetId);
+  const undoLoad =
+    undoDescription != null
+      ? formatSetLoad(undoDescription, weightUnit, t)
+      : null;
+  const exercisesUndo =
+    lastLoggedSetId != null && undoDescription != null
+      ? {
+          detail: [undoDescription.exerciseName, undoLoad]
+            .filter((part) => part != null && part !== '')
+            .join(' · '),
+          onUndo: () => handleUncomplete(lastLoggedSetId),
+        }
+      : null;
   const focusReady = focusMode
     ? {
         restLabel:
@@ -1250,8 +1280,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
                   position:
                     Math.min(focusIndex, session.exercises.length - 1) + 1,
                   total: session.exercises.length,
-                  onOpenList:
-                    reorderItemCount >= 2 ? handleOpenReorder : undefined,
+                  onOpenList: handleOpenExercisesSheet,
                 }
               : undefined
           }
@@ -1563,6 +1592,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           }
           weightUnit={weightUnit}
           equipment={plateCalc?.equipment}
+        />
+      )}
+
+      {focusMode && (
+        <FocusExercisesSheet
+          visible={exercisesSheetVisible}
+          exercises={session.exercises}
+          completedSetIds={completedSetIds}
+          selectedId={
+            session.exercises[
+              Math.min(focusIndex, session.exercises.length - 1)
+            ]?.id ?? null
+          }
+          undo={exercisesUndo}
+          groupColor={focusGroupColor}
+          onSelectExercise={handleRailPress}
+          onMoveItem={handleReorderMove}
+          onAddExercise={handleAddExercise}
+          onEndWorkout={handleConfirmEnd}
+          onClose={handleCloseExercisesSheet}
         />
       )}
     </View>
