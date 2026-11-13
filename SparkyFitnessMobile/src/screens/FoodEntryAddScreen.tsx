@@ -2445,14 +2445,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             });
             setEditingMealIngredientIndex(null);
           }}
-          onRemove={() => {
-            if (editingMealIngredientIndex === null) return;
-            setMealCustomizedFoods((current) => {
-              const base = current ?? initialMealFoods ?? [];
-              return base.filter((_, i) => i !== editingMealIngredientIndex);
-            });
-            setEditingMealIngredientIndex(null);
-          }}
+          // The last ingredient stays: an empty list would log the template.
+          onRemove={
+            (effectiveMealFoods?.length ?? 0) > 1
+              ? () => {
+                  if (editingMealIngredientIndex === null) return;
+                  setMealCustomizedFoods((current) => {
+                    const base = current ?? initialMealFoods ?? [];
+                    return base.filter(
+                      (_, i) => i !== editingMealIngredientIndex
+                    );
+                  });
+                  setEditingMealIngredientIndex(null);
+                }
+              : undefined
+          }
         />
       </ScrollView>
 

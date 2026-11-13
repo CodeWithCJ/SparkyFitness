@@ -4179,8 +4179,7 @@
     "quantity": "Quantity",
     "changeUnit": "Change unit",
     "selectUnit": "Select unit",
-    "savedPortions": "Saved Portions",
-    "standardUnits": "Standard Units"
+    "savedPortions": "Saved Portions"
   },
   "dailyNutritionDetails": {
     "title": "Nutrition Details",

@@ -630,14 +630,19 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
             });
             setEditingIngredientIndex(null);
           }}
-          onRemove={() => {
-            if (editingIngredientIndex === null) return;
-            setStagedFoods((current) => {
-              const base = current ?? meal.foods;
-              return base.filter((_, i) => i !== editingIngredientIndex);
-            });
-            setEditingIngredientIndex(null);
-          }}
+          // The last ingredient stays: an empty list would log the template.
+          onRemove={
+            effectiveFoods.length > 1
+              ? () => {
+                  if (editingIngredientIndex === null) return;
+                  setStagedFoods((current) => {
+                    const base = current ?? meal.foods;
+                    return base.filter((_, i) => i !== editingIngredientIndex);
+                  });
+                  setEditingIngredientIndex(null);
+                }
+              : undefined
+          }
         />
       </ScrollView>
     );

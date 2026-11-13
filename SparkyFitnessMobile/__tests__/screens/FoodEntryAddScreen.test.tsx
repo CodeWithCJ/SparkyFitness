@@ -2380,12 +2380,9 @@ describe('FoodEntryAddScreen', () => {
     );
   });
 
-  it('allows changing ingredient unit via modal before logging', () => {
-    mockUseFoodVariants.mockReturnValueOnce({
-      variants: [],
-      isLoading: false,
-      isError: false,
-    } as any);
+  it('allows switching an ingredient to a saved portion before logging', () => {
+    // food-1's saved variants (beforeEach) include "1 cup" (variant-1). Only
+    // saved portions are offered: logging re-reads nutrition by variant id.
 
     const initialFoods: MealFood[] = [
       {
@@ -2422,7 +2419,8 @@ describe('FoodEntryAddScreen', () => {
 
     fireEvent.press(screen.getByLabelText('Change unit'));
 
-    fireEvent.press(screen.getByText('oz'));
+    expect(screen.queryByText('oz')).toBeNull();
+    fireEvent.press(screen.getByText('1 cup'));
 
     fireEvent.press(screen.getByText('Apply'));
 
@@ -2434,8 +2432,10 @@ describe('FoodEntryAddScreen', () => {
         foods: [
           expect.objectContaining({
             food_id: 'food-1',
-            unit: 'oz',
-            serving_unit: 'oz',
+            variant_id: 'variant-1',
+            quantity: 1,
+            unit: 'cup',
+            serving_unit: 'cup',
           }),
         ],
       })
@@ -2514,6 +2514,42 @@ describe('FoodEntryAddScreen', () => {
       })
     );
     expect(mockAddMeal.mock.calls[0][0].foods).toHaveLength(1);
+  });
+
+  it('does not offer removing the only ingredient of a meal', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseMealItem,
+        originalItem: {
+          id: 'meal-1',
+          name: 'Breakfast Meal',
+          foods: [
+            {
+              id: 'mf-1',
+              meal_id: 'meal-1',
+              food_id: 'food-1',
+              name: 'Rolled Oats',
+              food_name: 'Rolled Oats',
+              brand: null,
+              quantity: 100,
+              unit: 'g',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 389,
+              protein: 16.9,
+              carbs: 66.3,
+              fat: 6.9,
+            },
+          ],
+        },
+      },
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Rolled Oats'));
+
+    expect(screen.getByText('Apply')).toBeTruthy();
+    expect(screen.queryByText('Remove from Meal')).toBeNull();
   });
 
   it('sends the entry note when logging a meal item', () => {

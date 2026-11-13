@@ -84,25 +84,39 @@ describe('IngredientQuantityModal', () => {
     );
   });
 
-  it('allows picking another convertible unit before applying', () => {
+  it('offers saved portions only and keeps the picked variant id', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-oz',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 47,
+          protein: 8.8,
+          carbs: 0,
+          fat: 1,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
     const onSave = jest.fn();
-    const { getByText, getByLabelText } = render(
+    const { getByText, getByLabelText, queryByText } = render(
       <IngredientQuantityModal {...defaultProps} onSave={onSave} />
     );
 
-    // Open unit picker
     fireEvent.press(getByLabelText('Change unit'));
 
-    // Select 'oz'
-    expect(getByText('oz')).toBeTruthy();
-    fireEvent.press(getByText('oz'));
-
-    // Apply
+    // A unit converted on the fly has no variant id, so it is not offered.
+    expect(queryByText('Standard Units')).toBeNull();
+    fireEvent.press(getByText('1 oz'));
     fireEvent.press(getByText('Apply'));
 
     expect(onSave).toHaveBeenCalledWith(
       expect.any(Number),
       expect.objectContaining({
+        variant_id: 'variant-oz',
         unit: 'oz',
         serving_unit: 'oz',
       })

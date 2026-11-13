@@ -22,10 +22,6 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { useFoodVariants } from '../hooks/useFoodVariants';
-import {
-  canAutoConvertToUnit,
-  useUnitConversion,
-} from '../hooks/useUnitConversion';
 import { buildLocalUnitVariants } from '../utils/foodDetails';
 import { localizeFoodUnit } from '../utils/foodUnitLocalization';
 import type { FoodUnitVariant } from '../types/foodUnitVariants';
@@ -146,11 +142,6 @@ export default function IngredientQuantityModal({
     return hasCurrent ? loaded : [fallbackVariant, ...loaded];
   }, [dbVariants, fallbackVariant]);
 
-  const { convertibleUnits, buildConvertedVariant } = useUnitConversion({
-    variants: allVariants,
-    selectedVariant,
-  });
-
   const parsedQuantity = useMemo(() => {
     const val = parseDecimalInput(quantityText);
     return Number.isFinite(val) && val > 0 ? val : 0;
@@ -202,24 +193,6 @@ export default function IngredientQuantityModal({
       setQuantityText(String(newQty));
     } else if (variant.serving_size > 0) {
       setQuantityText(String(variant.serving_size));
-    }
-  };
-
-  const handleSelectConvertibleUnit = (targetUnit: string) => {
-    const converted = buildConvertedVariant(targetUnit);
-    if (!converted) return;
-
-    const oldUnit = selectedUnit;
-    setSelectedVariant(converted);
-    setSelectedUnit(targetUnit);
-    setIsUnitPickerOpen(false);
-
-    const factor = getConversionFactor(oldUnit, targetUnit);
-    if (factor !== null && parsedQuantity > 0) {
-      const newQty = Math.round(parsedQuantity * factor * 100) / 100;
-      setQuantityText(String(newQty));
-    } else {
-      setQuantityText('1');
     }
   };
 
@@ -278,20 +251,11 @@ export default function IngredientQuantityModal({
     });
   }, [allVariants, selectedVariant, selectedUnit, t]);
 
-  const standardOptions = useMemo(() => {
-    const compatible = convertibleUnits.filter((u) =>
-      canAutoConvertToUnit(allVariants, selectedVariant, u)
-    );
-    return compatible.map((unit) => ({
-      key: `standard-${unit}`,
-      unit,
-      label: localizeFoodUnit(unit, t),
-      isSelected: selectedUnit.toLowerCase() === unit.toLowerCase(),
-    }));
-  }, [convertibleUnits, allVariants, selectedVariant, selectedUnit, t]);
-
-  const hasMultipleUnitChoices =
-    savedOptions.length > 1 || standardOptions.length > 0;
+  // Only saved portions are offered: a unit converted on the fly has no
+  // variant id, and logging re-reads the ingredient's nutrition from its
+  // stored variant, so a converted quantity would be logged against the
+  // wrong serving.
+  const hasMultipleUnitChoices = savedOptions.length > 1;
 
   if (!ingredient) return null;
 
@@ -378,44 +342,6 @@ export default function IngredientQuantityModal({
                             <TouchableOpacity
                               key={opt.key}
                               onPress={() => handleSelectVariant(opt.variant)}
-                              className={`flex-row items-center justify-between px-3 py-2 rounded-lg ${
-                                opt.isSelected ? 'bg-raised' : ''
-                              }`}
-                            >
-                              <Text
-                                className={`text-sm ${
-                                  opt.isSelected
-                                    ? 'font-semibold text-accent-primary'
-                                    : 'text-text-primary'
-                                }`}
-                              >
-                                {opt.label}
-                              </Text>
-                              {opt.isSelected && (
-                                <Icon
-                                  name="checkmark"
-                                  size={16}
-                                  color={accentColor}
-                                />
-                              )}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-
-                      {standardOptions.length > 0 && (
-                        <View className="p-2">
-                          <Text className="text-text-muted text-xs font-semibold px-2 py-1 uppercase">
-                            {t('mealDetail.standardUnits', {
-                              defaultValue: 'Standard Units',
-                            })}
-                          </Text>
-                          {standardOptions.map((opt) => (
-                            <TouchableOpacity
-                              key={opt.key}
-                              onPress={() =>
-                                handleSelectConvertibleUnit(opt.unit)
-                              }
                               className={`flex-row items-center justify-between px-3 py-2 rounded-lg ${
                                 opt.isSelected ? 'bg-raised' : ''
                               }`}
