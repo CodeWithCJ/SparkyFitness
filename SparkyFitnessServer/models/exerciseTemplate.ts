@@ -243,6 +243,11 @@ async function createExerciseEntriesFromTemplate(
  * of its exercises was updated (updateGroupedWorkoutSession updates the session
  * row on every save).
  *
+ * A session any of whose sets was started or checked off is in progress or
+ * finished (#1995 phase 1: a checked-off set is the in-progress marker; #2840
+ * started_at records the set start), so it is never removed even when its rows
+ * still look untouched.
+ *
  * @param templateId - Workout plan template whose generated entries are removed.
  * @param userId - Owner of the plan and of the entries.
  * @param today - The user's current day (YYYY-MM-DD); earlier days are kept.
@@ -262,7 +267,6 @@ async function deleteExerciseEntriesByTemplateIdWithClient(
     `DELETE FROM exercise_preset_entries
        WHERE user_id = $1
          AND source = $4
-         AND started_at IS NULL
          AND finished_at IS NULL
          AND updated_at <= created_at
          AND NOT EXISTS (
@@ -270,6 +274,15 @@ async function deleteExerciseEntriesByTemplateIdWithClient(
            FROM exercise_entries edited
            WHERE edited.exercise_preset_entry_id = exercise_preset_entries.id
              AND edited.updated_at > edited.created_at
+         )
+         AND NOT EXISTS (
+           SELECT 1
+           FROM exercise_entry_sets started_set
+           JOIN exercise_entries started_entry
+             ON started_entry.id = started_set.exercise_entry_id
+           WHERE started_entry.exercise_preset_entry_id = exercise_preset_entries.id
+             AND (started_set.started_at IS NOT NULL
+                  OR started_set.completed_at IS NOT NULL)
          )
          AND id IN (
            SELECT DISTINCT exercise_preset_entry_id
@@ -305,6 +318,13 @@ async function deleteExerciseEntriesByTemplateIdWithClient(
          )
          AND (source = $4 OR (source = 'Manual' AND entry_date > $3))
          AND updated_at <= created_at
+         AND NOT EXISTS (
+           SELECT 1
+           FROM exercise_entry_sets started_set
+           WHERE started_set.exercise_entry_id = exercise_entries.id
+             AND (started_set.started_at IS NOT NULL
+                  OR started_set.completed_at IS NOT NULL)
+         )
        RETURNING id`,
     [userId, templateId, today, WORKOUT_PLAN_ENTRY_SOURCE]
   );
