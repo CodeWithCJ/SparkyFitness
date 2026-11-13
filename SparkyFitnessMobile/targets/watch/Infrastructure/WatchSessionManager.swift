@@ -1823,6 +1823,13 @@ extension WatchSessionManager: WCSessionDelegate {
         Task { @MainActor in self.route(userInfo) }
     }
 
+    /// An exercise demo picture from the phone. The file is deleted when this
+    /// returns, so it is moved into the cache here, off the main actor.
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        guard ExerciseDemoStore.receive(file) else { return }
+        Task { @MainActor in ExerciseDemoStore.shared.didChange() }
+    }
+
     nonisolated func session(
         _ session: WCSession,
         didReceiveApplicationContext applicationContext: [String: Any]

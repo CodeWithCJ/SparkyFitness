@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WatchKit
 
 /// Whether the Workout page is the one on screen. A page-style `TabView` keeps
@@ -360,7 +361,30 @@ private struct ActiveWorkoutView: View {
     /// brings the system's close button over the exercise name.
     @State private var editingPrevious = false
     @Environment(\.isLuminanceReduced) private var reducedLuminance
+    @Environment(\.workoutPageActive) private var workoutPageActive
+    @ObservedObject private var demos = ExerciseDemoStore.shared
     private var dimmedBrightness: Color { reducedLuminance || WatchStyle.forcedDimming ? Color(white: 0.55) : .white }
+
+    /// The current exercise's demo pictures, when the phone has sent them.
+    private var demo: (exercise: PlannedExercise, images: [UIImage])? {
+        guard
+            let id = store.currentStep?.exerciseEntryId,
+            let exercise = store.plan?.exercises.first(where: { $0.exerciseEntryId == id }),
+            case let images = demos.images(for: exercise.imageKey),
+            !images.isEmpty
+        else { return nil }
+        return (exercise, images)
+    }
+
+    private func demoCaption(_ exercise: PlannedExercise) -> String {
+        [exercise.equipment, exercise.muscle].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Only the page on screen, undimmed, animates: a vertical-page scroll
+    /// keeps its neighbours alive.
+    private var demoAnimates: Bool {
+        page == .demo && workoutPageActive && !reducedLuminance && !WatchStyle.forcedDimming
+    }
 
     /// Always available, including during rest: Finish lives in the picker
     /// sheet, and hiding the chevron while resting left no way to end the
@@ -370,19 +394,32 @@ private struct ActiveWorkoutView: View {
     }
 
     var body: some View {
-        // From the top: the metrics, the set screen, then the More list (taller
-        // than the screen, scrolled freely). The metrics and the set are one
-        // screen tall each and snapped to. The crown scrolls only while no
+        // From the top: the exercise's demo (only with pictures), the metrics,
+        // the set screen, then the More list (taller than the screen, scrolled
+        // freely). The first three are one screen tall each and snapped to. The crown scrolls only while no
         // value box has claimed it for adjusting a number.
         GeometryReader { geo in
             let pageHeight = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             ScrollView {
                 VStack(spacing: 0) {
+                    if let demo {
+                        WorkoutDemoPage(
+                            name: demo.exercise.name,
+                            caption: demoCaption(demo.exercise),
+                            images: demo.images,
+                            animating: demoAnimates
+                        )
+                        .frame(height: pageHeight)
+                        .colorMultiply(dimmedBrightness)
+                        .id(WorkoutPageID.demo)
+                    }
                     WorkoutMetricsPage()
                         .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .padding(.horizontal, 4)
                         .id(WorkoutPageID.metrics)
                     setScreen
                         .workoutPage(geo, alignment: .top, fromScreenTop: true)
+                        .padding(.horizontal, 4)
                         .id(WorkoutPageID.set)
                         // Where the pages end and the More list starts.
                         .background(GeometryReader { proxy in
@@ -399,12 +436,16 @@ private struct ActiveWorkoutView: View {
                             .id(WorkoutPageID.moreWorkout)
                     }
                     .scrollTargetLayout()
+                    .padding(.horizontal, 4)
                     // Room under the last button and the page dots.
                     .padding(.bottom, WatchStyle.m(30))
                 }
                 .scrollTargetLayout()
                 .coordinateSpace(name: "workoutScroll")
             }
+            // Full width, so the demo picture reaches the screen's edges; the
+            // other pages put their 4 pt back themselves.
+            .padding(.horizontal, -4)
             .scrollPosition(id: $page, anchor: .top)
             .scrollTargetBehavior(WorkoutScrollBehavior(pageHeight: pageHeight, moreTop: moreTop))
             .scrollIndicators(.hidden)
@@ -433,6 +474,13 @@ private struct ActiveWorkoutView: View {
         // A set logged here or on the phone, an edit, or a jump from the
         // list moves the cursor: back to the set screen.
         .onChange(of: store.currentStep?.plannedSet.setId) { page = .set }
+        // Pictures arriving (or the exercise changing) add or remove the page
+        // above the metrics; keep the scroll on the page that was showing.
+        .onChange(of: demo != nil) {
+            let keep = page
+            page = nil
+            DispatchQueue.main.async { page = keep }
+        }
         .onAppear { page = .set }
         .padding(.horizontal, 4)
         .overlay {
@@ -499,6 +547,7 @@ private struct ActiveWorkoutView: View {
                 case "upnext": page = .moreUpNext
                 case "swap", "setoptions", "exerciseoptions", "plates": page = .moreExercise
                 case "metrics": page = .metrics
+                case "demo": page = .demo
                 case "actions": page = .moreWorkout
                 default: break
                 }
@@ -590,7 +639,7 @@ private struct MoreTopKey: PreferenceKey {
 }
 
 private enum WorkoutPageID: Hashable {
-    case moreUpNext, moreExercise, moreWorkout, set, metrics
+    case moreUpNext, moreExercise, moreWorkout, set, metrics, demo
 }
 
 /// Shown after the last set is logged. Finish used to live only in the
@@ -1000,6 +1049,83 @@ struct SwapExerciseSheet: View {
             .navigationTitle(String(localized: "watch.workout.doNowTitle", defaultValue: "Do Now"))
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+/// The exercise's demonstration, one swipe above the metrics: a single picture
+/// slot that swaps between the start and the end position every second, with
+/// the name and "equipment · muscle" under it. Nothing runs unless `animating`
+/// (the page is on screen and the display is not dimmed); otherwise the start
+/// picture is shown still.
+struct WorkoutDemoPage: View {
+    let name: String
+    let caption: String
+    let images: [UIImage]
+    let animating: Bool
+
+    @State private var showEnd = false
+
+    var body: some View {
+        // Full screen: the picture fills the display (cropped, under the clock),
+        // the name and caption sit over a dark scrim at the bottom.
+        ZStack(alignment: .bottomLeading) {
+            // The pictures are an overlay so their fill size cannot widen the page.
+            Color(white: 0.12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    ZStack {
+                        ForEach(Array(images.prefix(2).enumerated()), id: \.offset) { index, image in
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .opacity(index == 0 || showEnd ? 1 : 0)
+                                .zIndex(Double(index))
+                        }
+                    }
+                }
+                .clipped()
+                .accessibilityHidden(true)
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .black.opacity(0.55), location: 0.35),
+                    .init(color: .black.opacity(0.92), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: WatchStyle.m(150))
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .allowsHitTesting(false)
+            // A long name scrolls only while the page animates; off screen or
+            // dimmed it is drawn still, as `FitName` does for the dimmed display.
+            VStack(alignment: .leading, spacing: 0) {
+                SetTitle(name: name)
+                if !caption.isEmpty {
+                    FitName(text: caption, size: 15, weight: .regular, color: WatchStyle.lightGrey, height: WatchStyle.m(18))
+                        .padding(.leading, WatchStyle.m(4))
+                        .padding(.top, WatchStyle.m(2))
+                }
+            }
+            .environment(\.isLuminanceReduced, !animating)
+            .padding(.horizontal, WatchStyle.m(11))
+            .padding(.bottom, WatchStyle.m(24))
+        }
+        .clipped()
+        // One cancellable task, only while animating: leaving the page or the
+        // display dimming cancels it and puts the start picture back.
+        .task(id: animating && images.count > 1) {
+            guard animating && images.count > 1 else {
+                showEnd = false
+                return
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { break }
+                withAnimation(.easeInOut(duration: 0.4)) { showEnd.toggle() }
+            }
+        }
+        .onDisappear { showEnd = false }
     }
 }
 

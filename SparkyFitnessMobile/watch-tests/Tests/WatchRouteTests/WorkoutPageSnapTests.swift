@@ -24,4 +24,28 @@ final class WorkoutPageSnapTests: XCTestCase {
     func testMoreScrollsFreely() {
         XCTAssertEqual(WorkoutPageSnap.snapped(moreTop + 123.4, moreTop: moreTop, pageHeight: page), moreTop + 123.4)
     }
+
+    func testDemoPageIsOneMoreSnapStopAboveMetrics() {
+        let withDemo = 3 * page
+        let stops: Set<CGFloat> = [0, page, 2 * page, withDemo]
+        var y: CGFloat = 0
+        while y < withDemo {
+            XCTAssertTrue(stops.contains(WorkoutPageSnap.snapped(y, moreTop: withDemo, pageHeight: page)), "y=\(y)")
+            y += 0.5
+        }
+        XCTAssertEqual(WorkoutPageSnap.snapped(page * 0.4, moreTop: withDemo, pageHeight: page), 0)
+        XCTAssertEqual(WorkoutPageSnap.snapped(page * 1.6, moreTop: withDemo, pageHeight: page), 2 * page)
+    }
+
+    func testPageOrderPutsDemoAboveMetricsOnlyWhenPresent() {
+        XCTAssertEqual(WorkoutPageSnap.pages(hasDemo: true), [.demo, .metrics, .set])
+        XCTAssertEqual(WorkoutPageSnap.pages(hasDemo: false), [.metrics, .set])
+    }
+
+    func testOffsetsOfThePages() {
+        XCTAssertEqual(WorkoutPageSnap.offset(of: .set, hasDemo: false, pageHeight: page), page)
+        XCTAssertEqual(WorkoutPageSnap.offset(of: .set, hasDemo: true, pageHeight: page), 2 * page)
+        XCTAssertEqual(WorkoutPageSnap.offset(of: .demo, hasDemo: true, pageHeight: page), 0)
+        XCTAssertEqual(WorkoutPageSnap.offset(of: .metrics, hasDemo: true, pageHeight: page), page)
+    }
 }

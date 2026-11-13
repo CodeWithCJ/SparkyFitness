@@ -63,6 +63,13 @@ struct PlannedExercise: Codable, Equatable, Identifiable {
     /// The bar and plates the wearer owns, for the Plates tile on More. Sent
     /// only for an exercise loaded on a bar; nil from an older phone.
     var plates: WatchPlateConfig? = nil
+    /// Key of the exercise's demo pictures (`ExerciseDemoFiles`) and how many
+    /// the phone sends (1 or 2: start and end). The pictures arrive as files,
+    /// separately from the plan; nil from an older phone or an exercise with none.
+    var imageKey: String? = nil
+    var imageCount: Int? = nil
+    /// Primary muscle ("Chest"), for the line under the name on the demo page.
+    var muscle: String? = nil
     let sets: [PlannedSet]
 
     var id: String { exerciseEntryId }

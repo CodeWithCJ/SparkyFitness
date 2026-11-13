@@ -250,7 +250,7 @@ enum SampleDay {
                 PlannedSet(setId: "m1a", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
                 PlannedSet(setId: "m1b", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
             ]),
-            PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", plates: mockupPlates, sets: [
+            PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", plates: mockupPlates, imageKey: ScreenshotSeed.showsDemo ? ScreenshotSeed.demoImageKey : nil, imageCount: ScreenshotSeed.showsDemo ? 2 : nil, muscle: ScreenshotSeed.showsDemo ? "Chest" : nil, sets: [
                 PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: 80, restSeconds: 120, setType: "normal"),
                 PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),
                 PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: 82.5, restSeconds: 120, setType: "normal"),

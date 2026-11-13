@@ -644,6 +644,9 @@ enum ContextPayloadMapper {
                 bodyweight: raw["bodyweight"] as? Bool,
                 equipment: raw["equipment"] as? String,
                 plates: plateConfig(from: raw["plates"]),
+                imageKey: raw["imageKey"] as? String,
+                imageCount: intValue(raw["imageCount"]),
+                muscle: raw["muscle"] as? String,
                 sets: sets
             )
         }

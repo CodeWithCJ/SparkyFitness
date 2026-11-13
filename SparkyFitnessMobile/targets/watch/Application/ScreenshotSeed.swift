@@ -46,7 +46,7 @@ enum ScreenshotSeed {
     }
 
     /// Settings the phone would send, as a comma list in
-    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `fast`, `longname`, `newworkout`, `countdown`, `topmetrics` (the new view's top line starts on
+    /// `SPARKY_SCREENSHOT_OPTIONS`: `nometrics`, `upnext`, `fast`, `demo` (demo pictures for the mockup plan's bench press), `longname`, `newworkout`, `countdown`, `topmetrics` (the new view's top line starts on
     /// heart rate and calories), `dimmed` (the new view as the always-on display draws it).
     static func has(_ option: String) -> Bool {
         (ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_OPTIONS"] ?? "")
@@ -64,8 +64,15 @@ enum ScreenshotSeed {
     /// exerciseoptions or actions.
     static var workoutPage: String? {
         let v = ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"]
-        return ["upnext", "swap", "metrics", "setoptions", "exerciseoptions", "actions", "plates"].contains(v) ? v : nil
+        return ["upnext", "swap", "metrics", "demo", "setoptions", "exerciseoptions", "actions", "plates"].contains(v) ? v : nil
     }
+
+    /// The mockup plan's Incline Bench Press gets demo pictures (`demo` option or
+    /// `SPARKY_SCREENSHOT_SHEET=demo`, which also scrolls to the page).
+    static var showsDemo: Bool {
+        has("demo") || ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "demo"
+    }
+    static let demoImageKey = "sample-incline-bench-press"
 
     /// Opens the plates detail from More (`SPARKY_SCREENSHOT_SHEET=plates`).
     static var opensPlates: Bool {
@@ -166,6 +173,11 @@ enum ScreenshotSeed {
     @MainActor
     static func apply() {
         CheckInStore.shared.apply(context: SampleDay.context)
+
+        // As if the phone had sent them: files in the watch's cache.
+        if showsDemo {
+            ExerciseDemoStore.shared.seed(key: demoImageKey, jpegs: ScreenshotDemoImages.inclineBenchPress)
+        }
 
         let workout = WorkoutSessionStore.shared
         // The app delegate's hook may not be set yet this early, and a rest
