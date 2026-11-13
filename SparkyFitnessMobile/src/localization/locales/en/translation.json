@@ -649,6 +649,17 @@
         "tapToEnd": "Tap the ring to end early. At 0 the set is logged.",
         "tapToStop": "Tap the ring to stop and log the set.",
         "setOf": "Set {{number}}/{{total}}"
+      },
+      "exercises": {
+        "title": "Exercises",
+        "add": "Add exercise",
+        "undo": "Undo set",
+        "back": "Back to workout",
+        "end": "End workout",
+        "superset": "Superset",
+        "supersetHeader": "Superset",
+        "supersetMember": "superset {{badge}}",
+        "setsProgress": "{{done}}/{{total}} sets"
       }
     }
   },

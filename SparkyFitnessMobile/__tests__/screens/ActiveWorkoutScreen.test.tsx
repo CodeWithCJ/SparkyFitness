@@ -320,6 +320,16 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
   };
 });
 
+// The Exercises sheet has its own component test; here only its wiring.
+const mockExercisesSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusExercisesSheet', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockExercisesSheet.props = props;
+    return null;
+  },
+}));
+
 // Captures the custom-duration sheet's props and present args so tests can
 // assert the long-workout adjust wiring and drive onSave directly.
 const mockDurationSheet: {
@@ -1856,6 +1866,18 @@ describe('ActiveWorkoutScreen focus view', () => {
     expect(queryByTestId('card-ex-a')).toBeNull();
     expect(getByText('Add an Exercise')).toBeTruthy();
     expect(getByText('End Workout')).toBeTruthy();
+  });
+
+  it('opens the Exercises sheet from the header list button', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    renderScreen();
+    expect(mockExercisesSheet.props.visible).toBe(false);
+
+    act(() => mockHeaderProps.focusBar.onOpenList());
+    expect(mockExercisesSheet.props.visible).toBe(true);
+
+    act(() => mockExercisesSheet.props.onClose());
+    expect(mockExercisesSheet.props.visible).toBe(false);
   });
 
   it('keeps the list in guided mode, where the guided card runs the cues', () => {

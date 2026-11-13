@@ -14,6 +14,7 @@ import Animated, {
   useFrameCallback,
   useSharedValue,
   withSpring,
+  type AnimatedRef,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -270,13 +271,13 @@ export function resetReorderDragPreview(
   panY.value = 0;
 }
 
-interface ReorderItemRowProps {
-  item: ExerciseReorderItem;
-  index: number;
-  exercisesById: Map<string, WorkoutCardExercise>;
-  railColor: string | null;
-  getImageSource: GetImageSource;
+/** Everything the drag-to-reorder surfaces share; see {@link useReorderDrag}. */
+export interface ReorderDrag {
   strides: number[];
+  offsets: number[];
+  scrollHandler: ReturnType<typeof useAnimatedScrollHandler>;
+  scrollEnabled: boolean;
+  setScrollEnabled: (enabled: boolean) => void;
   activeIndex: SharedValue<number>;
   committing: SharedValue<boolean>;
   ty: SharedValue<number>;
@@ -286,30 +287,174 @@ interface ReorderItemRowProps {
   scrollY: SharedValue<number>;
   dragStartScrollY: SharedValue<number>;
   onCommit: (fromItemIndex: number, toItemIndex: number) => void;
-  setScrollEnabled: (enabled: boolean) => void;
 }
 
-function ReorderItemRow({
-  item,
-  index,
-  exercisesById,
-  railColor,
-  getImageSource,
-  strides,
-  activeIndex,
-  committing,
-  ty,
-  targetIndex,
-  panY,
-  pointerAbsY,
-  scrollY,
-  dragStartScrollY,
-  onCommit,
-  setScrollEnabled,
-}: ReorderItemRowProps) {
-  const { t } = useTranslation();
-  const textMuted = String(useCSSVariable('--color-text-muted'));
-  const isRun = item.groupId != null;
+/**
+ * The drag state of an exercise reorder list (solo exercises and whole
+ * superset runs as items): target-index math, sibling preview, commit handoff,
+ * haptics and edge auto-scroll. Shared by the full-screen reorder overlay and
+ * the focus view's Exercises sheet so both reorder identically.
+ */
+export function useReorderDrag(
+  items: ExerciseReorderItem[],
+  getItemHeight: (item: ExerciseReorderItem) => number,
+  itemGap: number,
+  onMoveItem: (fromItemIndex: number, toItemIndex: number) => void,
+  scrollRef: AnimatedRef<Animated.ScrollView>
+): ReorderDrag {
+  // Item strides (block height + gap) and their prefix-sum offsets drive the
+  // drag target math. Plain memoized arrays so the worklets can capture them.
+  const strides = useMemo(
+    () => items.map((item) => getItemHeight(item) + itemGap),
+    [items, getItemHeight, itemGap]
+  );
+  const offsets = useMemo(() => {
+    const out: number[] = [];
+    let acc = 0;
+    for (const stride of strides) {
+      out.push(acc);
+      acc += stride;
+    }
+    return out;
+  }, [strides]);
+  const contentHeight = useMemo(
+    () => strides.reduce((sum, s) => sum + s, 0),
+    [strides]
+  );
+
+  const activeIndex = useSharedValue(-1);
+  // True between a committing drop and the reordered rows rendering: keeps the
+  // drag transforms frozen at the drop layout so the handoff to the new order is
+  // seamless (see the row gesture's onEnd/onFinalize and the reset effect below).
+  const committing = useSharedValue(false);
+  const panY = useSharedValue(0);
+  const scrollY = useSharedValue(0);
+  const dragStartScrollY = useSharedValue(0);
+  const pointerAbsY = useSharedValue(0);
+
+  // Effective displacement of the dragged block: pan plus any auto-scroll that
+  // happened since the drag began, so target math tracks auto-scroll for free.
+  const ty = useDerivedValue(
+    () => panY.value + (scrollY.value - dragStartScrollY.value)
+  );
+  const targetIndex = useDerivedValue(() =>
+    activeIndex.value < 0
+      ? -1
+      : computeReorderTargetIndex(strides, offsets, activeIndex.value, ty.value)
+  );
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const setScrollEnabledJS = useCallback(
+    (enabled: boolean) => setScrollEnabled(enabled),
+    []
+  );
+
+  // Set when a committing drop fires; cleared by the reset effect once the new
+  // order has rendered. Guards the effect so it only releases the frozen drag
+  // transforms on the render that actually applies the reorder.
+  const pendingReset = useRef(false);
+  const handleCommit = useCallback(
+    (fromItemIndex: number, toItemIndex: number) => {
+      if (
+        fromItemIndex >= 0 &&
+        toItemIndex >= 0 &&
+        fromItemIndex !== toItemIndex
+      ) {
+        pendingReset.current = true;
+        onMoveItem(fromItemIndex, toItemIndex);
+      }
+    },
+    [onMoveItem]
+  );
+
+  // Release the frozen drag transforms only after the reordered `items` have
+  // rendered. Because the drag preview already lays rows out at their post-move
+  // positions, resetting translateY to 0 here is a no-op visually.
+  useEffect(() => {
+    if (!pendingReset.current) return;
+    pendingReset.current = false;
+    committing.value = false;
+    // Writing Reanimated shared values from an effect is the supported API; the
+    // compiler's immutability rule flags it as a mutation regardless.
+    // eslint-disable-next-line react-hooks/immutability
+    activeIndex.value = -1;
+    panY.value = 0;
+  }, [items, committing, activeIndex, panY]);
+
+  // One selection tick each time the drop target changes, guarded so the
+  // reset-to-idle (-1) transition on release doesn't fire a phantom tick.
+  useAnimatedReaction(
+    () => targetIndex.value,
+    (curr, prev) => {
+      if (
+        activeIndex.value >= 0 &&
+        curr >= 0 &&
+        prev != null &&
+        curr !== prev
+      ) {
+        runOnJS(fireSelectionHaptic)();
+      }
+    }
+  );
+
+  // Auto-scroll while the pointer is near a viewport edge during a drag.
+  useFrameCallback(() => {
+    'worklet';
+    if (activeIndex.value < 0 || committing.value) return;
+    const frame = measure(scrollRef);
+    if (frame === null) return;
+    const pointer = pointerAbsY.value;
+    let delta = 0;
+    if (pointer < frame.pageY + AUTO_SCROLL_EDGE) delta = -AUTO_SCROLL_SPEED;
+    else if (pointer > frame.pageY + frame.height - AUTO_SCROLL_EDGE)
+      delta = AUTO_SCROLL_SPEED;
+    if (delta === 0) return;
+    const maxScroll = Math.max(0, contentHeight - frame.height);
+    const next = Math.min(maxScroll, Math.max(0, scrollY.value + delta));
+    scrollTo(scrollRef, 0, next, false);
+  });
+
+  return {
+    strides,
+    offsets,
+    scrollHandler,
+    scrollEnabled,
+    setScrollEnabled: setScrollEnabledJS,
+    activeIndex,
+    committing,
+    ty,
+    targetIndex,
+    panY,
+    pointerAbsY,
+    scrollY,
+    dragStartScrollY,
+    onCommit: handleCommit,
+  };
+}
+
+/**
+ * One reorder item's float / sibling-shift style and its long-press drag
+ * gesture, for the item at `index`. The caller attaches `gesture` to its drag
+ * handle(s) and `animatedStyle` to the item's wrapper.
+ */
+export function useReorderItemDrag(index: number, drag: ReorderDrag) {
+  const {
+    strides,
+    activeIndex,
+    committing,
+    ty,
+    targetIndex,
+    panY,
+    pointerAbsY,
+    scrollY,
+    dragStartScrollY,
+    onCommit,
+    setScrollEnabled,
+  } = drag;
 
   const animatedStyle = useAnimatedStyle(() => {
     const active = activeIndex.value;
@@ -374,9 +519,11 @@ function ReorderItemRow({
           panY.value = event.translationY;
           pointerAbsY.value = event.absoluteY;
         })
-        .onEnd(() => {
+        .onEnd((_event, success) => {
           'worklet';
-          const from = activeIndex.value;
+          // A cancelled or failed pan (app backgrounded, a parent gesture took
+          // over) must not commit a move the user never finished.
+          const from = success ? activeIndex.value : -1;
           const to = targetIndex.value;
           // A real move keeps the drag transforms frozen at the drop layout; the
           // post-commit effect clears them once the reordered rows have rendered,
@@ -405,6 +552,31 @@ function ReorderItemRow({
       setScrollEnabled,
     ]
   );
+
+  return { animatedStyle, gesture };
+}
+
+interface ReorderItemRowProps {
+  item: ExerciseReorderItem;
+  index: number;
+  exercisesById: Map<string, WorkoutCardExercise>;
+  railColor: string | null;
+  getImageSource: GetImageSource;
+  drag: ReorderDrag;
+}
+
+function ReorderItemRow({
+  item,
+  index,
+  exercisesById,
+  railColor,
+  getImageSource,
+  drag,
+}: ReorderItemRowProps) {
+  const { t } = useTranslation();
+  const textMuted = String(useCSSVariable('--color-text-muted'));
+  const isRun = item.groupId != null;
+  const { animatedStyle, gesture } = useReorderItemDrag(index, drag);
 
   const rows = item.entryIds.map((entryId) => {
     const exercise = exercisesById.get(entryId);
@@ -532,134 +704,25 @@ export function WorkoutReorderContent({
     return map;
   }, [exercises, items, palette]);
 
-  // Item strides (row-block height + gap) and their prefix-sum offsets drive
-  // the drag target math. Kept as plain memoized arrays so the worklets can
-  // capture them.
-  const strides = useMemo(
-    () =>
-      items.map(
-        (item) => item.entryIds.length * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP
-      ),
-    [items]
-  );
-  const offsets = useMemo(() => {
-    const out: number[] = [];
-    let acc = 0;
-    for (const stride of strides) {
-      out.push(acc);
-      acc += stride;
-    }
-    return out;
-  }, [strides]);
-  const contentHeight = useMemo(
-    () => strides.reduce((sum, s) => sum + s, 0),
-    [strides]
-  );
-
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const activeIndex = useSharedValue(-1);
-  // True between a committing drop and the reordered rows rendering: keeps the
-  // drag transforms frozen at the drop layout so the handoff to the new order is
-  // seamless (see the row gesture's onEnd/onFinalize and the reset effect below).
-  const committing = useSharedValue(false);
-  const panY = useSharedValue(0);
-  const scrollY = useSharedValue(0);
-  const dragStartScrollY = useSharedValue(0);
-  const pointerAbsY = useSharedValue(0);
-
-  // Effective displacement of the dragged block: pan plus any auto-scroll that
-  // happened since the drag began, so target math tracks auto-scroll for free.
-  const ty = useDerivedValue(
-    () => panY.value + (scrollY.value - dragStartScrollY.value)
-  );
-  const targetIndex = useDerivedValue(() =>
-    activeIndex.value < 0
-      ? -1
-      : computeReorderTargetIndex(strides, offsets, activeIndex.value, ty.value)
-  );
-
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
-  });
-
-  const [scrollEnabled, setScrollEnabled] = useState(true);
-  const setScrollEnabledJS = useCallback(
-    (enabled: boolean) => setScrollEnabled(enabled),
+  const getItemHeight = useCallback(
+    (item: ExerciseReorderItem) => item.entryIds.length * REORDER_ROW_HEIGHT,
     []
   );
-
-  // Set when a committing drop fires; cleared by the reset effect once the new
-  // order has rendered. Guards the effect so it only releases the frozen drag
-  // transforms on the render that actually applies the reorder.
-  const pendingReset = useRef(false);
-  const handleCommit = useCallback(
-    (fromItemIndex: number, toItemIndex: number) => {
-      if (
-        fromItemIndex >= 0 &&
-        toItemIndex >= 0 &&
-        fromItemIndex !== toItemIndex
-      ) {
-        pendingReset.current = true;
-        onMoveItem(fromItemIndex, toItemIndex);
-      }
-    },
-    [onMoveItem]
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const drag = useReorderDrag(
+    items,
+    getItemHeight,
+    REORDER_ITEM_GAP,
+    onMoveItem,
+    scrollRef
   );
-
-  // Release the frozen drag transforms only after the reordered `items` have
-  // rendered. Because the drag preview already lays rows out at their post-move
-  // positions, resetting translateY to 0 here is a no-op visually — the rows are
-  // already where the new array order places them, so there is no snap-back.
-  useEffect(() => {
-    if (!pendingReset.current) return;
-    pendingReset.current = false;
-    committing.value = false;
-    // Writing Reanimated shared values from an effect is the supported API; the
-    // compiler's immutability rule flags it as a mutation regardless.
-    // eslint-disable-next-line react-hooks/immutability
-    activeIndex.value = -1;
-    panY.value = 0;
-  }, [items, committing, activeIndex, panY]);
-
-  // One selection tick each time the drop target changes, guarded so the
-  // reset-to-idle (-1) transition on release doesn't fire a phantom tick.
-  useAnimatedReaction(
-    () => targetIndex.value,
-    (curr, prev) => {
-      if (
-        activeIndex.value >= 0 &&
-        curr >= 0 &&
-        prev != null &&
-        curr !== prev
-      ) {
-        runOnJS(fireSelectionHaptic)();
-      }
-    }
-  );
-
-  // Auto-scroll while the pointer is near a viewport edge during a drag.
-  useFrameCallback(() => {
-    'worklet';
-    if (activeIndex.value < 0 || committing.value) return;
-    const frame = measure(scrollRef);
-    if (frame === null) return;
-    const pointer = pointerAbsY.value;
-    let delta = 0;
-    if (pointer < frame.pageY + AUTO_SCROLL_EDGE) delta = -AUTO_SCROLL_SPEED;
-    else if (pointer > frame.pageY + frame.height - AUTO_SCROLL_EDGE)
-      delta = AUTO_SCROLL_SPEED;
-    if (delta === 0) return;
-    const maxScroll = Math.max(0, contentHeight - frame.height);
-    const next = Math.min(maxScroll, Math.max(0, scrollY.value + delta));
-    scrollTo(scrollRef, 0, next, false);
-  });
 
   return (
     <Animated.ScrollView
       ref={scrollRef}
-      onScroll={scrollHandler}
+      onScroll={drag.scrollHandler}
       scrollEventThrottle={16}
-      scrollEnabled={scrollEnabled}
+      scrollEnabled={drag.scrollEnabled}
       contentContainerStyle={{
         padding: 12,
         paddingBottom: insets.bottom + 24,
@@ -673,17 +736,7 @@ export function WorkoutReorderContent({
           exercisesById={exercisesById}
           railColor={railColorByItemKey.get(item.key) ?? null}
           getImageSource={getImageSource}
-          strides={strides}
-          activeIndex={activeIndex}
-          committing={committing}
-          ty={ty}
-          targetIndex={targetIndex}
-          panY={panY}
-          pointerAbsY={pointerAbsY}
-          scrollY={scrollY}
-          dragStartScrollY={dragStartScrollY}
-          onCommit={handleCommit}
-          setScrollEnabled={setScrollEnabledJS}
+          drag={drag}
         />
       ))}
     </Animated.ScrollView>
