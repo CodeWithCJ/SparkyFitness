@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import RecordActivityScreen from '../../src/screens/RecordActivityScreen';
@@ -682,6 +683,33 @@ describe('RecordActivityScreen fitness test', () => {
       await waitFor(() => expect(saveFitnessTest).toHaveBeenCalled());
       expect(saveFitnessTest).toHaveBeenCalledWith(
         expect.objectContaining({ duration_seconds: 1495 })
+      );
+    });
+
+    it('saves a treadmill 5K stopped after a few seconds as an ordinary run, without 5 km', async () => {
+      jest.mocked(elapsedSeconds).mockReturnValue(2);
+      state(treadmill('5k'));
+      saved();
+      const screen = await renderScreen();
+      expect(screen.getByText(/saved as an ordinary run/)).toBeTruthy();
+      fireEvent.press(screen.getByText('Save activity'));
+      await waitFor(() =>
+        expect(navigation.replace).toHaveBeenCalledWith(
+          'RunSummary',
+          expect.anything()
+        )
+      );
+      expect(saveFitnessTest).not.toHaveBeenCalled();
+      expect(saveRecordedActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'km',
+        null,
+        null,
+        true
+      );
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
       );
     });
 

@@ -1037,6 +1037,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testIndoor && indoorTestResult && !indoorTestResult.ok
       ? indoorTestResult.reason
       : null;
+  // Only a test with a result is filed. One the result check refuses (a
+  // treadmill 5K stopped after a few seconds) is saved as an ordinary run,
+  // as the finished card says, rather than sent for the server to reject.
+  const testToSave = testOutcome ? testMeasurement : null;
 
   const handleSave = useCallback(async () => {
     if (!session) return;
@@ -1047,7 +1051,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         points,
         distanceUnit,
         session.indoor
-          ? session.fitnessTest === '5k' && indoorDistanceKm === null
+          ? testToSave?.type === '5k' && indoorDistanceKm === null
             ? FIVE_K_METERS / METERS_PER_KM
             : indoorDistanceKm
           : null,
@@ -1058,22 +1062,22 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // failure throws like any save failure: the recording is kept, and the
       // retry reuses the saved activity and replaces the test, never doubling it.
       let savedTest: FitnessTestResponse | null = null;
-      if (session.fitnessTest && testMeasurement) {
+      if (session.fitnessTest && testToSave) {
         savedTest = await saveFitnessTest({
-          test_type: testMeasurement.type,
+          test_type: testToSave.type,
           test_date: toLocalDateString(new Date(session.startedAt)),
-          distance_meters: testMeasurement.distanceMeters,
-          duration_seconds: testMeasurement.durationSeconds,
-          split_distance_meters: testMeasurement.splitDistanceMeters ?? null,
+          distance_meters: testToSave.distanceMeters,
+          duration_seconds: testToSave.durationSeconds,
+          split_distance_meters: testToSave.splitDistanceMeters ?? null,
           exercise_entry_id: saved.entryId,
           surface: session.indoor ? 'indoor' : 'outdoor',
           incline_percent: session.indoor
-            ? (testMeasurement.inclinePercent ?? null)
+            ? (testToSave.inclinePercent ?? null)
             : null,
           incline_adjusted:
             session.indoor === true &&
-            testMeasurement.inclinePercent != null &&
-            testMeasurement.adjustForIncline !== false,
+            testToSave.inclinePercent != null &&
+            testToSave.adjustForIncline !== false,
         });
       }
       // Ticks a program workout off only if the plan was followed to its end; a run cut short can be tried again. The day is the one the run
@@ -1183,7 +1187,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     queryClient,
     session,
     t,
-    testMeasurement,
+    testToSave,
     updateShoe,
   ]);
 
