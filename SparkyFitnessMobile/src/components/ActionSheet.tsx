@@ -56,7 +56,7 @@ export interface ActionSheetRef {
 interface ActionSheetProps {
   title: string;
   items: ActionSheetItem[];
-  layout?: 'list' | 'grid';
+  layout?: 'list' | 'grid' | 'cards';
   /** Renders a back chevron left of the title (content-swap flows). */
   onBack?: () => void;
   onDismiss?: () => void;
@@ -94,11 +94,14 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       windowHeight - sheetInsets.top - sheetInsets.bottom - 24
     );
 
-    const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
-      '--color-surface',
-      '--color-text-muted',
-      '--color-accent-primary',
-    ]) as [string, string, string];
+    const [surfaceBg, textMuted, accentPrimary, textPrimary, dangerSubtle] =
+      useCSSVariable([
+        '--color-surface',
+        '--color-text-muted',
+        '--color-accent-primary',
+        '--color-text-primary',
+        '--color-text-danger-subtle',
+      ]) as [string, string, string, string, string];
 
     const clearScheduledPresent = useCallback(() => {
       if (presentFrameRef.current != null) {
@@ -235,7 +238,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
         containerComponent={sheetContainer}
         backgroundStyle={{
           backgroundColor: surfaceBg,
-          ...(layout === 'grid'
+          ...(layout === 'grid' || layout === 'cards'
             ? { borderTopLeftRadius: 28, borderTopRightRadius: 28 }
             : {}),
         }}
@@ -245,116 +248,170 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
         onDismiss={handleDismiss}
       >
         <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
-          <View
-            className={
-              layout === 'grid'
-                ? 'px-5 pt-2 pb-4'
-                : 'px-4 py-4 border-b border-border-subtle'
-            }
-          >
-            <Text
-              numberOfLines={1}
-              accessibilityRole="header"
-              className={
-                layout === 'grid'
-                  ? 'text-xl font-semibold text-text-primary pr-12'
-                  : 'text-lg font-semibold text-center text-text-primary px-8'
-              }
-            >
-              {title}
-            </Text>
-            {layout === 'grid' && (
-              <Pressable
-                onPress={dismissSheet}
-                accessibilityRole="button"
-                accessibilityLabel={t('common.close', {
-                  defaultValue: 'Close',
-                })}
-                className="absolute right-4 top-0 w-11 h-11 items-center justify-center rounded-full bg-raised"
+          {layout === 'cards' ? (
+            <View className="px-4 pb-6 pt-1">
+              <Text
+                numberOfLines={1}
+                accessibilityRole="header"
+                className="mb-3 text-[26px] font-extrabold text-text-primary"
               >
-                <Icon name="close" size={20} color={textMuted} />
-              </Pressable>
-            )}
-            {onBack && (
-              <Pressable
-                onPress={onBack}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityRole="button"
-                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-                className="absolute left-2 top-0 bottom-0 justify-center px-2"
-              >
-                <Icon name="chevron-back" size={20} color={accentPrimary} />
-              </Pressable>
-            )}
-          </View>
-          {sections.map((section, sectionIndex) => (
-            <React.Fragment key={section[0].key}>
-              {sectionIndex > 0 && (
-                <View
-                  testID="action-sheet-group-spacer"
-                  className="h-3 bg-background"
-                />
-              )}
-              <View
-                className={
-                  layout === 'grid'
-                    ? 'flex-row flex-wrap gap-3 px-4 pt-2 pb-4'
-                    : undefined
-                }
-              >
-                {section.map((item) => (
+                {title}
+              </Text>
+              <View className="gap-2">
+                {items.map((item) => (
                   <Pressable
                     key={item.key}
                     testID={`action-sheet-item-${item.key}`}
                     onPress={() => handleItemPress(item)}
-                    className={
-                      layout === 'grid'
-                        ? 'flex-1 items-center rounded-2xl bg-raised p-5'
-                        : 'px-4 py-3.5 border-b border-border-subtle'
-                    }
-                    style={({ pressed }) => ({
-                      ...(layout === 'grid'
-                        ? { flexBasis: '40%' }
-                        : { borderBottomWidth: StyleSheet.hairlineWidth }),
-                      opacity: pressed ? 0.65 : 1,
-                    })}
                     accessibilityRole="button"
-                    // Screen readers announce the description with the label, so
-                    // the distinction is not sighted-only.
                     accessibilityLabel={
                       item.description
                         ? `${item.label}. ${item.description}`
                         : item.label
                     }
+                    className="min-h-[52px] flex-row items-center gap-4 rounded-2xl bg-raised px-4 py-2.5 active:opacity-70"
                   >
-                    {item.icon && (
-                      <View className="mb-3" accessible={false}>
+                    {item.icon != null && (
+                      <View className="w-6 items-center" accessible={false}>
                         <Icon
                           name={item.icon}
-                          size={layout === 'grid' ? 44 : 28}
-                          color={accentPrimary}
+                          size={22}
+                          color={item.destructive ? dangerSubtle : textPrimary}
                         />
                       </View>
                     )}
-                    <Text
-                      className={`${layout === 'grid' ? 'text-sm text-center' : 'text-base'} font-medium ${
-                        item.destructive
-                          ? 'text-text-danger-subtle'
-                          : 'text-text-primary'
-                      }`}
-                    >
-                      {item.label}
-                    </Text>
-                    {item.description ? (
-                      <Text className="text-sm text-text-muted mt-0.5">
-                        {item.description}
+                    <View className="min-w-0 flex-1">
+                      <Text
+                        className={`text-[17px] font-bold ${item.destructive ? 'text-text-danger-subtle' : 'text-text-primary'}`}
+                      >
+                        {item.label}
                       </Text>
-                    ) : null}
+                      {item.description ? (
+                        <Text className="text-[13px] text-text-secondary">
+                          {item.description}
+                        </Text>
+                      ) : null}
+                    </View>
                   </Pressable>
                 ))}
               </View>
-            </React.Fragment>
-          ))}
+            </View>
+          ) : (
+            <>
+              <View
+                className={
+                  layout === 'grid'
+                    ? 'px-5 pt-2 pb-4'
+                    : 'px-4 py-4 border-b border-border-subtle'
+                }
+              >
+                <Text
+                  numberOfLines={1}
+                  accessibilityRole="header"
+                  className={
+                    layout === 'grid'
+                      ? 'text-xl font-semibold text-text-primary pr-12'
+                      : 'text-lg font-semibold text-center text-text-primary px-8'
+                  }
+                >
+                  {title}
+                </Text>
+                {layout === 'grid' && (
+                  <Pressable
+                    onPress={dismissSheet}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.close', {
+                      defaultValue: 'Close',
+                    })}
+                    className="absolute right-4 top-0 w-11 h-11 items-center justify-center rounded-full bg-raised"
+                  >
+                    <Icon name="close" size={20} color={textMuted} />
+                  </Pressable>
+                )}
+                {onBack && (
+                  <Pressable
+                    onPress={onBack}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.back', {
+                      defaultValue: 'Back',
+                    })}
+                    className="absolute left-2 top-0 bottom-0 justify-center px-2"
+                  >
+                    <Icon name="chevron-back" size={20} color={accentPrimary} />
+                  </Pressable>
+                )}
+              </View>
+              {sections.map((section, sectionIndex) => (
+                <React.Fragment key={section[0].key}>
+                  {sectionIndex > 0 && (
+                    <View
+                      testID="action-sheet-group-spacer"
+                      className="h-3 bg-background"
+                    />
+                  )}
+                  <View
+                    className={
+                      layout === 'grid'
+                        ? 'flex-row flex-wrap gap-3 px-4 pt-2 pb-4'
+                        : undefined
+                    }
+                  >
+                    {section.map((item) => (
+                      <Pressable
+                        key={item.key}
+                        testID={`action-sheet-item-${item.key}`}
+                        onPress={() => handleItemPress(item)}
+                        className={
+                          layout === 'grid'
+                            ? 'flex-1 items-center rounded-2xl bg-raised p-5'
+                            : 'px-4 py-3.5 border-b border-border-subtle'
+                        }
+                        style={({ pressed }) => ({
+                          ...(layout === 'grid'
+                            ? { flexBasis: '40%' }
+                            : { borderBottomWidth: StyleSheet.hairlineWidth }),
+                          opacity: pressed ? 0.65 : 1,
+                        })}
+                        accessibilityRole="button"
+                        // Screen readers announce the description with the label, so
+                        // the distinction is not sighted-only.
+                        accessibilityLabel={
+                          item.description
+                            ? `${item.label}. ${item.description}`
+                            : item.label
+                        }
+                      >
+                        {item.icon && (
+                          <View className="mb-3" accessible={false}>
+                            <Icon
+                              name={item.icon}
+                              size={layout === 'grid' ? 44 : 28}
+                              color={accentPrimary}
+                            />
+                          </View>
+                        )}
+                        <Text
+                          className={`${layout === 'grid' ? 'text-sm text-center' : 'text-base'} font-medium ${
+                            item.destructive
+                              ? 'text-text-danger-subtle'
+                              : 'text-text-primary'
+                          }`}
+                        >
+                          {item.label}
+                        </Text>
+                        {item.description ? (
+                          <Text className="text-sm text-text-muted mt-0.5">
+                            {item.description}
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    ))}
+                  </View>
+                </React.Fragment>
+              ))}
+            </>
+          )}
         </BottomSheetScrollView>
       </BottomSheetModal>
     );

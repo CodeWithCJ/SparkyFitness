@@ -174,14 +174,17 @@ const nutritionixItem: ExternalExerciseItem = {
 
 let queryClient: QueryClient;
 
-const renderScreen = (replaceFor?: ExerciseReplaceContext) => {
+const renderScreen = (
+  replaceFor?: ExerciseReplaceContext,
+  focusStyle?: boolean
+) => {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const route = {
     key: 'ExerciseSearch-key',
     name: 'ExerciseSearch' as const,
-    params: { returnKey: 'workout-form-key', replaceFor },
+    params: { returnKey: 'workout-form-key', replaceFor, focusStyle },
   };
   return render(
     <QueryClientProvider client={queryClient}>
@@ -631,6 +634,15 @@ describe('ExerciseSearchScreen', () => {
         'similar',
         ['other-id']
       );
+    });
+
+    it('draws the focus view Replace page: a Replace button per card and a search-all button', () => {
+      const screen = renderScreen(replaceFor, true);
+      expect(screen.getByText('Bench Press')).toBeTruthy();
+      expect(screen.getByText('Similar exercises')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Replace with Dumbbell Press'));
+      expect(mockNavigation.goBack).toHaveBeenCalled();
+      expect(screen.getByText('Replace with another exercise…')).toBeTruthy();
     });
 
     it('switches to the different-equipment ranking', () => {

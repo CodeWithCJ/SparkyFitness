@@ -670,6 +670,10 @@
         "volume": "Vol",
         "e1rm": "1RM",
         "tenrm": "10RM"
+      },
+      "menu": {
+        "viewHint": "Instructions and history",
+        "warmupsHint": "Calculated from your working weight"
       }
     }
   },
@@ -4478,7 +4482,12 @@
       "noMuscles": "No muscles recorded for {{name}}",
       "noMusclesHint": "Add its primary muscles in the exercise library to get suggestions.",
       "empty": "No alternatives found",
-      "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown."
+      "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown.",
+      "replaceWith": "Replace with {{name}}",
+      "replace": "Replace",
+      "cardsHint": "Swap for something similar. Logged sets stay with the new exercise.",
+      "similarHeading": "Similar exercises",
+      "otherEquipmentHeading": "Other equipment"
     }
   },
   "foodSearch": {
