@@ -57,6 +57,11 @@ enum ScreenshotSeed {
             .contains { $0 == option }
     }
 
+    /// `SPARKY_SCREENSHOT_BPM`: the live heart rate to seed, to see a zone's colour.
+    static var bpmOverride: Double? {
+        Double(ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_BPM"] ?? "")
+    }
+
     /// Opens the exercise picker on appear. A sheet cannot be driven from
     /// `simctl` the way a launch environment can, so the view checks this.
     static var opensExerciseList: Bool {
@@ -138,7 +143,7 @@ enum ScreenshotSeed {
     @MainActor
     private static func seedMockup(_ workout: WorkoutSessionStore) {
         workout.start(with: SampleDay.mockupPlan)
-        workout.recordHeartRate(bpm: Double(ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_BPM"] ?? "") ?? 141)
+        workout.recordHeartRate(bpm: ScreenshotSeed.bpmOverride ?? 141)
         workout.recordActiveEnergy(kcal: 186)
         // Logged before the screen under test: both band sets, the first
         // bench set, a carry pair, the first pull-up.

@@ -133,7 +133,10 @@ enum SampleDay {
             fast: ScreenshotSeed.has("fast")
                 ? WatchFast(startedAt: Date().addingTimeInterval(-14 * 3600), targetEndAt: Date().addingTimeInterval(2 * 3600), label: "16:8")
                 : nil,
-            fastSynced: true
+            fastSynced: true,
+            // Percent of a 190 max, as the phone sends for someone with no
+            // zones of their own set.
+            heartRateZoneFloors: [95, 114, 133, 152, 171]
         )
     }
 
@@ -373,7 +376,7 @@ enum SampleDay {
             changedPresetName: "Push Day"
         )
 
-    static let workoutBpm: Double = 142
+    static let workoutBpm: Double = ScreenshotSeed.bpmOverride ?? 142
 
     /// Active energy a few minutes into the session, for the metrics strip.
     static let workoutKcal: Double = 284

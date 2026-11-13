@@ -253,6 +253,13 @@ export interface WatchContextPayload {
   runHeartRateMinBpm?: number | null;
   runHeartRateMaxBpm?: number | null;
   /**
+   * The lowest bpm of heart rate zones 1 to 5 (five ascending numbers), from
+   * the person's own resolved zones. The new workout view colours the live
+   * heart rate by the zone it falls in. Missing keeps the watch's last value;
+   * with none ever sent the heart rate keeps its plain red.
+   */
+  heartRateZoneFloors?: number[] | null;
+  /**
    * Plans a wrist-only run can follow: the training-program workout due now
    * (carrying `programId`/`programIndex`) then the built-in interval plans,
    * with step names already translated. Missing keeps the watch's last list.

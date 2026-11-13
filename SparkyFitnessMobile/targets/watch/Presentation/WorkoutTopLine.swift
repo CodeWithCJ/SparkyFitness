@@ -33,6 +33,7 @@ struct WorkoutTopLine: View {
     private var liveReadings: Readings {
         Readings(
             bpm: store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--",
+            heart: WatchStyle.heartColor(bpm: store.latestBpm, floors: checkIn.context.heartRateZoneFloors),
             kcal: store.activeEnergyKcal.map { "\(Int(checkIn.context.energyFromKcal($0)))" } ?? "--",
             energyUnit: checkIn.context.energyUnitLabel
         )
@@ -59,6 +60,8 @@ struct WorkoutTopLine: View {
 
     struct Readings: Equatable {
         let bpm: String
+        /// The colour of the heart rate zone the reading is in.
+        let heart: Color
         let kcal: String
         /// The account's energy unit, as the reading is converted to it.
         let energyUnit: String
@@ -101,7 +104,8 @@ private struct TopLineContent: View, Equatable {
 
     private var metricsLine: some View {
         let stale = dimmed
-        let heart = stale ? WatchStyle.grey.opacity(0.7) : WatchStyle.heart
+        // Dimmed keeps the frozen reading, still in its zone's colour.
+        let heart = stale ? readings.heart.opacity(0.7) : readings.heart
         let size = WatchStyle.num(22)
         return HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(9)) {
             HStack(spacing: WatchStyle.m(4)) {

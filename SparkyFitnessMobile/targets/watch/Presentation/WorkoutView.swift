@@ -893,6 +893,23 @@ enum WatchStyle {
     }
     static var bottom: CGFloat { m(10) }
     static let heart = Color(red: 237 / 255, green: 94 / 255, blue: 99 / 255)
+    /// Heart rate zones 1 to 5, easy to hard: the app's own zone colours
+    /// (`HEART_RATE_ZONE_COLORS` in `shared/src/utils/heartRateZones.ts`, which
+    /// the phone's and the web's zone charts use).
+    private static let zoneColors: [Color] = [
+        Color(red: 0x94 / 255, green: 0xa3 / 255, blue: 0xb8 / 255),
+        Color(red: 0x3b / 255, green: 0x82 / 255, blue: 0xf6 / 255),
+        Color(red: 0x22 / 255, green: 0xc5 / 255, blue: 0x5e / 255),
+        Color(red: 0xf5 / 255, green: 0x9e / 255, blue: 0x0b / 255),
+        Color(red: 0xef / 255, green: 0x44 / 255, blue: 0x44 / 255),
+    ]
+    /// The colour of the zone a heart rate is in, below zone 1 as zone 1. The
+    /// plain heart colour when there is no reading or the phone has sent no
+    /// zones yet.
+    static func heartColor(bpm: Double?, floors: [Double]?) -> Color {
+        guard let bpm, let zone = WatchHeartRateZone.zone(for: bpm, floors: floors) else { return heart }
+        return zoneColors[max(zone, 1) - 1]
+    }
     /// The mockups are set in SF Pro, whose numerals draw about 12% larger than
     /// the watch's own font at the same size; large numerals use this.
     static func num(_ px: CGFloat) -> CGFloat { m(px) * 1.12 }
@@ -1156,6 +1173,7 @@ struct WorkoutDemoPage: View {
 /// about the set.
 struct WorkoutMetricsPage: View {
     @EnvironmentObject private var store: WorkoutSessionStore
+    @EnvironmentObject private var checkIn: CheckInStore
     @Environment(\.setTint) private var tint
 
     private var elapsed: Int {
@@ -1185,7 +1203,7 @@ struct WorkoutMetricsPage: View {
                 Image(systemName: "heart.fill")
                     .font(.system(size: WatchStyle.m(30)))
             }
-            .foregroundStyle(WatchStyle.heart)
+            .foregroundStyle(WatchStyle.heartColor(bpm: store.latestBpm, floors: checkIn.context.heartRateZoneFloors))
             .frame(height: WatchStyle.m(48), alignment: .leading)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(String(localized: "watch.workout.heartRateReading", defaultValue: "Heart rate \(bpmText)"))
@@ -2031,7 +2049,7 @@ private struct HoldRunning: View {
                                     Text("\(Int(bpm.rounded()))").monospacedDigit()
                                 }
                                 .font(.system(size: WatchStyle.m(19), weight: .semibold))
-                                .foregroundStyle(WatchStyle.heart)
+                                .foregroundStyle(WatchStyle.heartColor(bpm: bpm, floors: checkIn.context.heartRateZoneFloors))
                             }
                         }
                         .lineLimit(1)
@@ -2658,7 +2676,7 @@ private struct RestView: View {
                             Text("\(Int(bpm.rounded()))").monospacedDigit()
                         }
                         .font(.system(size: WatchStyle.m(15), weight: .semibold))
-                        .foregroundStyle(WatchStyle.heart)
+                        .foregroundStyle(WatchStyle.heartColor(bpm: bpm, floors: checkIn.context.heartRateZoneFloors))
                     }
                 }
                 .padding(ringLine + WatchStyle.m(2))

@@ -560,6 +560,11 @@ struct WatchContext: Codable, Equatable {
     /// Learned correction for the watch's indoor distance. Nil until the
     /// phone has learned one, which reads as no correction.
     var indoorDistanceScale: IndoorDistanceScale? = nil
+    /// The lowest bpm of heart rate zones 1 to 5, from the person's own
+    /// zones on the phone; the new workout view colours the live heart rate by
+    /// the zone it is in. Nil (an older phone build, or zones not loaded) keeps
+    /// the plain heart colour.
+    var heartRateZoneFloors: [Double]? = nil
 
     static let empty = WatchContext(
         today: nil,
