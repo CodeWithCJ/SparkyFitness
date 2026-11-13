@@ -3949,6 +3949,7 @@
     "updateSuccess": "Workout plan updated",
     "createSuccess": "Workout plan created",
     "updateFailed": "Failed to update workout plan",
+    "invalidSetValues": "Some set values are incomplete",
     "createFailed": "Failed to create workout plan",
     "editTitle": "Edit workout plan",
     "createTitle": "Create workout plan",
