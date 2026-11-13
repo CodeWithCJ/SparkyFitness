@@ -621,7 +621,8 @@
       "bar": {
         "previousSet": "Previous set, edit in place",
         "logSet": "Log set",
-        "logSetRest": "Log set, rest {{duration}}"
+        "logSetRest": "Log set, rest {{duration}}",
+        "startHold": "Start hold"
       },
       "hero": {
         "label": "Set {{setNumber}} of {{total}}",
@@ -644,7 +645,25 @@
       },
       "planShort": "Plan {{sets}} × {{reps}}",
       "lastTimeShort": "Last time {{sets}}",
-      "bestLabel": "Best"
+      "bestLabel": "Best",
+      "rest": {
+        "skip": "Skip rest",
+        "paused": "Rest paused",
+        "label": "Rest",
+        "beepsAt": "Beeps at {{seconds}} s",
+        "beepsOff": "Beeps off",
+        "seconds": "{{seconds}} s",
+        "next": "Next: {{value}}"
+      },
+      "hold": {
+        "startNow": "Start the hold now",
+        "end": "End the hold and log the set",
+        "getReady": "Get ready",
+        "tapToStart": "Tap the ring to start now.",
+        "tapToEnd": "Tap the ring to end early. At 0 the set is logged.",
+        "tapToStop": "Tap the ring to stop and log the set.",
+        "setOf": "Set {{number}}/{{total}}"
+      }
     }
   },
   "addSheet": {

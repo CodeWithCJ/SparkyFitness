@@ -1,0 +1,199 @@
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable, Text, View } from 'react-native';
+import { useCSSVariable } from 'uniwind';
+
+import FocusTimerRing from './FocusTimerRing';
+import { useClockTick } from '../hooks/useClockTick';
+import { useCountdownCue, useCountdownSeconds } from '../hooks/useCountdownCue';
+import { GET_READY_SECONDS, type FocusHold } from '../hooks/useFocusHold';
+import { fireSelectionHaptic } from '../services/haptics';
+import { playIntervalCue } from '../services/sounds';
+import { withAlpha } from '../utils/colors';
+import {
+  formatDurationSeconds,
+  formatRestCountdown,
+} from '../utils/workoutSession';
+
+const RING_SIZE = 236;
+
+interface FocusHoldPanelProps {
+  hold: Pick<
+    FocusHold,
+    'phase' | 'targetSec' | 'startedAt' | 'getReadyEndsAt' | 'tap'
+  >;
+  name: string;
+  /** "Bodyweight · Set 2/3", the planned length is appended here. */
+  subtitle: string;
+  /** The live heart-rate readout, when the watch sends one. */
+  heartRate?: React.ReactNode;
+}
+
+/**
+ * The focus view's timed hold: a big ring counting the planned length down (or
+ * a stopwatch with no plan), a 3-2-1 Get ready first when the watch's
+ * "Countdown before holds" is on, and the live heart rate under the time. Tap
+ * the ring to start now or to end early; at zero the set is logged.
+ */
+function FocusHoldPanel({
+  hold,
+  name,
+  subtitle,
+  heartRate,
+}: FocusHoldPanelProps) {
+  const { t } = useTranslation();
+  const now = useClockTick(true);
+  const beepSeconds = useCountdownSeconds();
+  const [holdColor, textMuted] = useCSSVariable([
+    '--color-hold',
+    '--color-text-muted',
+  ]) as [string, string];
+  const { phase, targetSec, startedAt, getReadyEndsAt } = hold;
+  const gettingReady = phase === 'getReady';
+  const getReadyLeftMs =
+    gettingReady && getReadyEndsAt != null ? getReadyEndsAt - now : 0;
+  const elapsedMs = startedAt != null ? Math.max(0, now - startedAt) : 0;
+  const runningLeftMs =
+    targetSec != null ? Math.max(0, targetSec * 1000 - elapsedMs) : 0;
+
+  // The tick of each lead-in number (Get ready, or the hold's last seconds).
+  const tick = () => {
+    playIntervalCue('countdown');
+    fireSelectionHaptic();
+  };
+  useCountdownCue({
+    active: gettingReady,
+    remainingMs: getReadyLeftMs,
+    seconds: beepSeconds > 0 ? GET_READY_SECONDS : 0,
+    onTick: tick,
+  });
+  useCountdownCue({
+    active: phase === 'running' && targetSec != null,
+    remainingMs: runningLeftMs,
+    seconds: beepSeconds,
+    onTick: tick,
+  });
+
+  const readyNumber = Math.max(1, Math.ceil(getReadyLeftMs / 1000));
+  const bigText = gettingReady
+    ? formatDurationSeconds(targetSec ?? 0)
+    : targetSec != null
+      ? formatDurationSeconds(Math.ceil(runningLeftMs / 1000))
+      : formatRestCountdown(Math.floor(elapsedMs / 1000) * 1000);
+  const progress = gettingReady
+    ? 1
+    : targetSec != null
+      ? runningLeftMs / (targetSec * 1000)
+      : (elapsedMs % 60000) / 60000;
+
+  const heading =
+    targetSec != null
+      ? `${subtitle} · ${formatDurationSeconds(targetSec)}`
+      : subtitle;
+
+  return (
+    <View testID="focus-hold-panel" className="items-center gap-4 pt-2">
+      <View className="items-center gap-1">
+        <Text
+          className="text-[28px] font-bold text-text-primary"
+          accessibilityRole="header"
+        >
+          {name}
+        </Text>
+        <Text
+          className="text-[15px] text-text-secondary"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {heading}
+        </Text>
+      </View>
+      <Pressable
+        onPress={hold.tap}
+        accessibilityRole="button"
+        accessibilityLabel={
+          gettingReady
+            ? t('activeWorkout.focus.hold.startNow', {
+                defaultValue: 'Start the hold now',
+              })
+            : t('activeWorkout.focus.hold.end', {
+                defaultValue: 'End the hold and log the set',
+              })
+        }
+      >
+        <FocusTimerRing
+          size={RING_SIZE}
+          strokeWidth={22}
+          progress={progress}
+          color={holdColor}
+          trackColor={withAlpha(holdColor, 0.16)}
+        >
+          <Text
+            testID="focus-hold-time"
+            className="text-[72px] font-bold"
+            style={{
+              color: holdColor,
+              fontVariant: ['tabular-nums'],
+              lineHeight: 80,
+            }}
+          >
+            {bigText}
+          </Text>
+          {heartRate != null && !gettingReady && heartRate}
+        </FocusTimerRing>
+      </Pressable>
+      {gettingReady ? (
+        <View
+          testID="focus-hold-get-ready"
+          className="w-full flex-row items-center gap-3 rounded-[20px] bg-raised p-4"
+        >
+          <Text
+            className="text-xs font-bold uppercase text-text-secondary"
+            style={{ letterSpacing: 1 }}
+          >
+            {t('activeWorkout.focus.hold.getReady', {
+              defaultValue: 'Get ready',
+            })}
+          </Text>
+          <View className="flex-1 flex-row items-center justify-center gap-5">
+            {Array.from({ length: GET_READY_SECONDS }, (_, i) => {
+              const n = GET_READY_SECONDS - i;
+              const current = n === readyNumber;
+              return (
+                <View
+                  key={n}
+                  className="h-11 w-11 items-center justify-center rounded-full"
+                  style={{
+                    backgroundColor: current ? holdColor : 'transparent',
+                  }}
+                >
+                  <Text
+                    className="text-xl font-bold"
+                    style={{ color: current ? '#06201c' : textMuted }}
+                  >
+                    {n}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+      <Text className="px-4 text-center text-[15px] text-text-secondary">
+        {gettingReady
+          ? t('activeWorkout.focus.hold.tapToStart', {
+              defaultValue: 'Tap the ring to start now.',
+            })
+          : targetSec != null
+            ? t('activeWorkout.focus.hold.tapToEnd', {
+                defaultValue:
+                  'Tap the ring to end early. At 0 the set is logged.',
+              })
+            : t('activeWorkout.focus.hold.tapToStop', {
+                defaultValue: 'Tap the ring to stop and log the set.',
+              })}
+      </Text>
+    </View>
+  );
+}
+
+export default React.memo(FocusHoldPanel);

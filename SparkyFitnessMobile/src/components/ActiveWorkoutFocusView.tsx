@@ -31,6 +31,7 @@ import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
+import FocusHoldPanel from './FocusHoldPanel';
 import FocusPlateStrip from './FocusPlateStrip';
 import RestPeriodChip from './RestPeriodChip';
 import WorkoutNotesField from './WorkoutNotesField';
@@ -42,6 +43,7 @@ import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import type { FocusHold } from '../hooks/useFocusHold';
 import {
   useCaptureLiveHistory,
   useExerciseBest,
@@ -125,6 +127,8 @@ interface Props extends SetEditorProps, HistoryProps {
   /** Entry id holding the active set; the view follows it. */
   activeExerciseId: string | null;
   supersetBorders: Map<string, SupersetBorder>;
+  /** The timed hold in progress; its exercise's page becomes the hold screen. */
+  hold: FocusHold;
   getImageSource: GetImageSource;
   onPressOverflow: (entryId: string) => void;
   /** The quick change for a busy machine, as on the Now card. */
@@ -188,6 +192,7 @@ interface PageProps extends SetEditorProps {
   onSeeAlternatives?: (entryId: string) => void;
   /** Set while another exercise than the active one is shown. */
   onBackToCurrent?: () => void;
+  hold: FocusHold;
 }
 
 /** One exercise: media + title, plan / last-time context, coaching, sets. */
@@ -204,6 +209,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   onCommitExerciseNote,
   onSeeAlternatives,
   onBackToCurrent,
+  hold,
   sessionId,
   verifiedSourcePresetId,
   weightUnit,
@@ -306,7 +312,17 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   const hasMedia = (snapshot?.images ?? []).some(
     (path) => path !== '' && getImageSource(path) !== null
   );
-  const mediaMode = !hasMedia ? 'none' : mediaExpanded ? 'expanded' : 'min';
+  // The rest card needs the room, so the demo shrinks while it is up.
+  const restHere = useActiveWorkoutStore(
+    (s) =>
+      s.rest.state !== 'ready' &&
+      exercise.sets.some((set) => String(set.id) === s.activeSetId)
+  );
+  const mediaMode = !hasMedia
+    ? 'none'
+    : mediaExpanded && !restHere
+      ? 'expanded'
+      : 'min';
   const planText =
     plan != null
       ? t('activeWorkout.focus.planShort', {
@@ -413,13 +429,49 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     setEditorProps.completedSetIds,
   ]);
 
+  if (hold.phase !== 'idle' && hold.entryId === exercise.id) {
+    const setIndex = exercise.sets.findIndex(
+      (set) => String(set.id) === hold.setId
+    );
+    const subtitle = [
+      equipment,
+      t('activeWorkout.focus.hold.setOf', {
+        defaultValue: 'Set {{number}}/{{total}}',
+        number: setIndex + 1,
+        total: exercise.sets.length,
+      }),
+    ]
+      .filter((part) => part !== '')
+      .join(' · ');
+    return (
+      <FocusHoldPanel
+        hold={hold}
+        name={name}
+        subtitle={subtitle}
+        heartRate={
+          liveBpm != null ? (
+            <ExerciseHeartRateChip
+              text={String(liveBpm)}
+              color={zoneColor ?? heartRateColor}
+              valueColor={zoneColor ?? undefined}
+              accessibilityLabel={t('activeWorkout.exercise.liveHeartRateFor', {
+                defaultValue: 'Current heart rate for {{name}}',
+                name,
+              })}
+            />
+          ) : undefined
+        }
+      />
+    );
+  }
+
   return (
     <View className="gap-3">
       <ActiveWorkoutFocusMedia
         images={snapshot?.images ?? []}
         exerciseName={name}
         getImageSource={getImageSource}
-        expanded={mediaExpanded}
+        expanded={mediaExpanded && !restHere}
         onToggleExpanded={onToggleMedia}
         onBackToCurrent={onBackToCurrent}
       >
@@ -609,6 +661,7 @@ function ActiveWorkoutFocusView({
   prSetIds,
   activeExerciseId,
   supersetBorders,
+  hold,
   getImageSource,
   onPressOverflow,
   onSwap,
@@ -808,6 +861,7 @@ function ActiveWorkoutFocusView({
                 awayFromCurrent ? handleBackToCurrent : undefined
               }
               onSeeAlternatives={onSeeAlternatives}
+              hold={hold}
               sessionId={sessionId}
               verifiedSourcePresetId={verifiedSourcePresetId}
               {...setEditorProps}

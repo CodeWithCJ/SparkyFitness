@@ -32,6 +32,7 @@ import ActiveWorkoutSetRow, {
 } from './ActiveWorkoutSetRow';
 import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
+import FocusRestCard from './FocusRestCard';
 import Icon from './Icon';
 import { HeroLabel, HeroStepper, TableCellInput } from './FocusSetCells';
 import { type SetInputField, type SetRowAccessoryHandle } from './SetRowChrome';
@@ -43,7 +44,9 @@ import {
 import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import {
   buildWorkingSetNumbers,
+  effectiveSetDurationSec,
   formatRecentSessionSet,
+  formatSetLoad,
   getRpeTone,
   isDurationModality,
   isMetricClampedToRpe,
@@ -59,9 +62,10 @@ import {
   type WorkoutCardExercise,
   type WorkoutCardSet,
 } from '../utils/workoutSession';
-import type {
-  ActiveSetPatch,
-  CompletedSetMap,
+import {
+  useActiveWorkoutStore,
+  type ActiveSetPatch,
+  type CompletedSetMap,
 } from '../stores/activeWorkoutStore';
 import {
   useAppPreferencesStore,
@@ -227,6 +231,8 @@ interface FocusSetRowProps {
   /** This set's counterpart last session; null shows a dash, undefined hides the column. */
   previousSet?: ExerciseRecentSessionSet | null;
   state: 'done' | 'current' | 'upcoming';
+  /** The rest card is up: the current set stays a table line, ringed in the rest color. */
+  resting?: boolean;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
   /** +/- step for weight, in the display unit. */
@@ -265,6 +271,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   assumed,
   previousSet,
   state,
+  resting = false,
   metricColumn,
   weightUnit,
   weightStep,
@@ -296,6 +303,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     rpeModerate,
     rpeHard,
     rpeMax,
+    restColor,
   ] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
@@ -306,6 +314,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
+    '--color-rest',
   ]) as [
     string,
     string,
@@ -316,7 +325,9 @@ const FocusSetRow = React.memo(function FocusSetRow({
     string,
     string,
     string,
+    string,
   ];
+  const ringColor = resting && state === 'current' ? restColor : undefined;
   const rpeToneColors = {
     easy: rpeEasy,
     moderate: rpeModerate,
@@ -530,7 +541,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
 
   // The set currently being done opens into a card with big steppers; every
   // other set is one compact line of the table.
-  if (isCurrent) {
+  if (isCurrent && !resting) {
     const fillText =
       previousSet != null
         ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
@@ -793,12 +804,14 @@ const FocusSetRow = React.memo(function FocusSetRow({
               onFocus={() => onActivateSet(renderKey, 'weight')}
               keyboardType={weightKeyboard}
               accessibilityLabel={weightLabels.input}
+              ringColor={ringColor}
             />
           </View>
         )}
         <View style={{ flex: showWeight ? 68 : 150 }}>
           <TableCellInput
             {...reps.inputProps}
+            ringColor={ringColor}
             inputRef={repsInputRef}
             onFocus={() => onActivateSet(renderKey, 'reps')}
             keyboardType="number-pad"
@@ -931,6 +944,41 @@ function ActiveWorkoutFocusSets({
     ).increment ?? DEFAULT_WARMUP_PLATE_ROUNDING[weightUnit];
   const bodyweightExercise = isBodyweightModality(modality);
   const bodyWeightKg = useBodyWeightKg(undefined, bodyweightExercise);
+  // While a rest runs, its card takes the active-set card's place.
+  const restActive = useActiveWorkoutStore((s) => s.rest.state !== 'ready');
+  const activeSetIndex = exercise.sets.findIndex(
+    (set) => String(set.id) === activeSetId
+  );
+  const resting = restActive && activeSetIndex >= 0;
+  const restNextText = (() => {
+    if (!resting) return null;
+    const set = exercise.sets[activeSetIndex];
+    const assumed = assumedSetValues?.[activeSetIndex] ?? null;
+    const load = formatSetLoad(
+      isDurationModality(modality) || isWeightDurationModality(modality)
+        ? {
+            weightKg: isWeightDurationModality(modality)
+              ? (set.weight ?? assumed?.weight ?? null)
+              : null,
+            reps: null,
+            durationSec:
+              effectiveSetDurationSec(set, modality) ??
+              assumed?.duration ??
+              null,
+          }
+        : {
+            weightKg: set.weight ?? assumed?.weight ?? null,
+            reps: set.reps ?? assumed?.reps ?? null,
+          },
+      weightUnit,
+      t
+    );
+    const label = t('workout.setNumber', {
+      defaultValue: 'Set {{number}}',
+      number: set.set_number,
+    });
+    return load != null ? `${label} · ${load}` : label;
+  })();
   const effortHeader = (() => {
     switch (effectiveMetricColumn) {
       case 'rir':
@@ -1023,6 +1071,7 @@ function ActiveWorkoutFocusSets({
 
   return (
     <View className={stepperRows ? 'gap-1.5' : 'rounded-2xl bg-surface p-2'}>
+      {resting && <FocusRestCard nextText={restNextText} />}
       {bodyweightExercise && (
         <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
       )}
@@ -1123,6 +1172,7 @@ function ActiveWorkoutFocusSets({
             assumed={assumed}
             previousSet={previousSet}
             state={state}
+            resting={resting}
             metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
             weightStep={weightStep}
