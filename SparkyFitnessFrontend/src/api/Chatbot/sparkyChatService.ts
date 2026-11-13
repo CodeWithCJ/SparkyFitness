@@ -64,3 +64,8 @@ export const clearChatHistory = async (
     }
   );
 };
+
+export const deleteChatMessage = (id: string): Promise<void> =>
+  apiCall(`/chat/sparky-chat-history/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });

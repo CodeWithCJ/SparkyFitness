@@ -30,6 +30,7 @@ import {
   mcpServerOptionsSchema,
 } from '@workspace/shared';
 import {
+  getChatToolServerNames,
   listToolsForAdmin,
   mcpToolFingerprint,
   loadMcpServerTools,
@@ -507,6 +508,9 @@ describe('which tools chat gets', () => {
     vi.mocked(getChatMcpServerIds).mockResolvedValue([opted.id]);
     const tools = await loadMcpServerTools(OWN_ACCOUNT);
     expect(Object.keys(tools)).toEqual(['mcp_opted__echo']);
+    expect(
+      getChatToolServerNames({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
+    ).toEqual({ mcp_opted__echo: 'Opted' });
     expect(seen.some(({ path }) => path === '/not-opted-in')).toBe(false);
     expect(vi.mocked(getChatMcpServerIds)).toHaveBeenCalledWith(
       OWN_ACCOUNT.accountUserId

@@ -200,7 +200,10 @@ const SparkyChat = () => {
             <div
               className={cn('flex-1 overflow-hidden', isMinimized && 'hidden')}
             >
-              <SparkyChatInterface key={resetKey} />
+              <SparkyChatInterface
+                onClearChat={handleClearHistory}
+                key={resetKey}
+              />
             </div>
           </div>
         </DialogPrimitive.Content>

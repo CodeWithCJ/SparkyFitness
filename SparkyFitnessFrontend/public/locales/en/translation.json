@@ -254,6 +254,24 @@
     "sparkyChatInterface": {
       "chatError": "Chat Error",
       "failedToProcessMessagePlease": "Failed to process message. Please check your AI service settings."
+    },
+    "approval": {
+      "title": "Allow this step?",
+      "run": "After reading <bold>{{server}}</bold>, Sparky wants to run <bold>{{tool}}{{action}}</bold>.",
+      "send": "After reading <bold>{{server}}</bold>, Sparky wants to send <bold>{{tool}}</bold> to <bold>{{otherServer}}</bold>.",
+      "details": "Details",
+      "allow": "Allow",
+      "deny": "Deny",
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "failed": "Could not save your answer. Please try again."
+    },
+    "outsideSource": {
+      "line": "Used <bold>{{servers}}</bold>. Something look wrong?",
+      "delete": "Delete this message",
+      "or": "or",
+      "clear": "clear the chat",
+      "failed": "Could not delete this message. Please try again."
     }
   },
   "workoutLaps": {

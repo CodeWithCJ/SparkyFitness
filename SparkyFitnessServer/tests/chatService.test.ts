@@ -28,6 +28,7 @@ import { loadMcpServerTools } from '../ai/tools/mcpServerTools.js';
 vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../ai/tools/mcpServerTools.js')>()),
   loadMcpServerTools: vi.fn(async () => ({})),
+  getChatToolServerNames: vi.fn(() => ({ mcp_notes__search: 'Notes server' })),
 }));
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
@@ -90,6 +91,25 @@ vi.mock('@ai-sdk/openai', () => ({
   ),
 }));
 describe('chatService', () => {
+  it('only deletes a signed-in actor’s own history row', async () => {
+    vi.mocked(chatRepository.getChatHistoryEntryOwnerId).mockResolvedValue(
+      'other'
+    );
+    await expect(
+      chatService.deleteSparkyChatHistoryEntry('actor', 'row')
+    ).rejects.toThrow('Forbidden');
+    expect(chatRepository.deleteChatHistoryEntry).not.toHaveBeenCalled();
+    vi.mocked(chatRepository.getChatHistoryEntryOwnerId).mockResolvedValue(
+      'actor'
+    );
+    vi.mocked(chatRepository.deleteChatHistoryEntry).mockResolvedValue(true);
+    await chatService.deleteSparkyChatHistoryEntry('actor', 'row');
+    expect(chatRepository.deleteChatHistoryEntry).toHaveBeenCalledWith(
+      'row',
+      'actor'
+    );
+  });
+
   const mockUserId = 'user-123';
   const mockTargetUserId = 'user-456';
   beforeEach(() => {
@@ -1662,6 +1682,42 @@ describe('chatService', () => {
           chunks.some((chunk) => chunk.type === 'tool-approval-request')
         ).toBe(false);
       });
+      it('streams and saves row-owned outside names and approval provenance', async () => {
+        scripted([
+          callStep('mcp_notes__search', 'outside'),
+          callStep('sparky_test_write', 'write'),
+        ]);
+        const chunks = await run();
+        expect(chunks).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              type: 'message-metadata',
+              messageMetadata: expect.objectContaining({
+                custom: expect.objectContaining({
+                  outsideSource: {
+                    servers: ['Notes server'],
+                    toolServers: { mcp_notes__search: 'Notes server' },
+                    approvalSources: { write: ['Notes server'] },
+                  },
+                }),
+              }),
+            }),
+          ])
+        );
+        const saved = vi
+          .mocked(chatRepository.saveChatHistory)
+          .mock.calls.find(([entry]) => entry.messageType === 'assistant')?.[0];
+        expect(saved?.metadata).toMatchObject({
+          custom: {
+            savedMessageId: saved?.id,
+            outsideSource: { servers: ['Notes server'] },
+          },
+        });
+        expect(chunks.at(-1)).toMatchObject({
+          type: 'message-metadata',
+          messageMetadata: { custom: { savedMessageId: saved?.id } },
+        });
+      });
       it('persists a pending approval without text, including input and approval id', async () => {
         scripted([
           callStep('mcp_notes__search'),
@@ -1728,6 +1784,10 @@ describe('chatService', () => {
       it('approves once, updates the same row, and asks again for the next write', async () => {
         const model = scripted([callStep('sparky_test_write', 'write-2')]);
         const chunks = await resume(true);
+        expect(chunks.at(-1)).toMatchObject({
+          type: 'message-metadata',
+          messageMetadata: { custom: { savedMessageId: 'row-1' } },
+        });
         expect(writeExecute).toHaveBeenCalledTimes(1);
         expect(JSON.stringify(model.doStreamCalls[0].prompt)).toContain(
           'saved'
@@ -1813,6 +1873,30 @@ describe('chatService', () => {
           },
         ]);
         expect(writeExecute.mock.calls[0]?.[0]).toEqual({});
+      });
+      it('rejects a deleted assistant row before claiming or running its approval', async () => {
+        scripted([doneStep]);
+        vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue(
+          undefined
+        );
+        await expect(
+          run([
+            userMessage,
+            {
+              role: 'assistant',
+              id: 'deleted-row',
+              parts: [
+                {
+                  ...pending,
+                  state: 'approval-responded',
+                  approval: { id: 'approval-1', approved: true },
+                },
+              ],
+            },
+          ])
+        ).rejects.toThrow('Invalid approval continuation');
+        expect(chatRepository.claimChatApproval).not.toHaveBeenCalled();
+        expect(writeExecute).not.toHaveBeenCalled();
       });
       it('cancels pending approvals when a new user message arrives', async () => {
         scripted([doneStep]);
@@ -2165,7 +2249,7 @@ describe('chatService', () => {
       const finishChunk = chunks.find((chunk) => chunk.type === 'finish');
       expect(
         (finishChunk as { messageMetadata?: unknown }).messageMetadata
-      ).toEqual({
+      ).toMatchObject({
         custom: {
           usage: {
             inputTokens: 1240,

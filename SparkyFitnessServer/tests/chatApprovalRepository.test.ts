@@ -70,6 +70,15 @@ describe('chat approval persistence', () => {
       await repository.claimChatApproval('row', 'actor', pending, responded)
     ).toBe(false);
   });
+  it('deletes only the actor’s row and cannot claim a deleted approval', async () => {
+    await repository.deleteChatHistoryEntry('row', 'actor');
+    expect(query.mock.calls[0][0]).toContain('id = $1 AND user_id = $2');
+    expect(query.mock.calls[0][1]).toEqual(['row', 'actor']);
+    query.mockResolvedValueOnce({ rowCount: 0 });
+    expect(await repository.claimChatApproval('row', 'actor', [], [])).toBe(
+      false
+    );
+  });
   it('cancels only pending calls in the current actor, account and conversation', async () => {
     await repository.cancelChatApprovals('actor', 'account', 'conversation');
     const [sql, params] = query.mock.calls[0];

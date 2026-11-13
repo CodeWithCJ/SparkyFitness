@@ -92,3 +92,27 @@ export function getToolDisplay(toolName: string): ToolDisplay {
     icon: 'wrench',
   };
 }
+
+export function getLocalizedToolLabel(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  labelKey: string | undefined,
+  defaultLabel: string
+): string {
+  switch (labelKey) {
+    case 'chat.tools.food':
+      return t('chat.tools.food', { defaultValue: 'Food' });
+    case 'chat.tools.exercise':
+      return t('chat.tools.exercise', { defaultValue: 'Exercise' });
+    case 'chat.tools.checkin':
+      return t('chat.tools.checkin', { defaultValue: 'Check-in' });
+    case 'chat.tools.goals':
+      return t('chat.tools.goals', { defaultValue: 'Goals' });
+    case 'chat.tools.lookedUp':
+      return t('chat.tools.lookedUp', {
+        defaultValue: 'Looked up {{name}}',
+        name: defaultLabel,
+      });
+    default:
+      return defaultLabel;
+  }
+}

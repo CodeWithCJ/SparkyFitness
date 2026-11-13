@@ -519,8 +519,8 @@ async function deleteChatHistoryEntry(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM sparky_chat_history WHERE id = $1 RETURNING id',
-      [id]
+      'DELETE FROM sparky_chat_history WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
     );
     return result.rowCount > 0;
   } finally {

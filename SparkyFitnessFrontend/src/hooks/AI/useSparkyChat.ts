@@ -4,6 +4,7 @@ import {
   loadUserPreferences,
   loadChatHistory,
   clearChatHistory,
+  deleteChatMessage,
 } from '@/api/Chatbot/sparkyChatService';
 import { chatbotKeys } from '@/api/keys/ai';
 
@@ -61,4 +62,16 @@ export const useClearChatHistoryMutation = () => {
       ),
     },
   });
+};
+
+export const useDeleteChatMessage = () => {
+  const queryClient = useQueryClient();
+  return async (id: string) => {
+    await deleteChatMessage(id);
+    const queryKey = [...chatbotKeys.all, 'history'];
+    await queryClient.cancelQueries({ queryKey });
+    queryClient.setQueriesData<Array<{ id: string }>>({ queryKey }, (entries) =>
+      entries?.filter((entry) => entry.id !== id)
+    );
+  };
 };

@@ -40,6 +40,7 @@ import {
   ListOpenCodeGoModelsRequest,
   ChatToolCategorySlug,
   CHAT_TOOL_CATEGORY_SLUGS,
+  readChatOutsideSource,
   isChatToolCategorySlug,
   isGpt6Model,
 } from '@workspace/shared';
@@ -112,6 +113,7 @@ import {
 } from '../ai/tools/index.js';
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import {
+  getChatToolServerNames,
   isMcpServerToolName,
   loadMcpServerTools,
 } from '../ai/tools/mcpServerTools.js';
@@ -3146,7 +3148,12 @@ async function processChatMessageStream(
       ) {
         throw new Error('Approval already answered.');
       }
-      continuation = { id: saved.id, role: 'assistant', parts } as UIMessage;
+      continuation = {
+        id: saved.id,
+        role: 'assistant',
+        parts,
+        metadata: saved.metadata,
+      } as UIMessage;
       messages = [...messages.slice(0, -1), continuation];
     }
     if (!isContinuation && lastMessage?.role === 'user') {
@@ -3156,6 +3163,34 @@ async function processChatMessageStream(
         conversationId
       );
     }
+    const storedSource = readChatOutsideSource(continuation?.metadata);
+    const toolServers = {
+      ...storedSource.toolServers,
+      ...getChatToolServerNames(tools),
+    };
+    const outsideServers = new Set<string>(storedSource.servers);
+    const approvalSources: Record<string, string[]> = {
+      ...storedSource.approvalSources,
+    };
+    const lastUserIndex = messages
+      .map((message) => message.role)
+      .lastIndexOf('user');
+    for (const message of messages.slice(lastUserIndex + 1)) {
+      for (const part of message.parts ?? []) {
+        if (
+          part.type.startsWith('tool-mcp_') &&
+          (part.output !== undefined || part.state === 'output-error')
+        ) {
+          const server = toolServers[part.type.slice(5)];
+          if (server) outsideServers.add(server);
+        }
+      }
+    }
+    const outsideSource = () => ({
+      servers: [...outsideServers],
+      toolServers,
+      approvalSources: { ...approvalSources },
+    });
     const approvalGate = createChatApprovalGate(messages);
     if (!approvals) refuseUnrenderableApprovals(tools, messages);
 
@@ -3255,97 +3290,151 @@ async function processChatMessageStream(
       },
     });
 
+    let savedMessageId: string | undefined;
+    let usageMetadata:
+      ReturnType<typeof mapUsageToMetadata>['custom'] | undefined;
     return {
       stream: withEmptyCompletionGuard(
-        result.toUIMessageStream({
-          sendSources: true,
-          ...(continuation ? { originalMessages: [continuation] } : {}),
-          generateMessageId: () => randomUUID(),
-          onFinish: async ({ responseMessage, isAborted }) => {
-            if (isAborted) return;
-            if (!continuation) {
-              const lastUser = [...conversationMessages]
-                .reverse()
-                .find((msg) => msg.role === 'user');
-              await chatRepository.saveChatHistory({
+        result
+          .toUIMessageStream({
+            sendSources: true,
+            ...(continuation ? { originalMessages: [continuation] } : {}),
+            generateMessageId: () => randomUUID(),
+            onFinish: async ({ responseMessage, isAborted }) => {
+              if (isAborted) return;
+              if (!continuation) {
+                const lastUser = [...conversationMessages]
+                  .reverse()
+                  .find((msg) => msg.role === 'user');
+                await chatRepository.saveChatHistory({
+                  user_id: authenticatedUserId,
+                  metadata: {
+                    ...accountHistoryMetadata(userId, authenticatedUserId),
+                    ...(conversationId
+                      ? { chat_conversation_id: conversationId }
+                      : {}),
+                  },
+                  content: userMessageContent,
+                  messageType: 'user',
+                  parts: Array.isArray(lastUser?.content)
+                    ? lastUser.content
+                    : [{ type: 'text', text: String(lastUser?.content || '') }],
+                });
+              }
+              const parts: unknown[] = [...responseMessage.parts];
+              const estimate = foodPhotoEstimateSink.get();
+              if (estimate)
+                parts.push({
+                  type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
+                  data: estimate,
+                });
+              const content = responseMessage.parts
+                .filter((part) => part.type === 'text')
+                .map((part) => part.text)
+                .join('');
+              const askPart = responseMessage.parts.find(
+                (part) => part.type === ASK_USER_PART_TYPE
+              );
+              if (
+                !content.trim() &&
+                !askPart &&
+                !estimate &&
+                !responseMessage.parts.some((part) =>
+                  part.type.startsWith('tool-')
+                )
+              ) {
+                log(
+                  'warn',
+                  `Skipping empty assistant chat history for user ${userId}`
+                );
+                return;
+              }
+              const history = {
                 user_id: authenticatedUserId,
                 metadata: {
+                  custom: {
+                    outsideSource: outsideSource(),
+                    savedMessageId: responseMessage.id,
+                  },
                   ...accountHistoryMetadata(userId, authenticatedUserId),
                   ...(conversationId
                     ? { chat_conversation_id: conversationId }
                     : {}),
                 },
-                content: userMessageContent,
-                messageType: 'user',
-                parts: Array.isArray(lastUser?.content)
-                  ? lastUser.content
-                  : [{ type: 'text', text: String(lastUser?.content || '') }],
-              });
-            }
-            const parts: unknown[] = [...responseMessage.parts];
-            const estimate = foodPhotoEstimateSink.get();
-            if (estimate)
-              parts.push({
-                type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
-                data: estimate,
-              });
-            const content = responseMessage.parts
-              .filter((part) => part.type === 'text')
-              .map((part) => part.text)
-              .join('');
-            const askPart = responseMessage.parts.find(
-              (part) => part.type === ASK_USER_PART_TYPE
-            );
-            if (
-              !content.trim() &&
-              !askPart &&
-              !estimate &&
-              !responseMessage.parts.some((part) =>
-                part.type.startsWith('tool-')
+                content:
+                  content.trim() ||
+                  (askPart
+                    ? askUserPartToText(askPart as ChatMessagePart)
+                    : '') ||
+                  '',
+                messageType: 'assistant' as const,
+                parts,
+              };
+              if (continuation) {
+                await chatRepository.saveApprovalContinuation(
+                  continuation.id,
+                  authenticatedUserId,
+                  history
+                );
+              } else {
+                await chatRepository.saveChatHistory({
+                  ...history,
+                  id: responseMessage.id,
+                });
+              }
+              savedMessageId = responseMessage.id;
+            },
+            messageMetadata: ({ part }) => {
+              if (
+                (part.type === 'tool-result' || part.type === 'tool-error') &&
+                toolServers[part.toolName]
               )
-            ) {
-              log(
-                'warn',
-                `Skipping empty assistant chat history for user ${userId}`
-              );
-              return;
-            }
-            const history = {
-              user_id: authenticatedUserId,
-              metadata: {
-                ...accountHistoryMetadata(userId, authenticatedUserId),
-                ...(conversationId
-                  ? { chat_conversation_id: conversationId }
-                  : {}),
+                outsideServers.add(toolServers[part.toolName]);
+              if (part.type === 'tool-approval-request') {
+                approvalSources[part.toolCall.toolCallId] = [...outsideServers];
+              }
+              if (
+                ![
+                  'tool-result',
+                  'tool-error',
+                  'tool-approval-request',
+                  'finish',
+                ].includes(part.type)
+              )
+                return undefined;
+              if (part.type === 'finish')
+                usageMetadata = mapUsageToMetadata(part.totalUsage).custom;
+              return {
+                custom: {
+                  ...(part.type === 'finish'
+                    ? mapUsageToMetadata(part.totalUsage).custom
+                    : {}),
+                  outsideSource: outsideSource(),
+                },
+              };
+            },
+            onError: chatStreamErrorMessage,
+          })
+          .pipeThrough(
+            new TransformStream<UIMessageChunk, UIMessageChunk>({
+              transform(chunk, controller) {
+                controller.enqueue(chunk);
               },
-              content:
-                content.trim() ||
-                (askPart
-                  ? askUserPartToText(askPart as ChatMessagePart)
-                  : '') ||
-                '',
-              messageType: 'assistant' as const,
-              parts,
-            };
-            if (continuation) {
-              await chatRepository.saveApprovalContinuation(
-                continuation.id,
-                authenticatedUserId,
-                history
-              );
-            } else {
-              await chatRepository.saveChatHistory({
-                ...history,
-                id: responseMessage.id,
-              });
-            }
-          },
-          messageMetadata: ({ part }) =>
-            part.type === 'finish'
-              ? mapUsageToMetadata(part.totalUsage)
-              : undefined,
-          onError: chatStreamErrorMessage,
-        })
+              flush(controller) {
+                if (savedMessageId)
+                  controller.enqueue({
+                    type: 'message-metadata',
+                    messageMetadata: {
+                      custom: {
+                        ...usageMetadata,
+                        outsideSource: outsideSource(),
+                        savedMessageId,
+                      },
+                    },
+                  });
+              },
+            })
+          )
       ),
     };
   } catch (error) {

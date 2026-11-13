@@ -53,7 +53,12 @@ import {
   useChatRuntime,
   AssistantChatTransport,
 } from '@assistant-ui/react-ai-sdk';
-import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import {
+  chatApprovalResponsesReady,
+  ASK_USER_TOOL_NAME,
+} from '@workspace/shared';
+import ApprovalCard from '../components/chat/ApprovalCard';
+import OutsideSourceLine from '../components/chat/OutsideSourceLine';
 import Icon from '../components/Icon';
 import ActionSheet, { type ActionSheetRef } from '../components/ActionSheet';
 import SafeImage from '../components/SafeImage';
@@ -188,7 +193,11 @@ function useSparkyChatRuntime({
             : {};
         },
         // Merged into the request body alongside `messages`; the server reads it.
-        body: { service_config_id: serviceConfigId, conversationId },
+        body: {
+          service_config_id: serviceConfigId,
+          conversationId,
+          approvals: true,
+        },
       }),
     [baseUrl, serviceConfigId, conversationId]
   );
@@ -197,6 +206,8 @@ function useSparkyChatRuntime({
   // fails before any assistant message exists, so surface a toast too. The server's
   // stream onError mapper passes provider error messages through, so this shows them.
   return useChatRuntime({
+    joinStrategy: 'none',
+    sendAutomaticallyWhen: chatApprovalResponsesReady,
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
     messages: initialMessages,
@@ -219,7 +230,9 @@ function useSparkyChatRuntime({
 function MessageBubble({
   role,
   onOpenLightbox,
+  onClearChat,
 }: {
+  onClearChat: () => void;
   role: MessageRole;
   onOpenLightbox: (images: string[], index?: number) => void;
 }) {
@@ -328,7 +341,9 @@ function MessageBubble({
                 )
               }
               renderToolCall={({ part }) =>
-                part.toolName === ASK_USER_TOOL_NAME ? (
+                part.approval ? (
+                  <ApprovalCard part={part} />
+                ) : part.toolName === ASK_USER_TOOL_NAME ? (
                   <AskUserToolCard part={part} />
                 ) : (
                   <ToolCallCard part={part} />
@@ -342,6 +357,7 @@ function MessageBubble({
       {/* Error box + actions sit below the bubble and only apply to assistant
           messages. ErrorPrimitive.Root self-gates (renders null with no error). */}
       <MessagePrimitive.If assistant>
+        <OutsideSourceLine onClearChat={onClearChat} />
         <ErrorPrimitive.Root
           style={{
             flexDirection: 'row',
@@ -1216,7 +1232,9 @@ function ChatThread({
   initialMessages,
   onRunningChange,
   autoFocusReady,
+  onClearChat,
 }: {
+  onClearChat: () => void;
   baseUrl: string;
   serviceConfigId: string;
   voiceServiceConfigId?: string | null;
@@ -1354,6 +1372,7 @@ function ChatThread({
             {({ message }) => (
               <MessageBubble
                 role={message.role}
+                onClearChat={onClearChat}
                 onOpenLightbox={openLightbox}
               />
             )}
@@ -1610,6 +1629,7 @@ export default function ChatScreen({
             conversationId={chatConversationId}
             initialMessages={initialMessages}
             onRunningChange={setRunning}
+            onClearChat={handleClear}
             autoFocusReady={transitionComplete}
           />
         )}

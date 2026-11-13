@@ -764,12 +764,28 @@ async function callServerTool(
   }
 }
 
+// Actor wrappers spread tool objects; a symbol preserves the row name without sending it to the model.
+const chatToolServerName = Symbol('chatToolServerName');
+
+export function getChatToolServerNames(
+  tools: Record<string, Tool>
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(tools).flatMap(([name, current]) => {
+      const server = (current as Tool & { [chatToolServerName]?: string })[
+        chatToolServerName
+      ];
+      return server ? [[name, server]] : [];
+    })
+  );
+}
+
 function toChatTool(
   outsideTool: OutsideTool,
   { actorUserId }: McpServerToolContext
 ): Tool {
   const { server, listed } = outsideTool;
-  return tool({
+  const result = tool({
     description: withoutToken(
       listed.description?.trim() || `The "${listed.name}" tool.`,
       server
@@ -778,6 +794,7 @@ function toChatTool(
     execute: async (input: unknown, { abortSignal }) =>
       callServerTool(outsideTool, actorUserId, input, abortSignal),
   });
+  return Object.assign(result, { [chatToolServerName]: server.provider_name });
 }
 
 /** Why an admin could not get a server's tool list, in this app's words. */

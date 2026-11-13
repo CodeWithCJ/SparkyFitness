@@ -9,6 +9,8 @@ import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import { AskUserToolUI } from '@/components/ai/AskUserToolUI';
 import { FoodPhotoEstimateToolUI } from '@/components/ai/FoodPhotoEstimateToolUI';
 import { ToolFallback } from '@/components/tool-fallback';
+import { ApprovalCard } from '@/components/ai/ApprovalCard';
+import { OutsideSourceLine } from '@/components/ai/OutsideSourceLine';
 import { TooltipIconButton } from '@/components/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,7 @@ import {
 import type {
   AssistantRuntime,
   SourceMessagePartProps,
+  ToolCallMessagePartComponent,
 } from '@assistant-ui/react';
 import { getThreadMessageTokenUsage } from '@assistant-ui/react-ai-sdk';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
@@ -53,21 +56,22 @@ import { VoiceInputControl } from '@/components/ai/VoiceInputControl';
 
 interface ThreadProps {
   runtime?: AssistantRuntime;
+  onClearChat?: () => void;
   welcome?: { message?: string };
 }
 
-export const Thread: FC<ThreadProps> = ({ runtime }) => {
+export const Thread: FC<ThreadProps> = ({ runtime, onClearChat }) => {
   if (runtime) {
     return (
       <AssistantRuntimeProvider runtime={runtime}>
-        <ThreadInner />
+        <ThreadInner onClearChat={onClearChat} />
       </AssistantRuntimeProvider>
     );
   }
-  return <ThreadInner />;
+  return <ThreadInner onClearChat={onClearChat} />;
 };
 
-const ThreadInner: FC = () => {
+const ThreadInner: FC<{ onClearChat?: () => void }> = ({ onClearChat }) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
@@ -92,7 +96,7 @@ const ThreadInner: FC = () => {
             className="mb-10 flex flex-col gap-y-8 empty:hidden"
           >
             <ThreadPrimitive.Messages>
-              {() => <ThreadMessage />}
+              {() => <ThreadMessage onClearChat={onClearChat} />}
             </ThreadPrimitive.Messages>
           </div>
 
@@ -107,13 +111,13 @@ const ThreadInner: FC = () => {
   );
 };
 
-const ThreadMessage: FC = () => {
+const ThreadMessage: FC<{ onClearChat?: () => void }> = ({ onClearChat }) => {
   const role = useAuiState((s) => s.message.role);
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
 
   if (isEditing) return <EditComposer />;
   if (role === 'user') return <UserMessage />;
-  return <AssistantMessage />;
+  return <AssistantMessage onClearChat={onClearChat} />;
 };
 
 const ThreadScrollToBottom: FC = () => {
@@ -476,7 +480,12 @@ const FoodResearchSource: FC<SourceMessagePartProps> = ({ url, title }) => {
   );
 };
 
-const AssistantMessage: FC = () => {
+const ApprovalToolFallback: ToolCallMessagePartComponent = (props) =>
+  props.approval ? <ApprovalCard {...props} /> : <ToolFallback {...props} />;
+
+const AssistantMessage: FC<{ onClearChat?: () => void }> = ({
+  onClearChat,
+}) => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
@@ -495,12 +504,18 @@ const AssistantMessage: FC = () => {
             tools: {
               by_name: {
                 [ASK_USER_TOOL_NAME]: AskUserToolUI,
-                sparky_analyze_food_image: FoodPhotoEstimateToolUI,
+                sparky_analyze_food_image: (props) =>
+                  props.approval ? (
+                    <ApprovalCard {...props} />
+                  ) : (
+                    <FoodPhotoEstimateToolUI {...props} />
+                  ),
               },
-              Fallback: ToolFallback,
+              Fallback: ApprovalToolFallback,
             },
           }}
         />
+        <OutsideSourceLine onClearChat={onClearChat} />
         <MessageError />
       </div>
 
