@@ -7,6 +7,7 @@ import WorkoutPlansScreen from '../../src/screens/WorkoutPlansScreen';
 import {
   useDeleteWorkoutPlan,
   useServerConnection,
+  useUpdateWorkoutPlan,
   useWorkoutPlans,
 } from '../../src/hooks';
 import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
@@ -14,6 +15,7 @@ import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
 jest.mock('../../src/hooks', () => ({
   useDeleteWorkoutPlan: jest.fn(),
   useServerConnection: jest.fn(),
+  useUpdateWorkoutPlan: jest.fn(),
   useWorkoutPlans: jest.fn(),
 }));
 
@@ -30,8 +32,12 @@ const mockUseDelete = useDeleteWorkoutPlan as jest.MockedFunction<
 const mockUseConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
 >;
+const mockUseUpdate = useUpdateWorkoutPlan as jest.MockedFunction<
+  typeof useUpdateWorkoutPlan
+>;
 
 const deleteWorkoutPlanAsync = jest.fn();
+const updateWorkoutPlanAsync = jest.fn();
 const refetch = jest.fn();
 const mockNavigation = {
   navigate: jest.fn(),
@@ -88,17 +94,47 @@ describe('WorkoutPlansScreen', () => {
     });
     mockUseDelete.mockReturnValue({ deleteWorkoutPlanAsync, isPending: false });
     deleteWorkoutPlanAsync.mockResolvedValue(undefined);
+    mockUseUpdate.mockReturnValue({ updateWorkoutPlanAsync, isPending: false });
+    updateWorkoutPlanAsync.mockResolvedValue({ ...plan });
   });
 
-  test('shows a plan and opens it for editing', () => {
+  test('shows a plan and opens its detail screen', () => {
     const screen = renderScreen();
     expect(screen.getByText('Push pull legs')).toBeTruthy();
-    expect(screen.getByText('Active')).toBeTruthy();
+    expect(screen.getByLabelText('Active plan')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Push pull legs'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPlanForm', {
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPlanDetail', {
       template: plan,
     });
+  });
+
+  test('toggling the switch sends a full payload and toasts diary changes', async () => {
+    updateWorkoutPlanAsync.mockResolvedValue({
+      ...plan,
+      is_active: false,
+      regenerated_entries: { removed: 3, created: 0 },
+    });
+    const screen = renderScreen();
+
+    fireEvent(screen.getByLabelText('Active plan'), 'valueChange', false);
+
+    await waitFor(() => {
+      expect(updateWorkoutPlanAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_active: false,
+          plan_name: 'Push pull legs',
+        }),
+        expect.any(String)
+      );
+    });
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text1: 'Plan deactivated',
+        text2: 'Removed 3 upcoming sessions',
+      })
+    );
   });
 
   test('confirms before deleting a plan', async () => {

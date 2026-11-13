@@ -31,18 +31,30 @@ import type {
   WorkoutPlanValidationErrors,
 } from '../types/workoutPlans';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import {
+  addDraftSet,
   buildWorkoutPlanPayload,
   changeScheduleType,
+  createExerciseAssignment,
   createPresetAssignment,
   createWorkoutPlanDraft,
+  moveDraftAssignment,
+  removeDraftSet,
   removeSession,
+  updateDraftSet,
   validateWorkoutPlanDraft,
+  type DraftSetPatch,
 } from '../utils/workoutPlanForm';
+import type { Exercise } from '../types/exercise';
 
 type WorkoutPlanFormScreenProps = RootStackScreenProps<'WorkoutPlanForm'>;
 
 type DateField = 'startDate' | 'endDate';
+
+/** Raw text for one numeric set field, keyed by assignment/set/field. */
+const rawSetKey = (key: string, setIndex: number, field: string) =>
+  key + ':' + setIndex + ':' + field;
 
 const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
   navigation,
@@ -138,13 +150,106 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     [presets]
   );
 
-  const removeAssignment = useCallback((key: string) => {
-    setDraft((current) => ({
-      ...current,
-      assignments: current.assignments.filter(
-        (assignment) => assignment.key !== key
-      ),
-    }));
+  const [exerciseSearchSlot, setExerciseSearchSlot] = useState<{
+    dayOfWeek: number | null;
+    sessionIndex: number | null;
+  } | null>(null);
+
+  const [rawSetInputs, setRawSetInputs] = useState<Record<string, string>>({});
+
+  const clearRawSetInputs = useCallback((key: string) => {
+    const prefix = key + ':';
+    setRawSetInputs((current) => {
+      const next: Record<string, string> = {};
+      for (const entry of Object.entries(current)) {
+        if (!entry[0].startsWith(prefix)) next[entry[0]] = entry[1];
+      }
+      return next;
+    });
+  }, []);
+
+  const removeAssignment = useCallback(
+    (key: string) => {
+      clearRawSetInputs(key);
+      setDraft((current) => ({
+        ...current,
+        assignments: current.assignments.filter(
+          (assignment) => assignment.key !== key
+        ),
+      }));
+    },
+    [clearRawSetInputs]
+  );
+
+  const openExerciseSearch = useCallback(
+    (slot: { dayOfWeek: number | null; sessionIndex: number | null }) => {
+      setExerciseSearchSlot(slot);
+      navigation.navigate('ExerciseSearch', { returnKey: route.key });
+    },
+    [navigation, route.key]
+  );
+
+  const handleAddExercise = useCallback(
+    (exercise: Exercise) => {
+      setDraft((current) => ({
+        ...current,
+        assignments: [
+          ...current.assignments,
+          createExerciseAssignment(exercise, {
+            dayOfWeek:
+              current.scheduleType === 'weekly'
+                ? (exerciseSearchSlot?.dayOfWeek ?? selectedDay)
+                : null,
+            sessionIndex:
+              current.scheduleType === 'sequential'
+                ? (exerciseSearchSlot?.sessionIndex ?? 1)
+                : null,
+          }),
+        ],
+      }));
+      setErrors((current) => ({ ...current, assignments: undefined }));
+    },
+    [exerciseSearchSlot, selectedDay]
+  );
+
+  useSelectedExercise(route.params, handleAddExercise);
+
+  const addSet = useCallback((key: string) => {
+    setDraft((current) => addDraftSet(current, key));
+  }, []);
+
+  const removeSet = useCallback(
+    (key: string, setIndex: number) => {
+      clearRawSetInputs(key);
+      setDraft((current) => removeDraftSet(current, key, setIndex));
+    },
+    [clearRawSetInputs]
+  );
+
+  const changeSetNumber = useCallback(
+    (
+      key: string,
+      setIndex: number,
+      field: 'reps' | 'weight' | 'rest_time',
+      value: string
+    ) => {
+      setRawSetInputs((current) => ({
+        ...current,
+        [rawSetKey(key, setIndex, field)]: value,
+      }));
+      const parsed = value.trim() === '' ? null : Number(value);
+      const numeric = parsed != null && Number.isFinite(parsed) ? parsed : null;
+      setDraft((current) =>
+        updateDraftSet(current, key, setIndex, {
+          [field]: numeric,
+        } as DraftSetPatch)
+      );
+    },
+    []
+  );
+
+  const moveAssignment = useCallback((key: string, direction: -1 | 1) => {
+    setDraft((current) => moveDraftAssignment(current, key, direction));
   }, []);
 
   const selectScheduleType = useCallback(
@@ -196,18 +301,46 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     try {
       const currentClientDate = toLocalDateString(new Date());
       const payload = buildWorkoutPlanPayload(draft);
-      if (template) await updateWorkoutPlanAsync(payload, currentClientDate);
-      else await createWorkoutPlanAsync(payload, currentClientDate);
-      Toast.show({
-        type: 'success',
-        text1: template
-          ? t('workoutPlans.updateSuccess', {
-              defaultValue: 'Workout plan updated',
-            })
-          : t('workoutPlans.createSuccess', {
-              defaultValue: 'Workout plan created',
-            }),
-      });
+      const saved = template
+        ? await updateWorkoutPlanAsync(payload, currentClientDate)
+        : await createWorkoutPlanAsync(payload, currentClientDate);
+      const counts = saved?.regenerated_entries;
+      if (saved?.regeneration_failed) {
+        Toast.show({
+          type: 'error',
+          text1: t('workoutPlans.regenerationFailed', {
+            defaultValue: 'Saved, but refreshing the diary failed',
+          }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+      } else {
+        Toast.show({
+          type: 'success',
+          text1: template
+            ? t('workoutPlans.updateSuccess', {
+                defaultValue: 'Workout plan updated',
+              })
+            : t('workoutPlans.createSuccess', {
+                defaultValue: 'Workout plan created',
+              }),
+          ...(counts
+            ? {
+                text2:
+                  counts.created > 0
+                    ? t('workoutPlans.refreshedSessions', {
+                        defaultValue: 'Refreshed {{count}} upcoming sessions',
+                        count: counts.created,
+                      })
+                    : counts.removed > 0
+                      ? t('workoutPlans.removedSessions', {
+                          defaultValue: 'Removed {{count}} upcoming sessions',
+                          count: counts.removed,
+                        })
+                      : undefined,
+              }
+            : null),
+        });
+      }
       navigation.goBack();
     } catch {
       Toast.show({
@@ -291,37 +424,181 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
       assignment.workout_preset_name ||
       assignment.exercise_name ||
       t('workoutPlans.unnamedWorkout', { defaultValue: 'Workout' });
+    const siblings = draft.assignments.filter((other) =>
+      draft.scheduleType === 'sequential'
+        ? other.session_index === assignment.session_index
+        : other.day_of_week === assignment.day_of_week
+    );
+    const position = siblings.findIndex(
+      (candidate) => candidate.key === assignment.key
+    );
     return (
       <View
         key={assignment.key}
-        className="flex-row items-center justify-between border-t border-border-subtle pt-3 mt-3"
+        className="border-t border-border-subtle pt-3 mt-3"
       >
-        <View className="flex-1 mr-3">
-          <Text className="text-base font-semibold text-text-primary">
-            {name}
-          </Text>
-          {assignment.exercise_id ? (
-            <Text className="text-xs text-text-secondary mt-0.5">
-              {t('workoutPlans.singleExercise', {
-                defaultValue: 'Single exercise',
-              })}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {name}
             </Text>
-          ) : null}
+            {assignment.exercise_id ? (
+              <Text className="text-xs text-text-secondary mt-0.5">
+                {t('workoutPlans.singleExercise', {
+                  defaultValue: 'Single exercise',
+                })}
+              </Text>
+            ) : null}
+          </View>
+          <View className="flex-row items-center">
+            {position > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('workoutPlans.moveUpNamed', {
+                  defaultValue: 'Move {{name}} up',
+                  name,
+                })}
+                hitSlop={8}
+                onPress={() => moveAssignment(assignment.key, -1)}
+                className="px-1"
+              >
+                <Icon name="chevron-up" size={19} color={accentColor} />
+              </Pressable>
+            ) : null}
+            {position < siblings.length - 1 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('workoutPlans.moveDownNamed', {
+                  defaultValue: 'Move {{name}} down',
+                  name,
+                })}
+                hitSlop={8}
+                onPress={() => moveAssignment(assignment.key, 1)}
+                className="px-1"
+              >
+                <Icon name="chevron-down" size={19} color={accentColor} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('workoutPlans.removeNamed', {
+                defaultValue: 'Remove {{name}}',
+                name,
+              })}
+              hitSlop={8}
+              onPress={() => removeAssignment(assignment.key)}
+            >
+              <Icon name="trash" size={19} color={dangerColor} />
+            </Pressable>
+          </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('workoutPlans.removeNamed', {
-            defaultValue: 'Remove {{name}}',
-            name,
-          })}
-          hitSlop={8}
-          onPress={() => removeAssignment(assignment.key)}
-        >
-          <Icon name="trash" size={19} color={dangerColor} />
-        </Pressable>
+        {assignment.exercise_id ? (
+          <View className="mt-2">
+            {assignment.sets.map((set, setIndex) => (
+              <View key={set.id} className="flex-row items-center gap-1.5 mb-2">
+                <Text className="text-xs text-text-secondary w-5">
+                  {setIndex + 1}.
+                </Text>
+                <View className="flex-1">
+                  <FormInput
+                    className="min-h-9 px-2 py-1"
+                    keyboardType="numeric"
+                    placeholder={t('workoutPlans.repsShort', {
+                      defaultValue: 'Reps',
+                    })}
+                    value={
+                      rawSetInputs[
+                        rawSetKey(assignment.key, setIndex, 'reps')
+                      ] ?? (set.reps == null ? '' : String(set.reps))
+                    }
+                    onChangeText={(value) =>
+                      changeSetNumber(assignment.key, setIndex, 'reps', value)
+                    }
+                  />
+                </View>
+                <View className="flex-1">
+                  <FormInput
+                    className="min-h-9 px-2 py-1"
+                    keyboardType="numeric"
+                    placeholder={t('workoutPlans.weightShort', {
+                      defaultValue: 'Weight',
+                    })}
+                    value={
+                      rawSetInputs[
+                        rawSetKey(assignment.key, setIndex, 'weight')
+                      ] ?? (set.weight == null ? '' : String(set.weight))
+                    }
+                    onChangeText={(value) =>
+                      changeSetNumber(assignment.key, setIndex, 'weight', value)
+                    }
+                  />
+                </View>
+                <View className="flex-1">
+                  <FormInput
+                    className="min-h-9 px-2 py-1"
+                    keyboardType="numeric"
+                    placeholder={t('workoutPlans.restShort', {
+                      defaultValue: 'Rest (s)',
+                    })}
+                    value={
+                      rawSetInputs[
+                        rawSetKey(assignment.key, setIndex, 'rest_time')
+                      ] ?? (set.rest_time == null ? '' : String(set.rest_time))
+                    }
+                    onChangeText={(value) =>
+                      changeSetNumber(
+                        assignment.key,
+                        setIndex,
+                        'rest_time',
+                        value
+                      )
+                    }
+                  />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('workoutPlans.removeSetNumber', {
+                    defaultValue: 'Remove set {{number}}',
+                    number: setIndex + 1,
+                  })}
+                  hitSlop={8}
+                  onPress={() => removeSet(assignment.key, setIndex)}
+                >
+                  <Icon name="close" size={18} color={dangerColor} />
+                </Pressable>
+              </View>
+            ))}
+            <Button
+              variant="secondary"
+              accessibilityLabel={t('workoutPlans.addSet', {
+                defaultValue: 'Add set',
+              })}
+              onPress={() => addSet(assignment.key)}
+              className="mt-1"
+            >
+              {t('workoutPlans.addSet', { defaultValue: 'Add set' })}
+            </Button>
+          </View>
+        ) : null}
       </View>
     );
   };
+
+  const renderAddExercise = (slot: {
+    dayOfWeek: number | null;
+    sessionIndex: number | null;
+  }) => (
+    <Button
+      variant="secondary"
+      accessibilityLabel={t('workoutPlans.addExercise', {
+        defaultValue: 'Add exercise',
+      })}
+      onPress={() => openExerciseSearch(slot)}
+      className="mt-3"
+    >
+      {t('workoutPlans.addExercise', { defaultValue: 'Add exercise' })}
+    </Button>
+  );
 
   const renderAddWorkout = (slot: {
     dayOfWeek: number | null;
@@ -597,6 +874,10 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
               ) : null}
               {weeklyAssignments.map(renderAssignment)}
               {renderAddWorkout({ dayOfWeek: selectedDay, sessionIndex: null })}
+              {renderAddExercise({
+                dayOfWeek: selectedDay,
+                sessionIndex: null,
+              })}
             </View>
           </>
         ) : (
@@ -655,6 +936,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
                   )
                   .map(renderAssignment)}
                 {renderAddWorkout({ dayOfWeek: null, sessionIndex })}
+                {renderAddExercise({ dayOfWeek: null, sessionIndex })}
               </View>
             ))}
             <Button
@@ -675,11 +957,23 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
             })}
           </Text>
         ) : null}
+        {template &&
+        draft.scheduleType === 'weekly' &&
+        draft.entryMode === 'prefill' ? (
+          <View className="bg-raised rounded-xl px-4 py-3 mt-4">
+            <Text className="text-sm text-text-secondary">
+              {t('workoutPlans.impactNoteForm', {
+                defaultValue:
+                  'Saving refreshes this plan’s upcoming diary sessions. Workouts you already logged, started or finished stay untouched.',
+              })}
+            </Text>
+          </View>
+        ) : null}
         <View className="bg-raised rounded-xl px-4 py-3 mt-4">
           <Text className="text-sm text-text-secondary">
             {t('workoutPlans.presetNotice', {
               defaultValue:
-                'You can add the workouts saved in your library. To plan a single exercise, use the web app.',
+                'You can add the workouts saved in your library, or single exercises with their own sets.',
             })}
           </Text>
         </View>
