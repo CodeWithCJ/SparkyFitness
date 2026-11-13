@@ -35,6 +35,9 @@ enum ScreenshotSeed {
         case none
     }
 
+    /// Set when seeding writes persisted state, so a later normal launch can drop it.
+    static let seededKey = "sparky.screenshotSeeded"
+
     static var isEnabled: Bool {
         ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SEED"] == "1"
     }
@@ -172,6 +175,7 @@ enum ScreenshotSeed {
     /// that one screen.
     @MainActor
     static func apply() {
+        UserDefaults.standard.set(true, forKey: seededKey)
         CheckInStore.shared.apply(context: SampleDay.context)
 
         // As if the phone had sent them: files in the watch's cache.
