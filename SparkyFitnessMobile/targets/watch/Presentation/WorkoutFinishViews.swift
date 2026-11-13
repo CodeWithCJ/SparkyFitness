@@ -9,7 +9,6 @@ struct NewPrView: View {
     var detail: String?
     let onContinue: () -> Void
 
-    @State private var drained = false
     @State private var shownAt = Date()
 
     private static let ink = Color(red: 26 / 255, green: 18 / 255, blue: 0)
@@ -42,20 +41,23 @@ struct NewPrView: View {
             }
             Spacer(minLength: WatchStyle.m(8))
             Button(action: Haptics.tapping(onContinue)) {
-                TimelineView(.periodic(from: shownAt, by: 1)) { context in
-                    let left = max(0, 5 - Int(context.date.timeIntervalSince(shownAt)))
+                // Date-driven, like the other countdowns: a one-shot animation
+                // started in onAppear is lost to the overlay's transition.
+                TimelineView(.animation) { context in
+                    let elapsed = context.date.timeIntervalSince(shownAt)
+                    let left = max(0, 5 - Int(elapsed))
                     Text(String(localized: "watch.workout.continueIn", defaultValue: "Continue · \(left)s"))
                         .font(.system(size: WatchStyle.m(17), weight: .bold))
                         .foregroundStyle(Color(red: 1, green: 211 / 255, blue: 92 / 255))
                         .monospacedDigit()
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: WatchStyle.m(48))
-                .background(alignment: .leading) {
-                    GeometryReader { geo in
-                        Color.white.opacity(0.2)
-                            .frame(width: drained ? 0 : geo.size.width)
-                    }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: WatchStyle.m(48))
+                        .background(alignment: .leading) {
+                            GeometryReader { geo in
+                                Color.white.opacity(0.3)
+                                    .frame(width: geo.size.width * max(0, 1 - elapsed / 5))
+                            }
+                        }
                 }
                 .background(Self.ink)
                 .clipShape(Capsule())
@@ -87,10 +89,7 @@ struct NewPrView: View {
             }
             .ignoresSafeArea()
         )
-        .onAppear {
-            shownAt = Date()
-            withAnimation(.linear(duration: 5)) { drained = true }
-        }
+        .onAppear { shownAt = Date() }
         .accessibilityElement(children: .combine)
     }
 }
@@ -141,6 +140,8 @@ struct WorkoutFinishSummaryView: View {
                     .foregroundStyle(Self.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: WatchStyle.m(42))
+                    // The 17 pt capitals start about m(15) into the line.
+                    .padding(.leading, WatchStyle.cornerExtra(y: WatchStyle.top + WatchStyle.m(15), have: WatchStyle.overlaySide))
                     .accessibilityAddTraits(.isHeader)
                 row(String(localized: "watch.summary.time", defaultValue: "Time"), duration)
                 row(String(localized: "watch.summary.sets", defaultValue: "Sets"), "\(summary.setsCompleted)")

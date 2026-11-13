@@ -869,6 +869,18 @@ enum WatchStyle {
         let have = 4 + side + m(4)
         return max(0, needed - have)
     }
+    /// Extra leading room a point `y` from the top of the screen needs to sit
+    /// inside the display's rounded corner, which is modelled as in
+    /// `pillCornerExtra`. `have` is the margin the point already has. Titles
+    /// on pages that run under the clock use it so their first letter is not
+    /// cut off.
+    static func cornerExtra(y: CGFloat, have: CGFloat) -> CGFloat {
+        let radius = WKInterfaceDevice.current().screenBounds.width * 0.28
+        guard y < radius else { return 0 }
+        let dy = radius - y
+        let needed = radius - (radius * radius - dy * dy).squareRoot()
+        return max(0, needed - have)
+    }
     static var bottom: CGFloat { m(10) }
     static let heart = Color(red: 237 / 255, green: 94 / 255, blue: 99 / 255)
     /// The mockups are set in SF Pro, whose numerals draw about 12% larger than
@@ -1783,6 +1795,8 @@ private struct HoldTile: View {
     let label: String
     let value: String
     var suffix: String?
+    /// A line after the value, e.g. the last time; nil leaves the tile as is.
+    var note: String?
     let running: Bool
     let accessibilityHint: String
     let action: () -> Void
@@ -1800,6 +1814,11 @@ private struct HoldTile: View {
                         .monospacedDigit()
                     if let suffix {
                         Text(suffix).font(.system(size: WatchStyle.m(16), weight: .medium))
+                    }
+                    if let note {
+                        Text(note)
+                            .font(.system(size: WatchStyle.m(14), weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
                     }
                 }
                 .lineLimit(1)
@@ -1825,7 +1844,7 @@ private struct HoldTile: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label.capitalized), \(value)\(suffix.map { " \($0)" } ?? "")")
+        .accessibilityLabel("\(label.capitalized), \(value)\(suffix.map { " \($0)" } ?? "")\(note.map { ", \($0)" } ?? "")")
         .accessibilityHint(accessibilityHint)
     }
 }
@@ -2045,10 +2064,15 @@ private struct HoldStopwatch: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = store.stopwatchElapsed(for: setId, now: context.date)
             let running = store.isStopwatchRunning(for: setId)
+            // Until it starts, the wearer's last hold for this set.
+            let previous = elapsed == nil ? store.previousDurationSec(forSetId: setId) : nil
             HoldTile(
                 label: String(localized: "watch.workout.timeLabel", defaultValue: "Time").uppercased(),
                 value: Self.clock(elapsed ?? 0),
                 suffix: nil,
+                note: previous.map {
+                    String(localized: "watch.workout.last", defaultValue: "Last \(Self.clock($0))")
+                },
                 running: running,
                 accessibilityHint: running
                     ? String(localized: "watch.workout.holdStop", defaultValue: "Stop")
@@ -3037,6 +3061,9 @@ private struct RpePickerView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .frame(height: WatchStyle.m(28))
+                // The capitals start about m(6) into the line, in the display's
+                // corner under the clock.
+                .padding(.leading, WatchStyle.cornerExtra(y: WatchStyle.top + WatchStyle.m(6), have: WatchStyle.overlaySide))
                 .accessibilityAddTraits(.isHeader)
             Text(summary)
                 .font(.system(size: WatchStyle.m(14)))

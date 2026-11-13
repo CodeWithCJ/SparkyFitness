@@ -73,6 +73,7 @@ struct EditPreviousSetView: View {
                 .padding(.trailing, WatchStyle.m(13))
                 .frame(height: WatchStyle.m(42))
                 .background(tint.pill, in: Capsule())
+                .padding(.leading, WatchStyle.pillCornerExtra)
                 Spacer(minLength: 0)
             }
             SetTitle(name: step.exerciseName)
