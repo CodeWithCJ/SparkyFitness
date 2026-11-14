@@ -62,6 +62,7 @@ Do not read or search these paths; they burn context for nothing:
 - `db_schema_backup.sql` (~330 KB) - never read whole; grep for the one `CREATE TABLE` you need.
 - `SparkyFitnessFrontend/dist/` - build output.
 - `SparkyFitnessFrontend/public/locales/` except `en/` - 35 machine-synced translations. Only `en/translation.json` is ever hand-edited, and even that (~120 KB) should be grepped, not read whole.
+- `SparkyFitnessExerciseLibrary/exercises/` and `dist/` - static dataset with 1,300+ exercise folders. Never search or read whole during general app tasks (burns tokens for nothing); inspect `schema/exercise.schema.json` or `taxonomy/` instead unless the user explicitly asks to research, edit, or import exercises.
 
 Cheap ways to learn things:
 
