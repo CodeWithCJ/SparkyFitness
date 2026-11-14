@@ -8,8 +8,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
+  StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -29,7 +31,10 @@ import { usesBarbell, type PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutFocusChips from './ActiveWorkoutFocusChips';
 import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
-import { FocusScrollTargetContext } from './focusScrollTarget';
+import {
+  FocusScrollTargetContext,
+  focusScrollOffset,
+} from './focusScrollTarget';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import FocusHoldPanel from './FocusHoldPanel';
@@ -180,6 +185,11 @@ const HistoryCapture = React.memo(function HistoryCapture({
   return null;
 });
 
+interface ScrollViewport {
+  height: number;
+  bottomInset: number;
+}
+
 interface PageProps extends SetEditorProps {
   sessionId: string | null;
   verifiedSourcePresetId: number | undefined;
@@ -187,6 +197,8 @@ interface PageProps extends SetEditorProps {
   prSetIds: PrSetMap;
   mediaExpanded: boolean;
   scrollRef: React.RefObject<KeyboardAwareScrollViewRef | null>;
+  /** The scroll view's height and the bottom strip the footer covers. */
+  viewportRef: React.RefObject<ScrollViewport>;
   getImageSource: GetImageSource;
   onToggleMedia: () => void;
   onPressOverflow: (entryId: string) => void;
@@ -206,6 +218,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   prSetIds,
   mediaExpanded: mediaPreferenceExpanded,
   scrollRef,
+  viewportRef,
   getImageSource,
   onToggleMedia: onTogglePreference,
   onPressOverflow,
@@ -353,6 +366,11 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   // of the scroll content.
   const pageRef = useRef<View>(null);
   const scrollTargetRef = useRef<View>(null);
+  const scrollHeaderRef = useRef<View>(null);
+  const scrollTargets = useMemo(
+    () => ({ card: scrollTargetRef, header: scrollHeaderRef }),
+    []
+  );
   const reducedMotion = useReducedMotion();
   const activeHere = exercise.sets.some(
     (set) => String(set.id) === setEditorProps.activeSetId
@@ -370,18 +388,38 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       const target = scrollTargetRef.current;
       const page = pageRef.current;
       if (target == null || page == null) return;
+      const scrollTo = (
+        cardTop: number,
+        cardHeight: number,
+        headerTop: number | null
+      ) =>
+        scrollRef.current?.scrollTo({
+          y: focusScrollOffset({
+            cardTop,
+            cardHeight,
+            headerTop,
+            viewportHeight: viewportRef.current.height,
+            bottomInset: viewportRef.current.bottomInset,
+            margin: SCROLL_TARGET_MARGIN,
+          }),
+          animated: !reducedMotion,
+        });
       target.measureLayout(
         page,
-        (_x, y) =>
-          scrollRef.current?.scrollTo({
-            y: Math.max(0, y - SCROLL_TARGET_MARGIN),
-            animated: !reducedMotion,
-          }),
+        (_x, cardTop, _w, cardHeight) => {
+          const header = scrollHeaderRef.current;
+          if (header == null) return scrollTo(cardTop, cardHeight, null);
+          header.measureLayout(
+            page,
+            (_hx, headerTop) => scrollTo(cardTop, cardHeight, headerTop),
+            () => scrollTo(cardTop, cardHeight, null)
+          );
+        },
         () => {}
       );
     });
     return () => cancelAnimationFrame(frame);
-  }, [scrollKey, reducedMotion, scrollRef]);
+  }, [scrollKey, reducedMotion, scrollRef, viewportRef]);
 
   const mediaMode = !hasMedia
     ? 'none'
@@ -532,7 +570,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   }
 
   return (
-    <FocusScrollTargetContext.Provider value={scrollTargetRef}>
+    <FocusScrollTargetContext.Provider value={scrollTargets}>
       <View ref={pageRef} collapsable={false} className="gap-3">
         <ActiveWorkoutFocusMedia
           images={snapshot?.images ?? []}
@@ -886,6 +924,15 @@ function ActiveWorkoutFocusView({
     setStoreWeightUnit(weightUnit);
   }, [weightUnit, setStoreWeightUnit]);
 
+  // The visible part of the scroll view: its height less what the footer
+  // covers (the content's bottom padding), so a set can be scrolled above it.
+  const viewportRef = useRef<ScrollViewport>({ height: 0, bottomInset: 0 });
+  viewportRef.current.bottomInset =
+    Number(StyleSheet.flatten(scrollContentStyle)?.paddingBottom) || 0;
+  const handleScrollLayout = useCallback((e: LayoutChangeEvent) => {
+    viewportRef.current.height = e.nativeEvent.layout.height;
+  }, []);
+
   if (exercise == null) return null;
   const awayFromCurrent =
     activeExerciseId != null && activeExerciseId !== exercise.id;
@@ -902,6 +949,7 @@ function ActiveWorkoutFocusView({
       <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"
+        onLayout={handleScrollLayout}
         contentContainerClassName="px-4 pt-1"
         contentContainerStyle={scrollContentStyle}
         keyboardShouldPersistTaps="handled"
@@ -925,6 +973,7 @@ function ActiveWorkoutFocusView({
               prSetIds={prSetIds}
               mediaExpanded={mediaExpanded}
               scrollRef={scrollRef}
+              viewportRef={viewportRef}
               getImageSource={getImageSource}
               onToggleMedia={toggleMedia}
               onPressOverflow={onPressOverflow}
