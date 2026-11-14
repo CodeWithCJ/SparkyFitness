@@ -45,7 +45,11 @@ import {
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
-import { storedWeightInUnit, weightFromKg } from '../utils/unitConversions';
+import {
+  storedWeightInUnit,
+  weightFromKg,
+  weightToKg,
+} from '../utils/unitConversions';
 import {
   ActiveWorkoutCompactRestRow,
   COMPACT_REST_ROW_HEIGHT,
@@ -112,6 +116,7 @@ import {
   isDurationModality,
   isMetricClampedToRpe,
   isWarmupSetType,
+  quantizeSetWeightKg,
   SET_TYPE_OPTIONS,
 } from '../utils/workoutSession';
 import {
@@ -743,6 +748,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   // The set the plate calculator is open for (its weight is kg, as stored).
   const [plateCalc, setPlateCalc] = useState<{
+    setId: string;
     weightKg: number | null;
     equipment: readonly string[] | null;
     exerciseName?: string;
@@ -762,6 +768,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       const set = ex.sets.find((s) => String(s.id) === setId);
       const weightKg = Number(set?.weight ?? plannedSetValues[setId]?.weight);
       return {
+        setId,
         weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
         equipment,
         exerciseName: ex.exercise_snapshot?.name,
@@ -1736,6 +1743,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           page={focusMode}
           exerciseName={plateCalc?.exerciseName}
           setNumber={plateCalc?.setNumber}
+          onUseWeight={(weight) => {
+            handleCommitField(plateCalc.setId, {
+              weight: quantizeSetWeightKg(weightToKg(weight, weightUnit)),
+            });
+            setPlateCalc(null);
+          }}
         />
       )}
 
