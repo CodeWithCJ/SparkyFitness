@@ -6183,7 +6183,8 @@
       "dailyTitle": "Symptom check-in",
       "dailyBody": "How are you feeling today? Tap to log any symptoms.",
       "nudgeTitle": "Episode still active?",
-      "nudgeBody": "{{name}} has been running for {{hours}} hours. Is it still ongoing or ended?"
+      "nudgeBody": "{{name}} has been running for {{hours}} hours. Is it still ongoing or ended?",
+      "episodeEnded": "Episode ended"
     },
     "chart": {
       "summary_one": "Severity over the episode, {{count}} reading",

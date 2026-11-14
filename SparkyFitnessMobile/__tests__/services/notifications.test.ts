@@ -137,7 +137,7 @@ describe('notifications service', () => {
         'medication-reminders',
         expect.objectContaining({ name: 'Przypomnienia o lekach' })
       );
-      expect(mockSetCategory).toHaveBeenLastCalledWith(
+      expect(mockSetCategory).toHaveBeenCalledWith(
         'medication-reminder',
         expect.arrayContaining([
           expect.objectContaining({
@@ -222,6 +222,64 @@ describe('notifications service', () => {
           options: expect.objectContaining({ opensAppToForeground: false }),
         }),
       ]);
+    });
+
+    it('registers the symptom nudge category with titled buttons in the current language', async () => {
+      await initNotifications();
+      expect(mockSetCategory).toHaveBeenCalledWith('symptom-episode-nudge', [
+        expect.objectContaining({
+          identifier: 'symptom-end-episode',
+          buttonTitle: 'End now',
+          options: expect.objectContaining({ opensAppToForeground: true }),
+        }),
+        expect.objectContaining({
+          identifier: 'symptom-still-ongoing',
+          buttonTitle: 'Still ongoing',
+          options: expect.objectContaining({ opensAppToForeground: true }),
+        }),
+      ]);
+      mockSetCategory.mockClear();
+      await i18n.changeLanguage('pl');
+      await registerLocalizedNotificationPresentation();
+      const plCall = mockSetCategory.mock.calls.find(
+        (call) => call[0] === 'symptom-episode-nudge'
+      );
+      expect(plCall?.[1][0].buttonTitle).toBe(
+        i18n.t('symptoms.actions.endNow')
+      );
+      await i18n.changeLanguage('en');
+    });
+
+    it('keeps the symptom nudge button titles when i18n returns nothing', async () => {
+      // Before i18n has initialised, t() can return undefined, and Android
+      // rejects an action without a buttonTitle (#3471).
+      const tSpy = jest
+        .spyOn(i18n, 't')
+        .mockReturnValue(undefined as unknown as string);
+      try {
+        await registerLocalizedNotificationPresentation();
+      } finally {
+        tSpy.mockRestore();
+      }
+      const call = mockSetCategory.mock.calls.find(
+        (c) => c[0] === 'symptom-episode-nudge'
+      );
+      expect(call?.[1].map((action) => action.buttonTitle)).toEqual([
+        'End now',
+        'Still ongoing',
+      ]);
+    });
+
+    it('creates the symptom reminder Android channel at startup', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'symptom-reminders',
+        expect.objectContaining({ name: 'Symptom reminders' })
+      );
     });
 
     it('does not create an Android channel on iOS', async () => {

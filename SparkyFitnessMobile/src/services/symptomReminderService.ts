@@ -2,47 +2,13 @@ import * as Notifications from 'expo-notifications';
 import i18n from '../localization/i18n';
 import { addLog } from './LogService';
 import {
-  ensureSymptomReminderChannel,
   hasNotificationPermission,
+  SYMPTOM_EPISODE_NUDGE_CATEGORY,
 } from './notifications';
 
 const SYMPTOM_REMINDER_CHANNEL_ID = 'symptom-reminders';
-const SYMPTOM_EPISODE_NUDGE_CATEGORY = 'symptom-episode-nudge';
-
-const SYMPTOM_ACTION_END_EPISODE = 'symptom-end-episode';
-const SYMPTOM_ACTION_STILL_ONGOING = 'symptom-still-ongoing';
 
 const ONGOING_NUDGE_PREFIX = 'symptom_nudge_';
-
-export async function ensureSymptomNotificationCategory(): Promise<void> {
-  try {
-    await ensureSymptomReminderChannel();
-    await Notifications.setNotificationCategoryAsync(
-      SYMPTOM_EPISODE_NUDGE_CATEGORY,
-      [
-        {
-          identifier: SYMPTOM_ACTION_END_EPISODE,
-          buttonTitle: i18n.t('symptoms.actions.endNow', {
-            defaultValue: 'End now',
-          }),
-          options: { isDestructive: false },
-        },
-        {
-          identifier: SYMPTOM_ACTION_STILL_ONGOING,
-          buttonTitle: i18n.t('symptoms.actions.stillOngoing', {
-            defaultValue: 'Still ongoing',
-          }),
-          options: { isDestructive: false },
-        },
-      ]
-    );
-  } catch (err) {
-    addLog(
-      `ensureSymptomNotificationCategory failed: ${(err as Error).message}`,
-      'ERROR'
-    );
-  }
-}
 
 export async function scheduleOngoingEpisodeNudge(
   episodeId: string,

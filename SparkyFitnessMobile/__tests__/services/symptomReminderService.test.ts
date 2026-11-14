@@ -1,6 +1,5 @@
 import * as Notifications from 'expo-notifications';
 import {
-  ensureSymptomNotificationCategory,
   scheduleOngoingEpisodeNudge,
   cancelOngoingEpisodeNudge,
 } from '../../src/services/symptomReminderService';
@@ -16,11 +15,6 @@ const mockCancel =
   Notifications.cancelScheduledNotificationAsync as jest.MockedFunction<
     typeof Notifications.cancelScheduledNotificationAsync
   >;
-const mockSetCategory =
-  Notifications.setNotificationCategoryAsync as jest.MockedFunction<
-    typeof Notifications.setNotificationCategoryAsync
-  >;
-
 describe('symptomReminderService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,17 +24,6 @@ describe('symptomReminderService', () => {
       canAskAgain: true,
       expires: 'never',
     } as never);
-  });
-
-  it('registers symptom notification category', async () => {
-    await ensureSymptomNotificationCategory();
-    expect(mockSetCategory).toHaveBeenCalledWith(
-      'symptom-episode-nudge',
-      expect.arrayContaining([
-        expect.objectContaining({ identifier: 'symptom-end-episode' }),
-        expect.objectContaining({ identifier: 'symptom-still-ongoing' }),
-      ])
-    );
   });
 
   it('schedules ongoing episode nudge for future timestamp', async () => {
