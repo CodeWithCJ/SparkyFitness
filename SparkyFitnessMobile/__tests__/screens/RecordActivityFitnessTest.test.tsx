@@ -723,6 +723,15 @@ describe('RecordActivityScreen fitness test', () => {
       fireEvent.press(screen.getByText('Save activity'));
       await waitFor(() => expect(navigation.replace).toHaveBeenCalled());
       expect(saveFitnessTest).not.toHaveBeenCalled();
+      // Not a test, so the 5 km is not filled in for it.
+      expect(saveRecordedActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'km',
+        null,
+        null,
+        true
+      );
     });
 
     it('sends the distance at 10:00 for a 30-minute run, or assumes a steady pace', async () => {
