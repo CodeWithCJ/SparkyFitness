@@ -158,7 +158,10 @@ Official Logo:
   - Vertical (9:16): Save as `{{NUMERIC_ID}}_{{SLUG}}_9_16.mp4` (or `{{NUMERIC_ID}}_{{SLUG}}.mp4` if only one orientation is generated).
   - Horizontal (16:9): Save as `{{NUMERIC_ID}}_{{SLUG}}_16_9.mp4`.
 - Target File Size: ~0.5 MB to 1.5 MB (max 2.5 MB), encoded with H.264 (libx264).
-- Seamless In-App Looping: The video must start and end at the neutral resting / setup position of the exercise movement cycle so that playback loops infinitely and smoothly without jarring jumps or hitches.
+- Seamless In-App Looping & Continuous Movement Flow:
+  - The video must start and end at the exact same neutral setup / resting point of the movement cycle so infinite playback creates the seamless illusion of one ongoing workout set.
+  - When the repetition completes, it must flow smoothly and naturally back into the start of the next repetition rather than abruptly cutting off, stopping, or looking like the exercise was aborted and restarted from scratch.
+  - Body posture, joint angles, limb positioning, and return momentum at the final frame must align continuously with the initial frame without hitches, jumps, or jarring resets.
 - Aspect Ratio: Match the chosen format (9:16 vertical, 16:9 horizontal, or 1:1 square).
 - Style: Photorealistic 3D human anatomy.
 - Movement: Faithfully reproduced from the original video.
@@ -186,6 +189,7 @@ DO NOT:
 - Produce color bleeding or chromatic halos from muscle overlays onto equipment or background.
 - Crop out hands, feet, weights, or range-of-motion endpoints.
 - Unnaturally speed up, slow down, or freeze motion phases.
+- Abruptly cut, abort, drop weights, or break posture at the end of the clip so it jolts or looks restarted rather than continuing.
 - Alter character facial identity or body proportions across frames.
 - Generate distorted anatomy, extra limbs, or deformed fingers.
 - Add text, subtitles, muscle names, or countdown timers.
