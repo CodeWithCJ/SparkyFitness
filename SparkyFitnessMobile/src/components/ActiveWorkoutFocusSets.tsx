@@ -394,10 +394,13 @@ const FocusSetRow = React.memo(function FocusSetRow({
       ),
   });
 
-  const handleComplete = () => {
+  const flushDrafts = () => {
     if (showWeight) weight.flush();
     reps.flush();
     effortInput.flush();
+  };
+  const handleComplete = () => {
+    flushDrafts();
     onCompleteSet(setId);
   };
 
@@ -439,12 +442,14 @@ const FocusSetRow = React.memo(function FocusSetRow({
     handleComplete,
     handleAdvance,
     flushWeight: weight.flush,
+    flushDrafts,
   });
   useEffect(() => {
     latestRef.current = {
       handleComplete,
       handleAdvance,
       flushWeight: weight.flush,
+      flushDrafts,
     };
   });
   useEffect(() => {
@@ -453,6 +458,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
       focusField: (field) => inputRefFor(field).current?.focus(),
       advance: () => latestRef.current.handleAdvance(),
       flushWeight: () => latestRef.current.flushWeight(),
+      flushDrafts: () => latestRef.current.flushDrafts(),
     });
     return () => onRegisterAccessoryHandle(renderKey, null);
   }, [renderKey, onRegisterAccessoryHandle, inputRefFor]);

@@ -604,6 +604,11 @@ export interface SetRowAccessoryHandle {
   advance: () => void;
   /** Live: commit the row's in-progress weight draft without completing it. */
   flushWeight?: () => void;
+  /**
+   * Live: commit every in-progress draft of the row without completing it, so
+   * a Log pressed outside the row (the bottom bar) records what was typed.
+   */
+  flushDrafts?: () => void;
 }
 
 /**

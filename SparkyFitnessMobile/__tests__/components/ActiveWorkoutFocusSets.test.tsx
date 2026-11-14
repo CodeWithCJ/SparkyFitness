@@ -286,6 +286,19 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(callbacks.onCompleteSet).toHaveBeenCalledWith('101');
   });
 
+  it('commits every typed draft without completing when the bottom Log flushes the row', () => {
+    const { getByLabelText, callbacks } = renderSets({ activeSetId: '101' });
+    fireEvent.changeText(getByLabelText('Weight for set 1'), '150');
+    fireEvent.changeText(getByLabelText('Reps for set 1'), '9');
+    const [, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+    act(() => handle.flushDrafts());
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      weight: 150,
+    });
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 9 });
+    expect(callbacks.onCompleteSet).not.toHaveBeenCalled();
+  });
+
   it('completes and un-completes through the check', () => {
     const upcoming = renderSets();
     fireEvent.press(upcoming.getByLabelText('Mark set 1 complete'));
