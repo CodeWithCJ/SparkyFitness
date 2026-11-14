@@ -22,6 +22,11 @@ interface DemoExercise {
 // the watch may have been reinstalled or tidied its cache since.
 const sent = new Set<string>();
 const inFlight = new Set<string>();
+// Exercises whose download or resize failed for this arm (a 404, a bad
+// image). The plan resends on every set log, so retrying those would download
+// and log the same failure each time. A send the watch rejected (unreachable)
+// is not recorded here and is retried.
+const failed = new Set<string>();
 let counter = 0;
 
 /**
@@ -31,7 +36,8 @@ let counter = 0;
  * reachable): delivered over the phone link even when the watch has no
  * network of its own. The watch caches them by exercise
  * id. Best effort: a failed download or transfer is logged and the watch just
- * has no demo page for that exercise.
+ * has no demo page for that exercise. A failed download is not retried for
+ * the same arm; a failed transfer is.
  */
 export async function sendWatchExerciseImages(
   exercises: readonly DemoExercise[],
@@ -61,19 +67,38 @@ export async function sendWatchExerciseImages(
     const key = exercise.exercise_snapshot?.id;
     const paths = watchDemoImagePaths(exercise.exercise_snapshot);
     const marker = `${armedAt}:${key}`;
-    if (!key || paths.length === 0 || sent.has(marker) || inFlight.has(marker))
+    if (
+      !key ||
+      paths.length === 0 ||
+      sent.has(marker) ||
+      failed.has(marker) ||
+      inFlight.has(marker)
+    )
       continue;
     inFlight.add(marker);
     try {
       for (const [index, path] of paths.entries()) {
         const source = resolveExerciseImageSource(path, config);
-        if (!source) throw new Error('no image source');
-        const jpegUri = await downscaleForWatch(source);
-        await WatchConnectivity.sendExerciseImage({
-          key,
-          index,
-          uri: jpegUri,
-        });
+        if (!source) {
+          failed.add(marker);
+          throw new Error('no image source');
+        }
+        let jpeg: File;
+        try {
+          jpeg = await downscaleForWatch(source);
+        } catch (error) {
+          failed.add(marker);
+          throw error;
+        }
+        try {
+          await WatchConnectivity.sendExerciseImage({
+            key,
+            index,
+            uri: jpeg.uri,
+          });
+        } finally {
+          deleteQuietly(jpeg);
+        }
       }
       sent.add(marker);
     } catch (error) {
@@ -87,7 +112,7 @@ export async function sendWatchExerciseImages(
 async function downscaleForWatch(source: {
   uri: string;
   headers: Record<string, string>;
-}): Promise<string> {
+}): Promise<File> {
   // A name of its own: two exercises' pictures are both called 0.jpg or 1.jpg.
   const destination = new File(
     Paths.cache,
@@ -106,12 +131,16 @@ async function downscaleForWatch(source: {
       format: SaveFormat.JPEG,
       compress: WATCH_DEMO_IMAGE_QUALITY,
     });
-    return result.uri;
+    return new File(result.uri);
   } finally {
-    try {
-      download.delete();
-    } catch {
-      // The cache directory is purged by the OS anyway.
-    }
+    deleteQuietly(download);
+  }
+}
+
+function deleteQuietly(file: File): void {
+  try {
+    file.delete();
+  } catch {
+    // The cache directory is purged by the OS anyway.
   }
 }
