@@ -1955,6 +1955,29 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(mockEffortSheet.props).toBeNull();
     });
 
+    it('detects a real record against the captured best and shows the PR card after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      useActiveWorkoutStore
+        .getState()
+        .capturePrBaseline('x-ex-c', { weight: 50, reps: 8 });
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+      expect(mockEffortSheet.props).not.toBeNull();
+      expect(mockPrCard.props).toBeNull();
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      expect(mockPrCard.props.detail).toEqual({
+        gain: '+10 kg',
+        previous: '50 kg',
+      });
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+    });
+
     it('shows the PR card for a record, after the effort sheet', () => {
       useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
       const { getByTestId } = renderScreen();

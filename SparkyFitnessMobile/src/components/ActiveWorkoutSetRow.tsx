@@ -967,6 +967,7 @@ function ActiveWorkoutSetRow({
       },
       advance: () => handleAdvanceRef.current(),
       flushWeight: () => flushWeightRef.current(),
+      flushDrafts: () => flushWeightRef.current(),
     });
     return () => onRegisterAccessoryHandle(key, null);
   }, [readOnly, renderKey, setId, onRegisterAccessoryHandle]);

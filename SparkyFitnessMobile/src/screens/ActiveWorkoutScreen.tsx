@@ -970,6 +970,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
 
   const handleCompleteActiveSet = useCallback(() => {
+    // The bottom Log runs before the focused input's blur commits its draft,
+    // so flush every row's typed values first or the set logs the old ones
+    // (and a typed record is neither detected as a PR nor kept as logged).
+    for (const handle of Object.values(accessoryHandlesRef.current)) {
+      handle.flushDrafts?.();
+    }
     const id = useActiveWorkoutStore.getState().activeSetId;
     if (id != null) handleCompleteSet(id);
   }, [handleCompleteSet]);
