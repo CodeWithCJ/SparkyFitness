@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  readChatOutsideSource,
+  chatToolLabel,
+  outsideToolResult,
+  chatResultText,
+} from '@workspace/shared';
+
 import { memo, useCallback, useRef, useState } from 'react';
 import {
   AlertCircleIcon,
@@ -10,6 +17,7 @@ import {
 } from 'lucide-react';
 import {
   useScrollLock,
+  useAuiState,
   type ToolCallMessagePartStatus,
   type ToolCallMessagePartComponent,
 } from '@assistant-ui/react';
@@ -100,13 +108,15 @@ function ToolFallbackTrigger({
   toolName: string;
   status?: ToolCallMessagePartStatus;
 }) {
+  const { t } = useTranslation();
   const statusType = status?.type ?? 'complete';
   const isRunning = statusType === 'running';
   const isCancelled =
     status?.type === 'incomplete' && status.reason === 'cancelled';
 
-  const Icon = statusIconMap[statusType];
-  const label = isCancelled ? 'Cancelled tool' : 'Used tool';
+  const isError = statusType === 'incomplete' && !isCancelled;
+  const Icon = isError ? AlertCircleIcon : statusIconMap[statusType];
+  const label = t(isCancelled ? 'toolfallback.cancelled' : 'toolfallback.used');
 
   return (
     <CollapsibleTrigger
@@ -122,7 +132,8 @@ function ToolFallbackTrigger({
         className={cn(
           'aui-tool-fallback-trigger-icon size-4 shrink-0',
           isCancelled && 'text-muted-foreground',
-          isRunning && 'animate-spin'
+          isRunning && 'animate-spin',
+          isError && 'text-destructive'
         )}
       />
       <span
@@ -242,6 +253,7 @@ function ToolFallbackError({
 }: React.ComponentProps<'div'> & {
   status?: ToolCallMessagePartStatus;
 }) {
+  const { t } = useTranslation();
   if (status?.type !== 'incomplete') return null;
 
   const error = status.error;
@@ -254,10 +266,13 @@ function ToolFallbackError({
   if (!errorText) return null;
 
   const isCancelled = status.reason === 'cancelled';
-  const headerText = isCancelled ? 'Cancelled reason:' : 'Error:';
+  const headerText = t(
+    isCancelled ? 'toolfallback.cancelledReason' : 'toolfallback.error'
+  );
 
   return (
     <div
+      role={isCancelled ? 'status' : 'alert'}
       data-slot="tool-fallback-error"
       className={cn('aui-tool-fallback-error px-4', className)}
       {...props}
@@ -265,7 +280,7 @@ function ToolFallbackError({
       <p className="aui-tool-fallback-error-header text-muted-foreground font-semibold">
         {headerText}
       </p>
-      <p className="aui-tool-fallback-error-reason text-muted-foreground">
+      <p className="aui-tool-fallback-error-reason text-sm text-destructive">
         {errorText}
       </p>
     </div>
@@ -274,10 +289,29 @@ function ToolFallbackError({
 
 const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   toolName,
+  args,
   argsText,
   result,
   status,
+  isError,
 }) => {
+  const { t } = useTranslation();
+  const metadata = useAuiState((s) => s.message.metadata);
+  const sources = readChatOutsideSource(metadata);
+  const cleaned = outsideToolResult(result);
+  const resultFailed = cleaned.isError || !!isError;
+  const shownStatus = resultFailed
+    ? {
+        type: 'incomplete' as const,
+        reason: 'error' as const,
+        error: chatResultText(
+          t,
+          result,
+          sources.toolServers[toolName] ?? t('chat.tools.outside')
+        ),
+      }
+    : status;
+  const label = chatToolLabel(t, toolName, sources, args.action);
   const isCancelled =
     status?.type === 'incomplete' && status.reason === 'cancelled';
 
@@ -285,14 +319,18 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
     <ToolFallbackRoot
       className={cn(isCancelled && 'border-muted-foreground/30 bg-muted/30')}
     >
-      <ToolFallbackTrigger toolName={toolName} status={status} />
+      <ToolFallbackTrigger toolName={label} status={shownStatus} />
       <ToolFallbackContent>
-        <ToolFallbackError status={status} />
+        <ToolFallbackError status={shownStatus} />
         <ToolFallbackArgs
           argsText={argsText}
           className={cn(isCancelled && 'opacity-60')}
         />
-        {!isCancelled && <ToolFallbackResult result={result} />}
+        {!isCancelled && !resultFailed && (
+          <ToolFallbackResult
+            result={toolName.startsWith('mcp_') ? cleaned.text : result}
+          />
+        )}
       </ToolFallbackContent>
     </ToolFallbackRoot>
   );

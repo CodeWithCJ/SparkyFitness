@@ -4946,7 +4946,11 @@
       "checkin": "Check-in",
       "goals": "Goals",
       "lookedUp": "Looked up {{name}}",
-      "runProgram": "Run program"
+      "runProgram": "Run program",
+      "generic": "Tool",
+      "outside": "an outside tool",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})"
     },
     "typing": "Sparky is typing",
     "voice": {
@@ -4971,6 +4975,73 @@
       "cameraPermission": "Camera permission needed",
       "cameraPermissionBody": "Enable camera access to add a photo.",
       "addFailed": "Could not add photo"
+    },
+    "approval": {
+      "title": "Allow this step?",
+      "run": "After reading {{server}}, Sparky wants to run:",
+      "send": "After reading {{server}}, Sparky wants to use this from {{otherServer}}:",
+      "details": "Details",
+      "allow": "Allow",
+      "deny": "Deny",
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "failed": "Could not save your answer. Please try again.",
+      "runPlain": "Sparky wants to run:",
+      "delete": "Sparky wants to delete:",
+      "deleteAfter": "After reading {{server}}, Sparky wants to delete:",
+      "change": "Sparky wants to make this change:",
+      "changeAfter": "After reading {{server}}, Sparky wants to make this change:",
+      "working": "Working on it…",
+      "done": "Done",
+      "notRun": "Not run",
+      "cancelled": "You sent a new message first.",
+      "nothingChanged": "Nothing was changed.",
+      "toolFailed": "Allowed, but it didn't work",
+      "otherPending": "Answer the other step to continue.",
+      "composerHint": "Answer the step above first, or keep typing to skip it.",
+      "announce": "Sparky needs your answer: Allow this step?",
+      "runCompleted": "After reading {{server}}, Sparky ran:",
+      "runPlainCompleted": "Sparky ran:",
+      "sendCompleted": "After reading {{server}}, Sparky ran:",
+      "deleteCompleted": "You allowed Sparky to delete:",
+      "deleteAfterCompleted": "After Sparky read {{server}}, you allowed it to delete:",
+      "changeCompleted": "You allowed Sparky to make this change:",
+      "changeAfterCompleted": "After Sparky read {{server}}, you allowed it to make this change:",
+      "runFailed": "After reading {{server}}, Sparky tried to run:",
+      "runPlainFailed": "Sparky tried to run:",
+      "sendFailed": "After reading {{server}}, Sparky tried to run:",
+      "deleteFailed": "Sparky tried to delete:",
+      "deleteAfterFailed": "After reading {{server}}, Sparky tried to delete:",
+      "changeFailed": "Sparky tried to make this change:",
+      "changeAfterFailed": "After reading {{server}}, Sparky tried to make this change:",
+      "runUnused": "After reading {{server}}, Sparky wanted to run:",
+      "runPlainUnused": "Sparky wanted to run:",
+      "sendUnused": "After reading {{server}}, Sparky wanted to use this from {{otherServer}}:",
+      "deleteUnused": "Sparky wanted to delete:",
+      "deleteAfterUnused": "After reading {{server}}, Sparky wanted to delete:",
+      "changeUnused": "Sparky wanted to make this change:",
+      "changeAfterUnused": "After reading {{server}}, Sparky wanted to make this change:"
+    },
+    "outsideSource": {
+      "line": "Used {{servers}}. Something look wrong?",
+      "delete": "Delete this message",
+      "clear": "Clear chat",
+      "failed": "Could not delete this message. Please try again.",
+      "deleteTitle": "Delete this reply?",
+      "deleteBody": "This removes the reply from your chat. It does not undo anything Sparky already changed.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "deleting": "Deleting…"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} did not answer. Try again later.",
+      "turnedOff": "{{server}} is turned off for you in AI settings."
+    },
+    "clearConfirm": {
+      "title": "Clear chat?",
+      "body": "This permanently deletes your Sparky chat history. This cannot be undone.",
+      "cancel": "Cancel",
+      "clear": "Clear"
     }
   },
   "foodImagePicker": {
@@ -7446,6 +7517,17 @@
     "saveFailed": "Failed to save category"
   },
   "aiSettings": {
+    "chatMcp": {
+      "title": "Outside tools",
+      "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
+      "allow": "Let Sparky use {{name}}",
+      "loadError": "Could not load outside tools.",
+      "saveError": "Could not save. Please try again.",
+      "accountId": "Sees your account ID.",
+      "familyOff": "Outside tools are off while you view someone else's profile.",
+      "retry": "Try again",
+      "loading": "Loading outside tools…"
+    },
     "server": {
       "title": "Server AI provider",
       "loading": "Checking…",
@@ -10367,5 +10449,11 @@
     "daysCount_one": "{{count}} day",
     "daysCount_other": "{{count}} days",
     "otherCare": "Flossing, mouthwash and other"
+  },
+  "toolfallback": {
+    "used": "Used tool",
+    "cancelled": "Cancelled tool",
+    "error": "Error:",
+    "cancelledReason": "Cancelled reason:"
   }
 }

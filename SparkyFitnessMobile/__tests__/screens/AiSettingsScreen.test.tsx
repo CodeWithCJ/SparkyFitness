@@ -1,5 +1,17 @@
+import { ApiError } from '../../src/services/api/errors';
+import i18n from '../../src/localization/i18n';
+import translations from '../../src/localization/locales/en/translation.json';
+beforeAll(() =>
+  i18n.addResourceBundle('en', 'translation', translations, true, true)
+);
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  fetchChatMcpServers,
+  saveChatMcpServers,
+} from '../../src/services/api/chatMcpApi';
+jest.mock('../../src/services/api/chatMcpApi');
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import AiSettingsScreen from '../../src/screens/AiSettingsScreen';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
@@ -27,29 +39,40 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSHeadersActive: () => false,
 }));
 
-const renderScreen = () =>
-  render(
-    <AiSettingsScreen
-      navigation={{} as never}
-      route={{ key: 'k', name: 'AiSettings' } as never}
-    />
+const renderScreen = () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const result = render(
+    <QueryClientProvider client={client}>
+      <AiSettingsScreen
+        navigation={{} as never}
+        route={{ key: 'k', name: 'AiSettings' } as never}
+      />
+    </QueryClientProvider>
   );
+  return { ...result, client };
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.mocked(fetchChatMcpServers).mockResolvedValue({ servers: [] });
+  mockAvailable = true;
+  useAppPreferencesStore.setState({ onDeviceLabelScanEnabled: false });
+});
 
 describe('AiSettingsScreen', () => {
-  beforeEach(() => {
-    mockAvailable = true;
-    useAppPreferencesStore.setState({ onDeviceLabelScanEnabled: false });
-  });
-
-  it('shows the active server provider', () => {
-    const { getByTestId } = renderScreen();
+  it('shows the active server provider', async () => {
+    const { getByTestId, client } = renderScreen();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(getByTestId('ai-settings-provider').props.children).toBe(
       'OpenAI · gpt-x'
     );
   });
 
-  it('turns on-device label scanning on and off', () => {
-    const { getByTestId } = renderScreen();
+  it('turns on-device label scanning on and off', async () => {
+    const { getByTestId, client } = renderScreen();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(getByTestId('ai-label-scan-switch').props.accessibilityLabel).toBe(
       'Scan Labels On Device'
     );
@@ -63,10 +86,163 @@ describe('AiSettingsScreen', () => {
     );
   });
 
-  it('hides the toggle where Apple Intelligence is unavailable', () => {
+  it('hides the toggle where Apple Intelligence is unavailable', async () => {
     mockAvailable = false;
-    const { queryByTestId, getByText } = renderScreen();
+    const { queryByTestId, getByText, client } = renderScreen();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(queryByTestId('ai-label-scan-switch')).toBeNull();
     expect(getByText(/Not available on this device/)).toBeTruthy();
   });
+});
+
+const outsideServers = [
+  { id: 'notes', name: 'Notes', send_user_id: false, enabled: false },
+  { id: 'tasks', name: 'Tasks', send_user_id: true, enabled: true },
+];
+it('hides outside tools when no servers are available', async () => {
+  jest.mocked(fetchChatMcpServers).mockResolvedValue({ servers: [] });
+  const screen = renderScreen();
+  await waitFor(() => expect(screen.client.isFetching()).toBe(0));
+  expect(screen.queryByTestId('chat-mcp-servers-section')).toBeNull();
+});
+it('sends separate choices for quick toggles while another save is pending', async () => {
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValue({ servers: outsideServers });
+  const finishes: ((value: { servers: typeof outsideServers }) => void)[] = [];
+  jest.mocked(saveChatMcpServers).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishes.push(resolve);
+      })
+  );
+  const screen = renderScreen();
+  const toggle = await screen.findByTestId('chat-mcp-server-switch-notes');
+  expect(toggle.props.value).toBe(false);
+  fireEvent(toggle, 'valueChange', true);
+  await waitFor(() =>
+    expect(saveChatMcpServers).toHaveBeenCalledWith(
+      { server_id: 'notes', enabled: true, send_user_id: false },
+      expect.anything()
+    )
+  );
+  expect(
+    screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
+  ).toBe(true);
+  expect(
+    screen.getByTestId('chat-mcp-server-switch-tasks').props.disabled
+  ).toBe(false);
+  fireEvent(
+    screen.getByTestId('chat-mcp-server-switch-tasks'),
+    'valueChange',
+    false
+  );
+  await waitFor(() =>
+    expect(saveChatMcpServers).toHaveBeenNthCalledWith(
+      2,
+      { server_id: 'tasks', enabled: false, send_user_id: true },
+      expect.anything()
+    )
+  );
+  const saved = {
+    servers: outsideServers.map((server) => ({
+      ...server,
+      send_user_id: true,
+      enabled: true,
+    })),
+  };
+  jest.mocked(fetchChatMcpServers).mockResolvedValue(saved);
+  // Both saves finish together; the list is still reloaded after them.
+  for (const finish of finishes) finish(saved);
+  await waitFor(() =>
+    expect(
+      screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
+    ).toBe(false)
+  );
+  expect(screen.getByTestId('chat-mcp-server-switch-notes').props.value).toBe(
+    true
+  );
+  await waitFor(() =>
+    expect(jest.mocked(fetchChatMcpServers).mock.calls.length).toBeGreaterThan(
+      1
+    )
+  );
+});
+it('reverts outside tool choices on a failed save', async () => {
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValue({ servers: outsideServers });
+  jest.mocked(saveChatMcpServers).mockRejectedValue(new Error('offline'));
+  const screen = renderScreen();
+  fireEvent(
+    await screen.findByTestId('chat-mcp-server-switch-notes'),
+    'valueChange',
+    true
+  );
+  await waitFor(() => expect(saveChatMcpServers).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(
+      screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
+    ).toBe(false)
+  );
+  expect(screen.getByTestId('chat-mcp-server-switch-notes').props.value).toBe(
+    false
+  );
+});
+
+it('shows account ID sharing only when configured by the admin', async () => {
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValue({ servers: outsideServers });
+  const screen = renderScreen();
+  expect(await screen.findAllByText('Sees your account ID.')).toHaveLength(1);
+});
+it('shows a load failure and retries', async () => {
+  jest.mocked(fetchChatMcpServers).mockRejectedValueOnce(new Error('offline'));
+  const screen = renderScreen();
+  expect(await screen.findByText('Could not load outside tools.')).toBeTruthy();
+  fireEvent.press(screen.getByText('Try again'));
+  await waitFor(() =>
+    expect(jest.mocked(fetchChatMcpServers).mock.calls.length).toBeGreaterThan(
+      1
+    )
+  );
+  await waitFor(() =>
+    expect(screen.queryByText('Could not load outside tools.')).toBeNull()
+  );
+});
+
+it('reloads the list after a 409 instead of keeping the stale switch', async () => {
+  const current = outsideServers.map((server, index) => ({
+    ...server,
+    id: `00000000-0000-4000-8000-00000000000${index + 1}`,
+  }));
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValueOnce({ servers: current })
+    .mockResolvedValue({
+      servers: current.map((server) => ({
+        ...server,
+        send_user_id: true,
+        enabled: false,
+      })),
+    });
+  jest
+    .mocked(saveChatMcpServers)
+    .mockRejectedValue(new ApiError('Conflict', 409));
+  const screen = renderScreen();
+  fireEvent(
+    await screen.findByTestId(`chat-mcp-server-switch-${current[0].id}`),
+    'valueChange',
+    true
+  );
+  await waitFor(() =>
+    expect(screen.getAllByText('Sees your account ID.')).toHaveLength(2)
+  );
+  expect(
+    screen.getByTestId(`chat-mcp-server-switch-${current[0].id}`).props.value
+  ).toBe(false);
+  expect(
+    screen.getByTestId(`chat-mcp-server-switch-${current[1].id}`).props.value
+  ).toBe(false);
 });

