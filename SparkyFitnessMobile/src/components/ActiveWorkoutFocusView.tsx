@@ -29,6 +29,7 @@ import { usesBarbell, type PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutFocusChips from './ActiveWorkoutFocusChips';
 import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
+import { FocusScrollTargetContext } from './focusScrollTarget';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import FocusHoldPanel from './FocusHoldPanel';
@@ -84,6 +85,8 @@ type FocusExercise = PresetSessionResponse['exercises'][number];
 
 const SLIDE_OFFSET = 32;
 const SLIDE_MS = 180;
+// Space kept above the current-set card when it is scrolled into view.
+const SCROLL_TARGET_MARGIN = 8;
 
 interface SetEditorProps {
   completedSetIds: CompletedSetMap;
@@ -183,6 +186,7 @@ interface PageProps extends SetEditorProps {
   exercise: FocusExercise;
   prSetIds: PrSetMap;
   mediaExpanded: boolean;
+  scrollRef: React.RefObject<KeyboardAwareScrollViewRef | null>;
   getImageSource: GetImageSource;
   onToggleMedia: () => void;
   onPressOverflow: (entryId: string) => void;
@@ -200,9 +204,10 @@ interface PageProps extends SetEditorProps {
 const FocusExercisePage = React.memo(function FocusExercisePage({
   exercise,
   prSetIds,
-  mediaExpanded,
+  mediaExpanded: mediaPreferenceExpanded,
+  scrollRef,
   getImageSource,
-  onToggleMedia,
+  onToggleMedia: onTogglePreference,
   onPressOverflow,
   onSwap,
   onPressRestChip,
@@ -310,6 +315,29 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     snapshot?.equipment?.[0]
   );
 
+  // Once a set is logged (or a hold started) the lifter knows the movement, so
+  // the demo shrinks and the current set takes the screen. The stored
+  // minimize / enlarge preference only governs exercises not yet started; a
+  // hand enlarge on a started one lasts until the page is left (the page is
+  // keyed by exercise) and is never saved.
+  const started =
+    exercise.sets.some(
+      (set) => !!setEditorProps.completedSetIds[String(set.id)]
+    ) ||
+    (hold.phase !== 'idle' && hold.entryId === exercise.id);
+  const [handEnlarged, setHandEnlarged] = useState(false);
+  // Undoing back to not-started drops a hand enlarge (adjusted during render).
+  const [wasStarted, setWasStarted] = useState(started);
+  if (wasStarted !== started) {
+    setWasStarted(started);
+    if (!started) setHandEnlarged(false);
+  }
+  const mediaExpanded = started ? handEnlarged : mediaPreferenceExpanded;
+  const onToggleMedia = useCallback(
+    () => (started ? setHandEnlarged((v) => !v) : onTogglePreference()),
+    [started, onTogglePreference]
+  );
+
   const hasMedia = (snapshot?.images ?? []).some(
     (path) => path !== '' && getImageSource(path) !== null
   );
@@ -319,6 +347,42 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       s.rest.state !== 'ready' &&
       exercise.sets.some((set) => String(set.id) === s.activeSetId)
   );
+  // Bring the current set (the rest card while resting) into view when the
+  // exercise becomes started, on landing on a started one, and whenever the
+  // current set moves on. Measured against the page, which starts at the top
+  // of the scroll content.
+  const pageRef = useRef<View>(null);
+  const scrollTargetRef = useRef<View>(null);
+  const reducedMotion = useReducedMotion();
+  const activeHere = exercise.sets.some(
+    (set) => String(set.id) === setEditorProps.activeSetId
+  );
+  const scrollKey = !started
+    ? null
+    : restHere
+      ? `rest:${setEditorProps.activeSetId}`
+      : activeHere
+        ? setEditorProps.activeSetId
+        : null;
+  useEffect(() => {
+    if (scrollKey == null) return;
+    const frame = requestAnimationFrame(() => {
+      const target = scrollTargetRef.current;
+      const page = pageRef.current;
+      if (target == null || page == null) return;
+      target.measureLayout(
+        page,
+        (_x, y) =>
+          scrollRef.current?.scrollTo({
+            y: Math.max(0, y - SCROLL_TARGET_MARGIN),
+            animated: !reducedMotion,
+          }),
+        () => {}
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scrollKey, reducedMotion, scrollRef]);
+
   const mediaMode = !hasMedia
     ? 'none'
     : mediaExpanded && !restHere
@@ -468,157 +532,162 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   }
 
   return (
-    <View className="gap-3">
-      <ActiveWorkoutFocusMedia
-        images={snapshot?.images ?? []}
-        exerciseName={name}
-        getImageSource={getImageSource}
-        expanded={mediaExpanded && !restHere}
-        onToggleExpanded={onToggleMedia}
-        onBackToCurrent={onBackToCurrent}
-      >
-        {sideTitle}
-      </ActiveWorkoutFocusMedia>
-      {mediaMode === 'expanded' && (
-        <View className="flex-row items-center gap-2">
-          {nameText}
-          {swapButton}
-          {moreButton}
-        </View>
-      )}
-      {mediaMode === 'none' && sideTitle}
+    <FocusScrollTargetContext.Provider value={scrollTargetRef}>
+      <View ref={pageRef} collapsable={false} className="gap-3">
+        <ActiveWorkoutFocusMedia
+          images={snapshot?.images ?? []}
+          exerciseName={name}
+          getImageSource={getImageSource}
+          expanded={mediaExpanded && !restHere}
+          onToggleExpanded={onToggleMedia}
+          onBackToCurrent={onBackToCurrent}
+        >
+          {sideTitle}
+        </ActiveWorkoutFocusMedia>
+        {mediaMode === 'expanded' && (
+          <View className="flex-row items-center gap-2">
+            {nameText}
+            {swapButton}
+            {moreButton}
+          </View>
+        )}
+        {mediaMode === 'none' && sideTitle}
 
-      {showMetaRow && (
-        <View className="flex-row flex-wrap gap-2">
-          {muscle !== '' && (
-            <View className={tagClass}>
-              <Text className="text-[13px] font-semibold text-text-secondary">
-                {muscle}
-              </Text>
-            </View>
-          )}
-          {equipment !== '' && (
-            <View className={tagClass}>
-              <Text className="text-[13px] font-semibold text-text-secondary">
-                {equipment}
-              </Text>
-            </View>
-          )}
-          {bestDisplay != null && (
-            <View
-              className={tagClass}
-              accessibilityLabel={t('activeWorkout.exercise.best', {
-                defaultValue: 'Best {{value}}',
-                value: bestText,
-              })}
-            >
-              <Text className="text-[13px] font-semibold text-text-secondary">
-                {t('activeWorkout.focus.bestLabel', { defaultValue: 'Best' })}
-              </Text>
-              <Text
-                className="text-[13px] font-bold"
-                style={{
-                  color: bestIsPr ? prColor : accent,
-                  fontVariant: ['tabular-nums'],
-                }}
+        {showMetaRow && (
+          <View className="flex-row flex-wrap gap-2">
+            {muscle !== '' && (
+              <View className={tagClass}>
+                <Text className="text-[13px] font-semibold text-text-secondary">
+                  {muscle}
+                </Text>
+              </View>
+            )}
+            {equipment !== '' && (
+              <View className={tagClass}>
+                <Text className="text-[13px] font-semibold text-text-secondary">
+                  {equipment}
+                </Text>
+              </View>
+            )}
+            {bestDisplay != null && (
+              <View
+                className={tagClass}
+                accessibilityLabel={t('activeWorkout.exercise.best', {
+                  defaultValue: 'Best {{value}}',
+                  value: bestText,
+                })}
               >
-                {bestText}
+                <Text className="text-[13px] font-semibold text-text-secondary">
+                  {t('activeWorkout.focus.bestLabel', { defaultValue: 'Best' })}
+                </Text>
+                <Text
+                  className="text-[13px] font-bold"
+                  style={{
+                    color: bestIsPr ? prColor : accent,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {bestText}
+                </Text>
+              </View>
+            )}
+            {liveBpm != null && (
+              <ExerciseHeartRateChip
+                pill
+                text={String(liveBpm)}
+                color={zoneColor ?? heartRateColor}
+                valueColor={zoneColor ?? undefined}
+                accessibilityLabel={t(
+                  'activeWorkout.exercise.liveHeartRateFor',
+                  {
+                    defaultValue: 'Current heart rate for {{name}}',
+                    name,
+                  }
+                )}
+              />
+            )}
+          </View>
+        )}
+
+        {(contextText !== '' || restChip) && (
+          <View className="flex-row items-center justify-between gap-3">
+            {mediaMode !== 'expanded' && restChip}
+            {contextText !== '' && (
+              <Text
+                className={`min-w-0 flex-1 text-[15px] text-text-secondary ${mediaMode === 'expanded' ? '' : 'text-right'}`}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {contextText}
               </Text>
-            </View>
-          )}
-          {liveBpm != null && (
-            <ExerciseHeartRateChip
-              pill
-              text={String(liveBpm)}
-              color={zoneColor ?? heartRateColor}
-              valueColor={zoneColor ?? undefined}
-              accessibilityLabel={t('activeWorkout.exercise.liveHeartRateFor', {
-                defaultValue: 'Current heart rate for {{name}}',
-                name,
-              })}
-            />
-          )}
-        </View>
-      )}
+            )}
+            {mediaMode === 'expanded' && restChip}
+          </View>
+        )}
 
-      {(contextText !== '' || restChip) && (
-        <View className="flex-row items-center justify-between gap-3">
-          {mediaMode !== 'expanded' && restChip}
-          {contextText !== '' && (
-            <Text
-              className={`min-w-0 flex-1 text-[15px] text-text-secondary ${mediaMode === 'expanded' ? '' : 'text-right'}`}
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {contextText}
-            </Text>
-          )}
-          {mediaMode === 'expanded' && restChip}
-        </View>
-      )}
+        {showPlates && plateTarget != null && (
+          <FocusPlateStrip
+            targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
+            weightUnit={weightUnit}
+            equipment={plateEquipment}
+            onOpenCalculator={() => onOpenPlateCalculator(plateSetId)}
+          />
+        )}
 
-      {showPlates && plateTarget != null && (
-        <FocusPlateStrip
-          targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
-          weightUnit={weightUnit}
-          equipment={plateEquipment}
-          onOpenCalculator={() => onOpenPlateCalculator(plateSetId)}
-        />
-      )}
+        {(!!exercise.notes || noteEditorEntryId === exercise.id) && (
+          <WorkoutNotesField
+            value={exercise.notes}
+            onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
+            label=""
+            placeholder={t('activeWorkout.exercise.notePlaceholder', {
+              defaultValue: 'Add a note for this exercise…',
+            })}
+            accessibilityLabel={t('activeWorkout.exercise.notesFor', {
+              defaultValue: 'Notes for {{name}}',
+              name,
+            })}
+          />
+        )}
 
-      {(!!exercise.notes || noteEditorEntryId === exercise.id) && (
-        <WorkoutNotesField
-          value={exercise.notes}
-          onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
-          label=""
-          placeholder={t('activeWorkout.exercise.notePlaceholder', {
-            defaultValue: 'Add a note for this exercise…',
-          })}
-          accessibilityLabel={t('activeWorkout.exercise.notesFor', {
-            defaultValue: 'Notes for {{name}}',
-            name,
-          })}
-        />
-      )}
-
-      <AdaptiveSuggestionBanner
-        adjustment={adaptiveAdjustment}
-        declined={adaptiveDeclined}
-        suggestVariation={suggestVariation}
-        onDecline={() =>
-          useActiveWorkoutStore
-            .getState()
-            .setAdaptiveDeclined(String(exercise.id), true)
-        }
-        onRestore={() =>
-          useActiveWorkoutStore
-            .getState()
-            .setAdaptiveDeclined(String(exercise.id), false)
-        }
-        onSeeAlternatives={
-          onSeeAlternatives
-            ? () => onSeeAlternatives(String(exercise.id))
-            : undefined
-        }
-      />
-      {progressionResult && !adaptiveOverridesProgression && (
-        <ProgressionHintBanner
-          result={progressionResult}
-          unitLabel={
-            weightUnit === 'kg'
-              ? t('workout.kg', { defaultValue: 'kg' })
-              : t('workout.lbs', { defaultValue: 'lbs' })
+        <AdaptiveSuggestionBanner
+          adjustment={adaptiveAdjustment}
+          declined={adaptiveDeclined}
+          suggestVariation={suggestVariation}
+          onDecline={() =>
+            useActiveWorkoutStore
+              .getState()
+              .setAdaptiveDeclined(String(exercise.id), true)
+          }
+          onRestore={() =>
+            useActiveWorkoutStore
+              .getState()
+              .setAdaptiveDeclined(String(exercise.id), false)
+          }
+          onSeeAlternatives={
+            onSeeAlternatives
+              ? () => onSeeAlternatives(String(exercise.id))
+              : undefined
           }
         />
-      )}
+        {progressionResult && !adaptiveOverridesProgression && (
+          <ProgressionHintBanner
+            result={progressionResult}
+            unitLabel={
+              weightUnit === 'kg'
+                ? t('workout.kg', { defaultValue: 'kg' })
+                : t('workout.lbs', { defaultValue: 'lbs' })
+            }
+          />
+        )}
 
-      <ActiveWorkoutFocusSets
-        exercise={exercise}
-        weightUnit={weightUnit}
-        assumedSetValues={assumedSetValues}
-        previousSets={previousSets}
-        {...setEditorProps}
-      />
-    </View>
+        <ActiveWorkoutFocusSets
+          exercise={exercise}
+          weightUnit={weightUnit}
+          assumedSetValues={assumedSetValues}
+          previousSets={previousSets}
+          {...setEditorProps}
+        />
+      </View>
+    </FocusScrollTargetContext.Provider>
   );
 });
 
@@ -840,6 +909,7 @@ function ActiveWorkoutFocusView({
               exercise={exercise}
               prSetIds={prSetIds}
               mediaExpanded={mediaExpanded}
+              scrollRef={scrollRef}
               getImageSource={getImageSource}
               onToggleMedia={toggleMedia}
               onPressOverflow={onPressOverflow}

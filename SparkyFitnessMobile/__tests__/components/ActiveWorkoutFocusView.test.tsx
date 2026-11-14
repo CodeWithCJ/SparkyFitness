@@ -113,14 +113,28 @@ jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ exercise, previousSets }: any) => (
-      <>
-        <Text testID="focus-sets">{`sets:${exercise.id}`}</Text>
-        <Text testID="focus-previous-sets">
-          {JSON.stringify(previousSets?.map((p: any) => p?.weight ?? null))}
-        </Text>
-      </>
-    ),
+    default: function FocusSetsMock({ exercise, previousSets }: any) {
+      // The real card / rest card attach this ref; fake a measured position.
+      const { useContext } = require('react');
+      const {
+        FocusScrollTargetContext,
+      } = require('../../src/components/focusScrollTarget');
+      const targetRef = useContext(FocusScrollTargetContext);
+      if (targetRef) {
+        targetRef.current = {
+          measureLayout: (_rel: unknown, ok: (x: number, y: number) => void) =>
+            ok(0, 300),
+        };
+      }
+      return (
+        <>
+          <Text testID="focus-sets">{`sets:${exercise.id}`}</Text>
+          <Text testID="focus-previous-sets">
+            {JSON.stringify(previousSets?.map((p: any) => p?.weight ?? null))}
+          </Text>
+        </>
+      );
+    },
   };
 });
 
@@ -668,6 +682,105 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('a'));
     const ids = mockUseExerciseStats.mock.calls.map((call) => call[0]);
     expect(new Set(ids)).toEqual(new Set(['x-a', 'x-b', 'x-c']));
+  });
+  describe('focusing the current set once an exercise has started', () => {
+    // Pictures so the demo is a real choice; makeExercise has none.
+    const withPictures = (id: string, name: string) =>
+      makeExercise(id, name, {
+        exercise_snapshot: {
+          name,
+          images: ['p.jpg'],
+          primary_muscles: [],
+          equipment: [],
+        },
+      });
+    const picSession = {
+      exercises: [withPictures('a', 'Bench Press'), withPictures('b', 'Squat')],
+    } as any;
+    // The scroll view mock fills this ref on mount with its own instance.
+    const scrollRef: { current: any } = { current: null };
+    const scrollTo = () => scrollRef.current.scrollTo as jest.Mock;
+    const startedProps = {
+      completedSetIds: { 'a-0': 1 },
+      activeSetId: 'a-1',
+      scrollRef,
+    };
+    let rafSpy: jest.SpyInstance;
+    const mediaState = () => screen.getByTestId('media-state').props.children;
+
+    beforeEach(() => {
+      rafSpy = jest
+        .spyOn(global, 'requestAnimationFrame')
+        .mockImplementation((cb) => {
+          cb(0);
+          return 0;
+        });
+      useAppPreferencesStore.getState().setFocusMediaDefault('expanded');
+    });
+    afterEach(() => rafSpy.mockRestore());
+
+    it('keeps the demo per the preference before any set is logged', () => {
+      render(viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession));
+      expect(mediaState()).toBe('expanded');
+      // No vertical scroll (the chip strip may centre itself horizontally).
+      expect(
+        scrollTo().mock.calls.filter(([arg]) => arg.y !== undefined)
+      ).toEqual([]);
+    });
+
+    it('minimizes the demo and scrolls to the current set once the first set is logged', () => {
+      const { rerender } = render(
+        viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession)
+      );
+      rerender(viewElement('a', startedProps, picSession));
+      expect(mediaState()).toBe('minimized');
+      expect(scrollTo()).toHaveBeenLastCalledWith({ y: 292, animated: true });
+      // The stored preference is untouched.
+      expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+        'expanded'
+      );
+    });
+
+    it('lets a hand enlarge stand on a started exercise until it is left, without saving it', () => {
+      render(viewElement('a', startedProps, picSession));
+      expect(mediaState()).toBe('minimized');
+      fireEvent.press(screen.getByTestId('media-toggle'));
+      expect(mediaState()).toBe('expanded');
+      expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+        'expanded'
+      );
+      fireEvent.press(screen.getByTestId('media-toggle'));
+      expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+        'expanded'
+      );
+      fireEvent.press(screen.getByTestId('media-toggle'));
+      expect(mediaState()).toBe('expanded');
+
+      // Away to a not-started exercise: the preference applies again.
+      fireEvent.press(screen.getByLabelText(/^Exercise 2 of 2/));
+      expect(mediaState()).toBe('expanded');
+      // Back on the started one: minimized again, scrolled to the set.
+      scrollTo().mockClear();
+      fireEvent.press(screen.getByLabelText(/^Exercise 1 of 2/));
+      expect(mediaState()).toBe('minimized');
+      expect(scrollTo()).toHaveBeenCalledWith({ y: 292, animated: true });
+    });
+
+    it('still toggles the demo by hand before the exercise has started', () => {
+      render(viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession));
+      fireEvent.press(screen.getByTestId('media-toggle'));
+      expect(mediaState()).toBe('minimized');
+      fireEvent.press(screen.getByTestId('media-toggle'));
+      expect(mediaState()).toBe('expanded');
+    });
+
+    it('leaves an exercise without pictures alone', () => {
+      // No pictures: nothing to minimize, and the stored preference is kept.
+      render(viewElement('a', { ...startedProps }));
+      expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+        'expanded'
+      );
+    });
   });
 });
 

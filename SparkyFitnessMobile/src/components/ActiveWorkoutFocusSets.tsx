@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -8,6 +9,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { FocusScrollTargetContext } from './focusScrollTarget';
 import {
   DEFAULT_WARMUP_PLATE_ROUNDING,
   isBodyweightModality,
@@ -286,6 +288,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   onRegisterAccessoryHandle,
 }: FocusSetRowProps) {
   const { t } = useTranslation();
+  const scrollTargetRef = useContext(FocusScrollTargetContext);
   const [
     accentPrimary,
     textSecondary,
@@ -545,6 +548,8 @@ const FocusSetRow = React.memo(function FocusSetRow({
         : null;
     return (
       <View
+        ref={scrollTargetRef}
+        collapsable={false}
         testID="focus-active-set-card"
         accessibilityLabel={t('activeWorkout.focus.hero.label', {
           defaultValue: 'Set {{setNumber}} of {{total}}',
@@ -891,6 +896,7 @@ function ActiveWorkoutFocusSets({
   onActivateSet,
   onRegisterAccessoryHandle,
 }: Props) {
+  const scrollTargetRef = useContext(FocusScrollTargetContext);
   const { t } = useTranslation();
   const [accentPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -1064,7 +1070,11 @@ function ActiveWorkoutFocusSets({
 
   return (
     <View className="gap-1.5">
-      {resting && <FocusRestCard nextText={restNextText} />}
+      {resting && (
+        <View ref={scrollTargetRef} collapsable={false}>
+          <FocusRestCard nextText={restNextText} />
+        </View>
+      )}
       {bodyweightExercise && (
         <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
       )}
