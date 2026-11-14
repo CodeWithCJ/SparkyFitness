@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCycleSettings } from '@/hooks/useCycle';
 import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
+import { useChallengesAvailable } from '@/hooks/Challenges/useChallenges';
 import {
   useHiddenWebTabs,
   useSetWebTabHidden,
@@ -30,6 +31,11 @@ export const WebTabsSettings = () => {
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
   const { isEnabled: isFeatureOn } = useWebFeatures();
+  // Challenges is offered only while the admin switch is on.
+  const { available: challengesAvailable } = useChallengesAvailable();
+  const tabIds = WEB_HIDEABLE_TAB_IDS.filter(
+    (id) => id !== 'challenges' || challengesAvailable
+  );
 
   return (
     <>
@@ -65,7 +71,7 @@ export const WebTabsSettings = () => {
             </Button>
           </div>
         )}
-        {WEB_HIDEABLE_TAB_IDS.map((id) => {
+        {tabIds.map((id) => {
           const switchId = `web-tab-${id}`;
           const feature = webTabFeature(id);
           // The tab's own choice is kept while its feature is off, so turning

@@ -1132,7 +1132,8 @@
     "wellness": "Wellness",
     "symptoms": "Symptoms",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
-    "labs": "Lab results"
+    "labs": "Lab results",
+    "challenges": "Challenges"
   },
   "nutrition": {
     "calories": "Calories",
@@ -3837,6 +3838,11 @@
       "automaticallySyncedWithYourCurrent": "✓ Automatically synced with your current URL. Path suffix is locked for routing safety.",
       "expertEnsureYourBaseURL": "⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data.",
       "none": "none"
+    },
+    "challenges": {
+      "title": "Challenges",
+      "label": "Allow challenges and group leaderboards on this server",
+      "help": "People can start challenges, invite others with a code and see each other's scores, never their diaries. Turned off, challenges are hidden and scoring stops; nothing is deleted."
     }
   },
   "goals": {
@@ -11188,5 +11194,330 @@
     "underwater_diving": "Underwater Diving",
     "paragliding": "Paragliding",
     "other": "Other"
+  },
+  "challenges": {
+    "title": "Challenges",
+    "dates": "{{start}} to {{end}}",
+    "datesOpen": "From {{start}}",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "host": "Host",
+    "ended": "Ended",
+    "rules": {
+      "edit": "Change the rules",
+      "noPeriodLeft": "No period is left for a change to apply to.",
+      "fromNext": "The change counts from {{day}}, so the period under way keeps its rules. Every member sees it in the rule log.",
+      "beforeStart": "The challenge has not started, so the change counts from the start.",
+      "save": "Save rules",
+      "everyDay": "Every day",
+      "dayRange": "{{from}} to {{to}}",
+      "saved": "Rules saved. Everyone in the challenge can see the change."
+    },
+    "leave": {
+      "button": "Leave",
+      "title": "Leave this challenge?",
+      "last": "You are the last member, so the challenge is deleted.",
+      "host": "Your scores in it are deleted, and hosting passes to the member who joined first.",
+      "member": "Your scores in it are deleted. You can join again with a new invite.",
+      "done": "You left the challenge"
+    },
+    "tabs": {
+      "standings": "Standings",
+      "how": "How points work",
+      "log": "Rule changes",
+      "members": "Members"
+    },
+    "how": {
+      "upcoming": "From {{day}}:",
+      "exampleTitle": "Example day",
+      "example": "A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{total}} points.",
+      "what": "{{format}} of {{metric}}, scored {{period}}.",
+      "race": "The first to reach {{target}} wins; later finishers rank by the day they got there.",
+      "hitGoalDay": "Everyone who reaches {{target}} on every counted day wins.",
+      "hitGoalPeriod": "Everyone who reaches {{target}} in the period wins.",
+      "groupGoal": "Everyone adds to one total; the group wins at {{target}}.",
+      "target": "Target: {{target}}.",
+      "leaderboard": "The highest total wins.",
+      "days": "Days that count: {{days}}.",
+      "window": "Only workouts starting between {{start}} and {{end}} count.",
+      "bestDays_one": "Only your best day of each week counts.",
+      "bestDays_other": "Only your best {{count}} days of each week count.",
+      "dailyCap": "A day adds at most {{cap}}.",
+      "zoneFrom": "Minutes in heart-rate zone {{zone}} and above count, using your own zones.",
+      "zones": "Effort, by your own heart-rate zones: {{rates}} points a minute in zones 1 to 5.",
+      "noHr": "Below zone 1: {{below}} a minute. No heart rate at all: {{none}} a minute.",
+      "strength": "Lifting earns at least {{rate}} a minute, since rest between sets lowers heart rate.",
+      "tiers": "A day's first {{full}} minutes count in full, the next {{half}} at {{pct}}%, the rest not at all.",
+      "tiersFullOnly": "A day's first {{full}} minutes count; the rest do not.",
+      "steps": "Steps: 1 point per {{per}}, up to {{cap}} a day.",
+      "pr": "Personal records: +{{bonus}} each, at most {{max}} a day.",
+      "streak": "Streak: +{{bonus}} a day from day {{from}} in a row.",
+      "beatAverage": "Beat your own {{days}}-day average: +{{bonus}}.",
+      "goal": "Your own weekly goal ({{pct}}% above your last {{weeks}} weeks): up to +{{max}}, paid in part for part of it.",
+      "include": "Only these count: {{sports}}.",
+      "exclude": "Left out: {{sports}}.",
+      "minMinutes": "Workouts shorter than {{minutes}} minutes do not count.",
+      "manualIgnore": "Workouts logged by hand do not count.",
+      "manualCap": "Workouts logged by hand count up to {{minutes}} minutes a day.",
+      "merge": "A workout synced from two sources counts once."
+    },
+    "leaderboard": {
+      "you": "You",
+      "previous": "Previous period",
+      "final": "Final",
+      "live": "In progress",
+      "current": "Current",
+      "next": "Next period",
+      "groupProgress": "Together: {{total}} of {{target}}",
+      "groupReached": "Goal reached!",
+      "empty": "No scores yet in this period.",
+      "member": "Member",
+      "total": "Total",
+      "minutes": "Active min",
+      "winner": "Winner",
+      "reachedOn": "Reached {{day}}",
+      "daysHit": "Goal hit on {{hit}} of {{eligible}} days"
+    },
+    "joined": "Joined {{day}}",
+    "invite": {
+      "title": "Invite people",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "active": "An invite code works until {{when}}.",
+      "none": "No invite code is active.",
+      "shownOnce": "Share this link or code now; it is shown only once.",
+      "link": "Invite link",
+      "copyLink": "Copy link",
+      "code": "Invite code",
+      "copyCode": "Copy code",
+      "newCode": "Make a new code",
+      "create": "Make an invite code",
+      "revoke": "Turn off the code",
+      "revoked": "Invite code turned off"
+    },
+    "editor": {
+      "scoring": "What counts and who wins",
+      "metric": "What counts",
+      "format": "Format",
+      "period": "Scored",
+      "target": "Target ({{unit}})",
+      "targetPer": "Goal applies to",
+      "targetPerDay": "Each day",
+      "targetPerPeriod": "The period total",
+      "periodLocked": "The period cannot change once the challenge has started.",
+      "targetRequired": "This format needs a target.",
+      "time": "Days and times",
+      "days": "Days that count",
+      "timeWindow": "Only workouts that start in a time window",
+      "windowStart": "From",
+      "windowEnd": "To",
+      "bestDays": "Only the best days of each week count",
+      "bestDaysCount": "Best days a week",
+      "dailyCap": "Cap what one day can add",
+      "dailyCapValue": "Daily cap ({{unit}})",
+      "zoneFrom": "Count minutes from heart-rate zone",
+      "points": "Points builder",
+      "zoneRates": "Points a minute in heart-rate zones 1 to 5",
+      "zoneN": "Zone {{zone}}",
+      "belowZoneRate": "Below zone 1 (a minute)",
+      "noHrRate": "No heart rate (a minute)",
+      "strengthFloor": "Lifting floor",
+      "strengthFloorValue": "At least (a minute)",
+      "minuteTiers": "Daily minute tiers",
+      "tierFull": "Minutes counted in full",
+      "tierHalf": "Then minutes at the lower rate",
+      "tierRate": "Lower rate (%)",
+      "steps": "Points for steps",
+      "stepsPerPoint": "Steps for 1 point",
+      "stepsCap": "Most step points a day",
+      "pr": "Personal record bonus",
+      "prBonus": "Points per record",
+      "prMax": "Most records a day",
+      "streak": "Streak bonus",
+      "streakFrom": "From day",
+      "streakBonus": "Points a day",
+      "beatAverage": "Beat-your-average bonus",
+      "beatAverageBonus": "Points",
+      "goal": "Self-adjusting weekly goal bonus",
+      "goalMax": "Most points",
+      "goalStretch": "Above own average (%)",
+      "activities": "Which workouts count",
+      "includeSports": "Only these sports (none ticked: every sport)",
+      "excludeSports": "Leave out these sports",
+      "minMinutes": "Shortest workout that counts (minutes)",
+      "manualEntries": "Workouts logged by hand",
+      "manualCap": "Most hand-logged minutes a day",
+      "mergeDuplicates": "Count a workout synced from two sources once"
+    },
+    "join": {
+      "button": "Join with a code",
+      "displayName": "Your name in this challenge",
+      "goalType": "Your weekly goal",
+      "errors": {
+        "invalid": "This invite code is not valid or has expired. Ask the host for a new one.",
+        "ended": "This challenge has ended.",
+        "lateJoinClosed": "This challenge has started and does not take late joiners.",
+        "full": "This challenge is full.",
+        "rateLimited": "Too many tries. Wait a few minutes and try again.",
+        "generic": "Could not join. Try again."
+      },
+      "title": "Join a challenge",
+      "description": "Paste the invite link or code. Members see your display name and your scores, never your diary or your email.",
+      "code": "Invite link or code",
+      "badCode": "That does not look like an invite code.",
+      "submit": "Join"
+    },
+    "create": {
+      "button": "New challenge",
+      "endBeforeStart": "The end cannot be before the start.",
+      "tooLong": "A challenge lasts at most {{days}} days.",
+      "endNeeded": "A challenge scored as one period needs an end date.",
+      "title": "Start a challenge",
+      "description": "Pick a preset, then change anything you like. Members see your rules and every later change.",
+      "presets": "Presets",
+      "name": "Name",
+      "emoji": "Emoji",
+      "descriptionLabel": "Description (optional)",
+      "start": "Starts",
+      "end": "Ends",
+      "endOptional": "Ends (optional)",
+      "timeZone": "Days end at midnight in {{zone}}.",
+      "memberLimit": "Most members",
+      "lateJoin": "Allow joining after the start",
+      "rules": "Rules",
+      "submit": "Create challenge",
+      "created": "Challenge created"
+    },
+    "ownOnly": "Challenges are personal. Switch back to your own account to see yours.",
+    "disabled": "Challenges are turned off on this server. An admin can turn them on in Admin settings.",
+    "notFound": "This challenge was not found, or you are not a member.",
+    "empty": "No challenges yet. Start one and invite friends or family, or join with an invite code.",
+    "goalTypes": {
+      "lose_weight": "Lose weight (active minutes)",
+      "build_muscle": "Build muscle (lifting)",
+      "endurance": "Endurance (distance)",
+      "stay_active": "Stay active (workout days)"
+    },
+    "member": {
+      "days": "Their last days in this challenge.",
+      "periods": "Their last periods in this challenge.",
+      "place": "#{{rank}}",
+      "none": "No score"
+    },
+    "log": {
+      "removed": "No longer: {{rule}}",
+      "empty": "No rule changes.",
+      "changed": "{{name}} changed the rules on {{when}}",
+      "formerMember": "A former member",
+      "created": "Rules set when the challenge was made",
+      "effective": "Counts from {{day}}"
+    },
+    "presets": {
+      "all_rounder": {
+        "name": "All-Rounder",
+        "description": "Points for effort by heart rate, steps, PRs and streaks. Weekly, best 5 days count."
+      },
+      "workweek_hustle": {
+        "name": "Workweek Hustle",
+        "description": "Most steps Monday to Friday."
+      },
+      "weekend_warrior": {
+        "name": "Weekend Warrior",
+        "description": "Most steps on Saturday and Sunday."
+      },
+      "daily_showdown": {
+        "name": "Daily Showdown",
+        "description": "Most steps in one day."
+      },
+      "race_to_100k_steps": {
+        "name": "Race to 100k steps",
+        "description": "The first to reach 100,000 steps wins."
+      },
+      "most_km_this_month": {
+        "name": "Most km this month",
+        "description": "Most distance in a calendar month."
+      },
+      "consistency_30_day": {
+        "name": "30-day consistency",
+        "description": "Most days with a workout of 20 minutes or more, over 30 days."
+      }
+    },
+    "metrics": {
+      "points": "Points",
+      "steps": "Steps",
+      "active_minutes": "Active minutes",
+      "hr_zone_minutes": "Heart-rate zone minutes",
+      "distance": "Distance",
+      "workout_days": "Workout days",
+      "active_calories": "Active calories",
+      "elevation": "Elevation gain"
+    },
+    "formats": {
+      "leaderboard": "Leaderboard",
+      "race": "Race to a target",
+      "hit_goal": "Hit the goal",
+      "group_goal": "Group goal"
+    },
+    "periods": {
+      "day": "Daily",
+      "week": "Weekly",
+      "month": "Monthly",
+      "challenge": "Whole challenge"
+    },
+    "manualEntries": {
+      "count": "Count",
+      "cap": "Count up to a cap",
+      "ignore": "Ignore"
+    },
+    "sports": {
+      "running": "Running",
+      "cycling": "Cycling",
+      "walking": "Walking",
+      "hiking": "Hiking",
+      "swimming": "Swimming",
+      "rowing": "Rowing",
+      "fitness_equipment": "Gym machines",
+      "strength": "Strength",
+      "other": "Other"
+    },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "values": {
+      "points": "{{value}} pts",
+      "steps": "{{value}} steps",
+      "minutes": "{{value}} min",
+      "miles": "{{value}} mi",
+      "km": "{{value}} km",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "metres": "{{value}} m"
+    },
+    "units": {
+      "points": "points",
+      "steps": "steps",
+      "minutes": "minutes",
+      "miles": "miles",
+      "km": "km",
+      "days": "days",
+      "metres": "metres"
+    },
+    "periodRange": "{{start}} – {{end}}",
+    "widget": {
+      "title": "Challenge standings",
+      "all": "All challenges"
+    },
+    "errors": {
+      "load": "Could not load your challenges.",
+      "loadOne": "Could not load this challenge.",
+      "standings": "Could not load the standings.",
+      "ruleChanges": "Could not load the rule changes."
+    }
   }
 }

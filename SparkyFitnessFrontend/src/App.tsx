@@ -65,6 +65,12 @@ const FoodDatabaseManager = lazyWithChunkRecovery(
 );
 const Reports = lazyWithChunkRecovery(() => import('./pages/Reports/Reports'));
 const Labs = lazyWithChunkRecovery(() => import('./pages/Labs/Labs'));
+const Challenges = lazyWithChunkRecovery(
+  () => import('./pages/Challenges/Challenges')
+);
+const ChallengeJoinLink = lazyWithChunkRecovery(
+  () => import('./pages/Challenges/ChallengeJoinLink')
+);
 const Symptoms = lazyWithChunkRecovery(
   () => import('./pages/Symptoms/Symptoms')
 );
@@ -464,6 +470,22 @@ const router = createBrowserRouter([
                 <Labs />
               </FeatureRoute>
             ),
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'challenges',
+            Component: Challenges,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            // An invite link; the code is in the fragment.
+            path: 'challenges/join',
+            Component: ChallengeJoinLink,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'challenges/:challengeId',
+            Component: Challenges,
             ErrorBoundary: RouteErrorBoundary,
           },
           {

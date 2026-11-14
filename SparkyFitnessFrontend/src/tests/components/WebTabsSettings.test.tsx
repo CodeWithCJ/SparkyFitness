@@ -47,6 +47,14 @@ jest.mock('@/hooks/Settings/useWebFeatures', () => ({
   }),
 }));
 
+let mockChallengesAvailable = false;
+jest.mock('@/hooks/Challenges/useChallenges', () => ({
+  useChallengesAvailable: () => ({
+    available: mockChallengesAvailable,
+    isLoading: false,
+  }),
+}));
+
 function renderSettings() {
   return render(
     <Accordion type="multiple" defaultValue={['web-tabs']}>
@@ -64,6 +72,7 @@ describe('WebTabsSettings', () => {
     mockEditState = 'ready';
     mockCycleSettings = null;
     mockFeaturesOff = new Set();
+    mockChallengesAvailable = false;
   });
 
   it('keeps a tab of a feature turned off in Features, with a note', () => {
@@ -85,6 +94,16 @@ describe('WebTabsSettings', () => {
     expect(
       screen.queryByText('Not shown: turned off in Features.')
     ).not.toBeInTheDocument();
+  });
+
+  it('offers Challenges only while the admin switch is on', () => {
+    renderSettings();
+    expect(screen.queryByLabelText('Challenges')).not.toBeInTheDocument();
+    mockChallengesAvailable = true;
+    renderSettings();
+    expect(screen.getByLabelText('Challenges')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Challenges'));
+    expect(mockSetTabHidden).toHaveBeenCalledWith('challenges', true);
   });
 
   it('shows a switch, on, for each tab that can be hidden', () => {
