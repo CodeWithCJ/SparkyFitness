@@ -1,9 +1,8 @@
 import SwiftUI
 import WatchKit
 
-// The original layout of this page, kept as the default while the larger-
-// text `WaterIntakeView` is opt-in (Settings → Apple Watch → Larger text on Goals
-// and Water). `ContentView` picks between the two.
+// The original layout of this page, shown while Settings → Apple Watch → "Larger
+// text on the watch" is off; `WaterIntakeView` is the larger one. `ContentView` picks.
 
 /// The Water page
 ///

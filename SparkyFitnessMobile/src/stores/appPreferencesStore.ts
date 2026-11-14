@@ -45,6 +45,8 @@ import {
   WATCH_PAGE_KEYS,
   type WatchPageKey,
   type WatchSetInputStyle,
+  type WatchWorkoutCountdown,
+  type WatchWorkoutTopLine,
 } from '../constants/watchPages';
 import {
   DEFAULT_REPORT_NUTRIENTS,
@@ -59,7 +61,7 @@ import type { OwnershipFilter } from '../utils/shareStatus';
 import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
-const STORE_VERSION = 1;
+const STORE_VERSION = 3;
 
 /**
  * Legacy per-key AsyncStorage entries that existed before this store was
@@ -171,7 +173,10 @@ export const PREFERENCE_DEFAULTS = {
   watchSetScreenMetrics: true,
   watchUpNextPage: false,
   watchLargerText: false,
-  watchClassicWorkout: false,
+  watchNewWorkout: false,
+  watchWorkoutCountdown: 3 as WatchWorkoutCountdown,
+  watchHoldCountdown: true,
+  watchWorkoutTopLine: 'time' as WatchWorkoutTopLine,
   activeWorkoutNowCard: false,
   activeWorkoutView: 'list' as ActiveWorkoutView,
   focusMediaDefault: 'expanded' as FocusMediaDefault,
@@ -326,10 +331,14 @@ export type AppPreferencesData = {
   watchSetScreenMetrics: boolean;
   /** Whether the watch workout has the Up Next page after the set screen. */
   watchUpNextPage: boolean;
-  /** Whether the watch's Goals and Water pages use the larger-text layout. */
+  /** Whether the watch workout uses the new workout view. */
   watchLargerText: boolean;
-  /** Keep the original workout page while larger text is on. */
-  watchClassicWorkout: boolean;
+  watchNewWorkout: boolean;
+  /** Seconds of audible countdown before a rest or hold ends. 0 is off. */
+  watchWorkoutCountdown: WatchWorkoutCountdown;
+  watchHoldCountdown: boolean;
+  /** What the new workout view's top line shows first. */
+  watchWorkoutTopLine: WatchWorkoutTopLine;
   /** Whether the active workout pins the Now card under the exercise rail. */
   activeWorkoutNowCard: boolean;
   /** Active workout layout: every exercise in one list, or one at a time. */
@@ -436,7 +445,10 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWatchSetScreenMetrics: (value: boolean) => void;
   setWatchUpNextPage: (value: boolean) => void;
   setWatchLargerText: (value: boolean) => void;
-  setWatchClassicWorkout: (value: boolean) => void;
+  setWatchNewWorkout: (value: boolean) => void;
+  setWatchWorkoutCountdown: (value: WatchWorkoutCountdown) => void;
+  setWatchHoldCountdown: (value: boolean) => void;
+  setWatchWorkoutTopLine: (value: WatchWorkoutTopLine) => void;
   setActiveWorkoutNowCard: (value: boolean) => void;
   setActiveWorkoutView: (value: ActiveWorkoutView) => void;
   setFocusMediaDefault: (value: FocusMediaDefault) => void;
@@ -711,7 +723,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ watchSetScreenMetrics: value }),
       setWatchUpNextPage: (value) => set({ watchUpNextPage: value }),
       setWatchLargerText: (value) => set({ watchLargerText: value }),
-      setWatchClassicWorkout: (value) => set({ watchClassicWorkout: value }),
+      setWatchNewWorkout: (value) => set({ watchNewWorkout: value }),
+      setWatchWorkoutCountdown: (value) =>
+        set({ watchWorkoutCountdown: value }),
+      setWatchHoldCountdown: (value) => set({ watchHoldCountdown: value }),
+      setWatchWorkoutTopLine: (value) => set({ watchWorkoutTopLine: value }),
       setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
       setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
       setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
@@ -816,7 +832,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         watchSetScreenMetrics: state.watchSetScreenMetrics,
         watchUpNextPage: state.watchUpNextPage,
         watchLargerText: state.watchLargerText,
-        watchClassicWorkout: state.watchClassicWorkout,
+        watchNewWorkout: state.watchNewWorkout,
+        watchWorkoutCountdown: state.watchWorkoutCountdown,
+        watchHoldCountdown: state.watchHoldCountdown,
+        watchWorkoutTopLine: state.watchWorkoutTopLine,
         activeWorkoutNowCard: state.activeWorkoutNowCard,
         activeWorkoutView: state.activeWorkoutView,
         focusMediaDefault: state.focusMediaDefault,
@@ -851,10 +870,36 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         }
         // v0 → v1: state was populated from legacy per-key storage by the custom
         // storage adapter. Field names are unchanged; apply defaults for any gaps.
-        return {
+        const persisted = persistedState as { watchLargerText?: boolean };
+        let state = {
           ...PREFERENCE_DEFAULTS,
           ...(persistedState as Partial<AppPreferencesData>),
-        } as AppPreferencesState;
+        } as Partial<AppPreferencesData> & {
+          watchClassicWorkout?: boolean;
+          watchLargerText?: boolean;
+        };
+        // v1 → v2: the original workout page switch became the new workout
+        // view switch. Anyone with larger text on and the original page off
+        // (the larger-text workout page) gets the new view; larger text itself
+        // stays its own setting.
+        if (version < 2) {
+          const { watchClassicWorkout, ...rest } = state;
+          state = {
+            ...rest,
+            watchNewWorkout:
+              persisted.watchLargerText === true && !watchClassicWorkout,
+          };
+        }
+        // v2 → v3: builds that tied larger text to the new workout view
+        // dropped the larger text key; bring it back from that switch.
+        if (
+          version >= 2 &&
+          version < 3 &&
+          persisted.watchLargerText === undefined
+        ) {
+          state = { ...state, watchLargerText: state.watchNewWorkout === true };
+        }
+        return state as AppPreferencesState;
       },
     }
   )

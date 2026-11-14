@@ -517,12 +517,20 @@ struct WatchContext: Codable, Equatable {
     var setScreenMetrics: Bool? = nil
     /// The Up Next page after the set screen (`upNextPage`). Nil means off.
     var upNextPage: Bool? = nil
-    /// The larger-text Goals and Water pages (`largerText`). Nil means
-    /// off, the original layout.
+    /// The larger text and layouts on every watch page (`largerText`). Nil
+    /// means off, the original look. Independent of `newWorkout`.
     var largerText: Bool? = nil
-    /// Keep the original workout page while larger text is on
-    /// (`classicWorkout`). Nil means off.
-    var classicWorkout: Bool? = nil
+    /// The new workout view (`newWorkout`). Nil means off, the original page.
+    var newWorkout: Bool? = nil
+    /// Seconds of audible countdown before a rest or hold ends
+    /// (`workoutCountdown`): 3 or 5. Nil, from an older phone, means 3; 0 means off.
+    var workoutCountdown: Int? = nil
+    /// A 3-2-1 Get ready screen before a timed hold starts
+    /// (`holdCountdown`). Nil, from an older phone, means on.
+    var holdCountdown: Bool? = nil
+    /// What the new workout view's top line shows first (`workoutTopLine`):
+    /// "time" or "metrics". Nil means time.
+    var workoutTopLine: String? = nil
     /// The fast running now. Nil with `fastSynced` true means "not fasting".
     var fast: WatchFast? = nil
     /// True once the phone has said anything about fasting, so "not fasting"
@@ -552,6 +560,11 @@ struct WatchContext: Codable, Equatable {
     /// Learned correction for the watch's indoor distance. Nil until the
     /// phone has learned one, which reads as no correction.
     var indoorDistanceScale: IndoorDistanceScale? = nil
+    /// The lowest bpm of heart rate zones 1 to 5, from the person's own
+    /// zones on the phone; the new workout view colours the live heart rate by
+    /// the zone it is in. Nil (an older phone build, or zones not loaded) keeps
+    /// the plain heart colour.
+    var heartRateZoneFloors: [Double]? = nil
 
     static let empty = WatchContext(
         today: nil,
@@ -612,7 +625,13 @@ struct WatchContext: Codable, Equatable {
 
     /// `weightUnit`, defaulted to kg — the same fallback used everywhere else
     /// (a fresh watch install before first phone sync, or an unrecognized value).
-    var effectiveWeightUnit: WeightUnit { weightUnit ?? .kg }
+    var effectiveWeightUnit: WeightUnit {
+        #if DEBUG
+        // A paired phone's own context replaces the seeded one; `lbs` still wins.
+        if ScreenshotSeed.isEnabled, ScreenshotSeed.has("lbs") { return .lbs }
+        #endif
+        return weightUnit ?? .kg
+    }
 
     /// The unit a weighted carry's distance is shown in: metres, or yards when
     /// the phone's distance unit is miles.
@@ -637,11 +656,10 @@ struct WatchContext: Codable, Equatable {
     var effectiveSetScreenMetrics: Bool { setScreenMetrics ?? true }
     var effectiveUpNextPage: Bool { upNextPage ?? false }
     var effectiveLargerText: Bool { largerText ?? false }
-    var effectiveClassicWorkout: Bool { classicWorkout ?? false }
-
-    /// The original workout page: always with larger text off, and with it on
-    /// when the wearer asked to keep it.
-    var usesClassicWorkout: Bool { !effectiveLargerText || effectiveClassicWorkout }
+    var effectiveNewWorkout: Bool { newWorkout ?? false }
+    var effectiveWorkoutTopLineIsMetrics: Bool { workoutTopLine == "metrics" }
+    var effectiveHoldCountdown: Bool { effectiveNewWorkout && (holdCountdown ?? true) }
+    var effectiveWorkoutCountdown: Int { effectiveNewWorkout ? max(0, workoutCountdown ?? 3) : 0 }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie
     /// and the delta line would reassure falsely.
@@ -690,11 +708,17 @@ enum WeightUnit: String, Codable {
     case kg
     case lbs
 
-    private static let kgPerLb = 0.45359237
+    private static let kgPerLb = WeightRounding.kgPerLb
 
-    /// kg (the one source of truth) → this unit, for display.
+    /// kg (the one source of truth) → this unit, unrounded: for charts and sums.
     func fromKg(_ kg: Double) -> Double {
         self == .lbs ? kg / Self.kgPerLb : kg
+    }
+
+    /// kg → this unit rounded for display and editing (105 lb stored as
+    /// 47.63 kg reads 105, not 105.011).
+    func displayedFromKg(_ kg: Double) -> Double {
+        WeightRounding.displayed(kg: kg, lbs: self == .lbs)
     }
 
     /// A value in this unit → kg, for storage and WatchConnectivity.

@@ -323,6 +323,78 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('larger text and the retired original workout page setting', () => {
+    const persist = async (state: Record<string, unknown>, version = 1) => {
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...PREFERENCE_DEFAULTS, ...state },
+          version,
+        })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+    };
+
+    it('keeps larger text as its own setting and turns the new view on for the larger text workout page', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: false });
+      const state = useAppPreferencesStore.getState();
+      expect(state.watchLargerText).toBe(true);
+      expect(state.watchNewWorkout).toBe(true);
+    });
+
+    it('leaves the new view off when the original page was kept or larger text was off', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: true });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
+      await persist({ watchLargerText: false, watchClassicWorkout: false });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(false);
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
+    });
+
+    it('restores larger text from the new view switch for a build that had tied them', async () => {
+      const { watchLargerText: _omit, ...without } = PREFERENCE_DEFAULTS;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...without, watchNewWorkout: true },
+          version: 2,
+        })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
+    });
+
+    it('drops the old original page key on the next write and keeps larger text', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: false });
+      useAppPreferencesStore.getState().setWatchWorkoutCountdown(3);
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state).not.toHaveProperty('watchClassicWorkout');
+      expect(parsed.state.watchLargerText).toBe(true);
+      expect(parsed.state.watchNewWorkout).toBe(true);
+      expect(parsed.state.watchWorkoutCountdown).toBe(3);
+      expect(parsed.version).toBe(3);
+    });
+  });
+
+  describe('the countdown before holds setting', () => {
+    it('defaults to on, including for a blob saved before it existed', async () => {
+      const { watchHoldCountdown: _omit, ...withoutKey } = PREFERENCE_DEFAULTS;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({ state: withoutKey, version: 2 })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().watchHoldCountdown).toBe(true);
+    });
+
+    it('persists when turned off', async () => {
+      useAppPreferencesStore.getState().setWatchHoldCountdown(false);
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      expect(JSON.parse(raw!).state.watchHoldCountdown).toBe(false);
+    });
+  });
+
   describe('the retired guided check-in setting', () => {
     // Quick Actions shows or hides Check-In like any other item now.
     it('keeps the rest of an older blob and drops the setting on the next write', async () => {

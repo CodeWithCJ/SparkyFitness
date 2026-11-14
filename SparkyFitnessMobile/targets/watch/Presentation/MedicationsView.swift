@@ -15,7 +15,7 @@ struct MedicationsView: View {
     @State private var path: [String] = []
 
     /// Yesterday's doses are worse than none — discarded the same way
-    /// `GoalSummaryView` discards stale nutrition.
+    /// `ClassicGoalSummaryView` discards stale nutrition.
     private var snapshot: MedicationSnapshot? {
         guard let snapshot = store.context.medications, snapshot.isToday else { return nil }
         return snapshot

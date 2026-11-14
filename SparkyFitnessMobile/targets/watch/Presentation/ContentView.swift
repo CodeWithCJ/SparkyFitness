@@ -63,6 +63,10 @@ struct ContentView: View {
             }
         }
         .environment(\.watchLargeText, store.context.effectiveLargerText)
+        .environment(\.watchLargerTextSetting, store.context.effectiveLargerText)
+        #if DEBUG
+        .modifier(ForcedDimming())
+        #endif
         .onAppear {
             store.pruneStaleDayData()
             // Cheap, local, and works with the phone out of range — unlike
@@ -177,8 +181,10 @@ struct ContentView: View {
         case .trend:
             TrendView()
         case .workout:
-            if !store.context.usesClassicWorkout {
+            if store.context.effectiveNewWorkout {
+                // The new view has its own sizing, whatever Larger text says.
                 WorkoutView()
+                    .environment(\.watchLargeText, true)
                     .environment(\.workoutPageActive, selectedPage == .workout)
             } else {
                 ClassicWorkoutView()

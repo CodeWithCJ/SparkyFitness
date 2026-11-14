@@ -22,6 +22,19 @@ enum Haptics {
         play(.success)
     }
 
+    /// One of the last seconds of a rest or hold countdown: a tone and a tap
+    /// together (the watch's silent mode leaves only the tap), so it can be
+    /// noticed without looking. `.start` is one short beep, clearly
+    /// different from the rising `.success` chime at zero. Gated on the rest alerts setting, like the buzz
+    /// at zero, and not on the general haptics switch; the countdown has its
+    /// own setting.
+    static func countdownTick() {
+        MainActor.assumeIsolated {
+            guard CheckInStore.shared.context.effectiveRestBuzzEnabled else { return }
+            WKInterfaceDevice.current().play(.start)
+        }
+    }
+
     /// A check-in was saved and sent.
     static func saved() {
         play(.success)

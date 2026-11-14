@@ -522,6 +522,7 @@ public class WatchConnectivityModule: Module {
                 self?.sendEvent("onPresetUpdateAnswer", [
                     "sessionId": payload["sessionId"] as? String ?? "",
                     "update": payload["update"] as? Bool ?? false,
+                    "waiting": payload["waiting"] as? Bool ?? false,
                 ])
             }
             self.delegateHandler.onRecordingControl = { [weak self] payload in
@@ -667,6 +668,32 @@ public class WatchConnectivityModule: Module {
                 WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
             }
             Self.launchWatchApp()
+        }
+
+        /// One exercise demo picture for the watch's demo page: a small JPEG
+        /// (about 15 KB) sent as `Data` in a message when the watch is
+        /// reachable (a workout running on it normally is), else queued with
+        /// `transferUserInfo` for when it next is. `transferFile` was not used:
+        /// paired simulators report it delivered but never hand the file to
+        /// the watch. The payload names the exercise's cache key and which
+        /// picture (0 start, 1 end); the watch stores it under that name.
+        AsyncFunction("sendExerciseImage") { (image: [String: Any]) throws -> Void in
+            // Rejects instead of returning, so the caller does not mark the
+            // exercise as sent and retries on the next plan send.
+            guard WCSession.isSupported(),
+                let key = image["key"] as? String,
+                let index = (image["index"] as? NSNumber)?.intValue,
+                let uri = image["uri"] as? String,
+                let url = URL(string: uri), url.isFileURL,
+                let data = try? Data(contentsOf: url)
+            else { throw ExerciseImageError.unreadable }
+            let payload: [String: Any] = ["type": "exerciseImage", "key": key, "index": index, "data": data]
+            let session = WCSession.default
+            if session.isReachable {
+                session.sendMessage(payload, replyHandler: nil) { _ in session.transferUserInfo(payload) }
+            } else {
+                session.transferUserInfo(payload)
+            }
         }
 
         /// The live workout's plan again, after an exercise, superset or set
@@ -1306,4 +1333,10 @@ private func numberList(_ value: Any?) -> [Double] {
     if let numbers = value as? [NSNumber] { return numbers.map { $0.doubleValue } }
     if let numbers = value as? [Double] { return numbers }
     return []
+}
+
+/// A demo picture the watch could not be handed (unsupported session, bad
+/// payload or an unreadable file).
+private enum ExerciseImageError: Error {
+    case unreadable
 }

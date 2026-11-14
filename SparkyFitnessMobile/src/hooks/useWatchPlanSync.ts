@@ -7,7 +7,10 @@ import WatchConnectivity, {
 import { isTempSetId } from '../utils/workoutSession';
 import { saveActiveWorkoutSession } from './useActiveWorkoutAutosave';
 import { queryClient } from './queryClient';
+import { plateInventoryQueryKey } from './queryKeys';
+import { fetchPlateInventory } from '../services/api/plateInventoryApi';
 import { buildWatchWorkoutStartPayload } from './useStartLiveWorkout';
+import { sendWatchExerciseImages } from '../services/watchExerciseImages';
 
 type ActiveWorkoutState = ReturnType<typeof useActiveWorkoutStore.getState>;
 
@@ -23,7 +26,17 @@ function watchPlanStructureKey(plan: WatchWorkoutStartPayload): string {
       exercise.name,
       exercise.supersetRun,
       exercise.bodyweight ?? false,
-      exercise.sets.map((set) => [set.setId, set.setType, set.restSeconds]),
+      exercise.equipment ?? null,
+      exercise.plates ?? null,
+      exercise.imageKey ?? null,
+      exercise.imageCount ?? null,
+      exercise.muscle ?? null,
+      exercise.sets.map((set) => [
+        set.setId,
+        set.setType,
+        set.restSeconds,
+        set.restAfterSeconds,
+      ]),
     ]),
     plan.setOrder,
   ]);
@@ -97,8 +110,35 @@ export function useWatchPlanSync(enabled: boolean): void {
       void watch.updateWorkoutPlan({ ...plan, revision: lastRevision });
     };
 
+    // The exercises' demo pictures follow the plan as queued payloads, once per arm
+    // and exercise (`sendWatchExerciseImages` remembers what it sent).
+    const sendImages = (state: ActiveWorkoutState): void => {
+      const { session, watchArmedAt } = state;
+      if (session == null || session.type !== 'preset' || watchArmedAt == null)
+        return;
+      void sendWatchExerciseImages(session.exercises, watchArmedAt);
+    };
+
     sync(useActiveWorkoutStore.getState());
-    return useActiveWorkoutStore.subscribe((state, prev) => {
+    sendImages(useActiveWorkoutStore.getState());
+    // The plate inventory feeds the Plates tile; send it once it has loaded.
+    void queryClient
+      .prefetchQuery({
+        queryKey: plateInventoryQueryKey,
+        queryFn: fetchPlateInventory,
+      })
+      .catch(() => undefined);
+    const unsubscribeInventory = queryClient
+      .getQueryCache()
+      .subscribe((event) => {
+        if (
+          event.type === 'updated' &&
+          event.query.queryKey[0] === plateInventoryQueryKey[0]
+        ) {
+          sync(useActiveWorkoutStore.getState());
+        }
+      });
+    const unsubscribeStore = useActiveWorkoutStore.subscribe((state, prev) => {
       if (
         state.session === prev.session &&
         state.steps === prev.steps &&
@@ -107,6 +147,11 @@ export function useWatchPlanSync(enabled: boolean): void {
         return;
       }
       sync(state);
+      sendImages(state);
     });
+    return () => {
+      unsubscribeInventory();
+      unsubscribeStore();
+    };
   }, [enabled, t]);
 }

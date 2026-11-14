@@ -1,6 +1,9 @@
 import { act, render } from '@testing-library/react-native';
 import PendingPresetUpdatePrompt from '../../src/components/PendingPresetUpdatePrompt';
-import { usePendingPresetUpdateStore } from '../../src/stores/pendingPresetUpdateStore';
+import {
+  WATCH_PRESET_ANSWER_TIMEOUT_MS,
+  usePendingPresetUpdateStore,
+} from '../../src/stores/pendingPresetUpdateStore';
 import type { WorkoutCelebration } from '../../src/utils/workoutCelebration';
 
 let capturedArgs: {
@@ -18,7 +21,8 @@ jest.mock('../../src/hooks/useWorkoutCompletePresetSync', () => ({
 }));
 
 let answerHandler:
-  ((p: { sessionId: string; update: boolean }) => void) | null = null;
+  | ((p: { sessionId: string; update: boolean; waiting?: boolean }) => void)
+  | null = null;
 jest.mock('../../modules/watch-connectivity', () => ({
   __esModule: true,
   default: {
@@ -52,6 +56,7 @@ describe('PendingPresetUpdatePrompt', () => {
       pending: { celebration, sessionId: 'sess-1' },
       pendingQueue: [],
       answers: {},
+      waiting: {},
     });
   });
 
@@ -102,6 +107,35 @@ describe('PendingPresetUpdatePrompt', () => {
     });
     expect(update).toHaveBeenCalledTimes(1);
     expect(usePendingPresetUpdateStore.getState().pending).toBeNull();
+  });
+
+  it('holds the phone prompt while the watch summary is open, then asks after the timeout', async () => {
+    jest.useFakeTimers();
+    render(<PendingPresetUpdatePrompt />);
+    await act(async () => {
+      answerHandler?.({ sessionId: 'sess-1', update: false, waiting: true });
+    });
+    expect(capturedArgs.skipPrompt).toBe(true);
+    await act(async () => {
+      jest.advanceTimersByTime(WATCH_PRESET_ANSWER_TIMEOUT_MS + 1);
+    });
+    expect(capturedArgs.skipPrompt).toBe(false);
+    jest.useRealTimers();
+  });
+
+  it('uses the answer that follows the waiting marker instead of prompting', async () => {
+    const update = jest.fn(async () => true);
+    render(<PendingPresetUpdatePrompt />);
+    await act(async () => {
+      answerHandler?.({ sessionId: 'sess-1', update: false, waiting: true });
+      capturedArgs.onNeedsUpdate?.(offer(update));
+    });
+    expect(update).not.toHaveBeenCalled();
+    await act(async () => {
+      answerHandler?.({ sessionId: 'sess-1', update: true });
+    });
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(usePendingPresetUpdateStore.getState().waiting).toEqual({});
   });
 
   it('ignores an answer for another workout', async () => {

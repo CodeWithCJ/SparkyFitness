@@ -59,6 +59,11 @@ describe('buildWatchWorkoutStartPayload set kinds', () => {
     __resetActiveWorkoutStoreForTests();
   });
 
+  it("sends the set's own rest apart from the rest before it", () => {
+    const set = firstSet(sessionWith('weight_reps', { rest_time: 90 }));
+    expect(set).toMatchObject({ restAfterSeconds: 90 });
+  });
+
   it('marks a carry and sends its distance in km', () => {
     const set = firstSet(
       sessionWith('weight_distance', { weight: 40, distance: 0.03 })

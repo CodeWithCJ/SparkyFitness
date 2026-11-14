@@ -13,6 +13,9 @@ export interface PendingPresetUpdate {
   sessionId: string;
 }
 
+/** How long the phone holds its own "Update preset?" prompt for a watch summary. */
+export const WATCH_PRESET_ANSWER_TIMEOUT_MS = 10 * 60 * 1000;
+
 interface PendingPresetUpdateState {
   pending: PendingPresetUpdate | null;
   /** Finishes that arrived while a prompt was already waiting. */
@@ -23,9 +26,17 @@ interface PendingPresetUpdateState {
    * before or after the finished workout does.
    */
   answers: Record<string, boolean>;
+  /**
+   * Workouts whose watch summary is open with the question on it, by the
+   * watch's workout id, and when the watch said so. The phone holds its own
+   * prompt for them until the answer arrives or the timeout passes.
+   */
+  waiting: Record<string, number>;
   setPending: (pending: PendingPresetUpdate) => void;
   clearPending: () => void;
   setAnswer: (sessionId: string, update: boolean) => void;
+  setWaiting: (sessionId: string) => void;
+  clearWaiting: (sessionId: string) => void;
   clearAnswer: (sessionId: string) => void;
 }
 
@@ -34,6 +45,7 @@ export const usePendingPresetUpdateStore = create<PendingPresetUpdateState>(
     pending: null,
     pendingQueue: [],
     answers: {},
+    waiting: {},
     setPending: (pending) =>
       set((state) =>
         state.pending == null
@@ -46,7 +58,19 @@ export const usePendingPresetUpdateStore = create<PendingPresetUpdateState>(
         pendingQueue: state.pendingQueue.slice(1),
       })),
     setAnswer: (sessionId, update) =>
-      set((state) => ({ answers: { ...state.answers, [sessionId]: update } })),
+      set((state) => {
+        const { [sessionId]: _waited, ...waiting } = state.waiting;
+        return { answers: { ...state.answers, [sessionId]: update }, waiting };
+      }),
+    setWaiting: (sessionId) =>
+      set((state) => ({
+        waiting: { ...state.waiting, [sessionId]: Date.now() },
+      })),
+    clearWaiting: (sessionId) =>
+      set((state) => {
+        const { [sessionId]: _removed, ...rest } = state.waiting;
+        return { waiting: rest };
+      }),
     clearAnswer: (sessionId) =>
       set((state) => {
         const { [sessionId]: _removed, ...rest } = state.answers;

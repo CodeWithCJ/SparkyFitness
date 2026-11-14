@@ -22,7 +22,16 @@ final class WorkoutSessionStore: ObservableObject {
     /// Every set of every exercise, in the order they are meant to be done.
     @Published private(set) var steps: [WorkoutStep] = []
     @Published private(set) var currentStepIndex: Int = 0
-    @Published private(set) var completedSetIds: Set<String> = []
+    @Published private(set) var completedSetIds: Set<String> = [] {
+        didSet { loggedOrder = LoggedSetOrder.synced(loggedOrder, completed: completedSetIds, planOrder: steps.map(\.plannedSet.setId)) }
+    }
+    /// The logged sets' ids in the order they were logged, across exercises
+    /// and supersets. Kept in step with `completedSetIds`.
+    private(set) var loggedOrder: [String] = []
+    /// The logged sets, oldest first.
+    var loggedSteps: [WorkoutStep] {
+        loggedOrder.compactMap { id in steps.first { $0.plannedSet.setId == id } }
+    }
     /// Edited weight/reps by set id. A set with no entry here is still on its
     /// planned targets.
     @Published private(set) var editedValues: [String: SetValues] = [:]
@@ -61,6 +70,9 @@ final class WorkoutSessionStore: ObservableObject {
     /// snapshot: the rest itself is not either, so after a relaunch the next
     /// update has to be free to bring the phone's back.
     private var lastPhoneRest: PhoneRest?
+    /// When the wearer last skipped a rest here, until another rest starts.
+    /// See `StaleRest`.
+    private var restSkippedAt: Date?
     @Published private(set) var latestBpm: Double?
     @Published private(set) var activeEnergyKcal: Double?
     @Published private(set) var elapsedSeconds: Int = 0
@@ -96,10 +108,20 @@ final class WorkoutSessionStore: ObservableObject {
     /// seconds can still be read.
     @Published private(set) var holdEndsAt: Date?
     @Published private(set) var holdTotalSeconds: Int = 0
+    /// The set whose hold countdown just reached 0:00 while running here, so
+    /// the set screen can log it. Cleared when a hold starts or is dropped.
+    @Published private(set) var holdFinishedSetId: String?
     /// Set instead of `holdEndsAt` when a timed set has no planned length and
     /// counts up. `holdStoppedAt` freezes it once the set is logged.
     @Published private(set) var holdStartedAt: Date?
     private(set) var holdStoppedAt: Date?
+    /// The set whose "Get ready" 3-2-1 is showing before its hold starts, and
+    /// when it ends. Local to the wrist and never persisted: a relaunch drops
+    /// it and the hold is simply not started.
+    @Published private(set) var getReadySetId: String?
+    @Published private(set) var getReadyEndsAt: Date?
+    /// Seconds the Get ready screen counts, from the first number to the start.
+    static let getReadySeconds = 3
 
     /// Called with the outgoing exercise's entry id just before the cursor
     /// moves onto a set belonging to a different exercise, so the session
@@ -128,12 +150,29 @@ final class WorkoutSessionStore: ObservableObject {
     /// zero: they are looking at the watch and already know.
     var onRestFinished: (() -> Void)?
 
+    /// Seconds of audible countdown to play before a rest or hold ends, read
+    /// each time one starts so a change on the phone applies to the next one.
+    /// `onCountdownTick` plays one tick; the cue at zero is `onRestFinished`,
+    /// played by the countdown itself (not the poll) while it is on.
+    var countdownSeconds: () -> Int = { 0 }
+    /// Whether a timed hold starts with a Get ready countdown
+    /// (`WatchContext.effectiveHoldCountdown`).
+    var holdCountdownEnabled: () -> Bool = { false }
+    var onCountdownTick: (() -> Void)?
+
+    /// Whether the new workout view is on. Its Finish skips the "Update
+    /// Workout?" question because the summary asks it afterwards, and its New PR
+    /// screen stays up 5 seconds instead of the classic banner's 4.
+    var usesNewWorkoutView: () -> Bool = { false }
+
     /// Called when the phone confirms a set logged on this watch is a
     /// personal record. Once per set.
     var onPersonalRecord: (() -> Void)?
     /// Name of the exercise whose set just set a record, shown as a banner
     /// until it clears itself or the wearer taps it.
     @Published private(set) var prBannerExercise: String?
+    /// The set that earned the banner, so it can show the weight and reps.
+    @Published private(set) var prBannerSetId: String?
     /// Sets completed on this watch, so a PR the phone flagged for a set
     /// logged there (or one carried in by a resumed session) is not
     /// celebrated here.
@@ -144,8 +183,21 @@ final class WorkoutSessionStore: ObservableObject {
     private var prBannerTask: Task<Void, Never>?
 
     private var elapsedTimer: Timer?
+    private var elapsedSuspended = false
     private var restTimer: Timer?
     private var holdTimer: Timer?
+    private let restCues = CountdownCues()
+    private let holdCues = CountdownCues()
+    private let getReadyCues = CountdownCues()
+    private var getReadyTimer: Timer?
+    /// Bumped by `cancelGetReady()`, so a countdown's already-queued completion
+    /// task cannot finish a replacement countdown early.
+    private var getReadyGeneration = 0
+    private var getReadyHoldSeconds = 0
+    /// Whether the countdown plays this rest's or hold's end cue, so the poll
+    /// that notices the deadline does not buzz a second time.
+    private var restCuesOwnEnd = false
+    private var holdCuesOwnEnd = false
     private var holdBuzzed = false
     /// The running timer was started on the phone. If the phone stops it
     /// without logging the set, this one stops too.
@@ -295,8 +347,17 @@ final class WorkoutSessionStore: ObservableObject {
             .subtracting(phoneCompleted)
             .filter { targets[$0] != nil }
         if let phoneRest, unseenHere.isEmpty, phoneRest != lastPhoneRest {
-            follow(phoneRest)
             lastPhoneRest = phoneRest
+            if case let .resting(endsAt, durationSeconds) = phoneRest,
+               StaleRest.isStale(endsAt: endsAt, durationSeconds: durationSeconds, skippedAt: restSkippedAt) {
+                // The wearer skipped this rest before the phone reported it,
+                // so the phone ignored the skip (its rest ended at another
+                // time than the watch's guess). Skip it there too, by its
+                // own deadline this time, rather than bring it back here.
+                onRestChangedHere?(endsAt, nil)
+            } else {
+                follow(phoneRest)
+            }
         }
         if let setTimers { applyPhoneTimers(setTimers) }
         persistSnapshot(reportedEnergyKcal: nil)
@@ -327,20 +388,30 @@ final class WorkoutSessionStore: ObservableObject {
         guard prBannerExercise == nil, !pendingPrSetIds.isEmpty else { return }
         let setId = pendingPrSetIds.removeFirst()
         celebratedPrSetIds.insert(setId)
+        prBannerSetId = setId
         prBannerExercise = steps.first { $0.plannedSet.setId == setId }?.exerciseName ?? ""
         onPersonalRecord?()
         prBannerTask?.cancel()
         prBannerTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            try? await Task.sleep(nanoseconds: (self?.usesNewWorkoutView() ?? false) ? 5_000_000_000 : 4_000_000_000)
             guard !Task.isCancelled else { return }
             self?.dismissPrBanner()
         }
     }
 
+    #if DEBUG
+    /// The New PR screen on demand, for screenshots.
+    func seedPrBanner(_ exercise: String, setId: String? = nil) {
+        prBannerSetId = setId
+        prBannerExercise = exercise
+    }
+    #endif
+
     func dismissPrBanner() {
         prBannerTask?.cancel()
         prBannerTask = nil
         prBannerExercise = nil
+        prBannerSetId = nil
         guard !pendingPrSetIds.isEmpty else { return }
         // Next turn, so the banner can leave before the following record.
         Task { @MainActor [weak self] in
@@ -371,6 +442,8 @@ final class WorkoutSessionStore: ObservableObject {
             restPausedRemaining = max(0, restEndsAt.timeIntervalSinceNow)
             restTimer?.invalidate()
             restTimer = nil
+            restCues.cancel()
+            restCuesOwnEnd = false
         case .ready:
             stopRestTimer()
         }
@@ -382,6 +455,9 @@ final class WorkoutSessionStore: ObservableObject {
         if let next = nextIncompleteIndex() {
             moveCursor(to: next)
         } else {
+            // Nothing left: a Get ready for the set just finished must not
+            // outlive the cursor leaving the plan.
+            if getReadySetId != nil { cancelGetReady() }
             currentStepIndex = steps.count
         }
     }
@@ -413,6 +489,63 @@ final class WorkoutSessionStore: ObservableObject {
         }
     }
 
+    /// Which exercise of the workout a set belongs to, 1-based, and how many
+    /// there are, for the "2/6" pill.
+    /// Where the exercise falls among the workout's blocks: a superset's
+    /// members are one block, as in the exercise list.
+    func exercisePosition(of step: WorkoutStep) -> (index: Int, total: Int) {
+        var blocks = 0, mine = 0
+        var previousRun: Int?
+        for exercise in plan?.exercises ?? [] {
+            if exercise.supersetRun == nil || exercise.supersetRun != previousRun { blocks += 1 }
+            previousRun = exercise.supersetRun
+            if exercise.exerciseEntryId == step.exerciseEntryId { mine = blocks }
+        }
+        return (max(mine, 1), blocks)
+    }
+
+    /// "A1": the letter of the superset and the exercise's place in it. Nil
+    /// for an exercise on its own.
+    func supersetBadge(for step: WorkoutStep) -> String? {
+        guard let run = step.supersetRun else { return nil }
+        let members = (plan?.exercises ?? []).filter { $0.supersetRun == run }
+        guard members.count >= 2,
+              let place = members.firstIndex(where: { $0.exerciseEntryId == step.exerciseEntryId })
+        else { return nil }
+        let letter = Character(UnicodeScalar(UInt8(65 + abs(run) % 26)))
+        return "\(letter)\(place + 1)"
+    }
+
+    /// The badge of the next set when logging this one moves on to another
+    /// member of the same superset: no rest in between.
+    func supersetPartnerNext(after step: WorkoutStep) -> String? {
+        guard let index = steps.firstIndex(where: { $0.id == step.id }),
+              steps.indices.contains(index + 1),
+              step.supersetRun != nil,
+              steps[index + 1].supersetRun == step.supersetRun,
+              steps[index + 1].exerciseEntryId != step.exerciseEntryId
+        else { return nil }
+        return supersetBadge(for: steps[index + 1])
+    }
+
+    /// The rest that logging the current set starts: the set `completeCurrentSet`
+    /// moves on to, and its rest. Zero when none is left.
+    func restAfterCurrentSet() -> Int {
+        guard let step = currentStep else { return 0 }
+        return restAfterCompleting(step)
+    }
+
+    /// The rest the phone runs after `step` is logged (`RestRule`), 0 when no
+    /// set is left to do.
+    private func restAfterCompleting(_ step: WorkoutStep) -> Int {
+        // The current set is not logged yet, so when it is the only one left
+        // `nextIncompleteIndex()` would return it: no rest runs then.
+        guard let next = RestRule.nextIndex(
+            afterLogging: currentStepIndex, isDone: steps.map { isCompleted($0) }
+        ) else { return 0 }
+        return RestRule.restAfter(completed: RestStepFacts(step), next: RestStepFacts(steps[next]))
+    }
+
     /// The plan's sets in the order the phone walks them (`setOrder`,
     /// supersets interleaved), else each exercise in turn.
     private static func steps(for plan: ActiveWorkoutPlan) -> [WorkoutStep] {
@@ -426,7 +559,9 @@ final class WorkoutSessionStore: ObservableObject {
                     setNumber: index + 1,
                     setCount: exercise.sets.count,
                     supersetWith: partners[exercise.exerciseEntryId],
-                    supersetRun: exercise.supersetRun
+                    supersetRun: exercise.supersetRun,
+                    equipment: exercise.equipment,
+                    plates: exercise.plates
                 )
             }
         }
@@ -459,9 +594,11 @@ final class WorkoutSessionStore: ObservableObject {
         phoneConfirmedIds = []
         pendingUnlogs = []
         lastPhoneRest = nil
+        restSkippedAt = nil
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
+        elapsedSuspended = false
         lastSummary = nil
         askingPresetUpdate = false
         baselineStructure = Self.structure(of: plan)
@@ -562,6 +699,11 @@ final class WorkoutSessionStore: ObservableObject {
         } else {
             currentStepIndex = steps.indices.first { !isCompleted(steps[$0]) } ?? steps.count
         }
+        // A Get ready countdown belongs to one set; if this update removed it
+        // or moved the cursor off it, it must not start a hold.
+        if let pending = getReadySetId, currentStep?.plannedSet.setId != pending {
+            cancelGetReady()
+        }
         // A cursor pushed onto another exercise closes the old one's window,
         // exactly as moving there by hand would.
         if let outgoing, currentStep?.exerciseEntryId != outgoing {
@@ -595,9 +737,11 @@ final class WorkoutSessionStore: ObservableObject {
         pendingUnlogs = []
         pendingSetCompletion = nil
         lastPhoneRest = nil
+        restSkippedAt = nil
         latestBpm = nil
         activeEnergyKcal = nil
         elapsedSeconds = 0
+        elapsedSuspended = false
         resetHeartRateStats()
         wristLoggedSetIds = []
         celebratedPrSetIds = []
@@ -665,13 +809,14 @@ final class WorkoutSessionStore: ObservableObject {
             }
         }
         return WorkoutSummary(
-            durationSeconds: elapsedSeconds,
+            durationSeconds: startedAt.map { Int(Date().timeIntervalSince($0)) } ?? elapsedSeconds,
             setsCompleted: completed,
             volumeKg: volumeKg,
             averageBpm: heartRateCount > 0 ? heartRateSum / Double(heartRateCount) : nil,
             maxBpm: heartRateMax,
             activeEnergyKcal: activeEnergyKcal,
-            sessionId: plan?.sessionId
+            sessionId: plan?.sessionId,
+            changedPresetName: usesNewWorkoutView() && changedFromPreset ? plan?.workoutName : nil
         )
     }
 
@@ -706,7 +851,7 @@ final class WorkoutSessionStore: ObservableObject {
     /// and returns true when the workout changed from its saved one; the
     /// caller then waits for the answer instead of ending the workout.
     func askPresetUpdateBeforeFinish() -> Bool {
-        guard changedFromPreset else { return false }
+        guard changedFromPreset, !usesNewWorkoutView() else { return false }
         // Raised a moment later: the Finish confirmation or the exercise sheet
         // is still closing, and SwiftUI drops an alert presented over a
         // dismissal in progress, which left Finish doing nothing at all.
@@ -719,6 +864,24 @@ final class WorkoutSessionStore: ObservableObject {
             self.askingPresetUpdate = true
         }
         return true
+    }
+
+    /// When the workout started, for a display that works out the elapsed time
+    /// itself on its own schedule.
+    var workoutStartedAt: Date? { startedAt }
+
+    /// Stops or restarts the once-a-second `elapsedSeconds` publish. The new
+    /// workout view suspends it while the wrist is down: its time is drawn
+    /// from `workoutStartedAt`, and each publish would wake the screen. Rest
+    /// and hold timers and countdown cues are deadline-scheduled and unaffected.
+    func setElapsedPublishing(suspended: Bool) {
+        elapsedSuspended = suspended
+        if suspended {
+            stopElapsedTimer()
+        } else if let startedAt {
+            elapsedSeconds = Int(Date().timeIntervalSince(startedAt))
+            startElapsedTimer()
+        }
     }
 
     func recordActiveEnergy(kcal: Double) {
@@ -738,6 +901,17 @@ final class WorkoutSessionStore: ObservableObject {
         if let reps { values.reps = reps }
         if let distanceKm { values.distanceKm = distanceKm }
         editedValues[setId] = values
+        // Edited after logging: the summary's volume follows the edit.
+        // Only the supplied fields change: later phone targets must not leak
+        // into what was logged.
+        if completedSetIds.contains(setId),
+           let step = steps.first(where: { $0.plannedSet.setId == setId }) {
+            var logged = loggedValues[setId] ?? self.values(for: step)
+            if let weightKg { logged.weightKg = weightKg }
+            if let reps { logged.reps = reps }
+            if let distanceKm { logged.distanceKm = distanceKm }
+            loggedValues[setId] = logged
+        }
         persistSnapshot(reportedEnergyKcal: nil)
         onSetValueEditedHere?(setId, weightKg, reps, distanceKm)
     }
@@ -768,9 +942,11 @@ final class WorkoutSessionStore: ObservableObject {
     func startHold(for setId: String, seconds: Int, startedAt: Date? = nil) {
         guard seconds > 0 else { return }
         if holdSetId == setId, holdEndsAt != nil { return }
+        if getReadySetId != nil { cancelGetReady() }
         holdStartedAt = nil
         holdStoppedAt = nil
         holdLoggedHere = false
+        holdFinishedSetId = nil
         holdSetId = setId
         holdTotalSeconds = seconds
         let start = startedAt ?? Date()
@@ -784,6 +960,70 @@ final class WorkoutSessionStore: ObservableObject {
         if startedAt == nil { onSetTimerStartedHere?(setId, start) }
     }
 
+    /// Starts a hold from the new workout view: a 3-2-1 Get ready first when
+    /// "Countdown before holds" is on, with the hold starting at its end, and
+    /// at once when it is off. Each number ticks when the countdown sound is
+    /// on, and the start cue plays at 0. `getReady` is a seam for screenshots.
+    func beginHold(for setId: String, seconds: Int, getReady: Int = WorkoutSessionStore.getReadySeconds) {
+        guard seconds > 0, getReadySetId != setId else { return }
+        if holdSetId == setId, holdEndsAt != nil { return }
+        guard holdCountdownEnabled(), getReady > 0 else {
+            startHold(for: setId, seconds: seconds)
+            return
+        }
+        let endsAt = Date().addingTimeInterval(TimeInterval(getReady))
+        getReadySetId = setId
+        getReadyEndsAt = endsAt
+        getReadyHoldSeconds = seconds
+        // The number 3 is on screen now; the schedule covers the ones after it.
+        let ticks = countdownSeconds() > 0
+        if ticks { onCountdownTick?() }
+        getReadyCues.schedule(
+            endsAt: endsAt,
+            seconds: ticks ? getReady : 0,
+            tick: { [weak self] in self?.onCountdownTick?() },
+            end: { [weak self] in self?.onRestFinished?() }
+        )
+        let generation = getReadyGeneration
+        getReadyTimer = Timer(fire: endsAt, interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard self?.getReadyGeneration == generation else { return }
+                self?.finishGetReady()
+            }
+        }
+        if let getReadyTimer { RunLoop.main.add(getReadyTimer, forMode: .common) }
+    }
+
+    /// A tap on the Get ready screen: start the hold now.
+    func skipGetReady() {
+        guard let setId = getReadySetId else { return }
+        guard !completedSetIds.contains(setId), currentStep?.plannedSet.setId == setId
+        else { return cancelGetReady() }
+        let seconds = getReadyHoldSeconds
+        getReadyCues.cancel()
+        startHold(for: setId, seconds: seconds)
+    }
+
+    func isGetReady(_ step: WorkoutStep) -> Bool {
+        getReadySetId == step.plannedSet.setId
+    }
+
+    private func finishGetReady() {
+        guard let setId = getReadySetId else { return }
+        guard !completedSetIds.contains(setId), currentStep?.plannedSet.setId == setId
+        else { return cancelGetReady() }
+        startHold(for: setId, seconds: getReadyHoldSeconds)
+    }
+
+    private func cancelGetReady() {
+        getReadyGeneration += 1
+        getReadyTimer?.invalidate()
+        getReadyTimer = nil
+        getReadyCues.cancel()
+        getReadySetId = nil
+        getReadyEndsAt = nil
+    }
+
     /// A duration exercise: counts down when the phone planned a length, and
     /// otherwise runs as a stopwatch.
     func isTimed(_ step: WorkoutStep) -> Bool {
@@ -793,6 +1033,7 @@ final class WorkoutSessionStore: ObservableObject {
     /// Starts the stopwatch for a timed set with no planned length.
     func startStopwatch(for setId: String, startedAt: Date? = nil) {
         if holdSetId == setId, holdStartedAt != nil { return }
+        if getReadySetId != nil { cancelGetReady() }
         stopHoldTimer()
         holdSetId = setId
         holdEndsAt = nil
@@ -864,6 +1105,12 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Seconds left on a hold that was started for this set. Nil when it
     /// was never started, so the view can show the full target instead.
+    /// The hold countdown for this set is running: the set screen then shows the
+    /// ring in place of the set's values.
+    func isHoldRunning(_ step: WorkoutStep) -> Bool {
+        holdSetId == step.plannedSet.setId && holdEndsAt != nil && targetDurationSec(for: step) != nil
+    }
+
     func holdRemaining(for setId: String, now: Date = Date()) -> Int? {
         guard holdSetId == setId, let endsAt = holdEndsAt else { return nil }
         return max(0, Int(endsAt.timeIntervalSince(now).rounded()))
@@ -919,10 +1166,9 @@ final class WorkoutSessionStore: ObservableObject {
         // may already have been logged on the phone, and landing on it would
         // leave a tick that cannot log anything.
         if let next = nextIncompleteIndex() {
+            let nextRest = RestRule.restAfter(completed: RestStepFacts(step), next: RestStepFacts(steps[next]))
             moveCursor(to: next)
-            // Phone rest is *before the next set* (`nextStep.restSec`). Using
-            // the completed set's rest inverted per-set rest and supersets.
-            let nextRest = steps[next].plannedSet.restSeconds
+            // Same length the phone runs after this set (`RestRule`).
             if nextRest > 0 {
                 startRest(seconds: nextRest)
             }
@@ -1036,6 +1282,9 @@ final class WorkoutSessionStore: ObservableObject {
            steps[index].exerciseEntryId != outgoing {
             onExerciseWillChange?(outgoing)
         }
+        if let pending = getReadySetId, !steps.indices.contains(index) || steps[index].plannedSet.setId != pending {
+            cancelGetReady()
+        }
         currentStepIndex = index
         openCurrentExerciseWindow()
     }
@@ -1075,6 +1324,7 @@ final class WorkoutSessionStore: ObservableObject {
     func skipRest() {
         guard let previous = restEndsAt, restPausedRemaining == nil else { return }
         stopRestTimer()
+        restSkippedAt = Date()
         onRestChangedHere?(previous, nil)
     }
 
@@ -1089,11 +1339,13 @@ final class WorkoutSessionStore: ObservableObject {
         let newEndsAt = endsAt.addingTimeInterval(TimeInterval(delta))
         guard newEndsAt > Date() else {
             stopRestTimer()
+            restSkippedAt = Date()
             onRestChangedHere?(endsAt, nil)
             return
         }
         restEndsAt = newEndsAt
         restDurationSeconds = max(1, restDurationSeconds + delta)
+        scheduleRestCues(endsAt: newEndsAt)
         onRestChangedHere?(endsAt, newEndsAt)
     }
 
@@ -1331,7 +1583,7 @@ final class WorkoutSessionStore: ObservableObject {
         let snapshot = Snapshot(
             plan: plan,
             currentStepIndex: currentStepIndex,
-            completedSetIds: Array(completedSetIds),
+            completedSetIds: loggedOrder,
             editedValues: editedValues,
             startedAt: startedAt,
             reportedEnergyKcal: energy,
@@ -1373,6 +1625,7 @@ final class WorkoutSessionStore: ObservableObject {
         currentStepIndex = min(snapshot.currentStepIndex, steps.count)
         openCurrentExerciseWindow()
         completedSetIds = Set(snapshot.completedSetIds)
+        loggedOrder = LoggedSetOrder.synced(snapshot.completedSetIds, completed: completedSetIds, planOrder: steps.map(\.plannedSet.setId))
         editedValues = snapshot.editedValues
         loggedValues = snapshot.loggedValues ?? [:]
         heartRateSum = snapshot.heartRateSum ?? 0
@@ -1452,6 +1705,7 @@ final class WorkoutSessionStore: ObservableObject {
     // MARK: - Timers
 
     private func startElapsedTimer() {
+        guard !elapsedSuspended else { return }
         elapsedTimer?.invalidate()
         elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -1478,15 +1732,18 @@ final class WorkoutSessionStore: ObservableObject {
 
     private func startRest(until endsAt: Date, durationSeconds: Int) {
         restTimer?.invalidate()
+        restSkippedAt = nil
         restPausedRemaining = nil
         restEndsAt = endsAt
         restDurationSeconds = max(1, durationSeconds)
+        scheduleRestCues(endsAt: endsAt)
         restTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let endsAt = self.restEndsAt else { return }
                 if Date() >= endsAt {
-                    self.stopRestTimer()
-                    self.onRestFinished?()
+                    // The countdown's own zero cue may still be about to fire.
+                    self.stopRestTimer(cancelCues: !self.restCuesOwnEnd)
+                    if !self.restCuesOwnEnd { self.onRestFinished?() }
                 }
             }
         }
@@ -1495,9 +1752,21 @@ final class WorkoutSessionStore: ObservableObject {
         }
     }
 
-    private func stopRestTimer() {
+    private func scheduleRestCues(endsAt: Date) {
+        let seconds = countdownSeconds()
+        restCuesOwnEnd = seconds > 0 && endsAt > Date()
+        restCues.schedule(
+            endsAt: endsAt,
+            seconds: seconds,
+            tick: { [weak self] in self?.onCountdownTick?() },
+            end: { [weak self] in self?.onRestFinished?() }
+        )
+    }
+
+    private func stopRestTimer(cancelCues: Bool = true) {
         restTimer?.invalidate()
         restTimer = nil
+        if cancelCues { restCues.cancel() }
         restEndsAt = nil
         restDurationSeconds = 0
         restPausedRemaining = nil
@@ -1505,14 +1774,25 @@ final class WorkoutSessionStore: ObservableObject {
 
     private func startHoldTimer() {
         holdTimer?.invalidate()
+        if let endsAt = holdEndsAt {
+            let seconds = countdownSeconds()
+            holdCuesOwnEnd = seconds > 0 && endsAt > Date()
+            holdCues.schedule(
+                endsAt: endsAt,
+                seconds: seconds,
+                tick: { [weak self] in self?.onCountdownTick?() },
+                end: { [weak self] in self?.onRestFinished?() }
+            )
+        }
         holdTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let endsAt = self.holdEndsAt else { return }
                 guard Date() >= endsAt else { return }
-                self.stopHoldTimer()
+                self.stopHoldTimer(cancelCues: !self.holdCuesOwnEnd)
                 guard !self.holdBuzzed else { return }
                 self.holdBuzzed = true
-                self.onRestFinished?()
+                self.holdFinishedSetId = self.holdSetId
+                if !self.holdCuesOwnEnd { self.onRestFinished?() }
             }
         }
         if let holdTimer {
@@ -1522,12 +1802,14 @@ final class WorkoutSessionStore: ObservableObject {
 
     /// Invalidates the timer without forgetting the deadline. `clearHold`
     /// is what drops the deadline, at the start and end of a workout.
-    private func stopHoldTimer() {
+    private func stopHoldTimer(cancelCues: Bool = true) {
         holdTimer?.invalidate()
         holdTimer = nil
+        if cancelCues { holdCues.cancel() }
     }
 
     private func clearHold() {
+        cancelGetReady()
         stopHoldTimer()
         holdSetId = nil
         holdEndsAt = nil
@@ -1537,5 +1819,6 @@ final class WorkoutSessionStore: ObservableObject {
         holdBuzzed = false
         holdFollowsPhone = false
         holdLoggedHere = false
+        holdFinishedSetId = nil
     }
 }

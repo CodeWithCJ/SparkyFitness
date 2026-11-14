@@ -105,7 +105,7 @@ enum SampleDay {
             ackedClientIds: [],
             failedClientIds: [],
             updatedAt: Date(),
-            weightUnit: .kg,
+            weightUnit: ScreenshotSeed.has("lbs") ? .lbs : .kg,
             nutrition: nutrition,
             water: water,
             waterContainers: containers,
@@ -126,12 +126,17 @@ enum SampleDay {
             setScreenMetrics: !ScreenshotSeed.has("nometrics"),
             upNextPage: ScreenshotSeed.has("upnext"),
             largerText: ScreenshotSeed.has("large"),
-            classicWorkout: ScreenshotSeed.has("classicworkout"),
+            newWorkout: ScreenshotSeed.has("newworkout"),
+            workoutCountdown: ScreenshotSeed.has("countdown") ? 3 : nil,
+            workoutTopLine: ScreenshotSeed.has("topmetrics") ? "metrics" : nil,
             // `fast`: 14 h into a 16:8 fast; otherwise synced and not fasting.
             fast: ScreenshotSeed.has("fast")
                 ? WatchFast(startedAt: Date().addingTimeInterval(-14 * 3600), targetEndAt: Date().addingTimeInterval(2 * 3600), label: "16:8")
                 : nil,
-            fastSynced: true
+            fastSynced: true,
+            // Percent of a 190 max, as the phone sends for someone with no
+            // zones of their own set.
+            heartRateZoneFloors: [95, 114, 133, 152, 171]
         )
     }
 
@@ -233,6 +238,55 @@ enum SampleDay {
         setOrder: []
     )
 
+    /// The workout the design mockups show (`mockup` option): six blocks, the
+    /// sixth a superset, with an exercise of every kind for the screen to land on.
+    /// A 20 kg bar and no 25s or 15s, so 82.5 kg is 20 + 10 + 1.25 a side.
+    /// `lbs` option: a 45 lb bar and pound plates, and the bench's sets are the
+    /// 105 lb the server stores as 47.63 kg.
+    static let mockupPlates = ScreenshotSeed.has("lbs")
+        ? WatchPlateConfig(unit: "lbs", barWeight: 45, collarWeight: 0, plates: [45, 35, 25, 10, 5, 2.5].map { .init(weight: $0, pairs: 2) })
+        : WatchPlateConfig(
+            unit: "kg", barWeight: 20, collarWeight: 0,
+            plates: [20, 10, 5, 2.5, 1.25].map { .init(weight: $0, pairs: 2) }
+        )
+
+    static let mockupPlan = ActiveWorkoutPlan(
+        sessionId: "mockup-session",
+        workoutName: "Push Day",
+        exercises: [
+            PlannedExercise(exerciseEntryId: "m1", name: "Band Pull-apart", supersetRun: nil, equipment: "Band", sets: [
+                PlannedSet(setId: "m1a", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
+                PlannedSet(setId: "m1b", targetReps: 15, targetWeightKg: nil, restSeconds: 45, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m2", name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Incline Bench Press", supersetRun: nil, equipment: "Barbell", plates: mockupPlates, imageKey: ScreenshotSeed.showsDemo ? ScreenshotSeed.demoImageKey : nil, imageCount: ScreenshotSeed.showsDemo ? 2 : nil, muscle: ScreenshotSeed.showsDemo ? "Chest" : nil, sets: [
+                PlannedSet(setId: "m2a", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 80, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2b", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2c", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m2d", targetReps: 8, targetWeightKg: ScreenshotSeed.has("lbs") ? 47.63 : 82.5, restSeconds: 120, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m3", name: "Weighted Plank", supersetRun: nil, equipment: "Plate", sets: (0..<6).map {
+                PlannedSet(setId: "m3\($0)", targetReps: nil, targetWeightKg: 20, restSeconds: 60, setType: "normal", targetDurationSec: 60, weighted: true)
+            }),
+            PlannedExercise(exerciseEntryId: "m4", name: "Farmer's Carry", supersetRun: nil, equipment: "Dumbbells", sets: (0..<4).map {
+                PlannedSet(setId: "m4\($0)", targetReps: nil, targetWeightKg: 40, restSeconds: 90, setType: "normal", carry: true, targetDistanceKm: 0.05)
+            }),
+            PlannedExercise(exerciseEntryId: "m5", name: "Pull-up", supersetRun: nil, bodyweight: true, equipment: "Bodyweight", sets: (0..<8).map {
+                PlannedSet(setId: "m5\($0)", targetReps: 8, targetWeightKg: 5, restSeconds: 120, setType: "normal")
+            }),
+            PlannedExercise(exerciseEntryId: "m6", name: "Dumbbell Row", supersetRun: 0, equipment: "Dumbbells", sets: [
+                PlannedSet(setId: "m6a", targetReps: 10, targetWeightKg: 30, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m6b", targetReps: 10, targetWeightKg: 30, restSeconds: 120, setType: "normal"),
+            ]),
+            PlannedExercise(exerciseEntryId: "m7", name: "Face Pull", supersetRun: 0, equipment: "Cable", sets: [
+                PlannedSet(setId: "m7a", targetReps: 12, targetWeightKg: 20, restSeconds: 120, setType: "normal"),
+                PlannedSet(setId: "m7b", targetReps: 12, targetWeightKg: 20, restSeconds: 120, setType: "normal"),
+            ]),
+        ],
+        setOrder: ["m1a", "m1b", "m2a", "m2b", "m2c", "m2d", "m30", "m31", "m32", "m33", "m34", "m35",
+                   "m40", "m41", "m42", "m43", "m50", "m51", "m52", "m53", "m54", "m55", "m56", "m57",
+                   "m6a", "m7a", "m6b", "m7b"]
+    )
+
     /// A loaded hold with a countdown, then a plain hold: the timer card beside
     /// the weight card.
     static let timedPlan = ActiveWorkoutPlan(
@@ -305,7 +359,24 @@ enum SampleDay {
     /// A plausible working heart rate mid-set. Only ever visible in a preview
     /// or on a real wrist — the simulator has no sensor behind
     /// `HKLiveWorkoutBuilder`, so it renders the no-BPM layout instead.
-    static let workoutBpm: Double = 142
+    /// A finished workout that changed from its saved one, for the summary.
+    static let workoutSummary: WorkoutSummary = ScreenshotSeed.has("mockup")
+        ? WorkoutSummary(
+            durationSeconds: 2892, setsCompleted: 21, volumeKg: 6240, averageBpm: 127, maxBpm: 168,
+            activeEnergyKcal: 312, sessionId: "sample", changedPresetName: "Push Day"
+        )
+        : WorkoutSummary(
+            durationSeconds: 2712,
+            setsCompleted: 14,
+            volumeKg: 5230,
+            averageBpm: 118,
+            maxBpm: 164,
+            activeEnergyKcal: 312,
+            sessionId: "sample",
+            changedPresetName: "Push Day"
+        )
+
+    static let workoutBpm: Double = ScreenshotSeed.bpmOverride ?? 142
 
     /// Active energy a few minutes into the session, for the metrics strip.
     static let workoutKcal: Double = 284

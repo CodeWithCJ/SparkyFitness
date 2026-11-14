@@ -103,6 +103,7 @@ describe('WatchSettingsScreen', () => {
 
     expect(prefs().watchSetScreenMetrics).toBe(true);
     expect(prefs().watchUpNextPage).toBe(false);
+    expect(prefs().watchNewWorkout).toBe(false);
     expect(prefs().watchLargerText).toBe(false);
 
     fireEvent(
@@ -112,34 +113,76 @@ describe('WatchSettingsScreen', () => {
     );
     fireEvent(screen.getByTestId('watch-up-next-switch'), 'valueChange', true);
     fireEvent(
-      screen.getByTestId('watch-larger-text-switch'),
+      screen.getByTestId('watch-new-workout-switch'),
       'valueChange',
       true
     );
 
     expect(prefs().watchSetScreenMetrics).toBe(false);
     expect(prefs().watchUpNextPage).toBe(true);
-    expect(prefs().watchLargerText).toBe(true);
-  });
-
-  test('the original workout page switch only shows while larger text is on', () => {
-    renderScreen();
-    const prefs = () => useAppPreferencesStore.getState();
-
-    expect(screen.queryByTestId('watch-classic-workout-switch')).toBeNull();
+    expect(prefs().watchNewWorkout).toBe(true);
+    // Larger text is its own switch: the new view does not move it.
+    expect(prefs().watchLargerText).toBe(false);
     fireEvent(
       screen.getByTestId('watch-larger-text-switch'),
       'valueChange',
       true
     );
-    expect(prefs().watchClassicWorkout).toBe(false);
+    expect(prefs().watchLargerText).toBe(true);
+    expect(prefs().watchNewWorkout).toBe(true);
+  });
 
+  test('the original workout layout rows hide while the new workout view is on', () => {
+    renderScreen();
+    expect(screen.getByTestId('watch-set-screen-metrics-switch')).toBeTruthy();
+    expect(screen.getByTestId('watch-up-next-switch')).toBeTruthy();
     fireEvent(
-      screen.getByTestId('watch-classic-workout-switch'),
+      screen.getByTestId('watch-new-workout-switch'),
       'valueChange',
       true
     );
-    expect(prefs().watchClassicWorkout).toBe(true);
+    expect(screen.queryByTestId('watch-set-screen-metrics-switch')).toBeNull();
+    expect(screen.queryByTestId('watch-up-next-switch')).toBeNull();
+  });
+
+  test('the top line and countdown choices only show while the new workout view is on', () => {
+    renderScreen();
+    const prefs = () => useAppPreferencesStore.getState();
+
+    expect(prefs().watchNewWorkout).toBe(false);
+    expect(prefs().watchWorkoutCountdown).toBe(3);
+    expect(screen.queryByText('Countdown sound & haptic')).toBeNull();
+
+    fireEvent(
+      screen.getByTestId('watch-new-workout-switch'),
+      'valueChange',
+      true
+    );
+    expect(prefs().watchNewWorkout).toBe(true);
+
+    fireEvent.press(screen.getByText('Metrics'));
+    expect(prefs().watchWorkoutTopLine).toBe('metrics');
+    fireEvent.press(screen.getByText('5 s'));
+    expect(prefs().watchWorkoutCountdown).toBe(5);
+    fireEvent.press(screen.getByText('Off'));
+    expect(prefs().watchWorkoutCountdown).toBe(0);
+  });
+
+  test('the countdown before holds switch is on by default, flips, and hides with the new view', () => {
+    renderScreen();
+    const prefs = () => useAppPreferencesStore.getState();
+    expect(prefs().watchHoldCountdown).toBe(true);
+    expect(screen.queryByTestId('watch-hold-countdown-switch')).toBeNull();
+
+    fireEvent(
+      screen.getByTestId('watch-new-workout-switch'),
+      'valueChange',
+      true
+    );
+    const toggle = screen.getByTestId('watch-hold-countdown-switch');
+    expect(screen.getByText('Countdown before holds')).toBeTruthy();
+    fireEvent(toggle, 'valueChange', false);
+    expect(prefs().watchHoldCountdown).toBe(false);
   });
 
   test('toggling a page hides and shows it', () => {
