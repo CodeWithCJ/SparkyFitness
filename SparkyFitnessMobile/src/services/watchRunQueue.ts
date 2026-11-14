@@ -5,7 +5,8 @@ import { ApiError } from './api/errors';
 import { addLog } from './LogService';
 import { getActiveServerConfigId } from './storage';
 import { saveWatchRun } from './watchRunSave';
-import type { WatchRunForm } from './stepDistance';
+import { learnFromWatchRun, type WatchRunForm } from './stepDistance';
+import { rememberPendingWatchForm } from './pendingWatchForm';
 import {
   completeProgramWorkout,
   rateProgramWorkout,
@@ -14,6 +15,11 @@ import { setExerciseEntryEffort } from './api/exerciseApi';
 import { queryClient } from '../hooks/queryClient';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { toLocalDateString } from '../utils/dateUtils';
+import {
+  getTreadmillCorrection,
+  whenPreferencesHydrated,
+} from '../stores/appPreferencesStore';
+import { correctWatchRunDistance } from '../utils/treadmillCorrection';
 import { parseWatchRunPayload, type WatchRunPayload } from '../utils/watchRun';
 
 /**
@@ -213,11 +219,24 @@ export function enqueueWatchRun(payload: WatchRunPayload): Promise<boolean> {
     ) {
       return false;
     }
+    // A figure typed from the treadmill display is corrected once, here, and
+    // the stored payload carries the result: a retry or the summary never
+    // reads the setting again, so a change in between cannot correct twice.
+    // The setting may not be read from storage yet when a run arrives at launch.
+    await whenPreferencesHydrated();
     const ownerId =
       payload.ownerId !== undefined ? payload.ownerId : (activeOwnerId ?? '');
     await AsyncStorage.setItem(
       QUEUE_KEY,
-      JSON.stringify([...queue, { payload: { ...payload, ownerId } }])
+      JSON.stringify([
+        ...queue,
+        {
+          payload: {
+            ...correctWatchRunDistance(payload, getTreadmillCorrection()),
+            ownerId,
+          },
+        },
+      ])
     );
     return true;
   });
@@ -448,6 +467,24 @@ async function drainOnce(
           ),
         item.form ?? null
       );
+      // The watch's steps may not have reached Apple Health yet, which leaves
+      // the entry without cadence and stride; measure it again later. A jump
+      // rope session has no stride, so there is nothing to wait for.
+      const stepKind = item.payload.kind;
+      if (!form && stepKind !== 'jumpRope') {
+        await rememberPendingWatchForm({
+          entryId,
+          ownerId: item.payload.ownerId ?? activeOwnerId,
+          activity: stepKind,
+          startedAt: item.payload.startedAt,
+          endedAt: item.payload.endedAt,
+          activeSeconds: item.payload.activeSeconds,
+          distanceMeters: item.payload.distanceMeters,
+          taughtDistance:
+            item.payload.place === 'indoor' &&
+            item.payload.estimatedDistanceMeters != null,
+        });
+      }
       await patchEffort(clientId, {
         entryId,
         day: toLocalDateString(new Date(item.payload.startedAt)),
@@ -465,7 +502,28 @@ async function drainOnce(
           item.payload.kind,
           item.payload.distanceScale ?? 1,
           item.payload.estimatedDistanceMeters,
-          item.payload.distanceMeters
+          item.payload.distanceMeters,
+          'watch',
+          entryId
+        );
+        // The stride learns from the same figure, from the steps Apple Health
+        // holds over the run. Never asks for Motion & Fitness here: the run is
+        // filed in the background, and a prompt then would come from nowhere.
+        await learnFromWatchRun(
+          {
+            activity: item.payload.kind,
+            startedAt: item.payload.startedAt,
+            finishedAt: item.payload.endedAt,
+            activeSeconds: item.payload.activeSeconds,
+          },
+          item.payload.distanceMeters,
+          entryId,
+          false
+        ).catch((error) =>
+          addLog(
+            `[Watch Run] Could not learn the stride: ${String(error)}`,
+            'WARNING'
+          )
         );
       }
       // Marked done first: a stop between the two steps leaves a queued run

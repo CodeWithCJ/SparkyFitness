@@ -373,6 +373,18 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
         />
 
         <SettingsRow
+          title={t('workoutSettings.treadmillStride', {
+            defaultValue: 'Treadmill & stride',
+          })}
+          subtitle={t('workoutSettings.treadmillStrideSubtitle', {
+            defaultValue:
+              'See and set the stride used to estimate indoor distance, and correct a treadmill that reads long or short.',
+          })}
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('TreadmillSettings')}
+        />
+
+        <SettingsRow
           title={t('workoutSettings.adaptiveCoaching', {
             defaultValue: 'Adaptive suggestions',
           })}
