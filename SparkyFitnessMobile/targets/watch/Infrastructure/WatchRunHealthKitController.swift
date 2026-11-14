@@ -315,7 +315,6 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
             if selfWrittenDistance { dataSource.disableCollection(for: Self.distanceType) }
             liveDataSource = dataSource
             pedometerDistance = 0
-            lastPedometerDistance = nil
             pedometerReadAt = nil
             pedometerCheckpoint = nil
             pedometerSpanStart = nil
@@ -1076,7 +1075,6 @@ extension WatchRunHealthKitController {
                 // treadmill figure can still be lower. With the pedometer gone,
                 // the system collects again on top of what was recorded.
                 self.pedometerDistance = 0
-                self.lastPedometerDistance = nil
                 self.pedometerReadAt = nil
                 self.systemDistanceOffset = snapshot.systemDistanceOffset ?? 0
                 self.selfWrittenDistance = false
@@ -1382,6 +1380,7 @@ extension WatchRunHealthKitController {
         pedometer = counter
         pedometerSteps = 0
         pedometerLive = false
+        lastPedometerDistance = nil
         pedometerSpanStart = start
         counter.startUpdates(from: start) { [weak self, weak counter] data, error in
             DispatchQueue.main.async {
@@ -1547,6 +1546,10 @@ extension WatchRunHealthKitController {
 
     fileprivate func stopMotion() {
         pedometerLive = false
+        // A new counter reports its distance from zero again, so its first
+        // reading must not be measured against this one's last.
+        lastPedometerDistance = nil
+        pedometerSpanStart = nil
         pedometer?.stopUpdates()
         pedometer = nil
         motionTimer?.invalidate()
