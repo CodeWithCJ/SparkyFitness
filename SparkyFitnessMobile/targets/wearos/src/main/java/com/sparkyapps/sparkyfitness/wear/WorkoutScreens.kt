@@ -598,9 +598,9 @@ private fun ActiveWorkoutView(
             color = SparkyColors.Purple
           )
         }
-        val st = step.setType?.lowercase()
-        if (st != null && st != "normal") {
-          val localizedSetType = localizedSetTypeLabel(st)
+        val rawSetType = step.setType?.trim()?.takeIf { it.isNotEmpty() }
+        if (rawSetType != null && !rawSetType.equals("normal", ignoreCase = true)) {
+          val localizedSetType = localizedSetTypeLabel(rawSetType)
           Text(
             text = "• ${localizedSetType.uppercase()}",
             fontSize = 9.sp,
@@ -742,11 +742,12 @@ private fun ActiveWorkoutView(
 }
 
 @Composable
-private fun localizedSetTypeLabel(rawType: String): String = when (rawType.lowercase(Locale.US)) {
-  "warmup" -> stringResource(R.string.workout_set_type_warmup)
-  "drop" -> stringResource(R.string.workout_set_type_drop)
+private fun localizedSetTypeLabel(rawType: String): String = when (rawType.trim().lowercase(Locale.US)) {
+  "normal" -> stringResource(R.string.workout_set_type_normal)
+  "warmup", "warm-up" -> stringResource(R.string.workout_set_type_warmup)
+  "drop", "drop set" -> stringResource(R.string.workout_set_type_drop)
   "failure" -> stringResource(R.string.workout_set_type_failure)
-  else -> stringResource(R.string.workout_set_type_normal)
+  else -> rawType.trim()
 }
 
 @Composable
@@ -996,9 +997,15 @@ private fun WorkoutOptionsSheet(
             onEditAction(WorkoutEditAction.AddSet(currentStep.exerciseEntryId))
           }
           val setTypes = listOf("normal", "warmup", "drop", "failure")
-          val curType = currentStep.setType?.lowercase() ?: "normal"
-          val nextType = setTypes[(setTypes.indexOf(curType) + 1) % setTypes.size]
-          val localizedCurType = localizedSetTypeLabel(curType)
+          val rawCurType = currentStep.setType?.trim()?.takeIf { it.isNotEmpty() } ?: "normal"
+          val normalizedCurType = when (rawCurType.lowercase(Locale.US)) {
+            "warm-up" -> "warmup"
+            "drop set" -> "drop"
+            else -> rawCurType.lowercase(Locale.US)
+          }
+          val curIdx = setTypes.indexOf(normalizedCurType)
+          val nextType = setTypes[(if (curIdx >= 0) curIdx + 1 else 0) % setTypes.size]
+          val localizedCurType = localizedSetTypeLabel(rawCurType)
           SmallPillButton(stringResource(R.string.workout_set_type_label, localizedCurType), SparkyColors.CardBg, SparkyColors.Amber) {
             onEditAction(WorkoutEditAction.SetSetType(currentStep.setId, nextType))
           }
