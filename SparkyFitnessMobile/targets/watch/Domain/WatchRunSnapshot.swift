@@ -36,6 +36,39 @@ struct WatchRunSnapshot: Codable {
     /// Where the route tracker stood. Separate from `routeSegment`, which
     /// counts pause segments of the recorded route. Optional for older snapshots.
     var routeProgress: WatchRouteTracker.State?
+    /// Whether this indoor run writes its own distance (system collection
+    /// off, pedometer distance instead), so a relaunch turns collection off
+    /// again rather than letting Health replace the pedometer's figure.
+    /// Optional for older snapshots, which never did.
+    var selfWrittenDistance: Bool?
+    /// Metres recorded before the system's distance collection was switched
+    /// back on mid-run, which Health does not hold. Optional for older snapshots.
+    var systemDistanceOffset: Double?
+    /// When the pedometer reading behind `distanceMeters` was taken, so a
+    /// relaunch can ask the pedometer for the distance covered since (pauses
+    /// left out) instead of losing it. Optional for older snapshots.
+    var pedometerReadAt: Date?
+    /// Set when an indoor run has ended and its Health workout is held for
+    /// the treadmill answer. The session is paused, not ended, until the
+    /// workout is saved, so a relaunch finds it again (`recoverIfNeeded`).
+    /// The held fields are all optional for older snapshots.
+    var heldEndedAt: Date?
+    /// Active seconds and steps at the end, for the run sent to the phone.
+    var heldElapsed: TimeInterval?
+    var heldSteps: Int?
+    /// The distance sample is already in the held workout, so a retry after
+    /// a relaunch does not add it twice.
+    var heldDistanceAdded: Bool?
+    /// The wearer has answered: `confirmedMeters` is what the machine showed
+    /// (nil to keep the watch's figure), `finalDistanceMeters` the distance
+    /// written to Health and `heldScale` the indoor factor the run used, so the
+    /// same settled run is rebuilt after a relaunch.
+    var distanceConfirmed: Bool?
+    var confirmedMeters: Double?
+    var finalDistanceMeters: Double?
+    var heldScale: Double?
+    /// The settled run is queued for the phone; only Health is left.
+    var phoneQueued: Bool?
 
     /// A run left this long ago is not one the wearer is still doing.
     static let maxAge: TimeInterval = 12 * 60 * 60
