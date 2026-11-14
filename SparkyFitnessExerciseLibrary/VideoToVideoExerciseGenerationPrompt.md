@@ -6,7 +6,7 @@ Transform the supplied original exercise demonstration video into a premium, pho
 
 This is a VIDEO-TO-VIDEO TRANSFORMATION task, NOT a new exercise generation task.
 
-Preserve the original exercise demonstration exactly while transforming its visual appearance using the supplied SparkyFitness character, gym environment, and official logo.
+Preserve the original exercise demonstration exactly while transforming its visual appearance using the supplied SparkyFitness character and gym environment (the gym background already contains the official logo).
 
 The original video is the single source of truth for all exercise biomechanics, posture, and movements.
 
@@ -23,9 +23,11 @@ You will receive:
 
 3. SPARKYFITNESS GYM BACKGROUND
    - Use the supplied wide gym environment as the visual environment reference.
+   - This background already contains the official SparkyFitness logo.
 
-4. OFFICIAL SPARKYFITNESS LOGO
-   - Use the supplied logo without altering its design, colors, typography, or proportions.
+4. OFFICIAL SPARKYFITNESS LOGO (REFERENCE ONLY)
+   - Supplied only so you can recognize the logo that is already in the gym background and keep it accurate (design, colors, typography, proportions).
+   - Do not place this logo anywhere in the scene. The logo in the gym background is the only logo that appears.
 
 ## 2. STRICT VIDEO-TO-VIDEO MOVEMENT PRESERVATION
 
@@ -121,10 +123,10 @@ Maintain:
 - Red, blue, and neutral brand accents.
 - Natural depth of field and perspective.
 
-Official Logo Placement:
+Official Logo:
 
-- Use the supplied official SparkyFitness logo exactly as provided.
-- Place it naturally on a gym wall, visible studio pillar, or background display.
+- The official SparkyFitness logo is already part of the supplied gym background. Keep it exactly where it is in the background, unchanged; use the separate logo reference only to keep it accurate.
+- Show exactly one SparkyFitness logo in the scene: the one in the background. Do not add a second logo or duplicate it on another wall, pillar, display, equipment, or clothing.
 - Do not generate alternative logos, distort the logo, or introduce unrelated branding.
 - Ensure the character and shadows interact naturally with the gym environment and flooring.
 
@@ -177,6 +179,7 @@ DO NOT:
 - Alter character facial identity or body proportions across frames.
 - Generate distorted anatomy, extra limbs, or deformed fingers.
 - Add text, subtitles, muscle names, or countdown timers.
+- Add a second SparkyFitness logo or duplicate the logo already in the gym background.
 - Distort, recolor, or modify the official SparkyFitness logo.
 - Add music, narration, or synthetic voiceover.
 
