@@ -3869,6 +3869,15 @@ describe('workoutSession', () => {
         expect(epley1RmKg(0, 5)).toBe(0);
         expect(epley1RmKg(100, 0)).toBe(0);
       });
+
+      it('returns 0 for high-rep sets above 15 reps', () => {
+        // The Epley formula is only valid for low-rep strength work.
+        // A 135 lb × 55-rep endurance set would otherwise produce a
+        // nonsensical 382.5 lb estimated 1RM.
+        expect(epley1RmKg(100, 16)).toBe(0);
+        expect(epley1RmKg(100, 30)).toBe(0);
+        expect(epley1RmKg(100, 55)).toBe(0);
+      });
     });
 
     describe('estimateRepMaxKg', () => {

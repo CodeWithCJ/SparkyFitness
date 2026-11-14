@@ -50,8 +50,18 @@ export function kgInUnit(kg: number, unit: 'kg' | 'lbs'): number {
 }
 
 /**
+ * Maximum rep count the Epley formula is applied to. Beyond this the linear
+ * extrapolation breaks down: a 135 lb × 55-rep endurance set would produce a
+ * nonsensical 382.5 lb estimate. Sets above this threshold are excluded from
+ * 1RM calculations entirely (see `EPLEY_MAX_REPS` and `getBestSetForExercise`).
+ */
+export const EPLEY_MAX_REPS = 15;
+
+/**
  * Epley estimated one-rep max from a load and a rep count. 0 when either is
- * missing or not positive.
+ * missing, not positive, or when the rep count exceeds {@link EPLEY_MAX_REPS}
+ * — the formula was validated for low-rep strength sets and produces
+ * unrealistic numbers for high-rep endurance work.
  */
 export function epleyOneRepMaxKg(
   loadKg: number | null | undefined,
@@ -60,6 +70,7 @@ export function epleyOneRepMaxKg(
   const load = Number(loadKg) || 0;
   const count = Number(reps) || 0;
   if (load <= 0 || count <= 0) return 0;
+  if (count > EPLEY_MAX_REPS) return 0;
   return load * (1 + count / 30);
 }
 
