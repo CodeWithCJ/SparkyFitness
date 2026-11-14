@@ -126,6 +126,13 @@ echo "  SPARKY_FITNESS_FRONTEND_URL=${SPARKY_FITNESS_FRONTEND_URL}"
 echo "Generating nginx configuration from template..."
 envsubst "\$SPARKY_FITNESS_SERVER_HOST \$SPARKY_FITNESS_SERVER_PORT \$NGINX_RATE_LIMIT \$SPARKY_FITNESS_FRONTEND_URL \$NGINX_LISTEN_PORT \$NGINX_ACCESS_LOG \$NGINX_ERROR_LOG \$NGINX_RESOLVER" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
+# Keep IPv4-only kernels working when IPv6 support is unavailable. A network
+# without IPv6 addresses still supports the socket; only omit it if the kernel
+# does not expose its IPv6 interface table (as in nginx's standard entrypoint).
+if [ ! -f /proc/net/if_inet6 ]; then
+    sed -i '/listen \[::\]:/d' /etc/nginx/conf.d/default.conf
+fi
+
 # Test that substitution worked properly
 echo "Testing nginx configuration substitution..."
 if ! grep -q "${SPARKY_FITNESS_SERVER_HOST}:${SPARKY_FITNESS_SERVER_PORT}" /etc/nginx/conf.d/default.conf; then
