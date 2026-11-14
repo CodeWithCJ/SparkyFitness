@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,8 +136,15 @@ for (const folder of exerciseFolders) {
       // Deep inspection with ffprobe if installed
       if (hasFfprobe) {
         try {
-          const probeOutput = execSync(
-            `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,duration -of json "${localVideoPath}"`,
+          const probeOutput = execFileSync(
+            'ffprobe',
+            [
+              '-v', 'error',
+              '-select_streams', 'v:0',
+              '-show_entries', 'stream=codec_name,width,height,duration',
+              '-of', 'json',
+              localVideoPath,
+            ],
             { encoding: 'utf8' }
           );
           const probeData = JSON.parse(probeOutput);

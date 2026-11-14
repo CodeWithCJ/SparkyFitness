@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
@@ -48,8 +48,20 @@ try {
 }
 
 function probeVideo(videoPath) {
-  const cmd = `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,duration,codec_name -show_entries format=size -of json "${videoPath}"`;
-  const probeData = JSON.parse(execSync(cmd, { encoding: 'utf8' }));
+  const probeData = JSON.parse(
+    execFileSync(
+      'ffprobe',
+      [
+        '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height,duration,codec_name',
+        '-show_entries', 'format=size',
+        '-of', 'json',
+        videoPath,
+      ],
+      { encoding: 'utf8' }
+    )
+  );
   const vStream = probeData.streams?.[0] || {};
   const width = parseInt(vStream.width || 0, 10);
   const height = parseInt(vStream.height || 0, 10);
@@ -57,8 +69,18 @@ function probeVideo(videoPath) {
   const sizeBytes = parseInt(probeData.format?.size || fs.statSync(videoPath).size, 10);
   const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(2);
 
-  const audioCmd = `ffprobe -v error -show_entries stream=codec_type -of json "${videoPath}"`;
-  const streamData = JSON.parse(execSync(audioCmd, { encoding: 'utf8' }));
+  const streamData = JSON.parse(
+    execFileSync(
+      'ffprobe',
+      [
+        '-v', 'error',
+        '-show_entries', 'stream=codec_type',
+        '-of', 'json',
+        videoPath,
+      ],
+      { encoding: 'utf8' }
+    )
+  );
   const hasAudio = (streamData.streams || []).some((s) => s.codec_type === 'audio');
 
   return { width, height, duration, sizeMb, sizeBytes, hasAudio };
@@ -111,17 +133,17 @@ async function processExercise(dirName) {
       console.log(`     ⚙️  Optimizing ${vFile} (size ${stats.sizeMb} MB > 1.5 MB or audio detected)...`);
       const tempVideo = path.join(exDir, `_temp_${vFile}`);
 
-      let scaleFilter = '';
+      const encodeArgs = ['-y', '-i', vPath];
       if (isVert && stats.height > 1280) {
-        scaleFilter = '-vf "scale=720:1280"';
+        encodeArgs.push('-vf', 'scale=720:1280');
       } else if (isHoriz && stats.width > 1280) {
-        scaleFilter = '-vf "scale=1280:720"';
+        encodeArgs.push('-vf', 'scale=1280:720');
       } else if (isSq && stats.width > 1080) {
-        scaleFilter = '-vf "scale=1080:1080"';
+        encodeArgs.push('-vf', 'scale=1080:1080');
       }
+      encodeArgs.push('-vcodec', 'libx264', '-crf', '25', '-an', '-movflags', '+faststart', tempVideo);
 
-      const encodeCmd = `ffmpeg -y -i "${vPath}" ${scaleFilter} -vcodec libx264 -crf 25 -an -movflags +faststart "${tempVideo}"`;
-      execSync(encodeCmd, { stdio: 'ignore' });
+      execFileSync('ffmpeg', encodeArgs, { stdio: 'ignore' });
 
       fs.renameSync(tempVideo, vPath);
       const newStats = probeVideo(vPath);
@@ -153,7 +175,11 @@ async function processExercise(dirName) {
     for (const cp of checkpoints) {
       const ts = (primaryStats.duration * cp.pct).toFixed(2);
       const outImg = path.join(candDir, `candidate_${cp.label}_t${ts}s.jpg`);
-      execSync(`ffmpeg -y -ss ${ts} -i "${primaryVideoPath}" -vframes 1 -q:v 2 "${outImg}"`, { stdio: 'ignore' });
+      execFileSync(
+        'ffmpeg',
+        ['-y', '-ss', String(ts), '-i', primaryVideoPath, '-vframes', '1', '-q:v', '2', outImg],
+        { stdio: 'ignore' }
+      );
       console.log(`     📸 ${path.basename(outImg)} (t = ${ts}s)`);
     }
     console.log(`  👉 To select a candidate, set "thumbnail_timestamp": <seconds> in ${dirName}/exercise.json`);
@@ -169,7 +195,11 @@ async function processExercise(dirName) {
     console.log(`  📸 Extracting WebP thumbnail at t = ${timestamp}s from ${path.basename(primaryVideoPath)}...`);
 
     const tempFrame = path.join(exDir, '_temp_thumb_frame.jpg');
-    execSync(`ffmpeg -y -ss ${timestamp} -i "${primaryVideoPath}" -vframes 1 -q:v 2 "${tempFrame}"`, { stdio: 'ignore' });
+    execFileSync(
+      'ffmpeg',
+      ['-y', '-ss', String(timestamp), '-i', primaryVideoPath, '-vframes', '1', '-q:v', '2', tempFrame],
+      { stdio: 'ignore' }
+    );
 
     let tWidth = 360;
     let tHeight = 640;
@@ -187,7 +217,11 @@ async function processExercise(dirName) {
         .webp({ quality: 80 })
         .toFile(thumbPath);
     } else {
-      execSync(`ffmpeg -y -i "${tempFrame}" -vf "scale=${tWidth}:${tHeight}" -q:v 80 "${thumbPath}"`, { stdio: 'ignore' });
+      execFileSync(
+        'ffmpeg',
+        ['-y', '-i', tempFrame, '-vf', `scale=${tWidth}:${tHeight}`, '-q:v', '80', thumbPath],
+        { stdio: 'ignore' }
+      );
     }
 
     if (fs.existsSync(tempFrame)) fs.unlinkSync(tempFrame);
@@ -235,8 +269,12 @@ async function processExercise(dirName) {
       }
 
       const tempGif = path.join(exDir, `_temp_${animFileName}.gif`);
-      const gifCmd = `ffmpeg -y -i "${vPath}" -vf "fps=${fps},scale=${scale}:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" "${tempGif}"`;
-      execSync(gifCmd, { stdio: 'ignore' });
+      const filterComplex = `fps=${fps},scale=${scale}:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5`;
+      execFileSync(
+        'ffmpeg',
+        ['-y', '-i', vPath, '-vf', filterComplex, tempGif],
+        { stdio: 'ignore' }
+      );
 
       await sharp(tempGif, { animated: true })
         .webp({ quality: 80, effort: 4 })

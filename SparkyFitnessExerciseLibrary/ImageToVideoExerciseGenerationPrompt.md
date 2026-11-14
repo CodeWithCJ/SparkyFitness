@@ -190,7 +190,7 @@ Official Logo:
 
 ## 8. AUDIO
 
-- Silent video output (no audio track, or muted via `-an`) to optimize for smooth mobile in-app looping and keep file sizes strictly under 1.5 MB.
+- Silent video output (no audio track, or muted via `-an`) to optimize for smooth mobile in-app looping and keep file sizes within the target threshold (~0.5 MB to 1.5 MB, max 2.5 MB).
 - No voiceover, music, narration, or sound effects.
 
 ## 9. STRICT NEGATIVE INSTRUCTIONS
