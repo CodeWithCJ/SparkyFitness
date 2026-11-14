@@ -74,7 +74,7 @@ export const createFoodEntry = async (
 // Logs a diary food again from its snapshot; the payload comes from the
 // shared buildFoodEntryCopyPayload so web and mobile copy alike.
 export const createFoodEntryCopy = async (
-  data: FoodEntryCopyPayload
+  data: FoodEntryCopyPayload & { user_id: string }
 ): Promise<unknown> => {
   const response = await apiCall('/food-entries', {
     method: 'POST',

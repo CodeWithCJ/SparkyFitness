@@ -216,17 +216,19 @@ const Diary = () => {
     const mealType = availableMealTypes?.find(
       (mt) => mt.name.toLowerCase() === targetMealType.toLowerCase()
     );
-    if (!entry || !mealType) return;
-    copySingleFoodEntry(
-      buildFoodEntryCopyPayload(
+    if (!entry || !mealType || !currentUserId) return;
+    copySingleFoodEntry({
+      ...buildFoodEntryCopyPayload(
         entry,
         targetDate,
         mealType.id,
         quickTarget === 'now'
           ? hourMinuteToEntryTime(userHourMinute(timezone))
           : undefined
-      )
-    );
+      ),
+      // Copy into the diary being viewed, like adding a food does.
+      user_id: currentUserId,
+    });
   };
 
   const handleCopyFamilyClick = (mealType: string) => {
