@@ -641,6 +641,8 @@
       "plates": {
         "perSide": "Per side:",
         "onBar": "on a {{bar}} {{unit}} bar",
+        "nearest": "Nearest {{weight}} {{unit}}",
+        "perSideLower": "per side",
         "calculator": "Plate calculator"
       },
       "planShort": "Plan {{sets}} × {{reps}}",

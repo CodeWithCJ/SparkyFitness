@@ -49,7 +49,8 @@ describe('FocusPlateStrip', () => {
         onOpenCalculator={jest.fn()}
       />
     );
-    expect(screen.getByText(/^Plates: nearest/)).toBeTruthy();
+    expect(screen.getByText(/^Nearest 100 kg · per side/)).toBeTruthy();
+    expect(screen.getByText('25 + 15')).toBeTruthy();
   });
 
   it('renders nothing without a bar or a weight', () => {
