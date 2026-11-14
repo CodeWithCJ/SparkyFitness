@@ -132,7 +132,15 @@ Official Logo:
 
 ## 6. CAMERA, FRAMING & ASPECT RATIO ADAPTATION
 
-- Output Aspect Ratio: 1:1 square (1080 × 1080) for embedded guided in-app workout player (Hevy-style), or 9:16 vertical (1080 × 1920) for full-screen view.
+- Supported Aspect Ratios: Both **9:16 Vertical (`720 × 1280` or `1080 × 1920`)** and **16:9 Horizontal (`1280 × 720` or `720 × 404`)**, as well as **1:1 Square (`1080 × 1080`)**.
+- Intelligent Aspect Ratio Selection (Unless a specific ratio is explicitly requested):
+  - **Choose 9:16 Vertical (`720 × 1280`) by default for tall, vertical movements:**
+    - Exercises with primary vertical travel: Squats, Deadlifts, Overhead / Military Press, Pull-ups, Chin-ups, Standing Bicep Curls, Lunges, Calf Raises, Lat Pulldowns.
+    - Captures the complete head-to-toe movement naturally without wasting empty horizontal side space.
+  - **Choose 16:9 Horizontal (`1280 × 720`) by default for wide, horizontal, or bench movements:**
+    - Exercises with wide equipment or horizontal body orientation: Barbell Bench Press (fits the full 7.2-foot Olympic barbell and weight plates), Incline / Decline Bench, Push-ups, Floor Planks, Ab Wheel Rollouts, Cable Chest Flyes, Rowing Machines.
+    - Avoids clipping barbell collars or pulling the camera back so far that the demonstrator's body appears tiny.
+  - **Explicit User Request Precedence:** If the user or specification explicitly requests a specific aspect ratio (or requests both vertical and horizontal versions), generate the requested ratio(s).
 - Dynamic Reframing & Centering: When adapting from horizontal (16:9) or wide source footage, dynamically reframe and center the subject so the demonstrator's entire body, full range of motion, and complete equipment trajectory (e.g. lockout of an overhead press, bottom of a squat or deadlift) remain fully visible inside the frame with adequate headroom and floor margins.
 - Do not crop out limbs, hands, feet, weights, or equipment at the edges of the frame.
 - Source Footage Integrity Fallback: Source footage must include the full demonstrator body, equipment, and range-of-motion endpoints. If the source video itself has cropped-out limbs, hands, feet, or weights, do not hallucinate or invent the missing anatomy or equipment; flag the video for re-capture or manual replacement.
@@ -144,9 +152,14 @@ Official Logo:
 
 ## 7. VIDEO OUTPUT & SEAMLESS LOOPING
 
-- Repetition Cycle: 1–2 complete, clean repetitions (typically 6–12 seconds, up to 15 seconds maximum).
+- Duration: 5 to 15 seconds total.
+- Repetition Cycle: 1–2 complete, clean repetitions (shows full controlled movement or alternating sides).
+- File Naming:
+  - Vertical (9:16): Save as `{{NUMERIC_ID}}_{{SLUG}}_9_16.mp4` (or `{{NUMERIC_ID}}_{{SLUG}}.mp4` if only one orientation is generated).
+  - Horizontal (16:9): Save as `{{NUMERIC_ID}}_{{SLUG}}_16_9.mp4`.
+- Target File Size: ~0.5 MB to 1.5 MB (max 2.5 MB), encoded with H.264 (libx264).
 - Seamless In-App Looping: The video must start and end at the neutral resting / setup position of the exercise movement cycle so that playback loops infinitely and smoothly without jarring jumps or hitches.
-- Aspect Ratio: 1:1 square (1080 × 1080) or 9:16 vertical (1080 × 1920) where supported.
+- Aspect Ratio: Match the chosen format (9:16 vertical, 16:9 horizontal, or 1:1 square).
 - Style: Photorealistic 3D human anatomy.
 - Movement: Faithfully reproduced from the original video.
 - Motion Pacing: Preserve the natural cadence and tempo of the repetition. Never unnaturally speed up, slow down, or freeze movement to force an arbitrary duration.
@@ -158,11 +171,8 @@ Official Logo:
 
 ## 8. AUDIO
 
-- No voiceover.
-- No narration.
-- No background music.
-- No artificial sound effects.
-- Only subtle natural breathing, gym ambiance, and mechanical equipment sounds where appropriate.
+- Silent video output (no audio track, or muted via `-an`) to optimize for smooth mobile in-app looping and keep file sizes strictly under 1.5 MB.
+- No voiceover, music, narration, or sound effects.
 
 ## 9. STRICT NEGATIVE INSTRUCTIONS
 

@@ -20,9 +20,11 @@ You will receive:
    - When only one image is supplied, treat it as the START position and derive the END position from the exercise specification.
 
 2. EXERCISE SPECIFICATION (filled in per exercise)
+   - Numeric ID: `{{NUMERIC_ID}}` (e.g. 00857)
+   - Slug: `{{SLUG}}` (e.g. ab_wheel_rollout)
    - Exercise name: `{{EXERCISE_NAME}}`
    - Equipment: `{{EQUIPMENT}}`
-   - Movement instructions: `{{INSTRUCTIONS}}`
+   - Movement steps: `{{STEPS}}`
    - Primary muscles: `{{PRIMARY_MUSCLES}}`
    - Secondary muscles: `{{SECONDARY_MUSCLES}}`
    - Stabilizing muscles: `{{STABILIZER_MUSCLES}}`
@@ -43,7 +45,7 @@ You will receive:
 
 ## 2. KEYFRAME FIDELITY & MOVEMENT GENERATION
 
-The reference image(s) are fixed keyframes. The video must pass through them exactly.
+The reference image(s) define the movement keyframes. The generated video must accurately match the reference pose, joint angles, and equipment setup at each position, while rendering the approved SparkyFitness character and gym background.
 
 Match from the reference image(s):
 
@@ -121,7 +123,7 @@ Overlay & Shader Requirements:
 - Keep highlights locked to the correct muscles throughout contraction, elongation, and movement.
 - Make highlights clearly visible without obscuring underlying muscle definition or skin texture.
 - Intensify primary highlights during the concentric (lifting) phase and at peak contraction; ease them slightly during the eccentric (lowering) phase.
-- Show bilateral activation for bilateral exercises, and only the working side for unilateral exercises.
+- Show bilateral activation for bilateral exercises. For unilateral exercises, restrict target/primary mover highlights to the working side while allowing specified stabilizer highlights on both sides when engaged.
 - Do not display muscle names, written anatomical labels, or language-specific text.
 
 The video must communicate muscle activation visually and intuitively for users worldwide.
@@ -147,21 +149,34 @@ Official Logo:
 - Do not generate alternative logos, distort the logo, or introduce unrelated branding.
 - Ensure the character and shadows interact naturally with the gym environment and flooring.
 
-## 6. CAMERA, FRAMING & ASPECT RATIO
+## 6. CAMERA, FRAMING & ASPECT RATIO SELECTION
 
-- Output Aspect Ratio: 1:1 square (1080 × 1080) for the embedded guided in-app workout player, or 9:16 vertical (1080 × 1920) for full-screen view.
+- Supported Aspect Ratios: Both **9:16 Vertical (`720 × 1280` or `1080 × 1920`)** and **16:9 Horizontal (`1280 × 720` or `720 × 404`)**, as well as **1:1 Square (`1080 × 1080`)**.
+- Intelligent Aspect Ratio Selection (Unless a specific ratio is explicitly requested):
+  - **Choose 9:16 Vertical (`720 × 1280`) by default for tall, vertical movements:**
+    - Exercises with primary vertical travel: Squats, Deadlifts, Overhead / Military Press, Pull-ups, Chin-ups, Standing Bicep Curls, Lunges, Calf Raises, Lat Pulldowns.
+    - Captures the complete head-to-toe movement naturally without wasting empty horizontal side space.
+  - **Choose 16:9 Horizontal (`1280 × 720`) by default for wide, horizontal, or bench movements:**
+    - Exercises with wide equipment or horizontal body orientation: Barbell Bench Press (fits the full 7.2-foot Olympic barbell and weight plates), Incline / Decline Bench, Push-ups, Floor Planks, Ab Wheel Rollouts, Cable Chest Flyes, Rowing Machines.
+    - Avoids clipping barbell collars or pulling the camera back so far that the demonstrator's body appears tiny.
+  - **Explicit User Request Precedence:** If the user or specification explicitly requests a specific aspect ratio (or requests both vertical and horizontal versions), generate the requested ratio(s).
 - Camera Angle: Use the viewing angle of the reference image(s). If the image angle hides the working joints (for example a straight-on view of a lateral raise is fine, but a straight-on view of a squat hides hip and knee travel), use a three-quarter angle (about 45°) that shows them clearly.
 - Static Camera: Lock the camera. No cuts, pans, orbits, zooms, or shake.
-- Framing: Keep the character's entire body, full range of motion, and complete equipment path (for example lockout of an overhead press, bottom of a squat or deadlift) inside the frame at every point, with adequate headroom and floor margins.
+- Framing: Keep the character's entire body, full range of motion, and complete equipment path (for example lockout of an overhead press, bottom of a squat or deadlift, full extension of a rollout) inside the frame at every point, with adequate headroom and floor margins.
 - Do not crop out limbs, hands, feet, weights, or equipment at the edges of the frame.
 - Source Image Integrity Fallback: If the reference image(s) crop out limbs, hands, feet, or equipment, or the exercise cannot be identified with confidence from the images and specification, do not guess or invent the missing anatomy, equipment, or movement; flag the exercise for manual review.
 - Prioritize exercise clarity and biomechanical visibility over cinematic effects.
 
 ## 7. VIDEO OUTPUT & SEAMLESS LOOPING
 
-- Repetition Cycle: 2 complete, clean repetitions (typically 6–10 seconds, up to 15 seconds maximum).
+- Duration: 5 to 15 seconds total.
+- Repetition Cycle: 1–2 complete, clean repetitions (shows full controlled movement or alternating sides).
+- File Naming:
+  - Vertical (9:16): Save as `{{NUMERIC_ID}}_{{SLUG}}_9_16.mp4` (or `{{NUMERIC_ID}}_{{SLUG}}.mp4` if only one orientation is generated).
+  - Horizontal (16:9): Save as `{{NUMERIC_ID}}_{{SLUG}}_16_9.mp4`.
+- Target File Size: ~0.5 MB to 1.5 MB (max 2.5 MB), encoded with H.264 (libx264).
 - Seamless In-App Looping: The first and last frames must both be the START keyframe, matching exactly, so playback loops infinitely without jumps or hitches.
-- Aspect Ratio: 1:1 square (1080 × 1080) or 9:16 vertical (1080 × 1920) where supported.
+- Aspect Ratio: Match the chosen format (9:16 vertical, 16:9 horizontal, or 1:1 square).
 - Style: Photorealistic 3D human anatomy.
 - Motion Pacing: Use the specified tempo. Never unnaturally speed up, slow down, or freeze movement to force an arbitrary duration.
 - Conflict Precedence Rule: Correct technique, keyframe fidelity, and the specified tempo (Section 2) always take precedence over duration limits. If they cannot fit, reduce to 1 complete repetition rather than speed-warping, and flag the clip for review.
@@ -172,11 +187,8 @@ Official Logo:
 
 ## 8. AUDIO
 
-- No voiceover.
-- No narration.
-- No background music.
-- No artificial sound effects.
-- Only subtle natural breathing, gym ambiance, and mechanical equipment sounds where appropriate.
+- Silent video output (no audio track, or muted via `-an`) to optimize for smooth mobile in-app looping and keep file sizes strictly under 1.5 MB.
+- No voiceover, music, narration, or sound effects.
 
 ## 9. STRICT NEGATIVE INSTRUCTIONS
 
