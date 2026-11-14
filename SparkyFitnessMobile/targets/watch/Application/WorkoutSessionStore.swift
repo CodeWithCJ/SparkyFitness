@@ -699,6 +699,11 @@ final class WorkoutSessionStore: ObservableObject {
         } else {
             currentStepIndex = steps.indices.first { !isCompleted(steps[$0]) } ?? steps.count
         }
+        // A Get ready countdown belongs to one set; if this update removed it
+        // or moved the cursor off it, it must not start a hold.
+        if let pending = getReadySetId, currentStep?.plannedSet.setId != pending {
+            cancelGetReady()
+        }
         // A cursor pushed onto another exercise closes the old one's window,
         // exactly as moving there by hand would.
         if let outgoing, currentStep?.exerciseEntryId != outgoing {
@@ -992,7 +997,8 @@ final class WorkoutSessionStore: ObservableObject {
     /// A tap on the Get ready screen: start the hold now.
     func skipGetReady() {
         guard let setId = getReadySetId else { return }
-        guard !completedSetIds.contains(setId) else { return cancelGetReady() }
+        guard !completedSetIds.contains(setId), currentStep?.plannedSet.setId == setId
+        else { return cancelGetReady() }
         let seconds = getReadyHoldSeconds
         getReadyCues.cancel()
         startHold(for: setId, seconds: seconds)
@@ -1004,7 +1010,8 @@ final class WorkoutSessionStore: ObservableObject {
 
     private func finishGetReady() {
         guard let setId = getReadySetId else { return }
-        guard !completedSetIds.contains(setId) else { return cancelGetReady() }
+        guard !completedSetIds.contains(setId), currentStep?.plannedSet.setId == setId
+        else { return cancelGetReady() }
         startHold(for: setId, seconds: getReadyHoldSeconds)
     }
 

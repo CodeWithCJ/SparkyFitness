@@ -1410,7 +1410,10 @@ private struct CurrentSetView: View {
         // The phone logging this set, or a jump from the exercise list, has
         // already swapped `step` by the time this runs. The commit uses
         // `crownStep`, captured when the box was selected.
-        .onChange(of: step.plannedSet.setId) { endCrownEditing() }
+        .onChange(of: step.plannedSet.setId) {
+            endCrownEditing()
+            logFinishedHoldIfDue()
+        }
         // crownValue is a number in the unit it was selected in. Committing
         // after the phone switches kg/lb or m/yd would save that number in the new unit.
         .onChange(of: unit) { discardCrownEdit(for: .weight) }
@@ -1422,9 +1425,10 @@ private struct CurrentSetView: View {
         }
         .onDisappear { endCrownEditing() }
         // A running hold that reaches 0:00 logs the set on its own.
-        .onChange(of: store.holdFinishedSetId) {
-            if store.holdFinishedSetId == step.plannedSet.setId, !store.isCompleted(step) { logSet() }
-        }
+        // It also runs when this set becomes visible again, because the hold
+        // may have finished while another set was on screen.
+        .onChange(of: store.holdFinishedSetId) { logFinishedHoldIfDue() }
+        .onAppear { logFinishedHoldIfDue() }
         .sheet(item: $editing) { field in
             NumericKeypadView(
                 title: title(for: field),
@@ -1436,6 +1440,12 @@ private struct CurrentSetView: View {
                 editing = nil
             }
         }
+    }
+
+    /// Logs this set if its hold already ran out. Idempotent: a completed set
+    /// is skipped.
+    private func logFinishedHoldIfDue() {
+        if store.holdFinishedSetId == step.plannedSet.setId, !store.isCompleted(step) { logSet() }
     }
 
     /// Logs the set on screen, with the value on screen, settled or not. From
