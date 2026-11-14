@@ -1,18 +1,33 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 import ActiveWorkoutFocusMedia from '../../src/components/ActiveWorkoutFocusMedia';
 import { useOpenLightbox } from '../../src/components/LightboxProvider';
 
 jest.mock('../../src/components/LightboxProvider', () => ({
   useOpenLightbox: jest.fn(),
 }));
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: jest.fn(() => true),
+}));
 jest.mock('../../src/components/SafeImage', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ source }: { source: { uri: string } | null }) => (
-      <View testID="safe-image" accessibilityValue={{ text: source?.uri }} />
+    default: ({
+      source,
+      autoplay,
+    }: {
+      source: { uri: string } | null;
+      autoplay?: boolean;
+    }) => (
+      <View
+        testID="safe-image"
+        accessibilityValue={{ text: source?.uri }}
+        accessibilityHint={autoplay ? 'animated' : 'still'}
+      />
     ),
   };
 });
@@ -142,5 +157,35 @@ describe('ActiveWorkoutFocusMedia', () => {
     renderMedia();
     act(() => jest.advanceTimersByTime(3000));
     expect(frame()).toBe('https://img/a.jpg');
+  });
+
+  it('shows a still of the first picture as the minimized thumbnail', () => {
+    renderMedia({ expanded: false });
+    const thumb = screen.getByTestId('safe-image');
+    expect(thumb.props.accessibilityHint).toBe('still');
+    act(() => jest.advanceTimersByTime(3000));
+    expect(frame()).toBe('https://img/a.jpg');
+  });
+
+  it('animates only the enlarged demo', () => {
+    renderMedia({ expanded: true });
+    expect(screen.getByTestId('safe-image').props.accessibilityHint).toBe(
+      'animated'
+    );
+    fireEvent.press(screen.getByLabelText('Pause Squat animation'));
+    expect(screen.getByTestId('safe-image').props.accessibilityHint).toBe(
+      'still'
+    );
+  });
+
+  it('stops animating while the screen is not focused', () => {
+    (useIsFocused as jest.Mock).mockReturnValue(false);
+    renderMedia({ expanded: true });
+    act(() => jest.advanceTimersByTime(3000));
+    expect(frame()).toBe('https://img/a.jpg');
+    expect(screen.getByTestId('safe-image').props.accessibilityHint).toBe(
+      'still'
+    );
+    (useIsFocused as jest.Mock).mockReturnValue(true);
   });
 });

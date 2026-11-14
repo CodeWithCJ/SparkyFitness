@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useIsFocused } from '@react-navigation/native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -63,7 +64,14 @@ function ActiveWorkoutFocusMedia({
 
   const usable = images.filter((path) => path && getImageSource(path) !== null);
   const multiple = usable.length > 1;
-  const index = useImageSlideshow(usable.length, 1000, paused || reducedMotion);
+  // Only the enlarged demo animates: the photo pair stops when minimized to a
+  // thumbnail (a still of the first picture) or when the screen is not showing.
+  const screenFocused = useIsFocused();
+  const index = useImageSlideshow(
+    usable.length,
+    1000,
+    paused || reducedMotion || !expanded || !screenFocused
+  );
 
   const backToCurrent = (overPhoto: boolean) =>
     onBackToCurrent && (
@@ -96,6 +104,7 @@ function ActiveWorkoutFocusMedia({
   if (usable.length === 0) return backToCurrent(false) || null;
 
   const source = getImageSource(usable[index]);
+  const stillSource = getImageSource(usable[0]);
   const openFullScreen = () => openLightbox(usable, index, exerciseName);
   // A dark scrim reads over any photo, whatever the app theme.
   const pillClass =
@@ -125,11 +134,12 @@ function ActiveWorkoutFocusMedia({
               style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
             >
               <SafeImage
-                source={source}
+                source={stillSource}
                 style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-                // A thumbnail reads better filled; the card shows the whole frame.
+                // A thumbnail reads better filled; the card shows the whole
+                // frame. It is a still (the first picture, a GIF's first
+                // frame); only the enlarged demo animates.
                 contentFit="cover"
-                autoplay
                 fallback={null}
               />
             </View>
@@ -170,7 +180,7 @@ function ActiveWorkoutFocusMedia({
           source={source}
           style={{ width: '100%', height: '100%' }}
           contentFit="cover"
-          autoplay
+          autoplay={!reducedMotion && !paused && screenFocused}
           fallback={null}
           onLoadSize={handleLoadSize}
         />
