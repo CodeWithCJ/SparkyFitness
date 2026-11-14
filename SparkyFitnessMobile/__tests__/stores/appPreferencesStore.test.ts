@@ -351,19 +351,6 @@ describe('appPreferencesStore', () => {
       expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
     });
 
-    it('restores larger text from the new view switch for a build that had tied them', async () => {
-      const { watchLargerText: _omit, ...without } = PREFERENCE_DEFAULTS;
-      await AsyncStorage.setItem(
-        '@SparkyFitness/app-preferences',
-        JSON.stringify({
-          state: { ...without, watchNewWorkout: true },
-          version: 2,
-        })
-      );
-      await useAppPreferencesStore.persist.rehydrate();
-      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
-    });
-
     it('drops the old original page key on the next write and keeps larger text', async () => {
       await persist({ watchLargerText: true, watchClassicWorkout: false });
       useAppPreferencesStore.getState().setWatchWorkoutCountdown(3);
@@ -373,7 +360,7 @@ describe('appPreferencesStore', () => {
       expect(parsed.state.watchLargerText).toBe(true);
       expect(parsed.state.watchNewWorkout).toBe(true);
       expect(parsed.state.watchWorkoutCountdown).toBe(3);
-      expect(parsed.version).toBe(3);
+      expect(parsed.version).toBe(2);
     });
   });
 
@@ -382,7 +369,7 @@ describe('appPreferencesStore', () => {
       const { watchHoldCountdown: _omit, ...withoutKey } = PREFERENCE_DEFAULTS;
       await AsyncStorage.setItem(
         '@SparkyFitness/app-preferences',
-        JSON.stringify({ state: withoutKey, version: 2 })
+        JSON.stringify({ state: withoutKey, version: 1 })
       );
       await useAppPreferencesStore.persist.rehydrate();
       expect(useAppPreferencesStore.getState().watchHoldCountdown).toBe(true);

@@ -61,7 +61,7 @@ import type { OwnershipFilter } from '../utils/shareStatus';
 import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
-const STORE_VERSION = 3;
+const STORE_VERSION = 2;
 
 /**
  * Legacy per-key AsyncStorage entries that existed before this store was
@@ -331,8 +331,9 @@ export type AppPreferencesData = {
   watchSetScreenMetrics: boolean;
   /** Whether the watch workout has the Up Next page after the set screen. */
   watchUpNextPage: boolean;
-  /** Whether the watch workout uses the new workout view. */
+  /** Whether the watch uses larger text. */
   watchLargerText: boolean;
+  /** Whether the watch workout uses the new workout view. */
   watchNewWorkout: boolean;
   /** Seconds of audible countdown before a rest or hold ends. 0 is off. */
   watchWorkoutCountdown: WatchWorkoutCountdown;
@@ -870,35 +871,19 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         }
         // v0 → v1: state was populated from legacy per-key storage by the custom
         // storage adapter. Field names are unchanged; apply defaults for any gaps.
-        const persisted = persistedState as { watchLargerText?: boolean };
-        let state = {
+        // v1 → v2: the original workout page switch became the new workout view
+        // switch. Anyone with larger text on and the original page off (the
+        // larger-text workout page) gets the new view; larger text itself stays
+        // its own setting. The countdown settings take their defaults.
+        const { watchClassicWorkout, ...rest } = {
           ...PREFERENCE_DEFAULTS,
           ...(persistedState as Partial<AppPreferencesData>),
-        } as Partial<AppPreferencesData> & {
-          watchClassicWorkout?: boolean;
-          watchLargerText?: boolean;
+        } as Partial<AppPreferencesData> & { watchClassicWorkout?: boolean };
+        const state = {
+          ...rest,
+          watchNewWorkout:
+            rest.watchLargerText === true && !watchClassicWorkout,
         };
-        // v1 → v2: the original workout page switch became the new workout
-        // view switch. Anyone with larger text on and the original page off
-        // (the larger-text workout page) gets the new view; larger text itself
-        // stays its own setting.
-        if (version < 2) {
-          const { watchClassicWorkout, ...rest } = state;
-          state = {
-            ...rest,
-            watchNewWorkout:
-              persisted.watchLargerText === true && !watchClassicWorkout,
-          };
-        }
-        // v2 → v3: builds that tied larger text to the new workout view
-        // dropped the larger text key; bring it back from that switch.
-        if (
-          version >= 2 &&
-          version < 3 &&
-          persisted.watchLargerText === undefined
-        ) {
-          state = { ...state, watchLargerText: state.watchNewWorkout === true };
-        }
         return state as AppPreferencesState;
       },
     }
