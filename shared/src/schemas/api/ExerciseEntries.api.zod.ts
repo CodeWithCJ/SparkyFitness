@@ -89,6 +89,8 @@ export const exerciseSnapshotResponseSchema = z
     updated_at: z.string().nullable().optional(),
     tags: z.array(z.string()).nullable().optional(),
     duration_min: z.number().nullable().optional(),
+    /** Health activity type override (#1750); null is Automatic. Optional: older servers omit it. */
+    health_activity_type: z.string().nullable().optional(),
   })
   .strict();
 

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -12,6 +18,7 @@ import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetScrollView,
+  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -81,7 +88,20 @@ interface BottomSheetPickerProps<T extends string | number> {
     onPress: () => void;
     selectedOption: PickerOption<T> | undefined;
   }) => React.ReactNode;
+  /**
+   * Shows a search field above long lists that filters options by label.
+   * Off by default so existing pickers are unchanged.
+   */
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
+
+/** Case- and accent-insensitive form of a label, for search. */
+const searchForm = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
 function BottomSheetPicker<T extends string | number>({
   value,
@@ -93,6 +113,8 @@ function BottomSheetPicker<T extends string | number>({
   accessibilityHint,
   containerStyle,
   renderTrigger,
+  searchable = false,
+  searchPlaceholder,
 }: BottomSheetPickerProps<T>) {
   const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -114,6 +136,21 @@ function BottomSheetPicker<T extends string | number>({
     [normalizedSections]
   );
 
+  const [query, setQuery] = useState('');
+  const visibleSections = useMemo<PickerSection<T>[]>(() => {
+    const needle = searchForm(query.trim());
+    if (!searchable || !needle) return normalizedSections;
+    // While searching, an option shown in two sections (e.g. "Common" and
+    // the full list) is listed once, without section headers.
+    const seen = new Set<T>();
+    const matches = flatOptions.filter((option) => {
+      if (seen.has(option.value)) return false;
+      seen.add(option.value);
+      return searchForm(option.label).includes(needle);
+    });
+    return [{ options: matches }];
+  }, [searchable, query, normalizedSections, flatOptions]);
+
   const selectedOption = flatOptions.find((opt) => opt.value === value);
   const displayText =
     selectedOption?.label ||
@@ -122,7 +159,9 @@ function BottomSheetPicker<T extends string | number>({
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly
-  const enableDynamic = flatOptions.length <= 8;
+  // A searchable list keeps a fixed height so the sheet does not jump while
+  // the results shrink.
+  const enableDynamic = !searchable && flatOptions.length <= 8;
   const snapPoints = useMemo(() => {
     return enableDynamic ? undefined : [500];
   }, [enableDynamic]);
@@ -190,8 +229,36 @@ function BottomSheetPicker<T extends string | number>({
     );
   };
 
+  const renderSearch = () =>
+    searchable ? (
+      <View className="px-4 py-2 border-b border-border-subtle">
+        <BottomSheetTextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={
+            searchPlaceholder ?? t('common.search', { defaultValue: 'Search' })
+          }
+          placeholderTextColor={textMuted}
+          autoCorrect={false}
+          autoCapitalize="none"
+          clearButtonMode="while-editing"
+          accessibilityLabel={
+            searchPlaceholder ?? t('common.search', { defaultValue: 'Search' })
+          }
+          className="text-base text-text-primary bg-raised rounded-lg px-3 py-2.5"
+        />
+      </View>
+    ) : null;
+
+  const renderEmpty = () =>
+    searchable && visibleSections.every((s) => s.options.length === 0) ? (
+      <Text className="px-4 py-6 text-center text-text-muted">
+        {t('common.noMatches', { defaultValue: 'No matches' })}
+      </Text>
+    ) : null;
+
   const renderSections = () =>
-    normalizedSections.map((section, index) => (
+    visibleSections.map((section, index) => (
       <React.Fragment key={`section-${section.title ?? 'default'}-${index}`}>
         {renderSectionHeader(section, index)}
         {section.options.map(renderOption)}
@@ -224,6 +291,8 @@ function BottomSheetPicker<T extends string | number>({
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
+        onDismiss={searchable ? () => setQuery('') : undefined}
+        keyboardBlurBehavior={searchable ? 'restore' : undefined}
       >
         {enableDynamic ? (
           <BottomSheetView className="pb-safe-or-5">
@@ -237,7 +306,10 @@ function BottomSheetPicker<T extends string | number>({
             {renderSections()}
           </BottomSheetView>
         ) : (
-          <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
+          <BottomSheetScrollView
+            contentContainerClassName="pb-safe-or-5"
+            keyboardShouldPersistTaps="handled"
+          >
             {title && (
               <View className="px-4 py-4 border-b border-border-subtle">
                 <Text className="text-lg font-semibold text-center text-text-primary">
@@ -245,7 +317,9 @@ function BottomSheetPicker<T extends string | number>({
                 </Text>
               </View>
             )}
+            {renderSearch()}
             {renderSections()}
+            {renderEmpty()}
           </BottomSheetScrollView>
         )}
       </BottomSheetModal>

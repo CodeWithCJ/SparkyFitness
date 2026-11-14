@@ -2325,6 +2325,50 @@ describe('_updateExerciseEntryWithClient snapshot round-trip', () => {
     expect(update!.params[22]).toBe('["Leg_Press/0.jpg"]');
   });
 
+  // #1750: the entry's copy of the Health activity type follows a move to
+  // another exercise and is otherwise left as stored.
+  const healthActivityTypeParams = (params: unknown[]) => params.slice(-2);
+
+  it("copies the new exercise's activity type when the entry changes exercise", async () => {
+    vi.mocked(exerciseDb.getExerciseById).mockResolvedValueOnce({
+      id: 'ex-2',
+      name: 'Walking',
+      category: 'Cardio',
+      modality: 'duration_distance',
+      health_activity_type: 'walking',
+    });
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { exercise_id: 'ex-2' },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update!.sql).toContain('health_activity_type = CASE');
+    expect(healthActivityTypeParams(update!.params)).toEqual([true, 'walking']);
+  });
+
+  it('leaves the stored activity type alone on an ordinary edit', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { duration_minutes: 12 },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(healthActivityTypeParams(update!.params)).toEqual([false, null]);
+  });
+
   it('encodes array snapshot values from updateData exactly once', async () => {
     const client = makeClient();
     await updateEntry(
@@ -2413,12 +2457,12 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).toContain('$75');
+    expect(insert!.sql).toContain('$76');
     expect(insert!.sql).toContain('modality');
     expect(insert!.sql).toContain(', id)');
-    // $75 is the last param — the client uuid.
-    expect(insert!.params).toHaveLength(75);
-    expect(insert!.params[74]).toBe('client-uuid-1');
+    // $76 is the last param — the client uuid (after health_activity_type).
+    expect(insert!.params).toHaveLength(76);
+    expect(insert!.params[75]).toBe('client-uuid-1');
   });
 
   it('omits the id column when no id is provided (defaults to gen_random_uuid)', async () => {
@@ -2435,8 +2479,8 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).not.toContain('$75');
-    expect(insert!.sql).not.toMatch(/record_timezone, id\)/);
-    expect(insert!.params).toHaveLength(74);
+    expect(insert!.sql).not.toContain('$76');
+    expect(insert!.sql).not.toMatch(/health_activity_type, id\)/);
+    expect(insert!.params).toHaveLength(75);
   });
 });

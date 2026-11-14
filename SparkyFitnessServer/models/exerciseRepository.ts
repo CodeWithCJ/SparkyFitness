@@ -33,13 +33,17 @@ async function getExercisesNeedingReview(userId: any) {
     client.release();
   }
 }
+/** The library fields an exercise's diary entries copy, refreshed together. */
+interface ExerciseEntrySnapshotUpdate {
+  exercise_name: string;
+  calories_per_hour: number | null;
+  modality: string | null;
+  health_activity_type: string | null;
+}
 async function updateExerciseEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  newSnapshotData: any
+  userId: string,
+  exerciseId: string,
+  newSnapshotData: ExerciseEntrySnapshotUpdate
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -48,7 +52,8 @@ async function updateExerciseEntriesSnapshot(
        SET
           exercise_name = $1,
           calories_per_hour = $2,
-          modality = $3
+          modality = $3,
+          health_activity_type = $6
        WHERE user_id = $4 AND exercise_id = $5
        RETURNING id`,
       [
@@ -57,6 +62,7 @@ async function updateExerciseEntriesSnapshot(
         newSnapshotData.modality,
         userId,
         exerciseId,
+        newSnapshotData.health_activity_type ?? null,
       ]
     );
     return result.rowCount;

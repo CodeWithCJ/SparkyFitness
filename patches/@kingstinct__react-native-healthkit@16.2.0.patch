@@ -1,0 +1,99 @@
+diff --git a/ios/WorkoutsModule.swift b/ios/WorkoutsModule.swift
+index 7ec89f173182c3f5914bb1af3928a4c3fb4da406..01ffd808c68e1b2ead841fb42f1f865b844016a4 100644
+--- a/ios/WorkoutsModule.swift
++++ b/ios/WorkoutsModule.swift
+@@ -35,6 +35,27 @@ func mapLocations(from locations: [LocationForSaving]) -> [CLLocation] {
+   }
+ }
+ 
++/// SparkyFitness patch: puts the sync keys under Apple's constants whatever
++/// spelling JS used, and makes the sync version an integer.
++private func normalizeSyncMetadata(_ metadata: [String: Any]?) -> [String: Any]? {
++  guard var result = metadata else { return nil }
++  for alias in ["HKMetadataKeySyncIdentifier", "HKSyncIdentifier"] {
++    if let value = result.removeValue(forKey: alias) {
++      result[HKMetadataKeySyncIdentifier] = value
++    }
++  }
++  for alias in ["HKMetadataKeySyncVersion", "HKSyncVersion"] {
++    if let value = result.removeValue(forKey: alias) {
++      if let number = value as? NSNumber {
++        result[HKMetadataKeySyncVersion] = NSNumber(value: number.int64Value)
++      } else {
++        result[HKMetadataKeySyncVersion] = value
++      }
++    }
++  }
++  return result
++}
++
+ class WorkoutsModule: HybridWorkoutsModuleSpec {
+   func startWatchAppWithWorkoutConfiguration(workoutConfiguration: WorkoutConfiguration) -> Promise<
+     Bool
+@@ -94,7 +115,12 @@ class WorkoutsModule: HybridWorkoutsModuleSpec {
+         throw runtimeErrorWithPrefix("endDate must not be less than startDate")
+       }
+ 
+-      let metadataDeserialized = metadata != nil ? anyMapToDictionary(metadata!) : nil
++      // SparkyFitness patch: HealthKit's sync keys are mapped onto Apple's own
++      // constants (the JS side cannot know their raw strings for sure), and the
++      // version is stored as an integer as HealthKit requires.
++      let metadataDeserialized = normalizeSyncMetadata(
++        metadata != nil ? anyMapToDictionary(metadata!) : nil
++      )
+ 
+       var totalEnergyBurned: HKQuantity?
+       var totalDistance: HKQuantity?
+@@ -102,6 +128,11 @@ class WorkoutsModule: HybridWorkoutsModuleSpec {
+       var totalFlightsClimbed: HKQuantity?
+       // generating quantity samples
+       let initializedSamples = try quantities.map { quantity in
++        // SparkyFitness patch: each sample keeps its OWN metadata. Copying the
++        // workout's metadata onto every sample stamped the workout's sync
++        // identifier on each of them, so HealthKit treated them as versions of
++        // one object.
++        let sampleMetadata = anyMapToDictionaryOptional(quantity.metadata)
+         let type = try initializeQuantityType(quantity.quantityType.stringValue)
+         let unitStr = quantity.unit
+         let quantityVal = quantity.quantity
+@@ -131,8 +162,39 @@ class WorkoutsModule: HybridWorkoutsModuleSpec {
+           quantity: quantity,
+           start: quantityStart,
+           end: quantityEnd,
+-          metadata: metadataDeserialized
++          metadata: sampleMetadata
++        )
++      }
++
++      // SparkyFitness patch: iOS 17 deprecated the HKWorkout initialisers in
++      // favour of HKWorkoutBuilder, which also works the totals out from the
++      // samples (the initialiser path below took the LAST sample of a kind as
++      // its total). The initialiser path stays for iOS 16, and for callers that
++      // pass explicit totals, which only that path applies.
++      let hasTotals = (totals?.distance ?? 0) != 0 || (totals?.energyBurned ?? 0) != 0
++      if #available(iOS 17.0, *), !hasTotals {
++        let configuration = HKWorkoutConfiguration()
++        configuration.activityType = type
++        if let indoor = metadataDeserialized?[HKMetadataKeyIndoorWorkout] as? Bool {
++          configuration.locationType = indoor ? .indoor : .outdoor
++        }
++        let builder = HKWorkoutBuilder(
++          healthStore: healthStore,
++          configuration: configuration,
++          device: nil
+         )
++        try await builder.beginCollection(at: startDate)
++        if !initializedSamples.isEmpty {
++          try await builder.addSamples(initializedSamples)
++        }
++        if let workoutMetadata = metadataDeserialized, !workoutMetadata.isEmpty {
++          try await builder.addMetadata(workoutMetadata)
++        }
++        try await builder.endCollection(at: endDate)
++        guard let saved = try await builder.finishWorkout() else {
++          throw runtimeErrorWithPrefix("Failed to create workout")
++        }
++        return WorkoutProxy.init(workout: saved)
+       }
+ 
+       // if totals are provided override samples

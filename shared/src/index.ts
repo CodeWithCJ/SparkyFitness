@@ -159,6 +159,8 @@ export * from './constants/webTabs.ts';
 export * from './features/optionalFeatures.ts';
 export * from './constants/exercise.ts';
 export * from './constants/exerciseTaxonomy.ts';
+export * from './constants/healthActivityTypes.ts';
+export * from './constants/healthConnectSegments.ts';
 export * from './constants/chatAskUser.ts';
 export * from './constants/mealServing.ts';
 export * from './constants/notes.ts';

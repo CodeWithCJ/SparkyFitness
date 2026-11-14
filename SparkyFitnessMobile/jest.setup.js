@@ -763,8 +763,9 @@ jest.mock('react-native-maps', () => {
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
-  const { View, ScrollView } = require('react-native');
+  const { View, ScrollView, TextInput } = require('react-native');
   return {
+    BottomSheetTextInput: TextInput,
     BottomSheetModal: React.forwardRef(({ children }, ref) => {
       React.useImperativeHandle(ref, () => ({
         present: jest.fn(),

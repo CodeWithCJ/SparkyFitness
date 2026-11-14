@@ -24,6 +24,8 @@ import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUpdateExerciseMutation } from '@/hooks/Exercises/useExercises';
 import { Exercise } from '@/types/exercises';
+import { HealthActivityTypeSelect } from '@/components/HealthActivityTypeSelect';
+import { healthActivityTypeSelectValue } from '@/utils/healthActivityType';
 import {
   EXERCISE_CATEGORIES,
   EXERCISE_MODALITY_OPTIONS,
@@ -82,6 +84,9 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
       name: exerciseToEdit.name || '',
       category: exerciseToEdit.category || '',
       modality: exerciseToEdit.modality,
+      health_activity_type: healthActivityTypeSelectValue(
+        exerciseToEdit.health_activity_type
+      ),
       calories_per_hour: exerciseToEdit.calories_per_hour || 0,
       description: exerciseToEdit.description || '',
       level: exerciseToEdit.level?.toLowerCase() || '',
@@ -207,6 +212,41 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                 )}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Health activity type (#1750) */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label
+              htmlFor="db-health-activity-type"
+              className="text-right pt-2"
+            >
+              {t(
+                'exercise.addExerciseDialog.healthActivityTypeLabel',
+                'Health activity type'
+              )}
+            </Label>
+            <div className="col-span-3 space-y-1">
+              <HealthActivityTypeSelect
+                id="db-health-activity-type"
+                value={healthActivityTypeSelectValue(
+                  formData.health_activity_type
+                )}
+                onChange={(val) =>
+                  handleFieldChange('health_activity_type', val)
+                }
+                exercise={{
+                  name: formData.name,
+                  category: formData.category,
+                  modality: formData.modality,
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'exercise.addExerciseDialog.healthActivityTypeHint',
+                  'Used when the mobile app writes your workouts to Apple Health or Health Connect.'
+                )}
+              </p>
+            </div>
           </div>
 
           {/* Calories */}

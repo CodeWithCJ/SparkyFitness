@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
-import BottomSheetPicker from '../components/BottomSheetPicker';
+import BottomSheetPicker, {
+  type PickerSection,
+} from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
@@ -14,13 +16,19 @@ import { useCreateExercise, useUpdateExercise } from '../hooks';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
   deriveExerciseModality,
+  COMMON_HEALTH_ACTIVITY_TYPES,
+  guessHealthActivityType,
+  HEALTH_ACTIVITY_TYPES,
+  type HealthActivityType,
   isExerciseModality,
+  isHealthActivityType,
   CANONICAL_MUSCLES,
   CANONICAL_EQUIPMENT,
   resolveCanonicalOrCustomMuscle,
   resolveCanonicalOrCustomEquipment,
 } from '@workspace/shared';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
+import { localizeHealthActivityType } from '../localization/healthActivityTypes';
 import type { Exercise } from '../types/exercise';
 import type {
   RootStackParamList,
@@ -56,6 +64,9 @@ const MODALITY_OPTIONS = [
   { value: 'duration' },
   { value: 'duration_distance' },
 ] as const;
+
+/** Picker value for "no override": the type is guessed from name and category. */
+const AUTOMATIC_HEALTH_ACTIVITY_TYPE = 'automatic';
 
 const LEVEL_OPTIONS = [
   { value: 'beginner' },
@@ -119,6 +130,11 @@ interface ExerciseFormState {
    * stored modality never silently changes with the category).
    */
   modalityManuallySet: boolean;
+  /**
+   * Health activity type override (#1750) used when workouts are written to
+   * Apple Health / Health Connect; `AUTOMATIC_HEALTH_ACTIVITY_TYPE` for none.
+   */
+  healthActivityType: string;
   caloriesPerHourText: string;
   description: string;
   equipment: string[];
@@ -208,6 +224,46 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
     }));
   }, [state.category, localizeOption]);
 
+  const healthActivityTypeOptions = useMemo(() => {
+    const guessed = guessHealthActivityType({
+      name: state.name,
+      category: state.category,
+      modality: state.modality,
+    });
+    const option = (key: HealthActivityType) => ({
+      label: localizeHealthActivityType(t, key),
+      value: key as string,
+    });
+    const automatic = {
+      label: t('workout.healthActivityTypeAutomatic', {
+        defaultValue: 'Automatic ({{type}})',
+        type: localizeHealthActivityType(t, guessed),
+      }),
+      value: AUTOMATIC_HEALTH_ACTIVITY_TYPE,
+    };
+    const all = HEALTH_ACTIVITY_TYPES.map(option).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+    // Common first, then every type; the trigger looks labels up in `options`.
+    return {
+      options: [automatic, ...all],
+      sections: [
+        {
+          title: t('workout.healthActivityTypeCommon', {
+            defaultValue: 'Common',
+          }),
+          options: [automatic, ...COMMON_HEALTH_ACTIVITY_TYPES.map(option)],
+        },
+        {
+          title: t('workout.healthActivityTypeAll', {
+            defaultValue: 'All activities',
+          }),
+          options: all,
+        },
+      ],
+    };
+  }, [state.name, state.category, state.modality, t]);
+
   const modalityOptions = useMemo(() => {
     if (
       state.modality &&
@@ -231,19 +287,33 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
     label: string,
     options: readonly { label: string; value: string }[],
     value: string | null,
-    onSelect: (next: string) => void
+    onSelect: (next: string) => void,
+    list?: {
+      sections: PickerSection<string>[];
+      searchable?: boolean;
+      searchPlaceholder?: string;
+    }
   ) => (
     <View className="gap-1.5">
       <Text className="text-text-secondary text-sm font-medium">{label}</Text>
       <BottomSheetPicker<string>
         value={value ?? ''}
         options={[...options]}
+        sections={list?.sections}
+        searchable={list?.searchable}
+        searchPlaceholder={list?.searchPlaceholder}
         onSelect={onSelect}
         title={t('workout.select', { defaultValue: 'Select {{label}}', label })}
         renderTrigger={({ onPress }) => (
           <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${labelForOption(
+              options,
+              value,
+              t('workout.selectValue', { defaultValue: 'Select…' })
+            )}`}
             className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
             style={{ height: 44 }}
           >
@@ -303,6 +373,36 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
         (modality) =>
           setState((prev) => ({ ...prev, modality, modalityManuallySet: true }))
       )}
+
+      <View className="gap-1.5">
+        {renderPicker(
+          t('workout.healthActivityType', {
+            defaultValue: 'Health activity type',
+          }),
+          healthActivityTypeOptions.options,
+          state.healthActivityType,
+          (healthActivityType) =>
+            setState((prev) => ({ ...prev, healthActivityType })),
+          {
+            sections: healthActivityTypeOptions.sections,
+            searchable: true,
+            searchPlaceholder: t('workout.healthActivityTypeSearch', {
+              defaultValue: 'Search activities',
+            }),
+          }
+        )}
+        <Text className="text-text-muted text-xs">
+          {Platform.OS === 'ios'
+            ? t('workout.healthActivityTypeHintApple', {
+                defaultValue:
+                  'Used when your workouts are written to Apple Health.',
+              })
+            : t('workout.healthActivityTypeHintHealthConnect', {
+                defaultValue:
+                  'Used when your workouts are written to Health Connect.',
+              })}
+        </Text>
+      </View>
 
       <View className="gap-1.5">
         <Text className="text-text-secondary text-sm font-medium">
@@ -526,6 +626,9 @@ const buildCreatePayload = (
   };
 
   if (isExerciseModality(state.modality)) payload.modality = state.modality;
+  if (isHealthActivityType(state.healthActivityType)) {
+    payload.health_activity_type = state.healthActivityType;
+  }
 
   if (caloriesValue !== undefined) payload.calories_per_hour = caloriesValue;
   if (state.equipment.length > 0) payload.equipment = state.equipment;
@@ -550,6 +653,9 @@ const formStateFromExercise = (
   category: exercise.category,
   modality: exercise.modality ?? deriveExerciseModality(exercise.category),
   modalityManuallySet: true,
+  healthActivityType: isHealthActivityType(exercise.health_activity_type)
+    ? exercise.health_activity_type
+    : AUTOMATIC_HEALTH_ACTIVITY_TYPE,
   caloriesPerHourText:
     exercise.calories_per_hour > 0 ? String(exercise.calories_per_hour) : '',
   description: exercise.description ?? '',
@@ -587,6 +693,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({
           category: 'general',
           modality: deriveExerciseModality('general'),
           modalityManuallySet: false,
+          healthActivityType: AUTOMATIC_HEALTH_ACTIVITY_TYPE,
           caloriesPerHourText: '',
           description: '',
           equipment: [],
@@ -688,6 +795,19 @@ const buildEditPayload = (
     state.modality !== initialModality
   ) {
     payload.modality = state.modality;
+  }
+
+  // Sent only when changed; 'automatic' clears the override server-side.
+  const healthActivityTypeOrAutomatic = (value: unknown): string =>
+    isHealthActivityType(value) ? value : AUTOMATIC_HEALTH_ACTIVITY_TYPE;
+  const nextHealthActivityType = healthActivityTypeOrAutomatic(
+    state.healthActivityType
+  );
+  if (
+    nextHealthActivityType !==
+    healthActivityTypeOrAutomatic(initial.health_activity_type)
+  ) {
+    payload.health_activity_type = nextHealthActivityType;
   }
 
   if (

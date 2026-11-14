@@ -27,6 +27,8 @@ import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
 import {
   WRITEBACK_METRICS,
+  missingRequiredWritebackPermissions,
+  writebackMetricPermissions,
   type WritebackMetric,
   type WritebackDateRange,
 } from '../WritebackMetrics';
@@ -94,6 +96,7 @@ import type { HealthMetric } from '../HealthMetrics';
 import type {
   HealthMetricStates,
   HealthDataDisplayState,
+  PermissionRequest,
 } from '../types/healthRecords';
 import { useSyncHealthData, usePreferences } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -465,18 +468,23 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     // (both directions, every metric), so this toggle can never look like it revoked
     // something else. Revert the toggle if denied.
     try {
-      const granted = await requestHealthPermissions([
+      // Only what this metric needs decides the toggle: an optional extra the
+      // person declined (e.g. distance for exercise) leaves it on.
+      const grantedPermissions = await requestGrantedHealthPermissions([
         ...(await loadAllEnabledPermissions()),
-        metric.permission,
+        ...(writebackMetricPermissions(metric) as PermissionRequest[]),
       ]);
+      const granted =
+        missingRequiredWritebackPermissions(metric, grantedPermissions)
+          .length === 0;
       if (!granted) {
         Alert.alert(
           t('syncScreen.permissionDenied.title', {
             defaultValue: 'Permission Denied',
           }),
-          t('syncScreen.permissionDenied.write', {
+          t('syncScreen.permissionDenied.writeRequired', {
             defaultValue:
-              'Please grant {{metric}} write permission in {{settings}}.',
+              'Please grant the permissions {{metric}} needs in {{settings}}.',
             metric: getHealthMetricLabel(t, metric),
             settings: healthSettingsName,
           })
@@ -574,9 +582,9 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         defaultValue: 'Remove all {{store}} data',
         store: writebackStoreName,
       }),
-      t('syncScreen.removal.confirmMessage', {
+      t('syncScreen.removal.confirmMessageAll', {
         defaultValue:
-          'Delete every nutrition and hydration record SparkyFitness wrote to {{store}}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.',
+          'Delete every record SparkyFitness wrote to {{store}} (nutrition, hydration, workouts and the rest), and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.',
         store: writebackStoreName,
       }),
       [

@@ -442,6 +442,33 @@ describe('runWriteback (cursor)', () => {
 });
 
 describe('removeWrittenData (cleanup)', () => {
+  it('keeps exercise key lists when deleting written workouts fails', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackExerciseKeys:2026-06-01',
+      JSON.stringify(['sparky-exercise-individual-e1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackExerciseSig:2026-06-01',
+      '"sig"'
+    );
+    // The exercise removal deletes by marker (an AND filter); fail those.
+    mockDeleteObjects.mockImplementation((_type: string, filter: object) =>
+      'AND' in filter ? Promise.reject(new Error('locked')) : Promise.resolve(0)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain('@HealthKit:writebackExerciseKeys:2026-06-01');
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackExerciseSig:2026-06-01'
+    );
+    mockDeleteObjects.mockReset();
+    mockDeleteObjects.mockResolvedValue(0);
+  });
+
   it('full purge: range-deletes each type all-time, clears tracking, disables writeback', async () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem(
