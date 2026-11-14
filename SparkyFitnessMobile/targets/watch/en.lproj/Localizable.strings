@@ -385,6 +385,7 @@
 "watch.workout.moreTitle" = "More";
 "watch.workout.nextLabel" = "Next: ";
 "watch.workout.nextLoggedSet" = "Next set";
+"watch.workout.nextTimed" = "Timed";
 "watch.workout.previousLoggedSet" = "Previous logged set";
 "watch.workout.restBack" = "−15";
 "watch.workout.restBackLabel" = "Back 15 seconds";

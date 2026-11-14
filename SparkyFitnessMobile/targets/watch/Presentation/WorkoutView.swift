@@ -67,6 +67,7 @@ struct WorkoutView: View {
     @EnvironmentObject private var recording: RecordingStore
 
     @EnvironmentObject private var checkIn: CheckInStore
+    @Environment(\.watchLargerTextSetting) private var largerText
 
     /// "85 kg × 8": what the set that set the record was.
     private var prDetail: String? {
@@ -97,7 +98,9 @@ struct WorkoutView: View {
             } else if let summary = store.lastSummary {
                 WorkoutFinishSummaryView(summary: summary)
             } else {
+                // The picker follows Larger text, not the new view's own sizing.
                 WaitingForWorkoutView()
+                    .environment(\.watchLargeText, largerText)
             }
         }
     }
@@ -128,7 +131,7 @@ private struct WaitingForWorkoutView: View {
                     choosingCardio = true
                 } label: {
                     Label(String(localized: "watch.cardio.title", defaultValue: "Cardio"), systemImage: "figure.run")
-                        .font(.system(size: WatchStyle.s(19), weight: .semibold))
+                        .watchFont(.system(size: WatchStyle.s(19), weight: .semibold), classic: .system(size: WatchStyle.s(16), weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
@@ -178,7 +181,7 @@ private struct WaitingForWorkoutView: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
                 Text(String(localized: "watch.workout.startOnPhone", defaultValue: "Start a workout on your phone"))
-                    .font(.body)
+                    .watchFont(.body, classic: .caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -206,7 +209,7 @@ private struct WaitingForWorkoutView: View {
                             start(presetId: workout.presetId)
                         } label: {
                             Text(startingId == workout.presetId ? "Starting…" : workout.name)
-                                .font(.system(size: WatchStyle.s(19), weight: .semibold))
+                                .watchFont(.system(size: WatchStyle.s(19), weight: .semibold), classic: .system(size: WatchStyle.s(16), weight: .semibold))
                                 .foregroundStyle(.white)
                                 .multilineTextAlignment(.leading)
                                 .lineLimit(2)
@@ -244,11 +247,11 @@ private struct WaitingForWorkoutView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .font(.footnote.weight(.semibold))
+            .watchFont(.footnote.weight(.semibold), classic: .system(size: WatchStyle.s(11), weight: .semibold))
             .foregroundStyle(blue)
             HStack(spacing: 8) {
                 Text(startingId == workout.presetId ? "Starting…" : workout.name)
-                    .font(.system(size: WatchStyle.s(19), weight: .semibold))
+                    .watchFont(.system(size: WatchStyle.s(19), weight: .semibold), classic: .system(size: WatchStyle.s(16), weight: .semibold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
@@ -1799,6 +1802,25 @@ enum SetValueText {
         }
     }
 
+    /// What the rest page's Next block shows: `target`, and for the sets it has
+    /// nothing for, a line that fits the set type: an open-ended hold ("20 kg ×
+    /// Timed"), a bodyweight set ("BW × 12", "BW +10 × 8"). Nil only when the
+    /// set has no values at all.
+    static func nextTarget(for step: WorkoutStep, store: WorkoutSessionStore, unit: WeightUnit, carry: CarryUnit) -> String? {
+        let values = store.values(for: step)
+        let weight = values.weightKg.map { weightLabel($0, unit: unit) }
+        if store.isTimed(step), store.targetDurationSec(for: step) == nil {
+            let timed = String(localized: "watch.workout.nextTimed", defaultValue: "Timed")
+            return weight.map { "\($0) × \(timed)" } ?? timed
+        }
+        if store.isBodyweight(step), !store.isCarry(step), let reps = values.reps {
+            guard let kg = values.weightKg, kg != 0 else { return "BW × \(Int(reps))" } // i18n-ignore
+            let sign = kg > 0 ? "+" : "−"
+            return "BW \(sign)\(weightText(abs(kg), unit: unit)) × \(Int(reps))" // i18n-ignore
+        }
+        return target(for: step, store: store, unit: unit, carry: carry, spaced: true)
+    }
+
     /// "20 kg".
     static func weightLabel(_ kg: Double, unit: WeightUnit) -> String {
         "\(weightText(kg, unit: unit)) \(unit.suffix)"
@@ -2534,6 +2556,8 @@ private struct SetProgressRow: View {
     var centered = false
     /// Dots against the left edge rather than the right.
     var leading = false
+    /// Enlarges the "Set 2/9" label, for the rest page's roomier Next lines.
+    var labelScale: CGFloat = 1
 
     @EnvironmentObject private var store: WorkoutSessionStore
     @Environment(\.setTint) private var tint
@@ -2567,7 +2591,7 @@ private struct SetProgressRow: View {
                 .padding(.trailing, centered || leading ? 0 : -WatchStyle.m(4))
             } else {
                 Text(step.label)
-                    .font(.system(size: WatchStyle.m(14), weight: .semibold))
+                    .font(.system(size: WatchStyle.m(14) * labelScale, weight: .semibold))
                     .foregroundStyle(Self.isWarmup(step) ? Color.orange : tint.color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -2620,14 +2644,40 @@ private struct RestView: View {
     /// every second, re-creating this struct and its publisher before it can
     /// fire, which left the countdown frozen at its starting value.
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            content(now: context.date)
+        // The mockup's 305 px screen leaves the real, taller one with room to
+        // spare: the ring and the Next lines take it, the buttons keep their size.
+        GeometryReader { proxy in
+            let grow = Self.grow(forHeight: proxy.size.height, hasTarget: nextTarget != nil)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                content(now: context.date, grow: grow)
+            }
         }
     }
 
-    private func content(now: Date) -> some View {
+    /// Mockup px the ring and the Next lines take at full size: the 114 px
+    /// ring and the Next block (21 + 16 px, and 25 more for its target line).
+    /// The rest of the page (5 + 46 + 6 px) is fixed.
+    private static func growingPx(hasTarget: Bool) -> CGFloat { 114 + 37 + (hasTarget ? 25 : 0) }
+    private static let fixedPx: CGFloat = 5 + 46 + 6
+
+    /// How much larger than the mockup the ring and Next lines can be drawn in
+    /// `height`, the space under the exercise pill: 1 at the mockup's size,
+    /// at most 1.4.
+    static func grow(forHeight height: CGFloat, hasTarget: Bool) -> CGFloat {
+        let room = height - WatchStyle.m(fixedPx + 4)
+        return min(1.4, max(1, room / WatchStyle.m(growingPx(hasTarget: hasTarget))))
+    }
+
+    /// The next set's target line; nil leaves its room to the ring.
+    private var nextTarget: String? {
+        store.currentStep.flatMap {
+            SetValueText.nextTarget(for: $0, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit)
+        }
+    }
+
+    private func content(now: Date, grow: CGFloat) -> some View {
         let paused = store.restPausedRemaining != nil
-        let ringSize = WatchStyle.m(114)
+        let ringSize = WatchStyle.m(114) * grow
         let ringLine = ringSize * 12 / 136
         return VStack(spacing: 0) {
             // A ring that empties as the rest runs down, with the time left in
@@ -2643,14 +2693,14 @@ private struct RestView: View {
                     .rotationEffect(.degrees(-90))
                 VStack(spacing: 0) {
                     Text(remainingLabel(now: now))
-                        .font(.system(size: WatchStyle.num(34), weight: .semibold))
+                        .font(.system(size: WatchStyle.num(34) * grow, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(tint.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     if paused {
                         Text(String(localized: "watch.run.paused", defaultValue: "Paused"))
-                            .font(.system(size: WatchStyle.m(13), weight: .semibold))
+                            .font(.system(size: WatchStyle.m(13) * grow, weight: .semibold))
                             .foregroundStyle(Color.orange)
                     } else if let bpm = store.latestBpm {
                         // Not when the top line already shows it.
@@ -2658,7 +2708,7 @@ private struct RestView: View {
                             Image(systemName: "heart.fill")
                             Text("\(Int(bpm.rounded()))").monospacedDigit()
                         }
-                        .font(.system(size: WatchStyle.m(15), weight: .semibold))
+                        .font(.system(size: WatchStyle.m(15) * grow, weight: .semibold))
                         .foregroundStyle(WatchStyle.heartColor(bpm: bpm, floors: checkIn.context.heartRateZoneFloors))
                     }
                 }
@@ -2699,23 +2749,23 @@ private struct RestView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: WatchStyle.m(4)) {
                             Text(String(localized: "watch.workout.nextLabel", defaultValue: "Next: "))
-                                .font(.system(size: WatchStyle.m(17), weight: .medium))
+                                .font(.system(size: WatchStyle.m(17) * grow, weight: .medium))
                                 .foregroundStyle(WatchStyle.grey)
                                 .fixedSize()
-                            FitName(text: next.exerciseName, size: 17, color: nextSupersetColor(next) ?? Color.white, height: WatchStyle.m(21))
+                            FitName(text: next.exerciseName, size: 17 * grow, color: nextSupersetColor(next) ?? Color.white, height: WatchStyle.m(21) * grow)
                         }
-                        .frame(height: WatchStyle.m(21))
-                        if let target = SetValueText.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit, spaced: true) {
+                        .frame(height: WatchStyle.m(21) * grow)
+                        if let target = nextTarget {
                             Text(target)
-                                .font(.system(size: WatchStyle.m(21), weight: .semibold, design: .rounded))
+                                .font(.system(size: WatchStyle.m(21) * grow, weight: .semibold, design: .rounded))
                                 .monospacedDigit()
                                 .foregroundStyle(tint.light)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
-                                .frame(height: WatchStyle.m(25))
+                                .frame(height: WatchStyle.m(25) * grow)
                         }
-                        SetProgressRow(step: next, leading: true)
-                            .frame(height: WatchStyle.m(16))
+                        SetProgressRow(step: next, leading: true, labelScale: grow)
+                            .frame(height: WatchStyle.m(16) * grow)
                     }
                     .padding(.leading, WatchStyle.m(6))
                     .frame(maxWidth: .infinity, alignment: .leading)
