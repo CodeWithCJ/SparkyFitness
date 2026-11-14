@@ -1928,6 +1928,21 @@
       "viewingDate": "Viewing {{date}}",
       "backToToday": "Back to today"
     },
+    "timeGroups": {
+      "title": "Take at once",
+      "description": "Mark every pending dose at a time with one tap.",
+      "pendingCount_one": "{{count}} dose pending",
+      "pendingCount_other": "{{count}} doses pending",
+      "markAllA11y_one": "Mark all {{count}} dose at {{time}} as taken",
+      "markAllA11y_other": "Mark all {{count}} doses at {{time}} as taken",
+      "markAll": "Mark all as taken",
+      "takenFailed": "Failed to mark some doses as taken",
+      "skippedFailed": "Failed to mark some doses as skipped",
+      "takenToast_one": "Marked {{count}} dose as taken",
+      "takenToast_other": "Marked {{count}} doses as taken",
+      "skippedToast_one": "Marked {{count}} dose as skipped",
+      "skippedToast_other": "Marked {{count}} doses as skipped"
+    },
     "checklist": {
       "titleToday": "Today's Checklist",
       "title": "Medication Checklist",
