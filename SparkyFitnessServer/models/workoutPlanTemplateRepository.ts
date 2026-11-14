@@ -287,8 +287,7 @@ async function getWorkoutPlanTemplateById(
 }
 
 async function updateWorkoutPlanTemplateWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
+  client: PoolClient,
   templateId: string | number,
   userId: string,
   updateData: WorkoutPlanTemplateUpdateInput,
@@ -497,8 +496,7 @@ async function updateWorkoutPlanTemplate(
 }
 
 async function deleteWorkoutPlanTemplateWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
+  client: PoolClient,
   templateId: string | number,
   userId: string
 ): Promise<WorkoutPlanTemplateRow | null> {

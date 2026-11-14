@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { getExerciseById } from './exercise.js';
@@ -254,8 +255,7 @@ async function createExerciseEntriesFromTemplate(
  * @returns Number of deleted preset sessions plus standalone entries.
  */
 async function deleteExerciseEntriesByTemplateIdWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
+  client: PoolClient,
   templateId: string | number,
   userId: string,
   today: string
