@@ -41,6 +41,10 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     var onAutoPause: ((WatchAutoPause.Action) -> Void)?
     /// The accuracy radius (metres) of each GPS fix as it arrives, outdoors only.
     var onGpsAccuracy: ((Double) -> Void)?
+    /// Called on the main queue when a held indoor workout stops blocking a
+    /// new run: it was saved, ended, or its write failed. The store publishes
+    /// it, so Start shows again without waiting for an unrelated refresh.
+    var onHeldReleased: (() -> Void)?
     /// The newest GPS fix as it arrives, outdoors only: what a followed route
     /// is matched against. Position, accuracy radius (metres) and when it was taken.
     var onLocation: ((WatchRoutePoint, Double, Date) -> Void)?
@@ -105,7 +109,13 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
         /// unless a new run needs it first.
         var failed = false
     }
-    private var held: HeldWorkout?
+    private var held: HeldWorkout? {
+        didSet {
+            // Whatever cleared it or marked it failed, a new run may start now.
+            let wasHolding = oldValue.map { !$0.failed } ?? false
+            if wasHolding, !holdsWorkoutSession { onHeldReleased?() }
+        }
+    }
     /// Indoor runs write their own distance. Apple's collection cannot be
     /// lowered once taken, so the treadmill's final figure (the saved
     /// correction, or what the wearer typed) could only ever go up in Health.
@@ -128,6 +138,10 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// Where the next pedometer reading's span begins, to weigh it against
     /// the workout's pauses.
     private var pedometerSpanStart: Date?
+    /// Finishes waiting for that relaunch gap (`recoverPedometerGap`), so the
+    /// distance it adds is in the run before the run is frozen.
+    private var gapWaiters: [() -> Void] = []
+    private static let gapWaitTimeout: TimeInterval = 5
     /// Metres recorded by the pedometer before the system's distance
     /// collection was switched back on (`fallBackToSystemDistance`, or a
     /// relaunch with no pedometer). Health never collected them, so they are
@@ -305,6 +319,7 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
             pedometerReadAt = nil
             pedometerCheckpoint = nil
             pedometerSpanStart = nil
+            gapWaiters = []
             systemDistanceOffset = 0
             // So the finish message can carry a step count. Without it the
             // phone only sees steps once Apple Health has synced, which is
@@ -420,13 +435,45 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
     /// figures and the active time. A saved indoor distance run is held for
     /// the treadmill answer instead (`holdForDistance`, then `finishHeld`).
     func end(save: Bool, completion: @escaping (WatchRunMetrics, TimeInterval, WatchRunResult?) -> Void) {
+        guard let session, builder != nil else {
+            completion(metrics, 0, nil)
+            return
+        }
+        let endedAt = Date()
+        // A relaunch may still be fetching the distance covered while the app
+        // was gone. A saved run waits for it (a few seconds at most), paused so
+        // nothing more counts, and only then is frozen; otherwise that distance
+        // would be lost from the run and from Health.
+        guard save, pedometerCheckpoint != nil else {
+            endNow(save: save, endedAt: endedAt, completion: completion)
+            return
+        }
+        if session.state == .running { session.pause() }
+        let started = DeliveryFlag()
+        let proceed: () -> Void = { [weak self] in
+            guard !started.done else { return }
+            started.done = true
+            guard let self else {
+                completion(WatchRunMetrics(), 0, nil)
+                return
+            }
+            self.endNow(save: save, endedAt: endedAt, completion: completion)
+        }
+        gapWaiters.append(proceed)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.gapWaitTimeout, execute: proceed)
+    }
+
+    private func endNow(
+        save: Bool,
+        endedAt: Date,
+        completion: @escaping (WatchRunMetrics, TimeInterval, WatchRunResult?) -> Void
+    ) {
         guard let session, let endingBuilder = builder else {
             completion(metrics, 0, nil)
             return
         }
         let finalElapsed = endingBuilder.elapsedTime
         let endingRoute = routeBuilder
-        let endedAt = Date()
         let endingClientId = clientId
         let rows = (route: routeRows, heartRate: heartRateRows, laps: lapMarks, lapDistances: lapDistances)
         // Taken before the pedometer is stopped. The workout statistic, read
@@ -437,8 +484,9 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
         // between here and there still leaves the run to be sent on relaunch.
         if !save { WatchRunSnapshotStore.clear() }
         stopRoute()
-        // A gap still being fetched from the pedometer is not waited for.
+        // Past the wait, a gap still being fetched is given up.
         pedometerCheckpoint = nil
+        gapWaiters = []
         // An indoor run is asked for the treadmill's distance before it is
         // written, so the workout waits (`finishHeld`) for the answer. A jump
         // rope covers no distance and is never asked.
@@ -1432,6 +1480,10 @@ extension WatchRunHealthKitController {
             // Keeps the query's pedometer alive until every answer is in.
             _ = query
             guard let self, self.session != nil, self.clientId == clientId else { return }
+            // A Finish waiting for this gap goes ahead once it is counted.
+            let waiters = self.gapWaiters
+            self.gapWaiters = []
+            defer { waiters.forEach { $0() } }
             // The gap and the live readings since the relaunch are now both in
             // the figure, and the reading time is the live one: written together.
             self.pedometerCheckpoint = nil

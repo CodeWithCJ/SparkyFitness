@@ -136,6 +136,10 @@ final class WatchRunStore: ObservableObject {
         healthKit.onLocation = { [weak self] point, accuracy, date in
             Task { @MainActor in self?.routeFix(point, accuracy: accuracy, at: date) }
         }
+        // A held indoor workout freed its session: Start can show again.
+        healthKit.onHeldReleased = { [weak self] in
+            Task { @MainActor in self?.objectWillChange.send() }
+        }
         healthKit.onGpsAccuracy = { [weak self] accuracy in
             Task { @MainActor in
                 self?.gpsAccuracy = accuracy
@@ -1019,8 +1023,6 @@ final class WatchRunStore: ObservableObject {
                 if WatchSessionManager.shared.sendRunFinished(sent) {
                     self.healthKit.messageQueued(clientId: result.clientId)
                 }
-                // The held session is gone or failed: Start can show again.
-                self.objectWillChange.send()
             }
         }
         metrics = result.metrics
