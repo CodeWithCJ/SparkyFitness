@@ -35,4 +35,12 @@ enum RestRule {
         }
         return own
     }
+
+    /// The set logging `cursor` would move on to: the first one after it not
+    /// done, else the first one left anywhere, never the cursor's own set, so
+    /// nil when it is the only one left (no rest runs after the last set).
+    static func nextIndex(afterLogging cursor: Int, isDone: [Bool]) -> Int? {
+        isDone.indices.first { $0 > cursor && !isDone[$0] }
+            ?? isDone.indices.first { $0 != cursor && !isDone[$0] }
+    }
 }

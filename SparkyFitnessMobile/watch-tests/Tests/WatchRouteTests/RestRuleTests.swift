@@ -65,4 +65,14 @@ final class RestRuleTests: XCTestCase {
         let next = step("b", set: 1, own: nil, before: 60)
         XCTAssertEqual(RestRule.restAfter(completed: done, next: next), 60)
     }
+
+    func testNextIndexSkipsDoneSetsAndWrapsAround() {
+        XCTAssertEqual(RestRule.nextIndex(afterLogging: 0, isDone: [false, true, false]), 2)
+        XCTAssertEqual(RestRule.nextIndex(afterLogging: 2, isDone: [false, true, false]), 0)
+    }
+
+    func testNextIndexIsNilWhenTheCurrentSetIsTheOnlyOneLeft() {
+        XCTAssertNil(RestRule.nextIndex(afterLogging: 1, isDone: [true, false, true]))
+        XCTAssertNil(RestRule.nextIndex(afterLogging: 0, isDone: [false]))
+    }
 }

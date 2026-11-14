@@ -538,7 +538,11 @@ final class WorkoutSessionStore: ObservableObject {
     /// The rest the phone runs after `step` is logged (`RestRule`), 0 when no
     /// set is left to do.
     private func restAfterCompleting(_ step: WorkoutStep) -> Int {
-        guard let next = nextIncompleteIndex() else { return 0 }
+        // The current set is not logged yet, so when it is the only one left
+        // `nextIncompleteIndex()` would return it: no rest runs then.
+        guard let next = RestRule.nextIndex(
+            afterLogging: currentStepIndex, isDone: steps.map { isCompleted($0) }
+        ) else { return 0 }
         return RestRule.restAfter(completed: RestStepFacts(step), next: RestStepFacts(steps[next]))
     }
 
