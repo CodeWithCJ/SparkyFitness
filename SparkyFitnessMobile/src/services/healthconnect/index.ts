@@ -1057,15 +1057,18 @@ const readAllPages = async (
     );
     records.push(...(result.records as OriginRecord[]));
     pageToken = (result as { pageToken?: string }).pageToken || undefined;
-    if (!pageToken) break;
+    if (!pageToken) return records;
   }
-  return records;
+  // A partial origin list would undercount the day, so it fails like a read.
+  throw new Error(
+    `${recordType} origin discovery exceeded ${ORIGIN_DISCOVERY_PAGE_LIMIT} pages`
+  );
 };
 
 /**
  * The apps with records of `recordType` overlapping this app's own written
- * records in the range. Read failures give no extra origins (the listed ones
- * still apply), never a failed day.
+ * records in the range. A failed or truncated read throws, so the aggregate
+ * fails and the sync retries, instead of reporting a day without them.
  */
 const originsUnderOwnWrites = async (
   recordType: string,
@@ -1073,33 +1076,26 @@ const originsUnderOwnWrites = async (
   own: string
 ): Promise<Set<string>> => {
   const found = new Set<string>();
-  try {
-    const ownRecords = await readAllPages(
-      OWN_WRITTEN_TYPE[recordType] ?? recordType,
-      {
-        timeRangeFilter: { operator: 'between', ...range },
-        dataOriginFilter: [own],
-      }
-    );
-    for (const record of ownRecords) {
-      if (!record.startTime || !record.endTime) continue;
-      const others = await readAllPages(recordType, {
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: record.startTime,
-          endTime: record.endTime,
-        },
-      });
-      for (const other of others) {
-        const origin = other.metadata?.dataOrigin;
-        if (typeof origin === 'string' && origin !== own) found.add(origin);
-      }
+  const ownRecords = await readAllPages(
+    OWN_WRITTEN_TYPE[recordType] ?? recordType,
+    {
+      timeRangeFilter: { operator: 'between', ...range },
+      dataOriginFilter: [own],
     }
-  } catch (error) {
-    addLog(
-      `[HealthConnectService] ${recordType} origin discovery failed: ${getErrorMessage(error)}`,
-      'WARNING'
-    );
+  );
+  for (const record of ownRecords) {
+    if (!record.startTime || !record.endTime) continue;
+    const others = await readAllPages(recordType, {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: record.startTime,
+        endTime: record.endTime,
+      },
+    });
+    for (const other of others) {
+      const origin = other.metadata?.dataOrigin;
+      if (typeof origin === 'string' && origin !== own) found.add(origin);
+    }
   }
   return found;
 };

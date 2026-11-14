@@ -3713,6 +3713,47 @@ describe('daily totals leave out exercise write-back records (#1750)', () => {
     });
   });
 
+  test('fails the day when origin discovery cannot be read', async () => {
+    await saveHealthPreference('writebackExerciseFilterOwn', true);
+    answer(300, 200, ['com.sparky.app']);
+    mockReadRecords.mockImplementation(
+      async (_recordType: string, options: { dataOriginFilter?: string[] }) => {
+        if (options.dataOriginFilter?.includes('com.sparky.app')) {
+          throw new Error('quota');
+        }
+        return offsetlessProbeResult();
+      }
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result.error).toContain('quota');
+    expect(result.records).toEqual([]);
+  });
+
+  test('fails the day when origin discovery runs past its page limit', async () => {
+    await saveHealthPreference('writebackExerciseFilterOwn', true);
+    answer(300, 200, ['com.sparky.app']);
+    mockReadRecords.mockImplementation(
+      async (_recordType: string, options: { dataOriginFilter?: string[] }) => {
+        if (options.dataOriginFilter?.includes('com.sparky.app')) {
+          return { records: [], pageToken: 'more' };
+        }
+        return offsetlessProbeResult();
+      }
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15)
+    );
+
+    expect(result.error).toContain('origin discovery exceeded');
+  });
+
   test('drops written sessions before enrichment', async () => {
     const result = await enrichExerciseSessions(
       [
