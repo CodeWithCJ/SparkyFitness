@@ -286,6 +286,184 @@ async function getWorkoutPlanTemplateById(
   }
 }
 
+async function updateWorkoutPlanTemplateWithClient(
+  client: PoolClient,
+  templateId: string | number,
+  userId: string,
+  updateData: WorkoutPlanTemplateUpdateInput,
+  shouldUnlinkHistoricalEntries = false
+): Promise<WorkoutPlanTemplateRow> {
+  // Caller owns the transaction.
+  if (shouldUnlinkHistoricalEntries) {
+    await unlinkExerciseEntriesByTemplateId(templateId, userId, client);
+  }
+  await client.query(
+    `UPDATE workout_plan_templates SET
+              plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5,
+              schedule_type = COALESCE($6, schedule_type),
+              entry_mode = COALESCE($7, entry_mode),
+              updated_at = now()
+           WHERE id = $8 AND user_id = $9 RETURNING *`,
+    [
+      updateData.plan_name ?? '',
+      updateData.description ?? '',
+      updateData.start_date ?? new Date(),
+      updateData.end_date,
+      updateData.is_active ?? false,
+      updateData.schedule_type ?? null,
+      updateData.entry_mode ?? null,
+      templateId,
+      userId,
+    ]
+  );
+  // Instead of deleting and recreating, we will update the assignments
+  if (updateData.assignments) {
+    // First, get the existing assignments
+    const existingAssignmentsResult = await client.query(
+      'SELECT id FROM workout_plan_template_assignments WHERE template_id = $1',
+      [templateId]
+    );
+    const existingAssignmentIds = (
+      existingAssignmentsResult.rows as Array<{ id: number }>
+    ).map((r) => r.id);
+    // Then, get the new assignment ids (filtering only numeric ones)
+    const newAssignmentIds = updateData.assignments
+      .map((a) => a.id)
+      .filter(
+        (id): id is number | string =>
+          id !== null &&
+          id !== undefined &&
+          id !== '' &&
+          !isNaN(Number(id)) &&
+          Number.isInteger(Number(id))
+      )
+      .map((id) => Number(id));
+    // Delete any assignments that are no longer in the plan
+    const assignmentsToDelete = existingAssignmentIds.filter(
+      (id) => !newAssignmentIds.includes(id)
+    );
+    if (assignmentsToDelete.length > 0) {
+      await client.query(
+        'DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])',
+        [assignmentsToDelete]
+      );
+    }
+    // Now, update or insert the assignments
+    for (const a of updateData.assignments) {
+      // Only treat numeric IDs as existing database assignments
+      if (
+        a.id !== null &&
+        a.id !== undefined &&
+        a.id !== '' &&
+        !isNaN(Number(a.id)) &&
+        Number.isInteger(Number(a.id))
+      ) {
+        // This is an existing assignment, so we update it
+        await client.query(
+          'UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3, sort_order = $4, session_index = $5, session_name = $6 WHERE id = $7',
+          [
+            a.day_of_week,
+            a.workout_preset_id,
+            a.exercise_id,
+            a.sort_order || 0,
+            a.session_index || null,
+            a.session_name || null,
+            a.id,
+          ]
+        );
+        // And update the sets
+        await client.query(
+          'DELETE FROM workout_plan_assignment_sets WHERE assignment_id = $1',
+          [a.id]
+        );
+        if (a.exercise_id && a.sets && a.sets.length > 0) {
+          const setsValues = a.sets.map((set) => [
+            a.id,
+            set.set_number,
+            set.set_type,
+            set.reps,
+            set.weight,
+            set.duration,
+            set.rest_time,
+            set.notes,
+          ]);
+          const setsQuery = format(
+            'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+            setsValues
+          );
+          await client.query(setsQuery);
+        }
+      } else {
+        // This is a new assignment, so we insert it
+        const assignmentResult = await client.query(
+          `INSERT INTO workout_plan_template_assignments (template_id, day_of_week, workout_preset_id, exercise_id, sort_order, session_index, session_name)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [
+            templateId,
+            a.day_of_week,
+            a.workout_preset_id,
+            a.exercise_id,
+            a.sort_order || 0,
+            a.session_index || null,
+            a.session_name || null,
+          ]
+        );
+        const newAssignmentId = assignmentResult.rows[0].id;
+        if (a.exercise_id && a.sets && a.sets.length > 0) {
+          const setsValues = a.sets.map((set) => [
+            newAssignmentId,
+            set.set_number,
+            set.set_type,
+            set.reps,
+            set.weight,
+            set.duration,
+            set.rest_time,
+            set.notes,
+          ]);
+          const setsQuery = format(
+            'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+            setsValues
+          );
+          await client.query(setsQuery);
+        }
+      }
+    }
+  }
+  const finalQuery = `
+          SELECT
+              t.*,
+              COALESCE(
+                  (
+                      SELECT json_agg(assignment_data)
+                      FROM (
+                          SELECT 
+                              a.id, a.day_of_week, a.sort_order, a.session_index, a.session_name, a.workout_preset_id, wp.name as workout_preset_name, wp.workout_format as workout_preset_format,
+                              a.exercise_id, e.name as exercise_name, e.modality as modality,
+                              (
+                                  SELECT COALESCE(json_agg(set_data ORDER BY set_data.set_number), '[]'::json)
+                                  FROM (
+                                      SELECT wpas.id, wpas.set_number, wpas.set_type, wpas.reps, wpas.weight, wpas.duration, wpas.rest_time, wpas.notes
+                                      FROM workout_plan_assignment_sets wpas
+                                      WHERE wpas.assignment_id = a.id
+                                  ) AS set_data
+                              ) as sets
+                          FROM workout_plan_template_assignments a
+                          LEFT JOIN workout_presets wp ON a.workout_preset_id = wp.id
+                          LEFT JOIN exercises e ON a.exercise_id = e.id
+                          WHERE a.template_id = t.id
+                          ORDER BY a.day_of_week ASC NULLS LAST, a.session_index ASC NULLS LAST, a.sort_order ASC, a.id ASC
+                      ) AS assignment_data
+                  ),
+                  '[]'::json
+              ) as assignments
+          FROM workout_plan_templates t
+          WHERE t.id = $1
+      `;
+  const finalResult = await client.query(finalQuery, [templateId]);
+  return finalResult.rows[0];
+}
+
+/** Own-connection wrapper that runs the client-injected variant in one transaction. */
 async function updateWorkoutPlanTemplate(
   templateId: string | number,
   userId: string,
@@ -295,174 +473,15 @@ async function updateWorkoutPlanTemplate(
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-    if (shouldUnlinkHistoricalEntries) {
-      await unlinkExerciseEntriesByTemplateId(templateId, userId, client);
-    }
-    await client.query(
-      `UPDATE workout_plan_templates SET
-                plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5,
-                schedule_type = COALESCE($6, schedule_type),
-                entry_mode = COALESCE($7, entry_mode),
-                updated_at = now()
-             WHERE id = $8 AND user_id = $9 RETURNING *`,
-      [
-        updateData.plan_name ?? '',
-        updateData.description ?? '',
-        updateData.start_date ?? new Date(),
-        updateData.end_date,
-        updateData.is_active ?? false,
-        updateData.schedule_type ?? null,
-        updateData.entry_mode ?? null,
-        templateId,
-        userId,
-      ]
+    const updated = await updateWorkoutPlanTemplateWithClient(
+      client,
+      templateId,
+      userId,
+      updateData,
+      shouldUnlinkHistoricalEntries
     );
-    // Instead of deleting and recreating, we will update the assignments
-    if (updateData.assignments) {
-      // First, get the existing assignments
-      const existingAssignmentsResult = await client.query(
-        'SELECT id FROM workout_plan_template_assignments WHERE template_id = $1',
-        [templateId]
-      );
-      const existingAssignmentIds = (
-        existingAssignmentsResult.rows as Array<{ id: number }>
-      ).map((r) => r.id);
-      // Then, get the new assignment ids (filtering only numeric ones)
-      const newAssignmentIds = updateData.assignments
-        .map((a) => a.id)
-        .filter(
-          (id): id is number | string =>
-            id !== null &&
-            id !== undefined &&
-            id !== '' &&
-            !isNaN(Number(id)) &&
-            Number.isInteger(Number(id))
-        )
-        .map((id) => Number(id));
-      // Delete any assignments that are no longer in the plan
-      const assignmentsToDelete = existingAssignmentIds.filter(
-        (id) => !newAssignmentIds.includes(id)
-      );
-      if (assignmentsToDelete.length > 0) {
-        await client.query(
-          'DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])',
-          [assignmentsToDelete]
-        );
-      }
-      // Now, update or insert the assignments
-      for (const a of updateData.assignments) {
-        // Only treat numeric IDs as existing database assignments
-        if (
-          a.id !== null &&
-          a.id !== undefined &&
-          a.id !== '' &&
-          !isNaN(Number(a.id)) &&
-          Number.isInteger(Number(a.id))
-        ) {
-          // This is an existing assignment, so we update it
-          await client.query(
-            'UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3, sort_order = $4, session_index = $5, session_name = $6 WHERE id = $7',
-            [
-              a.day_of_week,
-              a.workout_preset_id,
-              a.exercise_id,
-              a.sort_order || 0,
-              a.session_index || null,
-              a.session_name || null,
-              a.id,
-            ]
-          );
-          // And update the sets
-          await client.query(
-            'DELETE FROM workout_plan_assignment_sets WHERE assignment_id = $1',
-            [a.id]
-          );
-          if (a.exercise_id && a.sets && a.sets.length > 0) {
-            const setsValues = a.sets.map((set) => [
-              a.id,
-              set.set_number,
-              set.set_type,
-              set.reps,
-              set.weight,
-              set.duration,
-              set.rest_time,
-              set.notes,
-            ]);
-            const setsQuery = format(
-              'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
-              setsValues
-            );
-            await client.query(setsQuery);
-          }
-        } else {
-          // This is a new assignment, so we insert it
-          const assignmentResult = await client.query(
-            `INSERT INTO workout_plan_template_assignments (template_id, day_of_week, workout_preset_id, exercise_id, sort_order, session_index, session_name)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [
-              templateId,
-              a.day_of_week,
-              a.workout_preset_id,
-              a.exercise_id,
-              a.sort_order || 0,
-              a.session_index || null,
-              a.session_name || null,
-            ]
-          );
-          const newAssignmentId = assignmentResult.rows[0].id;
-          if (a.exercise_id && a.sets && a.sets.length > 0) {
-            const setsValues = a.sets.map((set) => [
-              newAssignmentId,
-              set.set_number,
-              set.set_type,
-              set.reps,
-              set.weight,
-              set.duration,
-              set.rest_time,
-              set.notes,
-            ]);
-            const setsQuery = format(
-              'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
-              setsValues
-            );
-            await client.query(setsQuery);
-          }
-        }
-      }
-    }
     await client.query('COMMIT');
-    const finalQuery = `
-            SELECT
-                t.*,
-                COALESCE(
-                    (
-                        SELECT json_agg(assignment_data)
-                        FROM (
-                            SELECT 
-                                a.id, a.day_of_week, a.sort_order, a.session_index, a.session_name, a.workout_preset_id, wp.name as workout_preset_name, wp.workout_format as workout_preset_format,
-                                a.exercise_id, e.name as exercise_name, e.modality as modality,
-                                (
-                                    SELECT COALESCE(json_agg(set_data ORDER BY set_data.set_number), '[]'::json)
-                                    FROM (
-                                        SELECT wpas.id, wpas.set_number, wpas.set_type, wpas.reps, wpas.weight, wpas.duration, wpas.rest_time, wpas.notes
-                                        FROM workout_plan_assignment_sets wpas
-                                        WHERE wpas.assignment_id = a.id
-                                    ) AS set_data
-                                ) as sets
-                            FROM workout_plan_template_assignments a
-                            LEFT JOIN workout_presets wp ON a.workout_preset_id = wp.id
-                            LEFT JOIN exercises e ON a.exercise_id = e.id
-                            WHERE a.template_id = t.id
-                            ORDER BY a.day_of_week ASC NULLS LAST, a.session_index ASC NULLS LAST, a.sort_order ASC, a.id ASC
-                        ) AS assignment_data
-                    ),
-                    '[]'::json
-                ) as assignments
-            FROM workout_plan_templates t
-            WHERE t.id = $1
-        `;
-    const finalResult = await client.query(finalQuery, [templateId]);
-    return finalResult.rows[0];
+    return updated;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
@@ -476,24 +495,30 @@ async function updateWorkoutPlanTemplate(
   }
 }
 
+async function deleteWorkoutPlanTemplateWithClient(
+  client: PoolClient,
+  templateId: string | number,
+  userId: string
+): Promise<WorkoutPlanTemplateRow | null> {
+  const result = await client.query(
+    'DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *',
+    [templateId, userId]
+  );
+  return result.rows[0] ?? null;
+}
+
+/** Own-connection wrapper around the client-injected variant. */
 async function deleteWorkoutPlanTemplate(
   templateId: string | number,
   userId: string
 ): Promise<WorkoutPlanTemplateRow | null> {
   const client = await getClient(userId); // User-specific operation
   try {
-    const result = await client.query(
-      'DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *',
-      [templateId, userId]
+    return await deleteWorkoutPlanTemplateWithClient(
+      client,
+      templateId,
+      userId
     );
-    return result.rows[0] ?? null;
-  } catch (error) {
-    log(
-      'error',
-      `Error deleting workout plan template ${templateId}: ${(error as Error).message}`,
-      error
-    );
-    throw error;
   } finally {
     client.release();
   }
@@ -707,7 +732,9 @@ export { createWorkoutPlanTemplate };
 export { getWorkoutPlanTemplatesByUserId };
 export { getWorkoutPlanTemplateById };
 export { updateWorkoutPlanTemplate };
+export { updateWorkoutPlanTemplateWithClient };
 export { deleteWorkoutPlanTemplate };
+export { deleteWorkoutPlanTemplateWithClient };
 export { updatePlannedSetWeights };
 export { getWorkoutPlanTemplateOwnerId };
 export { getActiveWorkoutPlanForDate };

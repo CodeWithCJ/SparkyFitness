@@ -1717,6 +1717,7 @@
     "createError": "Failed to create workout plan.",
     "updateSuccess": "Workout plan updated successfully.",
     "updateError": "Failed to update workout plan.",
+    "regenerationFailed": "Saved, but refreshing the diary failed. Please try again.",
     "deleteSuccess": "Workout plan deleted successfully.",
     "deleteError": "Failed to delete workout plan.",
     "updateStatusError": "Could not find the plan to update.",

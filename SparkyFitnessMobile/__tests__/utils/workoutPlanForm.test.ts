@@ -1,10 +1,16 @@
 import {
+  addDraftSet,
   buildWorkoutPlanPayload,
   changeScheduleType,
+  createExerciseAssignment,
   createPresetAssignment,
   createWorkoutPlanDraft,
+  moveDraftAssignment,
+  removeDraftSet,
   removeSession,
+  updateDraftSet,
   validateWorkoutPlanDraft,
+  workoutPlanTemplateToPayload,
 } from '../../src/utils/workoutPlanForm';
 import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
 
@@ -182,5 +188,192 @@ describe('workoutPlanForm', () => {
       undefined,
     ]);
     expect(changeScheduleType(withNew, 'sequential').assignments).toEqual([]);
+  });
+
+  test('createExerciseAssignment adds a single exercise with one default set', () => {
+    const draft = {
+      ...base,
+      planName: 'P',
+      assignments: [
+        createExerciseAssignment(
+          { id: 12, name: 'Goblet squat' },
+          { dayOfWeek: 3, sessionIndex: null }
+        ),
+      ],
+    };
+    expect(draft.assignments[0]).toMatchObject({
+      day_of_week: 3,
+      session_index: null,
+      workout_preset_id: null,
+      exercise_id: '12',
+      exercise_name: 'Goblet squat',
+    });
+    expect(draft.assignments[0].sets).toHaveLength(1);
+    expect(validateWorkoutPlanDraft(draft)).toEqual({});
+  });
+
+  test('draft sets renumber after remove and accept numeric edits', () => {
+    const draft = {
+      ...base,
+      planName: 'P',
+      assignments: [
+        createExerciseAssignment(
+          { id: 1, name: 'Curl' },
+          { dayOfWeek: 1, sessionIndex: null }
+        ),
+      ],
+    };
+    const key = draft.assignments[0].key;
+    const withThree = addDraftSet(addDraftSet(draft, key), key);
+    expect(withThree.assignments[0].sets.map((s) => s.set_number)).toEqual([
+      1, 2, 3,
+    ]);
+    const withPatched = updateDraftSet(withThree, key, 1, {
+      reps: 12,
+      weight: 22.5,
+    });
+    expect(withPatched.assignments[0].sets[1]).toMatchObject({
+      reps: 12,
+      weight: 22.5,
+    });
+    const withRemoved = removeDraftSet(withPatched, key, 0);
+    expect(withRemoved.assignments[0].sets.map((s) => s.set_number)).toEqual([
+      1, 2,
+    ]);
+    expect(withRemoved.assignments[0].sets[0].reps).toBe(12);
+  });
+
+  test('moveDraftAssignment swaps within a slot and stops at the edges', () => {
+    const slot = { dayOfWeek: 5, sessionIndex: null };
+    const draft = {
+      ...base,
+      planName: 'P',
+      assignments: [
+        createPresetAssignment({ id: 1, name: 'A' }, slot),
+        createPresetAssignment({ id: 2, name: 'B' }, slot),
+        createPresetAssignment(
+          { id: 3, name: 'C' },
+          { dayOfWeek: 6, sessionIndex: null }
+        ),
+      ],
+    };
+    const moved = moveDraftAssignment(draft, draft.assignments[1].key, -1);
+    expect(moved.assignments.map((a) => a.workout_preset_name)).toEqual([
+      'B',
+      'A',
+      'C',
+    ]);
+    expect(moveDraftAssignment(moved, moved.assignments[0].key, -1)).toEqual(
+      moved
+    );
+    // 'A' has no same-slot neighbor below (C is on another day), so this is a
+    // no-op instead of a swap across slots.
+    const down = moveDraftAssignment(moved, moved.assignments[1].key, 1);
+    expect(down).toEqual(moved);
+  });
+
+  test('workoutPlanTemplateToPayload mirrors a template and can flip is_active', () => {
+    const template = {
+      id: 'plan-9',
+      user_id: 'u1',
+      plan_name: 'Evening strength',
+      description: null,
+      start_date: '2026-10-01T00:00:00Z',
+      end_date: null,
+      is_active: true,
+      schedule_type: 'weekly',
+      entry_mode: 'prefill',
+      assignments: [
+        {
+          id: 'a1',
+          template_id: 'plan-9',
+          day_of_week: 1,
+          session_index: null,
+          sort_order: 0,
+          workout_preset_id: '7',
+          workout_preset_name: 'Push',
+          exercise_id: null,
+          sets: [],
+        },
+        {
+          id: 'a2',
+          template_id: 'plan-9',
+          day_of_week: 1,
+          session_index: null,
+          sort_order: 1,
+          workout_preset_id: null,
+          workout_preset_name: null,
+          exercise_id: '42',
+          exercise_name: 'Curl',
+          sets: [
+            {
+              id: 's1',
+              set_number: 1,
+              reps: 8,
+              weight: 20,
+              duration: null,
+              rest_time: 90,
+              notes: null,
+              set_type: null,
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkoutPlanTemplate;
+    const payload = workoutPlanTemplateToPayload(template);
+    expect(payload).toMatchObject({
+      plan_name: 'Evening strength',
+      description: '',
+      start_date: '2026-10-01',
+      is_active: true,
+      schedule_type: 'weekly',
+      entry_mode: 'prefill',
+    });
+    expect(payload.assignments[1].sets[0]).not.toHaveProperty('id');
+    expect(payload.assignments[1].sets[0]).toMatchObject({
+      reps: 8,
+      weight: 20,
+    });
+    const flipped = workoutPlanTemplateToPayload({
+      ...template,
+      is_active: false,
+    });
+    expect(flipped.is_active).toBe(false);
+  });
+
+  test('a sequential template always round-trips as prompt entry mode', () => {
+    const template = {
+      id: 'plan-10',
+      user_id: 'u1',
+      plan_name: '12 weeks',
+      description: 'desc',
+      start_date: '2026-10-05',
+      end_date: '2026-12-28',
+      is_active: true,
+      schedule_type: 'sequential',
+      entry_mode: 'prefill',
+      assignments: [
+        {
+          id: 'a1',
+          template_id: 'plan-10',
+          day_of_week: null,
+          session_index: 2,
+          session_name: 'B',
+          sort_order: 0,
+          workout_preset_id: '3',
+          workout_preset_name: 'Pull',
+          exercise_id: null,
+          sets: [],
+        },
+      ],
+    } as unknown as WorkoutPlanTemplate;
+    const payload = workoutPlanTemplateToPayload(template);
+    expect(payload.entry_mode).toBe('prompt');
+    expect(payload.assignments[0]).toMatchObject({
+      day_of_week: null,
+      session_index: 2,
+      session_name: 'B',
+      workout_preset_id: '3',
+    });
   });
 });

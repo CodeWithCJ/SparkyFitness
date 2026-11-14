@@ -64,6 +64,7 @@ import {
   SafeMealPlanForm,
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
+  SafeWorkoutPlanDetail,
   SafeWaterContainers,
   SafeWaterLog,
   SafeWaterContainerEdit,
@@ -748,6 +749,11 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutPlanForm"
             component={SafeWorkoutPlanForm}
+            options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="WorkoutPlanDetail"
+            component={SafeWorkoutPlanDetail}
             options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
