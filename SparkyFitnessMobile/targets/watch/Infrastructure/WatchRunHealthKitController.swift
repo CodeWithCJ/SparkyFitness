@@ -1327,7 +1327,7 @@ extension WatchRunHealthKitController {
         var updated = metrics
         updated.distanceMeters = pedometerDistance
         metrics = updated
-        let activeElapsed = builder?.elapsedTime ?? 0
+        let activeElapsed = builder.elapsedTime
         if activeElapsed - (distanceSeries.last?.first ?? -Self.distanceSeriesInterval) >= Self.distanceSeriesInterval {
             distanceSeries.append([activeElapsed.rounded(), pedometerDistance])
         }
