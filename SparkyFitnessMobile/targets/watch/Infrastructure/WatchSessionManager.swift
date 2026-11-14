@@ -1741,10 +1741,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
                     )
                 }
                 let next = self.pendingPlan
+                let watchStartedFinish = sendStop || self.pendingSendStop
                 self.pendingPlan = nil
                 self.pendingSendStop = false
                 self.workoutStore.recordFinalHeartRate(self.heartRateReadings(samples))
-                let summary = next == nil ? self.workoutStore.makeSummary() : nil
+                let summary = next == nil
+                    ? self.workoutStore.makeSummary(askPresetUpdate: watchStartedFinish)
+                    : nil
                 self.workoutStore.reset()
                 self.workoutStore.recordSummary(summary)
                 self.collectionInFlight = false

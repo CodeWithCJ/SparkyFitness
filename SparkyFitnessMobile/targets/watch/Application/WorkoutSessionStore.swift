@@ -796,8 +796,11 @@ final class WorkoutSessionStore: ObservableObject {
     }
 
     /// Totals for the workout in progress, or nil when no set was logged
-    /// (nothing worth celebrating). Call before `reset()`.
-    func makeSummary() -> WorkoutSummary? {
+    /// (nothing worth celebrating). Call before `reset()`. The summary asks
+    /// "Update Workout?" only when `askPresetUpdate`: the watch started the
+    /// finish and told the phone to hold its own prompt. A finish the phone
+    /// started asks on the phone, which never reads the watch's answer.
+    func makeSummary(askPresetUpdate: Bool) -> WorkoutSummary? {
         guard plan != nil, !completedSetIds.isEmpty else { return nil }
         var volumeKg = 0.0
         var completed = 0
@@ -816,7 +819,7 @@ final class WorkoutSessionStore: ObservableObject {
             maxBpm: heartRateMax,
             activeEnergyKcal: activeEnergyKcal,
             sessionId: plan?.sessionId,
-            changedPresetName: usesNewWorkoutView() && changedFromPreset ? plan?.workoutName : nil
+            changedPresetName: askPresetUpdate && usesNewWorkoutView() && changedFromPreset ? plan?.workoutName : nil
         )
     }
 
@@ -1175,6 +1178,7 @@ final class WorkoutSessionStore: ObservableObject {
         } else {
             // Past the last set so `currentStep` is nil and the UI can show
             // "Workout complete" instead of a rest timer with no way out.
+            if getReadySetId != nil { cancelGetReady() }
             currentStepIndex = steps.count
         }
         if holdForEffort {
