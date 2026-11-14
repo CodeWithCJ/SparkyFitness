@@ -383,6 +383,35 @@ export function calculatePlateLoad(input: PlateCalcInput): PlateCalcResult {
   };
 }
 
+/**
+ * The nearest loadable weight strictly above (`up`) or below `input.targetWeight`,
+ * in the target's unit, or null past the lightest (the bar) or heaviest the
+ * plates make. The target is nudged by half a thousandth, below the search's
+ * resolution, so a loadable target steps to its neighbour and any other weight
+ * to the nearer loadable one on that side. The watch's `nextLoadable` does the
+ * same; keep the two in step.
+ */
+export function nextLoadableWeight(
+  input: PlateCalcInput,
+  direction: 'up' | 'down'
+): number | null {
+  const nudge =
+    (direction === 'up' ? 1 : -1) * 0.5 * 10 ** -PLATE_WEIGHT_DECIMALS;
+  const result = calculatePlateLoad({
+    ...input,
+    targetWeight: input.targetWeight + nudge,
+  });
+  if (result.status !== 'inexact') return null;
+  const load = direction === 'up' ? result.above : result.below;
+  if (load == null) return null;
+  const weight = convertPlateWeight(
+    load.totalWeight,
+    result.unit,
+    input.targetUnit
+  );
+  return Number(weight.toFixed(PLATE_WEIGHT_DECIMALS));
+}
+
 const EZ_BAR = /\be-?z[ -]?(curl )?bar\b|\bsz[ -]?bar\b/;
 const TRAP_BAR = /\b(trap|hex) bar\b/;
 
