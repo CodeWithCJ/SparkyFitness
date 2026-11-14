@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.13.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.12.1...v1.13.0) (2026-11-14)
+
+
+### Features
+
+* **exercise:** store when a set was started ([#3535](https://github.com/CodeWithCJ/SparkyFitness/issues/3535)) ([88f8613](https://github.com/CodeWithCJ/SparkyFitness/commit/88f86133e5d4160943072eba7bb82f91aaa806cb))
+* **mealie:** import recipes as editable ingredient meals ([#3396](https://github.com/CodeWithCJ/SparkyFitness/issues/3396)) ([7cafc1b](https://github.com/CodeWithCJ/SparkyFitness/commit/7cafc1b341074995a05dd3816e2ffe001779ed12))
+* **mobile:** add a setting to use planned values as live workout placeholders ([#3536](https://github.com/CodeWithCJ/SparkyFitness/issues/3536)) ([d4564e6](https://github.com/CodeWithCJ/SparkyFitness/commit/d4564e6a63556132d27aaa65cefe031dffc5bf0a)), closes [#3417](https://github.com/CodeWithCJ/SparkyFitness/issues/3417)
+* **mobile:** allow ingredient adjustments before logging saved meals ([#3553](https://github.com/CodeWithCJ/SparkyFitness/issues/3553)) ([c5c0dfb](https://github.com/CodeWithCJ/SparkyFitness/commit/c5c0dfb920e0570aa32f3f038acaf714c7e12c81))
+* **mobile:** support iPhone Duo vertical bars ([#3526](https://github.com/CodeWithCJ/SparkyFitness/issues/3526)) ([8fb1c28](https://github.com/CodeWithCJ/SparkyFitness/commit/8fb1c287e4550ad5529bd3c05c4dee3ec9748355))
+* **preferences:** add DD.MM.YYYY date format ([#3566](https://github.com/CodeWithCJ/SparkyFitness/issues/3566)) ([31dc56e](https://github.com/CodeWithCJ/SparkyFitness/commit/31dc56e51b0dd1c2cf0985c449ab9d97c67fca86)), closes [#2964](https://github.com/CodeWithCJ/SparkyFitness/issues/2964)
+* push daily nutrition totals to Intervals.icu ([#3514](https://github.com/CodeWithCJ/SparkyFitness/issues/3514)) ([9fecb7a](https://github.com/CodeWithCJ/SparkyFitness/commit/9fecb7ad0f560030b6dd7ee232f5872166ac6dcf))
+* server-backed workout session lifecycle (phase 1 of [#1995](https://github.com/CodeWithCJ/SparkyFitness/issues/1995)) ([#3510](https://github.com/CodeWithCJ/SparkyFitness/issues/3510)) ([390d92f](https://github.com/CodeWithCJ/SparkyFitness/commit/390d92fd0ebeb8e5bc677fa7e0220505f23c0410))
+* **server:** store optional feature choices per platform ([#3555](https://github.com/CodeWithCJ/SparkyFitness/issues/3555)) ([4c5f262](https://github.com/CodeWithCJ/SparkyFitness/commit/4c5f2620242eeb09bd1b40025d60ca633906e4d4))
+* **skills:** add pr-bot-loop skill for monitoring and resolving PR review rounds ([#3577](https://github.com/CodeWithCJ/SparkyFitness/issues/3577)) ([dee7fd4](https://github.com/CodeWithCJ/SparkyFitness/commit/dee7fd458d7b119b7ac2e4c7a4e7584053c20a5e))
+* **web:** let people show or hide the main tabs. ([#3503](https://github.com/CodeWithCJ/SparkyFitness/issues/3503)) ([b59d0ab](https://github.com/CodeWithCJ/SparkyFitness/commit/b59d0abd9ec29c761e6139ad8612075200bd51b1))
+* **zepp:** add Zepp OAuth callback Worker at zepp-auth.sparkyfitness.com ([#3530](https://github.com/CodeWithCJ/SparkyFitness/issues/3530)) ([59a812e](https://github.com/CodeWithCJ/SparkyFitness/commit/59a812e5d7c091bbb97f18c859ca1e51d82df679))
+
+
+### Bug Fixes
+
+* **chat:** follow the Profile Switcher into a family member's account ([#3493](https://github.com/CodeWithCJ/SparkyFitness/issues/3493)) ([5482810](https://github.com/CodeWithCJ/SparkyFitness/commit/548281071930fb0c6cc28dd71d5423ad532b1d96))
+* **ci:** handle empty release PR output in release-please workflow ([#3547](https://github.com/CodeWithCJ/SparkyFitness/issues/3547)) ([9776fe2](https://github.com/CodeWithCJ/SparkyFitness/commit/9776fe25f130024c983414b9f9228854c9343862))
+* **docker:** accept IPv6 connections in the frontend ([#3575](https://github.com/CodeWithCJ/SparkyFitness/issues/3575)) ([353dc7a](https://github.com/CodeWithCJ/SparkyFitness/commit/353dc7a970da3c9bcb13b66e131ba4e0d19ee18c)), closes [#2076](https://github.com/CodeWithCJ/SparkyFitness/issues/2076)
+* don't trap a family member in someone else's onboarding wizard ([#3565](https://github.com/CodeWithCJ/SparkyFitness/issues/3565)) ([4062678](https://github.com/CodeWithCJ/SparkyFitness/commit/4062678bcb683d9e467099390eb8a78efd9ad2c9)), closes [#3564](https://github.com/CodeWithCJ/SparkyFitness/issues/3564)
+* **exercise:** offer synced strength sessions when linking a workout ([#3538](https://github.com/CodeWithCJ/SparkyFitness/issues/3538)) ([ea1fbfc](https://github.com/CodeWithCJ/SparkyFitness/commit/ea1fbfc0f1f45d7b228bba103689e99b4ca30e26))
+* **mobile:** give cardio in a live workout a start time ([#3525](https://github.com/CodeWithCJ/SparkyFitness/issues/3525)) ([588168f](https://github.com/CodeWithCJ/SparkyFitness/commit/588168f0c301c3e7636b9f4def802b7812ae31bc))
+* **mobile:** handle medication reminder buttons natively on iOS ([#3498](https://github.com/CodeWithCJ/SparkyFitness/issues/3498)) ([5dd5d56](https://github.com/CodeWithCJ/SparkyFitness/commit/5dd5d567270d2616fec53ff5bf8816a7fc127a08))
+* **mobile:** keep meditation timer running while the screen is off ([#3523](https://github.com/CodeWithCJ/SparkyFitness/issues/3523)) ([04bac30](https://github.com/CodeWithCJ/SparkyFitness/commit/04bac304e3c0b16e53af35b5bf85ed8f58f29d91))
+* **mobile:** make the release workflow's submit jobs work on the free plan ([#3520](https://github.com/CodeWithCJ/SparkyFitness/issues/3520)) ([60cf9d2](https://github.com/CodeWithCJ/SparkyFitness/commit/60cf9d2355d7e9737d32044eb9a4ec925cfe2318))
+* **mobile:** use configured work duration for interval/HIIT timer ([#3519](https://github.com/CodeWithCJ/SparkyFitness/issues/3519)) ([30530aa](https://github.com/CodeWithCJ/SparkyFitness/commit/30530aa93a395a89dbc86f6c124e29b462dcbe27))
+* **reports:** export body measurements in the user's units ([#3509](https://github.com/CodeWithCJ/SparkyFitness/issues/3509)) ([903b823](https://github.com/CodeWithCJ/SparkyFitness/commit/903b8236a53273261c1cd2c1d9ba8c3411eb9739))
+* stabilize adaptive calorie estimates around weight shifts ([#3486](https://github.com/CodeWithCJ/SparkyFitness/issues/3486)) ([8f153ca](https://github.com/CodeWithCJ/SparkyFitness/commit/8f153ca3dd4f4841e5dec72ae7e9aea212b3518e))
+* **web:** don't open the player for a resume someone else took over ([#3554](https://github.com/CodeWithCJ/SparkyFitness/issues/3554)) ([a9cd080](https://github.com/CodeWithCJ/SparkyFitness/commit/a9cd0804d4fb99c68ef3d924740761d7a71eb7fa))
+* **web:** don't show the previous account's data to the next one ([#3549](https://github.com/CodeWithCJ/SparkyFitness/issues/3549)) ([d8be666](https://github.com/CodeWithCJ/SparkyFitness/commit/d8be6663c789ae04b108f3f3882c31674cb0505a))
+* **workouts:** keep preset equipment in web workout playback ([3919ed6](https://github.com/CodeWithCJ/SparkyFitness/commit/3919ed6948f75174f8365c5f7a2616ab9b068c14))
+* **workouts:** skip warm-ups when web playback progresses working sets ([605b504](https://github.com/CodeWithCJ/SparkyFitness/commit/605b5045bec90fcaaaca727a9102fb6885b5ddb2))
+
 ## [1.12.1](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.12.0...v1.12.1) (2026-11-10)
 
 
