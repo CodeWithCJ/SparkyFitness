@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import {
   useAui,
   useAuiState,
@@ -25,6 +25,7 @@ import {
 } from '@workspace/shared';
 import Button from '../ui/Button';
 import Icon from '../Icon';
+import { approvalDescription } from './approvalDescription';
 
 export default function ApprovalCard({ part }: { part: ToolCallMessagePart }) {
   const { t, i18n } = useTranslation();
@@ -115,6 +116,26 @@ export default function ApprovalCard({ part }: { part: ToolCallMessagePart }) {
       submitting.current = false;
     }
   };
+  const descriptionKey = chatApprovalDescriptionKey(
+    summary
+      ? summary.kind === 'delete'
+        ? servers.length
+          ? 'deleteAfter'
+          : 'delete'
+        : servers.length
+          ? 'changeAfter'
+          : 'change'
+      : !servers.length
+        ? 'runPlain'
+        : part.toolName.startsWith('mcp_')
+          ? 'send'
+          : 'run',
+    state
+  );
+  const tool =
+    part.toolName.startsWith('mcp_') && servers.length
+      ? chatOutsideToolTitle(t, part.toolName, sources)
+      : chatToolLabel(t, part.toolName, sources, part.args.action);
   return (
     <View
       testID="approval-card"
@@ -152,39 +173,18 @@ export default function ApprovalCard({ part }: { part: ToolCallMessagePart }) {
           {statuses[state.status]}
         </Text>
       )}
+      {/* Mobile translations are plain text, never markup, so what will be
+          run, changed or deleted goes on its own bold line. */}
       <Text className="text-text-primary">
-        <Trans
-          i18nKey={chatApprovalDescriptionKey(
-            summary
-              ? summary.kind === 'delete'
-                ? servers.length
-                  ? 'deleteAfter'
-                  : 'delete'
-                : servers.length
-                  ? 'changeAfter'
-                  : 'change'
-              : !servers.length
-                ? 'runPlain'
-                : part.toolName.startsWith('mcp_')
-                  ? 'send'
-                  : 'run',
-            state
-          )}
-          values={{
-            summary: summary?.text,
-            server: chatServerList(servers, i18n.language),
-            tool:
-              part.toolName.startsWith('mcp_') && servers.length
-                ? chatOutsideToolTitle(t, part.toolName, sources)
-                : chatToolLabel(t, part.toolName, sources, part.args.action),
-            otherServer:
-              sources.toolServers[part.toolName] ??
-              t('chat.tools.outside', {
-                defaultValue: 'an outside tool',
-              }),
-          }}
-          components={{ bold: <Text style={{ fontWeight: 'bold' }} /> }}
-        />
+        {approvalDescription(t, descriptionKey, {
+          server: chatServerList(servers, i18n.language),
+          otherServer:
+            sources.toolServers[part.toolName] ??
+            t('chat.tools.outside', { defaultValue: 'an outside tool' }),
+        })}
+      </Text>
+      <Text testID="approval-target" className="text-text-primary font-bold">
+        {summary?.text ?? tool}
       </Text>
       {!summary && (
         <Text

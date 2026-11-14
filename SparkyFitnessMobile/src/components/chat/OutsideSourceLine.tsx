@@ -8,7 +8,7 @@ import {
   View,
   type PressableProps,
 } from 'react-native';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useAui, useAuiState } from '@assistant-ui/react-native';
 import { chatServerList, readChatOutsideSource } from '@workspace/shared';
 import { chatHistoryQueryKey } from '../../hooks/queryKeys';
@@ -113,11 +113,10 @@ export default function OutsideSourceLine({
       style={{ opacity: deleting || running ? 0.5 : 1 }}
     >
       <Text className="text-text-muted text-sm">
-        <Trans
-          i18nKey="chat.outsideSource.line"
-          values={{ servers: chatServerList(servers, i18n.language) }}
-          components={{ bold: <Text style={{ fontWeight: 'bold' }} /> }}
-        />
+        {t('chat.outsideSource.line', {
+          servers: chatServerList(servers, i18n.language),
+          defaultValue: 'Used {{servers}}. Something look wrong?',
+        })}
       </Text>
       <View className="flex-row gap-4">
         {typeof saved === 'string' && (

@@ -88,8 +88,12 @@ beforeEach(() => {
 it('uses only app text and server/tool/action, with exact arguments in Details', () => {
   render(<ApprovalCard part={props} />);
   expect(screen.getByText('Allow this step?')).toBeTruthy();
-  expect(screen.getByText('Notes')).toBeTruthy();
-  expect(screen.getByText(/Tool.*save/)).toBeTruthy();
+  expect(
+    screen.getByText('After reading Notes, Sparky wants to run:')
+  ).toBeTruthy();
+  expect(screen.getByTestId('approval-target').props.children).toMatch(
+    /Tool.*save/
+  );
   expect(screen.queryByText(/EVIL/)).toBeNull();
   fireEvent.press(screen.getByTestId('approval-details'));
   expect(screen.getByText(/"amount": 12/)).toBeTruthy();
@@ -110,8 +114,12 @@ it.each([
 );
 it('shows the target row name for an outside call and no action suffix', () => {
   render(<ApprovalCard part={{ ...props, toolName: 'mcp_mail' }} />);
-  expect(screen.getByText('Mail')).toBeTruthy();
-  expect(screen.getByText('read note')).toBeTruthy();
+  expect(
+    screen.getByText('After reading Notes, Sparky wants to use this from Mail:')
+  ).toBeTruthy();
+  expect(screen.getByTestId('approval-target').props.children).toBe(
+    'read note'
+  );
   expect(screen.queryByText(/\(save\)/)).toBeNull();
 });
 it('renders a persisted answer', () => {
@@ -151,7 +159,7 @@ it('shows the line for legacy outside tool parts', () => {
   mockState.message.metadata.custom.outsideSource.servers = [];
   mockState.message.content = [{ type: 'tool-call', toolName: 'mcp_mail' }];
   render(<OutsideSourceLine onClearChat={jest.fn()} />);
-  expect(screen.getByText('Mail')).toBeTruthy();
+  expect(screen.getByText('Used Mail. Something look wrong?')).toBeTruthy();
 });
 
 it('uses plain wording and inline arguments without an outside result', () => {
