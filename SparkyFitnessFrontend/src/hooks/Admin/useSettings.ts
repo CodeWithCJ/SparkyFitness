@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { globalSettingsService } from '@/api/Admin/globalSettingsService';
 import { mockDataKeys, settingsKeys } from '@/api/keys/admin';
 import { authKeys } from '@/api/keys/auth';
+import { challengeKeys } from '@/api/keys/challenges';
 import { openFoodFactsContributionKeys } from '@/api/keys/settings';
 import { authClient } from '@/lib/auth-client';
 import { GlobalSettings } from '@/types/admin';
@@ -60,6 +61,8 @@ export const useUpdateSettings = () => {
         queryClient.invalidateQueries({ queryKey: mockDataKeys.all }),
         // Login options (email, passkey, magic link) derive from these settings.
         queryClient.invalidateQueries({ queryKey: authKeys.settings }),
+        // The Challenges tab and Diary card follow the Challenges switch.
+        queryClient.invalidateQueries({ queryKey: challengeKeys.all }),
       ]);
     },
   });

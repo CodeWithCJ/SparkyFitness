@@ -9,6 +9,7 @@ import DailyProgress from './DailyProgress';
 import WaterIntake from './WaterIntake';
 import CaffeineCard from './CaffeineCard';
 import BloodAlcoholCard from './BloodAlcoholCard';
+import ChallengeStandingsCard from './ChallengeStandingsCard';
 import MealCard from './MealCard';
 import ExerciseCard from './ExerciseCard';
 import DiaryWidgetGrid, { type DiaryWidget } from './DiaryWidgetGrid';
@@ -22,6 +23,7 @@ import {
   UtensilsCrossed,
   Dumbbell,
   HeartPulse,
+  Trophy,
 } from 'lucide-react';
 import { DailyHealthMetricsCard } from '@/components/Health/DailyHealthMetricsCard';
 import { useDailyHealthMetrics } from '@/hooks/useGenericHealth';
@@ -68,6 +70,10 @@ import {
   todayInZone,
 } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
+import {
+  useChallenges,
+  useChallengesAvailable,
+} from '@/hooks/Challenges/useChallenges';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import { getCalorieBudget } from '@/utils/calorieBudget';
 
@@ -403,6 +409,14 @@ const Diary = () => {
   // selects one row rather than merging several, which would mislabel the badge.
   const todaysHealthMetrics = selectDisplayableHealthMetrics(healthMetricsData);
 
+  // Challenge standings: owner-only, and only read while the admin switch is on.
+  const { available: challengesAvailable } = useChallengesAvailable();
+  const { data: challengeList } = useChallenges(challengesAvailable);
+  const myChallenges = useMemo(
+    () => (challengesAvailable ? (challengeList ?? []) : []),
+    [challengesAvailable, challengeList]
+  );
+
   // Build the ordered widget registry: energy, nutrition, water, one card per
   // visible meal type, then exercise. Keys match buildWidgetKeys() so the saved
   // grid layout reconciles cleanly against the user's current meal types.
@@ -516,6 +530,17 @@ const Diary = () => {
       ),
     });
 
+    // Only for someone in a challenge, on their own account, while the admin
+    // switch is on; everyone else never sees an empty tile for it.
+    if (myChallenges.length > 0) {
+      list.push({
+        key: 'challenges',
+        title: t('challenges.widget.title', 'Challenge standings'),
+        icon: Trophy,
+        render: () => <ChallengeStandingsCard challenges={myChallenges} />,
+      });
+    }
+
     // Last in the registry to match its default tile, which sits below
     // exercise; the grid positions by layout, but keeping the two in the same
     // order stops the next reader wondering which one is authoritative.
@@ -555,6 +580,7 @@ const Diary = () => {
     todaysHealthMetrics,
     loadingHealthMetrics,
     isActingOnBehalf,
+    myChallenges,
     t,
   ]);
 
