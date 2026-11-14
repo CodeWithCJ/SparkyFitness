@@ -47,7 +47,7 @@ const router = express.Router();
  *       500:
  *         description: Server error.
  *   put:
- *     summary: Replace the owner's outside tool server choices
+ *     summary: Change one outside tool server choice for the owner
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -57,18 +57,21 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [enabled_server_ids]
+ *             additionalProperties: false
+ *             required: [server_id, enabled, send_user_id]
  *             properties:
- *               enabled_server_ids:
- *                 type: array
- *                 maxItems: 50
- *                 uniqueItems: true
- *                 items:
- *                   type: string
- *                   format: uuid
+ *               server_id:
+ *                 type: string
+ *                 format: uuid
+ *               enabled:
+ *                 type: boolean
+ *               send_user_id:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Server IDs, names and enabled states only.
+ *       409:
+ *         description: Server changed or disappeared; returns the current list as in GET.
  *       400:
  *         description: Invalid server choices.
  *       403:
@@ -99,9 +102,8 @@ router.put(
       return;
     }
     try {
-      res.json(
-        await updateChatMcpServers(req.userId, parsed.data.enabled_server_ids)
-      );
+      const result = await updateChatMcpServers(req.userId, parsed.data);
+      res.status(result.status).json(result.data);
     } catch (error) {
       next(error);
     }

@@ -7,6 +7,7 @@ export const chatApprovalCapabilitySchema = z.object({
 export const chatOutsideSourceSchema = z.object({
   servers: z.array(z.string()),
   toolServers: z.record(z.string(), z.string()),
+  toolServerIds: z.record(z.string(), z.string()).optional(),
   toolTitles: z.record(z.string(), z.string()).default({}),
   approvalSummaries: z
     .record(

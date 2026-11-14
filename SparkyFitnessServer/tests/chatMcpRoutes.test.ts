@@ -11,7 +11,7 @@ import chatService from '../services/chatService.js';
 import { getChatMcpServerChoices } from '../models/externalProviderRepository.js';
 import {
   getChatMcpServerIds,
-  saveChatMcpServerIds,
+  saveChatMcpServerChoice,
 } from '../models/chatMcpPreferenceRepository.js';
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -36,7 +36,7 @@ vi.mock('../models/externalProviderRepository.js', () => ({
 }));
 vi.mock('../models/chatMcpPreferenceRepository.js', () => ({
   getChatMcpServerIds: vi.fn(),
-  saveChatMcpServerIds: vi.fn(),
+  saveChatMcpServerChoice: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 const app = express();
@@ -47,8 +47,6 @@ app.use((_error: unknown, _req: Request, res: Response, _next: NextFunction) =>
 );
 const first = '00000000-0000-4000-8000-000000000001';
 const second = '00000000-0000-4000-8000-000000000002';
-const unknownId = '00000000-0000-4000-8000-000000000003';
-const inactiveId = '00000000-0000-4000-8000-000000000004';
 
 describe('/api/chat/mcp-servers', () => {
   beforeEach(() => {
@@ -58,7 +56,7 @@ describe('/api/chat/mcp-servers', () => {
       { id: second, name: 'Tasks', send_user_id: false },
     ]);
     vi.mocked(getChatMcpServerIds).mockResolvedValue([second]);
-    vi.mocked(saveChatMcpServerIds).mockResolvedValue(undefined);
+    vi.mocked(saveChatMcpServerChoice).mockResolvedValue(true);
   });
   it('returns only names, IDs and enabled states, never credentials or options', async () => {
     vi.mocked(getChatMcpServerChoices).mockResolvedValue([
@@ -80,18 +78,31 @@ describe('/api/chat/mcp-servers', () => {
     });
     expect(getChatMcpServerIds).toHaveBeenCalledWith('owner');
   });
-  it('stores only currently available IDs and returns the same safe shape', async () => {
+  it('turns B on without restoring A after an admin cleared it', async () => {
+    vi.mocked(getChatMcpServerIds).mockResolvedValue([second]);
+    const choice = { server_id: second, enabled: true, send_user_id: false };
+    const result = await request(app).put('/api/chat/mcp-servers').send(choice);
+    expect(result.status).toBe(200);
+    expect(saveChatMcpServerChoice).toHaveBeenCalledWith('owner', choice);
+    expect(
+      result.body.servers.map((server: { enabled: boolean }) => server.enabled)
+    ).toEqual([false, true]);
+  });
+  it('returns current choices with 409 for outdated consent', async () => {
+    vi.mocked(saveChatMcpServerChoice).mockResolvedValue(false);
     const result = await request(app)
       .put('/api/chat/mcp-servers')
-      .send({ enabled_server_ids: [first, unknownId, inactiveId] });
-    expect(result.status).toBe(200);
-    expect(saveChatMcpServerIds).toHaveBeenCalledWith('owner', [first]);
-    expect(result.body).toEqual({
-      servers: [
-        { id: first, name: 'Notes', send_user_id: true, enabled: true },
-        { id: second, name: 'Tasks', send_user_id: false, enabled: false },
-      ],
-    });
+      .send({ server_id: first, enabled: true, send_user_id: false });
+    expect(result.status).toBe(409);
+    expect(result.body.servers[0].enabled).toBe(false);
+  });
+  it('turns a server off twice', async () => {
+    for (let i = 0; i < 2; i++) {
+      const result = await request(app)
+        .put('/api/chat/mcp-servers')
+        .send({ server_id: first, enabled: false, send_user_id: true });
+      expect(result.status).toBe(200);
+    }
   });
   it.each(['get', 'put'] as const)(
     'refuses delegated %s requests',
@@ -99,22 +110,21 @@ describe('/api/chat/mcp-servers', () => {
       const agent = request(app);
       const result = await agent[method]('/api/chat/mcp-servers')
         .set('x-family', 'true')
-        .send({ enabled_server_ids: [first] });
+        .send({ server_id: first, enabled: true, send_user_id: true });
       expect(result.status).toBe(403);
       expect(getChatMcpServerChoices).not.toHaveBeenCalled();
-      expect(saveChatMcpServerIds).not.toHaveBeenCalled();
+      expect(saveChatMcpServerChoice).not.toHaveBeenCalled();
     }
   );
   it.each([
-    [first, first],
-    ['invalid'],
-    Array.from({ length: 51 }, () => first),
-  ])('rejects invalid or duplicate lists', async (...ids) => {
-    const result = await request(app)
-      .put('/api/chat/mcp-servers')
-      .send({ enabled_server_ids: ids });
+    { enabled_server_ids: [first] },
+    { server_id: 'invalid', enabled: true, send_user_id: true },
+    { server_id: first, enabled: true },
+    { server_id: first, enabled: true, send_user_id: true, extra: true },
+  ])('rejects invalid choices', async (body) => {
+    const result = await request(app).put('/api/chat/mcp-servers').send(body);
     expect(result.status).toBe(400);
-    expect(saveChatMcpServerIds).not.toHaveBeenCalled();
+    expect(saveChatMcpServerChoice).not.toHaveBeenCalled();
   });
   it('passes lookup failures to the route error handler', async () => {
     vi.mocked(getChatMcpServerIds).mockRejectedValue(new Error('offline'));

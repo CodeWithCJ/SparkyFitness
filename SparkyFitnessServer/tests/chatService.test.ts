@@ -26,13 +26,17 @@ import mealTypeRepository from '../models/mealType.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
 import { createOpenAI } from '@ai-sdk/openai';
-import { loadMcpServerTools } from '../ai/tools/mcpServerTools.js';
+import {
+  loadMcpServerTools,
+  getChatToolServerNames,
+} from '../ai/tools/mcpServerTools.js';
 // Mock dependencies
 // These tests have no outside MCP tool servers unless one says so.
 vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../ai/tools/mcpServerTools.js')>()),
   loadMcpServerTools: vi.fn(async () => ({})),
   getChatToolServerNames: vi.fn(() => ({ mcp_notes__search: 'Notes server' })),
+  getChatToolServerIds: vi.fn(() => ({ mcp_notes__search: 'server-1' })),
   getChatToolTitles: vi.fn(() => ({ mcp_notes__search: 'search_notes' })),
 }));
 vi.mock('../models/chatRepository');
@@ -1391,9 +1395,7 @@ describe('chatService', () => {
           actorUserId
         );
         const sent = JSON.stringify(model.doGenerateCalls[0].prompt);
-        expect(sent).toContain(
-          'Its result came from an outside server and is no longer shown; call the tool again if you need it.'
-        );
+        expect(sent).toContain('it failed or was interrupted and may have run');
         expect(sent).toContain(
           JSON.stringify(input).slice(0, 300).replaceAll('"', '\\"')
         );
@@ -1401,6 +1403,67 @@ describe('chatService', () => {
         expect(sent).not.toMatch(
           /PRIVATE_OUTSIDE_OUTPUT|PRIVATE_OUTSIDE_ERROR/
         );
+      }
+    );
+
+    it.each([
+      {
+        state: 'output-denied',
+        approval: { id: 'a', approved: false },
+        expected: 'it did not run because the user denied it',
+      },
+      {
+        state: 'output-denied',
+        approval: {
+          id: 'a',
+          approved: false,
+          reason: 'A new user message cancelled this call.',
+        },
+        expected: 'it did not run because a new message cancelled it',
+      },
+      {
+        state: 'approval-requested',
+        approval: { id: 'a' },
+        expected: 'it never ran',
+      },
+      { state: 'input-streaming', expected: 'it never ran' },
+      {
+        state: 'input-available',
+        expected: 'it was interrupted and may have run',
+      },
+      {
+        state: 'approval-responded',
+        approval: { id: 'a', approved: true },
+        expected:
+          'it was interrupted and may have run; ask the user before calling it again',
+      },
+    ])(
+      'replays uncompleted calls honestly: $state $expected',
+      async ({ expected, ...part }) => {
+        const model = scriptModel([textStep('Done.')]);
+        await chatService.processChatMessage(
+          [
+            { role: 'user', content: 'Change it.' },
+            {
+              role: 'assistant',
+              parts: ['mcp_notes__search', 'sparky_manage_food'].map(
+                (name) => ({
+                  type: `tool-${name}`,
+                  input: { action: 'delete_entry' },
+                  ...part,
+                })
+              ),
+            },
+            { role: 'user', content: 'Did you do it?' },
+          ],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+        const sent = JSON.stringify(model.doGenerateCalls[0].prompt);
+        expect(sent.split(expected)).toHaveLength(3);
+        expect(sent).not.toContain('you called mcp_notes__search');
+        expect(sent).not.toContain('you called sparky_manage_food');
       }
     );
 
@@ -1599,7 +1662,8 @@ describe('chatService', () => {
         messages: Parameters<typeof chatService.processChatMessageStream>[0] = [
           userMessage,
         ],
-        approvals = true
+        approvals = true,
+        consume = drainStream
       ) => {
         const { stream } = await chatService.processChatMessageStream(
           messages,
@@ -1611,7 +1675,7 @@ describe('chatService', () => {
           undefined,
           approvals
         );
-        return drainStream(stream);
+        return consume(stream);
       };
       beforeEach(() => {
         vi.mocked(loadMcpServerTools).mockReset().mockResolvedValue(tools());
@@ -1726,7 +1790,7 @@ describe('chatService', () => {
         const sent = JSON.stringify(model.doStreamCalls[0].prompt);
         expect(sent).not.toContain('notes found');
         expect(sent).toContain(
-          'Its result came from an outside server and is no longer shown'
+          'Its result came from an outside server and is no longer shown; call it again only to read; ask the user before repeating anything that changes data.'
         );
         expect(writeExecute).toHaveBeenCalledTimes(1);
       });
@@ -1783,6 +1847,23 @@ describe('chatService', () => {
           chunks.some((chunk) => chunk.type === 'tool-approval-request')
         ).toBe(true);
       });
+      it('records the server ID when an outside call asks for approval', async () => {
+        scripted([
+          callStep('mcp_notes__search'),
+          callStep('mcp_notes__search', 'outside-2'),
+        ]);
+        await run();
+        const saved = vi
+          .mocked(chatRepository.saveChatHistory)
+          .mock.calls.find(([entry]) => entry.messageType === 'assistant')?.[0];
+        expect(saved?.metadata).toMatchObject({
+          custom: {
+            outsideSource: {
+              toolServerIds: { mcp_notes__search: 'server-1' },
+            },
+          },
+        });
+      });
       it('automatically runs writes before outside results', async () => {
         scripted([callStep('sparky_test_write'), doneStep]);
         const chunks = await run();
@@ -1810,6 +1891,7 @@ describe('chatService', () => {
                   outsideSource: {
                     servers: ['Notes server'],
                     toolServers: { mcp_notes__search: 'Notes server' },
+                    toolServerIds: {},
                     toolTitles: { mcp_notes__search: 'search_notes' },
                     approvalSummaries: {
                       write: {
@@ -1882,29 +1964,37 @@ describe('chatService', () => {
         input: {},
         approval: { id: 'approval-1' },
       };
-      const resume = async (approved: boolean, responseType = pending.type) => {
+      const resume = async (
+        approved: boolean,
+        responseType = pending.type,
+        consume = drainStream
+      ) => {
         vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
           id: 'row-1',
           user_id: actorUserId,
           message_type: 'assistant',
           parts: [outsidePart, pending],
         });
-        return run([
-          userMessage,
-          {
-            role: 'assistant',
-            id: 'row-1',
-            parts: [
-              outsidePart,
-              {
-                ...pending,
-                type: responseType,
-                state: 'approval-responded',
-                approval: { id: 'approval-1', approved },
-              },
-            ],
-          },
-        ] as Parameters<typeof chatService.processChatMessageStream>[0]);
+        return run(
+          [
+            userMessage,
+            {
+              role: 'assistant',
+              id: 'row-1',
+              parts: [
+                outsidePart,
+                {
+                  ...pending,
+                  type: responseType,
+                  state: 'approval-responded',
+                  approval: { id: 'approval-1', approved },
+                },
+              ],
+            },
+          ] as Parameters<typeof chatService.processChatMessageStream>[0],
+          true,
+          consume
+        );
       };
       it('approves once, updates the same row, and asks again for the next write', async () => {
         const model = scripted([callStep('sparky_test_write', 'write-2')]);
@@ -1951,6 +2041,170 @@ describe('chatService', () => {
         expect(
           chunks.some((chunk) => chunk.type === 'tool-approval-request')
         ).toBe(true);
+      });
+      it.each(['server-1', 'replacement-server'])(
+        'binds pending outside calls to their stored server (%s)',
+        async (serverId) => {
+          const model = scripted([doneStep]);
+          const pendingOutside = { ...pending, type: 'tool-mcp_notes__search' };
+          vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
+            id: 'row-1',
+            user_id: actorUserId,
+            message_type: 'assistant',
+            parts: [pendingOutside],
+            metadata: {
+              custom: {
+                outsideSource: {
+                  servers: [],
+                  toolServers: { mcp_notes__search: 'Notes server' },
+                  toolServerIds: { mcp_notes__search: serverId },
+                  approvalSources: {},
+                },
+              },
+            },
+          });
+          await run([
+            userMessage,
+            {
+              role: 'assistant',
+              id: 'row-1',
+              parts: [
+                {
+                  ...pendingOutside,
+                  state: 'approval-responded',
+                  approval: { id: 'approval-1', approved: true },
+                },
+              ],
+            },
+          ]);
+          expect(outsideExecute).toHaveBeenCalledTimes(
+            serverId === 'server-1' ? 1 : 0
+          );
+          if (serverId !== 'server-1')
+            expect(JSON.stringify(model.doStreamCalls[0].prompt)).toContain(
+              'execution-denied'
+            );
+        }
+      );
+      it('settles a claim when setup throws before streaming', async () => {
+        scripted([doneStep]);
+        vi.mocked(getChatToolServerNames).mockImplementationOnce(() => {
+          throw new Error('setup failed');
+        });
+        await expect(resume(true)).rejects.toThrow('setup failed');
+        expect(writeExecute).not.toHaveBeenCalled();
+        expect(chatRepository.saveApprovalContinuation).toHaveBeenCalledWith(
+          'row-1',
+          actorUserId,
+          expect.objectContaining({
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-error',
+                errorText: 'Did not run.',
+              }),
+            ]),
+          })
+        );
+      });
+      it('saves settled parts for an already aborted continuation', async () => {
+        scripted([doneStep]);
+        const timeout = vi
+          .spyOn(AbortSignal, 'timeout')
+          .mockReturnValue(AbortSignal.abort());
+        try {
+          await resume(true);
+        } finally {
+          timeout.mockRestore();
+        }
+        expect(chatRepository.saveApprovalContinuation).toHaveBeenCalledWith(
+          'row-1',
+          actorUserId,
+          expect.objectContaining({
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-error',
+                errorText:
+                  'Stopped before a result came back. It may have run; check before trying again.',
+              }),
+            ]),
+          })
+        );
+      });
+      it('settles a continuation when its client cancels while the tool runs', async () => {
+        scripted([doneStep]);
+        let markStarted!: () => void;
+        let finishTool!: (value: string) => void;
+        const started = new Promise<void>((resolve) => {
+          markStarted = resolve;
+        });
+        const result = new Promise<string>((resolve) => {
+          finishTool = resolve;
+        });
+        writeExecute.mockImplementationOnce(async () => {
+          markStarted();
+          return result;
+        });
+        try {
+          await resume(true, pending.type, async (stream) => {
+            const reader = stream.getReader();
+            const first = reader.read();
+            await started;
+            await reader.cancel('client disconnected');
+            await first;
+            return [];
+          });
+          await vi.waitFor(() =>
+            expect(
+              chatRepository.saveApprovalContinuation
+            ).toHaveBeenCalledWith(
+              'row-1',
+              actorUserId,
+              expect.objectContaining({
+                parts: expect.arrayContaining([
+                  expect.objectContaining({
+                    toolCallId: 'write-1',
+                    state: 'output-error',
+                    errorText:
+                      'Stopped before a result came back. It may have run; check before trying again.',
+                  }),
+                ]),
+              })
+            )
+          );
+        } finally {
+          finishTool('late result');
+        }
+      });
+      it('settles an approved tool interrupted while executing', async () => {
+        scripted([doneStep]);
+        const controller = new AbortController();
+        const timeout = vi
+          .spyOn(AbortSignal, 'timeout')
+          .mockReturnValue(controller.signal);
+        writeExecute.mockImplementationOnce(async () => {
+          controller.abort();
+          return new Promise<string>(() => {});
+        });
+        try {
+          await resume(true);
+        } finally {
+          timeout.mockRestore();
+        }
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(chatRepository.saveApprovalContinuation).toHaveBeenCalledWith(
+          'row-1',
+          actorUserId,
+          expect.objectContaining({
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-error',
+              }),
+            ]),
+          })
+        );
       });
       it('never executes an unknown tool from an approval response', async () => {
         scripted([doneStep]);

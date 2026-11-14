@@ -73,10 +73,9 @@ export type ChatMcpServersResponse = z.infer<
 
 export const updateChatMcpServersRequestSchema = z
   .object({
-    enabled_server_ids: z
-      .array(z.uuid())
-      .max(50)
-      .refine((ids) => new Set(ids).size === ids.length),
+    server_id: z.uuid(),
+    enabled: z.boolean(),
+    send_user_id: z.boolean(),
   })
   .strict();
 export type UpdateChatMcpServersRequest = z.infer<

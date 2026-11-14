@@ -7,6 +7,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
+import { describeError } from '../utils/errors.js';
 import {
   getDefaultModel,
   getOpenAiCompatibleBaseUrl,
@@ -66,6 +67,7 @@ interface ChatMessagePart {
   toolName?: string;
   state?: string;
   toolCallId?: string;
+  errorText?: string;
   approval?: { id: string; approved?: boolean; reason?: string };
 }
 
@@ -118,6 +120,7 @@ import {
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import {
   getChatToolServerNames,
+  getChatToolServerIds,
   getChatToolTitles,
   isMcpServerToolName,
   loadMcpServerTools,
@@ -1885,8 +1888,34 @@ function toolPartToText(part: ChatMessagePart): string | null {
 
   const input =
     part.input === undefined ? '' : JSON.stringify(part.input).slice(0, 300);
+  const asked = `Earlier this conversation you asked to call ${toolName}(${input})`;
+  if (part.state === 'output-denied' || part.approval?.approved === false) {
+    const reason = part.approval?.reason?.includes('new user message cancelled')
+      ? 'a new message cancelled it'
+      : 'the user denied it';
+    return `[${asked}; it did not run because ${reason}.]`;
+  }
+  if (part.state === 'output-error') {
+    return isMcpServerToolName(toolName)
+      ? // The error text may come from the outside server, so only say that
+        // it failed or was cut off, and that it may have run.
+        `[${asked}; it failed or was interrupted and may have run; ask the user before calling it again.]`
+      : `[${asked}; it failed: ${(part.errorText ?? 'Unknown error').slice(0, REPLAYED_TOOL_RESULT_CHARS)}]`;
+  }
+  if (part.output === undefined) {
+    // A call with its full input may already have started when the reply
+    // stopped; only one still waiting for an answer or for its input did not.
+    if (
+      (part.state === 'approval-responded' &&
+        part.approval?.approved === true) ||
+      part.state === 'input-available'
+    )
+      return `[${asked}; it was interrupted and may have run; ask the user before calling it again.]`;
+    if (['approval-requested', 'input-streaming'].includes(part.state ?? ''))
+      return `[${asked}; it never ran.]`;
+  }
   if (isMcpServerToolName(toolName)) {
-    return `[Earlier this conversation you called ${toolName}(${input}). Its result came from an outside server and is no longer shown; call the tool again if you need it.]`;
+    return `[Earlier this conversation you called ${toolName}(${input}). Its result came from an outside server and is no longer shown; call it again only to read; ask the user before repeating anything that changes data.]`;
   }
   const rawOutput =
     typeof part.output === 'string'
@@ -1901,6 +1930,27 @@ function toolPartToText(part: ChatMessagePart): string | null {
 
   if (!input && !output) return null;
   return `[Earlier this conversation you called ${toolName}(${input}) and it returned: ${output || '(no output)'}]`;
+}
+
+function settleChatApprovals<T extends { type: string }>(
+  parts: T[],
+  errorText = 'Stopped before a result came back. It may have run; check before trying again.'
+): T[] {
+  return parts.map((part) => {
+    const current = part as T & ChatMessagePart;
+    if (
+      !current.type.startsWith('tool-') ||
+      current.state !== 'approval-responded' ||
+      current.output !== undefined
+    )
+      return part;
+    return {
+      ...part,
+      state:
+        current.approval?.approved === false ? 'output-denied' : 'output-error',
+      ...(current.approval?.approved === false ? {} : { errorText }),
+    };
+  });
 }
 
 // Maps one client message part to a CoreMessage part; unknown parts fall back
@@ -3000,6 +3050,8 @@ async function processChatMessageStream(
   conversationId?: string,
   approvals = false
 ) {
+  let continuation: UIMessage | undefined;
+  let streamStarted = false;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -3089,7 +3141,6 @@ async function processChatMessageStream(
     const isContinuation =
       lastMessage?.role === 'assistant' &&
       lastMessage.parts?.some((part) => part.state === 'approval-responded');
-    let continuation: UIMessage | undefined;
     if (isContinuation) {
       const saved: SparkyChatHistory | undefined = lastMessage.id
         ? await chatRepository.getChatHistoryEntryById(
@@ -3115,6 +3166,10 @@ async function processChatMessageStream(
         throw new Error('Invalid approval continuation.');
       }
       const savedParts = saved.parts as ChatMessagePart[];
+      const savedServerIds = readChatOutsideSource(
+        saved.metadata
+      ).toolServerIds;
+      const currentServerIds = getChatToolServerIds(tools);
       if (!savedParts.some((part) => part.state === 'approval-requested')) {
         throw new Error('Approval already answered.');
       }
@@ -3139,7 +3194,12 @@ async function processChatMessageStream(
             ...part.approval,
             approved:
               response?.approval?.approved === true &&
-              Object.hasOwn(tools, part.type.slice(5)),
+              Object.hasOwn(tools, part.type.slice(5)) &&
+              (!isMcpServerToolName(part.type.slice(5)) ||
+                !savedServerIds ||
+                (savedServerIds[part.type.slice(5)] !== undefined &&
+                  savedServerIds[part.type.slice(5)] ===
+                    currentServerIds[part.type.slice(5)])),
           },
         };
       });
@@ -3173,6 +3233,8 @@ async function processChatMessageStream(
       ...storedSource.toolServers,
       ...getChatToolServerNames(tools),
     };
+    const toolServerIds = { ...storedSource.toolServerIds };
+    const currentToolServerIds = getChatToolServerIds(tools);
     const toolTitles = {
       ...storedSource.toolTitles,
       ...getChatToolTitles(tools),
@@ -3201,6 +3263,7 @@ async function processChatMessageStream(
     const outsideSource = () => ({
       servers: [...outsideServers],
       toolServers,
+      toolServerIds,
       toolTitles,
       approvalSummaries,
       approvalSources: { ...approvalSources },
@@ -3325,6 +3388,7 @@ async function processChatMessageStream(
       },
     });
 
+    streamStarted = true;
     let savedMessageId: string | undefined;
     let usageMetadata:
       ReturnType<typeof mapUsageToMetadata>['custom'] | undefined;
@@ -3336,7 +3400,7 @@ async function processChatMessageStream(
             ...(continuation ? { originalMessages: [continuation] } : {}),
             generateMessageId: () => randomUUID(),
             onFinish: async ({ responseMessage, isAborted }) => {
-              if (isAborted) return;
+              if (isAborted && !continuation) return;
               if (!continuation) {
                 const lastUser = [...conversationMessages]
                   .reverse()
@@ -3356,7 +3420,9 @@ async function processChatMessageStream(
                     : [{ type: 'text', text: String(lastUser?.content || '') }],
                 });
               }
-              const parts: unknown[] = [...responseMessage.parts];
+              const parts: unknown[] = settleChatApprovals([
+                ...responseMessage.parts,
+              ]);
               const estimate = foodPhotoEstimateSink.get();
               if (estimate)
                 parts.push({
@@ -3426,6 +3492,8 @@ async function processChatMessageStream(
               )
                 outsideServers.add(toolServers[part.toolName]);
               if (part.type === 'tool-approval-request') {
+                const serverId = currentToolServerIds[part.toolCall.toolName];
+                if (serverId) toolServerIds[part.toolCall.toolName] = serverId;
                 approvalSources[part.toolCall.toolCallId] = [...outsideServers];
               }
               if (
@@ -3473,6 +3541,27 @@ async function processChatMessageStream(
       ),
     };
   } catch (error) {
+    if (continuation && !streamStarted) {
+      // The claim is already saved, so settle it or the card waits forever;
+      // a failure here must not hide the original error.
+      try {
+        await chatRepository.saveApprovalContinuation(
+          continuation.id,
+          authenticatedUserId,
+          {
+            content: '',
+            parts: settleChatApprovals(continuation.parts, 'Did not run.'),
+            metadata: continuation.metadata,
+          }
+        );
+      } catch (saveError) {
+        log(
+          'error',
+          `Could not settle approval ${continuation.id}:`,
+          describeError(saveError)
+        );
+      }
+    }
     log(
       'error',
       `Error in processChatMessageStream for user ${userId}:`,

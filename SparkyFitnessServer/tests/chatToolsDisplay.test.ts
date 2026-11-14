@@ -147,7 +147,8 @@ it.each([
       );
       for (const catalog of catalogs) {
         expect(catalog.chat.approval[key]).toContain(expected);
-        expect(catalog.chat.approval[key]).toMatch(/\.$/);
+        // The phone app ends with a colon: what runs follows on its own line.
+        expect(catalog.chat.approval[key]).toMatch(/[.:]$/);
       }
     }
   }

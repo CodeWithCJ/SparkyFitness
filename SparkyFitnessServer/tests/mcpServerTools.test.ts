@@ -31,6 +31,7 @@ import {
 } from '@workspace/shared';
 import {
   getChatToolServerNames,
+  getChatToolServerIds,
   getChatToolTitles,
   mcpServerListErrorCode,
   listToolsForAdmin,
@@ -518,6 +519,9 @@ describe('which tools chat gets', () => {
     expect(
       getChatToolServerNames({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
     ).toEqual({ mcp_opted__echo: 'Opted' });
+    expect(
+      getChatToolServerIds({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
+    ).toEqual({ mcp_opted__echo: opted.id });
     expect(
       getChatToolTitles({ mcp_opted__echo: { ...tools.mcp_opted__echo } })
     ).toEqual({ mcp_opted__echo: 'echo' });

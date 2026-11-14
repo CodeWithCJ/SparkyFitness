@@ -1,3 +1,4 @@
+import { ApiError } from '../../src/services/api/errors';
 import i18n from '../../src/localization/i18n';
 import translations from '../../src/localization/locales/en/translation.json';
 beforeAll(() =>
@@ -104,15 +105,15 @@ it('hides outside tools when no servers are available', async () => {
   await waitFor(() => expect(screen.client.isFetching()).toBe(0));
   expect(screen.queryByTestId('chat-mcp-servers-section')).toBeNull();
 });
-it('saves all choices and disables switches while saving', async () => {
+it('sends separate choices for quick toggles while another save is pending', async () => {
   jest
     .mocked(fetchChatMcpServers)
     .mockResolvedValue({ servers: outsideServers });
-  let finish!: (value: { servers: typeof outsideServers }) => void;
+  const finishes: ((value: { servers: typeof outsideServers }) => void)[] = [];
   jest.mocked(saveChatMcpServers).mockImplementation(
     () =>
       new Promise((resolve) => {
-        finish = resolve;
+        finishes.push(resolve);
       })
   );
   const screen = renderScreen();
@@ -121,20 +122,38 @@ it('saves all choices and disables switches while saving', async () => {
   fireEvent(toggle, 'valueChange', true);
   await waitFor(() =>
     expect(saveChatMcpServers).toHaveBeenCalledWith(
-      ['notes', 'tasks'],
+      { server_id: 'notes', enabled: true, send_user_id: false },
       expect.anything()
     )
   );
   expect(
     screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
   ).toBe(true);
-  finish({
+  expect(
+    screen.getByTestId('chat-mcp-server-switch-tasks').props.disabled
+  ).toBe(false);
+  fireEvent(
+    screen.getByTestId('chat-mcp-server-switch-tasks'),
+    'valueChange',
+    false
+  );
+  await waitFor(() =>
+    expect(saveChatMcpServers).toHaveBeenNthCalledWith(
+      2,
+      { server_id: 'tasks', enabled: false, send_user_id: true },
+      expect.anything()
+    )
+  );
+  const saved = {
     servers: outsideServers.map((server) => ({
       ...server,
       send_user_id: true,
       enabled: true,
     })),
-  });
+  };
+  jest.mocked(fetchChatMcpServers).mockResolvedValue(saved);
+  // Both saves finish together; the list is still reloaded after them.
+  for (const finish of finishes) finish(saved);
   await waitFor(() =>
     expect(
       screen.getByTestId('chat-mcp-server-switch-notes').props.disabled
@@ -142,6 +161,11 @@ it('saves all choices and disables switches while saving', async () => {
   );
   expect(screen.getByTestId('chat-mcp-server-switch-notes').props.value).toBe(
     true
+  );
+  await waitFor(() =>
+    expect(jest.mocked(fetchChatMcpServers).mock.calls.length).toBeGreaterThan(
+      1
+    )
   );
 });
 it('reverts outside tool choices on a failed save', async () => {
@@ -178,8 +202,47 @@ it('shows a load failure and retries', async () => {
   const screen = renderScreen();
   expect(await screen.findByText('Could not load outside tools.')).toBeTruthy();
   fireEvent.press(screen.getByText('Try again'));
-  await waitFor(() => expect(fetchChatMcpServers).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(jest.mocked(fetchChatMcpServers).mock.calls.length).toBeGreaterThan(
+      1
+    )
+  );
   await waitFor(() =>
     expect(screen.queryByText('Could not load outside tools.')).toBeNull()
   );
+});
+
+it('reloads the list after a 409 instead of keeping the stale switch', async () => {
+  const current = outsideServers.map((server, index) => ({
+    ...server,
+    id: `00000000-0000-4000-8000-00000000000${index + 1}`,
+  }));
+  jest
+    .mocked(fetchChatMcpServers)
+    .mockResolvedValueOnce({ servers: current })
+    .mockResolvedValue({
+      servers: current.map((server) => ({
+        ...server,
+        send_user_id: true,
+        enabled: false,
+      })),
+    });
+  jest
+    .mocked(saveChatMcpServers)
+    .mockRejectedValue(new ApiError('Conflict', 409));
+  const screen = renderScreen();
+  fireEvent(
+    await screen.findByTestId(`chat-mcp-server-switch-${current[0].id}`),
+    'valueChange',
+    true
+  );
+  await waitFor(() =>
+    expect(screen.getAllByText('Sees your account ID.')).toHaveLength(2)
+  );
+  expect(
+    screen.getByTestId(`chat-mcp-server-switch-${current[0].id}`).props.value
+  ).toBe(false);
+  expect(
+    screen.getByTestId(`chat-mcp-server-switch-${current[1].id}`).props.value
+  ).toBe(false);
 });

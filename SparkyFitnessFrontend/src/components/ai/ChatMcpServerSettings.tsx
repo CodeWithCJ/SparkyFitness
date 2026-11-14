@@ -7,7 +7,7 @@ import { useChatMcpServers } from '@/hooks/AI/useChatMcpServers';
 
 export function ChatMcpServerSettings() {
   const { t } = useTranslation();
-  const { servers, isSaving, save } = useChatMcpServers();
+  const { servers, savingServerIds, save } = useChatMcpServers();
   const { isActingOnBehalf } = useActiveUser();
   if (isActingOnBehalf)
     return (
@@ -45,15 +45,13 @@ export function ChatMcpServerSettings() {
             <Switch
               id={`chat-mcp-server-${server.id}`}
               checked={server.enabled}
-              disabled={isSaving}
+              disabled={savingServerIds.includes(server.id)}
               onCheckedChange={(enabled) => {
-                save(
-                  servers
-                    .filter((item) =>
-                      item.id === server.id ? enabled : item.enabled
-                    )
-                    .map(({ id }) => id)
-                );
+                save({
+                  server_id: server.id,
+                  enabled,
+                  send_user_id: server.send_user_id,
+                });
               }}
             />
           </div>

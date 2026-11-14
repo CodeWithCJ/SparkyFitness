@@ -51,7 +51,7 @@ const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
   const { t } = useTranslation();
   const {
     servers,
-    isSaving,
+    savingServerIds,
     save,
     isError: serversError,
     isLoading: serversLoading,
@@ -168,15 +168,13 @@ const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
                     testID={`chat-mcp-server-switch-${server.id}`}
                     accessibilityLabel={label}
                     value={server.enabled}
-                    disabled={isSaving}
+                    disabled={savingServerIds.includes(server.id)}
                     onValueChange={(enabled) =>
-                      save(
-                        servers
-                          .filter((item) =>
-                            item.id === server.id ? enabled : item.enabled
-                          )
-                          .map(({ id }) => id)
-                      )
+                      save({
+                        server_id: server.id,
+                        enabled,
+                        send_user_id: server.send_user_id,
+                      })
                     }
                   />
                 </View>

@@ -810,6 +810,7 @@ async function callServerTool(
 
 // Actor wrappers spread tool objects; a symbol preserves the row name without sending it to the model.
 const chatToolServerName = Symbol('chatToolServerName');
+const chatToolServerId = Symbol('chatToolServerId');
 const chatToolTitle = Symbol('chatToolTitle');
 
 export function getChatToolTitles(
@@ -821,6 +822,19 @@ export function getChatToolTitles(
         chatToolTitle
       ];
       return title ? [[name, title]] : [];
+    })
+  );
+}
+
+export function getChatToolServerIds(
+  tools: Record<string, Tool>
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(tools).flatMap(([name, current]) => {
+      const id = (current as Tool & { [chatToolServerId]?: string })[
+        chatToolServerId
+      ];
+      return id ? [[name, id]] : [];
     })
   );
 }
@@ -854,6 +868,7 @@ function toChatTool(
   });
   return Object.assign(result, {
     [chatToolServerName]: server.provider_name,
+    [chatToolServerId]: server.id,
     [chatToolTitle]: listed.name,
   });
 }

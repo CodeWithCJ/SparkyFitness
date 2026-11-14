@@ -1,5 +1,7 @@
 ## Sparky Buddy (AI Assistant)
+
 ### Core AI Features
+
 - **Food Recognition**: Analyze food photos for automatic logging and nutrition extraction
 - **Nutrition Analysis**: Intelligent nutrition information extraction from text and images
 - **Meal Suggestions**: AI-powered meal recommendations and recipe generation
@@ -11,6 +13,7 @@
 - **Training, run and plan reviews**: See [Adaptive coaching](/features/exercises/adaptive-coaching) for the strength and run reviews and for plan weight changes.
 
 ### Chat Interface
+
 - **Image Upload**: Send photos for food analysis
 - **Text Input**: Natural language food descriptions, questions, and commands
 - **History**: Persistent chat conversation history with session grouping
@@ -34,6 +37,7 @@ Open **Settings → Developer & Integrations → AI Service Settings → Voice i
 AI transcription requires an updated client and server, with the database migrations applied. Native microphone/speech-recognition dependencies require a rebuilt mobile app, not just an over-the-air JavaScript update.
 
 ### Food Integration
+
 - **Auto-Logging**: Directly add recognized foods to diary with confirmation
 - **Nutrition Confirmation**: Review and edit AI suggestions before logging
 - **Meal Context**: Understand meal timing and context for accurate logging
@@ -57,7 +61,7 @@ The admin can see each tool's full definition in **Details**. Changed tools are 
 
 Each person turns on each server for their own chat in **AI service settings** on the web or **AI** settings in the app, under **Tools from outside servers**. Every server is off by default. Turning on a server lets chat use only the tools the admin allowed.
 
-Outside results are shown to the assistant only in the reply that read them. The raw result stays in the saved chat history, which you can delete. The assistant can call the tool again if it needs those details.
+Outside results are shown to the assistant only in the reply that read them. The raw result stays in the saved chat history, which you can delete. The assistant can read those details again, and should ask before repeating a call that changes data.
 
 In current apps, deletes in chat always ask for your approval through an **Allow / Deny** card. After reading an outside server, every change in that reply asks for approval. If a reply looks wrong or asks for something unexpected, tap **Deny** and delete that message.
 

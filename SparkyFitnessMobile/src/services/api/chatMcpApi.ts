@@ -1,4 +1,7 @@
-import { chatMcpServersResponseSchema } from '@workspace/shared';
+import {
+  chatMcpServersResponseSchema,
+  type UpdateChatMcpServersRequest,
+} from '@workspace/shared';
 import { apiFetch } from './apiClient';
 
 export async function fetchChatMcpServers() {
@@ -11,12 +14,12 @@ export async function fetchChatMcpServers() {
   );
 }
 
-export async function saveChatMcpServers(enabled_server_ids: string[]) {
+export async function saveChatMcpServers(choice: UpdateChatMcpServersRequest) {
   return chatMcpServersResponseSchema.parse(
     await apiFetch<unknown>({
       endpoint: '/api/chat/mcp-servers',
       method: 'PUT',
-      body: { enabled_server_ids },
+      body: choice,
       serviceName: 'AI Settings',
       operation: 'save outside tool servers',
     })
