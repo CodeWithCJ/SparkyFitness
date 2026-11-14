@@ -87,6 +87,18 @@
          moderate RPE and a superset rail on the same live-workout screen. */
       --color-pr: hsl(36, 92%, 44%);
 
+      /* Competition plate colours for the focus view's bar drawing, plus
+         the bar steel, sleeve and the label ink on light plates. */
+      --color-plate-red: hsl(358, 75%, 55%);
+      --color-plate-blue: hsl(219, 74%, 50%);
+      --color-plate-yellow: hsl(44, 85%, 55%);
+      --color-plate-green: hsl(145, 50%, 42%);
+      --color-plate-white: hsl(220, 14%, 88%);
+      --color-plate-grey: hsl(218, 8%, 58%);
+      --color-plate-steel: hsl(222, 8%, 60%);
+      --color-plate-sleeve: hsl(218, 8%, 42%);
+      --color-plate-label: hsl(220, 84%, 10%);
+
       /* Heart rate and active energy on a logged workout. Separate from
          --color-calories, which is the dietary-calorie ring on the dashboard:
          these two mark what a watch measured during the session, not what was
@@ -194,6 +206,18 @@
 
       --color-pr: hsl(42, 88%, 64%);
 
+      /* Competition plate colours for the focus view's bar drawing, plus
+         the bar steel, sleeve and the label ink on light plates. */
+      --color-plate-red: hsl(358, 75%, 59%);
+      --color-plate-blue: hsl(219, 74%, 53%);
+      --color-plate-yellow: hsl(44, 79%, 60%);
+      --color-plate-green: hsl(145, 50%, 47%);
+      --color-plate-white: hsl(0, 0%, 95%);
+      --color-plate-grey: hsl(218, 6%, 57%);
+      --color-plate-steel: hsl(222, 7%, 67%);
+      --color-plate-sleeve: hsl(218, 5%, 35%);
+      --color-plate-label: hsl(220, 84%, 10%);
+
       --color-heart-rate: hsl(358, 75%, 65%);
       --color-active-energy: hsl(24, 75%, 62%);
 
@@ -294,6 +318,18 @@
       --color-icon-danger: hsl(358, 80%, 65%);
 
       --color-pr: hsl(42, 88%, 64%);
+
+      /* Competition plate colours for the focus view's bar drawing, plus
+         the bar steel, sleeve and the label ink on light plates. */
+      --color-plate-red: hsl(358, 75%, 59%);
+      --color-plate-blue: hsl(219, 74%, 53%);
+      --color-plate-yellow: hsl(44, 79%, 60%);
+      --color-plate-green: hsl(145, 50%, 47%);
+      --color-plate-white: hsl(0, 0%, 95%);
+      --color-plate-grey: hsl(218, 6%, 57%);
+      --color-plate-steel: hsl(222, 7%, 67%);
+      --color-plate-sleeve: hsl(218, 5%, 35%);
+      --color-plate-label: hsl(220, 84%, 10%);
 
       --color-heart-rate: hsl(358, 75%, 65%);
       --color-active-energy: hsl(24, 75%, 62%);

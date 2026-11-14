@@ -284,8 +284,14 @@ jest.mock('../../src/components/PlateCalculatorSheet', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: (props: { targetWeight: number | null }) => (
-      <Text testID="plate-sheet">{`plates:${props.targetWeight}`}</Text>
+    default: (props: {
+      targetWeight: number | null;
+      onUseWeight?: (weight: number) => void;
+    }) => (
+      <Text
+        testID="plate-sheet"
+        onPress={() => props.onUseWeight?.(85)}
+      >{`plates:${props.targetWeight}`}</Text>
     ),
   };
 });
@@ -821,6 +827,23 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(queryByTestId('plate-sheet')).toBeNull();
     fireEvent.press(getByText('Calculator'));
     expect(getByTestId('plate-sheet')).toBeTruthy();
+  });
+
+  it('writes the weight chosen in the plate calculator to its set and closes it', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    session.exercises[0].exercise_snapshot.equipment = ['barbell'];
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText, queryByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-weight-102'));
+    fireEvent.press(getByText('Calculator'));
+    fireEvent.press(getByTestId('plate-sheet'));
+    expect(queryByTestId('plate-sheet')).toBeNull();
+    const set = useActiveWorkoutStore
+      .getState()
+      .session?.exercises[0].sets.find((s) => String(s.id) === '102');
+    expect(Number(set?.weight)).toBe(85);
   });
 
   it('has no plate calculator for other exercises or other fields', () => {

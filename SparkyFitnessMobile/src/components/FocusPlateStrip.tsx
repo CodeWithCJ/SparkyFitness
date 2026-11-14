@@ -4,8 +4,10 @@ import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PlateUnit } from '@workspace/shared';
 import Icon from './Icon';
-import { PlateSide, usePlateLoad } from './PlateBarGraphic';
+import PlateBarDrawing from './PlateBarDrawing';
+import { usePlateLoad } from './PlateBarGraphic';
 import { formatPlateWeight } from '../utils/plateFormat';
+import { plateUnitLabel } from '../utils/plateUnitLabel';
 
 interface Props {
   /** The set's weight in the person's weight unit, as shown. */
@@ -17,8 +19,8 @@ interface Props {
 }
 
 /**
- * The focus view's plate strip: the bar drawn with this side's plates, one
- * line naming them, and a button that opens the plate calculator. Only an
+ * The focus view's plate strip: the bar drawn with this side's plates (the
+ * calculator's drawing, small), one line naming them, and a button that opens the plate calculator. Only an
  * exactly loadable weight is drawn; anything else says so, never rounded.
  */
 function FocusPlateStrip({
@@ -31,7 +33,8 @@ function FocusPlateStrip({
   const textPrimary = String(useCSSVariable('--color-text-primary'));
   const load = usePlateLoad(targetWeight, weightUnit, equipment);
   if (!load) return null;
-  const { result, unit } = load;
+  const { result, unit: plateUnit } = load;
+  const unit = plateUnitLabel(t, plateUnit);
 
   let body: React.ReactNode;
   if (result.status === 'exact' && result.load) {
@@ -44,7 +47,11 @@ function FocusPlateStrip({
       .join(' + ');
     body = (
       <>
-        <PlateSide load={result.load} barWeight={result.barWeight} />
+        <PlateBarDrawing
+          load={result.load}
+          unit={plateUnit}
+          variant="compact"
+        />
         <Text className="min-w-0 flex-1 text-sm text-text-primary">
           {t('activeWorkout.focus.plates.perSide', {
             defaultValue: 'Per side:',

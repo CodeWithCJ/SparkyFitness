@@ -63,4 +63,25 @@ describe('FocusPlateStrip', () => {
     );
     expect(screen.queryByTestId('focus-plate-strip')).toBeNull();
   });
+
+  it('draws the shared bar drawing and writes lb for the lb scale', () => {
+    jest.mocked(usePlateInventory).mockReturnValue({
+      inventory: presetInventory('lbs'),
+      hasSaved: false,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof usePlateInventory>);
+    render(
+      <FocusPlateStrip
+        targetWeight={225}
+        weightUnit="lbs"
+        equipment={['barbell']}
+        onOpenCalculator={jest.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Per side: 45, 45 lb')).toBeTruthy();
+    expect(screen.getByText('45 + 45')).toBeTruthy();
+    expect(screen.getByText(/on a 45 lb bar/)).toBeTruthy();
+  });
 });

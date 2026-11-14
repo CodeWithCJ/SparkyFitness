@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   calculatePlateLoad,
+  nextLoadableWeight,
   plateCalcInputFor,
   suggestBar,
   type PlateBar,
@@ -11,9 +12,15 @@ import {
 } from '@workspace/shared';
 import { navigationRef } from './ActiveWorkoutBar';
 import FocusPage, { FocusPageButton } from './FocusPage';
+import Icon from './Icon';
+import PlateBarDrawing from './PlateBarDrawing';
+import PlateBarPicker from './PlateBarPicker';
 import { PlateSide } from './PlateBarGraphic';
 import { usePlateInventory } from '../hooks/usePlateInventory';
 import { barLabel, formatPlateWeight } from '../utils/plateFormat';
+import { plateColorKey, standardPlateWeights } from '../utils/plateColors';
+import { plateUnitLabel } from '../utils/plateUnitLabel';
+import { useCSSVariable } from 'uniwind';
 
 interface PlateCalculatorSheetProps {
   visible: boolean;
@@ -30,6 +37,11 @@ interface PlateCalculatorSheetProps {
   /** Names the set under the target weight on the page. */
   exerciseName?: string;
   setNumber?: number;
+  /**
+   * Writes the adjusted target (in the person's weight unit) to the set the
+   * page was opened for; the page then offers "Use … kg" when it differs.
+   */
+  onUseWeight?: (weight: number) => void;
 }
 
 /** A bottom sheet: the bar drawn with the plates for each side, and what is owned. */
@@ -42,20 +54,43 @@ export default function PlateCalculatorSheet({
   page = false,
   exerciseName,
   setNumber,
+  onUseWeight,
 }: PlateCalculatorSheetProps) {
   const { t } = useTranslation();
   const { inventory } = usePlateInventory(weightUnit);
+  // The page's − / + move the target to the next loadable weight.
+  const [adjustedWeight, setAdjustedWeight] = useState<number | null>(null);
+  const [adjustedFrom, setAdjustedFrom] = useState(targetWeight);
+  if (adjustedFrom !== targetWeight) {
+    setAdjustedFrom(targetWeight);
+    setAdjustedWeight(null);
+  }
+  const shownTarget = page ? (adjustedWeight ?? targetWeight) : targetWeight;
   const [chosenBarId, setChosenBarId] = useState<string | null>(null);
   const bar: PlateBar | null =
     inventory.bars.find((b) => b.id === chosenBarId) ??
     suggestBar(equipment, inventory.bars);
 
   const result = useMemo(() => {
-    if (!bar || targetWeight == null) return null;
+    if (!bar || shownTarget == null) return null;
     return calculatePlateLoad(
-      plateCalcInputFor(inventory, bar, targetWeight, weightUnit)
+      plateCalcInputFor(inventory, bar, shownTarget, weightUnit)
     );
-  }, [inventory, bar, targetWeight, weightUnit]);
+  }, [inventory, bar, shownTarget, weightUnit]);
+
+  const stepTo = (direction: 'up' | 'down') => {
+    if (!bar || shownTarget == null) return null;
+    return nextLoadableWeight(
+      plateCalcInputFor(inventory, bar, shownTarget, weightUnit),
+      direction
+    );
+  };
+  const lighter = stepTo('down');
+  const heavier = stepTo('up');
+  const changed =
+    shownTarget != null &&
+    targetWeight != null &&
+    Math.abs(shownTarget - targetWeight) > 1e-6;
 
   const unit = inventory.unit;
   // Exact when loadable; otherwise the nearest loadable weight, never rounded
@@ -65,6 +100,16 @@ export default function PlateCalculatorSheet({
       ? result.load
       : (result?.below ?? result?.above ?? null);
   const ownedPlates = inventory.plates.filter((plate) => plate.pairs > 0);
+  const unitLabel = plateUnitLabel(t, unit);
+  const [red, blue, yellow, green, white, grey] = useCSSVariable([
+    '--color-plate-red',
+    '--color-plate-blue',
+    '--color-plate-yellow',
+    '--color-plate-green',
+    '--color-plate-white',
+    '--color-plate-grey',
+  ]) as string[];
+  const plateColors = { red, blue, yellow, green, white, grey };
 
   const insets = useSafeAreaInsets();
   const handleManage = () => {
@@ -93,26 +138,78 @@ export default function PlateCalculatorSheet({
           defaultValue: 'Plate calculator',
         })}
         footer={
-          <FocusPageButton
-            variant="neutral"
-            label={t('plates.editInventory', {
-              defaultValue: 'Edit plate inventory',
-            })}
-            onPress={handleManage}
-          />
+          <View className="gap-2">
+            {onUseWeight != null && shownTarget != null && changed ? (
+              <FocusPageButton
+                testID="plate-use-weight"
+                variant="primary"
+                label={t('plates.useWeight', {
+                  defaultValue: 'Use {{weight}} {{unit}}',
+                  weight: formatPlateWeight(shownTarget),
+                  unit: unitLabel,
+                })}
+                onPress={() => onUseWeight(shownTarget)}
+              />
+            ) : (
+              <FocusPageButton
+                variant="primary"
+                label={t('common.done', { defaultValue: 'Done' })}
+                onPress={onClose}
+              />
+            )}
+            <FocusPageButton
+              variant="neutral"
+              label={t('plates.editInventory', {
+                defaultValue: 'Edit plate inventory',
+              })}
+              onPress={handleManage}
+            />
+          </View>
         }
       >
         <View>
           <Text className={eyebrow}>
-            {t('plates.targetWeightLabel', { defaultValue: 'Target weight' })}
+            {[
+              t('plates.targetWeightLabel', { defaultValue: 'Target weight' }),
+              exerciseName,
+              exerciseName != null && setNumber != null
+                ? t('plates.setNumber', {
+                    defaultValue: 'set {{number}}',
+                    number: setNumber,
+                  })
+                : null,
+            ]
+              .filter((part) => part != null)
+              .join(' · ')}
           </Text>
-          {targetWeight != null ? (
-            <Text
-              className="text-[48px] font-extrabold leading-[56px] text-text-primary"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {`${formatPlateWeight(targetWeight)} ${weightUnit}`}
-            </Text>
+          {shownTarget != null ? (
+            <View className="flex-row items-center justify-between">
+              <Text
+                testID="plate-target-weight"
+                className="text-[44px] font-extrabold leading-[50px] text-text-primary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {`${formatPlateWeight(shownTarget)} ${plateUnitLabel(t, weightUnit)}`}
+              </Text>
+              <View className="flex-row gap-2.5">
+                <StepButton
+                  label={t('plates.lighter', {
+                    defaultValue: 'Previous weight',
+                  })}
+                  icon="remove"
+                  disabled={lighter == null}
+                  onPress={() => lighter != null && setAdjustedWeight(lighter)}
+                />
+                <StepButton
+                  label={t('plates.heavier', {
+                    defaultValue: 'Next weight',
+                  })}
+                  icon="add"
+                  disabled={heavier == null}
+                  onPress={() => heavier != null && setAdjustedWeight(heavier)}
+                />
+              </View>
+            </View>
           ) : (
             <Text className="text-[17px] text-text-secondary">
               {t('plates.enterWeight', {
@@ -120,65 +217,40 @@ export default function PlateCalculatorSheet({
               })}
             </Text>
           )}
-          {exerciseName != null && (
-            <Text className="text-[15px] text-text-secondary">
-              {setNumber != null
-                ? t('plates.setOf', {
-                    defaultValue: '{{name}} · set {{number}}',
-                    name: exerciseName,
-                    number: setNumber,
-                  })
-                : exerciseName}
+          {shownTarget != null && (
+            <Text className="mt-0.5 text-[13px] text-text-secondary">
+              {t('plates.stepHint', {
+                defaultValue:
+                  '− / + step to the next weight your plates can make',
+              })}
             </Text>
           )}
         </View>
 
-        {inventory.bars.length > 1 && (
-          <View className="flex-row flex-wrap gap-1.5 rounded-3xl bg-surface p-1.5">
-            {inventory.bars.map((b) => {
-              const selected = b.id === bar?.id;
-              return (
-                <Pressable
-                  key={b.id}
-                  onPress={() => setChosenBarId(b.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  className={`h-11 min-w-[45%] flex-1 items-center justify-center rounded-full ${selected ? 'bg-accent-primary' : ''} active:opacity-70`}
-                >
-                  <Text
-                    numberOfLines={1}
-                    className={`text-[16px] font-bold ${selected ? 'text-white' : 'text-text-secondary'}`}
-                  >
-                    {`${barLabel(t, b)} ${formatPlateWeight(b.weight)} ${unit}`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        {bar && (
+          <PlateBarPicker
+            bars={inventory.bars}
+            selectedId={bar.id}
+            suggestedId={suggestBar(equipment, inventory.bars)?.id ?? null}
+            unit={unit}
+            onSelect={setChosenBarId}
+          />
         )}
+        <Text className="-mt-2 text-[13px] text-text-secondary">
+          {t('plates.barsHint', {
+            defaultValue: 'Bars come from your equipment list.',
+          })}
+        </Text>
 
         {shown && bar && (
-          <View
-            className="items-center rounded-3xl bg-surface px-4 py-6"
-            accessible
-            accessibilityLabel={t('plates.graphicLabel', {
-              defaultValue:
-                '{{perSide}} {{unit}} per side on a {{bar}} {{unit}} bar',
-              perSide: formatPlateWeight(shown.perSideWeight),
-              bar: formatPlateWeight(bar.weight),
-              unit,
-            })}
-          >
-            <View
-              className="items-center justify-center"
-              style={{ minHeight: 96 }}
-            >
-              <View style={{ transform: [{ scale: 1.9 }] }}>
-                <PlateSide load={shown} barWeight={bar.weight} />
-              </View>
-            </View>
+          <View className="rounded-3xl bg-surface px-2 pb-3 pt-3.5">
+            <PlateBarDrawing
+              testID="plate-calculator-drawing"
+              load={shown}
+              unit={unit}
+            />
             {perSide != null && (
-              <Text className="mt-4 text-[20px] font-extrabold text-text-primary">
+              <Text className="mt-1 text-center text-[19px] font-bold text-text-primary">
                 {t('plates.perSideSummary', {
                   defaultValue: '{{plates}} per side',
                   plates: perSide === '' ? '0' : perSide,
@@ -186,17 +258,46 @@ export default function PlateCalculatorSheet({
               </Text>
             )}
             {result?.status === 'exact' && result.load && (
-              <Text className="text-center text-[14px] text-text-secondary">
-                {t('plates.pageBreakdown', {
+              <Text className="text-center text-[15px] text-text-secondary">
+                {`${t('plates.pageBreakdown', {
                   defaultValue:
-                    'collars {{collars}} {{unit}} · bar {{bar}} {{unit}} · {{plates}} {{unit}} of plates',
-                  collars: formatPlateWeight(result.collarsWeight),
+                    'bar {{bar}} {{unit}} · {{plates}} {{unit}} of plates',
                   bar: formatPlateWeight(bar.weight),
                   plates: formatPlateWeight(result.load.perSideWeight * 2),
-                  unit,
-                })}
+                  unit: unitLabel,
+                })}${
+                  result.collarsWeight > 0
+                    ? ` · ${t('plates.collarsWeight', {
+                        defaultValue: 'collars {{weight}} {{unit}}',
+                        weight: formatPlateWeight(result.collarsWeight),
+                        unit: unitLabel,
+                      })}`
+                    : ''
+                }`}
               </Text>
             )}
+          </View>
+        )}
+
+        {result?.status === 'exact' && (lighter != null || heavier != null) && (
+          <View className="gap-1.5 rounded-3xl bg-surface p-4">
+            <Text className={eyebrow}>
+              {t('plates.nearbyWeights', {
+                defaultValue: 'Nearby weights you can load',
+              })}
+            </Text>
+            <Text className="text-[15px] text-text-secondary">
+              {[
+                lighter != null
+                  ? `− ${formatPlateWeight(lighter)} ${unitLabel}`
+                  : null,
+                heavier != null
+                  ? `+ ${formatPlateWeight(heavier)} ${unitLabel}`
+                  : null,
+              ]
+                .filter((part) => part != null)
+                .join(' · ')}
+            </Text>
           </View>
         )}
 
@@ -212,11 +313,11 @@ export default function PlateCalculatorSheet({
                 ? `${t('plates.nearestBelow', {
                     defaultValue: 'Nearest below: {{weight}} {{unit}}',
                     weight: formatPlateWeight(result.below.totalWeight),
-                    unit,
+                    unit: unitLabel,
                   })} · ${t('plates.shortBy', {
                     defaultValue: '{{diff}} {{unit}} short of the target',
                     diff: formatPlateWeight(result.shortBy ?? 0),
-                    unit,
+                    unit: unitLabel,
                   })}`
                 : t('plates.nothingBelow', {
                     defaultValue:
@@ -228,11 +329,11 @@ export default function PlateCalculatorSheet({
                 ? `${t('plates.nearestAbove', {
                     defaultValue: 'Nearest above: {{weight}} {{unit}}',
                     weight: formatPlateWeight(result.above.totalWeight),
-                    unit,
+                    unit: unitLabel,
                   })} · ${t('plates.overBy', {
                     defaultValue: '{{diff}} {{unit}} over the target',
                     diff: formatPlateWeight(result.overBy ?? 0),
-                    unit,
+                    unit: unitLabel,
                   })}`
                 : t('plates.nothingAbove', {
                     defaultValue:
@@ -256,8 +357,26 @@ export default function PlateCalculatorSheet({
             {t('plates.platesYouOwn', { defaultValue: 'Plates you own' })}
           </Text>
           <Text className="text-[18px] font-extrabold text-text-primary">
-            {`${ownedPlates.map((plate) => formatPlateWeight(plate.weight)).join(' · ')} ${unit}`}
+            {`${ownedPlates.map((plate) => formatPlateWeight(plate.weight)).join(' · ')} ${unitLabel}`}
           </Text>
+          <View className="mt-1 flex-row flex-wrap items-center gap-x-2.5 gap-y-1">
+            {standardPlateWeights(unit).map((weight) => (
+              <View key={weight} className="flex-row items-center gap-1">
+                <View
+                  className="h-2.5 w-2.5 rounded-[3px]"
+                  style={{
+                    backgroundColor: plateColors[plateColorKey(weight, unit)],
+                  }}
+                />
+                <Text className="text-[13px] text-text-secondary">
+                  {formatPlateWeight(weight)}
+                </Text>
+              </View>
+            ))}
+            <Text className="text-[13px] text-text-secondary">
+              {t('plates.othersGrey', { defaultValue: 'others grey' })}
+            </Text>
+          </View>
         </View>
       </FocusPage>
     );
@@ -494,5 +613,31 @@ export default function PlateCalculatorSheet({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+function StepButton({
+  label,
+  icon,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  icon: 'add' | 'remove';
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const textPrimary = String(useCSSVariable('--color-text-primary'));
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      className={`h-11 w-11 items-center justify-center rounded-full bg-control active:opacity-70 ${disabled ? 'opacity-40' : ''}`}
+    >
+      <Icon name={icon} size={22} color={textPrimary} />
+    </Pressable>
   );
 }
