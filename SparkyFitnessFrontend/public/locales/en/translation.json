@@ -4119,6 +4119,8 @@
     "copyAllSuccess": "Entire day copied successfully.",
     "copyAllToDate": "Copy entire day to date",
     "copyError": "Failed to copy entries.",
+    "copyFoodError": "Failed to copy food.",
+    "copyFoodSuccess": "Food copied.",
     "copyFamilyDesc": "Symmetrically copy diary entries between your diary and family member diaries.",
     "copyFamilyFromError": "Failed to copy entries from family.",
     "copyFamilyFromSuccess": "Entries copied from family successfully.",
@@ -4430,6 +4432,7 @@
   },
   "mealCard": {
     "addFoodToMeal": "Add Food to {{mealName}}",
+    "copyFood": "Copy food",
     "searchFoodsForMeal": "Search for foods to add to your {{mealName}}.",
     "addFoodTo": "Add Food to",
     "searchFoodsToYour": "Search for foods to add to your",
@@ -7312,13 +7315,21 @@
   "copied": "Copied!",
   "copyFoodEntryDialog": {
     "copyButton": "Copy",
+    "copyTo": "Copy to",
     "description": "Select the target date and meal type to copy the food entries.",
     "descriptionAll": "Select the target date to copy all food entries from this day.",
+    "descriptionFood": "Log this food again now, or pick a date and meal type.",
     "mealType": "Meal Type",
     "selectMealTypePlaceholder": "Select meal type",
     "targetDate": "Target Date",
+    "quick": {
+      "now": "Now",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
+    },
     "title": "Copy Food Entries",
-    "titleAll": "Copy Entire Day"
+    "titleAll": "Copy Entire Day",
+    "titleFood": "Copy {{food}}"
   },
   "customNutrients": {
     "failedToAddNutrient": "Failed to add nutrient.",

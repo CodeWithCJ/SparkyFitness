@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   loadFoodEntries,
   createFoodEntry,
+  createFoodEntryCopy,
   updateFoodEntry,
   removeFoodEntry,
   copyFoodEntries,
@@ -144,6 +145,20 @@ export const useDeleteFoodEntryMutation = () => {
     meta: {
       successMessage: t('diary.deleteSuccess', 'Entry deleted.'),
       errorMessage: t('diary.deleteError', 'Failed to delete entry.'),
+    },
+  });
+};
+
+export const useCopySingleFoodEntryMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: createFoodEntryCopy,
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t('diary.copyFoodSuccess', 'Food copied.'),
+      errorMessage: t('diary.copyFoodError', 'Failed to copy food.'),
     },
   });
 };
