@@ -214,9 +214,9 @@ jobs:
             full && shoot workout-stopwatch stopwatch workout
             full && shoot workout-interval interval workout
             full && shoot goals none goals
-            full && shoot goals-large none goals "" newworkout
+            full && shoot goals-large none goals "" large,newworkout
             full && shoot water none water
-            full && shoot water-large none water "" newworkout
+            full && shoot water-large none water "" large,newworkout
             full && shoot medications none medications
             full && shoot medications-dose none medications dose
             full && shoot fasting none fasting
@@ -230,7 +230,7 @@ jobs:
             shoot workout-upnext-large active workout upnext newworkout,upnext
             full && shoot workout-exercise-options-large active workout exerciseoptions newworkout
             shoot workout-rpe-large active workout rpe newworkout
-            full && shoot fasting-running-large none fasting "" newworkout,fast
+            full && shoot fasting-running-large none fasting "" large,newworkout,fast
 
             # A name too long to fit: the set screen and effort picker
             # title should scroll rather than be cut off.
@@ -258,8 +258,8 @@ jobs:
             shoot workout-more-workout active workout actions newworkout
 
             # The workout picker and medications follow the text size too.
-            shoot workout-idle-large none workout "" newworkout
-            shoot medications-large none medications "" newworkout
+            shoot workout-idle-large none workout "" large,newworkout
+            shoot medications-large none medications "" large,newworkout
             shoot medications-dose-large none medications dose newworkout
           done <<< "$DEVICES"
 
