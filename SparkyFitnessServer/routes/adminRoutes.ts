@@ -1,5 +1,9 @@
 import express from 'express';
-import { aiServiceSettingsMutatorSchema } from '@workspace/shared';
+import {
+  aiServiceSettingsMutatorSchema,
+  MCP_SERVER_PROVIDER_TYPE,
+  mcpServerToolsRequestSchema,
+} from '@workspace/shared';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import authService from '../services/authService.js';
 import userRepository from '../models/userRepository.js';
@@ -20,6 +24,10 @@ import { auth } from '../auth.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import { evaluateOpenFoodFactsProviderCredentials } from '../services/openFoodFactsProviderCredentials.js';
 import externalProviderService from '../services/externalProviderService.js';
+import {
+  listToolsForAdmin,
+  McpServerListError,
+} from '../ai/tools/mcpServerTools.js';
 const router = express.Router();
 // Middleware to ensure only admins can access these routes
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
@@ -916,6 +924,27 @@ router.get('/external-data-providers/global', async (req, res, next) => {
  *                 type: string
  *               is_active:
  *                 type: boolean
+ *               provider_options:
+ *                 type: object
+ *                 description: MCP tool servers only.
+ *                 required: [allowed_tools, send_user_id]
+ *                 properties:
+ *                   allowed_tools:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       additionalProperties: false
+ *                       required: [name, fingerprint]
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           minLength: 1
+ *                           maxLength: 128
+ *                         fingerprint:
+ *                           type: string
+ *                           pattern: '^[0-9a-f]{64}$'
+ *                   send_user_id:
+ *                     type: boolean
  *     responses:
  *       201:
  *         description: Global external data provider created
@@ -944,6 +973,7 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
+      provider_options,
     } = bodyResult.data;
 
     if (!(await isValidProviderType(provider_type))) {
@@ -951,6 +981,13 @@ router.post('/external-data-providers/global', async (req, res, next) => {
         .status(400)
         .json({ error: `Invalid provider_type: '${provider_type}'.` });
     }
+    const resolvedProviderOptions =
+      await externalProviderService.resolveGlobalProviderOptions({
+        authenticatedUserId: req.authenticatedUserId,
+        providerType: provider_type,
+        baseUrl: base_url,
+        providerOptions: provider_options,
+      });
     const providerData = {
       provider_name,
       provider_type,
@@ -959,6 +996,7 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       base_url: base_url || null,
       is_active: is_active || false,
       user_id: req.authenticatedUserId,
+      provider_options: resolvedProviderOptions,
     };
     const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
       undefined,
@@ -984,6 +1022,116 @@ router.post('/external-data-providers/global', async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @swagger
+ * /admin/external-data-providers/mcp-server/tools:
+ *   post:
+ *     summary: List the tools an MCP tool server offers
+ *     description: Asks the server for its tools, so an admin can choose which ones chat may use. Without app_key, the stored token of provider_id is used only for its saved URL.
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [base_url]
+ *             properties:
+ *               base_url:
+ *                 type: string
+ *               app_key:
+ *                 type: string
+ *               provider_id:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: The server's tools. Each includes a fingerprint to echo on save and a stable problem code, or null.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tools:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [name, description, fingerprint, problem]
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       fingerprint:
+ *                         type: string
+ *                         pattern: '^[0-9a-f]{64}$'
+ *                       problem:
+ *                         type: string
+ *                         nullable: true
+ *       400:
+ *         description: Invalid request body, provider_id is not a public MCP tool server, or a different URL needs a token.
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       502:
+ *         description: The server URL was refused, or the server could not be reached or did not list its tools.
+ */
+router.post(
+  '/external-data-providers/mcp-server/tools',
+  async (req, res, next) => {
+    try {
+      const bodyResult = mcpServerToolsRequestSchema.safeParse(req.body);
+      if (!bodyResult.success) {
+        return res.status(400).json({
+          error: 'Invalid request body',
+          details: bodyResult.error.flatten().fieldErrors,
+        });
+      }
+      const { base_url, app_key, provider_id } = bodyResult.data;
+      let token = app_key || null;
+      if (!token && provider_id) {
+        const stored =
+          await externalProviderRepository.getExternalDataProviderById(
+            provider_id
+          );
+        if (
+          !stored ||
+          stored.provider_type !== MCP_SERVER_PROVIDER_TYPE ||
+          !stored.is_public
+        ) {
+          return res
+            .status(400)
+            .json({ error: 'That provider is not an MCP tool server.' });
+        }
+        if (stored.has_app_key && base_url !== stored.base_url) {
+          return res.status(400).json({
+            error: 'Enter the token to load tools from a different URL.',
+          });
+        }
+        token = stored.app_key;
+      }
+      const tools = await listToolsForAdmin({
+        id: provider_id ?? 'new',
+        user_id: req.authenticatedUserId,
+        provider_name: 'new',
+        base_url,
+        app_key: token,
+        provider_options: null,
+        updated_at: new Date(),
+      });
+      return res.status(200).json({ tools });
+    } catch (error) {
+      if (error instanceof McpServerListError) {
+        return res.status(502).json({ error: error.message, code: error.code });
+      }
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger
@@ -1019,6 +1167,27 @@ router.post('/external-data-providers/global', async (req, res, next) => {
  *                 type: string
  *               is_active:
  *                 type: boolean
+ *               provider_options:
+ *                 type: object
+ *                 description: MCP tool servers only.
+ *                 required: [allowed_tools, send_user_id]
+ *                 properties:
+ *                   allowed_tools:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       additionalProperties: false
+ *                       required: [name, fingerprint]
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           minLength: 1
+ *                           maxLength: 128
+ *                         fingerprint:
+ *                           type: string
+ *                           pattern: '^[0-9a-f]{64}$'
+ *                   send_user_id:
+ *                     type: boolean
  *     responses:
  *       200:
  *         description: Global external data provider updated
@@ -1050,6 +1219,7 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
+      provider_options,
     } = bodyResult.data;
 
     // Only validate provider_type when the caller is changing it.
@@ -1070,6 +1240,18 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         .json({ error: 'Global external data provider not found.' });
     }
 
+    const resolvedProviderOptions =
+      await externalProviderService.resolveGlobalProviderOptions({
+        authenticatedUserId: req.authenticatedUserId,
+        providerType: provider_type,
+        existingProviderType: existingProvider.provider_type,
+        existingBaseUrl: existingProvider.base_url,
+        existingHasAppKey: existingProvider.has_app_key,
+        existingProviderOptions: existingProvider.provider_options,
+        appKey: app_key,
+        baseUrl: base_url,
+        providerOptions: provider_options,
+      });
     const updateData = {
       provider_name,
       provider_type,
@@ -1077,6 +1259,7 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       app_key: app_key !== undefined ? app_key : undefined,
       base_url,
       is_active,
+      provider_options: resolvedProviderOptions,
     };
     const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
       existingProvider,

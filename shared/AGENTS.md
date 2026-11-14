@@ -44,6 +44,10 @@ _Last updated: 2026-11-13_
 
 - Recipe ingredient imports: `src/schemas/api/RecipeImport.api.zod.ts` defines camelCase preview/save/suggestion/source and nutrition-confirmation contracts. `RecipeImports.zod.ts` and `RecipeFoodMappings.zod.ts` mirror owner-only source provenance and confirmed mappings. `utils/recipeImport.ts` shares numeric/unknown nutrition handling, unconfirmed saved choices, amount-like note detection, and the complete supported write/skip comparison. Sync previews include optional coverage and saved-meal provenance; saved-mapping management contracts remain owner-scoped. Both clients consume these; external food selections must use existing detail/import and supply accessible local IDs before save.
 
+- Chat approval capability: `src/schemas/api/Chat.api.zod.ts` defines `approvals` (default false). Only clients that render and respond to approval cards should send true; clients resend the saved assistant message ID and `approval-responded` tool parts. The same module defines outside-source metadata, saved-row history metadata and `chatApprovalResponsesReady`, which waits for every pending approval before resending.
+
+- Outside tool opt-in contracts: `src/schemas/api/McpServer.api.zod.ts` defines the safe per-person server list and whole-list save request; `UserPreferences.zod.ts` mirrors `chat_mcp_server_ids`.
+
 ## Naming Convention
 
 - `X.api.zod.ts` = API request/response schema
@@ -51,6 +55,8 @@ _Last updated: 2026-11-13_
 - Export everything from `src/index.ts`; consuming packages import both types and values via `@workspace/shared`
 
 ## Cross-Package Contract Rules
+
+- Chat display labels, outside-result cleanup, argument previews and approval result states are shared in `src/utils/chatTools.ts`. Server-owned tool titles and destructive approval summaries travel in `metadata.custom.outsideSource`; `SparkyFitnessServer/ai/chatApprovalSummary.ts` from the repo root reads targets under the user's context before approval is requested.
 
 - Changes to `src/schemas/api/` usually affect server routes and both frontend/mobile API clients.
 - Changes to `src/schemas/database/` require matching server migrations and RLS policies when changing the stored schema. CI regenerates the schema backup after merge; never hand-edit or regenerate it locally. Mirroring existing columns missing from a Zod schema does not require another migration.

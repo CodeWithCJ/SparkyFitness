@@ -1,3 +1,4 @@
+import { HttpApiError } from '@/api/api';
 import { exerciseSearchKeys } from '@/api/keys/exercises';
 import { barcodeKeys } from '@/api/keys/barcodes';
 import {
@@ -16,6 +17,7 @@ import {
   createGlobalExternalProvider,
   updateGlobalExternalProvider,
   deleteGlobalExternalProvider,
+  listMcpServerTools,
 } from '@/api/Settings/externalProviderService';
 import type { CreateGlobalProviderPayload } from '@/api/Settings/externalProviderService';
 export type { CreateGlobalProviderPayload };
@@ -188,6 +190,11 @@ export const useCreateGlobalProvider = () => {
   });
 };
 
+// Asks an MCP tool server for its tools while an admin fills in the form.
+// Nothing is saved, so nothing is invalidated.
+export const useListMcpServerToolsMutation = () =>
+  useMutation({ mutationFn: listMcpServerTools });
+
 export const useUpdateGlobalProvider = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -233,3 +240,10 @@ export const useDeleteGlobalProvider = () => {
     },
   });
 };
+
+export function mcpServerToolsErrorCode(error: unknown): string {
+  return error instanceof HttpApiError &&
+    ['auth', 'timeout', 'unreachable', 'policy'].includes(error.code ?? '')
+    ? error.code!
+    : 'other';
+}

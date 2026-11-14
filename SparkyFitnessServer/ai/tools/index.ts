@@ -8,6 +8,7 @@ import {
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import { withFixedActor } from '../../db/poolManager.js';
+import { OWN_ACCOUNT_ONLY_TOOLS } from './ownAccountOnlyTools.js';
 import { ERRORS, isPermissionDenied } from './errors.js';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
@@ -90,6 +91,12 @@ export interface ToolBuildContext {
   serviceConfigId?: string | null;
   /** Provider-executed web research, offered within the food category only. */
   foodResearchTool?: Tool;
+  /**
+   * This turn's tools from the outside MCP servers an admin added (see
+   * mcpServerTools.ts). Only buildChatToolSurface reads them: they belong to
+   * no category, so a hand-picked selection leaves them out.
+   */
+  outsideTools?: ToolMap;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -243,19 +250,6 @@ function stripNullValues(value: unknown): unknown {
   return value;
 }
 
-// Tools for things that only work in your own account: run programs and
-// fitness tests (their routes refuse a switched user), the Compare report
-// (likewise), Sparky's saved food preferences and tasks, which belong to the
-// signed-in person, and the profile and settings, which the web hides after a
-// switch. In a family member's account they say so, instead of failing on
-// row-level security or reporting the data as empty.
-const OWN_ACCOUNT_ONLY_TOOLS = new Set([
-  'sparky_manage_profile',
-  'sparky_manage_run_program',
-  'sparky_compare_metrics',
-  'sparky_food_assistant_state',
-]);
-
 // Chat can work in a family member's account, so every tool runs with the
 // signed-in person fixed as the actor. Each tool is replaced rather than edited
 // so a tool object shared between builds never keeps another person's actor.
@@ -272,10 +266,7 @@ function fixChatToolActor(
       ...t,
       execute:
         inFamilyAccount && OWN_ACCOUNT_ONLY_TOOLS.has(name)
-          ? async () =>
-              ERRORS.FORBIDDEN(
-                "This only works in the user's own account, not in a family member's."
-              )
+          ? async () => ERRORS.OWN_ACCOUNT_ONLY()
           : async (...args: Parameters<typeof execute>) => {
               try {
                 return await withFixedActor(actorUserId, () =>
@@ -462,6 +453,10 @@ export function buildChatToolSurface(
     tz,
     ctx
   );
+  // After Sparky's own tools and before the two below, which keeps the cache
+  // breakpoint on the escalation tool. Their names all start with mcp_, which
+  // no built-in tool uses, so none can replace one.
+  Object.assign(tools, ctx?.outsideTools);
   // The quick-reply tool is composed for every surface but only made active for
   // the 'full' profile (see activeToolNames in chatService.ts); it belongs to no
   // category, so it is not in toolNamesByCategory.

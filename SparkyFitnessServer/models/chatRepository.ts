@@ -465,6 +465,10 @@ async function updateChatHistoryEntry(
         response = COALESCE($6, response),
         parts = COALESCE($7, parts)
       WHERE id = $8
+        -- Approval state is the server's record of what the person allowed,
+        -- so an edit may neither change a row that holds it nor write it.
+        AND NOT (COALESCE(parts, '[]'::jsonb) @? '$[*].approval')
+        AND NOT (COALESCE($7::jsonb, '[]'::jsonb) @? '$[*].approval')
       RETURNING *`,
       [
         updateData.content,
@@ -482,12 +486,41 @@ async function updateChatHistoryEntry(
     client.release();
   }
 }
+// The server's own save of a reply continued after an approval. The public
+// edit above refuses rows holding approval state, so this one is not exposed to
+// any route.
+async function saveApprovalContinuation(
+  id: string,
+  userId: string,
+  update: { content: string; parts: unknown[]; metadata?: unknown }
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `UPDATE sparky_chat_history SET
+        content = $1,
+        parts = $2,
+        metadata = COALESCE($3, metadata)
+      WHERE id = $4
+      RETURNING id`,
+      [
+        update.content,
+        JSON.stringify(update.parts),
+        metadataParam(update.metadata),
+        id,
+      ]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
 async function deleteChatHistoryEntry(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM sparky_chat_history WHERE id = $1 RETURNING id',
-      [id]
+      'DELETE FROM sparky_chat_history WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
     );
     return result.rowCount > 0;
   } finally {
@@ -524,17 +557,61 @@ async function saveChatHistory(
   const client = await getClient(historyData.user_id); // User-specific operation
   try {
     await client.query(
-      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, created_at)
-       VALUES ($1, $2, $3, $4, $5, now())`,
+      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, id, created_at)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::uuid, gen_random_uuid()), now())`,
       [
         historyData.user_id,
         historyData.content,
         historyData.messageType,
         metadataParam(historyData.metadata),
         historyData.parts ? JSON.stringify(historyData.parts) : null,
+        historyData.id ?? null,
       ]
     );
     return true;
+  } finally {
+    client.release();
+  }
+}
+async function cancelChatApprovals(
+  userId: string,
+  accountUserId: string,
+  conversationId?: string
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE sparky_chat_history SET parts = (
+         SELECT jsonb_agg(CASE WHEN part->>'state' = 'approval-requested'
+           THEN part || jsonb_build_object('state', 'output-denied', 'approval',
+             (part->'approval') || '{"approved":false,"reason":"A new user message cancelled this call."}'::jsonb)
+           ELSE part END ORDER BY ordinal)
+         FROM jsonb_array_elements(parts) WITH ORDINALITY AS item(part, ordinal)
+       ) WHERE user_id = $1 AND ${IN_ACCOUNT}
+         AND metadata->>'chat_conversation_id' IS NOT DISTINCT FROM $3::text
+         AND parts @> '[{"state":"approval-requested"}]'::jsonb`,
+      [userId, accountUserId, conversationId ?? null]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+async function claimChatApproval(
+  id: string,
+  userId: string,
+  expectedParts: unknown[],
+  parts: unknown[]
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE sparky_chat_history SET parts = $1::jsonb
+       WHERE id = $2 AND user_id = $3 AND message_type = 'assistant' AND parts = $4::jsonb
+       RETURNING id`,
+      [JSON.stringify(parts), id, userId, JSON.stringify(expectedParts)]
+    );
+    return result.rowCount === 1;
   } finally {
     client.release();
   }
@@ -673,6 +750,8 @@ export { getGlobalAiServiceSettings };
 export { getGlobalAiServiceSettingById };
 export { deleteGlobalAiServiceSetting };
 export default {
+  cancelChatApprovals,
+  claimChatApproval,
   upsertAiServiceSetting,
   getAiServiceSettingById,
   getAiServiceSettingForBackend,
@@ -686,6 +765,7 @@ export default {
   getChatHistoryEntryById,
   getChatHistoryEntryOwnerId,
   updateChatHistoryEntry,
+  saveApprovalContinuation,
   deleteChatHistoryEntry,
   clearAllChatHistory,
   saveChatHistory,

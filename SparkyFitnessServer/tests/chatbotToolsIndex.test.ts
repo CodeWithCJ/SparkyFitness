@@ -1,6 +1,8 @@
+import { isDestructiveToolCall } from '../ai/chatToolApproval.js';
+import { asSchema } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
-import { zodSchema } from 'ai';
+import { jsonSchema, tool, zodSchema } from 'ai';
 import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
@@ -554,6 +556,65 @@ describe('buildChatToolSurface', () => {
       first
     );
   });
+
+  describe('tools from outside MCP servers', () => {
+    const outsideTools = {
+      mcp_notes__search: tool({
+        description: 'Searches notes.',
+        inputSchema: jsonSchema({ type: 'object', properties: {} }),
+        execute: async () => 'notes found',
+      }),
+    };
+
+    it('composes them after Sparky’s own tools and before the quick-reply and escalation tools', () => {
+      const { tools, toolNamesByCategory } = buildChatToolSurface(
+        'outside-user',
+        'UTC',
+        { actorUserId: 'outside-user', outsideTools }
+      );
+
+      expect(Object.keys(tools).slice(-3)).toEqual([
+        'mcp_notes__search',
+        ASK_USER_TOOL_NAME,
+        ENABLE_TOOLS_TOOL_NAME,
+      ]);
+      // They belong to no category, so widening never adds or drops them.
+      expect(Object.values(toolNamesByCategory).flat()).not.toContain(
+        'mcp_notes__search'
+      );
+      expect(tools.mcp_notes__search.strict).toBe(false);
+      expect(
+        tools.mcp_notes__search.providerOptions?.anthropic?.cacheControl
+      ).toBeUndefined();
+      expect(
+        tools[ENABLE_TOOLS_TOOL_NAME].providerOptions?.anthropic?.cacheControl
+      ).toEqual({ type: 'ephemeral' });
+    });
+
+    it('leaves them out of a hand-picked selection', () => {
+      const tools = buildChatbotTools(
+        'outside-user',
+        'UTC',
+        'full',
+        true,
+        ['food'],
+        true,
+        { actorUserId: 'outside-user', outsideTools }
+      );
+
+      expect(Object.keys(tools)).not.toContain('mcp_notes__search');
+    });
+
+    // Outside tools are named mcp_<server>__<tool>, so a built-in tool with
+    // that prefix could be replaced by one.
+    it('gives no built-in tool a name starting with mcp_', () => {
+      const { tools } = buildChatToolSurface('surface-user', 'UTC');
+
+      expect(
+        Object.keys(tools).filter((name) => name.startsWith('mcp_'))
+      ).toEqual([]);
+    });
+  });
 });
 
 it('preserves lazy provider schemas while normalizing application Zod schemas', () => {
@@ -590,4 +651,47 @@ it('publishes UUID fields without the Zod UUID regex', async () => {
     tools.sparky_food_assistant_state.inputSchema as z.ZodType
   ).validate!({ action: 'get_task', task_id: 'not-a-uuid' });
   expect(parsed.success).toBe(false);
+});
+
+describe('destructive chat tool coverage', () => {
+  it('cards every destructive enum/literal action and delete mode in the published tool schemas', async () => {
+    const tools = buildChatbotTools('destructive-audit', 'UTC', 'full', false);
+    let checked = 0;
+    for (const [name, definition] of Object.entries(tools)) {
+      const schema = await asSchema(definition.inputSchema).jsonSchema;
+      const visit = (node: unknown, field?: string): void => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) {
+          node.forEach((value) => visit(value, field));
+          return;
+        }
+        const record = node as Record<string, unknown>;
+        const values = Array.isArray(record.enum)
+          ? record.enum
+          : [record.const];
+        for (const value of values) {
+          if (
+            typeof value === 'string' &&
+            ((field === 'action' &&
+              /^(delete|remove|clear|reset)/.test(value)) ||
+              (field === 'mode' && /^delete/.test(value)))
+          ) {
+            expect(
+              isDestructiveToolCall(name, { [field!]: value }),
+              `${name}: ${field}=${value}`
+            ).toBe(true);
+            checked++;
+          }
+        }
+        for (const [key, value] of Object.entries(record)) {
+          if (key === 'properties' && value && typeof value === 'object') {
+            for (const [property, child] of Object.entries(value))
+              visit(child, property);
+          } else visit(value, field);
+        }
+      };
+      visit(schema);
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
 });

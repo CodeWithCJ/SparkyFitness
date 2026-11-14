@@ -13,6 +13,8 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { McpServerFields } from './McpServerFields';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 import { WeatherProviderFields } from './WeatherProviderFields';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
@@ -159,6 +161,23 @@ export const ProviderSpecificFields = ({
           }
           onAppKeyChange={(value) =>
             setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {provider.provider_type === MCP_SERVER_PROVIDER_TYPE && (
+        <McpServerFields
+          idPrefix="new"
+          baseUrl={provider.base_url}
+          appKey={provider.app_key}
+          options={provider.provider_options}
+          onBaseUrlChange={(value) =>
+            setProvider((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+          onOptionsChange={(options) =>
+            setProvider((prev) => ({ ...prev, provider_options: options }))
           }
         />
       )}

@@ -164,13 +164,13 @@ jest.mock('@assistant-ui/react-native', () => {
     },
     useAuiState: <T,>(
       selector: (state: {
-        thread: { isRunning: boolean };
+        thread: { isRunning: boolean; messages: never[] };
         composer: { text: string; attachments: readonly unknown[] };
         message: MockPhotoMessage;
       }) => T
     ) =>
       selector({
-        thread: { isRunning: mockPhotoState.__mockChatIsRunning },
+        thread: { isRunning: mockPhotoState.__mockChatIsRunning, messages: [] },
         composer: {
           text: mockPhotoState.__mockComposerText ?? '',
           attachments: mockPhotoState.__mockComposerAttachments,

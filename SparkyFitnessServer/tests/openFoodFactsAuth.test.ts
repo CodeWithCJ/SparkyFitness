@@ -52,6 +52,7 @@ function makeProviderDetails(appId: string, appKey: string): ProviderDetails {
     sync_frequency: 'manual',
     app_id: appId,
     app_key: appKey,
+    has_app_key: true,
     token_expires_at: null,
     external_user_id: null,
     garth_dump: null,
@@ -60,6 +61,7 @@ function makeProviderDetails(appId: string, appKey: string): ProviderDetails {
     required_fields: [],
     field_labels: {},
     supports_barcode: true,
+    provider_options: null,
   };
 }
 

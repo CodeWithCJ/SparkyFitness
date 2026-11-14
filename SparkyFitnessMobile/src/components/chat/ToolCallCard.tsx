@@ -1,3 +1,10 @@
+import {
+  chatToolLabel,
+  readChatOutsideSource,
+  outsideToolResult,
+  chatResultText,
+} from '@workspace/shared';
+import { useAuiState } from '@assistant-ui/react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -6,6 +13,7 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
@@ -28,36 +36,12 @@ import { syncAfterAssistantChange } from '../../services/runProgramService';
 type ToolStatus = 'running' | 'complete' | 'error';
 
 function deriveStatus(part: ToolCallMessagePart): ToolStatus {
-  if (part.isError) return 'error';
+  if (part.isError || outsideToolResult(part.result).isError) return 'error';
   if (part.result === undefined) return 'running';
   return 'complete';
 }
 
 const MONO_FONT = Platform.select({ ios: 'Menlo', default: 'monospace' });
-
-function getLocalizedToolLabel(
-  t: (key: string, options?: Record<string, unknown>) => string,
-  labelKey: string | undefined,
-  defaultLabel: string
-): string {
-  switch (labelKey) {
-    case 'chat.tools.food':
-      return t('chat.tools.food', { defaultValue: 'Food' });
-    case 'chat.tools.exercise':
-      return t('chat.tools.exercise', { defaultValue: 'Exercise' });
-    case 'chat.tools.checkin':
-      return t('chat.tools.checkin', { defaultValue: 'Check-in' });
-    case 'chat.tools.goals':
-      return t('chat.tools.goals', { defaultValue: 'Goals' });
-    case 'chat.tools.lookedUp':
-      return t('chat.tools.lookedUp', {
-        defaultValue: 'Looked up {{name}}',
-        name: defaultLabel,
-      });
-    default:
-      return defaultLabel;
-  }
-}
 
 export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
   const { t } = useTranslation();
@@ -77,8 +61,16 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
   useEffect(() => {
     if (finishedRunProgramCall) syncAfterAssistantChange(part.toolCallId);
   }, [finishedRunProgramCall, part.toolCallId]);
-  const { labelKey, defaultLabel, icon } = getToolDisplay(part.toolName);
-  const label = getLocalizedToolLabel(t, labelKey, defaultLabel);
+  const metadata = useAuiState((s) => s.message.metadata);
+  const sources = readChatOutsideSource(metadata);
+  const { icon } = getToolDisplay(part.toolName);
+  const label = chatToolLabel(t, part.toolName, sources, part.args.action);
+  const cleaned = chatResultText(
+    t,
+    part.result,
+    sources.toolServers[part.toolName] ??
+      t('chat.tools.outside', { defaultValue: 'an outside tool' })
+  );
   const hasResult = part.result !== undefined;
   const resultIsString = typeof part.result === 'string';
 
@@ -130,7 +122,22 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
           {expanded && (
             <View className="px-3 pb-3">
               {hasResult ? (
-                resultIsString ? (
+                part.toolName.startsWith('mcp_') ? (
+                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled>
+                    <Text
+                      selectable
+                      testID="outside-tool-output"
+                      className={
+                        status === 'error'
+                          ? 'text-icon-danger text-xs'
+                          : 'text-text-secondary text-xs'
+                      }
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      {cleaned.slice(0, 8000)}
+                    </Text>
+                  </ScrollView>
+                ) : resultIsString ? (
                   // Tool results are complete (not streaming) and may carry markdown
                   // (the server's confirmation strings), rendered compact + secondary.
                   <MarkdownMessage

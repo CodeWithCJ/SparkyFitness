@@ -47,6 +47,7 @@ const weeklyWeightChangeSchema = z
 export const userPreferencesSchema = z.object({
   adaptive_activity_separate: z.boolean().optional(),
   adjust_macros_with_exercise: z.boolean().optional(),
+  chat_mcp_server_ids: z.array(z.uuid()).default([]),
   voice_input_enabled: z.boolean().optional(),
   active_voice_ai_service_id: z.string().uuid().nullable().optional(),
   id: z.string(),

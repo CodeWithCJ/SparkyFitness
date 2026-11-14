@@ -1,3 +1,5 @@
+import Button from '../components/ui/Button';
+import { useChatMcpServers } from '../hooks/useChatMcpServers';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
@@ -47,6 +49,14 @@ function ToggleCard({
 
 const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
   const { t } = useTranslation();
+  const {
+    servers,
+    savingServerIds,
+    save,
+    isError: serversError,
+    isLoading: serversLoading,
+    refetch,
+  } = useChatMcpServers();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -97,6 +107,81 @@ const AiSettingsScreen: React.FC<AiSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
+        {serversLoading && (
+          <Text className="text-text-secondary text-sm">
+            {t('aiSettings.chatMcp.loading', {
+              defaultValue: 'Loading outside tools…',
+            })}
+          </Text>
+        )}
+        {serversError && (
+          <View className="mb-4 gap-3">
+            <Text
+              accessibilityRole="alert"
+              className="text-icon-danger text-sm"
+            >
+              {t('aiSettings.chatMcp.loadError', {
+                defaultValue: 'Could not load outside tools.',
+              })}
+            </Text>
+            <Button onPress={() => void refetch()}>
+              {t('aiSettings.chatMcp.retry', {
+                defaultValue: 'Try again',
+              })}
+            </Button>
+          </View>
+        )}
+        {servers.length > 0 && (
+          <View testID="chat-mcp-servers-section" className="mb-6">
+            <Text className="text-text-primary text-base font-semibold mb-1">
+              {t('aiSettings.chatMcp.title', {
+                defaultValue: 'Outside tools',
+              })}
+            </Text>
+            <Text className="text-text-secondary text-sm mb-3">
+              {t('aiSettings.chatMcp.description', {
+                defaultValue:
+                  'Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.',
+              })}
+            </Text>
+            {servers.map((server) => {
+              const label = t('aiSettings.chatMcp.allow', {
+                defaultValue: 'Let Sparky use {{name}}',
+                name: server.name,
+              });
+              return (
+                <View
+                  key={server.id}
+                  className="bg-surface rounded-xl p-3 mb-2 flex-row justify-between items-center"
+                >
+                  <View className="flex-shrink">
+                    <Text className="text-text-primary text-base">{label}</Text>
+                    {server.send_user_id && (
+                      <Text className="text-text-secondary text-sm">
+                        {t('aiSettings.chatMcp.accountId', {
+                          defaultValue: 'Sees your account ID.',
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                  <Switch
+                    testID={`chat-mcp-server-switch-${server.id}`}
+                    accessibilityLabel={label}
+                    value={server.enabled}
+                    disabled={savingServerIds.includes(server.id)}
+                    onValueChange={(enabled) =>
+                      save({
+                        server_id: server.id,
+                        enabled,
+                        send_user_id: server.send_user_id,
+                      })
+                    }
+                  />
+                </View>
+              );
+            })}
+          </View>
+        )}
         <Text className="text-text-primary text-base font-semibold mb-1">
           {t('aiSettings.server.title', { defaultValue: 'Server AI provider' })}
         </Text>

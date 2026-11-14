@@ -24,6 +24,7 @@ import {
   ALL_PROVIDERS_VALUE,
   resolveSettingsFoodProviderValue,
 } from '@/utils/settings';
+import type { McpServerOptions } from '@workspace/shared';
 
 export interface ExternalDataProvider {
   id: string;
@@ -77,6 +78,11 @@ export interface ExternalDataProvider {
   googlehealth_token_expires?: string | null;
   sort_order?: number;
   supports_barcode?: boolean;
+  /**
+   * MCP tool servers only: which tools chat may use, and whether the server
+   * is told who is chatting.
+   */
+  provider_options?: McpServerOptions | null;
 }
 
 const ExternalProviderSettings = () => {

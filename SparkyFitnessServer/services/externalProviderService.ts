@@ -27,8 +27,12 @@ import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
 import { resolveCorosMcpUrl } from '../integrations/coros/corosConstants.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import {
+  MCP_SERVER_PROVIDER_TYPE,
   ROUTING_PROVIDER_TYPE,
   WEATHER_PROVIDER_TYPE,
+  type McpServerOptions,
+  type ExternalDataProvidersInitializer,
+  mcpServerOptionsSchema,
 } from '@workspace/shared';
 
 // Provider types whose stored base_url is fetched server-side, making it an
@@ -41,6 +45,7 @@ const BASE_URL_FETCHING_PROVIDER_TYPES = new Set([
   OPEN_FOOD_FACTS_PROVIDER_TYPE,
   ROUTING_PROVIDER_TYPE,
   WEATHER_PROVIDER_TYPE,
+  MCP_SERVER_PROVIDER_TYPE,
 ]);
 
 // Reject a private/internal base_url for the self-hosted providers (recipe,
@@ -96,12 +101,91 @@ async function validateFoodProviderBaseUrl(
 // Build a 400-tagged Error for user-input validation failures so the
 // centralized errorHandler surfaces them as client errors instead of the
 // default 500 Internal Server Error.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function badRequest(message: any) {
-  const err = new Error(message);
-  // @ts-expect-error TS(2339): Property 'statusCode' does not exist on type 'Erro... Remove this comment to see the full error message
-  err.statusCode = 400;
-  return err;
+function badRequest(message: string) {
+  return Object.assign(new Error(message), { statusCode: 400 });
+}
+
+// Chat acts on what a tool server returns, so one is only ever an admin's global
+// provider: never a person's own row, even an admin's.
+function refuseMcpServerOnUserPath(
+  ...providerTypes: (string | null | undefined)[]
+) {
+  if (providerTypes.includes(MCP_SERVER_PROVIDER_TYPE)) {
+    throw badRequest('MCP tool servers can only be managed in Admin settings.');
+  }
+}
+
+interface GlobalProviderOptionsInput {
+  authenticatedUserId: string;
+  providerType: string | undefined;
+  /** The row's current type. Unset when the row is being created. */
+  existingProviderType?: string;
+  existingBaseUrl?: string | null;
+  existingHasAppKey?: boolean;
+  appKey?: string | null;
+  existingProviderOptions?: unknown;
+  baseUrl: string | null | undefined;
+  providerOptions: McpServerOptions | undefined;
+}
+
+/**
+ * Checks a global provider write and returns the `provider_options` to store.
+ * On create, a tool server with none starts with every tool blocked; on update,
+ * undefined leaves the stored options alone unless the URL changes.
+ */
+async function resolveGlobalProviderOptions({
+  authenticatedUserId,
+  providerType,
+  existingProviderType,
+  existingBaseUrl,
+  existingHasAppKey,
+  appKey,
+  existingProviderOptions,
+  baseUrl,
+  providerOptions,
+}: GlobalProviderOptionsInput): Promise<McpServerOptions | undefined> {
+  const isCreate = existingProviderType === undefined;
+  const nextType = providerType ?? existingProviderType;
+  if (
+    !isCreate &&
+    nextType !== existingProviderType &&
+    (nextType === MCP_SERVER_PROVIDER_TYPE ||
+      existingProviderType === MCP_SERVER_PROVIDER_TYPE)
+  ) {
+    throw badRequest(
+      'An MCP tool server cannot change to or from another type.'
+    );
+  }
+  if (nextType !== MCP_SERVER_PROVIDER_TYPE) {
+    if (providerOptions !== undefined) {
+      throw badRequest('Only an MCP tool server has provider_options.');
+    }
+    return undefined;
+  }
+  if (isCreate || baseUrl !== undefined) {
+    if (!baseUrl) {
+      throw badRequest('An MCP tool server needs a server URL.');
+    }
+    await validateFoodProviderBaseUrl(nextType, baseUrl, authenticatedUserId);
+  }
+  const urlChanged =
+    !isCreate && baseUrl !== undefined && baseUrl?.trim() !== existingBaseUrl;
+  if (urlChanged && existingHasAppKey && !appKey?.trim()) {
+    throw badRequest('Enter the token again when you change the server URL.');
+  }
+  if (providerOptions !== undefined) return providerOptions;
+  if (urlChanged) {
+    const storedOptions = mcpServerOptionsSchema.safeParse(
+      existingProviderOptions
+    );
+    return {
+      allowed_tools: [],
+      send_user_id: storedOptions.success
+        ? storedOptions.data.send_user_id
+        : false,
+    };
+  }
+  return isCreate ? { allowed_tools: [], send_user_id: false } : undefined;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -356,13 +440,20 @@ async function getExternalDataProvidersForUser(
   }
 }
 
+type ProviderWrite = Omit<
+  ExternalDataProvidersInitializer,
+  'user_id' | 'provider_type'
+> & {
+  user_id?: string;
+  provider_type: string;
+};
+
 async function createExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerData: any
+  authenticatedUserId: string,
+  providerData: ProviderWrite
 ) {
   try {
+    refuseMcpServerOnUserPath(providerData.provider_type);
     providerData.user_id = authenticatedUserId;
     providerData.is_public = false; // Regular users cannot create global public providers
     await validateFoodProviderBaseUrl(
@@ -411,12 +502,9 @@ async function createExternalDataProvider(
   }
 }
 async function updateExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  authenticatedUserId: string,
+  providerId: string,
+  updateData: Partial<ProviderWrite>
 ) {
   try {
     const isOwner =
@@ -437,6 +525,10 @@ async function updateExternalDataProvider(
     // we need to invalidate the OFF session cache after the update.
     const existingProvider =
       await externalProviderRepository.getExternalDataProviderById(providerId);
+    refuseMcpServerOnUserPath(
+      updateData.provider_type,
+      existingProvider?.provider_type
+    );
 
     // Validate against the effective (post-update) provider type and base_url so
     // switching a provider to mealie/tandoor/norish, or repointing its base_url,
@@ -480,8 +572,10 @@ async function updateExternalDataProvider(
         existingProvider?.provider_type === 'yazio'
           ? existingProvider
           : undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resolveField = (nextVal: any, currentVal: any) => {
+      const resolveField = (
+        nextVal: string | null | undefined,
+        currentVal: string | null | undefined
+      ) => {
         if (nextVal === null) return null;
         if (nextVal === undefined) return currentVal;
         return nextVal;
@@ -496,8 +590,8 @@ async function updateExternalDataProvider(
         password: existingYazio?.app_key ?? undefined,
       });
       const nextCredentials = resolveYazioCredentials({
-        username: nextAppId,
-        password: nextAppKey,
+        username: nextAppId ?? undefined,
+        password: nextAppKey ?? undefined,
       });
       const mergedCredentials = {
         username: nextCredentials.username || currentCredentials.username,
@@ -558,10 +652,8 @@ async function updateExternalDataProvider(
 }
 
 async function getExternalDataProviderDetails(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  authenticatedUserId: string,
+  providerId: string
 ) {
   try {
     const hasAccess =
@@ -569,13 +661,16 @@ async function getExternalDataProviderDetails(
         providerId,
         authenticatedUserId
       );
-    if (!hasAccess) {
+    const details = hasAccess
+      ? await externalProviderRepository.getExternalDataProviderById(providerId)
+      : null;
+    // An active global row passes the access check for everyone, and the row's
+    // owner would get its token back, so a tool server is refused here too.
+    if (!hasAccess || details?.provider_type === MCP_SERVER_PROVIDER_TYPE) {
       throw new Error(
         'Forbidden: You do not have permission to access this external data provider.'
       );
     }
-    const details =
-      await externalProviderRepository.getExternalDataProviderById(providerId);
     return details;
   } catch (error) {
     log(
@@ -588,10 +683,8 @@ async function getExternalDataProviderDetails(
 }
 
 async function deleteExternalDataProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  authenticatedUserId: string,
+  providerId: string
 ) {
   try {
     const isOwner =
@@ -604,6 +697,9 @@ async function deleteExternalDataProvider(
         'Forbidden: You do not have permission to delete this external data provider.'
       );
     }
+    const existingProvider =
+      await externalProviderRepository.getExternalDataProviderById(providerId);
+    refuseMcpServerOnUserPath(existingProvider?.provider_type);
     const success = await externalProviderRepository.deleteExternalDataProvider(
       providerId,
       authenticatedUserId
@@ -742,8 +838,15 @@ async function getAutomaticOpenFoodFactsProvider(
   return getAvailableOpenFoodFactsProvider(authenticatedUserId);
 }
 
-async function getExternalProviderTypes() {
-  return externalProviderRepository.getExternalProviderTypes();
+// A type nobody but an admin can add stays off every other list, including the
+// one chat reads out.
+async function getExternalProviderTypes({ includeAdminOnly = false } = {}) {
+  const types = await externalProviderRepository.getExternalProviderTypes();
+  return includeAdminOnly
+    ? types
+    : types.filter(
+        (type: { id: string }) => type.id !== MCP_SERVER_PROVIDER_TYPE
+      );
 }
 
 export { getExternalDataProviders };
@@ -758,6 +861,7 @@ export { getExternalProviderTypes };
 export { getAvailableOpenFoodFactsProvider };
 export { getAutomaticOpenFoodFactsProvider };
 export { validateFoodProviderBaseUrl };
+export { resolveGlobalProviderOptions };
 export default {
   getExternalDataProviders,
   getExternalDataProvidersForUser,
@@ -772,4 +876,5 @@ export default {
   getAutomaticOpenFoodFactsProvider,
   getExternalProviderTypes,
   validateFoodProviderBaseUrl,
+  resolveGlobalProviderOptions,
 };
