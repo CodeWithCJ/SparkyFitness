@@ -6,6 +6,7 @@ import type {
   WorkoutPlanTemplate,
   WorkoutPlanValidationErrors,
 } from '../types/workoutPlans';
+import type { WorkoutPresetSet } from '../types/workoutPresets';
 
 function calendarDay(value: string | null | undefined): string {
   return value?.slice(0, 10) ?? '';
@@ -194,6 +195,180 @@ export function buildWorkoutPlanPayload(
     is_active: draft.isActive,
     schedule_type: draft.scheduleType,
     entry_mode: sequential ? 'prompt' : draft.entryMode,
+    assignments,
+  };
+}
+
+let setIdCounter = 0;
+function nextDraftSet(setNumber: number): WorkoutPresetSet {
+  setIdCounter += 1;
+  return {
+    // Negative ids keep draft rows disjoint from saved set ids, which the
+    // form rows also use as React keys.
+    id: -setIdCounter,
+    set_number: setNumber,
+    set_type: null,
+    reps: null,
+    weight: null,
+    duration: null,
+    rest_time: null,
+    notes: null,
+  };
+}
+
+/** A single-exercise assignment with its own sets, editable in the form. */
+export function createExerciseAssignment(
+  exercise: { id: string | number; name: string },
+  slot: { dayOfWeek: number | null; sessionIndex: number | null }
+): WorkoutPlanDraftAssignment {
+  return {
+    key: nextKey(),
+    day_of_week: slot.dayOfWeek,
+    session_index: slot.sessionIndex,
+    workout_preset_id: null,
+    workout_preset_name: null,
+    exercise_id: String(exercise.id),
+    exercise_name: exercise.name,
+    sets: [nextDraftSet(1)],
+  };
+}
+
+export type DraftSetPatch = Partial<
+  Pick<WorkoutPresetSet, 'reps' | 'weight' | 'duration' | 'rest_time'>
+>;
+
+function withAssignment(
+  draft: WorkoutPlanDraft,
+  assignmentKey: string,
+  update: (assignment: WorkoutPlanDraftAssignment) => WorkoutPlanDraftAssignment
+): WorkoutPlanDraft {
+  return {
+    ...draft,
+    assignments: draft.assignments.map((assignment) =>
+      assignment.key === assignmentKey ? update(assignment) : assignment
+    ),
+  };
+}
+
+export function addDraftSet(
+  draft: WorkoutPlanDraft,
+  assignmentKey: string
+): WorkoutPlanDraft {
+  return withAssignment(draft, assignmentKey, (assignment) => ({
+    ...assignment,
+    sets: [...assignment.sets, nextDraftSet(assignment.sets.length + 1)],
+  }));
+}
+
+export function removeDraftSet(
+  draft: WorkoutPlanDraft,
+  assignmentKey: string,
+  setIndex: number
+): WorkoutPlanDraft {
+  return withAssignment(draft, assignmentKey, (assignment) => ({
+    ...assignment,
+    sets: assignment.sets
+      .filter((_, index) => index !== setIndex)
+      .map((set, index) => ({
+        ...set,
+        set_number: index + 1,
+      })) as WorkoutPresetSet[],
+  }));
+}
+
+export function updateDraftSet(
+  draft: WorkoutPlanDraft,
+  assignmentKey: string,
+  setIndex: number,
+  patch: DraftSetPatch
+): WorkoutPlanDraft {
+  return withAssignment(draft, assignmentKey, (assignment) => ({
+    ...assignment,
+    sets: assignment.sets.map((set, index) =>
+      index === setIndex ? ({ ...set, ...patch } as WorkoutPresetSet) : set
+    ),
+  }));
+}
+
+/** Moves an assignment up (-1) or down (1) within its day or session slot. */
+export function moveDraftAssignment(
+  draft: WorkoutPlanDraft,
+  assignmentKey: string,
+  direction: -1 | 1
+): WorkoutPlanDraft {
+  const assignments = draft.assignments;
+  const index = assignments.findIndex(
+    (assignment) => assignment.key === assignmentKey
+  );
+  if (index === -1) return draft;
+  const target = assignments[index];
+  const sameSlot = (other: WorkoutPlanDraftAssignment) =>
+    draft.scheduleType === 'sequential'
+      ? other.session_index === target.session_index
+      : other.day_of_week === target.day_of_week;
+  let neighbor = -1;
+  if (direction === -1) {
+    for (let i = index - 1; i >= 0; i -= 1) {
+      if (sameSlot(assignments[i])) {
+        neighbor = i;
+        break;
+      }
+    }
+  } else {
+    for (let i = index + 1; i < assignments.length; i += 1) {
+      if (sameSlot(assignments[i])) {
+        neighbor = i;
+        break;
+      }
+    }
+  }
+  if (neighbor === -1) return draft;
+  const next = [...assignments];
+  const moved = next[index];
+  next[index] = next[neighbor];
+  next[neighbor] = moved;
+  return { ...draft, assignments: next };
+}
+
+/**
+ * The full PUT payload built from a saved template. The server treats a PUT as
+ * a complete plan replacement (a partial payload would blank the plan), so
+ * quick actions like toggling activity still send every assignment.
+ */
+export function workoutPlanTemplateToPayload(
+  template: WorkoutPlanTemplate
+): SaveWorkoutPlanPayload {
+  const sequential = template.schedule_type === 'sequential';
+  const assignments = (template.assignments ?? [])
+    .filter(
+      (assignment) => assignment.workout_preset_id || assignment.exercise_id
+    )
+    .map((assignment) => ({
+      ...(assignment.id !== undefined ? { id: String(assignment.id) } : {}),
+      day_of_week: sequential ? null : assignment.day_of_week,
+      session_index: sequential ? (assignment.session_index ?? 1) : null,
+      session_name: sequential ? (assignment.session_name ?? null) : null,
+      sort_order: assignment.sort_order ?? 0,
+      ...(assignment.workout_preset_id
+        ? { workout_preset_id: String(assignment.workout_preset_id) }
+        : { exercise_id: assignment.exercise_id as string }),
+      sets: assignment.exercise_id
+        ? (assignment.sets ?? []).map(({ id: _id, ...set }) => set)
+        : [],
+    }));
+
+  return {
+    plan_name: template.plan_name,
+    description: template.description ?? '',
+    start_date: template.start_date.slice(0, 10),
+    end_date: template.end_date ? template.end_date.slice(0, 10) : null,
+    is_active: template.is_active,
+    schedule_type: sequential ? 'sequential' : 'weekly',
+    entry_mode: sequential
+      ? 'prompt'
+      : template.entry_mode === 'prefill'
+        ? 'prefill'
+        : 'prompt',
     assignments,
   };
 }
