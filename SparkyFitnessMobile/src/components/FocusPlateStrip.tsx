@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import type { PlateUnit } from '@workspace/shared';
+import type { PlateLoad, PlateUnit } from '@workspace/shared';
 import Icon from './Icon';
 import PlateBarDrawing from './PlateBarDrawing';
 import { usePlateLoad } from './PlateBarGraphic';
@@ -20,8 +20,8 @@ interface Props {
 
 /**
  * The focus view's plate strip: the bar drawn with this side's plates (the
- * calculator's drawing, small), one line naming them, and a button that opens the plate calculator. Only an
- * exactly loadable weight is drawn; anything else says so, never rounded.
+ * calculator's drawing, small), one line naming them, and a button that opens the plate calculator. A weight the plates
+ * can't make draws the nearest one below it and says so, never rounding.
  */
 function FocusPlateStrip({
   targetWeight,
@@ -36,15 +36,19 @@ function FocusPlateStrip({
   const { result, unit: plateUnit } = load;
   const unit = plateUnitLabel(t, plateUnit);
 
-  let body: React.ReactNode;
-  if (result.status === 'exact' && result.load) {
-    const plates = result.load.plates
+  const platesText = (plateLoad: PlateLoad) => {
+    const plates = plateLoad.plates
       .flatMap((plate) =>
         Array.from({ length: plate.count }, () =>
           formatPlateWeight(plate.weight)
         )
       )
       .join(' + ');
+    return plates === '' ? '0' : plates;
+  };
+
+  let body: React.ReactNode;
+  if (result.status === 'exact' && result.load) {
     body = (
       <>
         <PlateBarDrawing
@@ -56,7 +60,7 @@ function FocusPlateStrip({
           {t('activeWorkout.focus.plates.perSide', {
             defaultValue: 'Per side:',
           })}{' '}
-          <Text className="font-bold">{plates === '' ? '0' : plates}</Text>{' '}
+          <Text className="font-bold">{platesText(result.load)}</Text>{' '}
           {t('activeWorkout.focus.plates.onBar', {
             defaultValue: 'on a {{bar}} {{unit}} bar',
             bar: formatPlateWeight(result.barWeight),
@@ -65,18 +69,36 @@ function FocusPlateStrip({
         </Text>
       </>
     );
+  } else if (result.status === 'inexact' && result.below) {
+    // The weight can't be made: draw the nearest weight that can, never
+    // rounding the target itself.
+    body = (
+      <>
+        <PlateBarDrawing
+          load={result.below}
+          unit={plateUnit}
+          variant="compact"
+        />
+        <Text className="min-w-0 flex-1 text-sm text-text-primary">
+          {t('activeWorkout.focus.plates.nearest', {
+            defaultValue: 'Nearest {{weight}} {{unit}}',
+            weight: formatPlateWeight(result.below.totalWeight),
+            unit,
+          })}
+          {' · '}
+          {t('activeWorkout.focus.plates.perSideLower', {
+            defaultValue: 'per side',
+          })}{' '}
+          <Text className="font-bold">{platesText(result.below)}</Text>
+        </Text>
+      </>
+    );
   } else if (result.status === 'inexact') {
     body = (
       <Text className="min-w-0 flex-1 text-sm text-text-secondary">
-        {result.below
-          ? t('plates.graphicNearest', {
-              defaultValue: 'Plates: nearest {{weight}} {{unit}}',
-              weight: formatPlateWeight(result.below.totalWeight),
-              unit,
-            })
-          : t('plates.graphicBelowBar', {
-              defaultValue: 'Plates: lighter than the bar',
-            })}
+        {t('plates.graphicBelowBar', {
+          defaultValue: 'Plates: lighter than the bar',
+        })}
       </Text>
     );
   } else {
