@@ -26,7 +26,7 @@ jest.mock('react-native-gesture-handler', () => {
     GestureHandlerRootView: View,
   };
 });
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import type { FocusHold } from '../../src/hooks/useFocusHold';
@@ -119,12 +119,19 @@ jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
       const {
         FocusScrollTargetContext,
       } = require('../../src/components/focusScrollTarget');
-      const targetRef = useContext(FocusScrollTargetContext);
-      if (targetRef) {
-        targetRef.current = {
+      const targets = useContext(FocusScrollTargetContext);
+      if (targets) {
+        // Header at 250, the card at 300 and 200 tall.
+        targets.card.current = {
+          measureLayout: (
+            _rel: unknown,
+            ok: (x: number, y: number, w: number, h: number) => void
+          ) => ok(0, 300, 390, 200),
+        } as never;
+        targets.header.current = {
           measureLayout: (_rel: unknown, ok: (x: number, y: number) => void) =>
-            ok(0, 300),
-        };
+            ok(0, 250),
+        } as never;
       }
       return (
         <>
@@ -704,7 +711,19 @@ describe('ActiveWorkoutFocusView', () => {
       completedSetIds: { 'a-0': 1 },
       activeSetId: 'a-1',
       scrollRef,
+      // The footer covers the bottom 100 pt of the scroll view.
+      scrollContentStyle: { paddingBottom: 100 },
     };
+    const layoutScrollView = (height: number) =>
+      fireEvent(
+        screen
+          .UNSAFE_getAllByType(ScrollView)
+          .find((node) => !node.props.horizontal)!,
+        'layout',
+        {
+          nativeEvent: { layout: { x: 0, y: 0, width: 390, height } },
+        }
+      );
     let rafSpy: jest.SpyInstance;
     const mediaState = () => screen.getByTestId('media-state').props.children;
 
@@ -732,17 +751,40 @@ describe('ActiveWorkoutFocusView', () => {
       const { rerender } = render(
         viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession)
       );
+      layoutScrollView(700);
       rerender(viewElement('a', startedProps, picSession));
       expect(mediaState()).toBe('minimized');
-      expect(scrollTo()).toHaveBeenLastCalledWith({ y: 292, animated: true });
+      // The whole card fits above the footer: the header stays where it is.
+      expect(scrollTo()).toHaveBeenLastCalledWith({ y: 0, animated: true });
       // The stored preference is untouched.
       expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
         'expanded'
       );
     });
 
+    it.each([
+      // Scrolls just enough for the card to clear the footer, header in view.
+      [400, 208],
+      // The header would be lost: scroll to the card top instead.
+      [300, 292],
+    ])(
+      'scrolls only as far as the card needs (viewport %d)',
+      (height, expected) => {
+        const { rerender } = render(
+          viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession)
+        );
+        layoutScrollView(height);
+        rerender(viewElement('a', startedProps, picSession));
+        expect(scrollTo()).toHaveBeenLastCalledWith({
+          y: expected,
+          animated: true,
+        });
+      }
+    );
+
     it('lets a hand enlarge stand on a started exercise until it is left, without saving it', () => {
       render(viewElement('a', startedProps, picSession));
+      layoutScrollView(700);
       expect(mediaState()).toBe('minimized');
       fireEvent.press(screen.getByTestId('media-toggle'));
       expect(mediaState()).toBe('expanded');
@@ -763,7 +805,7 @@ describe('ActiveWorkoutFocusView', () => {
       scrollTo().mockClear();
       fireEvent.press(screen.getByLabelText(/^Exercise 1 of 2/));
       expect(mediaState()).toBe('minimized');
-      expect(scrollTo()).toHaveBeenCalledWith({ y: 292, animated: true });
+      expect(scrollTo()).toHaveBeenCalledWith({ y: 0, animated: true });
     });
 
     it('still toggles the demo by hand before the exercise has started', () => {

@@ -288,7 +288,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   onRegisterAccessoryHandle,
 }: FocusSetRowProps) {
   const { t } = useTranslation();
-  const scrollTargetRef = useContext(FocusScrollTargetContext);
+  const scrollTargetRef = useContext(FocusScrollTargetContext)?.card;
   const [
     accentPrimary,
     textSecondary,
@@ -896,7 +896,8 @@ function ActiveWorkoutFocusSets({
   onActivateSet,
   onRegisterAccessoryHandle,
 }: Props) {
-  const scrollTargetRef = useContext(FocusScrollTargetContext);
+  const scrollTargets = useContext(FocusScrollTargetContext);
+  const scrollTargetRef = scrollTargets?.card;
   const { t } = useTranslation();
   const [accentPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -1079,7 +1080,11 @@ function ActiveWorkoutFocusSets({
         <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
       )}
       {stepperRows && (
-        <View className="flex-row items-center gap-1">
+        <View
+          ref={scrollTargets?.header}
+          collapsable={false}
+          className="flex-row items-center gap-1"
+        >
           <Text className={headerClass} style={{ width: 30 }}>
             {t('workout.set', { defaultValue: 'Set' })}
           </Text>
@@ -1109,7 +1114,11 @@ function ActiveWorkoutFocusSets({
       )}
       {!stepperRows && exercise.sets.length > 0 && (
         // Same columns as the list card's header for these tables.
-        <View className="flex-row items-center px-1 py-1.5">
+        <View
+          ref={scrollTargets?.header}
+          collapsable={false}
+          className="flex-row items-center px-1 py-1.5"
+        >
           <Text className={`w-9 ${headerClass}`}>
             {t('workout.set', { defaultValue: 'Set' })}
           </Text>
