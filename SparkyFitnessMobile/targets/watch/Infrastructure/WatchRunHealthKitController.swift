@@ -283,8 +283,7 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
             // write failed gives way to the new run (watchOS runs one session
             // at a time); one still waiting or being written does not.
             guard held.failed else { return false }
-            held.session.end()
-            self.held = nil
+            abandonHeld()
         }
 
         let configuration = HKWorkoutConfiguration()
@@ -623,8 +622,10 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
 
     /// Adds the distance, ends collection where the run ended and finishes
     /// the workout, then ends the paused session. Each step is tried a few
-    /// times. A workout HealthKit refuses keeps its session for a retry at the
-    /// next launch (`giveUpOnFailure` false); a retry that fails again ends it.
+    /// times. A distance or workout HealthKit refuses is a failed write, never
+    /// a finished one: the session stays for one last attempt 30 s later or at
+    /// the next launch (`giveUpOnFailure` true), which saves the workout as it
+    /// stands, with the distance on its own, if Health still refuses.
     /// Main queue.
     private func writeHeld(giveUpOnFailure: Bool, report: @escaping (WatchRunHealthOutcome) -> Void) {
         guard var current = held, let meters = current.finalMeters else {
@@ -650,6 +651,16 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
         let endAt = current.end
         let finish: (Bool) -> Void = { added in
             DispatchQueue.main.async {
+                if sample != nil, !added, !giveUpOnFailure {
+                    // Health would not take the distance. Finishing now would
+                    // save the workout without it (a self-written run has no
+                    // other distance), so this is a failed write, not a
+                    // finished one: the paused session and builder stay, and
+                    // one last attempt follows (`retryHeldWrite`).
+                    self.heldFailed(runId: runId)
+                    report(.notSaved)
+                    return
+                }
                 if added, sample != nil, var updated = self.held, updated.clientId == runId {
                     updated.distanceAdded = true
                     self.held = updated
@@ -696,10 +707,7 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
                 held = nil
                 releaseSnapshot(of: runId, phoneQueued: current.phoneQueued)
             } else {
-                current.finishing = false
-                current.failed = true
-                held = current
-                persistSnapshot(force: true)
+                heldFailed(runId: runId)
             }
             report(.notSaved)
             return
@@ -729,6 +737,61 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
             distanceMatched: matched,
             zones: workout.map { AppleWorkoutZones.heartRateZones(of: $0) } ?? []
         ))
+    }
+
+    /// A held write failed. The session and builder stay (`failed`, so a new
+    /// run may take the session), the snapshot keeps the run for the next
+    /// launch, and one last attempt is made shortly, which saves the workout
+    /// as it stands if Health still refuses. Main queue.
+    private func heldFailed(runId: String) {
+        guard var current = held, current.clientId == runId else { return }
+        current.finishing = false
+        current.failed = true
+        held = current
+        persistSnapshot(force: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.heldRetryDelay) { [weak self] in
+            guard let self, let again = self.held, again.clientId == runId, again.failed else { return }
+            self.writeHeld(giveUpOnFailure: true) { _ in }
+        }
+    }
+
+    private static let heldRetryDelay: TimeInterval = 30
+
+    /// A new run needs the watch's one session before a failed held write was
+    /// retried: end the session and save the workout as it stands, with the
+    /// distance on its own if the workout would not take it, rather than lose
+    /// the workout. Main queue.
+    private func abandonHeld() {
+        guard let current = held else { return }
+        held = nil
+        current.session.end()
+        let runId = current.clientId
+        var loose: HKQuantitySample?
+        if !current.distanceAdded, let meters = current.finalMeters {
+            if current.selfWritten {
+                if meters >= 1 { loose = Self.distanceSample(meters, start: current.start, end: current.end) }
+            } else {
+                let collected = current.builder.statistics(for: Self.distanceType)?
+                    .sumQuantity()?.doubleValue(for: .meter()) ?? 0
+                if meters - collected >= 1 {
+                    loose = Self.distanceSample(meters - collected, start: current.start, end: current.end)
+                }
+            }
+        }
+        if loose != nil, current.selfWritten {
+            UserDefaults.standard.set(true, forKey: Self.selfWrittenFailedKey)
+        }
+        current.builder.endCollection(withEnd: current.end) { _, _ in
+            self.finishHeldWorkout(current.builder) { outcome in
+                DispatchQueue.main.async {
+                    if case .saved(let workout) = outcome {
+                        if let loose { self.saveLooseDistance(loose) }
+                        if let workout { self.workoutSaved(workout, clientId: runId) }
+                    }
+                    self.releaseSnapshot(of: runId, phoneQueued: current.phoneQueued)
+                }
+            }
+        }
     }
 
     /// Health is done with run `runId`: its snapshot goes if the phone has the
