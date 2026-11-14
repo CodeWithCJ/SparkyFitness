@@ -130,9 +130,10 @@ Official Logo Placement:
 
 ## 6. CAMERA, FRAMING & ASPECT RATIO ADAPTATION
 
-- Output Aspect Ratio: 9:16 vertical.
-- Dynamic Vertical Reframing (16:9 to 9:16): When adapting from horizontal (16:9) or square source footage into 9:16 vertical, dynamically reframe and center the subject so the demonstrator's entire body, full range of motion, and complete equipment trajectory (e.g. lockout of an overhead press, bottom of a squat or deadlift) remain fully visible inside the frame with adequate headroom and floor margins.
+- Output Aspect Ratio: 1:1 square (1080 × 1080) for embedded guided in-app workout player (Hevy-style), or 9:16 vertical (1080 × 1920) for full-screen view.
+- Dynamic Reframing & Centering: When adapting from horizontal (16:9) or wide source footage, dynamically reframe and center the subject so the demonstrator's entire body, full range of motion, and complete equipment trajectory (e.g. lockout of an overhead press, bottom of a squat or deadlift) remain fully visible inside the frame with adequate headroom and floor margins.
 - Do not crop out limbs, hands, feet, weights, or equipment at the edges of the frame.
+- Source Footage Integrity Fallback: Source footage must include the full demonstrator body, equipment, and range-of-motion endpoints. If the source video itself has cropped-out limbs, hands, feet, or weights, do not hallucinate or invent the missing anatomy or equipment; flag the video for re-capture or manual replacement.
 - Keep the entire relevant exercise movement centered and visible.
 - Avoid unnecessary camera cuts or perspective switching.
 - Avoid excessive zooming, shaking, or fast camera panning.
@@ -143,11 +144,11 @@ Official Logo Placement:
 
 - Repetition Cycle: 1–2 complete, clean repetitions (typically 6–12 seconds, up to 15 seconds maximum).
 - Seamless In-App Looping: The video must start and end at the neutral resting / setup position of the exercise movement cycle so that playback loops infinitely and smoothly without jarring jumps or hitches.
-- Aspect Ratio: 9:16 vertical.
-- Resolution: 1080 × 1920 (FHD vertical) where supported.
+- Aspect Ratio: 1:1 square (1080 × 1080) or 9:16 vertical (1080 × 1920) where supported.
 - Style: Photorealistic 3D human anatomy.
 - Movement: Faithfully reproduced from the original video.
 - Motion Pacing: Preserve the natural cadence and tempo of the repetition. Never unnaturally speed up, slow down, or freeze movement to force an arbitrary duration.
+- Conflict Precedence Rule: Preserving the original movement technique, repetitions, and natural cadence (Section 2 & Motion Pacing) always takes precedence over arbitrary duration limits. If source footage cannot satisfy both (e.g. slower tempo or longer set), keep the complete original movement intact without speed-warping, and flag the clip for human trimming.
 - Character: Consistent SparkyFitness character.
 - Environment: Consistent SparkyFitness gym.
 - Muscle Highlighting: Anatomically accurate color-coded overlays.
