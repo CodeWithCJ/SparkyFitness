@@ -322,7 +322,8 @@
       "hydration": "Hydration reminders",
       "moodCheckin": "Mood check-ins",
       "oralCare": "Brushing reminders",
-      "mindfulness": "Meditation timer"
+      "mindfulness": "Meditation timer",
+      "challenges": "Challenges"
     },
     "moodCheckin": {
       "title": "How are you feeling?",
@@ -377,6 +378,12 @@
     "meditationTimer": {
       "title": "Meditation complete",
       "body": "Open SparkyFitness to save your session."
+    },
+    "challengeWeek": {
+      "body": "{{leader}} leads with {{total}}. The week closes tonight.",
+      "bodyWithOwn": "{{leader}} leads with {{total}}. You are #{{rank}} with {{ownTotal}}. The week closes tonight.",
+      "bodyYouLead": "You lead with {{total}}. The week closes tonight.",
+      "title": "{{name}}: who leads this week"
     }
   },
   "activeWorkout": {
@@ -746,7 +753,9 @@
       "trainingCalendar": "Training calendar",
       "trainingCalendarSubtitle": "Planned and completed workouts, and load by sport",
       "labResults": "Lab results",
-      "labResultsSubtitle": "Blood tests and other markers over time"
+      "labResultsSubtitle": "Blood tests and other markers over time",
+      "challenges": "Challenges",
+      "challengesSubtitle": "Group leaderboards with friends and family"
     },
     "sleep": "Sleep",
     "healthTrendsSettings": "Health Trends",
@@ -1404,7 +1413,9 @@
     "labResults": "Lab Results",
     "labResultsSubtitle": "Show your latest lab results and which are out of range",
     "oralCare": "Oral care",
-    "oralCareSubtitle": "Show brushing against your goal and your streak"
+    "oralCareSubtitle": "Show brushing against your goal and your streak",
+    "challenges": "Challenges",
+    "challengesSubtitle": "Show your place in the challenges you are in"
   },
   "diarySettings": {
     "updateFailed": "Failed to update setting.",
@@ -1483,7 +1494,10 @@
     "oralCareReminderTime": "Reminder {{number}}",
     "oralCareReminderTimeAccessibility": "Brushing reminder {{number}}, {{time}}",
     "oralCareRemoveReminder": "Remove brushing reminder {{number}}",
-    "oralCareAddReminder": "Add reminder"
+    "oralCareAddReminder": "Add reminder",
+    "challengeWeek": "Week leader",
+    "challengeWeekSubtitle": "Sunday at 8 PM, who leads each weekly challenge you are in",
+    "challenges": "Challenges"
   },
   "workoutSettings": {
     "title": "Workout Settings",
@@ -11024,5 +11038,108 @@
       "other": "Saved change"
     },
     "libraryNote": "Only workouts and exercises are available offline. Everything else in the Library needs a connection."
+  },
+  "challenges": {
+    "card": {
+      "a11y": "Challenges",
+      "leader": "{{name}} leads with {{total}}",
+      "noScore": "No score yet",
+      "youLead": "You lead",
+      "yourPlace": "#{{rank}} of {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "From {{start}}, no end date",
+      "range": "{{start}} to {{end}}"
+    },
+    "detailLoadFailed": "Could not load this challenge.",
+    "emptySubtitle": "Join one with an invite code from a friend, or host your own on the web.",
+    "emptyTitle": "No challenges yet",
+    "format": {
+      "groupGoal": "Group goal",
+      "hitGoal": "Hit the goal",
+      "leaderboard": "Leaderboard",
+      "race": "Race to a target"
+    },
+    "hostOnWeb": "You host this challenge. Change its rules and invite codes on the web.",
+    "join": {
+      "closed": "This challenge cannot be joined right now.",
+      "codeLabel": "Invite code",
+      "codePlaceholder": "Paste the code or link",
+      "failed": "Could not join the challenge.",
+      "invalidCode": "That code is not valid or has expired.",
+      "joined": "Joined {{name}}",
+      "nameLabel": "Your name in it",
+      "namePlaceholder": "For example, your first name",
+      "nameRequired": "Enter the name other members will see.",
+      "notACode": "Paste the invite code or link you were sent.",
+      "privacy": "Members see this name and your points, never your diary or your email. You can leave at any time.",
+      "submit": "Join",
+      "submitting": "Joining…",
+      "title": "Join a challenge",
+      "tooMany": "Too many tries. Wait a few minutes and try again.",
+      "withCode": "Join with a code"
+    },
+    "leave": {
+      "action": "Leave challenge",
+      "confirm": "Leave",
+      "failed": "Could not leave the challenge",
+      "message": "Your scores in it are deleted. You can join again with a new invite code.",
+      "title": "Leave this challenge?"
+    },
+    "loadFailed": "Could not load your challenges.",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "metric": {
+      "activeCalories": "Active calories",
+      "activeMinutes": "Active minutes",
+      "distance": "Distance",
+      "elevation": "Elevation",
+      "hrZoneMinutes": "Heart-rate zone minutes",
+      "points": "Points",
+      "steps": "Steps",
+      "workoutDays": "Workout days"
+    },
+    "moreActions": "More actions",
+    "period": {
+      "challenge": "Whole challenge",
+      "day": "Daily",
+      "month": "Monthly",
+      "next": "Next period",
+      "previous": "Previous period",
+      "week": "Weekly"
+    },
+    "standings": {
+      "daysHit": "{{hit}} of {{eligible}} days on goal",
+      "empty": "Nobody has scored in this period yet.",
+      "final": "Final results",
+      "finished": "Finished {{date}}",
+      "groupTotal": "Together: {{total}} of {{target}}",
+      "live": "So far; late watch syncs still count",
+      "loadFailed": "Could not load the standings.",
+      "minutes": "{{value}} active min",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "you": "{{name}} (you)"
+    },
+    "state": {
+      "ended": "Ended",
+      "running": "Running",
+      "startsOn": "Starts {{date}}"
+    },
+    "target": "Target: {{target}}",
+    "title": "Challenges",
+    "unavailableSubtitle": "Challenges are turned off on your server, or it needs an update. Ask your server admin.",
+    "unavailableTitle": "Challenges are not available",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} min",
+      "points": "{{value}} pts",
+      "steps": "{{value}} steps",
+      "workoutDays_one": "{{count}} day",
+      "workoutDays_other": "{{count}} days"
+    },
+    "youHost": "You host"
   }
 }
