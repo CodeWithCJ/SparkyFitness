@@ -8,5 +8,8 @@
     "validate": "node scripts/validate.mjs",
     "media": "node scripts/optimize-media.mjs",
     "optimize-media": "node scripts/optimize-media.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
   }
 }

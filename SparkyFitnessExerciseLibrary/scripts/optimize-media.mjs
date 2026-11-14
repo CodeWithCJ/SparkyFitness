@@ -29,6 +29,8 @@ const isCandidates = args.some((a) => candidateKeywords.has(a.toLowerCase()));
 const reservedKeywords = new Set([...forceKeywords, ...candidateKeywords]);
 const targetFilter = args.find((a) => !reservedKeywords.has(a.toLowerCase()) && !a.startsWith('-'));
 
+let hasSharpError = false;
+
 // Verify ffmpeg & ffprobe
 try {
   execSync('ffmpeg -version', { stdio: 'ignore' });
@@ -38,13 +40,20 @@ try {
   process.exit(1);
 }
 
-// Load sharp from monorepo frontend
+// Load sharp from exercise library, server, frontend, or root
 let sharp = null;
-try {
-  const sharpPath = path.resolve(__dirname, '../../SparkyFitnessFrontend/node_modules/sharp');
-  sharp = require(sharpPath);
-} catch {
-  // Sharp optional fallback
+const candidateSharpPaths = [
+  'sharp',
+  path.resolve(__dirname, '../node_modules/sharp'),
+  path.resolve(__dirname, '../../SparkyFitnessServer/node_modules/sharp'),
+  path.resolve(__dirname, '../../SparkyFitnessFrontend/node_modules/sharp'),
+  path.resolve(__dirname, '../../node_modules/sharp'),
+];
+for (const p of candidateSharpPaths) {
+  try {
+    sharp = require(p);
+    if (sharp) break;
+  } catch {}
 }
 
 function probeVideo(videoPath) {
@@ -265,6 +274,7 @@ async function processExercise(dirName) {
 
       if (!sharp) {
         console.error('     ❌ Error: sharp is required to encode animated WebP. Please ensure sharp is installed.');
+        hasSharpError = true;
         continue;
       }
 
@@ -289,7 +299,7 @@ async function processExercise(dirName) {
     }
   }
 
-  // 4. Clean up any legacy GIF, temporary files, and candidate preview folder
+  // 4. Clean up unreferenced legacy GIF, temporary files, and candidate preview folder
   const candDir = path.join(exDir, 'candidates');
   if (fs.existsSync(candDir)) {
     try {
@@ -298,12 +308,28 @@ async function processExercise(dirName) {
     } catch {}
   }
 
+  const referencedFiles = new Set([
+    media.animation_path,
+    media.animation_vertical_path,
+    media.animation_horizontal_path,
+    media.gif_path,
+    media.thumbnail_path,
+    media.image_path,
+  ].filter(Boolean));
+
   const leftoverFiles = fs.readdirSync(exDir);
   for (const f of leftoverFiles) {
-    if (f.endsWith('.gif') || f.includes('_anim.webp') || f.startsWith('_temp_')) {
+    if (referencedFiles.has(f)) continue;
+
+    if (f.startsWith('_temp_') || f.includes('_anim.webp')) {
       try {
         fs.unlinkSync(path.join(exDir, f));
-        console.log(`  🧹 Cleaned up legacy/temp file: ${f}`);
+        console.log(`  🧹 Cleaned up temporary file: ${f}`);
+      } catch {}
+    } else if (f.endsWith('.gif') && sharp) {
+      try {
+        fs.unlinkSync(path.join(exDir, f));
+        console.log(`  🧹 Cleaned up unreferenced legacy GIF: ${f}`);
       } catch {}
     }
   }
@@ -329,6 +355,11 @@ async function main() {
 
   for (const folder of targetFolders) {
     await processExercise(folder);
+  }
+
+  if (hasSharpError) {
+    console.error('\n❌ Media optimization finished with errors: sharp was missing for some exercises.');
+    process.exit(1);
   }
 
   console.log('\n✨ Media optimization complete!\n');

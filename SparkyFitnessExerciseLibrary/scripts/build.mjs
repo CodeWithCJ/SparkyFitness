@@ -76,7 +76,7 @@ function discoverMedia(folder, exercisePath, overrides = {}) {
     if (match) {
       thumbnail = match;
     } else {
-      const generic = files.find(f => f.endsWith('.webp') && !f.includes('_9_16') && !f.includes('_16_9') && !f.startsWith('_temp_'));
+      const generic = files.find(f => (f.endsWith('.webp') || f.endsWith('.jpg') || f.endsWith('.png')) && !f.includes('_9_16') && !f.includes('_16_9') && !f.startsWith('_temp_'));
       if (generic) thumbnail = generic;
     }
   }
@@ -87,11 +87,10 @@ function discoverMedia(folder, exercisePath, overrides = {}) {
     const match = files.find(f => (f.includes('_9_16.webp') || f.includes('_9_16.gif')) && !f.startsWith('_temp_'));
     if (match) {
       animVertical = match;
-    } else if (!overrides?.animation_horizontal_path) {
-      // If single default animation exists and is not horizontal
+    } else if (videoVertical) {
+      // If a vertical video is present and there is a matching single animation
       const single = files.find(f => f.endsWith('.webp') && !f.includes('_thumb.') && !f.includes('_16_9') && !f.startsWith('_temp_'));
-      const hasHorizontal = files.some(f => f.includes('_16_9.webp') || f.includes('_16_9.mp4'));
-      if (single && !hasHorizontal) animVertical = single;
+      if (single) animVertical = single;
     }
   }
 

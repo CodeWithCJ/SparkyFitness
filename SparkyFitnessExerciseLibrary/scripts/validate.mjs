@@ -100,13 +100,43 @@ for (const folder of exerciseFolders) {
     }
   }
 
-  // 3. Validate steps and cues
-  if (!Array.isArray(exercise.steps) || exercise.steps.length === 0) {
-    console.error(`❌ [${folder}] 'steps' must be a non-empty array of strings`);
+  // 3. Validate required fields, steps, and cues
+  if (!exercise.name || typeof exercise.name !== 'string' || exercise.name.trim().length < 2) {
+    console.error(`❌ [${folder}] Missing or invalid 'name' (must be a string of at least 2 characters)`);
     errorCount++;
   }
 
-  // 4. Validate Media Assets (auto-discovered on local disk + explicit media overrides)
+  if (!Array.isArray(exercise.steps) || exercise.steps.length === 0) {
+    console.error(`❌ [${folder}] 'steps' must be a non-empty array of strings`);
+    errorCount++;
+  } else {
+    for (let i = 0; i < exercise.steps.length; i++) {
+      const step = exercise.steps[i];
+      if (typeof step !== 'string' || step.trim().length < 5) {
+        console.error(`❌ [${folder}] steps[${i}] must be a descriptive string of at least 5 characters. Got: ${JSON.stringify(step)}`);
+        errorCount++;
+      }
+    }
+  }
+
+  // 4. Validate explicit media overrides (committed image/animation/thumbnail files must exist if declared)
+  const explicitMediaFiles = [
+    exercise.media?.thumbnail_path,
+    exercise.media?.animation_path,
+    exercise.media?.animation_vertical_path,
+    exercise.media?.animation_horizontal_path,
+    exercise.media?.image_path,
+  ].filter(Boolean);
+
+  for (const mediaFile of explicitMediaFiles) {
+    const localPath = path.join(exercisePath, mediaFile);
+    if (!fs.existsSync(localPath)) {
+      console.error(`❌ [${folder}] Explicit media file declared in exercise.json does not exist: '${mediaFile}'`);
+      errorCount++;
+    }
+  }
+
+  // 5. Validate Video Assets (auto-discovered on local disk + explicit media overrides)
   const localFiles = fs.readdirSync(exercisePath);
   const videoFiles = new Set([
     ...localFiles.filter((f) => f.endsWith('.mp4') && !f.startsWith('_temp_')),

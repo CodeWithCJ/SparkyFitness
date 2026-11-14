@@ -157,6 +157,7 @@ Official Logo:
 - File Naming:
   - Vertical (9:16): Save as `{{NUMERIC_ID}}_{{SLUG}}_9_16.mp4` (or `{{NUMERIC_ID}}_{{SLUG}}.mp4` if only one orientation is generated).
   - Horizontal (16:9): Save as `{{NUMERIC_ID}}_{{SLUG}}_16_9.mp4`.
+  - Square (1:1): Save as `{{NUMERIC_ID}}_{{SLUG}}_1_1.mp4` (or configure explicit `video_path` in `exercise.json` when published alongside other orientations).
 - Target File Size: ~0.5 MB to 1.5 MB (max 2.5 MB), encoded with H.264 (libx264).
 - Seamless In-App Looping & Continuous Movement Flow:
   - The video must start and end at the exact same neutral setup / resting point of the movement cycle so infinite playback creates the seamless illusion of one ongoing workout set.
