@@ -367,6 +367,8 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   const pageRef = useRef<View>(null);
   const scrollTargetRef = useRef<View>(null);
   const scrollHeaderRef = useRef<View>(null);
+  // Where the title and thumbnail block ends, from its own layout.
+  const titleBottomRef = useRef(0);
   const scrollTargets = useMemo(
     () => ({ card: scrollTargetRef, header: scrollHeaderRef }),
     []
@@ -398,6 +400,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
             cardTop,
             cardHeight,
             headerTop,
+            titleBottom: titleBottomRef.current,
             viewportHeight: viewportRef.current.height,
             bottomInset: viewportRef.current.bottomInset,
             margin: SCROLL_TARGET_MARGIN,
@@ -572,24 +575,34 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   return (
     <FocusScrollTargetContext.Provider value={scrollTargets}>
       <View ref={pageRef} collapsable={false} className="gap-3">
-        <ActiveWorkoutFocusMedia
-          images={snapshot?.images ?? []}
-          exerciseName={name}
-          getImageSource={getImageSource}
-          expanded={mediaExpanded && !restHere}
-          onToggleExpanded={onToggleMedia}
-          onBackToCurrent={onBackToCurrent}
+        <View
+          testID="focus-title-block"
+          collapsable={false}
+          className="gap-3"
+          onLayout={(e) => {
+            const { y, height } = e.nativeEvent.layout;
+            titleBottomRef.current = y + height;
+          }}
         >
-          {sideTitle}
-        </ActiveWorkoutFocusMedia>
-        {mediaMode === 'expanded' && (
-          <View className="flex-row items-center gap-2">
-            {nameText}
-            {swapButton}
-            {moreButton}
-          </View>
-        )}
-        {mediaMode === 'none' && sideTitle}
+          <ActiveWorkoutFocusMedia
+            images={snapshot?.images ?? []}
+            exerciseName={name}
+            getImageSource={getImageSource}
+            expanded={mediaExpanded && !restHere}
+            onToggleExpanded={onToggleMedia}
+            onBackToCurrent={onBackToCurrent}
+          >
+            {sideTitle}
+          </ActiveWorkoutFocusMedia>
+          {mediaMode === 'expanded' && (
+            <View className="flex-row items-center gap-2">
+              {nameText}
+              {swapButton}
+              {moreButton}
+            </View>
+          )}
+          {mediaMode === 'none' && sideTitle}
+        </View>
 
         {showMetaRow && (
           <View className="flex-row flex-wrap gap-2">

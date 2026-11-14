@@ -782,6 +782,19 @@ describe('ActiveWorkoutFocusView', () => {
       }
     );
 
+    it('scrolls past the title block rather than stopping part-way down it', () => {
+      const { rerender } = render(
+        viewElement('a', { activeSetId: 'a-0', scrollRef }, picSession)
+      );
+      layoutScrollView(400);
+      fireEvent(screen.getByTestId('focus-title-block'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 220 } },
+      });
+      rerender(viewElement('a', startedProps, picSession));
+      // 208 would cut the title; on to the table header at 250 - 8.
+      expect(scrollTo()).toHaveBeenLastCalledWith({ y: 242, animated: true });
+    });
+
     it('lets a hand enlarge stand on a started exercise until it is left, without saving it', () => {
       render(viewElement('a', startedProps, picSession));
       layoutScrollView(700);

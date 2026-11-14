@@ -34,4 +34,18 @@ describe('focusScrollOffset', () => {
   it('falls back to the card top before the viewport is measured', () => {
     expect(focusScrollOffset({ ...base, viewportHeight: 0 })).toBe(592);
   });
+
+  it('never stops part-way down the title block', () => {
+    // Needs 156 but the title block runs to 200: scroll on to the header.
+    expect(focusScrollOffset({ ...base, titleBottom: 200 })).toBe(392);
+    // Without a header, to the card top.
+    expect(
+      focusScrollOffset({ ...base, headerTop: null, titleBottom: 200 })
+    ).toBe(592);
+    // Already clear of the title block, or no scroll needed: unchanged.
+    expect(focusScrollOffset({ ...base, titleBottom: 100 })).toBe(156);
+    expect(focusScrollOffset({ ...base, cardTop: 300, titleBottom: 200 })).toBe(
+      0
+    );
+  });
 });
