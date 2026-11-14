@@ -73,7 +73,6 @@ import {
 } from '../stores/appPreferencesStore';
 import {
   alignPreviousSets,
-  formatDurationSeconds,
   plateTargetKg,
   rendersCardioEffortForm,
   resolveSnapshotModality,
@@ -546,7 +545,6 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         number: setIndex + 1,
         total: exercise.sets.length,
       }),
-      hold.targetSec != null ? formatDurationSeconds(hold.targetSec) : '',
     ]
       .filter((part) => part !== '')
       .join(' · ');

@@ -252,6 +252,23 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.getByTestId('focus-sets').props.children).toBe('sets:b');
   });
 
+  it('names the planned hold length once in the hold page subtitle', () => {
+    render(
+      viewElement('a', {
+        hold: {
+          ...IDLE_HOLD,
+          phase: 'running',
+          entryId: 'a',
+          setId: 'a-0',
+          targetSec: 13,
+          startedAt: Date.now(),
+        },
+      })
+    );
+    expect(screen.getByText(/Set 1\/2 · 13s$/)).toBeTruthy();
+    expect(screen.queryByText(/13s · 13s/)).toBeNull();
+  });
+
   it('opens on the first exercise when nothing is active', () => {
     render(viewElement(null));
     expect(shownName()).toBe('Bench Press');
