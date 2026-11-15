@@ -269,6 +269,7 @@ describe('appPreferencesStore', () => {
         'trainingLoad',
         'hydration',
         'caffeine',
+        'bloodAlcohol',
         'fasting',
         'cycle',
         'medications',
@@ -280,6 +281,16 @@ describe('appPreferencesStore', () => {
         'oralCare',
         'labResults',
       ]);
+    });
+
+    it('hides the blood alcohol estimate card until it is turned on', () => {
+      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
+        false
+      );
+      useAppPreferencesStore.getState().setBloodAlcoholCardVisible(true);
+      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
+        true
+      );
     });
 
     it('updates dashboard card order', () => {

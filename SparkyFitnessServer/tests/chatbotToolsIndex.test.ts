@@ -27,6 +27,7 @@ const EXPECTED_TOOLS = [
   'sparky_generate_coaching_plan',
   'sparky_get_30_day_trends',
   'sparky_get_barcode',
+  'sparky_get_blood_alcohol',
   'sparky_get_caffeine_kinetics',
   'sparky_get_contextual_nudge',
   'sparky_get_daily_exercise_totals',
@@ -85,6 +86,7 @@ const EXPECTED_TOOLS = [
 const EXPECTED_CORE_TOOLS = [
   'sparky_food_assistant_state',
   'sparky_get_barcode',
+  'sparky_get_blood_alcohol',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
   'sparky_get_exercise_details',

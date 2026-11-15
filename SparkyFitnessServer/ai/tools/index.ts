@@ -13,6 +13,7 @@ import { buildCheckinTools } from './checkinTools.js';
 import { buildCustomNutrientTools } from './customNutrientTools.js';
 import { buildWaterContainerTools } from './waterContainerTools.js';
 import { buildCaffeineKineticsTools } from './caffeineKineticsTools.js';
+import { buildBloodAlcoholTools } from './bloodAlcoholTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildCompareTools } from './compareTools.js';
 import { buildEngagementTools } from './engagementTools.js';
@@ -105,6 +106,7 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildCustomNutrientTools(u, tz),
     (u, tz) => buildWaterContainerTools(u, tz),
     (u, tz) => buildCaffeineKineticsTools(u, tz),
+    (u, tz) => buildBloodAlcoholTools(u, tz),
     (u, tz) => buildAllergenTools(u, tz),
     (u, tz) => buildBarcodeTools(u, tz),
   ],

@@ -40,6 +40,13 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   DEFAULT_STANDARD_DRINK_GRAMS,
   DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
+  DEFAULT_BAC_DISTRIBUTION_FORMULA,
+  DEFAULT_BAC_ELIMINATION_RATE,
+  DEFAULT_BAC_DISPLAY_UNIT,
+  isBacDistributionFormula,
+  isBacDisplayUnit,
+  type BacDistributionFormula,
+  type BacDisplayUnit,
   DEFAULT_CHART_SCALE_MODE,
   DEFAULT_TEMPERATURE_UNIT,
   isTemperatureUnit,
@@ -159,7 +166,13 @@ interface PreferencesContextType {
   weeklyAlcoholLimitG: number | null;
   caffeineHalfLifeHours: number;
   targetBedtime: string;
+  bacDistributionFormula: BacDistributionFormula;
+  bacEliminationRate: number;
+  bacDisplayUnit: BacDisplayUnit;
   setCaffeineHalfLifeHours: (hours: number) => void;
+  setBacDistributionFormula: (formula: BacDistributionFormula) => void;
+  setBacEliminationRate: (rate: number) => void;
+  setBacDisplayUnit: (unit: BacDisplayUnit) => void;
   setTargetBedtime: (bedtime: string) => void;
   setWeeklyAlcoholLimitG: (limit: number | null) => void;
   setStandardDrinkGrams: (grams: number) => void;
@@ -302,6 +315,9 @@ export interface DefaultPreferences {
   weekly_alcohol_limit_g?: number | null;
   caffeine_half_life_hours?: number;
   target_bedtime?: string;
+  bac_distribution_formula?: BacDistributionFormula;
+  bac_elimination_rate?: number;
+  bac_display_unit?: BacDisplayUnit;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -447,6 +463,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [caffeineHalfLifeHours, setCaffeineHalfLifeHoursState] =
     useState<number>(DEFAULT_CAFFEINE_HALF_LIFE_HOURS);
   const [targetBedtime, setTargetBedtimeState] = useState<string>('22:30');
+  const [bacDistributionFormula, setBacDistributionFormulaState] =
+    useState<BacDistributionFormula>(DEFAULT_BAC_DISTRIBUTION_FORMULA);
+  const [bacEliminationRate, setBacEliminationRateState] = useState<number>(
+    DEFAULT_BAC_ELIMINATION_RATE
+  );
+  const [bacDisplayUnit, setBacDisplayUnitState] = useState<BacDisplayUnit>(
+    DEFAULT_BAC_DISPLAY_UNIT
+  );
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -735,6 +759,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         standard_drink_grams: DEFAULT_STANDARD_DRINK_GRAMS,
         caffeine_half_life_hours: DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
         target_bedtime: '22:30',
+        bac_distribution_formula: DEFAULT_BAC_DISTRIBUTION_FORMULA,
+        bac_elimination_rate: DEFAULT_BAC_ELIMINATION_RATE,
+        bac_display_unit: DEFAULT_BAC_DISPLAY_UNIT,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -907,6 +934,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.target_bedtime
             ? String(data.target_bedtime).slice(0, 5)
             : '22:30'
+        );
+        setBacDistributionFormulaState(
+          isBacDistributionFormula(data.bac_distribution_formula)
+            ? data.bac_distribution_formula
+            : DEFAULT_BAC_DISTRIBUTION_FORMULA
+        );
+        // numeric(4,3) arrives from Postgres as a string.
+        setBacEliminationRateState(
+          Number(data.bac_elimination_rate) || DEFAULT_BAC_ELIMINATION_RATE
+        );
+        setBacDisplayUnitState(
+          isBacDisplayUnit(data.bac_display_unit)
+            ? data.bac_display_unit
+            : DEFAULT_BAC_DISPLAY_UNIT
         );
       } else {
         await createDefaultPreferences();
@@ -1127,6 +1168,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.targetBedtime !== undefined
             ? newPrefs.targetBedtime
             : targetBedtime,
+        bac_distribution_formula:
+          newPrefs?.bacDistributionFormula ?? bacDistributionFormula,
+        bac_elimination_rate:
+          newPrefs?.bacEliminationRate ?? bacEliminationRate,
+        bac_display_unit: newPrefs?.bacDisplayUnit ?? bacDisplayUnit,
       };
 
       try {
@@ -1201,6 +1247,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       weeklyAlcoholLimitG,
       caffeineHalfLifeHours,
       targetBedtime,
+      bacDistributionFormula,
+      bacEliminationRate,
+      bacDisplayUnit,
       updatePreferences,
       loadPreferences,
     ]
@@ -1362,6 +1411,30 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  const setBacDistributionFormula = useCallback(
+    (formula: BacDistributionFormula) => {
+      setBacDistributionFormulaState(formula);
+      saveAllPreferences({ bacDistributionFormula: formula });
+    },
+    [saveAllPreferences]
+  );
+
+  const setBacEliminationRate = useCallback(
+    (rate: number) => {
+      setBacEliminationRateState(rate);
+      saveAllPreferences({ bacEliminationRate: rate });
+    },
+    [saveAllPreferences]
+  );
+
+  const setBacDisplayUnit = useCallback(
+    (unit: BacDisplayUnit) => {
+      setBacDisplayUnitState(unit);
+      saveAllPreferences({ bacDisplayUnit: unit });
+    },
+    [saveAllPreferences]
+  );
+
   const setTargetBedtime = useCallback(
     (bedtime: string) => {
       setTargetBedtimeState(bedtime);
@@ -1511,7 +1584,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       weeklyAlcoholLimitG,
       caffeineHalfLifeHours,
       targetBedtime,
+      bacDistributionFormula,
+      bacEliminationRate,
+      bacDisplayUnit,
       setCaffeineHalfLifeHours,
+      setBacDistributionFormula,
+      setBacEliminationRate,
+      setBacDisplayUnit,
       setTargetBedtime,
       setWeeklyAlcoholLimitG,
       setStandardDrinkGrams,
@@ -1630,7 +1709,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       weeklyAlcoholLimitG,
       caffeineHalfLifeHours,
       targetBedtime,
+      bacDistributionFormula,
+      bacEliminationRate,
+      bacDisplayUnit,
       setCaffeineHalfLifeHours,
+      setBacDistributionFormula,
+      setBacEliminationRate,
+      setBacDisplayUnit,
       setTargetBedtime,
       setWeeklyAlcoholLimitG,
       setStandardDrinkGrams,

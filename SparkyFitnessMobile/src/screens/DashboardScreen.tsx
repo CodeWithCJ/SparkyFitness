@@ -37,6 +37,7 @@ import HydrationReminderReconciler from '../components/HydrationReminderReconcil
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
 import CaffeineCard from '../components/CaffeineCard';
+import BloodAlcoholCard from '../components/BloodAlcoholCard';
 import { useBackgroundWaterSync } from '../hooks/useBackgroundWaterSync';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
@@ -58,6 +59,7 @@ import {
   medicationsRootQueryKey,
   useCustomNutrients,
   useDailySummary,
+  useBloodAlcohol,
   useCaffeineKinetics,
   useHealthTrends,
   useMeasurements,
@@ -377,6 +379,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isCaffeineLoading,
     refetch: refetchCaffeine,
   } = useCaffeineKinetics(selectedDate, caffeineCardVisible);
+  const bloodAlcoholCardVisible = useAppPreferencesStore(
+    (s) => s.bloodAlcoholCardVisible
+  );
+  const {
+    estimate: bloodAlcoholEstimate,
+    nowMs: bloodAlcoholNowMs,
+    isLoading: isBloodAlcoholLoading,
+  } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
@@ -802,6 +812,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   kinetics={caffeineKinetics}
                   nowMs={caffeineNowMs}
                   isLoading={isCaffeineLoading}
+                />
+              ) : null;
+            case 'bloodAlcohol':
+              return bloodAlcoholCardVisible ? (
+                <BloodAlcoholCard
+                  key="bloodAlcohol"
+                  date={selectedDate}
+                  estimate={bloodAlcoholEstimate}
+                  nowMs={bloodAlcoholNowMs}
+                  isLoading={isBloodAlcoholLoading}
                 />
               ) : null;
             case 'fasting':

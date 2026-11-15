@@ -1,7 +1,7 @@
 /**
  * Sample times for a modeled curve that web and mobile both draw (active
- * caffeine). One grid keeps the charts and the numbers beside them in
- * agreement.
+ * caffeine, estimated blood alcohol). One grid for both keeps the charts and
+ * the numbers beside them in agreement.
  */
 
 /** Epoch milliseconds for an instant given as epoch ms, an ISO string or a Date. */

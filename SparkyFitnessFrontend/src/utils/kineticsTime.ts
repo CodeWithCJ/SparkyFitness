@@ -1,6 +1,6 @@
 /**
- * Time helpers for the Diary's modeled-curve cards (active caffeine). Their
- * charts and labels describe the diary day on screen,
+ * Time helpers for the Diary's modeled-curve cards (active caffeine, estimated
+ * blood alcohol). Their charts and labels describe the diary day on screen,
  * which is often not today, so every time is told relative to that day.
  */
 

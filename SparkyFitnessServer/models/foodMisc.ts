@@ -643,7 +643,10 @@ async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   }
 }
 /** Nutrients read as timed doses for a kinetics curve. */
-type DoseNutrientField = Extract<FoodVariantNutrientField, 'caffeine_mg'>;
+type DoseNutrientField = Extract<
+  FoodVariantNutrientField,
+  'caffeine_mg' | 'alcohol_g'
+>;
 
 export interface RawNutrientDose {
   source: 'food' | 'supplement';
@@ -651,7 +654,7 @@ export interface RawNutrientDose {
   entry_time: string | null;
   meal_default_time: string | null;
   taken_at: Date | string | null;
-  /** In the nutrient's own unit (mg of caffeine). */
+  /** In the nutrient's own unit (mg of caffeine, g of alcohol). */
   amount: number;
   name: string;
 }

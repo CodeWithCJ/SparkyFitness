@@ -24,8 +24,8 @@ type KineticsCurveChartProps = {
 );
 
 /**
- * A modeled intake level over one day (active caffeine), with clock
- * labels in the person's time format.
+ * A modeled intake level over one day (active caffeine, estimated blood
+ * alcohol), with clock labels in the person's time format.
  */
 const KineticsCurveChart: React.FC<KineticsCurveChartProps> = ({
   data,

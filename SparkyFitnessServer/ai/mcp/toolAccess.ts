@@ -71,6 +71,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
     'get_water_container',
   ],
   sparky_get_caffeine_kinetics: 'read',
+  sparky_get_blood_alcohol: 'read',
   sparky_manage_allergens: ['list_allergens'],
   sparky_get_barcode: 'read',
   // check-in

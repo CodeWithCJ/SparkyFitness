@@ -39,6 +39,11 @@ describe('classifyByKeywords', () => {
     );
   });
 
+  it('sends blood alcohol questions to food (sparky_get_blood_alcohol)', () => {
+    expect(classifyByKeywords('how drunk am I right now')).toContain('food');
+    expect(classifyByKeywords('what is my BAC')).toContain('food');
+  });
+
   it('matches new exercise synonyms (swim/bike/yoga)', () => {
     expect(classifyByKeywords('went swimming today')).toContain('exercise');
     expect(classifyByKeywords('did a bike ride')).toContain('exercise');
@@ -333,7 +338,11 @@ describe('heldBackChatTools', () => {
       heldBackChatTools([
         user('I eat 2 eggs, 1 spoon olive oil and 50gr bread.'),
       ])
-    ).toEqual(['sparky_food_assistant_state', 'sparky_get_caffeine_kinetics']);
+    ).toEqual([
+      'sparky_food_assistant_state',
+      'sparky_get_caffeine_kinetics',
+      'sparky_get_blood_alcohol',
+    ]);
   });
 
   it('keeps a tool once any user message in the chat asks for it', () => {
@@ -343,6 +352,9 @@ describe('heldBackChatTools', () => {
     expect(
       heldBackChatTools([user('how much caffeine is left before bedtime?')])
     ).not.toContain('sparky_get_caffeine_kinetics');
+    expect(
+      heldBackChatTools([user('how much alcohol is in my blood right now?')])
+    ).not.toContain('sparky_get_blood_alcohol');
   });
 
   it('keeps the task tool for an edit across several diary entries', () => {
@@ -363,6 +375,6 @@ describe('heldBackChatTools', () => {
         },
         user('and tomorrow?'),
       ])
-    ).toEqual(['sparky_food_assistant_state']);
+    ).toEqual(['sparky_food_assistant_state', 'sparky_get_blood_alcohol']);
   });
 });

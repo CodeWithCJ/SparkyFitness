@@ -4,6 +4,7 @@ import {
   buildWidgetKeys,
   evaluateMeasurement,
   generateDefaultLayouts,
+  hiddenWidgetKeys,
   MAX_MEASURE_CHANGES_PER_WINDOW,
   mealWidgetKey,
   MEASURE_WINDOW_MS,
@@ -25,6 +26,7 @@ describe('buildWidgetKeys', () => {
       'meal:b',
       'exercise',
       'caffeine',
+      'bloodAlcohol',
     ]);
   });
 });
@@ -258,5 +260,43 @@ describe('evaluateMeasurement', () => {
   it('does not trip when changes are spread across windows', () => {
     const spread = Array.from({ length: 30 }, (_, i) => i + 1);
     expect(run(spread, MEASURE_WINDOW_MS + 1)).toEqual(spread);
+  });
+});
+
+describe('hiddenWidgetKeys', () => {
+  const placedLayout = (key: string) =>
+    ({
+      lg: [{ i: key, x: 0, y: 0, w: 12, h: 4 }],
+    }) as Partial<DashboardLayouts>;
+
+  it('hides an opt-in widget for someone with no saved layout', () => {
+    expect(hiddenWidgetKeys(null, [], ['bloodAlcohol'])).toEqual([
+      'bloodAlcohol',
+    ]);
+  });
+
+  it('hides an opt-in widget for a layout saved before it existed', () => {
+    expect(
+      hiddenWidgetKeys(
+        { layout: placedLayout('energy'), hidden: ['water'] },
+        [],
+        ['bloodAlcohol']
+      )
+    ).toEqual(['water', 'bloodAlcohol']);
+  });
+
+  it('shows an opt-in widget once it was restored into the layout', () => {
+    expect(
+      hiddenWidgetKeys(
+        { layout: placedLayout('bloodAlcohol'), hidden: [] },
+        [],
+        ['bloodAlcohol']
+      )
+    ).toEqual([]);
+  });
+
+  it('keeps the saved hidden list as is when nothing is opt-in', () => {
+    const hidden = ['water'];
+    expect(hiddenWidgetKeys({ hidden }, ['energy'], [])).toBe(hidden);
   });
 });

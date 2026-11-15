@@ -16,6 +16,9 @@ import {
   DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
   CALORIE_CYCLING_DEFAULT_OFFSETS,
+  BAC_DISPLAY_UNITS,
+  BAC_DISTRIBUTION_FORMULAS,
+  BAC_ELIMINATION_RATE_RANGE,
   type UserPreferencesMutator,
   userPreferencesMutatorSchema,
 } from '@workspace/shared';
@@ -95,6 +98,46 @@ function validateCalorieCycling(
     throw Object.assign(
       new Error(
         'calorie_cycling_offsets must be 7 whole percentages between -40 and 40.'
+      ),
+      { status: 400 }
+    );
+  }
+}
+/** Estimated blood alcohol settings: a known formula and unit, and a rate within range. */
+function validateBloodAlcoholPreferences(
+  preferences: Pick<
+    UserPreferencesMutator,
+    'bac_distribution_formula' | 'bac_elimination_rate' | 'bac_display_unit'
+  >
+): void {
+  const { shape } = userPreferencesMutatorSchema;
+  if (
+    !shape.bac_distribution_formula.safeParse(
+      preferences.bac_distribution_formula
+    ).success
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid bac_distribution_formula: '${String(preferences.bac_distribution_formula)}'. Must be one of: ${BAC_DISTRIBUTION_FORMULAS.join(', ')}.`
+      ),
+      { status: 400 }
+    );
+  }
+  if (
+    !shape.bac_elimination_rate.safeParse(preferences.bac_elimination_rate)
+      .success
+  ) {
+    throw Object.assign(
+      new Error(
+        `bac_elimination_rate must be a number between ${BAC_ELIMINATION_RATE_RANGE.min} and ${BAC_ELIMINATION_RATE_RANGE.max}.`
+      ),
+      { status: 400 }
+    );
+  }
+  if (!shape.bac_display_unit.safeParse(preferences.bac_display_unit).success) {
+    throw Object.assign(
+      new Error(
+        `Invalid bac_display_unit: '${String(preferences.bac_display_unit)}'. Must be one of: ${BAC_DISPLAY_UNITS.join(', ')}.`
       ),
       { status: 400 }
     );
@@ -309,6 +352,7 @@ async function updateUserPreferences(
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
     validateCalorieCycling(preferenceData);
+    validateBloodAlcoholPreferences(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);
@@ -433,6 +477,7 @@ async function upsertUserPreferences(
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
     validateCalorieCycling(preferenceData);
+    validateBloodAlcoholPreferences(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);

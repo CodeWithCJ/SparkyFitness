@@ -1945,7 +1945,7 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   {
     category: 'food',
     keywords:
-      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|recipe|favou?rite\w*|meal\s*plan\w*|meal\s*template\w*|custom\s+nutrient\w*|micronutrient\w*|water\s+container\w*|water\s+bottle\w*|allerg\w*|intoleran\w*|anaphyla\w*|barcode|bar\s?code|UPC|EAN)\b/i,
+      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|alcohol\w*|beers?|wines?|drunk|blood\s+alcohol|bac|promille|recipe|favou?rite\w*|meal\s*plan\w*|meal\s*template\w*|custom\s+nutrient\w*|micronutrient\w*|water\s+container\w*|water\s+bottle\w*|allerg\w*|intoleran\w*|anaphyla\w*|barcode|bar\s?code|UPC|EAN)\b/i,
   },
   {
     category: 'checkin',
@@ -1995,6 +1995,11 @@ const ON_DEMAND_TOOLS: { tool: string; keywords: RegExp }[] = [
     tool: 'sparky_get_caffeine_kinetics',
     keywords:
       /\b(caffeine|coffee|espresso|latte|cappuccino|tea|energy\s+drinks?|cola|bedtime|sleep|half-?life)\b/i,
+  },
+  {
+    tool: 'sparky_get_blood_alcohol',
+    keywords:
+      /\b(alcohol\w*|drunk|tipsy|hangover|beers?|wines?|vodka|whisk(?:e)?y|cocktails?|bac|blood\s+alcohol|promille|per\s?mille)\b/i,
   },
 ];
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * The current time, refreshed every `intervalMs`. Lets a modeled curve (active
- * caffeine) move on without refetching its doses.
+ * caffeine, estimated blood alcohol) move on without refetching its doses.
  */
 export const useNowTicker = (intervalMs: number = 30000): number => {
   const [nowMs, setNowMs] = useState<number>(() => Date.now());

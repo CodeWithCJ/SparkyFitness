@@ -290,6 +290,7 @@ export function buildWidgetKeys(
     ...visibleMealTypeIds.map(mealWidgetKey),
     'exercise',
     'caffeine',
+    'bloodAlcohol',
   ];
 }
 
@@ -321,6 +322,15 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
   // Full width and last: the caffeine card carries a curve, which is
   // unreadable in a quarter-width tile.
   lg.push({ i: 'caffeine', x: 0, y: lgY + 4, w: 12, h: 11, minW: 4, minH: 7 });
+  lg.push({
+    i: 'bloodAlcohol',
+    x: 0,
+    y: lgY + 15,
+    w: 12,
+    h: 12,
+    minW: 4,
+    minH: 7,
+  });
 
   // md (10 cols): energy + nutrition top row, water below, then meals.
   const md: WidgetLayout[] = [
@@ -336,6 +346,15 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
   }
   md.push({ i: 'exercise', x: 0, y: mdY, w: 10, h: 4, minW: 3, minH: 3 });
   md.push({ i: 'caffeine', x: 0, y: mdY + 4, w: 10, h: 11, minW: 4, minH: 7 });
+  md.push({
+    i: 'bloodAlcohol',
+    x: 0,
+    y: mdY + 15,
+    w: 10,
+    h: 12,
+    minW: 4,
+    minH: 7,
+  });
 
   // sm / xs: single column, everything stacked.
   const stacked = (cols: number): WidgetLayout[] => {
@@ -353,6 +372,7 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     for (const key of mealKeys) push(key, 4, 3);
     push('exercise', 4, 3);
     push('caffeine', 11, 7);
+    push('bloodAlcohol', 12, 7);
     return out;
   };
 
@@ -422,4 +442,24 @@ export function reconcileLayouts(
   });
 
   return result;
+}
+
+/**
+ * The widgets to hide. `optIn` widgets start hidden even for someone whose
+ * layout was saved before they existed: such a widget counts as shown only once
+ * a saved layout places it and does not list it as hidden, which is what
+ * restoring it in the layout editor saves.
+ */
+export function hiddenWidgetKeys(
+  saved: { layout?: Partial<DashboardLayouts>; hidden?: string[] } | null,
+  defaultHidden: string[],
+  optIn: string[]
+): string[] {
+  const base = saved?.hidden ?? defaultHidden;
+  const placed = (key: string) =>
+    Object.values(saved?.layout ?? {}).some(
+      (items) => Array.isArray(items) && items.some((it) => it?.i === key)
+    );
+  const unplaced = optIn.filter((key) => !base.includes(key) && !placed(key));
+  return unplaced.length > 0 ? [...base, ...unplaced] : base;
 }
