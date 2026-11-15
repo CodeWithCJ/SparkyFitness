@@ -15,22 +15,39 @@ import {
 } from './symptomReminderService';
 import { endSymptomEpisode } from './api/symptomsApi';
 import { addLog } from './LogService';
+import {
+  belongsToOtherServer,
+  currentServerId,
+} from './notificationServerScope';
 import { queryClient } from '../hooks/queryClient';
 import { invalidateSymptomEntryCaches } from '../hooks/useSymptoms';
 
 // On Android the launch tap can arrive through both the listener and
-// getLastNotificationResponse(); remember the last one so it runs once.
-let lastHandledKey: string | null = null;
+// getLastNotificationResponse(), possibly with other presses in between, so
+// remember the recent ones (oldest dropped first) and run each once.
+const MAX_HANDLED_KEYS = 20;
+const handledKeys = new Set<string>();
+
+function markHandled(key: string): boolean {
+  if (handledKeys.has(key)) return false;
+  handledKeys.add(key);
+  if (handledKeys.size > MAX_HANDLED_KEYS) {
+    const oldest = handledKeys.values().next().value;
+    if (oldest !== undefined) handledKeys.delete(oldest);
+  }
+  return true;
+}
 
 function readNudgeData(
   content: Notifications.NotificationContent
-): { episodeId: string; symptomName: string } | null {
+): { episodeId: string; symptomName: string; serverId: string | null } | null {
   const data = content.data as Record<string, unknown> | null | undefined;
   const episodeId = data?.episodeId;
   if (typeof episodeId !== 'string' || episodeId.length === 0) return null;
   const symptomName =
     typeof data?.symptomName === 'string' ? data.symptomName : '';
-  return { episodeId, symptomName };
+  const serverId = typeof data?.serverId === 'string' ? data.serverId : null;
+  return { episodeId, symptomName, serverId };
 }
 
 async function endEpisodeFromNudge(episodeId: string): Promise<void> {
@@ -75,8 +92,7 @@ function handleNudgeAction(
   }
 
   const key = `${identifier}:${notification.date}:${actionIdentifier}`;
-  if (key === lastHandledKey) return true;
-  lastHandledKey = key;
+  if (!markHandled(key)) return true;
 
   void dismissDeliveredNotification(identifier);
   const nudge = readNudgeData(content);
@@ -85,17 +101,41 @@ function handleNudgeAction(
     return true;
   }
 
+  void runNudgeAction(actionIdentifier, nudge);
+  return true;
+}
+
+async function runNudgeAction(
+  actionIdentifier: string,
+  nudge: { episodeId: string; symptomName: string; serverId: string | null }
+): Promise<void> {
+  // The episode lives on the server the nudge was scheduled for; after a
+  // server switch, acting on it would hit the wrong server.
+  if (belongsToOtherServer(nudge.serverId, await currentServerId())) {
+    addLog(
+      '[Symptoms] Nudge action belongs to another server; ignored',
+      'WARNING'
+    );
+    Toast.show({
+      type: 'info',
+      text1: notificationCopy(
+        'symptoms.notification.otherServer',
+        'This reminder is from another server'
+      ),
+    });
+    return;
+  }
+
   if (actionIdentifier === SYMPTOM_END_EPISODE_ACTION) {
-    void endEpisodeFromNudge(nudge.episodeId);
+    await endEpisodeFromNudge(nudge.episodeId);
   } else {
     // Ask again in another 24 hours, counted from now.
-    void scheduleOngoingEpisodeNudge(
+    await scheduleOngoingEpisodeNudge(
       nudge.episodeId,
       nudge.symptomName,
       new Date().toISOString()
     );
   }
-  return true;
 }
 
 /**

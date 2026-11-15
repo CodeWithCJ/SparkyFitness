@@ -5,6 +5,7 @@ import {
   hasNotificationPermission,
   SYMPTOM_EPISODE_NUDGE_CATEGORY,
 } from './notifications';
+import { currentServerId } from './notificationServerScope';
 
 const SYMPTOM_REMINDER_CHANNEL_ID = 'symptom-reminders';
 
@@ -25,6 +26,7 @@ export async function scheduleOngoingEpisodeNudge(
     const triggerTime = startTime + nudgeHours * 60 * 60 * 1000;
     const now = Date.now();
     if (triggerTime <= now) return;
+    const serverId = await currentServerId();
 
     await Notifications.scheduleNotificationAsync({
       identifier: notifId,
@@ -40,7 +42,9 @@ export async function scheduleOngoingEpisodeNudge(
         }),
         sound: true,
         categoryIdentifier: SYMPTOM_EPISODE_NUDGE_CATEGORY,
-        data: { episodeId, symptomName },
+        // The server the episode lives on, so a button pressed after a
+        // server switch is not sent to another server.
+        data: { episodeId, symptomName, serverId },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

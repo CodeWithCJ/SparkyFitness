@@ -12,6 +12,7 @@ import {
 } from '../../src/services/symptomReminderService';
 import { endSymptomEpisode } from '../../src/services/api/symptomsApi';
 import { invalidateSymptomEntryCaches } from '../../src/hooks/useSymptoms';
+import { currentServerId } from '../../src/services/notificationServerScope';
 
 jest.mock('../../src/services/notifications', () => ({
   addNotificationResponseListener: jest.fn(),
@@ -25,6 +26,11 @@ jest.mock('../../src/services/notifications', () => ({
 jest.mock('../../src/services/symptomReminderService', () => ({
   cancelOngoingEpisodeNudge: jest.fn(async () => undefined),
   scheduleOngoingEpisodeNudge: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../src/services/notificationServerScope', () => ({
+  ...jest.requireActual('../../src/services/notificationServerScope'),
+  currentServerId: jest.fn(),
 }));
 
 jest.mock('../../src/services/api/symptomsApi', () => ({
@@ -52,16 +58,18 @@ const mockInvalidate = invalidateSymptomEntryCaches as jest.Mock;
 const mockGetLast = Notifications.getLastNotificationResponse as jest.Mock;
 const mockClearLast = Notifications.clearLastNotificationResponse as jest.Mock;
 const mockToast = Toast.show as jest.Mock;
+const mockCurrentServerId = currentServerId as jest.Mock;
 
 let nextId = 0;
 function response(
   actionIdentifier: string,
   {
     category = 'symptom-episode-nudge',
-    data = { episodeId: 'ep-1', symptomName: 'Migraine' } as Record<
-      string,
-      unknown
-    >,
+    data = {
+      episodeId: 'ep-1',
+      symptomName: 'Migraine',
+      serverId: 'server-a',
+    } as Record<string, unknown>,
     id,
   }: {
     category?: string;
@@ -92,6 +100,7 @@ describe('initSymptomNotificationActions', () => {
     mockAddListener.mockReturnValue({ remove });
     mockGetLast.mockReturnValue(null);
     mockEnd.mockResolvedValue({ id: 'ep-1' });
+    mockCurrentServerId.mockResolvedValue('server-a');
   });
 
   function listener(): (r: unknown) => void {
@@ -182,6 +191,55 @@ describe('initSymptomNotificationActions', () => {
     );
     initSymptomNotificationActions();
     expect(mockClearLast).not.toHaveBeenCalled();
+  });
+
+  it('ignores a press from a nudge scheduled for another server', async () => {
+    mockCurrentServerId.mockResolvedValue('server-b');
+    const handle = listener();
+    handle(response('symptom-end-episode', { id: 'n-other-end' }));
+    handle(response('symptom-still-ongoing', { id: 'n-other-ongoing' }));
+    await flush();
+
+    expect(mockEnd).not.toHaveBeenCalled();
+    expect(mockScheduleNudge).not.toHaveBeenCalled();
+    expect(mockDismiss).toHaveBeenCalledWith('n-other-end');
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'info',
+        text1: 'This reminder is from another server',
+      })
+    );
+  });
+
+  it('acts on a nudge from an older build that has no server stamp', async () => {
+    mockCurrentServerId.mockResolvedValue('server-b');
+    listener()(
+      response('symptom-end-episode', {
+        data: { episodeId: 'ep-1', symptomName: 'Migraine' },
+      })
+    );
+    await flush();
+
+    expect(mockEnd).toHaveBeenCalledWith('ep-1', {
+      ended_at: expect.any(String),
+    });
+  });
+
+  it('runs a press once even when another press arrives in between', async () => {
+    const handle = listener();
+    const first = response('symptom-end-episode', { id: 'n-a' });
+    const second = response('symptom-end-episode', {
+      id: 'n-b',
+      data: { episodeId: 'ep-2', symptomName: 'Nausea', serverId: 'server-a' },
+    });
+    handle(first);
+    handle(second);
+    handle(first);
+    await flush();
+
+    expect(mockEnd).toHaveBeenCalledTimes(2);
+    expect(mockEnd).toHaveBeenNthCalledWith(1, 'ep-1', expect.anything());
+    expect(mockEnd).toHaveBeenNthCalledWith(2, 'ep-2', expect.anything());
   });
 
   it('removes the listener on cleanup', () => {

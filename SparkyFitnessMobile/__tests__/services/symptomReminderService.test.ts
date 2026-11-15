@@ -4,6 +4,10 @@ import {
   cancelOngoingEpisodeNudge,
 } from '../../src/services/symptomReminderService';
 
+jest.mock('../../src/services/notificationServerScope', () => ({
+  currentServerId: jest.fn(async () => 'server-a'),
+}));
+
 const mockGetPerms = Notifications.getPermissionsAsync as jest.MockedFunction<
   typeof Notifications.getPermissionsAsync
 >;
@@ -36,7 +40,11 @@ describe('symptomReminderService', () => {
         identifier: 'symptom_nudge_ep-123',
         content: expect.objectContaining({
           categoryIdentifier: 'symptom-episode-nudge',
-          data: { episodeId: 'ep-123', symptomName: 'Migraine' },
+          data: {
+            episodeId: 'ep-123',
+            symptomName: 'Migraine',
+            serverId: 'server-a',
+          },
         }),
       })
     );
