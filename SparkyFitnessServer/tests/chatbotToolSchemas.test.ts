@@ -174,6 +174,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'calories_per_hour',
         'description',
         'modality',
+        'health_activity_type',
         'entry_date',
         'entry_time',
         'duration_minutes',

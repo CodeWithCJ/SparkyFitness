@@ -821,6 +821,25 @@ describe('transformHealthRecords', () => {
   });
 
   describe('ExerciseSession records', () => {
+    test('skips a session exercise write-back wrote from the diary', () => {
+      // #1750: matched by client record id, not this app's package, so dev
+      // seed data written from the app is still imported.
+      const result = transformHealthRecords(
+        [
+          {
+            startTime: '2024-01-15T08:00:00Z',
+            endTime: '2024-01-15T08:30:00Z',
+            exerciseType: 79,
+            metadata: {
+              clientRecordId: 'sparky-exercise-individual-e1-session-1',
+            },
+          },
+        ],
+        { recordType: 'ExerciseSession', unit: '', type: 'exercise' }
+      );
+      expect(result).toHaveLength(0);
+    });
+
     test('creates rich exercise object with mapped activity type', () => {
       const records = [
         {

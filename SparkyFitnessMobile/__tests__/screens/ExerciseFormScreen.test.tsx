@@ -307,6 +307,66 @@ describe('ExerciseFormScreen — buildEditPayload', () => {
   });
 });
 
+describe('ExerciseFormScreen — health activity type (#1750)', () => {
+  const editState = {
+    name: baseExercise.name,
+    category: baseExercise.category,
+    modality: 'weight_reps',
+    modalityManuallySet: true,
+    healthActivityType: 'automatic',
+    caloriesPerHourText: String(baseExercise.calories_per_hour),
+    description: baseExercise.description ?? '',
+    equipment: baseExercise.equipment ?? [],
+    primaryMuscles: baseExercise.primary_muscles ?? [],
+    secondaryMuscles: baseExercise.secondary_muscles ?? [],
+    instructions: joinLines(baseExercise.instructions),
+    level: baseExercise.level ?? null,
+    force: baseExercise.force ?? null,
+    mechanic: baseExercise.mechanic ?? null,
+  };
+
+  it('sends a picked type on create and leaves Automatic out', () => {
+    expect(
+      buildCreatePayload(
+        'Walking into Mordor',
+        { ...editState, healthActivityType: 'walking' },
+        undefined
+      ).health_activity_type
+    ).toBe('walking');
+    expect(
+      buildCreatePayload(
+        'Walking into Mordor',
+        { ...editState, healthActivityType: 'automatic' },
+        undefined
+      )
+    ).not.toHaveProperty('health_activity_type');
+  });
+
+  it('sends a change on edit, and automatic to clear a stored override', () => {
+    expect(
+      buildEditPayload(
+        baseExercise,
+        { ...editState, healthActivityType: 'walking' },
+        baseExercise.calories_per_hour
+      )
+    ).toEqual({ health_activity_type: 'walking' });
+    expect(
+      buildEditPayload(
+        { ...baseExercise, health_activity_type: 'walking' },
+        editState,
+        baseExercise.calories_per_hour
+      )
+    ).toEqual({ health_activity_type: 'automatic' });
+    expect(
+      buildEditPayload(
+        { ...baseExercise, health_activity_type: 'walking' },
+        { ...editState, healthActivityType: 'walking' },
+        baseExercise.calories_per_hour
+      )
+    ).toEqual({});
+  });
+});
+
 describe('ExerciseFormScreen — create mode', () => {
   const navigation = mockNavigation;
 
@@ -343,6 +403,22 @@ describe('ExerciseFormScreen — create mode', () => {
         expect.objectContaining({ text1: 'Missing name' })
       );
     });
+  });
+
+  it('announces each picker as a button with its field and value', () => {
+    const route = {
+      key: 'ExerciseForm-key',
+      name: 'ExerciseForm' as const,
+      params: { mode: 'create-exercise' as const },
+    };
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <ExerciseFormScreen navigation={navigation} route={route as any} />
+      </SafeAreaProvider>
+    );
+    expect(
+      screen.getByRole('button', { name: /^Health activity type: Automatic/ })
+    ).toBeTruthy();
   });
 
   it('follows the category-derived modality until the picker is touched', async () => {

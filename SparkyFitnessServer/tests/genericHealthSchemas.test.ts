@@ -51,6 +51,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
       sort_order: 1,
       superset_group: null,
       modality: 'endurance',
+      health_activity_type: null,
       max_heart_rate: 178,
       heart_rate_recovery_1min: 32,
       avg_respiration_brpm: 24.5,
