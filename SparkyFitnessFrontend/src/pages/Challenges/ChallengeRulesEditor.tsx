@@ -84,7 +84,9 @@ const NumberField = ({
   // A typed number the rules refused (out of range): say so, rather than
   // show a value that is not the one saved. Shown values may be rounded
   // (miles, kJ), so only a real difference counts.
-  const typed = text === null || text === '' ? null : Number(text);
+  // "0" and "0." are on their way to "0.5": not refused yet.
+  const partial = text === '0' || (text?.endsWith('.') ?? false);
+  const typed = text === null || text === '' || partial ? null : Number(text);
   const refused =
     typed !== null &&
     Number.isFinite(typed) &&
