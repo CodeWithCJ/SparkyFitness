@@ -15,7 +15,14 @@ export async function scheduleOngoingEpisodeNudge(
   episodeId: string,
   symptomName: string,
   startedAt: string,
-  nudgeHours = 24
+  {
+    nudgeHours = 24,
+    serverId: knownServerId,
+  }: {
+    nudgeHours?: number;
+    /** The server the episode lives on; defaults to the active one. */
+    serverId?: string;
+  } = {}
 ): Promise<void> {
   const notifId = `${ONGOING_NUDGE_PREFIX}${episodeId}`;
   try {
@@ -26,7 +33,16 @@ export async function scheduleOngoingEpisodeNudge(
     const triggerTime = startTime + nudgeHours * 60 * 60 * 1000;
     const now = Date.now();
     if (triggerTime <= now) return;
-    const serverId = await currentServerId();
+    const serverId = knownServerId ?? (await currentServerId());
+    if (!serverId) {
+      // Without a server stamp a button press could act on whichever server
+      // is active later, so don't schedule a nudge that can't be scoped.
+      addLog(
+        '[Symptoms] No active server; ongoing episode nudge not scheduled',
+        'WARNING'
+      );
+      return;
+    }
 
     await Notifications.scheduleNotificationAsync({
       identifier: notifId,

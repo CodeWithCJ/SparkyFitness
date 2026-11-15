@@ -12,7 +12,7 @@ import {
 } from '../../src/services/symptomReminderService';
 import { endSymptomEpisode } from '../../src/services/api/symptomsApi';
 import { invalidateSymptomEntryCaches } from '../../src/hooks/useSymptoms';
-import { currentServerId } from '../../src/services/notificationServerScope';
+import { currentServerConfig } from '../../src/services/notificationServerScope';
 
 jest.mock('../../src/services/notifications', () => ({
   addNotificationResponseListener: jest.fn(),
@@ -30,7 +30,7 @@ jest.mock('../../src/services/symptomReminderService', () => ({
 
 jest.mock('../../src/services/notificationServerScope', () => ({
   ...jest.requireActual('../../src/services/notificationServerScope'),
-  currentServerId: jest.fn(),
+  currentServerConfig: jest.fn(),
 }));
 
 jest.mock('../../src/services/api/symptomsApi', () => ({
@@ -58,7 +58,9 @@ const mockInvalidate = invalidateSymptomEntryCaches as jest.Mock;
 const mockGetLast = Notifications.getLastNotificationResponse as jest.Mock;
 const mockClearLast = Notifications.clearLastNotificationResponse as jest.Mock;
 const mockToast = Toast.show as jest.Mock;
-const mockCurrentServerId = currentServerId as jest.Mock;
+const mockCurrentServerConfig = currentServerConfig as jest.Mock;
+const serverA = { id: 'server-a', url: 'https://a.example' };
+const serverB = { id: 'server-b', url: 'https://b.example' };
 
 let nextId = 0;
 function response(
@@ -100,7 +102,7 @@ describe('initSymptomNotificationActions', () => {
     mockAddListener.mockReturnValue({ remove });
     mockGetLast.mockReturnValue(null);
     mockEnd.mockResolvedValue({ id: 'ep-1' });
-    mockCurrentServerId.mockResolvedValue('server-a');
+    mockCurrentServerConfig.mockResolvedValue(serverA);
   });
 
   function listener(): (r: unknown) => void {
@@ -112,9 +114,11 @@ describe('initSymptomNotificationActions', () => {
     listener()(response('symptom-end-episode', { id: 'n-end' }));
     await flush();
 
-    expect(mockEnd).toHaveBeenCalledWith('ep-1', {
-      ended_at: expect.any(String),
-    });
+    expect(mockEnd).toHaveBeenCalledWith(
+      'ep-1',
+      { ended_at: expect.any(String) },
+      serverA
+    );
     expect(mockCancelNudge).toHaveBeenCalledWith('ep-1');
     expect(mockInvalidate).toHaveBeenCalledWith({ id: 'query-client' });
     expect(mockDismiss).toHaveBeenCalledWith('n-end');
@@ -147,7 +151,8 @@ describe('initSymptomNotificationActions', () => {
     expect(mockScheduleNudge).toHaveBeenCalledWith(
       'ep-1',
       'Migraine',
-      expect.any(String)
+      expect.any(String),
+      { serverId: 'server-a' }
     );
     const startedAt = Date.parse(mockScheduleNudge.mock.calls[0][2]);
     expect(startedAt).toBeGreaterThanOrEqual(before);
@@ -194,7 +199,7 @@ describe('initSymptomNotificationActions', () => {
   });
 
   it('ignores a press from a nudge scheduled for another server', async () => {
-    mockCurrentServerId.mockResolvedValue('server-b');
+    mockCurrentServerConfig.mockResolvedValue(serverB);
     const handle = listener();
     handle(response('symptom-end-episode', { id: 'n-other-end' }));
     handle(response('symptom-still-ongoing', { id: 'n-other-ongoing' }));
@@ -212,7 +217,7 @@ describe('initSymptomNotificationActions', () => {
   });
 
   it('acts on a nudge from an older build that has no server stamp', async () => {
-    mockCurrentServerId.mockResolvedValue('server-b');
+    mockCurrentServerConfig.mockResolvedValue(serverB);
     listener()(
       response('symptom-end-episode', {
         data: { episodeId: 'ep-1', symptomName: 'Migraine' },
@@ -220,9 +225,11 @@ describe('initSymptomNotificationActions', () => {
     );
     await flush();
 
-    expect(mockEnd).toHaveBeenCalledWith('ep-1', {
-      ended_at: expect.any(String),
-    });
+    expect(mockEnd).toHaveBeenCalledWith(
+      'ep-1',
+      { ended_at: expect.any(String) },
+      serverB
+    );
   });
 
   it('runs a press once even when another press arrives in between', async () => {
@@ -238,8 +245,29 @@ describe('initSymptomNotificationActions', () => {
     await flush();
 
     expect(mockEnd).toHaveBeenCalledTimes(2);
-    expect(mockEnd).toHaveBeenNthCalledWith(1, 'ep-1', expect.anything());
-    expect(mockEnd).toHaveBeenNthCalledWith(2, 'ep-2', expect.anything());
+    expect(mockEnd).toHaveBeenNthCalledWith(
+      1,
+      'ep-1',
+      expect.anything(),
+      serverA
+    );
+    expect(mockEnd).toHaveBeenNthCalledWith(
+      2,
+      'ep-2',
+      expect.anything(),
+      serverA
+    );
+  });
+
+  it('keeps using the server it checked if the active one changes meanwhile', async () => {
+    mockCurrentServerConfig
+      .mockResolvedValueOnce(serverA)
+      .mockResolvedValue(serverB);
+    listener()(response('symptom-end-episode', { id: 'n-race' }));
+    await flush();
+
+    expect(mockEnd).toHaveBeenCalledTimes(1);
+    expect(mockEnd).toHaveBeenCalledWith('ep-1', expect.anything(), serverA);
   });
 
   it('removes the listener on cleanup', () => {

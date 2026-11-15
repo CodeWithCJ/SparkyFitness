@@ -1,12 +1,17 @@
-import { getActiveServerConfig } from './storage';
+import { getActiveServerConfig, type ServerConfig } from './storage';
 
-/** The active saved server's id, or null when none is set or it can't be read. */
-export async function currentServerId(): Promise<string | null> {
+/** The active saved server, or null when none is set or it can't be read. */
+export async function currentServerConfig(): Promise<ServerConfig | null> {
   try {
-    return (await getActiveServerConfig())?.id ?? null;
+    return await getActiveServerConfig();
   } catch {
     return null;
   }
+}
+
+/** The active saved server's id, or null when none is set or it can't be read. */
+export async function currentServerId(): Promise<string | null> {
+  return (await currentServerConfig())?.id ?? null;
 }
 
 /**

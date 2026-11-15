@@ -17,8 +17,9 @@ import { endSymptomEpisode } from './api/symptomsApi';
 import { addLog } from './LogService';
 import {
   belongsToOtherServer,
-  currentServerId,
+  currentServerConfig,
 } from './notificationServerScope';
+import type { ServerConfig } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { invalidateSymptomEntryCaches } from '../hooks/useSymptoms';
 
@@ -50,9 +51,16 @@ function readNudgeData(
   return { episodeId, symptomName, serverId };
 }
 
-async function endEpisodeFromNudge(episodeId: string): Promise<void> {
+async function endEpisodeFromNudge(
+  episodeId: string,
+  serverConfig: ServerConfig | undefined
+): Promise<void> {
   try {
-    await endSymptomEpisode(episodeId, { ended_at: new Date().toISOString() });
+    await endSymptomEpisode(
+      episodeId,
+      { ended_at: new Date().toISOString() },
+      serverConfig
+    );
     await cancelOngoingEpisodeNudge(episodeId);
     invalidateSymptomEntryCaches(queryClient);
     Toast.show({
@@ -110,8 +118,11 @@ async function runNudgeAction(
   nudge: { episodeId: string; symptomName: string; serverId: string | null }
 ): Promise<void> {
   // The episode lives on the server the nudge was scheduled for; after a
-  // server switch, acting on it would hit the wrong server.
-  if (belongsToOtherServer(nudge.serverId, await currentServerId())) {
+  // server switch, acting on it would hit the wrong server. The checked
+  // config is used for the action too, so a switch while it runs can't
+  // redirect it.
+  const serverConfig = (await currentServerConfig()) ?? undefined;
+  if (belongsToOtherServer(nudge.serverId, serverConfig?.id ?? null)) {
     addLog(
       '[Symptoms] Nudge action belongs to another server; ignored',
       'WARNING'
@@ -127,13 +138,14 @@ async function runNudgeAction(
   }
 
   if (actionIdentifier === SYMPTOM_END_EPISODE_ACTION) {
-    await endEpisodeFromNudge(nudge.episodeId);
+    await endEpisodeFromNudge(nudge.episodeId, serverConfig);
   } else {
     // Ask again in another 24 hours, counted from now.
     await scheduleOngoingEpisodeNudge(
       nudge.episodeId,
       nudge.symptomName,
-      new Date().toISOString()
+      new Date().toISOString(),
+      { serverId: serverConfig?.id }
     );
   }
 }
