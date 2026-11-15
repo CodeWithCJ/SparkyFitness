@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealDetailScreen from '../../src/screens/MealDetailScreen';
@@ -12,7 +12,32 @@ import {
   useServerConnection,
   useToggleFavorite,
 } from '../../src/hooks';
+import { useRecipeImportAccess } from '../../src/hooks/useRecipeImport';
+import { useNfcSupport } from '../../src/hooks/useNfcSupport';
+import {
+  fetchRecipeSource,
+  syncRecipeNutrition,
+} from '../../src/services/api/recipeImportApi';
+import type { RecipeImportSource } from '@workspace/shared';
 import type { Meal } from '../../src/types/meals';
+
+jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual<typeof import('../../src/hooks/useRecipeImport')>(
+    '../../src/hooks/useRecipeImport'
+  ),
+  useRecipeImportAccess: jest.fn(() => null),
+}));
+
+jest.mock('../../src/hooks/useNfcSupport', () => ({
+  useNfcSupport: jest.fn(),
+}));
+jest.mock('../../src/hooks/useActionTags', () => ({
+  useActionTagsQuery: () => ({ tags: [] }),
+}));
+jest.mock('../../src/services/api/recipeImportApi', () => ({
+  fetchRecipeSource: jest.fn(),
+  syncRecipeNutrition: jest.fn(),
+}));
 
 jest.mock('../../src/hooks', () => ({
   useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
@@ -79,11 +104,14 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  push: jest.fn(),
   setOptions: jest.fn(),
 } as any;
+const mockUseFocusEffect = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
+  useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
 }));
 
 const mockUseDeleteMeal = useDeleteMeal as jest.MockedFunction<
@@ -180,6 +208,13 @@ describe('MealDetailScreen', () => {
       },
     });
     jest.clearAllMocks();
+    jest.mocked(useRecipeImportAccess).mockReturnValue(null);
+    jest.mocked(useNfcSupport).mockReturnValue({
+      supported: false,
+      enabled: false,
+      isLoading: false,
+      refetch: jest.fn(),
+    });
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
       isLoading: false,
@@ -216,6 +251,73 @@ describe('MealDetailScreen', () => {
       isPending: false,
     });
   });
+
+  it.each([
+    { owner: true, scope: 'server:user-1', nfc: true, sourceVisible: true },
+    { owner: true, scope: 'server:user-1', nfc: false, sourceVisible: true },
+    { owner: false, scope: 'server:user-2', nfc: true, sourceVisible: false },
+    { owner: true, scope: null, nfc: true, sourceVisible: false },
+  ])(
+    'keeps source ownership separate from NFC availability: %j',
+    async ({ owner, scope, nfc, sourceVisible }) => {
+      jest.mocked(useRecipeImportAccess).mockReturnValue(scope);
+      jest.mocked(useNfcSupport).mockReturnValue({
+        supported: nfc,
+        enabled: nfc,
+        isLoading: false,
+        refetch: jest.fn(),
+      });
+      if (!owner) {
+        mockUseMeal.mockReturnValue({
+          meal: buildMeal({ user_id: 'another-user' }),
+          isLoading: false,
+          isError: false,
+          refetch: jest.fn(),
+        });
+      }
+      const source: RecipeImportSource = {
+        providerId: 'provider',
+        recipeId: 'recipe',
+        recipeSlug: 'rice',
+        name: 'Original rice recipe',
+        recipeServings: 4,
+        sourceFingerprint: 'a'.repeat(64),
+        ingredients: [],
+        mappings: [],
+        syncWarnings: [],
+        syncEligible: true,
+        lastSyncedAt: null,
+        mealId: 'meal-1',
+      };
+      jest.mocked(fetchRecipeSource).mockResolvedValue(source);
+      const screen = renderScreen();
+
+      if (sourceVisible) {
+        expect(await screen.findByText('Mealie source')).toBeTruthy();
+        expect(fetchRecipeSource).toHaveBeenCalledWith('meal-1');
+        expect(screen.getByText('Sync nutrition to Mealie')).toBeTruthy();
+      } else {
+        expect(screen.queryByText('Mealie source')).toBeNull();
+        expect(fetchRecipeSource).not.toHaveBeenCalled();
+      }
+      expect(syncRecipeNutrition).not.toHaveBeenCalled();
+      if (nfc) {
+        fireEvent.press(screen.getByText('Add NFC tag'));
+        expect(navigation.navigate).toHaveBeenCalledWith('ActionTagForm', {
+          presetAction: {
+            type: 'meal',
+            meal_template_id: 'meal-1',
+            quantity: 2,
+            unit: 'servings',
+            meal: { mode: 'auto' },
+          },
+        });
+        await waitFor(() => expect(syncRecipeNutrition).not.toHaveBeenCalled());
+      } else {
+        expect(screen.queryByText('Add NFC tag')).toBeNull();
+      }
+    }
+  );
 
   it('shows owner edit and delete actions', () => {
     const screen = renderScreen();
@@ -263,6 +365,71 @@ describe('MealDetailScreen', () => {
         }),
       })
     );
+  });
+
+  it('allows adjusting an ingredient quantity and logs with customized foods', () => {
+    const screen = renderScreen();
+
+    // Tap on ingredient to open modal
+    fireEvent.press(screen.getByText('Chicken'));
+
+    // Modal is open, update quantity
+    const input = screen.getByDisplayValue('2');
+    fireEvent.changeText(input, '3');
+    fireEvent.press(screen.getByText('Apply'));
+
+    // Tap Log Meal
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        customizedFoods: [
+          expect.objectContaining({
+            food_name: 'Chicken',
+            quantity: 3,
+          }),
+        ],
+      })
+    );
+    // The item keeps the saved ingredients, which Reset returns to.
+    const params = (navigation.navigate as jest.Mock).mock.calls[0][1];
+    expect(params.item.originalItem.foods).toEqual([
+      expect.objectContaining({ food_name: 'Chicken', quantity: 2 }),
+    ]);
+  });
+
+  it('allows resetting customized foods back to template', () => {
+    const screen = renderScreen();
+
+    // Adjust ingredient
+    fireEvent.press(screen.getByText('Chicken'));
+    fireEvent.changeText(screen.getByDisplayValue('2'), '4');
+    fireEvent.press(screen.getByText('Apply'));
+
+    // Reset button should now be visible
+    expect(screen.getByText('Reset')).toBeTruthy();
+    fireEvent.press(screen.getByText('Reset'));
+
+    // Tap Log Meal
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.not.objectContaining({
+        customizedFoods: expect.anything(),
+      })
+    );
+  });
+
+  it('navigates to food search when Add Food is pressed', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(navigation.push).toHaveBeenCalledWith('FoodSearch', {
+      pickerMode: 'meal-builder',
+    });
   });
 
   it('opens a prefilled meal plan form from the detail screen', () => {

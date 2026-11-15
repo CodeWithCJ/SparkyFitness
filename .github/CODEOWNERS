@@ -34,3 +34,10 @@
 # ---------------------------------------------------------------------------
 
 /SparkyFitnessTag/               @CodeWithCJ
+
+# ---------------------------------------------------------------------------
+# Zepp auth relay (zepp-auth.sparkyfitness.com)
+# Will hold the shared Zepp client secret and exchange users' OAuth codes.
+# ---------------------------------------------------------------------------
+
+/SparkyFitnessZeppAuth/          @CodeWithCJ

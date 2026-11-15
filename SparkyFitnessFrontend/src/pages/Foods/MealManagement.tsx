@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,10 @@ import {
 } from '@/utils/nutrientUtils';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { filterAndSortByTerms } from '@workspace/shared';
+import {
+  filterAndSortByTerms,
+  recipeImportPreviewRequestSchema,
+} from '@workspace/shared';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -79,17 +83,43 @@ import {
   CellContext,
 } from '@tanstack/react-table';
 import { type DataTableFeatures } from '@/components/ui/dataTableFeatures';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
+import RecipeImportSourcePanel from './RecipeImportSourcePanel';
+
+const RecipeImportDialog = React.lazy(() => import('./RecipeImportDialog'));
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { isActingOnBehalf, activeUserId } = useActiveUser();
+  const [showRecipeImport, setShowRecipeImport] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const parsedRecipe = recipeImportPreviewRequestSchema.safeParse({
+    providerId: searchParams.get('mealieProvider'),
+    recipeSlug: searchParams.get('mealieRecipe'),
+  });
+  const initialRecipe = parsedRecipe.success ? parsedRecipe.data : undefined;
+  function closeRecipeImport() {
+    setShowRecipeImport(false);
+    if (
+      searchParams.has('mealieProvider') ||
+      searchParams.has('mealieRecipe')
+    ) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('mealieProvider');
+      next.delete('mealieRecipe');
+      setSearchParams(next, { replace: true });
+    }
+  }
   const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
   const [editingMealId, setEditingMealId] = useState<string | undefined>(
     undefined
   );
+  const [ingredientsDirty, setIngredientsDirty] = useState(false);
+  const [ingredientsLoaded, setIngredientsLoaded] = useState(true);
   const [showMealBuilderDialog, setShowMealBuilderDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicatingMealId, setDuplicatingMealId] = useState<string | null>(
@@ -198,11 +228,15 @@ const MealManagement: React.FC = () => {
   };
 
   const handleCreateNewMeal = () => {
+    setIngredientsDirty(false);
+    setIngredientsLoaded(true);
     setEditingMealId(undefined);
     setShowMealBuilderDialog(true);
   };
 
   const handleEditMeal = React.useCallback((mealId: string) => {
+    setIngredientsDirty(false);
+    setIngredientsLoaded(false);
     setEditingMealId(mealId);
     setShowMealBuilderDialog(true);
   }, []);
@@ -242,11 +276,15 @@ const MealManagement: React.FC = () => {
   );
 
   const handleMealSave = () => {
+    setIngredientsDirty(false);
+    setIngredientsLoaded(true);
     setShowMealBuilderDialog(false);
     invalidateMeals();
   };
 
   const handleMealCancel = () => {
+    setIngredientsDirty(false);
+    setIngredientsLoaded(true);
     setShowMealBuilderDialog(false);
   };
 
@@ -597,7 +635,15 @@ const MealManagement: React.FC = () => {
           <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
             {t('mealManagement.manageMeals', 'Meal Management')}
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {!isActingOnBehalf && activeUserId && (
+              <Button
+                variant="outline"
+                onClick={() => setShowRecipeImport(true)}
+              >
+                {t('recipeImport.title', 'Import Mealie ingredients')}
+              </Button>
+            )}
             <Button
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
@@ -708,6 +754,25 @@ const MealManagement: React.FC = () => {
         </CardContent>
       </Card>
 
+      {(showRecipeImport || initialRecipe) &&
+        !isActingOnBehalf &&
+        activeUserId && (
+          <React.Suspense fallback={null}>
+            <RecipeImportDialog
+              key={activeUserId}
+              open
+              initialRecipe={initialRecipe}
+              onOpenChange={(open) => {
+                if (!open) closeRecipeImport();
+              }}
+              onOpenMeal={(mealId) => {
+                closeRecipeImport();
+                handleEditMeal(mealId);
+              }}
+            />
+          </React.Suspense>
+        )}
+
       <BulkActionToolbar
         selectedCount={selectedCount}
         totalCount={editableMealIds.length}
@@ -768,8 +833,17 @@ const MealManagement: React.FC = () => {
                   )}
             </DialogDescription>
           </DialogHeader>
+          {editingMealId && !isActingOnBehalf && (
+            <RecipeImportSourcePanel
+              mealId={editingMealId}
+              ingredientsDirty={ingredientsDirty}
+              ingredientsLoaded={ingredientsLoaded}
+            />
+          )}
           <MealBuilder
             mealId={editingMealId}
+            onIngredientsDirtyChange={setIngredientsDirty}
+            onIngredientsLoadedChange={setIngredientsLoaded}
             onSave={handleMealSave}
             onCancel={handleMealCancel}
           />
@@ -846,6 +920,10 @@ const MealManagement: React.FC = () => {
               </p>
             )}
           </div>
+
+          {viewingMeal?.id && !isActingOnBehalf && (
+            <RecipeImportSourcePanel mealId={viewingMeal.id} />
+          )}
 
           {/* After the ingredient list: the foods are what this dialog is
               opened to check, and a full recipe above them pushes them down. */}

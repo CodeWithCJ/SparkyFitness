@@ -108,8 +108,9 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
     return;
   }
 
-  const query = req.query.query as string | undefined;
-  if (!query) {
+  // Mealie also uses this search path to browse a selected recipe collection.
+  const query = req.query.query ?? '';
+  if (typeof query !== 'string' || (!query && providerType !== 'mealie')) {
     res.status(400).json({ error: 'Missing query parameter' });
     return;
   }

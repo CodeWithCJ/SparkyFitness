@@ -81,6 +81,12 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setWorkoutKeepAwakeEnabled = useAppPreferencesStore(
     (s) => s.setWorkoutKeepAwakeEnabled
   );
+  const plannedValuesAsPlaceholders = useAppPreferencesStore(
+    (s) => s.plannedValuesAsPlaceholders
+  );
+  const setPlannedValuesAsPlaceholders = useAppPreferencesStore(
+    (s) => s.setPlannedValuesAsPlaceholders
+  );
   const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
   const setNowCardEnabled = useAppPreferencesStore(
     (s) => s.setActiveWorkoutNowCard
@@ -234,6 +240,27 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
         />
 
         <SettingsRow
+          title={t('workoutSettings.plannedPlaceholders', {
+            defaultValue: 'Use planned values as placeholders',
+          })}
+          subtitle={t('workoutSettings.plannedPlaceholdersSubtitle', {
+            defaultValue:
+              "Workouts started from a plan or saved workout suggest its planned weight and reps instead of last session's. Applies from the next workout you start.",
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={plannedValuesAsPlaceholders}
+              onValueChange={setPlannedValuesAsPlaceholders}
+              accessibilityLabel={t(
+                'workoutSettings.plannedPlaceholdersAccessibility',
+                { defaultValue: 'Use planned values as placeholders' }
+              )}
+            />
+          }
+        />
+
+        <SettingsRow
           title={t('workoutSettings.workoutView', {
             defaultValue: 'Workout view',
           })}
@@ -343,6 +370,18 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
           })}
           subtitleNumberOfLines={0}
           onPress={() => navigation.navigate('WarmupSettings')}
+        />
+
+        <SettingsRow
+          title={t('workoutSettings.treadmillStride', {
+            defaultValue: 'Treadmill & stride',
+          })}
+          subtitle={t('workoutSettings.treadmillStrideSubtitle', {
+            defaultValue:
+              'See and set the stride used to estimate indoor distance, and correct a treadmill that reads long or short.',
+          })}
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('TreadmillSettings')}
         />
 
         <SettingsRow

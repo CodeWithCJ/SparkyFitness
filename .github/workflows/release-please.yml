@@ -84,7 +84,7 @@ jobs:
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          ref: ${{ fromJSON(steps.release.outputs.pr || '{}').headBranchName }}
           persist-credentials: false
 
       - name: Install pnpm
@@ -117,7 +117,7 @@ jobs:
         if: ${{ steps.format.outputs.commit == 'true' }}
         env:
           TOKEN: ${{ steps.app_token.outputs.token }}
-          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr || '{}').headBranchName }}
         run: git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
 
   draft-release-notes:

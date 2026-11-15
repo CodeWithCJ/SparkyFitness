@@ -12,6 +12,10 @@ import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 import { createWorkout } from '../../src/services/api/exerciseApi';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { ensureNotificationPermission } from '../../src/services/notifications';
@@ -382,6 +386,38 @@ describe('useStartLiveWorkout', () => {
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
       '101': { weight: 80, reps: 5, duration: 90, distance: null },
     });
+  });
+
+  it('marks the store plan to show before last session when "Use planned values as placeholders" is on (#3417)', async () => {
+    useAppPreferencesStore.getState().setPlannedValuesAsPlaceholders(true);
+    try {
+      const { result } = setup();
+      const plannedExercises = [
+        {
+          ...EXERCISES[0],
+          sets: [{ ...EXERCISES[0].sets[0], weight: 110, reps: 5 }],
+        },
+      ];
+
+      await act(async () => {
+        await result.current.startLiveWorkout({
+          name: 'Push Day',
+          exercises: plannedExercises,
+        });
+      });
+
+      expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
+        '101': {
+          weight: 110,
+          reps: 5,
+          duration: null,
+          distance: null,
+          preferOverHistory: true,
+        },
+      });
+    } finally {
+      __resetAppPreferencesStoreForTests();
+    }
   });
 
   it('forwards the source preset link with the active server config id into the store', async () => {

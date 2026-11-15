@@ -67,6 +67,7 @@ describe('exercise changes refresh cached diary macro goals', () => {
       description: null,
       notes: null,
       source: 'manual',
+      status: 'completed',
       total_duration_minutes: 45,
       exercises: [],
       activity_details: [],

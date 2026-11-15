@@ -1,3 +1,4 @@
+import { useFoodResultNutrientConfig } from '@/hooks/Foods/useFoodResultNutrientConfig';
 import {
   useState,
   useEffect,
@@ -20,9 +21,9 @@ import {
   Filter,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Select,
   SelectContent,
@@ -37,14 +38,11 @@ import {
   useDatabaseFoodSearchQuery,
   useRecentAndTopFoodsQuery,
 } from '@/hooks/Foods/useFoods.ts';
-import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.ts';
 import {
   nutritionixBrandedNutrientsOptions,
   nutritionixNaturalNutrientsOptions,
   searchNutritionixOptions,
 } from '@/hooks/Foods/useNutrionix.ts';
-import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
-import { visibleCustomNutrients } from '@/utils/nutrientUtils.ts';
 import {
   convertNutritionixToFood,
   pinDefaultVariantToServing,
@@ -116,6 +114,7 @@ interface EnhancedFoodSearchProps {
   // meal cannot contain another meal).
   hideMealTab?: boolean;
   mealType?: string;
+  allowRecipeImport?: boolean;
 }
 
 const SectionHeader = ({ children }: { children: ReactNode }) => (
@@ -169,10 +168,12 @@ const EnhancedFoodSearch = ({
   onFoodSelect,
   hideDatabaseTab = false,
   hideMealTab = false,
+  allowRecipeImport = !hideMealTab,
   mealType = undefined,
 }: EnhancedFoodSearchProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isActingOnBehalf } = useActiveUser();
   const [ownershipFilter, setOwnershipFilter] = useState<
     'all' | 'mine' | 'family' | 'public'
   >('all');
@@ -181,14 +182,8 @@ const EnhancedFoodSearch = ({
     foodSearchAllProvidersDefault,
     defaultBarcodeProviderId,
     itemDisplayLimit,
-    nutrientDisplayPreferences,
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
   } = usePreferences();
-  const isMobile = useIsMobile();
-  const platform = isMobile ? 'mobile' : 'desktop';
 
   // Display modes derived from the embedding context.
   const onlineOnly = hideDatabaseTab;
@@ -220,6 +215,9 @@ const EnhancedFoodSearch = ({
 
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Food | null>(null);
+  const [editingRecipeProviderId, setEditingRecipeProviderId] = useState<
+    string | undefined
+  >();
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [barcodeProviderId, setBarcodeProviderId] = useState<string | null>(
     null
@@ -264,7 +262,6 @@ const EnhancedFoodSearch = ({
   }, [user?.id, user?.activeUserId]);
 
   const queryClient = useQueryClient();
-  const { data: customNutrients } = useCustomNutrients();
   const { data: foodDataProviders = EMPTY_PROVIDERS } =
     useExternalProvidersQuery();
   // item_display_limit (default 10) is the per-section total cap for the
@@ -1141,6 +1138,7 @@ const EnhancedFoodSearch = ({
     food: Food,
     providerIdOverride?: string
   ) => {
+    const providerId = providerIdOverride || searchProviderId || undefined;
     const needsDetailFetch =
       foodProviderNeedsDetailFetch(food.provider_type) &&
       food.provider_external_id;
@@ -1148,9 +1146,9 @@ const EnhancedFoodSearch = ({
     if (needsDetailFetch) {
       // In All Providers mode searchProviderId isn't set, so callers pass the
       // result's own provider id to fetch full nutrients with the right creds.
-      const providerId = providerIdOverride || searchProviderId || undefined;
       if (!providerId && !isPublicFoodProvider(food.provider_type)) {
         // No provider credentials available — data is already complete (barcode flow)
+        setEditingRecipeProviderId(providerId);
         setEditingProduct(food);
         setShowEditDialog(true);
         return;
@@ -1170,11 +1168,15 @@ const EnhancedFoodSearch = ({
           detailedFood,
           food.default_variant
         );
+        setEditingRecipeProviderId(providerId);
         setEditingProduct({
           ...pinnedFood,
           provider_type: pinnedFood.provider_type ?? food.provider_type,
           provider_external_id:
             pinnedFood.provider_external_id ?? food.provider_external_id,
+          recipe_has_nutrition:
+            pinnedFood.recipe_has_nutrition ?? food.recipe_has_nutrition,
+          recipe_servings: pinnedFood.recipe_servings ?? food.recipe_servings,
           provider_verified:
             pinnedFood.provider_verified ?? food.provider_verified,
           // The details endpoint doesn't always echo the photo back, so fall
@@ -1193,57 +1195,19 @@ const EnhancedFoodSearch = ({
           ),
           variant: 'destructive',
         });
+        setEditingRecipeProviderId(providerId);
         setEditingProduct(food);
         setShowEditDialog(true);
       }
       return;
     }
 
+    setEditingRecipeProviderId(providerId);
     setEditingProduct(food);
     setShowEditDialog(true);
   };
 
-  const quickInfoPreferences =
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === platform
-    ) ||
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
-    );
-
-  // Custom nutrients are gated by the food_database view group, the group the
-  // settings page adds them to by default — supplement-scoped nutrients are
-  // deliberately absent from it and must not become columns on every result card.
-  const foodDatabasePreferences =
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'food_database' && p.platform === platform
-    ) ||
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
-    );
-
-  const visibleNutrients = useMemo(() => {
-    const base = quickInfoPreferences
-      ? quickInfoPreferences.visible_nutrients
-      : DEFAULT_NUTRIENTS;
-
-    const allKeys = [
-      ...base,
-      ...visibleCustomNutrients(customNutrients, foodDatabasePreferences).map(
-        (cn) => cn.name
-      ),
-    ];
-
-    return Array.from(new Set(allKeys));
-  }, [quickInfoPreferences, foodDatabasePreferences, customNutrients]);
-
-  const nutrientConfig = {
-    visibleNutrients,
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
-    customNutrients: customNutrients || [],
-  };
+  const nutrientConfig = useFoodResultNutrientConfig();
 
   // --- Derived render state ---
 
@@ -1781,6 +1745,20 @@ const EnhancedFoodSearch = ({
         onOpenChange={setShowEditDialog}
         mode="edit"
         editingProduct={editingProduct}
+        recipeImportProviderId={
+          allowRecipeImport &&
+          !isActingOnBehalf &&
+          foodDataProviders.some(
+            (provider) =>
+              provider.id === editingRecipeProviderId &&
+              provider.provider_type === 'mealie' &&
+              provider.is_active &&
+              'user_id' in provider &&
+              provider.user_id === user?.id
+          )
+            ? editingRecipeProviderId
+            : undefined
+        }
         onSave={handleSaveEditedFood}
       />
       <FoodFormDialog

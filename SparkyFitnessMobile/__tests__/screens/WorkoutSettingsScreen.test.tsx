@@ -125,6 +125,17 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
+  it('toggles "Use planned values as placeholders", off by default (#3417)', () => {
+    const { getByLabelText } = renderScreen();
+    const plannedToggle = getByLabelText('Use planned values as placeholders');
+    expect(plannedToggle.props.value).toBe(false);
+
+    fireEvent(plannedToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().plannedValuesAsPlaceholders).toBe(
+      true
+    );
+  });
+
   it('saves the adaptive suggestions account setting from the switch', async () => {
     const {
       saveWorkoutCoachingSettings,

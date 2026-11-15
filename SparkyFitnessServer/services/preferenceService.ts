@@ -1,4 +1,6 @@
-import preferenceRepository from '../models/preferenceRepository.js';
+import preferenceRepository, {
+  type FeatureChoicesMergeResult,
+} from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import {
   isValidTimeZone,
@@ -16,6 +18,8 @@ import {
   DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
   CALORIE_CYCLING_DEFAULT_OFFSETS,
+  type FeatureChoices,
+  type FeatureChoicesPatch,
   type UserPreferencesMutator,
   userPreferencesMutatorSchema,
 } from '@workspace/shared';
@@ -297,6 +301,17 @@ function getDefaultPreferences() {
     calorie_cycling_offsets: [...CALORIE_CYCLING_DEFAULT_OFFSETS],
   };
 }
+/**
+ * Optional feature choices are read through GET /features only: the general
+ * preferences reads fall back to defaults on any error, which would show
+ * features the person turned off (#3487). So no general preferences response
+ * carries them, and an app never picks them up from there.
+ */
+function withoutFeatureChoices<T extends object>(row: T): T {
+  const copy: T & { feature_choices?: unknown } = { ...row };
+  delete copy.feature_choices;
+  return copy;
+}
 async function updateUserPreferences(
   authenticatedUserId: string,
   targetUserId: string,
@@ -321,7 +336,7 @@ async function updateUserPreferences(
         'User preferences not found or not authorized to update.'
       );
     }
-    return updatedPreferences;
+    return withoutFeatureChoices(updatedPreferences);
   } catch (error) {
     log(
       'error',
@@ -371,10 +386,10 @@ async function getUserPreferences(
     if (!preferences) {
       return getDefaultPreferences();
     }
-    const result = {
+    const result = withoutFeatureChoices({
       ...preferences,
       time_format: preferences.time_format ?? 'h:mm A',
-    };
+    });
     // Heart rate zone settings are owner-only: a switched delegate reads the
     // rest of the preferences but never these.
     if (authenticatedUserId && authenticatedUserId !== targetUserId) {
@@ -411,7 +426,7 @@ async function bootstrapUserTimezone(
         'User preferences not found or not authorized to update.'
       );
     }
-    return preferences;
+    return withoutFeatureChoices(preferences);
   } catch (error) {
     log(
       'error',
@@ -444,7 +459,7 @@ async function upsertUserPreferences(
       ...preferenceData,
       user_id: authenticatedUserId,
     });
-    return newPreferences;
+    return withoutFeatureChoices(newPreferences);
   } catch (error) {
     log(
       'error',
@@ -454,15 +469,52 @@ async function upsertUserPreferences(
     throw error;
   }
 }
+/**
+ * The person's optional-feature choices for both platforms, for the owner or
+ * someone acting for them (they see the account as the owner set it up). A
+ * person without choices gets empty maps. Errors are thrown, never answered
+ * with defaults, so a failed read cannot show features the person turned off.
+ *
+ * Null when someone acting for the person cannot see the row: every account
+ * has a preferences row, so an empty read there means their grant does not
+ * cover preferences, not that there are no choices.
+ */
+async function getFeatureChoices(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<Required<FeatureChoices> | null> {
+  const stored = await preferenceRepository.getFeatureChoices(
+    targetUserId,
+    authenticatedUserId
+  );
+  if (!stored && authenticatedUserId !== targetUserId) return null;
+  return { web: stored?.web ?? {}, mobile: stored?.mobile ?? {} };
+}
+/** Applies a feature-switch patch for the owner; see `mergeFeatureChoices`. */
+async function updateFeatureChoices(
+  userId: string,
+  patch: FeatureChoicesPatch
+): Promise<FeatureChoicesMergeResult> {
+  try {
+    return await preferenceRepository.mergeFeatureChoices(userId, patch);
+  } catch (error) {
+    log('error', `Error updating feature choices for user ${userId}:`, error);
+    throw error;
+  }
+}
 export { updateUserPreferences };
 export { deleteUserPreferences };
 export { getUserPreferences };
 export { bootstrapUserTimezone };
 export { upsertUserPreferences };
+export { updateFeatureChoices };
+export { getFeatureChoices };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
   bootstrapUserTimezone,
   upsertUserPreferences,
+  updateFeatureChoices,
+  getFeatureChoices,
 };

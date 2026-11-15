@@ -1,3 +1,4 @@
+import { mcpServerOptionsSchema } from '@workspace/shared';
 import { z } from 'zod/v4';
 
 /**
@@ -19,6 +20,7 @@ export const CreateGlobalExternalDataProviderBodySchema = z
     app_key: optionalNullableString,
     base_url: optionalNullableString,
     is_active: z.boolean().optional(),
+    provider_options: mcpServerOptionsSchema.optional(),
   })
   .strict();
 
@@ -42,6 +44,7 @@ export const UpdateGlobalExternalDataProviderBodySchema = z
     app_key: optionalNullableString,
     base_url: optionalNullableString,
     is_active: z.boolean().optional(),
+    provider_options: mcpServerOptionsSchema.optional(),
   })
   .strict();
 

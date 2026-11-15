@@ -9,11 +9,17 @@ import {
   volumeFromMl,
 } from '../utils/unitConversions';
 import { addLog } from './LogService';
+import { setNativeMedicationActiveUser } from './medicationNativeBridge';
 import { getAuthHeaders } from './api/authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from './storage';
 
 /** What the native "Log water" shortcut needs to log a drink with the app closed. */
 export interface BackgroundWaterConfig {
+  /**
+   * The saved server this login belongs to. The native medication reminder
+   * handler logs a button press only for a reminder stamped with the same id.
+   */
+  serverId: string;
   baseUrl: string;
   headers: Record<string, string>;
   /** Absent when the user has no water container yet; water actions then ask for one. */
@@ -56,6 +62,7 @@ export function buildBackgroundWaterConfig(
   // The app refuses plain HTTP outside development; the shortcut must too.
   if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) return null;
   return {
+    serverId: server.id,
     baseUrl,
     headers: {
       ...proxyHeadersToRecord(server.proxyHeaders),
@@ -130,7 +137,23 @@ export function syncBackgroundWater(
 
 /** Erases the native copy, e.g. when the user signs out or removes the server. */
 export function clearBackgroundWater(): Promise<void> {
-  return enqueue(() => store(null));
+  // The native medication reminder handler also forgets whose reminders it may log.
+  return enqueue(() => {
+    setNativeMedicationActiveUser(null);
+    return store(null);
+  });
+}
+
+/**
+ * Tells the native medication reminder handler which account's reminders it may
+ * log. Queued with the syncs and clears, so a sign-out's reset and a later
+ * sign-in's id are applied in the order they were asked and never overwrite
+ * each other.
+ */
+export function syncMedicationActiveUser(userId: string): Promise<void> {
+  return enqueue(async () => {
+    setNativeMedicationActiveUser(userId);
+  });
 }
 
 /**

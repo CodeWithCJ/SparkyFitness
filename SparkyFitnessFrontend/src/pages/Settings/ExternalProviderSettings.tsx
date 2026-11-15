@@ -24,6 +24,7 @@ import {
   ALL_PROVIDERS_VALUE,
   resolveSettingsFoodProviderValue,
 } from '@/utils/settings';
+import type { McpServerOptions } from '@workspace/shared';
 
 export interface ExternalDataProvider {
   id: string;
@@ -68,12 +69,20 @@ export interface ExternalDataProvider {
   liftosaur_connect_status?: 'connected' | 'disconnected';
   intervals_last_sync_at?: string | null;
   intervals_connect_status?: 'connected' | 'disconnected';
+  intervals_push_nutrition?: boolean;
+  intervals_pushed_days?: number;
+  intervals_pushed_since?: string | null;
   strava_last_sync_at?: string | null;
   strava_token_expires?: string | null;
   googlehealth_last_sync_at?: string | null;
   googlehealth_token_expires?: string | null;
   sort_order?: number;
   supports_barcode?: boolean;
+  /**
+   * MCP tool servers only: which tools chat may use, and whether the server
+   * is told who is chatting.
+   */
+  provider_options?: McpServerOptions | null;
 }
 
 const ExternalProviderSettings = () => {

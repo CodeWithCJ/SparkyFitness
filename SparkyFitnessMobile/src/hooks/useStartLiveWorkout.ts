@@ -16,6 +16,7 @@ import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
 import { serverConnectionQueryKey } from './queryKeys';
 import { defaultWorkoutName } from './useWorkoutForm';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { resolveWatchSetTargets } from './useWatchSetTargetsSync';
 import WatchConnectivity, {
   type WatchWorkoutStartPayload,
@@ -324,8 +325,13 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
 
         // Hevy-style start: sets are created with empty weight/reps — the
         // plan renders as gray placeholders and is only recorded when a set
-        // is completed or typed over.
-        const plannedSetValues = extractPlannedSetValues(resolvedExercises);
+        // is completed or typed over. "Use planned values as placeholders"
+        // is read once here, so the whole workout resolves one way even if
+        // the setting changes mid-workout.
+        const plannedSetValues = extractPlannedSetValues(resolvedExercises, {
+          preferOverHistory:
+            useAppPreferencesStore.getState().plannedValuesAsPlaceholders,
+        });
         const session = await createSession({
           name: name ?? defaultWorkoutName(entryDate),
           entry_date: entryDate,

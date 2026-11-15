@@ -22,8 +22,60 @@ private func sharedKeychainGroup() -> String? {
 }
 
 public class BackgroundWaterModule: Module {
+    private var medicationObserver: NSObjectProtocol?
+
     public func definition() -> ModuleDefinition {
         Name("BackgroundWater")
+
+        Events("onMedicationActionResult")
+
+        // Tells JavaScript, if it is running, that the native handler for the
+        // medication reminder buttons has left something to apply.
+        OnCreate {
+            self.medicationObserver = NotificationCenter.default.addObserver(
+                forName: medicationActionResultNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                self?.sendEvent("onMedicationActionResult", [:])
+            }
+        }
+
+        OnDestroy {
+            if let observer = self.medicationObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+
+        /// Minutes the Snooze button waits, from the app preference; the
+        /// native handler cannot read the JavaScript store.
+        Function("setMedicationSnoozeMinutes") { (minutes: Int) in
+            if minutes > 0 { MedicationActionStore.setSnoozeMinutes(minutes) }
+        }
+
+        /// True when the native handler took this reminder button press, so
+        /// JavaScript must not log or snooze it a second time.
+        Function("isMedicationActionClaimed") { (notificationId: String, actionId: String) -> Bool in
+            MedicationActionStore.isClaimed(notificationId, actionId)
+        }
+
+        /// The account the reminders belong to, or nil when signed out. Taken
+        /// and Skip are handled natively only for this account's reminders.
+        Function("setMedicationActiveUser") { (userId: String?) in
+            MedicationActionStore.setActiveUserId(userId)
+        }
+
+        /// What the native handler did and JavaScript has not yet confirmed,
+        /// as JSON. Nothing is removed until `acknowledgeMedicationActionResults`.
+        Function("readMedicationActionResults") { () -> String in
+            let results = MedicationActionStore.readResults()
+            guard let data = try? JSONSerialization.data(withJSONObject: results),
+                  let json = String(data: data, encoding: .utf8) else { return "[]" }
+            return json
+        }
+
+        /// Forgets results JavaScript has stored or applied.
+        Function("acknowledgeMedicationActionResults") { (ids: [String]) in
+            MedicationActionStore.acknowledge(ids)
+        }
 
         Function("setConfig") { (json: String?) -> Bool in
             let match: [String: Any] = [

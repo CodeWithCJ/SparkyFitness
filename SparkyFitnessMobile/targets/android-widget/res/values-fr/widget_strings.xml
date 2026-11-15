@@ -44,4 +44,7 @@
     <string name="widget_food">Alimentation</string>
     <string name="widget_burned">Brûlé</string>
     <string name="widget_amount_of_goal">%1$s / %2$s</string>
+    <string name="widget_kj_left">%1$s kJ restants</string>
+    <string name="widget_kj_left_empty">- kJ restants</string>
+    <string name="widget_kj_eaten">%1$s kJ consommés</string>
 </resources>

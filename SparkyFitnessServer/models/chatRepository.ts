@@ -1,4 +1,8 @@
-import { getClient, getSystemClient } from '../db/poolManager.js';
+import {
+  getClient,
+  getSystemClient,
+  signedInUserIdOr,
+} from '../db/poolManager.js';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
 import {
@@ -202,7 +206,12 @@ async function deleteAiServiceSetting(id: string, userId: string) {
     client.release();
   }
 }
-async function getAiServiceSettingsByUserId(userId: string) {
+// AI services and the choice between them belong to the signed-in person, so
+// after a Profile Switcher switch these three resolve theirs, not the account's.
+// The account's own are private to it (RLS), so asking for them would come back
+// empty or fall through to the admin's global service.
+async function getAiServiceSettingsByUserId(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Get user-specific settings
@@ -229,7 +238,8 @@ async function getAiServiceSettingsByUserId(userId: string) {
     client.release();
   }
 }
-async function getActiveAiServiceSetting(userId: string) {
+async function getActiveAiServiceSetting(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Priority 0: check if user has active_ai_service_id in user_preferences
@@ -293,7 +303,8 @@ async function getActiveAiServiceSetting(userId: string) {
 // The existing active/default service is the text default; vision falls back to
 // it unless the user (or admin, for defaulted users) points vision elsewhere.
 // See models/chatRepository getActiveAiServiceSetting for the text counterpart.
-async function getActiveVisionAiServiceSetting(userId: string) {
+async function getActiveVisionAiServiceSetting(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Read both pointers up front: step 1 needs the vision pointer, and step 3
@@ -388,15 +399,25 @@ async function clearOldChatHistory(userId: string) {
     client.release();
   }
 }
-async function getChatHistoryByUserId(userId: string) {
+// Chat history belongs to the signed-in person. A message sent after a Profile
+// Switcher switch records the family member's account in
+// metadata.account_user_id, so each account's conversation is restored and
+// cleared on its own: tools follow the account, and a turn from one account
+// must not reach the model as context in another.
+const IN_ACCOUNT = "COALESCE(metadata->>'account_user_id', user_id::text) = $2";
+
+async function getChatHistoryByUserId(
+  userId: string,
+  accountUserId: string = userId
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Fetch the 50 most recent messages (ORDER BY created_at DESC LIMIT 50)
     // and sort them chronologically (ORDER BY created_at ASC) in the outer query
     // so that the AI context and UI display them in the correct chronological order.
     const result = await client.query(
-      'SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC',
-      [userId]
+      `SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT} ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC`,
+      [userId, accountUserId]
     );
     return result.rows;
   } finally {
@@ -444,11 +465,15 @@ async function updateChatHistoryEntry(
         response = COALESCE($6, response),
         parts = COALESCE($7, parts)
       WHERE id = $8
+        -- Approval state is the server's record of what the person allowed,
+        -- so an edit may neither change a row that holds it nor write it.
+        AND NOT (COALESCE(parts, '[]'::jsonb) @? '$[*].approval')
+        AND NOT (COALESCE($7::jsonb, '[]'::jsonb) @? '$[*].approval')
       RETURNING *`,
       [
         updateData.content,
         updateData.message_type,
-        updateData.metadata,
+        metadataParam(updateData.metadata),
         updateData.session_id,
         updateData.message,
         updateData.response,
@@ -461,26 +486,68 @@ async function updateChatHistoryEntry(
     client.release();
   }
 }
-async function deleteChatHistoryEntry(id: string, userId: string) {
+// The server's own save of a reply continued after an approval. The public
+// edit above refuses rows holding approval state, so this one is not exposed to
+// any route.
+async function saveApprovalContinuation(
+  id: string,
+  userId: string,
+  update: { content: string; parts: unknown[]; metadata?: unknown }
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'DELETE FROM sparky_chat_history WHERE id = $1 RETURNING id',
-      [id]
+      `UPDATE sparky_chat_history SET
+        content = $1,
+        parts = $2,
+        metadata = COALESCE($3, metadata)
+      WHERE id = $4
+      RETURNING id`,
+      [
+        update.content,
+        JSON.stringify(update.parts),
+        metadataParam(update.metadata),
+        id,
+      ]
     );
     return result.rowCount > 0;
   } finally {
     client.release();
   }
 }
-async function clearAllChatHistory(userId: string) {
+async function deleteChatHistoryEntry(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query('DELETE FROM sparky_chat_history', []);
+    const result = await client.query(
+      'DELETE FROM sparky_chat_history WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+async function clearAllChatHistory(
+  userId: string,
+  accountUserId: string = userId
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    await client.query(
+      `DELETE FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT}`,
+      [userId, accountUserId]
+    );
     return true;
   } finally {
     client.release();
   }
+}
+// Bound JSON-encoded, so PostgreSQL stores a string as a JSON string instead of
+// parsing it into an object that could carry its own account_user_id.
+function metadataParam(metadata: unknown): string | null {
+  return metadata === undefined || metadata === null
+    ? null
+    : JSON.stringify(metadata);
 }
 async function saveChatHistory(
   historyData: Partial<SparkyChatHistory> & {
@@ -490,17 +557,61 @@ async function saveChatHistory(
   const client = await getClient(historyData.user_id); // User-specific operation
   try {
     await client.query(
-      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, created_at)
-       VALUES ($1, $2, $3, $4, $5, now())`,
+      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, id, created_at)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::uuid, gen_random_uuid()), now())`,
       [
         historyData.user_id,
         historyData.content,
         historyData.messageType,
-        historyData.metadata,
+        metadataParam(historyData.metadata),
         historyData.parts ? JSON.stringify(historyData.parts) : null,
+        historyData.id ?? null,
       ]
     );
     return true;
+  } finally {
+    client.release();
+  }
+}
+async function cancelChatApprovals(
+  userId: string,
+  accountUserId: string,
+  conversationId?: string
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE sparky_chat_history SET parts = (
+         SELECT jsonb_agg(CASE WHEN part->>'state' = 'approval-requested'
+           THEN part || jsonb_build_object('state', 'output-denied', 'approval',
+             (part->'approval') || '{"approved":false,"reason":"A new user message cancelled this call."}'::jsonb)
+           ELSE part END ORDER BY ordinal)
+         FROM jsonb_array_elements(parts) WITH ORDINALITY AS item(part, ordinal)
+       ) WHERE user_id = $1 AND ${IN_ACCOUNT}
+         AND metadata->>'chat_conversation_id' IS NOT DISTINCT FROM $3::text
+         AND parts @> '[{"state":"approval-requested"}]'::jsonb`,
+      [userId, accountUserId, conversationId ?? null]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+async function claimChatApproval(
+  id: string,
+  userId: string,
+  expectedParts: unknown[],
+  parts: unknown[]
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE sparky_chat_history SET parts = $1::jsonb
+       WHERE id = $2 AND user_id = $3 AND message_type = 'assistant' AND parts = $4::jsonb
+       RETURNING id`,
+      [JSON.stringify(parts), id, userId, JSON.stringify(expectedParts)]
+    );
+    return result.rowCount === 1;
   } finally {
     client.release();
   }
@@ -639,6 +750,8 @@ export { getGlobalAiServiceSettings };
 export { getGlobalAiServiceSettingById };
 export { deleteGlobalAiServiceSetting };
 export default {
+  cancelChatApprovals,
+  claimChatApproval,
   upsertAiServiceSetting,
   getAiServiceSettingById,
   getAiServiceSettingForBackend,
@@ -652,6 +765,7 @@ export default {
   getChatHistoryEntryById,
   getChatHistoryEntryOwnerId,
   updateChatHistoryEntry,
+  saveApprovalContinuation,
   deleteChatHistoryEntry,
   clearAllChatHistory,
   saveChatHistory,

@@ -8,6 +8,9 @@ import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import { FOOD_SEARCH_DIALOG_CONTENT_CLASS } from '@/components/FoodSearch/foodSearchDialogLayout';
 import MealCard from '@/pages/Diary/MealCard';
 import type { DataProvider } from '@/types/settings';
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user', isActingOnBehalf: false }),
+}));
 
 // Issue #2126: the food search dialog uses the screen height on desktop.
 // jsdom computes no layout, so these tests pin the structure; real-browser

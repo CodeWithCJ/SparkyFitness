@@ -12,8 +12,13 @@ import { playIntervalCue } from '@/utils/workoutSounds';
 
 const mockNavigate = jest.fn();
 const mockCreatePresetSession = jest.fn();
+const mockUpdatePresetSession = jest.fn();
 const mockSearchParams = new URLSearchParams('date=2026-09-25');
-let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
+let mockLocationState: {
+  returnTo?: string;
+  draft?: unknown;
+  ownerId?: string;
+} | null = null;
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -21,8 +26,15 @@ jest.mock('react-i18next', () =>
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ state: mockLocationState }),
+  // Route state as the Diary builds it: a draft for the person on screen.
+  useLocation: () => ({
+    state: mockLocationState && { ownerId: 'user-1', ...mockLocationState },
+  }),
   useSearchParams: () => [mockSearchParams],
+}));
+
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: 'user-1' }),
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
@@ -38,6 +50,10 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
   useCreatePresetSessionMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockCreatePresetSession(...args),
+    isPending: false,
+  }),
+  useUpdatePresetSessionMutation: () => ({
+    mutateAsync: (...args: unknown[]) => mockUpdatePresetSession(...args),
     isPending: false,
   }),
   useWorkoutLocations: () => ({ data: [] }),

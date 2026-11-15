@@ -64,7 +64,8 @@
       "clear": "پاک کردن",
       "addMeal": "افزودن وعده",
       "removeFavorite": "حذف از علاقه‌مندی‌ها",
-      "addFavorite": "افزودن به علاقه‌مندی‌ها"
+      "addFavorite": "افزودن به علاقه‌مندی‌ها",
+      "addFood": "افزودن غذا"
     },
     "labels": {
       "perServing": "در هر وعده",
@@ -73,18 +74,35 @@
       "meal": "وعده غذایی",
       "aboutThisFood": "درباره این غذا",
       "entryNotes": "یادداشت این وعده",
-      "entryNotesPlaceholder": "نکته‌ای درباره این نوبت مصرف غذا"
+      "entryNotesPlaceholder": "نکته‌ای درباره این نوبت مصرف غذا",
+      "serving_one": "وعده",
+      "serving_other": "وعده",
+      "mealMakes_one": "این وعدهٔ غذایی {{formattedCount}} وعده دارد",
+      "mealMakes_other": "این وعدهٔ غذایی {{formattedCount}} وعده دارد"
     },
     "pickers": {
       "selectServing": "انتخاب اندازهٔ وعده",
       "selectMeal": "انتخاب وعدهٔ غذایی"
+    },
+    "errors": {
+      "equivalentsNotSaved": "ذخیرهٔ برخی واحدهای معادل ناموفق بود",
+      "invalidAmount": "مقدار نامعتبر",
+      "amountGreaterThanZero": "مقدار باید بیشتر از صفر باشد.",
+      "failedToAddFood": "افزودن غذا ناموفق بود",
+      "tryAgain": "لطفاً دوباره تلاش کنید.",
+      "mealsNotSupported": "وعده‌های غذایی در این بخش پشتیبانی نمی‌شوند",
+      "selectFoodInstead": "به‌جای یک وعدهٔ غذایی دیگر، یک غذا انتخاب کنید.",
+      "savedFoodUnitFailed": "غذا ذخیره شد، اما واحد جدید ذخیره نشد",
+      "savedFoodUnitFailedDetails": "هنوز می‌توانید غذا را اضافه کنید و بعد دوباره برای ذخیرهٔ آن واحد تلاش کنید.",
+      "chooseDifferentServing": "اندازهٔ وعدهٔ دیگری انتخاب کنید."
     }
   },
   "foodSearch": {
     "menu": {
       "newMeal": "وعدهٔ غذایی جدید",
       "show": "نمایش",
-      "allProviders": "همهٔ منابع"
+      "allProviders": "همهٔ منابع",
+      "newFood": "غذای جدید"
     },
     "accessibility": {
       "moreFiltered": "گزینه‌های بیشتر، فیلترشده بر اساس {{filter}}",
@@ -96,7 +114,11 @@
       "providerNoResults": "از {{provider}} نتیجه‌ای یافت نشد",
       "favorite": "مورد علاقه",
       "viewPhoto": "مشاهده تصویر",
-      "verifiedFood": "غذای تأییدشده"
+      "verifiedFood": "غذای تأییدشده",
+      "scanFood": "اسکن غذا",
+      "providerExpand_one": "{{provider}}، {{count}} نتیجه؛ برای {{action}} ضربه بزنید",
+      "providerExpand_other": "{{provider}}، {{count}} نتیجه؛ برای {{action}} ضربه بزنید",
+      "providerChange": "منبع {{provider}}؛ برای تغییر ضربه بزنید"
     },
     "sections": {
       "favorites": "علاقه‌مندی‌ها",
@@ -104,10 +126,63 @@
       "yourFoods": "غذاهای شما",
       "yourMeals": "وعده‌های شما",
       "topMatches": "مرتبط‌ترین نتایج",
-      "onlineResults": "نتایج آنلاین"
+      "onlineResults": "نتایج آنلاین",
+      "top": "برترین‌ها",
+      "byProvider": "بر اساس منبع"
     },
     "search": {
       "placeholder": "جستجوی غذاها..."
+    },
+    "errors": {
+      "detailsUnavailable": "جزئیات در دسترس نیست",
+      "loadNutritionDetails": "بارگذاری جزئیات کامل ارزش غذایی ممکن نشد."
+    },
+    "multiSelect": {
+      "select": "انتخاب",
+      "cancel": "لغو",
+      "clear": "پاک کردن",
+      "review": "بازبینی",
+      "selectAll": "انتخاب همه",
+      "selected_one": "{{count}} مورد انتخاب‌شده",
+      "selected_other": "{{count}} مورد انتخاب‌شده",
+      "limitReached": "حداکثر {{limit}} غذا می‌توانید انتخاب کنید",
+      "foodCheckbox": "انتخاب {{name}}"
+    },
+    "states": {
+      "connectToSearch": "برای جستجوی غذاها به سرور متصل شوید",
+      "failedToLoad": "بارگذاری غذاها ناموفق بود",
+      "noFilteredFoods": "در {{filter}} غذایی وجود ندارد",
+      "noSavedFoodsMeals": "غذا یا وعدهٔ ذخیره‌شده‌ای پیدا نشد",
+      "noFilteredSaved": "{{message}} در {{filter}}",
+      "couldNotLoad": "بارگذاری ممکن نشد",
+      "noResults": "نتیجه‌ای یافت نشد",
+      "noOnlineResultsFrom": "از {{provider}} نتیجهٔ آنلاینی یافت نشد"
+    },
+    "filter": {
+      "all": "همه",
+      "mine": "موارد من",
+      "family": "خانواده",
+      "public": "عمومی",
+      "showAll": "نمایش همه"
+    },
+    "actions": {
+      "loadMoreFailed": "بارگذاری بیشتر ناموفق بود. برای تلاش دوباره ضربه بزنید",
+      "loadMore": "بارگذاری بیشتر",
+      "showAllProviderResults_one": "نمایش همهٔ {{count}} نتیجهٔ {{provider}}",
+      "showAllProviderResults_other": "نمایش همهٔ {{count}} نتیجهٔ {{provider}}",
+      "showAllLocalResults_one": "نمایش همهٔ {{count}} مورد از {{itemType}}",
+      "showAllLocalResults_other": "نمایش همهٔ {{count}} مورد از {{itemType}}"
+    },
+    "pickers": {
+      "onlineProvider": "منبع آنلاین"
+    },
+    "labels": {
+      "caloriesShort": "kcal",
+      "foods": "غذاها",
+      "meals": "وعده‌های غذایی",
+      "meal": "وعدهٔ غذایی",
+      "itemCount_one": "{{count}} مورد",
+      "itemCount_other": "{{count}} مورد"
     }
   },
   "waterIntake": {
@@ -116,7 +191,10 @@
     "noContainers": "ظرف آبی وجود ندارد",
     "multipleNoPrimaryMobile": "چند ظرف آب دارید، اما هیچ‌کدام به‌عنوان ظرف اصلی مشخص نشده است. برای انتخاب، ضربه بزنید.",
     "configureMobile": "برای شروع ثبت آب مصرفی، یک ظرف آب اضافه کنید.",
-    "defaultContainer": "پیش‌فرض"
+    "defaultContainer": "پیش‌فرض",
+    "updateFailed": "خطا",
+    "multipleNoPrimary": "چند ظرف آب دارید، اما هیچ‌کدام به‌عنوان ظرف اصلی مشخص نشده است. لطفاً یک ظرف را در سرور به‌عنوان ظرف اصلی تعیین کنید.",
+    "configure": "برای پیگیری آب مصرفی، یک ظرف آب در سرور پیکربندی کنید."
   },
   "mealBuilder": {
     "linkedMeal": "وعدهٔ غذایی مرتبط",
@@ -410,5 +488,262 @@
     "loadFailedSubtitle": "اتصال خود را بررسی کنید و دوباره تلاش کنید.",
     "emptyTitle": "هنوز نوشیدنی‌ای ثبت نشده است",
     "emptySubtitle": "نوشیدنی‌هایی که با دکمه‌های ثبت آب، الگوی نوشیدنی، ساعت یا برنامهٔ همگام‌شده ثبت می‌کنید، اینجا نمایش داده می‌شوند."
+  },
+  "diary": {
+    "chooseDate": "انتخاب تاریخ دفتر روزانه",
+    "loading": "در حال بارگذاری دفتر روزانه...",
+    "loadFailed": "بارگذاری دفتر روزانه ناموفق بود",
+    "checkConnection": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "retry": "تلاش دوباره",
+    "title": "دفتر روزانه",
+    "addFood": "افزودن غذا",
+    "emptyDay": "برای این روز هنوز موردی ثبت نشده است"
+  },
+  "diarySummary": {
+    "remaining": "باقی‌مانده",
+    "over": "بیشتر از هدف",
+    "title": "خلاصه",
+    "healthConnectProjectionSource": "مجموع کالری دستگاه",
+    "fallbackProjectionSource": "سوخت‌وساز پایه + کالری فعالیت",
+    "legacyProjectionSource": "برآورد دستگاه",
+    "collapse": "بستن این بخش",
+    "expand": "باز کردن این بخش"
+  },
+  "foodRow": {
+    "unknownFood": "غذای نامشخص",
+    "adjustServing": "تنظیم اندازهٔ وعده",
+    "caloriesShort": "kcal",
+    "deleteFood": "حذف غذا"
+  },
+  "exerciseRow": {
+    "deleteExercise": "حذف تمرین"
+  },
+  "foodSummary": {
+    "tapToAddFood": "برای افزودن غذا ضربه بزنید",
+    "caloriesShort": "kcal",
+    "nutritionBreakdown": "جزئیات ارزش غذایی {{label}}"
+  },
+  "exerciseSummary": {
+    "tapToAdd": "برای افزودن تمرین ضربه بزنید",
+    "addExercise": "افزودن تمرین",
+    "title": "تمرین",
+    "planUpNext": "جلسهٔ بعدی برنامه",
+    "sessionNumber": "جلسهٔ {{current}} از {{total}}",
+    "sessionNumberIndex": "جلسهٔ {{current}}",
+    "startWorkout": "شروع",
+    "switchSession": "تغییر جلسه",
+    "suggestedPlanSession": "پیشنهادی",
+    "scheduledToday": "برنامه‌ریزی‌شده برای امروز",
+    "selectSession": "انتخاب جلسه"
+  },
+  "waterContainers": {
+    "settings": {
+      "displayUnit": "واحد نمایش آب",
+      "unitMl": "میلی‌لیتر (ml)",
+      "unitOz": "اونس مایع (oz)",
+      "unitLiter": "لیتر",
+      "addExerciseWater": "افزودن آب ازدست‌رفته در ورزش به هدف روزانه",
+      "addExerciseWaterHint": "هدف روزانهٔ آب را به‌اندازهٔ تعریق برآوردشده هنگام فعالیت افزایش می‌دهد.",
+      "addFoodWater": "محاسبهٔ آب موجود در غذا در مصرف روزانه",
+      "addFoodWaterHint": "آب موجود در غذای ثبت‌شده را به مجموع آب روزانه اضافه می‌کند، مگر اینکه قبلاً از طریق ظرف مرتبط حساب شده باشد.",
+      "updateFailed": "به‌روزرسانی تنظیمات ناموفق بود."
+    },
+    "title": "ظرف‌های آب",
+    "add": "افزودن ظرف",
+    "loading": "در حال بارگذاری ظرف‌های آب...",
+    "loadFailed": "بارگذاری ظرف‌های آب ناموفق بود",
+    "loadFailedSubtitle": "اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "emptyTitle": "هنوز ظرف آبی اضافه نشده است",
+    "emptySubtitle": "برای ثبت آب مصرفی، بطری یا لیوانی اضافه کنید. می‌توانید آن را به یک غذا هم مرتبط کنید تا هر دو با یک ضربه ثبت شوند.",
+    "linkedTo": "مرتبط با {{food}}",
+    "deleteTitle": "حذف ظرف",
+    "deleteMessage": "{{name}} حذف شود؟",
+    "deleteNamed": "حذف {{name}}"
+  },
+  "navigation": {
+    "settings": "تنظیمات",
+    "library": "کتابخانه",
+    "presets": "الگوهای آماده",
+    "foods": "غذاها",
+    "meals": "وعده‌های غذایی",
+    "exercises": "تمرین‌ها",
+    "diary": "دفتر روزانه",
+    "details": "جزئیات",
+    "dashboard": "داشبورد",
+    "add": "افزودن",
+    "mealTypes": "انواع وعده‌های غذایی"
+  },
+  "addSheet": {
+    "food": "غذا",
+    "exercise": "تمرین",
+    "measurements": "اندازه‌گیری‌ها",
+    "scanFood": "اسکن غذا",
+    "workout": "برنامهٔ تمرینی",
+    "activity": "فعالیت",
+    "recordActivity": "ثبت فعالیت",
+    "title": "اقدام‌های سریع"
+  },
+  "common": {
+    "save": "ذخیره",
+    "saving": "در حال ذخیره…",
+    "back": "بازگشت",
+    "more": "بیشتر",
+    "showLess": "نمایش کمتر",
+    "learnMore": "اطلاعات بیشتر",
+    "next": "بعدی",
+    "later": "بعداً",
+    "close": "بستن",
+    "cancel": "لغو",
+    "continue": "ادامه",
+    "retry": "تلاش دوباره",
+    "details": "جزئیات",
+    "error": "خطا",
+    "delete": "حذف",
+    "collapseSection": "بستن این بخش",
+    "expandSection": "باز کردن این بخش",
+    "itemCount_one": "{{count}} مورد",
+    "itemCount_other": "{{count}} مورد",
+    "off": "خاموش",
+    "openSelectionMenu": "باز کردن منوی انتخاب",
+    "selectOptionHint": "برای انتخاب این گزینه دوبار ضربه بزنید",
+    "success": "موفق",
+    "clear": "پاک کردن",
+    "discardChanges": "صرف‌نظر از تغییرات",
+    "loadMore": "بارگذاری بیشتر",
+    "edit": "ویرایش",
+    "connectionRetry": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "deleteItemTitle": "{{title}} حذف شود؟",
+    "tryAgain": "لطفاً دوباره تلاش کنید.",
+    "yes": "بله",
+    "no": "خیر",
+    "and": "و",
+    "listFinalSeparator": "، و ",
+    "date": "تاریخ",
+    "add": "افزودن",
+    "loading": "در حال بارگذاری...",
+    "pleaseTryAgain": "لطفاً دوباره تلاش کنید.",
+    "ok": "تأیید",
+    "collapse": "بستن",
+    "expand": "گسترش",
+    "removeFromFavorites": "حذف از علاقه‌مندی‌ها",
+    "addToFavorites": "افزودن به علاقه‌مندی‌ها",
+    "goToSettings": "رفتن به تنظیمات",
+    "notSet": "تنظیم نشده",
+    "deleting": "در حال حذف...",
+    "done": "انجام شد",
+    "none": "هیچ‌کدام",
+    "food": "غذا",
+    "dismiss": "بستن",
+    "remove": "برداشتن",
+    "overwrite": "بازنویسی",
+    "previousDay": ": روز قبل",
+    "nextDay": ": روز بعد",
+    "dismissMenu": "بستن منو",
+    "units": {
+      "cm": "سانتی‌متر"
+    },
+    "unknownDate": "تاریخ نامشخص",
+    "selectOption": "انتخاب یک گزینه",
+    "requestTimedOut": "مهلت درخواست تمام شد. اتصال سرور را بررسی کنید.",
+    "nextStep": "مرحلهٔ بعد",
+    "notNow": "فعلاً نه",
+    "undo": "واگردانی",
+    "all": "همه",
+    "builtIn": "داخلی"
+  },
+  "nutrients": {
+    "calories": "کالری",
+    "protein": "پروتئین",
+    "carbs": "کربوهیدرات",
+    "fat": "چربی",
+    "fiber": "فیبر",
+    "saturatedFatShort": "چربی اشباع",
+    "saturatedFatLabel": "چربی اشباع‌شده",
+    "polyunsaturatedFatShort": "چربی چندغیراشباع",
+    "monounsaturatedFatShort": "چربی تک‌غیراشباع",
+    "transFat": "چربی ترانس",
+    "cholesterol": "کلسترول",
+    "sodium": "سدیم",
+    "potassium": "پتاسیم",
+    "sugars": "قندها",
+    "vitaminA": "ویتامین A",
+    "vitaminC": "ویتامین C",
+    "calcium": "کلسیم",
+    "iron": "آهن",
+    "caffeine": "کافئین",
+    "waterContent": "مقدار آب",
+    "alcohol": "الکل",
+    "glycemicIndex": "شاخص گلیسمی",
+    "totalCarbs": "کربوهیدرات کل",
+    "netCarbs": "کربوهیدرات خالص",
+    "glycemicIndexNone": "نامشخص",
+    "glycemicIndexVeryLow": "بسیار پایین",
+    "glycemicIndexLow": "پایین",
+    "glycemicIndexMedium": "متوسط",
+    "glycemicIndexHigh": "بالا",
+    "glycemicIndexVeryHigh": "بسیار بالا",
+    "saturatedFatCompact": "چربی اشباع"
+  },
+  "foodEntryView": {
+    "saveChanges": "ذخیرهٔ تغییرات ثبت غذا",
+    "editEntry": "ویرایش غذای ثبت‌شده",
+    "selectServing": "انتخاب اندازهٔ وعده",
+    "tapToEditNutrition": "برای ویرایش ارزش غذایی ضربه بزنید",
+    "meal": "وعدهٔ غذایی",
+    "selectMeal": "انتخاب وعدهٔ غذایی",
+    "time": "زمان",
+    "unknownFood": "غذای نامشخص",
+    "deleteEntry": "حذف مورد ثبت‌شده",
+    "servingOptionsHint": "باز کردن گزینه‌های اندازهٔ وعده",
+    "mealSelectorHint": "باز کردن انتخاب وعدهٔ غذایی",
+    "dateSelectorHint": "باز کردن انتخاب تاریخ",
+    "timeSelectorHint": "باز کردن انتخاب زمان",
+    "clearTime": "پاک کردن زمان",
+    "nutritionEditHint": "باز کردن ویرایش ارزش غذایی",
+    "servingOptionsLabel": "گزینه‌های اندازهٔ وعده: {{serving}}",
+    "timeSelectorLabel": "انتخاب زمان: {{time}}",
+    "clearTimeLabel": "پاک کردن زمان ثبت غذا",
+    "errors": {
+      "permission": "اجازهٔ ویرایش این مورد را ندارید.",
+      "saveFailed": "ذخیرهٔ تغییرات ناموفق بود",
+      "deleteFailed": "حذف ناموفق بود"
+    },
+    "deleteConfirm": "مطمئنید می‌خواهید این غذای ثبت‌شده را حذف کنید؟",
+    "entryNotes": "یادداشت این نوبت مصرف"
+  },
+  "mealTypes": {
+    "breakfast": "صبحانه",
+    "lunch": "ناهار",
+    "snacks": "میان‌وعده‌ها",
+    "dinner": "شام",
+    "other": "سایر"
+  },
+  "foodLibrary": {
+    "title": "غذاها",
+    "search": "جستجوی غذاها...",
+    "loading": "در حال بارگذاری غذاها...",
+    "failed": "بارگذاری غذاها ناموفق بود",
+    "retry": "تلاش دوباره",
+    "check": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "noMatch": "غذایی مطابق جست‌وجو پیدا نشد",
+    "noItems": "غذایی یافت نشد",
+    "trySearch": "برای یافتن غذاهای ذخیره‌شده، عبارت دیگری جستجو کنید.",
+    "empty": "غذاهایی که ذخیره یا ثبت می‌کنید اینجا نمایش داده می‌شوند.",
+    "moreFailed": "بارگذاری غذاهای بیشتر ناموفق بود.",
+    "noun": "غذاها"
+  },
+  "mealLibrary": {
+    "title": "وعده‌های غذایی",
+    "search": "جستجوی وعده‌های غذایی...",
+    "loading": "در حال بارگذاری وعده‌های غذایی...",
+    "failed": "بارگذاری وعده‌های غذایی ناموفق بود",
+    "searchFailed": "جستجوی وعده‌های غذایی ناموفق بود",
+    "retry": "تلاش دوباره",
+    "check": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "noMatch": "وعدهٔ غذایی مطابق جست‌وجو یافت نشد",
+    "noItems": "وعدهٔ غذایی یافت نشد",
+    "trySearch": "برای یافتن وعده‌های ذخیره‌شده، عبارت دیگری جستجو کنید.",
+    "empty": "وعده‌های غذایی که می‌سازید اینجا نمایش داده می‌شوند.",
+    "noun": "وعده‌های غذایی"
   }
 }

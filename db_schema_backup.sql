@@ -2224,9 +2224,11 @@ CREATE TABLE public.exercise_entries (
     calories_applied numeric,
     calorie_link_id uuid,
     calorie_link_resolution text,
+    health_activity_type text,
     CONSTRAINT chk_exercise_entries_calorie_link_resolution CHECK (((calorie_link_resolution IS NULL) OR (calorie_link_resolution = ANY (ARRAY['sparkyfitness'::text, 'synced'::text, 'higher'::text, 'lower'::text, 'average'::text, 'custom'::text])))),
     CONSTRAINT chk_exercise_entries_calories_applied CHECK (((calories_applied IS NULL) OR (calories_applied >= (0)::numeric))),
     CONSTRAINT chk_exercise_entries_workout_effort CHECK (((workout_effort IS NULL) OR ((workout_effort >= 1) AND (workout_effort <= 10)))),
+    CONSTRAINT exercise_entries_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
@@ -2257,6 +2259,13 @@ COMMENT ON COLUMN public.exercise_entries.entry_time IS 'Optional wall-clock loc
 --
 
 COMMENT ON COLUMN public.exercise_entries.record_timezone IS 'IANA timezone entry_time is expressed in (e.g. America/New_York). NULL when unknown; read paths fall back to the profile timezone.';
+
+
+--
+-- Name: COLUMN exercise_entries.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.health_activity_type IS 'Snapshot of exercises.health_activity_type when the entry was created (#1750); used once the exercise is deleted.';
 
 
 --
@@ -2387,7 +2396,8 @@ CREATE TABLE public.exercise_entry_sets (
     completed_at timestamp with time zone,
     is_pr boolean DEFAULT false NOT NULL,
     distance numeric,
-    rir numeric(3,1)
+    rir numeric(3,1),
+    started_at timestamp with time zone
 );
 
 
@@ -2417,6 +2427,13 @@ COMMENT ON COLUMN public.exercise_entry_sets.is_pr IS 'Whether this set was a pe
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.rir IS 'Reps In Reserve (0-10 scale)';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.started_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.started_at IS 'Client-recorded moment the set was started during a live workout. NULL = no start recorded. An update that omits the field keeps the stored value.';
 
 
 --
@@ -2457,6 +2474,8 @@ CREATE TABLE public.exercise_preset_entries (
     source text DEFAULT 'manual'::text NOT NULL,
     location character varying(255),
     workout_format character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    finished_at timestamp with time zone,
+    revision integer DEFAULT 1 NOT NULL,
     CONSTRAINT chk_exercise_preset_entries_format CHECK (((workout_format)::text = ANY ((ARRAY['standard'::character varying, 'interval'::character varying, 'tabata'::character varying, 'amrap'::character varying, 'emom'::character varying, 'for_time'::character varying])::text[])))
 );
 
@@ -2473,6 +2492,20 @@ COMMENT ON COLUMN public.exercise_preset_entries.location IS 'Optional location 
 --
 
 COMMENT ON COLUMN public.exercise_preset_entries.workout_format IS 'Workout format of the source preset at the time the session was logged; not updated when the preset is edited or deleted';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.finished_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.finished_at IS 'Client-stamped moment the live workout session was ended. NULL = still planned or in progress. Split point between the derived partial and completed statuses.';
+
+
+--
+-- Name: COLUMN exercise_preset_entries.revision; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_preset_entries.revision IS 'Monotonic write counter for optimistic concurrency, incremented on every update. A client presenting an older revision is rejected with 409 instead of overwriting newer edits.';
 
 
 --
@@ -2503,8 +2536,17 @@ CREATE TABLE public.exercises (
     images text,
     is_quick_exercise boolean DEFAULT false,
     modality text DEFAULT 'weight_reps'::text NOT NULL,
+    health_activity_type text,
+    CONSTRAINT exercises_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercises_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
+
+
+--
+-- Name: COLUMN exercises.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercises.health_activity_type IS 'Apple Health / Health Connect activity type key for write-back (#1750); NULL = automatic.';
 
 
 --
@@ -2547,7 +2589,8 @@ CREATE TABLE public.external_data_providers (
     is_public boolean DEFAULT false NOT NULL,
     sync_started_at timestamp with time zone,
     fit_downloads_day date,
-    fit_downloads_used integer DEFAULT 0 NOT NULL
+    fit_downloads_used integer DEFAULT 0 NOT NULL,
+    provider_options jsonb
 );
 
 
@@ -3142,6 +3185,21 @@ CREATE TABLE public.injection_entries (
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: intervals_nutrition_pushes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.intervals_nutrition_pushes (
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    kcal_consumed integer,
+    protein numeric,
+    carbohydrates numeric,
+    fat_total numeric,
+    pushed_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -4316,6 +4374,42 @@ CREATE TABLE public.rate_limit (
 
 
 --
+-- Name: recipe_food_mappings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_food_mappings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    provider_id uuid NOT NULL,
+    source_food_key text NOT NULL,
+    food_id uuid NOT NULL,
+    variant_id uuid NOT NULL,
+    quantity_per_source_unit double precision NOT NULL,
+    unit text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT recipe_food_mappings_quantity_per_source_unit_check CHECK (((quantity_per_source_unit > (0)::double precision) AND (quantity_per_source_unit < 'Infinity'::double precision))),
+    CONSTRAINT recipe_food_mappings_unit_check CHECK ((length(unit) > 0))
+);
+
+
+--
+-- Name: recipe_imports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_imports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    meal_id uuid NOT NULL,
+    provider_id uuid NOT NULL,
+    source jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT recipe_imports_source_check CHECK ((jsonb_typeof(source) = 'object'::text))
+);
+
+
+--
 -- Name: routes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5218,6 +5312,9 @@ CREATE TABLE public.user_preferences (
     calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
+    intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    chat_mcp_server_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
@@ -5230,6 +5327,8 @@ CREATE TABLE public.user_preferences (
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
     CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
     CONSTRAINT user_preferences_default_temperature_unit_check CHECK ((default_temperature_unit = ANY (ARRAY['celsius'::text, 'fahrenheit'::text]))),
+    CONSTRAINT user_preferences_feature_choices_no_cycle CHECK (((NOT (COALESCE((feature_choices -> 'web'::text), '{}'::jsonb) ? 'cycle'::text)) AND (NOT (COALESCE((feature_choices -> 'mobile'::text), '{}'::jsonb) ? 'cycle'::text)))),
+    CONSTRAINT user_preferences_feature_choices_platforms CHECK (((jsonb_typeof(feature_choices) = 'object'::text) AND (((feature_choices - 'web'::text) - 'mobile'::text) = '{}'::jsonb) AND (jsonb_typeof(COALESCE((feature_choices -> 'web'::text), '{}'::jsonb)) = 'object'::text) AND (jsonb_typeof(COALESCE((feature_choices -> 'mobile'::text), '{}'::jsonb)) = 'object'::text))),
     CONSTRAINT user_preferences_hr_zone_custom_floors_check CHECK (((hr_zone_custom_floors IS NULL) OR (array_length(hr_zone_custom_floors, 1) = 5))),
     CONSTRAINT user_preferences_hr_zone_display_count_check CHECK ((hr_zone_display_count = ANY (ARRAY[4, 5]))),
     CONSTRAINT user_preferences_hr_zone_method_check CHECK ((hr_zone_method = ANY (ARRAY['percent_max'::text, 'heart_rate_reserve'::text, 'custom'::text]))),
@@ -5417,6 +5516,13 @@ COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPho
 --
 
 COMMENT ON COLUMN public.user_preferences.default_temperature_unit IS 'Unit temperatures are shown in: celsius or fahrenheit. Stored temperatures stay in °C.';
+
+
+--
+-- Name: COLUMN user_preferences.feature_choices; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.feature_choices IS 'Explicit on/off choices for optional features, one map per platform ({"web": {...}, "mobile": {...}}), keyed by feature id (the shared OPTIONAL_FEATURES registry; well-formed ids a newer app knows are kept too). A missing platform or key uses the registry default; cycle is never stored here. Read and written only through /api/user-preferences/features. UI only: no route reads it to block access.';
 
 
 --
@@ -6648,6 +6754,14 @@ ALTER TABLE ONLY public.injection_entries
 
 
 --
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_pkey PRIMARY KEY (user_id, entry_date);
+
+
+--
 -- Name: jwks jwks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7077,6 +7191,38 @@ ALTER TABLE ONLY public.rate_limit
 
 ALTER TABLE ONLY public.rate_limit
     ADD CONSTRAINT rate_limit_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_user_id_provider_id_source_food_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_user_id_provider_id_source_food_key_key UNIQUE (user_id, provider_id, source_food_key);
+
+
+--
+-- Name: recipe_imports recipe_imports_meal_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_meal_id_key UNIQUE (meal_id);
+
+
+--
+-- Name: recipe_imports recipe_imports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_pkey PRIMARY KEY (id);
 
 
 --
@@ -8546,6 +8692,41 @@ CREATE INDEX idx_pregnancy_photos_user_id ON public.pregnancy_photos USING btree
 --
 
 CREATE INDEX idx_rate_limit_last_request ON public.rate_limit USING btree (last_request);
+
+
+--
+-- Name: idx_recipe_food_mappings_food; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_food ON public.recipe_food_mappings USING btree (food_id);
+
+
+--
+-- Name: idx_recipe_food_mappings_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_provider ON public.recipe_food_mappings USING btree (provider_id);
+
+
+--
+-- Name: idx_recipe_food_mappings_variant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_food_mappings_variant ON public.recipe_food_mappings USING btree (variant_id);
+
+
+--
+-- Name: idx_recipe_imports_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_imports_provider ON public.recipe_imports USING btree (provider_id);
+
+
+--
+-- Name: idx_recipe_imports_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_recipe_imports_user ON public.recipe_imports USING btree (user_id);
 
 
 --
@@ -10110,6 +10291,14 @@ ALTER TABLE ONLY public.injection_entries
 
 
 --
+-- Name: intervals_nutrition_pushes intervals_nutrition_pushes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intervals_nutrition_pushes
+    ADD CONSTRAINT intervals_nutrition_pushes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: lab_markers lab_markers_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10779,6 +10968,62 @@ ALTER TABLE ONLY public.pregnancy_photos
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_provider_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.external_data_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_food_mappings recipe_food_mappings_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_food_mappings
+    ADD CONSTRAINT recipe_food_mappings_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.food_variants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_meal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_meal_id_fkey FOREIGN KEY (meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_provider_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.external_data_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_imports recipe_imports_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_imports
+    ADD CONSTRAINT recipe_imports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -11897,6 +12142,12 @@ CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((publi
 
 
 --
+-- Name: intervals_nutrition_pushes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.intervals_nutrition_pushes ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: jwks; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12724,6 +12975,13 @@ CREATE POLICY owner_policy ON public.health_appointments USING ((user_id = publi
 
 
 --
+-- Name: intervals_nutrition_pushes owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.intervals_nutrition_pushes USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
 -- Name: meal_plan_template_assignments owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12789,6 +13047,20 @@ CREATE POLICY owner_policy ON public.pregnancy_kick_sessions USING ((user_id = p
 --
 
 CREATE POLICY owner_policy ON public.pregnancy_photos USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: recipe_food_mappings owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.recipe_food_mappings USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: recipe_imports owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.recipe_imports USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -12936,6 +13208,18 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.rate_limit ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: recipe_food_mappings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.recipe_food_mappings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: recipe_imports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.recipe_imports ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: routes; Type: ROW SECURITY; Schema: public; Owner: -
@@ -14566,6 +14850,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_ap
 
 
 --
+-- Name: TABLE intervals_nutrition_pushes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.intervals_nutrition_pushes TO sparky_app;
+
+
+--
 -- Name: TABLE jwks; Type: ACL; Schema: public; Owner: -
 --
 
@@ -14885,6 +15176,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rate_limit TO sparky_app;
+
+
+--
+-- Name: TABLE recipe_food_mappings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipe_food_mappings TO sparky_app;
+
+
+--
+-- Name: TABLE recipe_imports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipe_imports TO sparky_app;
 
 
 --

@@ -132,30 +132,37 @@ export const TargetStep = ({
           {isAdaptiveMethod ? (
             previewResult.insufficientHistory ? (
               <span>
-                {t('diary.calculateExplanation.fallbackBaselineDetail', {
-                  defaultValue:
-                    'BMR ({{bmr}}) × Activity Multiplier ({{multiplier}}) = {{result}} {{unit}} (Fallback used: not enough history [<{{required}} days]; raw calculation of {{raw}} {{unit}} bypassed)',
-                  bmr: displayBmrVal,
-                  multiplier: activityMultiplier.toFixed(3),
-                  result: Math.round(
-                    convertEnergy(
-                      previewResult.rmr * activityMultiplier,
-                      'kcal',
-                      energyUnit
-                    )
-                  ),
-                  raw: adaptiveTdeeData
-                    ? Math.round(
-                        convertEnergy(
-                          adaptiveTdeeData.tdee ?? 0,
-                          'kcal',
-                          energyUnit
-                        )
+                {t(
+                  adaptiveTdeeData?.weightTrendMethod === 'bounded_daily'
+                    ? 'diary.calculateExplanation.formulaBaselineDetail'
+                    : 'diary.calculateExplanation.fallbackBaselineDetail',
+                  {
+                    defaultValue:
+                      adaptiveTdeeData?.weightTrendMethod === 'bounded_daily'
+                        ? 'BMR ({{bmr}} {{unit}}) × Activity Multiplier ({{multiplier}}) = {{result}} {{unit}}. No learned evidence currently contributes to this baseline.'
+                        : 'BMR ({{bmr}}) × Activity Multiplier ({{multiplier}}) = {{result}} {{unit}} (Fallback used: not enough history [<{{required}} days]; raw calculation of {{raw}} {{unit}} bypassed)',
+                    bmr: displayBmrVal,
+                    multiplier: activityMultiplier.toFixed(3),
+                    result: Math.round(
+                      convertEnergy(
+                        previewResult.rmr * activityMultiplier,
+                        'kcal',
+                        energyUnit
                       )
-                    : 0,
-                  unit: getEnergyUnitString(energyUnit),
-                  required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
-                })}
+                    ),
+                    raw: adaptiveTdeeData
+                      ? Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData.tdee ?? 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        )
+                      : 0,
+                    unit: getEnergyUnitString(energyUnit),
+                    required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+                  }
+                )}
               </span>
             ) : (
               <span>

@@ -15,6 +15,7 @@ import WorkoutPresetFormScreen from '../screens/WorkoutPresetFormScreen';
 import FoodScanScreen from '../screens/FoodScanScreen';
 import FoodPhotoIntroScreen from '../screens/FoodPhotoIntroScreen';
 import FoodsLibraryScreen from '../screens/FoodsLibraryScreen';
+import RecipeImportScreen from '../screens/RecipeImportScreen';
 import MealsLibraryScreen from '../screens/MealsLibraryScreen';
 import MealPlansScreen from '../screens/MealPlansScreen';
 import RunProgramsScreen from '../screens/RunProgramsScreen';
@@ -37,6 +38,7 @@ import WatchRunLiveScreen from '../screens/WatchRunLiveScreen';
 import MealPlanFormScreen from '../screens/MealPlanFormScreen';
 import WorkoutPlansScreen from '../screens/WorkoutPlansScreen';
 import WorkoutPlanFormScreen from '../screens/WorkoutPlanFormScreen';
+import WorkoutPlanDetailScreen from '../screens/WorkoutPlanDetailScreen';
 import WaterContainersScreen from '../screens/WaterContainersScreen';
 import WaterLogScreen from '../screens/WaterLogScreen';
 import WaterContainerEditScreen from '../screens/WaterContainerEditScreen';
@@ -85,6 +87,7 @@ import CustomCategoryEditScreen from '../screens/CustomCategoryEditScreen';
 import DiarySettingsScreen from '../screens/DiarySettingsScreen';
 import WorkoutSettingsScreen from '../screens/WorkoutSettingsScreen';
 import WarmupSettingsScreen from '../screens/WarmupSettingsScreen';
+import TreadmillSettingsScreen from '../screens/TreadmillSettingsScreen';
 import HeartRateZonesSettingsScreen from '../screens/HeartRateZonesSettingsScreen';
 import ServerSettingsScreen from '../screens/ServerSettingsScreen';
 import PasskeySettingsScreen from '../screens/PasskeySettingsScreen';
@@ -152,6 +155,7 @@ export const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
 export const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
+export const SafeRecipeImport = withErrorBoundary(RecipeImportScreen, 'RecipeImport', { canGoBack: true });
 export const SafeMealsLibrary = withErrorBoundary(MealsLibraryScreen, 'MealsLibrary', { canGoBack: true });
 export const SafeMealPlans = withErrorBoundary(MealPlansScreen, 'MealPlans', { canGoBack: true });
 export const SafeWatchRunLive = withErrorBoundary(WatchRunLiveScreen, 'WatchRunLive', { canGoBack: true });
@@ -174,6 +178,7 @@ export const SafeRunProgramWorkout = withErrorBoundary(RunProgramWorkoutScreen, 
 export const SafeMealPlanForm = withErrorBoundary(MealPlanFormScreen, 'MealPlanForm', { canGoBack: true });
 export const SafeWorkoutPlans = withErrorBoundary(WorkoutPlansScreen, 'WorkoutPlans', { canGoBack: true });
 export const SafeWorkoutPlanForm = withErrorBoundary(WorkoutPlanFormScreen, 'WorkoutPlanForm', { canGoBack: true });
+export const SafeWorkoutPlanDetail = withErrorBoundary(WorkoutPlanDetailScreen, 'WorkoutPlanDetail', { canGoBack: true });
 export const SafeWaterContainers = withErrorBoundary(WaterContainersScreen, 'WaterContainers', { canGoBack: true });
 export const SafeWaterLog = withErrorBoundary(WaterLogScreen, 'WaterLog', { canGoBack: true });
 export const SafeWaterContainerEdit = withErrorBoundary(WaterContainerEditScreen, 'WaterContainerEdit', { canGoBack: true });
@@ -253,6 +258,7 @@ export const SafeDiarySettings = withErrorBoundary(DiarySettingsScreen, 'DiarySe
 export const SafeCustomCategories = withErrorBoundary(CustomCategoriesScreen, 'CustomCategories', { canGoBack: true });
 export const SafeCustomCategoryEdit = withErrorBoundary(CustomCategoryEditScreen, 'CustomCategoryEdit', { canGoBack: true });
 export const SafeWorkoutSettings = withErrorBoundary(WorkoutSettingsScreen, 'WorkoutSettings', { canGoBack: true });
+export const SafeTreadmillSettings = withErrorBoundary(TreadmillSettingsScreen, 'TreadmillSettings', { canGoBack: true });
 export const SafeWarmupSettings = withErrorBoundary(WarmupSettingsScreen, 'WarmupSettings', { canGoBack: true });
 export const SafeHeartRateZonesSettings = withErrorBoundary(HeartRateZonesSettingsScreen, 'HeartRateZonesSettings', { canGoBack: true });
 export const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });

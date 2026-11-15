@@ -15,5 +15,267 @@
     <string name="tile_medications_description">Today\'s medication schedule and dose status</string>
     <string name="tile_exercise_label">Sparky Exercise</string>
     <string name="tile_exercise_description">Daily exercise minutes, calories, and workouts</string>
+
+    <!-- Common -->
+    <string name="common_protein">Protein</string>
+    <string name="common_carbs">Carbs</string>
+    <string name="common_fat">Fat</string>
+
+    <!-- Complications -->
+    <string name="complication_macro_desc">%1$s: %2$d / %3$dg (%4$d%%)</string>
+    <string name="complication_energy_desc">Energy: %1$d / %2$d %3$s (%4$d%%)</string>
+    <string name="complication_water_desc">Water: %1$s</string>
+    <string name="complication_fasting_idle">Idle</string>
+    <string name="complication_fasting_desc">Fasting: %1$s / %2$dh</string>
+    <string name="complication_steps_desc">Steps: %1$d / %2$d</string>
+
+    <!-- Watch Pages -->
+    <string name="page_goals">Goals</string>
+    <string name="page_water">Water</string>
+    <string name="page_medications">Medications</string>
+    <string name="page_weight">Weight</string>
+    <string name="page_trend">Trend</string>
+    <string name="page_workout">Workout</string>
+    <string name="page_now_playing">Now Playing</string>
+    <string name="page_fasting">Fasting</string>
+    <string name="page_steps">Steps</string>
+
+    <!-- Common Actions & Labels -->
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_done">Done</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_skip">Skip</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_close">Close</string>
+
+    <!-- Goals Screen -->
+    <string name="goals_title">Today\'s Goals</string>
+    <string name="goals_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s nutrition goals.</string>
+    <string name="goals_energy_left">%1$d %2$s left</string>
+    <string name="goals_energy_over">%1$d %2$s over</string>
+
+    <!-- Water Screen -->
+    <string name="water_title">Hydration</string>
+    <string name="water_default_glass">Glass</string>
+    <string name="water_default_bottle">Bottle</string>
+    <string name="water_includes_from_food">Includes %1$s from food</string>
+    <string name="water_sync_failed">Sync failed • Tap to retry</string>
+    <string name="water_syncing_amount">+%1$s syncing…</string>
+    <string name="water_log_count">Log (%1$d)</string>
+    <string name="water_undo_last">Undo Last</string>
+    <string name="water_remove_drink_title">Remove Drink?</string>
+    <string name="water_todays_drinks_title">Today\'s Drinks</string>
+    <string name="water_no_drinks_logged">No drinks logged today.</string>
+
+    <!-- Medications Screen -->
+    <string name="meds_title_empty">Medications</string>
+    <string name="meds_title_count">Meds (%1$d/%2$d)</string>
+    <string name="meds_none_scheduled">No medications scheduled for today.</string>
+
+    <!-- Weight & Trend Screens -->
+    <string name="weight_title">Weight Check-In</string>
+    <string name="weight_keypad_title">Weight (%1$s)</string>
+    <string name="weight_body_fat_title">Body Fat %</string>
+    <string name="weight_tap_to_type">TAP TO TYPE</string>
+    <string name="weight_no_prior">No prior weight</string>
+    <string name="weight_same_as_last">Same as last</string>
+    <string name="weight_set_start">Set Start</string>
+    <string name="weight_bf_short">BF %1$.1f%%</string>
+    <string name="weight_add_bf">+BF%</string>
+    <string name="weight_queued">Queued ✓</string>
+    <string name="weight_save_delta">Save %1$s%2$.1f</string>
+    <string name="weight_starting_title">Starting Weight</string>
+    <string name="trend_body_fat_title">Body Fat Trend</string>
+    <string name="trend_weight_title">Weight Trend</string>
+    <string name="trend_bf_summary">Last %1$d: %2$s%3$.1f%% (%4$.1f–%5$.1f%%)</string>
+    <string name="trend_weight_summary">Last %1$d: %2$s%3$.1f %4$s (%5$.1f–%6$.1f)</string>
+    <string name="trend_empty_state">Log at least 2 weight check-ins to see your trend chart.</string>
+
+    <!-- Now Playing Screen -->
+    <string name="now_playing_title">Now Playing</string>
+    <string name="now_playing_vol_down">Vol −</string>
+    <string name="now_playing_vol_up">Vol +</string>
+
+    <!-- Fasting Screen -->
+    <string name="fasting_title">Fasting</string>
+    <string name="fasting_title_active">Fasting (%1$s)</string>
+    <string name="fasting_progress_of">%1$d%% of %2$dh</string>
+    <string name="fasting_end_button">End Fast</string>
+    <string name="fasting_start_prompt">Start a Fast</string>
+
+    <!-- Steps Screen -->
+    <string name="steps_title">Daily Steps</string>
+    <string name="steps_remaining">%1$s steps to goal</string>
+    <string name="steps_goal_reached">Goal reached! 🎉</string>
+
+    <!-- Sleep Screen -->
+    <string name="sleep_title">Sleep Health</string>
+    <string name="sleep_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s sleep data.</string>
+
+    <!-- Tiles & Sleep Stages -->
+    <string name="tile_tap_to_open">Tap to open</string>
+    <string name="tile_nutrition_header">NUTRITION</string>
+    <string name="tile_nutrition_tap_goals">Tap to open Goals</string>
+    <string name="tile_nutrition_open_goals">Open Goals</string>
+    <string name="tile_nutrition_left_burned">%1$d left · %2$d burned</string>
+    <string name="tile_nutrition_over_burned">%1$d over · %2$d burned</string>
+    <string name="tile_nutrition_pct_goal">%1$d%% Goal</string>
+
+    <string name="tile_sleep_header">SLEEP HEALTH</string>
+    <string name="tile_sleep_header_bio">SLEEP · %1$s</string>
+    <string name="tile_sleep_no_data_title">No Sleep Data</string>
+    <string name="tile_sleep_no_data_sub">Sync sleep in SparkyFitness</string>
+    <string name="tile_sleep_no_logged">No sleep logged today</string>
+    <string name="tile_sleep_in_bed">In bed %1$s</string>
+    <string name="tile_sleep_score">Score %1$d</string>
+    <string name="tile_sleep_details">Sleep Details</string>
+    <plurals name="tile_sleep_naps">
+        <item quantity="one">%1$d nap (%2$s)</item>
+        <item quantity="other">%1$d naps (%2$s)</item>
+    </plurals>
+    <string name="sleep_stage_deep">Deep</string>
+    <string name="sleep_stage_rem">REM</string>
+    <string name="sleep_stage_light">Light</string>
+
+    <string name="tile_meds_header">MEDICATIONS</string>
+    <string name="tile_meds_not_synced">Not synced</string>
+    <string name="tile_meds_open_app">Open app to sync</string>
+    <string name="tile_meds_taken_count">%1$d / %2$d Taken</string>
+    <string name="tile_meds_none_today">No doses scheduled today</string>
+    <string name="tile_meds_pending_today">%1$d pending today</string>
+    <string name="tile_meds_skipped_done">%1$d skipped · All done</string>
+    <string name="tile_meds_all_done">All doses completed</string>
+    <string name="tile_meds_log_dose">Log Dose</string>
+
+    <string name="tile_exercise_header">EXERCISE</string>
+    <string name="tile_exercise_steps_count">%1$d steps</string>
+    <string name="tile_exercise_goal_minutes">Goal %1$dm</string>
+    <plurals name="tile_exercise_workouts">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
+    <string name="tile_exercise_planned_today">Workout planned today</string>
+    <string name="tile_exercise_tap_start">Tap to start a workout</string>
+    <string name="tile_exercise_scheduled">Scheduled</string>
+    <string name="tile_exercise_workouts_pill">Workouts</string>
+
+    <!-- Workout & Run Stores -->
+    <string name="water_default_drink">Drink</string>
+    <string name="workout_error_phone_unreachable">Phone isn\'t reachable. Open SparkyFitness on your phone and try again.</string>
+    <string name="workout_error_start_failed">Couldn\'t start workout on phone. Make sure SparkyFitness is open.</string>
+    <string name="workout_new_pr_banner">🏆 New PR!</string>
+    <string name="workout_default_exercise_name">Exercise</string>
+
+    <string name="run_place_indoor">indoor</string>
+    <string name="run_place_outdoor">outdoor</string>
+    <string name="run_kind_walk">walk</string>
+    <string name="run_kind_run">run</string>
+    <string name="run_cue_starting">Starting %1$s %2$s</string>
+    <string name="run_cue_test">Voice cues active. Have a great workout!</string>
+    <string name="run_cue_lap">Lap %1$d</string>
+    <string name="run_alert_hr_high">Heart rate high: %1$d BPM</string>
+    <string name="run_alert_hr_low">Heart rate low: %1$d BPM</string>
+    <string name="run_alert_pace_below">Pace below target</string>
+    <string name="run_alert_pace_above">Pace above target</string>
+    <string name="run_cue_checkin_km">%1$d minutes. Distance %2$.2f kilometers.</string>
+
+    <!-- Workout Foreground Service Notification -->
+    <string name="notification_channel_workout_tracking">Workout Tracking</string>
+    <string name="notification_recording_run_hr">Recording run &amp; heart rate</string>
+    <string name="notification_recording_workout">Recording workout</string>
+
+    <!-- Workout & Cardio Screens -->
+    <string name="workout_title">Workouts</string>
+    <string name="workout_cardio_title">Cardio (Run / Walk)</string>
+    <string name="workout_cardio_subtitle">Outdoor GPS or Treadmill</string>
+    <string name="workout_empty_state">Sync workout presets from your phone to start strength workouts here.</string>
+
+    <string name="cardio_start_title">Start Cardio</string>
+    <string name="cardio_kind_run">Run</string>
+    <string name="cardio_kind_walk">Walk</string>
+    <string name="cardio_place_outdoor">Outdoor</string>
+    <string name="cardio_place_indoor">Indoor</string>
+    <string name="cardio_plan_free">Plan: Free</string>
+    <string name="cardio_pace_checked">Pace ✓</string>
+    <string name="cardio_pace">Pace</string>
+    <string name="cardio_hr_checked">HR ✓</string>
+    <string name="cardio_hr">HR</string>
+    <string name="cardio_back">Back</string>
+    <string name="cardio_start_btn">Start ▶</string>
+
+    <string name="workout_preset_fallback">Preset</string>
+    <string name="workout_keypad_reps">Reps</string>
+    <string name="workout_set_counter">Set %1$d/%2$d</string>
+    <string name="workout_superset_badge">• SS#%1$d</string>
+    <string name="workout_reps_label">reps</string>
+    <string name="workout_carry_label">carry</string>
+    <string name="workout_timer_stop">Stop ⏹</string>
+    <string name="workout_timer_start">Timer ▶</string>
+    <string name="workout_done_check">Done ✓</string>
+
+    <string name="workout_preset_update_title">Update Preset?</string>
+    <string name="workout_preset_update_desc">Save your watch changes to \"%1$s\"?</string>
+    <string name="workout_preset_keep_old">Keep Old</string>
+    <string name="workout_preset_update_btn">Update</string>
+
+    <string name="workout_rest_title">Rest</string>
+    <string name="workout_rest_next">Next: %1$s (Set %2$d)</string>
+    <string name="workout_rest_add_15">+15s</string>
+
+    <string name="workout_rpe_title">Rate Effort (RPE)</string>
+    <string name="workout_end_btn">End Workout</string>
+
+    <string name="workout_add_exercise_title">Add Exercise</string>
+    <string name="workout_no_recent_exercises">No recent exercises synced from phone.</string>
+    <string name="workout_options_title">Workout Options</string>
+    <string name="workout_back_to_set">Back to Set</string>
+    <string name="workout_add_set">+ Add Set</string>
+    <string name="workout_set_type_label">Type: %1$s</string>
+    <string name="workout_set_type_normal">Normal</string>
+    <string name="workout_set_type_warmup">Warmup</string>
+    <string name="workout_set_type_drop">Drop</string>
+    <string name="workout_set_type_failure">Failure</string>
+    <string name="workout_delete_set">Delete Set</string>
+    <string name="workout_add_exercise_btn">+ Add Exercise</string>
+    <string name="workout_delete_exercise">Delete Exercise</string>
+    <string name="workout_skip_exercise">Skip Exercise</string>
+    <string name="workout_finish_btn">Finish Workout</string>
+    <string name="workout_discard_btn">Discard</string>
+
+    <string name="workout_complete_title">Workout Complete!</string>
+    <plurals name="workout_summary_sets_duration">
+        <item quantity="one">%1$d set • %2$s</item>
+        <item quantity="other">%1$d sets • %2$s</item>
+    </plurals>
+    <string name="workout_summary_avg_hr">♥ %1$d avg</string>
+
+    <string name="recording_activity_walk">Walk</string>
+    <string name="recording_activity_run">Run</string>
+    <string name="recording_activity_ride">Ride</string>
+    <string name="recording_resume">Resume</string>
+    <string name="recording_pause">Pause</string>
+    <string name="recording_lap_count">Lap (%1$d)</string>
+    <string name="recording_lap">Lap</string>
+    <string name="recording_stop">Stop</string>
+
+    <string name="run_saved_title">Workout Saved!</string>
+    <plurals name="run_laps_count">
+        <item quantity="one">%1$d lap</item>
+        <item quantity="other">%1$d laps</item>
+    </plurals>
+    <string name="run_auto_paused">AUTO-PAUSED</string>
+    <string name="run_settings_title">Run Settings</string>
+    <string name="run_setting_on">ON</string>
+    <string name="run_setting_off">OFF</string>
+    <string name="run_setting_auto_pause">Auto-Pause: %1$s</string>
+    <string name="run_setting_voice_cues">Voice Cues: %1$s</string>
+    <string name="run_setting_pace_alerts">Pace Alerts: %1$s</string>
+    <string name="run_setting_hr_alerts">HR Alerts: %1$s</string>
+    <string name="run_setting_test_voice">🔊 Test Voice</string>
+    <string name="run_keypad_distance">Distance (%1$s)</string>
+    <string name="run_treadmill_distance_title">Treadmill Distance</string>
+
     <color name="iconBackground">#FFFFFF</color>
 </resources>

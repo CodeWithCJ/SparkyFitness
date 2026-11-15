@@ -43,6 +43,7 @@ BEGIN
     'food_variants',
     'foods',
     'goal_presets',
+    'intervals_nutrition_pushes',
     'meal_foods',
     'meal_plan_template_assignments',
     'meal_plan_templates',
@@ -664,6 +665,7 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
 -- default_temperature_unit inherits the existing preference read/write rules.
 -- oral_care_daily_target and oral_care_target_seconds inherit the existing preference read/write rules.
+-- feature_choices (optional features per platform, #3487) inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)
@@ -813,7 +815,12 @@ SELECT create_owner_policy('run_goals');
 SELECT create_owner_policy('custom_run_programs');
 -- Running fitness tests (5K, 30-minute run, Cooper) and the paces they gave: personal training data, owner-only.
 SELECT create_owner_policy('fitness_tests');
+-- Recipe integration provenance and source-food mappings are never delegated.
+SELECT create_owner_policy('recipe_imports');
+SELECT create_owner_policy('recipe_food_mappings');
 SELECT create_owner_policy('routes');
+-- Intervals.icu nutrition push log: owner-only, never shared.
+SELECT create_owner_policy('intervals_nutrition_pushes');
 
 -- User-defined mood tags. Mood is check-in data (mood_entries uses the check-in
 -- policy), and custom check-in definitions like custom_categories are shared with

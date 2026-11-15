@@ -12,8 +12,18 @@ import { MAX_GOAL_MODE_WEEKLY_CHANGE_KG } from '../../utils/calorieCalculations.
 import { HR_ZONE_METHODS } from '../../utils/heartRateZones.ts';
 import { GLUCOSE_UNITS } from '../../constants/bloodGlucose.ts';
 import { TEMPERATURE_UNITS } from '../../utils/temperatureUnit.ts';
+import { featureChoicesSchema } from '../../features/optionalFeatures.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
+export const SUPPORTED_DATE_FORMATS = [
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd.MM.yyyy',
+  'dd-MMM-yyyy',
+  'yyyy-MM-dd',
+  'MMM dd, yyyy',
+] as const;
+export type SupportedDateFormat = (typeof SUPPORTED_DATE_FORMATS)[number];
 
 const externalDataProvidersIdSchema = z.any();
 
@@ -37,6 +47,7 @@ const weeklyWeightChangeSchema = z
 export const userPreferencesSchema = z.object({
   adaptive_activity_separate: z.boolean().optional(),
   adjust_macros_with_exercise: z.boolean().optional(),
+  chat_mcp_server_ids: z.array(z.uuid()).default([]),
   voice_input_enabled: z.boolean().optional(),
   active_voice_ai_service_id: z.string().uuid().nullable().optional(),
   id: z.string(),
@@ -103,6 +114,7 @@ export const userPreferencesSchema = z.object({
   chart_scale_mode: z.enum(CHART_SCALE_MODES),
   // Manually added (#1560; ts-to-zod precedent: UserWaterContainers.zod.ts).
   adaptive_workout_suggestions: z.boolean(),
+  intervals_push_nutrition: z.boolean(),
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
@@ -126,6 +138,11 @@ export const userPreferencesSchema = z.object({
   // Oral care goal (#1862): brushes per day and target seconds per brush.
   oral_care_daily_target: z.number().int().min(1).max(6),
   oral_care_target_seconds: z.number().int().min(30).max(600),
+  // Manually added (#3487): explicit optional-feature choices per platform
+  // ({ web, mobile }), read and written only through
+  // /api/user-preferences/features, never in the general preferences payload.
+  // Optional for that reason. Keep on regen.
+  feature_choices: featureChoicesSchema.optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -204,6 +221,7 @@ export const userPreferencesInitializerSchema = z.object({
     .optional(),
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
+  intervals_push_nutrition: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),
@@ -307,6 +325,7 @@ export const userPreferencesMutatorSchema = z.object({
     .optional(),
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
+  intervals_push_nutrition: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),

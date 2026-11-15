@@ -34,12 +34,12 @@ function requireSelf(req: express.Request, res: express.Response): boolean {
  *       properties:
  *         layout:
  *           type: object
- *           description: Responsive grid layout keyed by breakpoint (lg/md/sm/xs).
+ *           description: Responsive grid layout keyed by breakpoint (lg/md/sm/xs). Always {} for the web-tabs page.
  *         hidden:
  *           type: array
  *           items:
  *             type: string
- *           description: Widget keys the user has hidden.
+ *           description: Widget keys the user has hidden. For the web-tabs page, the main web tabs the user turned off (checkin, medications, labs, reports, foods, exercises, goals).
  *         updated_at:
  *           type: string
  *           format: date-time
@@ -59,7 +59,7 @@ function requireSelf(req: express.Request, res: express.Response): boolean {
  *         required: true
  *         schema:
  *           type: string
- *         description: The dashboard page identifier (e.g. "diary").
+ *         description: The dashboard page identifier (e.g. "diary", or "web-tabs" for the hidden main web tabs).
  *     responses:
  *       200:
  *         description: The saved layout, or null when none is stored (use defaults).

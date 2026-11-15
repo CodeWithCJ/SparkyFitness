@@ -66,6 +66,9 @@ export const NormalizedFoodSchema = z.object({
   provider_external_id: z.string().optional(),
   provider_type: z.string().optional(),
   provider_verified: z.boolean().optional(),
+  // Transient Mealie recipe context, never persisted on a library food.
+  recipe_has_nutrition: z.boolean().optional(),
+  recipe_servings: z.number().finite().positive().nullable().optional(),
   is_custom: z.boolean(),
   // Upstream provider photo on a not-yet-imported result. Hotlinked by the
   // search UI; localized into `images` on import (see models/food.ts). Without

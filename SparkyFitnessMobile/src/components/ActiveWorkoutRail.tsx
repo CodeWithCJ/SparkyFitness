@@ -17,6 +17,8 @@ import {
 } from '../utils/workoutSession';
 
 const THUMB_SIZE = 52;
+/** Thumb size in the compact side-strip column. */
+const STRIP_THUMB_SIZE = 44;
 /** contentContainer gap-2 — non-last superset bars extend across it. */
 const ITEM_GAP = 8;
 /** Horizontal inset of a superset bar from its item's edges — keeps the bar
@@ -72,6 +74,12 @@ interface ActiveWorkoutRailProps {
   getImageSource: GetImageSource;
   onPressExercise: (entryId: string) => void;
   onPressAdd: () => void;
+  /**
+   * Lay the rail out as a vertical, scrollable column (for the trailing side
+   * of a wide scene, e.g. iPhone Duo beside its vertical bar) instead of a
+   * horizontal row under the header.
+   */
+  vertical?: boolean;
 }
 
 /**
@@ -87,7 +95,10 @@ function ActiveWorkoutRail({
   getImageSource,
   onPressExercise,
   onPressAdd,
+  vertical = false,
 }: ActiveWorkoutRailProps) {
+  const thumbSize = vertical ? STRIP_THUMB_SIZE : THUMB_SIZE;
+  const itemWidth = vertical ? undefined : THUMB_SIZE + 24;
   const { t } = useTranslation();
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
@@ -100,16 +111,22 @@ function ActiveWorkoutRail({
   // render, e.g. resuming mid-workout) — its own onLayout completes the scroll.
   const pendingFocusRef = useRef<string | null>(null);
 
-  const scrollToEntry = useCallback((entryId: string): boolean => {
-    const x = itemOffsetsRef.current[entryId];
-    if (x == null) return false;
-    scrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
-    return true;
-  }, []);
+  const scrollToEntry = useCallback(
+    (entryId: string): boolean => {
+      const offset = itemOffsetsRef.current[entryId];
+      if (offset == null) return false;
+      const target = Math.max(0, offset - 24);
+      scrollRef.current?.scrollTo(
+        vertical ? { y: target, animated: true } : { x: target, animated: true }
+      );
+      return true;
+    },
+    [vertical]
+  );
 
   const handleItemLayout = useCallback(
-    (entryId: string, x: number) => {
-      itemOffsetsRef.current[entryId] = x;
+    (entryId: string, offset: number) => {
+      itemOffsetsRef.current[entryId] = offset;
       if (pendingFocusRef.current === entryId) {
         pendingFocusRef.current = null;
         scrollToEntry(entryId);
@@ -118,7 +135,14 @@ function ActiveWorkoutRail({
     [scrollToEntry]
   );
 
+  // A fresh orientation of the rail has new offsets, so measure again. This
+  // runs before the focus effect below: that one re-runs on the same change,
+  // and must not scroll the new axis with offsets measured on the old one.
+  useEffect(() => {
+    itemOffsetsRef.current = {};
+  }, [vertical]);
   // Keep the focused chip in view as the cursor advances or the log scrolls.
+  // With the offsets cleared it stays pending until the item re-measures.
   useEffect(() => {
     if (focusedEntryId == null) return;
     pendingFocusRef.current = scrollToEntry(focusedEntryId)
@@ -129,10 +153,17 @@ function ActiveWorkoutRail({
   return (
     <ScrollView
       ref={scrollRef}
-      horizontal
+      horizontal={!vertical}
       showsHorizontalScrollIndicator={false}
-      className="grow-0 border-b border-border-subtle bg-background"
-      contentContainerClassName="px-3 py-2 gap-2"
+      showsVerticalScrollIndicator={false}
+      className={
+        vertical
+          ? 'grow-0 bg-background'
+          : 'grow-0 border-b border-border-subtle bg-background'
+      }
+      contentContainerClassName={
+        vertical ? 'items-center py-2 gap-2' : 'px-3 py-2 gap-2'
+      }
     >
       {exercises.map((exercise) => {
         const name =
@@ -156,12 +187,15 @@ function ActiveWorkoutRail({
             testID={`rail-chip-${exercise.id}`}
             onPress={() => onPressExercise(exercise.id)}
             onLayout={(e) =>
-              handleItemLayout(exercise.id, e.nativeEvent.layout.x)
+              handleItemLayout(
+                exercise.id,
+                vertical ? e.nativeEvent.layout.y : e.nativeEvent.layout.x
+              )
             }
             accessibilityRole="button"
             accessibilityLabel={name}
             className="items-center"
-            style={{ width: THUMB_SIZE + 24 }}
+            style={{ width: itemWidth }}
           >
             <View
               testID={`rail-ring-${exercise.id}`}
@@ -178,16 +212,16 @@ function ActiveWorkoutRail({
                 <SafeImage
                   source={image ? getImageSource(image) : null}
                   style={{
-                    width: THUMB_SIZE,
-                    height: THUMB_SIZE,
+                    width: thumbSize,
+                    height: thumbSize,
                     borderRadius: 10,
                   }}
                   fallback={
                     <View
                       className="bg-raised items-center justify-center"
                       style={{
-                        width: THUMB_SIZE,
-                        height: THUMB_SIZE,
+                        width: thumbSize,
+                        height: thumbSize,
                         borderRadius: 10,
                       }}
                     >
@@ -221,7 +255,7 @@ function ActiveWorkoutRail({
                 </View>
               )}
             </View>
-            {supersetBorder && (
+            {supersetBorder && !vertical && (
               <View
                 testID={`superset-bar-${exercise.id}`}
                 pointerEvents="none"
@@ -241,19 +275,21 @@ function ActiveWorkoutRail({
                 }}
               />
             )}
-            <Text
-              numberOfLines={2}
-              className={`mt-1 text-center text-xs leading-tight ${
-                isCurrent
-                  ? 'font-semibold'
-                  : isFocused
-                    ? 'font-semibold text-text-primary'
-                    : 'text-text-secondary'
-              }`}
-              style={isCurrent ? { color: accentPrimary } : undefined}
-            >
-              {name}
-            </Text>
+            {!vertical && (
+              <Text
+                numberOfLines={2}
+                className={`mt-1 text-center text-xs leading-tight ${
+                  isCurrent
+                    ? 'font-semibold'
+                    : isFocused
+                      ? 'font-semibold text-text-primary'
+                      : 'text-text-secondary'
+                }`}
+                style={isCurrent ? { color: accentPrimary } : undefined}
+              >
+                {name}
+              </Text>
+            )}
           </Pressable>
         );
       })}
@@ -265,22 +301,24 @@ function ActiveWorkoutRail({
           defaultValue: 'Add exercise',
         })}
         className="items-center"
-        style={{ width: THUMB_SIZE + 24 }}
+        style={{ width: itemWidth }}
       >
         <View style={{ padding: 4 }}>
           <View
             className="items-center justify-center rounded-xl bg-raised"
-            style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+            style={{ width: thumbSize, height: thumbSize }}
           >
             <Icon name="add" size={22} color={accentPrimary} />
           </View>
         </View>
-        <Text
-          className="mt-1 text-center text-xs leading-tight font-medium"
-          style={{ color: accentPrimary }}
-        >
-          {t('activeWorkout.rail.add', { defaultValue: 'Add' })}
-        </Text>
+        {!vertical && (
+          <Text
+            className="mt-1 text-center text-xs leading-tight font-medium"
+            style={{ color: accentPrimary }}
+          >
+            {t('activeWorkout.rail.add', { defaultValue: 'Add' })}
+          </Text>
+        )}
       </Pressable>
     </ScrollView>
   );

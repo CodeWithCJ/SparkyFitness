@@ -534,3 +534,5 @@ export const compareSinceQueryKey = (p: CompareSinceParams) =>
 
 export const glucoseSamplesQueryKeyRoot = ['glucoseSamples'] as const;
 export const glucoseContextQueryKeyRoot = ['glucoseContext'] as const;
+
+export const chatMcpServersQueryKey = ['chatMcpServers'] as const;
