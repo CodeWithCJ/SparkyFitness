@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BarcodeImageInput } from '@/components/FoodSearch/BarcodeImageInput';
 import { decodeBarcodeFromImage } from '@/lib/scannerEngines/decodeBarcodeImage';
@@ -115,4 +121,30 @@ it('stops listening for pastes once removed', () => {
 
   expect(event.defaultPrevented).toBe(false);
   expect(decode).not.toHaveBeenCalled();
+});
+
+it('ignores a barcode decoded after the input is unmounted', async () => {
+  let finish!: (
+    result: Awaited<ReturnType<typeof decodeBarcodeFromImage>>
+  ) => void;
+  decode.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  const onBarcodeDetected = jest.fn();
+  const { unmount } = render(
+    <BarcodeImageInput onBarcodeDetected={onBarcodeDetected} />
+  );
+
+  act(() => {
+    pasteFiles([png()]);
+  });
+  await waitFor(() => expect(decode).toHaveBeenCalledTimes(1));
+  unmount();
+  await act(async () => {
+    finish({ status: 'found', code: '96385074' });
+  });
+
+  expect(onBarcodeDetected).not.toHaveBeenCalled();
 });

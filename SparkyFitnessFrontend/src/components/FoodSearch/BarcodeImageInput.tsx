@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImageSourceInput } from './ImageSourceInput';
 import { error as logError } from '@/utils/logging';
@@ -17,6 +17,14 @@ export function BarcodeImageInput({
   const [decoding, setDecoding] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const handleImage = useCallback(
     async (image: File) => {
       setDecoding(true);
@@ -25,7 +33,9 @@ export function BarcodeImageInput({
         // Loaded on demand so the decoder is only fetched when an image is used.
         const { decodeBarcodeFromImage } =
           await import('@/lib/scannerEngines/decodeBarcodeImage');
+        if (!mounted.current) return;
         const result = await decodeBarcodeFromImage(image);
+        if (!mounted.current) return;
         if (result.status === 'found') {
           onBarcodeDetected(result.code);
         } else if (result.status === 'not_found') {
@@ -44,6 +54,7 @@ export function BarcodeImageInput({
           );
         }
       } catch (err) {
+        if (!mounted.current) return;
         logError(loggingLevel, 'Barcode image decode failed:', err);
         setErrorMessage(
           t(
@@ -52,7 +63,7 @@ export function BarcodeImageInput({
           )
         );
       } finally {
-        setDecoding(false);
+        if (mounted.current) setDecoding(false);
       }
     },
     [loggingLevel, onBarcodeDetected, t]
