@@ -64,6 +64,7 @@ import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
 import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
 import ActiveWorkoutRenameModal from '../components/ActiveWorkoutRenameModal';
 import ActiveWorkoutLocationModal from '../components/ActiveWorkoutLocationModal';
+import { setWorkoutReorderSource } from '../services/workoutReorderSource';
 import ActiveWorkoutOverflowSheet, {
   type OverflowMenuState,
 } from '../components/ActiveWorkoutOverflowSheet';
@@ -375,7 +376,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleOpenReorder = useCallback(() => {
     Keyboard.dismiss();
-    runNavigationAction(() => navigation.navigate('WorkoutReorder'));
+    // A reorder screen opened from a workout form can still be in the stack
+    // below this one, holding the form's list. `navigate` would return to it;
+    // push a new one, which finds no form source and edits this session.
+    setWorkoutReorderSource(null);
+    runNavigationAction(() => navigation.push('WorkoutReorder'));
   }, [navigation, runNavigationAction]);
 
   const handleOpenWorkoutSettings = useCallback(() => {

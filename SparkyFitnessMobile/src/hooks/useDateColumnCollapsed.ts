@@ -175,6 +175,10 @@ export function useDateColumnCollapsed(active: boolean): boolean | null {
       stop();
       if (timer != null) clearTimeout(timer);
       clearTimeout(timeout);
+      // A reading describes one visit to a pose. Leaving it drops the answer,
+      // or coming back would show it before the fresh one, ahead of whatever
+      // happened to the activity in the pose in between.
+      setReading(null);
     };
   }, [active, poseKey, width, height]);
 
