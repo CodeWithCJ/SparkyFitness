@@ -11,9 +11,16 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useChallengePeriodStandings } from '@/hooks/Challenges/useChallenges';
+import {
+  useChallengePeriodStandings,
+  useChallengeRuleChanges,
+} from '@/hooks/Challenges/useChallenges';
 import { metricValueText, type MetricUnits } from './challengeCopy';
-import { periodRangeText, recentPeriodStarts } from './challengePeriods';
+import {
+  periodRangeText,
+  recentPeriodStarts,
+  rulesInEffect,
+} from './challengePeriods';
 
 /** How many of a member's periods the dialog lists (days, for a daily challenge). */
 export const MEMBER_PERIODS_SHOWN = 7;
@@ -53,6 +60,7 @@ const MemberPeriodsDialog = ({
     member ? challenge.id : null,
     starts
   );
+  const changes = useChallengeRuleChanges(member ? challenge.id : null);
   const formatDay = (d: string, pattern: string) =>
     formatDateInUserTimezone(d, pattern);
 
@@ -78,6 +86,12 @@ const MemberPeriodsDialog = ({
             const result = results[i];
             const data = result?.data;
             const row = data?.rows.find((r) => r.user_id === member?.user_id);
+            // Each period in the units of the rules that scored it.
+            const { metric } = rulesInEffect(
+              changes.data,
+              start,
+              challenge.rules
+            ).rules;
             return (
               <li
                 key={start}
@@ -114,7 +128,7 @@ const MemberPeriodsDialog = ({
                     </Badge>
                     {metricValueText(
                       t,
-                      challenge.rules.metric,
+                      metric,
                       row.total,
                       units,
                       i18n.language

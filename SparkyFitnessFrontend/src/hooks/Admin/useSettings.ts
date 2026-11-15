@@ -62,7 +62,7 @@ export const useUpdateSettings = () => {
         // Login options (email, passkey, magic link) derive from these settings.
         queryClient.invalidateQueries({ queryKey: authKeys.settings }),
         // The Challenges tab and Diary card follow the Challenges switch.
-        queryClient.invalidateQueries({ queryKey: challengeKeys.all }),
+        queryClient.invalidateQueries({ queryKey: challengeKeys.status() }),
       ]);
     },
   });

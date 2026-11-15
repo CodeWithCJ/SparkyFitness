@@ -23,7 +23,13 @@ export function inviteCodeFrom(text: string): string | null {
   const hash = trimmed.lastIndexOf('#');
   if (hash >= 0) candidates.push(trimmed.slice(hash + 1));
   const param = /[?&#]code=([^&#\s]+)/.exec(trimmed);
-  if (param?.[1]) candidates.push(decodeURIComponent(param[1]));
+  if (param?.[1]) {
+    try {
+      candidates.push(decodeURIComponent(param[1]));
+    } catch {
+      // Bad percent-encoding: not a code.
+    }
+  }
   for (const candidate of candidates) {
     const parsed = challengeInviteCodeSchema.safeParse(candidate);
     if (parsed.success) return parsed.data;

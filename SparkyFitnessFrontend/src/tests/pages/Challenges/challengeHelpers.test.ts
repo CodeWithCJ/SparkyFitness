@@ -146,6 +146,11 @@ describe('amounts in the person own units', () => {
       targetToInput('distance', targetFromInput('distance', 26.2, miles), miles)
     ).toBe(26.2);
     expect(targetFromInput('steps', 5000, km)).toBe(5000);
+    // kcal as stored, kJ as a whole number (utils/energyInput).
+    expect(targetToInput('active_calories', 250.5, km)).toBe(250.5);
+    expect(
+      targetToInput('active_calories', 250, { ...km, energyUnit: 'kJ' })
+    ).toBe(1046);
   });
 
   it('names the counted days', () => {
@@ -167,6 +172,11 @@ describe('invite links', () => {
     ).toBe(CODE);
     expect(inviteCodeFrom('not a code')).toBeNull();
     expect(inviteCodeFrom('')).toBeNull();
+  });
+
+  it('reads a link with bad percent-encoding as no code instead of throwing', () => {
+    expect(inviteCodeFrom('https://fit.example/join?code=%E0')).toBeNull();
+    expect(inviteCodeFrom('?code=%')).toBeNull();
   });
 
   it('says why a join failed from the server code', () => {
@@ -229,6 +239,27 @@ describe('periods', () => {
     expect(rulesInEffect(log, '2026-11-16', later).upcoming).toBeNull();
     expect(rulesInEffect(undefined, '2026-11-14', later).rules).toBe(later);
   });
+
+  it('keeps the server order (write order) for changes on the same day', () => {
+    const first = rules({ bestDaysPerWeek: 3 });
+    const second = rules({ bestDaysPerWeek: 4 });
+    const change = (id: string, r: ChallengeRules, created_at: string) =>
+      ({
+        id,
+        changed_by_display_name: 'Ana',
+        effective_from: '2026-11-16',
+        rules: r,
+        previous_rules: null,
+        created_at,
+      }) as ChallengeRuleChange;
+    // Written second, but its transaction started first.
+    const log = [
+      change('a', allRounder, '2026-11-02T00:00:00.000Z'),
+      change('b', first, '2026-11-12T10:00:05.000Z'),
+      change('c', second, '2026-11-12T10:00:01.000Z'),
+    ];
+    expect(rulesInEffect(log, '2026-11-16', allRounder).rules).toBe(second);
+  });
 });
 
 describe('the Diary card', () => {
@@ -238,7 +269,7 @@ describe('the Diary card', () => {
     ended_at: string | null = null
   ) => ({ id, start_date, ended_at }) as ChallengeSummary;
 
-  it('shows running challenges first, newest first, at most two', () => {
+  it('shows only running challenges, newest first, at most two', () => {
     const list = [
       summary('old', '2026-10-01'),
       summary('done', '2026-11-10', '2026-11-12T00:00:00Z'),

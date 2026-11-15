@@ -79,10 +79,10 @@ export function rulesInEffect(
   current: ChallengeRules
 ): { rules: ChallengeRules; upcoming: ChallengeRuleChange | null } {
   if (!changes?.length) return { rules: current, upcoming: null };
-  const ordered = [...changes].sort(
-    (a, b) =>
-      a.effective_from.localeCompare(b.effective_from) ||
-      a.created_at.localeCompare(b.created_at)
+  // The server lists changes by effective_from, then write order (seq);
+  // the sort is stable, so same-day changes keep that order.
+  const ordered = [...changes].sort((a, b) =>
+    a.effective_from.localeCompare(b.effective_from)
   );
   let chosen = ordered[0] as ChallengeRuleChange;
   let upcoming: ChallengeRuleChange | null = null;

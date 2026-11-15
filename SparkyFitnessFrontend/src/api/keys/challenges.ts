@@ -5,6 +5,8 @@ export const challengeKeys = {
   list: () => [...challengeKeys.all, 'list'] as const,
   detail: (id: string) => [...challengeKeys.all, 'detail', id] as const,
   /** Standings of the period holding `date` (null: the current period). */
+  /** Every period's standings of one challenge. */
+  standingsOf: (id: string) => [...challengeKeys.all, 'standings', id] as const,
   standings: (id: string, date: string | null) =>
     [...challengeKeys.all, 'standings', id, date ?? 'current'] as const,
   ruleChanges: (id: string) =>

@@ -413,7 +413,10 @@ const Diary = () => {
   const { available: challengesAvailable } = useChallengesAvailable();
   const { data: challengeList } = useChallenges(challengesAvailable);
   const myChallenges = useMemo(
-    () => (challengesAvailable ? (challengeList ?? []) : []),
+    () =>
+      challengesAvailable
+        ? (challengeList ?? []).filter((c) => c.ended_at === null)
+        : [],
     [challengesAvailable, challengeList]
   );
 

@@ -19,7 +19,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useChallengeStandings } from '@/hooks/Challenges/useChallenges';
+import {
+  useChallengeStandings,
+  useRulesInEffect,
+} from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
 import { metricValueText, type MetricUnits } from './challengeCopy';
 import {
@@ -50,12 +53,12 @@ const ChallengeLeaderboard = ({
   // null is the current period; otherwise any day of the period shown.
   const [day, setDay] = useState<string | null>(null);
   const standings = useChallengeStandings(challenge.id, day);
-  const rules = challenge.rules;
   const today = todayInZone(challenge.time_zone);
   const formatDay = (d: string, pattern: string) =>
     formatDateInUserTimezone(d, pattern);
 
   const data = standings.data;
+  const rules = useRulesInEffect(challenge, data?.period_start);
   const previous = data
     ? previousPeriodDay(data.period_start, challenge.start_date)
     : null;

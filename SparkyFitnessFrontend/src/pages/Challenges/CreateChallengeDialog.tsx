@@ -170,6 +170,20 @@ const CreateChallengeDialog = ({
     memberLimit <= CHALLENGE_MAX_MEMBER_LIMIT &&
     !create.isPending;
 
+  // Why Create is off, when the reason is not already shown by its field.
+  const formProblem = !rulesValid
+    ? t(
+        'challenges.create.rulesInvalid',
+        'A rule setting is empty or out of range.'
+      )
+    : memberLimit < 2 || memberLimit > CHALLENGE_MAX_MEMBER_LIMIT
+      ? t(
+          'challenges.create.memberLimitRange',
+          'Most members must be between 2 and {{max}}.',
+          { max: CHALLENGE_MAX_MEMBER_LIMIT }
+        )
+      : null;
+
   const submit = () => {
     if (!canSubmit) return;
     create.mutate(
@@ -392,6 +406,11 @@ const CreateChallengeDialog = ({
           </div>
         </div>
 
+        {formProblem && (
+          <p className="text-sm text-muted-foreground" role="status">
+            {formProblem}
+          </p>
+        )}
         {create.isError && (
           <p className="text-sm text-destructive" role="alert">
             {createErrorText(t, challengeErrorCode(create.error))}

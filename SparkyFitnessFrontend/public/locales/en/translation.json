@@ -11211,7 +11211,8 @@
       "save": "Save rules",
       "everyDay": "Every day",
       "dayRange": "{{from}} to {{to}}",
-      "saved": "Rules saved. Everyone in the challenge can see the change."
+      "saved": "Rules saved. Everyone in the challenge can see the change.",
+      "endNeeded": "A challenge scored as one period needs an end date."
     },
     "leave": {
       "button": "Leave",
@@ -11392,7 +11393,9 @@
       "errors": {
         "invalidDates": "A challenge can start at most {{back}} days ago and at most {{ahead}} days from today, and lasts at most {{length}} days.",
         "generic": "Could not create the challenge. Try again."
-      }
+      },
+      "rulesInvalid": "A rule setting is empty or out of range.",
+      "memberLimitRange": "Most members must be between 2 and {{max}}."
     },
     "ownOnly": "Challenges are personal. Switch back to your own account to see yours.",
     "disabled": "Challenges are turned off on this server. An admin can turn them on in Admin settings.",

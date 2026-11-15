@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { addDays, challengePreset, todayInZone } from '@workspace/shared';
@@ -174,6 +180,52 @@ describe('Challenges page', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the shown invite code when the host switches tabs and back', async () => {
+    api.createChallengeInvite.mockResolvedValue({
+      code: INVITE_CODE,
+      expires_at: '2026-11-21T00:00:00.000Z',
+    });
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Members' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make an invite code' })
+    );
+    expect(await screen.findByDisplayValue(INVITE_CODE)).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Standings' }));
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue(INVITE_CODE)).not.toBeInTheDocument()
+    );
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Members' }));
+    expect(await screen.findByDisplayValue(INVITE_CODE)).toBeInTheDocument();
+    expect(api.createChallengeInvite).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves without asking again for the challenge it left', async () => {
+    api.leaveChallenge.mockResolvedValue(undefined as never);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+    const dialog = await screen.findByRole('dialog');
+    const reads = () =>
+      api.getChallenge.mock.calls.length +
+      api.getChallengeStandings.mock.calls.length +
+      api.getChallengeRuleChanges.mock.calls.length;
+    const before = reads();
+    // After leaving, the list no longer has it.
+    api.listChallenges.mockResolvedValue([]);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Leave' }));
+    await waitFor(() =>
+      expect(api.leaveChallenge).toHaveBeenCalledWith(CHALLENGE_ID)
+    );
+    // Back on the list, with no 403-bound reads of the challenge left.
+    await waitFor(() => expect(api.listChallenges).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Leave this challenge?')
+      ).not.toBeInTheDocument()
+    );
+    expect(reads()).toBe(before);
+  });
+
   it('opens the join dialog from an invite link with the code filled in', async () => {
     api.joinChallenge.mockResolvedValue(challenge({ is_host: false }));
     renderAt(`/challenges/join#${INVITE_CODE}`);
@@ -289,5 +341,30 @@ describe('Challenges page', () => {
       preset: 'all_rounder',
       rules: { metric: 'points', bestDaysPerWeek: null },
     });
+  });
+
+  it('says why Create is off, and keeps a typed number editable', async () => {
+    renderAt('/challenges');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New challenge' })
+    );
+    fireEvent.change(screen.getByLabelText('Most members'), {
+      target: { value: '1' },
+    });
+    expect(
+      screen.getByText('Most members must be between 2 and 200.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create challenge' })
+    ).toBeDisabled();
+
+    // A cleared rules field stays empty while typing, then takes the new value.
+    fireEvent.click(screen.getByRole('button', { name: 'Days and times' }));
+    const best = screen.getByLabelText('Best days a week');
+    fireEvent.change(best, { target: { value: '' } });
+    expect(best).toHaveValue(null);
+    fireEvent.change(best, { target: { value: '3' } });
+    fireEvent.blur(best);
+    expect(best).toHaveValue(3);
   });
 });

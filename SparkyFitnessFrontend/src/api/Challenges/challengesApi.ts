@@ -26,12 +26,17 @@ export const listChallenges = (): Promise<ChallengeSummary[]> =>
   apiCall('/v2/challenges', { method: 'GET' });
 
 export const getChallenge = (id: string): Promise<ChallengeDetail> =>
-  apiCall(`/v2/challenges/${id}`, { method: 'GET' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}`, { method: 'GET' });
 
 export const createChallenge = (
   body: CreateChallengeBody
 ): Promise<ChallengeDetail> =>
-  apiCall('/v2/challenges', { method: 'POST', body });
+  apiCall('/v2/challenges', {
+    method: 'POST',
+    body,
+    // The create dialog says what went wrong next to the form.
+    suppressErrorToast: true,
+  });
 
 export const joinChallenge = (
   body: JoinChallengeBody
@@ -47,33 +52,40 @@ export const updateChallengeRules = (
   id: string,
   rules: ChallengeRulesInput
 ): Promise<ChallengeDetail> =>
-  apiCall(`/v2/challenges/${id}/rules`, { method: 'PUT', body: { rules } });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/rules`, {
+    method: 'PUT',
+    body: { rules },
+  });
 
 export const getChallengeRuleChanges = (
   id: string
 ): Promise<ChallengeRuleChange[]> =>
-  apiCall(`/v2/challenges/${id}/rule-changes`, { method: 'GET' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/rule-changes`, {
+    method: 'GET',
+  });
 
 export const createChallengeInvite = (
   id: string,
   expiresInDays?: number
 ): Promise<ChallengeInviteResponse> =>
-  apiCall(`/v2/challenges/${id}/invite`, {
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/invite`, {
     method: 'POST',
     body: expiresInDays ? { expires_in_days: expiresInDays } : {},
   });
 
 export const revokeChallengeInvite = (id: string): Promise<void> =>
-  apiCall(`/v2/challenges/${id}/invite`, { method: 'DELETE' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/invite`, {
+    method: 'DELETE',
+  });
 
 export const leaveChallenge = (id: string): Promise<void> =>
-  apiCall(`/v2/challenges/${id}/leave`, { method: 'POST' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/leave`, { method: 'POST' });
 
 export const getChallengeStandings = (
   id: string,
   date?: string | null
 ): Promise<ChallengeStandingsResponse> =>
-  apiCall(`/v2/challenges/${id}/standings`, {
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/standings`, {
     method: 'GET',
     params: date ? { date } : undefined,
   });

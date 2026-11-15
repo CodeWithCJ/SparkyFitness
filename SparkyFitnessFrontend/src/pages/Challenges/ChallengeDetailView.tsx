@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Settings2, Users } from 'lucide-react';
-import { todayInZone, type ChallengeDetail } from '@workspace/shared';
+import {
+  todayInZone,
+  type ChallengeDetail,
+  type ChallengeInviteResponse,
+} from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +48,7 @@ const ChallengeDetailView = ({
   } | null>(null);
   const [editing, setEditing] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [invite, setInvite] = useState<ChallengeInviteResponse | null>(null);
   const today = todayInZone(challenge.time_zone);
   const { rules, upcoming } = rulesInEffect(
     changes.data,
@@ -206,7 +211,11 @@ const ChallengeDetailView = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <InvitePanel challenge={challenge} />
+                <InvitePanel
+                  challenge={challenge}
+                  invite={invite}
+                  onInvite={setInvite}
+                />
               </CardContent>
             </Card>
           )}

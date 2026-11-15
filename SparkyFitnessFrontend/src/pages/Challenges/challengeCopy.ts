@@ -6,7 +6,6 @@ import {
   challengeDayEffort,
   challengeStepPoints,
   energyFromKcal,
-  energyToKcal,
   type EnergyUnit,
   type ActivitySport,
   type ChallengeFormat,
@@ -19,6 +18,7 @@ import {
   type ChallengePresetId,
   type ChallengeRules,
 } from '@workspace/shared';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 type DistanceUnit = 'km' | 'miles';
 
@@ -270,7 +270,7 @@ export function targetToInput(
   if (metric === 'distance')
     return round1(shownDistance(stored, units.distanceUnit));
   if (metric === 'active_calories')
-    return Math.round(energyFromKcal(stored, units.energyUnit));
+    return Number(shownEnergyInput(stored, units.energyUnit));
   return stored;
 }
 
@@ -284,7 +284,7 @@ export function targetFromInput(
       ? typed * METRES_PER_MILE
       : typed * 1000;
   if (metric === 'active_calories')
-    return energyToKcal(typed, units.energyUnit);
+    return Number(kcalFromEnergyInput(typed, units.energyUnit));
   return typed;
 }
 
@@ -717,12 +717,9 @@ const CARD_CHALLENGES_SHOWN = 2;
 export function challengesForCard(
   challenges: readonly ChallengeSummary[]
 ): ChallengeSummary[] {
-  return [...challenges]
-    .sort(
-      (a, b) =>
-        Number(a.ended_at !== null) - Number(b.ended_at !== null) ||
-        b.start_date.localeCompare(a.start_date)
-    )
+  return challenges
+    .filter((c) => c.ended_at === null)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
     .slice(0, CARD_CHALLENGES_SHOWN);
 }
 

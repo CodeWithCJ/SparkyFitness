@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Link2, XCircle } from 'lucide-react';
 import type {
@@ -19,12 +18,20 @@ import { challengeInviteLink } from './challengeLinks';
  * The host's invite controls. The server keeps only a hash of the code, so a
  * code is shown once, right after it is made; making a new one replaces it.
  */
-const InvitePanel = ({ challenge }: { challenge: ChallengeDetail }) => {
+const InvitePanel = ({
+  challenge,
+  invite,
+  onInvite,
+}: {
+  challenge: ChallengeDetail;
+  /** Kept by the detail view, so the code survives a switch of tabs. */
+  invite: ChallengeInviteResponse | null;
+  onInvite: (invite: ChallengeInviteResponse | null) => void;
+}) => {
   const { t } = useTranslation();
   const { formatDate } = usePreferences();
   const create = useCreateChallengeInvite();
   const revoke = useRevokeChallengeInvite();
-  const [invite, setInvite] = useState<ChallengeInviteResponse | null>(null);
   const link = invite
     ? challengeInviteLink(window.location.origin, invite.code)
     : null;
@@ -96,7 +103,7 @@ const InvitePanel = ({ challenge }: { challenge: ChallengeDetail }) => {
       <div className="flex flex-wrap gap-2">
         <Button
           onClick={() =>
-            create.mutate(challenge.id, { onSuccess: (r) => setInvite(r) })
+            create.mutate(challenge.id, { onSuccess: (r) => onInvite(r) })
           }
           disabled={create.isPending || !!challenge.ended_at}
         >
@@ -108,7 +115,7 @@ const InvitePanel = ({ challenge }: { challenge: ChallengeDetail }) => {
           <Button
             variant="outline"
             onClick={() =>
-              revoke.mutate(challenge.id, { onSuccess: () => setInvite(null) })
+              revoke.mutate(challenge.id, { onSuccess: () => onInvite(null) })
             }
             disabled={revoke.isPending}
           >

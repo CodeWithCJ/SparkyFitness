@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   useChallengeStandings,
   useChallengeUnits,
+  useRulesInEffect,
 } from '@/hooks/Challenges/useChallenges';
 import {
   challengesForCard,
@@ -23,9 +24,10 @@ const ChallengeStandingsLine = ({
   const { t, i18n } = useTranslation();
   const units = useChallengeUnits();
   const standings = useChallengeStandings(challenge.id);
+  const { metric } = useRulesInEffect(challenge, standings.data?.period_start);
   const rows = standings.data?.rows ?? [];
   const summary = standingsSummary(t, rows, (total) =>
-    metricValueText(t, challenge.rules.metric, total, units, i18n.language)
+    metricValueText(t, metric, total, units, i18n.language)
   );
   return (
     <Link

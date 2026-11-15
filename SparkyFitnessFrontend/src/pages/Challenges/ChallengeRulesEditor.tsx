@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ACTIVITY_SPORTS,
@@ -77,6 +77,9 @@ const NumberField = ({
   placeholder?: string;
 }) => {
   const id = useId();
+  // What is typed while the field has focus, so an entry the rules refuse
+  // (empty, or 0 on the way to 0.5) can still be edited.
+  const [text, setText] = useState<string | null>(null);
   return (
     <div className="space-y-1">
       <Label htmlFor={id} className="text-sm">
@@ -86,7 +89,7 @@ const NumberField = ({
         id={id}
         type="number"
         inputMode="decimal"
-        value={value ?? ''}
+        value={text ?? value ?? ''}
         min={min}
         max={max}
         step={step ?? 'any'}
@@ -94,9 +97,11 @@ const NumberField = ({
         placeholder={placeholder}
         onChange={(e) => {
           const raw = e.target.value;
+          setText(raw);
           const n = Number(raw);
           onChange(raw === '' || !Number.isFinite(n) ? null : n);
         }}
+        onBlur={() => setText(null)}
       />
     </div>
   );
@@ -210,7 +215,7 @@ const ChallengeRulesEditor = ({
       // Points needs its builder; other metrics ignore it. Targets and caps
       // are in the metric's unit, so they do not carry over.
       points: metric === 'points' ? (points ?? defaultPointsRules()) : null,
-      target: rules.format === 'leaderboard' ? null : rules.target,
+      target: null,
       dailyCap: null,
     });
 
