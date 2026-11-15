@@ -989,3 +989,214 @@ describe('challenge periods', () => {
     ).toBe('2026-12-01');
   });
 });
+
+describe('review fixes (PR #3585)', () => {
+  it('minute tiers apply zone by zone, so splitting a workout does not change its points', () => {
+    // 60 min in zone 1 (1/min) + 60 min in zone 3 (2/min)
+    const one = challengeDayEffort(
+      [
+        {
+          id: 'w',
+          date: 'x',
+          durationMin: 120,
+          zoneSeconds: [3600, 0, 3600, 0, 0],
+        },
+      ],
+      zones,
+      pts
+    );
+    const split = challengeDayEffort(
+      [
+        {
+          id: 'a',
+          date: 'x',
+          durationMin: 60,
+          zoneSeconds: [3600, 0, 0, 0, 0],
+        },
+        {
+          id: 'b',
+          date: 'x',
+          durationMin: 60,
+          zoneSeconds: [0, 0, 3600, 0, 0],
+        },
+      ],
+      zones,
+      pts
+    );
+    // zone 3 first: 60 x 2 = 120 in full, then 30 zone-1 minutes at half = 15
+    expect(one.effort).toBe(135);
+    expect(split.effort).toBe(135);
+    expect(one.detail[0]!.fullMinutes).toBe(60);
+    expect(one.detail[0]!.halfMinutes).toBe(30);
+    expect(one.detail[0]!.unpaidMinutes).toBe(30);
+    expect(one.detail[0]!.perMin).toBe(1.5);
+  });
+
+  it('two same-length workouts hours apart are not merged as duplicates', () => {
+    const run = (
+      id: string,
+      time: string,
+      source: string,
+      avgHr: number | null
+    ): ChallengeEntry => ({
+      id,
+      date: '2026-11-06',
+      time,
+      durationMin: 30,
+      name: 'Run',
+      source,
+      avgHr,
+    });
+    expect(
+      mergeChallengeDuplicates([
+        run('am', '07:00', 'health_connect', null),
+        run('pm', '18:00', 'garmin', 150),
+      ]).map((x) => x.id)
+    ).toEqual(['am', 'pm']);
+    expect(
+      mergeChallengeDuplicates([
+        run('phone', '07:00', 'health_connect', null),
+        run('watch', '07:05', 'garmin', 150),
+      ]).map((x) => x.id)
+    ).toEqual(['watch']);
+  });
+
+  it('the manual-minute cap does not make a manual run look faster', () => {
+    const rules = challengeRulesSchema.parse({
+      ...allRounder,
+      activities: { manualEntries: 'cap', manualMinutesCap: 10 },
+    });
+    const synced = (id: string, date: string, min: number): ChallengeEntry => ({
+      id,
+      date,
+      durationMin: min,
+      name: 'Morning Run',
+      source: 'garmin',
+      avgHr: 150,
+      distanceM: 5000,
+    });
+    const [day] = score(
+      [
+        synced('a', '2026-10-30', 30),
+        synced('b', '2026-11-02', 29),
+        // 5 km in 40 minutes, logged by hand: capped to 10 scoring minutes
+        {
+          id: 't',
+          date: '2026-11-06',
+          durationMin: 40,
+          name: 'Morning Run',
+          distanceM: 5000,
+        },
+      ],
+      '2026-11-06',
+      '2026-11-06',
+      {},
+      rules
+    );
+    expect(day!.minutes).toBe(10);
+    expect(day!.prs.filter((p) => p.type === 'pace')).toEqual([]);
+  });
+
+  it('zone minutes: the average heart rate is not used when a breakdown exists', () => {
+    const rules = rulesWith({
+      metric: 'hr_zone_minutes',
+      zoneMinutesFromZone: 3,
+    });
+    const [day] = score(
+      [
+        {
+          id: 'z',
+          date: '2026-11-06',
+          durationMin: 30,
+          avgHr: 140, // zone 3 on its own
+          zoneSeconds: [1800, 0, 0, 0, 0],
+        },
+      ],
+      '2026-11-06',
+      '2026-11-06',
+      {},
+      rules
+    );
+    expect(day!.total).toBe(0);
+  });
+
+  it('a steps challenge scores steps even when a points object is present', () => {
+    const rules = rulesWith({ metric: 'steps', points: {} });
+    const [day] = score(
+      [e('w', '2026-11-06', 40)],
+      '2026-11-06',
+      '2026-11-06',
+      { '2026-11-06': 10000 },
+      rules
+    );
+    expect(day!.total).toBe(10000);
+  });
+
+  it('race: members who finish on the same day share the win, whatever they add later', () => {
+    const rules = challengePreset('race_to_100k_steps').rules;
+    const { rows } = rankChallengeStandings(
+      [
+        {
+          userId: 'a',
+          name: 'Ann',
+          total: 101000,
+          minutes: 0,
+          reachedOn: '2026-11-05',
+        },
+        {
+          userId: 'b',
+          name: 'Bo',
+          total: 140000,
+          minutes: 0,
+          reachedOn: '2026-11-05',
+        },
+        {
+          userId: 'c',
+          name: 'Cy',
+          total: 150000,
+          minutes: 0,
+          reachedOn: '2026-11-06',
+        },
+        { userId: 'd', name: 'Di', total: 90000, minutes: 0, reachedOn: null },
+      ],
+      rules
+    );
+    expect(rows.map((r) => [r.name, r.rank, r.winner])).toEqual([
+      ['Bo', 1, true],
+      ['Ann', 1, true],
+      ['Cy', 3, false],
+      ['Di', 4, false],
+    ]);
+  });
+
+  it('rule arrays have a maximum length', () => {
+    const many = Array(10).fill('running');
+    expect(
+      challengeRulesSchema.safeParse({
+        ...allRounder,
+        activities: { includeSports: many },
+      }).success
+    ).toBe(false);
+    expect(
+      challengeRulesSchema.safeParse({
+        ...allRounder,
+        activities: { excludeSports: many },
+      }).success
+    ).toBe(false);
+    expect(
+      challengeRulesSchema.safeParse({
+        ...allRounder,
+        points: {
+          ...allRounder.points,
+          pr: { types: ['lift', 'lift', 'lift', 'lift'] },
+        },
+      }).success
+    ).toBe(false);
+    expect(
+      challengeRulesSchema.safeParse({
+        ...allRounder,
+        activities: { includeSports: ['running', 'cycling'] },
+      }).success
+    ).toBe(true);
+  });
+});

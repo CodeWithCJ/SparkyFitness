@@ -104,6 +104,7 @@ export const challengePointsRulesSchema = z.object({
       types: z
         .array(z.enum(CHALLENGE_PR_TYPES))
         .min(1)
+        .max(CHALLENGE_PR_TYPES.length)
         .default(['lift', 'distance', 'pace']),
       lookbackDays: z.number().int().min(7).max(365).default(90),
       /** A PR needs at least this many earlier tries of the same thing. */
@@ -153,9 +154,13 @@ export const challengeActivityRulesSchema = z.object({
   includeSports: z
     .array(z.enum(ACTIVITY_SPORTS))
     .min(1)
+    .max(ACTIVITY_SPORTS.length)
     .nullable()
     .default(null),
-  excludeSports: z.array(z.enum(ACTIVITY_SPORTS)).default([]),
+  excludeSports: z
+    .array(z.enum(ACTIVITY_SPORTS))
+    .max(ACTIVITY_SPORTS.length)
+    .default([]),
   /** Workouts shorter than this do not count. */
   minMinutes: z.number().min(0).max(600).default(0),
   manualEntries: z.enum(CHALLENGE_MANUAL_ENTRY_MODES).default('count'),

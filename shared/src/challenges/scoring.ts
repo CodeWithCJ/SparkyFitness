@@ -10,7 +10,8 @@
  * - Lifting earns at least 1.5 a minute, because rest between sets pulls the
  *   average heart rate down.
  * - Each day's first 60 minutes count in full, the next 30 at half, the rest
- *   nothing; minutes are counted best-paying first.
+ *   nothing; minutes are counted best-paying first, zone by zone, so one
+ *   workout and the same minutes split over two workouts score the same.
  * - Only the best 5 days of each Monday-to-Sunday week count.
  * - Steps: 1 point per 1,000, at most 10 a day.
  * - PRs (heaviest lift, longest or fastest effort against the member's own
@@ -44,6 +45,11 @@ export interface ChallengeEntry {
   /** Local start time, HH:MM, when known. */
   time?: string | null;
   durationMin: number;
+  /**
+   * The logged length, set only when the manual-minute cap shortened
+   * durationMin, so pace is still worked out from what was measured.
+   */
+  measuredDurationMin?: number;
   avgHr?: number | null;
   /** Seconds in heart-rate zones 1 to 5, when the workout has a zone breakdown. */
   zoneSeconds?: readonly number[] | null;
@@ -136,9 +142,18 @@ export function zoneForHeartRate(
 
 export type ChallengeRateBasis = 'zones' | 'average_hr' | 'no_hr';
 
-export interface ChallengeEntryRate {
+/** Minutes of one workout paid at one rate (one zone, below zone 1, or a flat rate). */
+export interface ChallengeRateBucket {
   minutes: number;
   perMin: number;
+}
+
+export interface ChallengeEntryRate {
+  minutes: number;
+  /** The workout's average rate over all its minutes. */
+  perMin: number;
+  /** Its minutes by rate; the daily tiers are applied to these, best-paying first. */
+  buckets: ChallengeRateBucket[];
   basis: ChallengeRateBasis;
   /** The zone of the average heart rate (0 below zone 1); null when not used. */
   zone: number | null;
@@ -162,22 +177,28 @@ export function challengeEntryRate(
   let perMin: number;
   let basis: ChallengeRateBasis;
   let zone: number | null = null;
+  let buckets: ChallengeRateBucket[];
   if (covered > 0) {
     // Time the breakdown does not cover is treated as below zone 1.
     minutes = Math.max(minutes, covered);
-    const paid = zoneMinutes.reduce(
-      (s, m, i) => s + m * (rules.zoneRates[i] ?? 0),
-      0
-    );
-    perMin = (paid + (minutes - covered) * rules.belowZoneRate) / minutes;
+    buckets = zoneMinutes.map((m, i) => ({
+      minutes: m,
+      perMin: rules.zoneRates[i] ?? 0,
+    }));
+    buckets.push({ minutes: minutes - covered, perMin: rules.belowZoneRate });
+    buckets = buckets.filter((b) => b.minutes > 0);
+    const paid = buckets.reduce((s, b) => s + b.minutes * b.perMin, 0);
+    perMin = paid / minutes;
     basis = 'zones';
   } else if (num(e.avgHr) > 0) {
     zone = zoneForHeartRate(num(e.avgHr), zones.floors);
     perMin = zone > 0 ? (rules.zoneRates[zone - 1] ?? 0) : rules.belowZoneRate;
     basis = 'average_hr';
+    buckets = [{ minutes, perMin }];
   } else {
     perMin = rules.noHrRate;
     basis = 'no_hr';
+    buckets = [{ minutes, perMin }];
   }
   const strength = isStrengthEntry(e);
   let strengthFloored = false;
@@ -188,10 +209,12 @@ export function challengeEntryRate(
   ) {
     perMin = rules.strengthFloor;
     strengthFloored = true;
+    buckets = [{ minutes, perMin }];
   }
   return {
     minutes,
     perMin,
+    buckets,
     basis,
     zone,
     strength,
@@ -232,6 +255,8 @@ export interface ChallengeDayEffort {
 /**
  * Effort for one day. Minutes are counted best-paying first: the first
  * `full` minutes in full, the next `half` at `halfRate`, the rest at zero.
+ * The order is by each workout's rate buckets (zone by zone), not by its
+ * average rate, so splitting a workout in two never changes the day's points.
  */
 export function challengeDayEffort(
   dayEntries: readonly ChallengeEntry[] | undefined,
@@ -253,21 +278,27 @@ export function challengeDayEffort(
   const fullEnd = tiers ? tiers.full : Infinity;
   const halfEnd = tiers ? tiers.full + tiers.half : Infinity;
   const halfRate = tiers ? tiers.halfRate : 1;
-  const order = [...list].sort((a, b) => b.perMin - a.perMin);
+  for (const p of list) {
+    p.points = 0;
+    p.fullMinutes = 0;
+  }
+  const order = list
+    .flatMap((p) => p.buckets.map((b) => ({ p, b })))
+    .sort((x, y) => y.b.perMin - x.b.perMin);
   let used = 0;
   let effort = 0;
-  let raw = 0;
-  for (const p of order) {
-    const full = Math.min(p.minutes, Math.max(0, fullEnd - used));
-    const half = Math.min(p.minutes - full, Math.max(0, halfEnd - used - full));
-    p.points = p.perMin * (full + halfRate * half);
-    p.fullMinutes = full;
-    p.halfMinutes = half;
-    p.unpaidMinutes = p.minutes - full - half;
-    used += p.minutes;
-    effort += p.points;
-    raw += p.rawPoints;
+  for (const { p, b } of order) {
+    const full = Math.min(b.minutes, Math.max(0, fullEnd - used));
+    const half = Math.min(b.minutes - full, Math.max(0, halfEnd - used - full));
+    const points = b.perMin * (full + halfRate * half);
+    p.points += points;
+    p.fullMinutes += full;
+    p.halfMinutes += half;
+    p.unpaidMinutes += b.minutes - full - half;
+    used += b.minutes;
+    effort += points;
   }
+  const raw = list.reduce((s, p) => s + p.rawPoints, 0);
   return {
     effort,
     rawEffort: raw,
@@ -278,9 +309,12 @@ export function challengeDayEffort(
   };
 }
 
+/** The measured length of a workout, before any manual-minute cap. */
+export const challengeMeasuredMinutes = (e: ChallengeEntry): number =>
+  num(e.measuredDurationMin ?? e.durationMin);
 const paceOf = (e: ChallengeEntry): number | null =>
-  num(e.distanceM) > 0 && num(e.durationMin) > 0
-    ? num(e.durationMin) / (num(e.distanceM) / 1000)
+  num(e.distanceM) > 0 && challengeMeasuredMinutes(e) > 0
+    ? challengeMeasuredMinutes(e) / (num(e.distanceM) / 1000)
     : null;
 const liftKey = (e: ChallengeEntry): string =>
   e.exerciseKey
@@ -386,11 +420,20 @@ export function challengePrsForDay(
   return prs;
 }
 
+/** Two copies of one workout start this close together, when both start times are known. */
+export const CHALLENGE_DUPLICATE_START_MINUTES = 15;
+
+const minuteOfDay = (time: string | null | undefined): number | null => {
+  const m = /^(\d{2}):(\d{2})/.exec(time ?? '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
 /**
  * One workout synced from two places (say the phone's health store with a
  * start time and the watch with heart rate) shows up twice. Pairs on the same
  * day, from different sources, of the same class (lifting, run, ride, swim,
- * walk, other) and within 2 minutes or 10% of each other's length are merged:
+ * walk, other), within 2 minutes or 10% of each other's length and, when both
+ * start times are known, starting within 15 minutes of each other are merged:
  * the copy with heart rate is kept and fills in a missing time, distance or
  * lift from the other. Two workouts from the same source are never merged.
  */
@@ -416,8 +459,16 @@ export function mergeChallengeDuplicates(
         const da = num(a.durationMin);
         const db = num(b.durationMin);
         const gap = Math.abs(da - db);
-        if (gap <= Math.max(2, 0.1 * Math.max(da, db)))
-          pairs.push({ a, b, gap });
+        if (gap > Math.max(2, 0.1 * Math.max(da, db))) continue;
+        const ta = minuteOfDay(a.time);
+        const tb = minuteOfDay(b.time);
+        if (
+          ta !== null &&
+          tb !== null &&
+          Math.abs(ta - tb) > CHALLENGE_DUPLICATE_START_MINUTES
+        )
+          continue;
+        pairs.push({ a, b, gap });
       }
     }
     pairs.sort((x, y) => x.gap - y.gap);
@@ -498,7 +549,12 @@ export function challengeCountedEntries(
     const left = Math.max(0, a.manualMinutesCap - used);
     const minutes = Math.min(num(e.durationMin), left);
     usedByDay.set(e.date, used + minutes);
-    if (minutes > 0) capped.push({ ...e, durationMin: minutes });
+    if (minutes > 0)
+      capped.push({
+        ...e,
+        durationMin: minutes,
+        measuredDurationMin: challengeMeasuredMinutes(e),
+      });
   }
   return capped;
 }
@@ -560,8 +616,10 @@ function metricValue(
         let secs = 0;
         for (let i = rules.zoneMinutesFromZone - 1; i < z.length; i++)
           secs += Math.max(0, num(z[i]));
+        // The average heart rate stands in only when there is no breakdown.
+        const hasBreakdown = z.some((x) => num(x) > 0);
         if (
-          secs === 0 &&
+          !hasBreakdown &&
           num(e.avgHr) > 0 &&
           zoneForHeartRate(num(e.avgHr), data.zones.floors) >=
             rules.zoneMinutesFromZone
@@ -604,7 +662,8 @@ export function scoreChallengeDays(
 ): ChallengeDayScore[] {
   const counted = challengeCountedEntries(data.entries, rules);
   const byDate = groupByDate(counted);
-  const pts = rules.points;
+  // The points builder applies only to the points metric; others ignore it.
+  const pts = rules.metric === 'points' ? rules.points : null;
   const effortCache = new Map<string, ChallengeDayEffort>();
   const effortOf = (d: string): ChallengeDayEffort => {
     let ef = effortCache.get(d);
@@ -954,9 +1013,10 @@ export interface ChallengeStandings {
 
 /**
  * Ranks members: total, then workout minutes, then name; ties share a rank.
- * A race ranks finishers first by the day they finished. Winners follow the
- * format: the top rank, the first finishers, everyone who hit the goal, or
- * everyone once the group reached its target.
+ * A race ranks finishers first by the day they finished, and finishers of the
+ * same day share the rank (so a later workout cannot change who won). Winners
+ * follow the format: the top rank, everyone who finished first, everyone who
+ * hit the goal, or everyone once the group reached its target.
  */
 export function rankChallengeStandings(
   input: readonly ChallengeStandingInput[],
@@ -978,8 +1038,8 @@ export function rankChallengeStandings(
     const same =
       prev !== null &&
       finished(prev) === finished(r) &&
-      prev.total === r.total &&
-      prev.minutes === r.minutes;
+      ((race && !!r.reachedOn) ||
+        (prev.total === r.total && prev.minutes === r.minutes));
     const row: ChallengeStandingRow = {
       ...r,
       rank: same && prev ? prev.rank : i + 1,
