@@ -150,6 +150,37 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('focus the next set when a rest ends (#3581)', () => {
+    it('stays on for a persisted blob written before the setting existed', async () => {
+      const withoutSetting = { ...PREFERENCE_DEFAULTS } as Record<
+        string,
+        unknown
+      >;
+      delete withoutSetting.focusNextSetOnRestEnd;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...withoutSetting, soundsEnabled: false },
+          version: 1,
+        })
+      );
+
+      await useAppPreferencesStore.persist.rehydrate();
+
+      const state = useAppPreferencesStore.getState();
+      expect(state.soundsEnabled).toBe(false);
+      expect(state.focusNextSetOnRestEnd).toBe(true);
+    });
+
+    it('persists the choice', async () => {
+      useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().focusNextSetOnRestEnd).toBe(
+        false
+      );
+    });
+  });
+
   describe('report preferences', () => {
     it('defaults to every report, nothing hidden, opening on 30 days', () => {
       const state = useAppPreferencesStore.getState();

@@ -81,6 +81,12 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setWorkoutKeepAwakeEnabled = useAppPreferencesStore(
     (s) => s.setWorkoutKeepAwakeEnabled
   );
+  const focusNextSetOnRestEnd = useAppPreferencesStore(
+    (s) => s.focusNextSetOnRestEnd
+  );
+  const setFocusNextSetOnRestEnd = useAppPreferencesStore(
+    (s) => s.setFocusNextSetOnRestEnd
+  );
   const plannedValuesAsPlaceholders = useAppPreferencesStore(
     (s) => s.plannedValuesAsPlaceholders
   );
@@ -235,6 +241,29 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
               accessibilityLabel={t('workoutSettings.keepAwakeAccessibility', {
                 defaultValue: 'Keep screen awake',
               })}
+            />
+          }
+        />
+
+        <SettingsRow
+          title={t('workoutSettings.restEndFocus', {
+            defaultValue: 'Focus the next set when a rest ends',
+          })}
+          subtitle={t('workoutSettings.restEndFocusSubtitle', {
+            defaultValue:
+              "When a rest timer runs out on its own, put the cursor in the next set's first value and open the keyboard.",
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={focusNextSetOnRestEnd}
+              onValueChange={setFocusNextSetOnRestEnd}
+              accessibilityLabel={t(
+                'workoutSettings.restEndFocusAccessibility',
+                {
+                  defaultValue: 'Focus the next set when a rest ends',
+                }
+              )}
             />
           }
         />
