@@ -443,23 +443,3 @@ export function reconcileLayouts(
 
   return result;
 }
-
-/**
- * The widgets to hide. `optIn` widgets start hidden even for someone whose
- * layout was saved before they existed: such a widget counts as shown only once
- * a saved layout places it and does not list it as hidden, which is what
- * restoring it in the layout editor saves.
- */
-export function hiddenWidgetKeys(
-  saved: { layout?: Partial<DashboardLayouts>; hidden?: string[] } | null,
-  defaultHidden: string[],
-  optIn: string[]
-): string[] {
-  const base = saved?.hidden ?? defaultHidden;
-  const placed = (key: string) =>
-    Object.values(saved?.layout ?? {}).some(
-      (items) => Array.isArray(items) && items.some((it) => it?.i === key)
-    );
-  const unplaced = optIn.filter((key) => !base.includes(key) && !placed(key));
-  return unplaced.length > 0 ? [...base, ...unplaced] : base;
-}

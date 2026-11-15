@@ -110,7 +110,7 @@ export const PREFERENCE_DEFAULTS = {
   exerciseCardVisible: true,
   hydrationCardVisible: true,
   caffeineCardVisible: true,
-  bloodAlcoholCardVisible: false,
+  bloodAlcoholCardVisible: true,
   fastingCardVisible: true,
   cycleCardVisible: true,
   askSparkyVisible: true,

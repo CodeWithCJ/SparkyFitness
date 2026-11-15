@@ -492,7 +492,7 @@ const Diary = () => {
     });
 
     // Owner only: the estimate needs the person's own body data, and the
-    // server refuses it to a delegate. Hidden until restored in the layout.
+    // server refuses it to a delegate.
     if (!isActingOnBehalf) {
       list.push({
         key: 'bloodAlcohol',

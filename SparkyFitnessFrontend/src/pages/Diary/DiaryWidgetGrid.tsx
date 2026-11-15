@@ -19,8 +19,6 @@ interface DiaryWidgetGridProps {
 }
 
 const PAGE_KEY = 'diary';
-// Estimates people should choose to see, so they start hidden for everyone.
-const OPT_IN_WIDGETS = ['bloodAlcohol'];
 
 const diaryDefaultLayouts = (widgetKeys: string[]): DashboardLayouts =>
   generateDefaultLayouts(widgetKeys.filter(isMealWidgetKey));
@@ -33,7 +31,6 @@ const DiaryWidgetGrid = ({
     pageKey={PAGE_KEY}
     widgets={widgets}
     generateDefaultLayouts={diaryDefaultLayouts}
-    optInWidgets={OPT_IN_WIDGETS}
     toolbarContainer={toolbarContainer}
   />
 );

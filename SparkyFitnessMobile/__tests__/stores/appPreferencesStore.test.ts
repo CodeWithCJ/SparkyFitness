@@ -283,13 +283,13 @@ describe('appPreferencesStore', () => {
       ]);
     });
 
-    it('hides the blood alcohol estimate card until it is turned on', () => {
-      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
-        false
-      );
-      useAppPreferencesStore.getState().setBloodAlcoholCardVisible(true);
+    it('shows the blood alcohol estimate card by default and can hide it', () => {
       expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
         true
+      );
+      useAppPreferencesStore.getState().setBloodAlcoholCardVisible(false);
+      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
+        false
       );
     });
 

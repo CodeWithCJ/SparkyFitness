@@ -26,7 +26,6 @@ import {
   applyAutoHeights,
   areLayoutsEqual,
   evaluateMeasurement,
-  hiddenWidgetKeys,
   mergePositions,
   pxToRows,
   reconcileLayouts,
@@ -50,8 +49,6 @@ interface WidgetGridProps {
   generateDefaultLayouts: (widgetKeys: string[]) => DashboardLayouts;
   /** Widget keys to treat as hidden when no saved layout row exists yet. */
   defaultHidden?: string[];
-  /** Widget keys that stay hidden, even in an older saved layout, until restored. */
-  optInWidgets?: string[];
   /** Optional container to render the toolbar controls inside via portal */
   toolbarContainer?: HTMLElement | null;
 }
@@ -92,7 +89,6 @@ const WidgetGridInner = ({
   widgets,
   generateDefaultLayouts,
   defaultHidden,
-  optInWidgets,
   toolbarContainer,
 }: WidgetGridProps) => {
   const { t } = useTranslation();
@@ -126,13 +122,8 @@ const WidgetGridInner = ({
   );
 
   const hidden = useMemo(
-    () =>
-      hiddenWidgetKeys(
-        saved,
-        defaultHidden ?? EMPTY_HIDDEN,
-        optInWidgets ?? EMPTY_HIDDEN
-      ),
-    [saved, defaultHidden, optInWidgets]
+    () => saved?.hidden ?? defaultHidden ?? EMPTY_HIDDEN,
+    [saved, defaultHidden]
   );
 
   const [layouts, setLayouts] = useState<DashboardLayouts>(() =>
@@ -399,7 +390,6 @@ export default function WidgetGrid({
   widgets,
   generateDefaultLayouts,
   defaultHidden,
-  optInWidgets,
   toolbarContainer,
 }: WidgetGridProps) {
   const { saved, reset } = useDashboardLayout(pageKey);
@@ -416,15 +406,8 @@ export default function WidgetGrid({
   };
 
   const fallbackHiddenSet = useMemo(
-    () =>
-      new Set(
-        hiddenWidgetKeys(
-          saved,
-          defaultHidden ?? EMPTY_HIDDEN,
-          optInWidgets ?? EMPTY_HIDDEN
-        )
-      ),
-    [saved, defaultHidden, optInWidgets]
+    () => new Set(saved?.hidden ?? defaultHidden ?? []),
+    [saved?.hidden, defaultHidden]
   );
   const fallbackWidgets = useMemo(
     () => widgets.filter((w) => !fallbackHiddenSet.has(w.key)),
@@ -462,7 +445,6 @@ export default function WidgetGrid({
         widgets={widgets}
         generateDefaultLayouts={generateDefaultLayouts}
         defaultHidden={defaultHidden}
-        optInWidgets={optInWidgets}
         toolbarContainer={toolbarContainer}
       />
     </GridErrorBoundary>
