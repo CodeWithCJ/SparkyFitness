@@ -211,6 +211,19 @@ const ENERGY_UNITS = new Set([
   'kj',
   'kilocalorie',
   'kilocalories',
+  'joules',
+  'kilojoules',
+  'j',
+]);
+// Energy units that are kilocalorie-equivalent. The energy fields store kcal,
+// so a kJ/joule-labelled column must not bind to them without conversion.
+const KCAL_UNITS = new Set([
+  'kcal',
+  'cal',
+  'kcals',
+  'cals',
+  'kilocalorie',
+  'kilocalories',
 ]);
 // The only fields that are themselves energy and thus accept an energy unit.
 const ENERGY_FIELDS = new Set(['calories', 'energy']);
@@ -252,13 +265,17 @@ export function suggestHeaderMapping(
     const matches = fileHeaders.filter((h) => {
       const nh = normalizeHeader(h);
       if (!(nh === normalizedRequired || aliases.includes(nh))) return false;
-      // Reject an energy-labelled column for a mass-based field (e.g. "Fat
-      // (kcal)" for the gram-based "fat"). The unit is stripped during name
-      // matching, so without this guard the sole candidate would be bound and
-      // the energy value stored as a mass value. An energy field (calories)
-      // keeps its energy-labelled column.
+      // Reject a column whose parenthetical unit doesn't match the field's
+      // expected unit. The unit is stripped during name matching, so without
+      // this guard the sole candidate would be bound and the value stored in
+      // the wrong unit: a mass field (gram-based "fat") must never take an
+      // energy-labelled column ("Fat (kcal)"), and the energy fields (stored
+      // in kcal) must not take a kJ/joule column ("Calories (kJ)").
       const unit = extractUnit(h);
-      if (unit && ENERGY_UNITS.has(unit) && !isEnergyField) return false;
+      if (unit && ENERGY_UNITS.has(unit)) {
+        if (!isEnergyField) return false;
+        if (!KCAL_UNITS.has(unit)) return false;
+      }
       return true;
     });
     if (matches.length === 1) {

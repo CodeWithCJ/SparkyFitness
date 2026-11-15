@@ -277,4 +277,28 @@ describe('suggestHeaderMapping', () => {
     const mapping = suggestHeaderMapping(['calories'], ['Calories (kcal)']);
     expect(mapping['calories']).toBe('Calories (kcal)');
   });
+
+  it('leaves a mass field unmapped when its only candidate is joule-labelled', () => {
+    // "Fat (kilojoules)" is an energy value, not a mass value — it's rejected
+    // for the gram-based fat field, just like "Fat (kcal)".
+    const mapping = suggestHeaderMapping(['fat'], ['Fat (kilojoules)']);
+    expect(mapping['fat']).toBeUndefined();
+  });
+
+  it('rejects a kJ-labelled column for an energy field stored in kcal', () => {
+    // The energy fields store kcal, so "Calories (kJ)" (kilojoules) must not
+    // bind to them — the value would be stored as kcal without conversion.
+    const mapping = suggestHeaderMapping(['calories'], ['Calories (kJ)']);
+    expect(mapping['calories']).toBeUndefined();
+  });
+
+  it('keeps a kJ column for an energy field when a kcal column is also present', () => {
+    // With both "Calories (kJ)" and "Calories (kcal)", the kcal column is the
+    // valid match for the kcal-stored energy field.
+    const mapping = suggestHeaderMapping(
+      ['calories'],
+      ['Calories (kJ)', 'Calories (kcal)']
+    );
+    expect(mapping['calories']).toBe('Calories (kcal)');
+  });
 });
