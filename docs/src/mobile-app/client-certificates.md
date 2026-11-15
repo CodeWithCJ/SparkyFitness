@@ -181,7 +181,7 @@ The app shows the certificate's name and, where the phone can read it, its expir
 
 Good to know:
 
-- The app keeps one certificate. The app presents it only to servers you have saved in the app, never to other sites it loads images from. (The copy you install in the phone's settings for the browser is separate: the browser offers it only to a site whose server asks for a certificate from your CA, and asks you which one to use.)
+- The app keeps one certificate. The app presents it only to the servers you have saved and to the server you are connecting to before you save it, never to other sites it loads images from. The check is by hostname only, not by port or path: another service on the same hostname that asks for a certificate would receive it too. (The copy you install in the phone's settings for the browser is separate: the browser offers it only to a site whose server asks for a certificate from your CA, and asks you which one to use.)
 - The private key is stored in the phone's protected key storage (Android Keystore, iOS Keychain). The password is not stored.
 - Everything that talks to your server uses it: the app, background sync, the home screen widgets, Siri and Shortcuts actions, medication reminder buttons, the Android water tile, and the watch apps (they relay through the phone).
 - Delete `phone.p12` from the phone's Downloads or Files folder after importing.

@@ -101,6 +101,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const apiKeyInputRef = useRef<TextInput>(null);
   const [serverUrl, setServerUrl] = useState('');
   const [isServerUrlFocused, setIsServerUrlFocused] = useState(false);
+  // Bumped after a certificate import, to ask the server for its sign-in
+  // options again: a server that needs the certificate was answered with the
+  // defaults before it, and an SSO-only server would show no SSO button.
+  const [certificateReloadKey, setCertificateReloadKey] = useState(0);
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const [authTab, setAuthTab] = useState<AuthTab>('signIn');
   const [email, setEmail] = useState('');
@@ -248,7 +252,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     // Re-fetch only when the URL or visibility changes; `cleanedHeaders()` is read
     // at fetch time so proxy-header keystrokes don't re-trigger the debounced fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, visible, isServerUrlFocused]);
+  }, [serverUrl, visible, isServerUrlFocused, certificateReloadKey]);
 
   // On small screens the error banner can push the primary action below the
   // fold; scroll the bottom of the card back into view once the banner has
@@ -1332,7 +1336,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                       </View>
                     ))}
 
-                    <ClientCertificateSection />
+                    <ClientCertificateSection
+                      onImported={() =>
+                        setCertificateReloadKey((key) => key + 1)
+                      }
+                    />
                   </View>
                 )}
 

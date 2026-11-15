@@ -145,9 +145,11 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
     }
 
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    // The saved list has changed, so the hosts the TLS client certificate may
+    // be offered to must follow now, not after the steps below that can fail.
+    notifyServerConfigsChanged();
     activeServerConfigCache = undefined;
     await setActiveServerConfig(config.id);
-    notifyServerConfigsChanged();
   } catch (e) {
     const message = getErrorMessage(e);
     addLog(`[Storage] Failed to save server config: ${message}`, 'ERROR');
@@ -385,6 +387,9 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
     let stored = await getRawStoredConfigs();
     stored = stored.filter((config) => config.id !== configId);
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    // The server is off the saved list: stop offering it the TLS client
+    // certificate now, whether or not the credential clean-up below succeeds.
+    notifyServerConfigsChanged();
     activeServerConfigCache = undefined;
     await SecureStore.deleteItemAsync(secureStoreKey(configId));
     await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(configId));
@@ -395,7 +400,6 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
       await rememberOutgoingServerConfig(null);
       await AsyncStorage.removeItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     }
-    notifyServerConfigsChanged();
     // The config is already gone, so a failure here only leaves unreadable
     // data behind; it must not fail the delete.
     try {

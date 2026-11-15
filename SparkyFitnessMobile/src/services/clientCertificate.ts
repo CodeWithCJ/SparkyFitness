@@ -103,9 +103,11 @@ const sendClientCertificateHosts = async (): Promise<void> => {
 export const setPendingClientCertificateServer = async (
   url: string | null
 ): Promise<void> => {
-  const next = url?.trim() ? url : null;
-  if (next === pendingServerUrl) return;
-  pendingServerUrl = next;
+  pendingServerUrl = url?.trim() ? url : null;
+  // Always re-sync, even for the same address: the first attempt may have
+  // failed to read the saved list, and a second caller must wait for the sync
+  // already running instead of returning before it ends. Nothing is sent to
+  // the native side when the list has not changed.
   await refreshClientCertificateHosts();
 };
 

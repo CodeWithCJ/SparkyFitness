@@ -43,6 +43,19 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+// A stand-in for the certificate section: pressing it reports a finished import.
+jest.mock('../../src/components/ClientCertificateSection', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ onImported }: { onImported?: () => void }) => (
+      <Pressable onPress={onImported}>
+        <Text>stub-import-done</Text>
+      </Pressable>
+    ),
+  };
+});
+
 jest.mock('../../src/services/clientCertificate', () => ({
   ...jest.requireActual('../../src/services/clientCertificate'),
   setPendingClientCertificateServer: jest.fn().mockResolvedValue(undefined),
@@ -1168,6 +1181,21 @@ describe('ServerConfigModal', () => {
       // And it was allowed before the request that needs it.
       const allowed = mockSetPending.mock.invocationCallOrder.at(-1) ?? 0;
       expect(allowed).toBeLessThan(mockLogin.mock.invocationCallOrder[0]);
+    });
+
+    it('asks the server for its sign-in options again after a certificate is imported', async () => {
+      const result = renderModal();
+      await enterUrl(result, 'https://my-server.com');
+      fireEvent.press(result.getByText(/Advanced options/));
+      mockFetchAuthSettings.mockClear();
+
+      fireEvent.press(result.getByText('stub-import-done'));
+      await flushDebounce();
+
+      expect(mockFetchAuthSettings).toHaveBeenCalledTimes(1);
+      expect(mockFetchAuthSettings.mock.calls[0][0]).toBe(
+        'https://my-server.com'
+      );
     });
 
     it('stops offering it when the address is cleared or not valid', async () => {

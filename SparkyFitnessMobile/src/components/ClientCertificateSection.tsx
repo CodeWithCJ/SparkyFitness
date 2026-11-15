@@ -26,7 +26,14 @@ import { addLog } from '../services/LogService';
  * reverse proxy that requires one (mutual TLS). One certificate for the whole
  * app. Renders nothing in a build without the native module.
  */
-const ClientCertificateSection: React.FC = () => {
+interface ClientCertificateSectionProps {
+  /** Called after a certificate was imported (never after a failed import). */
+  onImported?: () => void;
+}
+
+const ClientCertificateSection: React.FC<ClientCertificateSectionProps> = ({
+  onImported,
+}) => {
   const { t, i18n } = useTranslation();
   const iconWarning = useCSSVariable('--color-icon-warning') as string;
   const supported = isClientCertificateSupported();
@@ -98,21 +105,29 @@ const ClientCertificateSection: React.FC = () => {
     setError(null);
   }, [replacePicked]);
 
-  useEffect(
-    () => () => {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       if (pickedRef.current) {
         discardClientCertificateFile(pickedRef.current);
         pickedRef.current = null;
       }
-    },
-    []
-  );
+    };
+  }, []);
 
   const handlePick = async () => {
     setError(null);
     try {
       const file = await pickClientCertificateFile();
       if (!file) return;
+      if (!mountedRef.current) {
+        // The screen closed while the picker was open, after the cleanup that
+        // removes the picked file already ran: remove this one here.
+        discardClientCertificateFile(file);
+        return;
+      }
       replacePicked(file, true);
       setPassword('');
     } catch (err) {
@@ -133,6 +148,7 @@ const ClientCertificateSection: React.FC = () => {
       replacePicked(null, false);
       setPassword('');
       announceRestartNeeded('import');
+      onImported?.();
     } else {
       setError(result.error);
     }

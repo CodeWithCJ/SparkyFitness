@@ -2,6 +2,8 @@ package expo.modules.clientcertificate
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.facebook.react.modules.network.OkHttpClientProvider
 import java.io.IOException
@@ -25,10 +27,16 @@ import javax.net.ssl.X509TrustManager
 import okhttp3.OkHttpClient
 
 private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
-private const val KEY_ALIAS = "sparky_client_certificate"
+// The certificate is stored under "<prefix>_<time>", and the preferences say
+// which one is active. A new certificate is written under a new name and only
+// becomes active once it is stored, so a failed replace keeps the old one.
+// Builds before this kept it under the bare prefix, which still counts.
+private const val KEY_ALIAS_PREFIX = "sparky_client_certificate"
+private const val PREFS_ACTIVE_ALIAS = "active_alias"
 private const val PREFS_NAME = "sparky_client_certificate"
 private const val PREFS_ALLOWED_HOSTS = "allowed_hosts"
 private const val LOG_TAG = "ClientCertificate"
+private const val SECOND_EVICTION_DELAY_MS = 500L
 
 /** Why an import was refused. The names are the values JavaScript receives. */
 enum class ImportFailure(val code: String) {
@@ -181,13 +189,21 @@ object ClientCertificateStore {
     }
 
     synchronized(lock) {
+      val newAlias = "${KEY_ALIAS_PREFIX}_${System.currentTimeMillis()}"
       try {
-        if (keyStore.containsAlias(KEY_ALIAS)) keyStore.deleteEntry(KEY_ALIAS)
-        keyStore.setKeyEntry(KEY_ALIAS, key, null, chain)
+        keyStore.setKeyEntry(newAlias, key, null, chain)
+        // commit(), not apply(): the old entries are deleted next, and the
+        // choice of the new one must be on disk before that.
+        if (!prefs.edit().putString(PREFS_ACTIVE_ALIAS, newAlias).commit()) {
+          throw IOException("Could not save which certificate is active")
+        }
       } catch (e: Exception) {
-        Log.w(LOG_TAG, "Android Keystore refused the key", e)
+        Log.w(LOG_TAG, "Android Keystore refused the key; keeping the previous certificate", e)
+        // Whatever was half-written goes; the previous certificate was never touched.
+        runCatching { if (keyStore.containsAlias(newAlias)) keyStore.deleteEntry(newAlias) }
         throw ImportException(ImportFailure.STORAGE, e)
       }
+      deleteCertificateEntries(except = newAlias)
     }
     dropOpenConnections()
     return info() ?: throw ImportException(ImportFailure.STORAGE)
@@ -196,7 +212,8 @@ object ClientCertificateStore {
   fun remove() {
     try {
       synchronized(lock) {
-        if (keyStore.containsAlias(KEY_ALIAS)) keyStore.deleteEntry(KEY_ALIAS)
+        deleteCertificateEntries(except = null)
+        prefs.edit().remove(PREFS_ACTIVE_ALIAS).apply()
       }
     } catch (e: Exception) {
       Log.w(LOG_TAG, "Android Keystore could not remove the key", e)
@@ -205,9 +222,24 @@ object ClientCertificateStore {
     dropOpenConnections()
   }
 
+  /** Every alias this class has stored a certificate under (call with [lock] held). */
+  private fun certificateAliases(): List<String> =
+    keyStore.aliases().toList().filter { it.startsWith(KEY_ALIAS_PREFIX) }
+
+  private fun deleteCertificateEntries(except: String?) {
+    certificateAliases().filter { it != except }.forEach { keyStore.deleteEntry(it) }
+  }
+
+  /** The alias of the certificate in use, or null when there is none (call with [lock] held). */
+  private fun activeAlias(): String? {
+    val saved = prefs.getString(PREFS_ACTIVE_ALIAS, null)
+    if (saved != null && keyStore.containsAlias(saved)) return saved
+    return if (keyStore.containsAlias(KEY_ALIAS_PREFIX)) KEY_ALIAS_PREFIX else null
+  }
+
   fun info(): CertificateInfo? {
     val certificate = synchronized(lock) {
-      keyStore.getCertificate(KEY_ALIAS) as? X509Certificate
+      activeAlias()?.let { keyStore.getCertificate(it) } as? X509Certificate
     } ?: return null
     return CertificateInfo(
       subject = certificate.subjectX500Principal.name,
@@ -226,9 +258,11 @@ object ClientCertificateStore {
    * context (and so no resumable session), requests still running are
    * cancelled, and the connections are closed. Cancelling matters because a
    * busy HTTP/2 connection is never idle, so it would otherwise carry new
-   * requests on the old certificate for as long as it stayed busy. The
-   * app retries whatever was cancelled, and a change is something the user
-   * just did on purpose.
+   * requests on the old certificate for as long as it stayed busy. A
+   * cancelled call lets go of its connection only on its own thread, so the
+   * connections are evicted again a moment later to catch any that were still
+   * held the first time. The app retries whatever was cancelled, and a change
+   * is something the user just did on purpose.
    *
    * Best effort: the certificate is already stored or removed by now, so
    * nothing here may turn a finished import or removal into an error.
@@ -247,6 +281,15 @@ object ClientCertificateStore {
         Log.w(LOG_TAG, "Could not close connections", e)
       }
     }
+    Handler(Looper.getMainLooper()).postDelayed({
+      clients.forEach { client ->
+        try {
+          client.connectionPool.evictAll()
+        } catch (e: Exception) {
+          Log.w(LOG_TAG, "Could not close connections after the change", e)
+        }
+      }
+    }, SECOND_EVICTION_DELAY_MS)
   }
 
   private fun aliasFor(peerHost: String?): String? {
@@ -261,9 +304,7 @@ object ClientCertificateStore {
       Log.d(LOG_TAG, "Certificate requested by $host: not offered (allowed hosts: ${allowedHosts.sorted()})")
       return null
     }
-    val alias = synchronized(lock) {
-      if (keyStore.containsAlias(KEY_ALIAS)) KEY_ALIAS else null
-    }
+    val alias = synchronized(lock) { activeAlias() }
     Log.d(LOG_TAG, "Certificate requested by $host: ${if (alias != null) "offered" else "not offered (none stored)"}")
     return alias
   }
@@ -319,17 +360,17 @@ object ClientCertificateStore {
       null
 
     override fun getCertificateChain(alias: String?): Array<X509Certificate>? {
-      if (alias != KEY_ALIAS) return null
+      if (alias == null || !alias.startsWith(KEY_ALIAS_PREFIX)) return null
       return synchronized(lock) {
-        keyStore.getCertificateChain(KEY_ALIAS)
+        keyStore.getCertificateChain(alias)
           ?.filterIsInstance<X509Certificate>()
           ?.toTypedArray()
       }
     }
 
     override fun getPrivateKey(alias: String?): PrivateKey? {
-      if (alias != KEY_ALIAS) return null
-      return synchronized(lock) { keyStore.getKey(KEY_ALIAS, null) as? PrivateKey }
+      if (alias == null || !alias.startsWith(KEY_ALIAS_PREFIX)) return null
+      return synchronized(lock) { keyStore.getKey(alias, null) as? PrivateKey }
     }
 
     override fun getServerAliases(keyType: String?, issuers: Array<Principal>?): Array<String>? =

@@ -190,6 +190,38 @@ describe('clientCertificate', () => {
     });
   });
 
+  describe('an unchanged pending address', () => {
+    it('is synced again after a first attempt that could not read the saved list', async () => {
+      const { setPendingClientCertificateServer } = loadService();
+      mockGetSavedServerUrls.mockRejectedValueOnce(new Error('storage'));
+
+      await setPendingClientCertificateServer('https://a.example');
+      expect(mockNative.setAllowedHosts).not.toHaveBeenCalled();
+      await setPendingClientCertificateServer('https://a.example');
+
+      expect(mockNative.setAllowedHosts).toHaveBeenCalledWith(['a.example']);
+    });
+
+    it('makes a second caller wait for the sync already running', async () => {
+      let release!: (urls: string[]) => void;
+      mockGetSavedServerUrls.mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = resolve;
+        })
+      );
+      const { setPendingClientCertificateServer } = loadService();
+
+      const first = setPendingClientCertificateServer('https://a.example');
+      const second = setPendingClientCertificateServer('https://a.example');
+      release([]);
+      await second;
+
+      // Not before the first sync has reached the native side.
+      expect(mockNative.setAllowedHosts).toHaveBeenCalledWith(['a.example']);
+      await first;
+    });
+  });
+
   describe('setPendingClientCertificateServer', () => {
     it('adds the server being connected to, and drops it when cleared', async () => {
       savedServers('https://a.example');

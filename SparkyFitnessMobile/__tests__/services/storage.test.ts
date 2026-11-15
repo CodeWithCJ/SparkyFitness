@@ -893,6 +893,54 @@ describe('storage', () => {
     });
   });
 
+  describe('the saved-servers listener when later steps fail', () => {
+    const config: ServerConfig = {
+      id: 'late-1',
+      url: 'https://fit.example.com',
+      apiKey: 'key',
+    };
+
+    afterEach(() => setOnServerConfigsChanged(null));
+
+    test('a delete still notifies when the credential clean-up fails', async () => {
+      await saveServerConfig(config);
+      const onChanged = jest.fn();
+      setOnServerConfigsChanged(onChanged);
+      jest
+        .spyOn(SecureStore, 'deleteItemAsync')
+        .mockRejectedValueOnce(new Error('keychain locked'));
+
+      await expect(deleteServerConfig(config.id)).rejects.toThrow(
+        'keychain locked'
+      );
+
+      // The server is off the saved list, so it must stop being an allowed host.
+      expect(onChanged).toHaveBeenCalledTimes(1);
+    });
+
+    test('a save still notifies when making it the active server fails', async () => {
+      const onChanged = jest.fn();
+      setOnServerConfigsChanged(onChanged);
+      // Save writes the list first, then the active server id: let the first
+      // write through and fail the second, for those two calls only.
+      // The mock's own implementation, taken before it is replaced, so the
+      // first write really lands and does not call back into the replacement.
+      const realSetItem = jest
+        .mocked(AsyncStorage.setItem)
+        .getMockImplementation()!;
+      jest
+        .spyOn(AsyncStorage, 'setItem')
+        .mockImplementationOnce((key: string, value: string) =>
+          realSetItem(key, value)
+        )
+        .mockImplementationOnce(() => Promise.reject(new Error('disk full')));
+
+      await expect(saveServerConfig(config)).rejects.toThrow('disk full');
+
+      expect(onChanged).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('setOnServerConfigsChanged', () => {
     const config: ServerConfig = {
       id: 'changed-1',

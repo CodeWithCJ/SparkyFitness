@@ -273,6 +273,45 @@ describe('ClientCertificateSection', () => {
     }
   });
 
+  it('discards a file that arrives after the screen closed', async () => {
+    let resolvePick!: (value: typeof file | null) => void;
+    mocked.pickClientCertificateFile.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePick = resolve;
+      })
+    );
+    const view = render(<ClientCertificateSection />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Import certificate'));
+    });
+    view.unmount();
+    await act(async () => {
+      resolvePick(file);
+    });
+
+    expect(mocked.discardClientCertificateFile).toHaveBeenCalledWith(file);
+  });
+
+  it('tells its parent after a successful import only', async () => {
+    const onImported = jest.fn();
+    mocked.importClientCertificate
+      .mockResolvedValueOnce({ ok: false, error: 'wrongPassword' })
+      .mockResolvedValueOnce({ ok: true, info });
+    render(<ClientCertificateSection onImported={onImported} />);
+
+    await pickFile();
+    await act(async () => {
+      fireEvent.press(screen.getByText('Import'));
+    });
+    expect(onImported).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Import'));
+    });
+    expect(onImported).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing when the picker is cancelled', async () => {
     mocked.pickClientCertificateFile.mockResolvedValue(null);
     render(<ClientCertificateSection />);
