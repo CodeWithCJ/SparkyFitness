@@ -11211,8 +11211,7 @@
       "save": "Save rules",
       "everyDay": "Every day",
       "dayRange": "{{from}} to {{to}}",
-      "saved": "Rules saved. Everyone in the challenge can see the change.",
-      "endNeeded": "A challenge scored as one period needs an end date."
+      "saved": "Rules saved. Everyone in the challenge can see the change."
     },
     "leave": {
       "button": "Leave",
@@ -11349,7 +11348,8 @@
       "minMinutes": "Shortest workout that counts (minutes)",
       "manualEntries": "Workouts logged by hand",
       "manualCap": "Most hand-logged minutes a day",
-      "mergeDuplicates": "Count a workout synced from two sources once"
+      "mergeDuplicates": "Count a workout synced from two sources once",
+      "notAllowed": "Not allowed here. It stays {{value}}."
     },
     "join": {
       "button": "Join with a code",

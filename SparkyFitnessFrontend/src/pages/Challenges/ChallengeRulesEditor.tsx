@@ -80,6 +80,16 @@ const NumberField = ({
   // What is typed while the field has focus, so an entry the rules refuse
   // (empty, or 0 on the way to 0.5) can still be edited.
   const [text, setText] = useState<string | null>(null);
+  const { t } = useTranslation();
+  // A typed number the rules refused (out of range): say so, rather than
+  // show a value that is not the one saved. Shown values may be rounded
+  // (miles, kJ), so only a real difference counts.
+  const typed = text === null || text === '' ? null : Number(text);
+  const refused =
+    typed !== null &&
+    Number.isFinite(typed) &&
+    (value === null || Math.abs(typed - value) > 0.5);
+  const hintId = useId();
   return (
     <div className="space-y-1">
       <Label htmlFor={id} className="text-sm">
@@ -102,7 +112,26 @@ const NumberField = ({
           onChange(raw === '' || !Number.isFinite(n) ? null : n);
         }}
         onBlur={() => setText(null)}
+        aria-invalid={refused || undefined}
+        aria-describedby={refused ? hintId : undefined}
+        className={refused ? 'border-destructive' : undefined}
       />
+      {refused && (
+        <p id={hintId} className="text-xs text-destructive">
+          {value === null
+            ? t(
+                'challenges.create.rulesInvalid',
+                'A rule setting is empty or out of range.'
+              )
+            : t(
+                'challenges.editor.notAllowed',
+                'Not allowed here. It stays {{value}}.',
+                {
+                  value,
+                }
+              )}
+        </p>
+      )}
     </div>
   );
 };

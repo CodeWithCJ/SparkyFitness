@@ -202,27 +202,25 @@ describe('Challenges page', () => {
 
   it('leaves without asking again for the challenge it left', async () => {
     api.leaveChallenge.mockResolvedValue(undefined as never);
-    renderAt(`/challenges/${CHALLENGE_ID}`);
+    // From the list, so the list is cached when the leave happens.
+    renderAt('/challenges');
+    fireEvent.click(await screen.findByRole('link', { name: /Office cup/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
     const dialog = await screen.findByRole('dialog');
     const reads = () =>
       api.getChallenge.mock.calls.length +
       api.getChallengeStandings.mock.calls.length +
       api.getChallengeRuleChanges.mock.calls.length;
-    const before = reads();
-    // After leaving, the list no longer has it.
+    // The server no longer lists it.
     api.listChallenges.mockResolvedValue([]);
+    const before = reads();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Leave' }));
     await waitFor(() =>
       expect(api.leaveChallenge).toHaveBeenCalledWith(CHALLENGE_ID)
     );
-    // Back on the list, with no 403-bound reads of the challenge left.
-    await waitFor(() => expect(api.listChallenges).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(
-        screen.queryByText('Leave this challenge?')
-      ).not.toBeInTheDocument()
-    );
+    // Back on the list: it is gone at once, and nothing reads it again.
+    await waitFor(() => expect(api.listChallenges).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('standings-preview')).not.toBeInTheDocument();
     expect(reads()).toBe(before);
   });
 
@@ -364,6 +362,15 @@ describe('Challenges page', () => {
     fireEvent.change(best, { target: { value: '' } });
     expect(best).toHaveValue(null);
     fireEvent.change(best, { target: { value: '3' } });
+    fireEvent.blur(best);
+    expect(best).toHaveValue(3);
+
+    // A number the rules refuse is flagged, not shown as if it were kept.
+    fireEvent.change(best, { target: { value: '9' } });
+    expect(best).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen.getByText('Not allowed here. It stays 3.')
+    ).toBeInTheDocument();
     fireEvent.blur(best);
     expect(best).toHaveValue(3);
   });

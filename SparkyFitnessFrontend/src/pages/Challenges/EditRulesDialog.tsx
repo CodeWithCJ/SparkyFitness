@@ -57,7 +57,7 @@ const EditRulesDialog = ({
   const needsEnd = rules.period === 'challenge' && !challenge.end_date;
   const problem = needsEnd
     ? t(
-        'challenges.rules.endNeeded',
+        'challenges.create.endNeeded',
         'A challenge scored as one period needs an end date.'
       )
     : !valid

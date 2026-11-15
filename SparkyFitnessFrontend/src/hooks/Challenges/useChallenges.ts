@@ -207,6 +207,12 @@ export const useLeaveChallenge = () => {
         void queryClient.cancelQueries({ queryKey });
         void queryClient.invalidateQueries({ queryKey, refetchType: 'none' });
       }
+      // Take it off the cached list now, so the list page does not mount
+      // its preview (and read it) before the refreshed list arrives.
+      queryClient.setQueryData<ChallengeSummary[]>(
+        challengeKeys.list(),
+        (old) => old?.filter((c) => c.id !== id)
+      );
       void queryClient.invalidateQueries({ queryKey: challengeKeys.list() });
     },
     meta: {
