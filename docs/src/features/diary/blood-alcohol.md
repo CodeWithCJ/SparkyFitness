@@ -49,10 +49,12 @@ Set the formula, elimination rate and display unit on the web under **Settings â
 
 ## Show the card
 
-The card is **hidden by default**. Turn it on where you want to see it:
+The card is **shown by default**: at the bottom of the Diary on the web, and after the caffeine card on the mobile Dashboard. Hide it where you do not want it:
 
-- **Web**: on the Diary, choose **Customize layout** and add the estimated blood alcohol widget.
-- **Mobile**: open **Dashboard Settings** and turn on the estimated blood alcohol card.
+- **Web**: on the Diary, choose **Customize layout** and hide the **Estimated Blood Alcohol** widget.
+- **Mobile**: open **Dashboard Settings** and turn off **Blood Alcohol Estimate**.
+
+The web widget is not shown when you view someone else's diary (see below).
 
 The card shows the curve for the selected day, the current estimate and the day's peak, always with the disclaimer above.
 
