@@ -20,29 +20,43 @@ Most people do not. A VPN such as Tailscale or WireGuard, or [proxy headers](/mo
 
 ## 1. Create the certificate
 
-Run these on a computer with OpenSSL. They create a CA that is valid for ten years and one client certificate that is valid for about two years.
+Run these four steps once, on a computer with OpenSSL. You end up with one certificate file that works on all your devices.
+
+### 1.1 Create the certificate authority
 
 ```bash
-# The certificate authority. Keep client-ca.key private and backed up.
+# Valid for ten years. Keep client-ca.key private and backed up.
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
   -keyout client-ca.key -out client-ca.pem -subj "/CN=SparkyFitness Client CA"
+```
 
-# A key and a signing request for one device.
+`client-ca.pem` goes to your reverse proxy in step 2. `client-ca.key` signs every device certificate, so it must never leave this computer.
+
+### 1.2 Create a key and a signing request
+
+```bash
 openssl req -newkey rsa:2048 -nodes \
   -keyout phone.key -out phone.csr -subj "/CN=my-phone"
+```
 
-# Sign it with the CA.
+### 1.3 Sign it with the CA
+
+```bash
+# Valid for about two years (825 days).
 openssl x509 -req -in phone.csr -CA client-ca.pem -CAkey client-ca.key \
   -CAcreateserial -out phone.pem -days 825 -sha256
+```
 
-# Bundle the key and certificate into one password-protected file.
+### 1.4 Bundle the key and certificate into one file
+
+```bash
 openssl pkcs12 -export -inkey phone.key -in phone.pem -out phone.p12
 ```
 
-The last command asks for a password. You type it once more when you import the file.
+This asks for a password. You type it again when you import the file.
 
 ::: tip If an import says the file could not be read
-OpenSSL 3 writes `.p12` files in a newer format (AES) by default, and that is the one to try first. A recent Android phone (Android 17) imported it without trouble. Some older phones and computers cannot read it. If an import says "This file could not be read", run the last command again with `-legacy` added and import that file instead:
+OpenSSL 3 writes `.p12` files in a newer format (AES) by default, and that is the one to try first. A recent Android phone (Android 17) imported it without trouble. Some older phones and computers cannot read it. If an import says "This file could not be read", run step 1.4 again with `-legacy` added and import that file instead:
 
 ```bash
 openssl pkcs12 -export -legacy -inkey phone.key -in phone.pem -out phone-legacy.p12
@@ -51,12 +65,18 @@ openssl pkcs12 -export -legacy -inkey phone.key -in phone.pem -out phone-legacy.
 Either file is fine, so use whichever your devices accept. The older format also imported correctly on the Android phone, the iPhone and the Mac browser used for testing. If your OpenSSL reports `unknown option '-legacy'` (the one built into macOS does), remove the option: that version already writes the older format.
 :::
 
-You end up with two files that matter:
+### What you end up with
 
-- `client-ca.pem` goes to the reverse proxy.
-- `phone.p12` goes to your phone and your browser.
+- `client-ca.pem` goes to the reverse proxy (step 2).
+- `phone.p12` goes to your phone and your browser. Use the same file on every device you own.
 
-You can make one certificate per device (repeat the last three commands with another name) or use the same file on all of them. One per device lets you replace a lost phone's certificate without touching the others.
+### Optional: a separate certificate for each device
+
+Most people can skip this. A separate certificate per device lets you tell devices apart and replace one without reissuing the others. To make another one, repeat **steps 1.2 to 1.4** with a new name: for example, replace `phone` with `tablet` in every file name and `my-phone` with `my-tablet`. **Do not repeat step 1.1**: a new CA would make every existing certificate stop working.
+
+The proxy trusts the CA, not individual certificates, so you do not change the proxy for a new device: every certificate the CA signs is accepted, on every proxy and site that uses the same `client-ca.pem`.
+
+A separate certificate does **not** lock out a lost phone by itself: its certificate keeps working until it expires. To block it sooner, add a revocation list to the proxy (nginx has `ssl_crl`; support varies by proxy), or create a new CA and certificates and swap the CA on the proxy.
 
 ## 2. Require it at the reverse proxy
 
@@ -161,7 +181,7 @@ The app shows the certificate's name and, where the phone can read it, its expir
 
 Good to know:
 
-- The app keeps one certificate. It is presented only to servers you have saved in the app, never to other sites the app loads images from.
+- The app keeps one certificate. The app presents it only to servers you have saved in the app, never to other sites it loads images from. (The copy you install in the phone's settings for the browser is separate: the browser offers it only to a site whose server asks for a certificate from your CA, and asks you which one to use.)
 - The private key is stored in the phone's protected key storage (Android Keystore, iOS Keychain). The password is not stored.
 - Everything that talks to your server uses it: the app, background sync, the home screen widgets, Siri and Shortcuts actions, medication reminder buttons, the Android water tile, and the watch apps (they relay through the phone).
 - Delete `phone.p12` from the phone's Downloads or Files folder after importing.
@@ -172,7 +192,11 @@ Good to know:
 These two sign-in methods open the phone's browser, and the browser cannot see a certificate that is held inside the app. The browser has to hold its own copy, so for SSO and passkeys you import the same `.p12` a second time, into the phone's settings:
 
 - **Android:** Settings, Security & privacy, More security & privacy, Encryption & credentials, **Install a certificate**, then **VPN & app user certificate** (not "CA certificate" and not "Wi-Fi certificate"). Choose the `.p12`, type its password and give it a simple name. Android asks you to set a screen lock first if you have none. When the sign-in page opens, Chrome asks which certificate to use: pick the one you installed.
-- **iPhone:** send the `.p12` to the phone (AirDrop works), then open **Settings, General, VPN & Device Management**, tap the downloaded profile, tap **Install** and enter the password. Safari offers the certificate when the sign-in page asks for it. **Use Safari:** other iPhone browsers such as Chrome and Firefox do not offer client certificates, so they show "No required SSL certificate was sent" even when the profile is installed. The app's own SSO and passkey sign-in opens Safari's sign-in sheet, so it works without you doing anything in a browser.
+- **iPhone:** send the `.p12` to the phone (AirDrop works), then open **Settings, General, VPN & Device Management**, tap the downloaded profile, tap **Install** and enter the password. Safari offers the certificate when the sign-in page asks for it. The app's own SSO and passkey sign-in opens Safari's sign-in sheet, so it works without you opening a browser yourself.
+
+::: warning Use Safari on iPhone
+On iPhone, use **Safari** to open the web app. Chrome did not offer the certificate in testing: it showed "No required SSL certificate was sent" even though the profile was installed. Other browsers on iPhone may behave the same way. They were not tested, so Safari is the only one known to work.
+:::
 
 Then sign in as usual. Tap the SSO button or **Sign in with Passkey**; the browser opens, asks which certificate to use (pick the one you installed), and then shows your single sign-on provider or the passkey prompt. When it finishes, the browser returns to the app. To add a passkey for the first time, sign in another way and use **Settings, Passkeys**: that also opens the browser and asks for the certificate.
 
@@ -186,29 +210,31 @@ The proxy now asks the web app for the certificate too. Import the same `.p12` i
 
 ## Troubleshooting
 
-**The app says it could not reach the server.** A proxy that requires a certificate refuses the connection when none is presented (nginx answers "400 No required SSL certificate was sent"), which the app cannot tell apart from an unreachable server. Check that a certificate is shown under Advanced options, and that the server address in the app has the same hostname the proxy requires the certificate for.
+### Connecting
 
-**The server's own certificate is from a private CA.** That is separate from the client certificate. The phone must also trust the CA that signed the *server's* certificate: on Android install that CA under Settings, Security, Encryption & credentials, Install a certificate, CA certificate; on iPhone install it as a profile and then switch it on under Settings, General, About, Certificate Trust Settings. A certificate from a public CA such as Let's Encrypt needs none of this.
+- **The app says it could not reach the server.** A proxy that requires a certificate refuses the connection when none is presented (nginx answers "400 No required SSL certificate was sent"), and the app cannot tell that apart from an unreachable server. Check that a certificate is shown under Advanced options, and that the server address in the app uses the same hostname the proxy requires the certificate for.
+- **The server's own certificate is from a private CA.** That is separate from the client certificate. The phone must also trust the CA that signed the *server's* certificate. On Android, install that CA under Settings, Security, Encryption & credentials, Install a certificate, CA certificate. On iPhone, install it as a profile and then switch it on under Settings, General, About, Certificate Trust Settings. A certificate from a public CA such as Let's Encrypt needs none of this.
+- **It worked and then stopped.** The certificate may have expired. Create a new one (steps 1.2 to 1.4) and use **Replace certificate**. You do not need to change the proxy as long as the CA is the same.
 
-**"That password does not open this file."** The password is wrong. Type it again; it is the one you chose in the last command of step 1.
+### Importing the file
 
-**"This file could not be read."** The file is not a `.p12`/`.pfx`, is damaged, or was made in a format this device cannot read. Make the other format: add `-legacy` if you used the default, or leave it out if you used `-legacy` (see step 1).
+- **"That password does not open this file."** The password is wrong. Type it again; it is the one you chose in step 1.4.
+- **"This file could not be read."** The file is not a `.p12`/`.pfx`, is damaged, or was made in a format this device cannot read. Make the other format: add `-legacy` if you used the default, or leave it out if you used `-legacy` (see step 1.4).
+- **"This file has a certificate but no private key."** Export it again from the key and the certificate together, as in step 1.4.
 
-**"This file has a certificate but no private key."** Export it again from the key and the certificate together, as in the last command of step 1.
+### After importing or removing a certificate
 
-**It worked and then stopped.** The certificate may have expired. Create a new one (the last three commands of step 1) and use **Replace certificate**. You do not need to change the proxy as long as the CA is the same.
+- **On iPhone, the server still says "no certificate was sent" right after importing.** iPhone keeps secure sessions it opened before the import and can reuse them, so the server keeps its old answer. Fully close the app (swipe it away), open it again, and then connect. The app shows a reminder after importing. The same applies in the other direction after removing a certificate.
+- **After removing or replacing the certificate, the app is still connected.** On Android the change applies to the next request. On iPhone an open secure connection can keep working briefly, so close and reopen the app to apply it at once. Removing the certificate from the app does not remove the copy you installed in the phone's settings for SSO and passkeys; delete that one there.
 
-**On iPhone, Chrome or Firefox shows "No required SSL certificate was sent", but Safari works.** Only Safari can use the certificate on iPhone. Open the web app in Safari.
+### Browsers and sign-in
 
-**SSO or passkey sign-in fails, everything else works.** See [Signing in with SSO or a passkey](#signing-in-with-sso-or-a-passkey).
-
-**On iPhone, the server still says "no certificate was sent" right after importing.** iPhone keeps secure sessions it opened before the import and can reuse them, so the server keeps its old answer. Fully close the app (swipe it away) and open it again, then connect. The app shows a reminder after importing. The same applies the other way after removing a certificate.
-
-**After removing or replacing the certificate, the app is still connected.** On Android the change applies to the next request. On iPhone an open secure connection can keep working briefly, so close and reopen the app to apply it immediately. Removing the certificate from the app does not remove the copy you installed in the phone's settings for SSO and passkeys; delete that one there.
+- **On iPhone, a browser other than Safari shows "No required SSL certificate was sent", but Safari works.** Chrome did this in testing, and other browsers on iPhone may too (not tested). Open the web app in Safari.
+- **SSO or passkey sign-in fails, everything else works.** See [Signing in with SSO or a passkey](#signing-in-with-sso-or-a-passkey).
 
 ## Limits
 
-- On iPhone, only Safari can use the certificate. Chrome, Firefox and other iPhone browsers cannot, so open the web app in Safari. (The mobile app is not affected.)
+- On iPhone, use Safari for the web app. Chrome did not work in testing, and other third-party browsers may not either. (The mobile app is not affected.)
 - One certificate for the whole app. Two servers that each require a different certificate cannot both be used.
 - The certificate chain must be signed directly by the CA the proxy trusts. Intermediate certificates inside the `.p12` are not sent by the iPhone app.
 - A server address with non-English letters in its hostname (an internationalized domain) may not be matched. Enter it in its `xn--` form.
