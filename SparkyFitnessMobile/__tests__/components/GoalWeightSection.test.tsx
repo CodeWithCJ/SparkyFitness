@@ -48,3 +48,30 @@ describe('GoalWeightSection', () => {
     await waitFor(() => expect(mockSave).toHaveBeenCalledWith(null));
   });
 });
+
+describe('GoalWeightSection edge cases', () => {
+  it('keeps an edit typed while a save is pending', async () => {
+    let resolveSave: () => void = () => {};
+    mockSave.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (resolveSave = resolve))
+    );
+    render(<GoalWeightSection />);
+    const input = screen.getByTestId('goal-weight-input');
+    fireEvent.changeText(input, '154');
+    fireEvent.press(screen.getByTestId('goal-weight-save'));
+    fireEvent.changeText(input, '160');
+    resolveSave();
+    await waitFor(() =>
+      expect(screen.getByTestId('goal-weight-input').props.value).toBe('160')
+    );
+  });
+
+  it('does not accept input until preferences have loaded', () => {
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: undefined,
+      isLoading: true,
+    });
+    render(<GoalWeightSection />);
+    expect(screen.getByTestId('goal-weight-input').props.editable).toBe(false);
+  });
+});

@@ -8,6 +8,7 @@ import { useProfile, useSetTargetWeight } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
 import { resolveWeightGoal } from '../utils/healthTrendGoals';
 import { weightToKg } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization/i18n';
 
 /** Largest goal the server accepts: its numeric(5,2) column's maximum. */
 const MAX_GOAL_WEIGHT_KG = 999.99;
@@ -15,13 +16,19 @@ const MAX_GOAL_WEIGHT_KG = 999.99;
 const GoalWeightSection: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useProfile();
-  const { preferences } = usePreferences();
+  const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const { saveTargetWeight, isSaving } = useSetTargetWeight();
   const unit: 'kg' | 'lbs' =
     (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
 
   const saved = resolveWeightGoal(profile?.target_weight, unit);
-  const savedText = saved === undefined ? '' : String(Number(saved.toFixed(1)));
+  const savedText =
+    saved === undefined
+      ? ''
+      : formatLocalizedNumber(saved, {
+          maximumFractionDigits: 1,
+          useGrouping: false,
+        });
   // null means "not edited": show what is saved.
   const [draft, setDraft] = useState<string | null>(null);
   const text = draft ?? savedText;
@@ -35,9 +42,12 @@ const GoalWeightSection: React.FC = () => {
     kg <= MAX_GOAL_WEIGHT_KG;
 
   const submit = async (value: number | null) => {
+    // Clear the draft only if it is still the one this save sent, so an
+    // edit typed while the request was pending is kept.
+    const submitted = draft;
     try {
       await saveTargetWeight(value);
-      setDraft(null);
+      setDraft((current) => (current === submitted ? null : current));
       Toast.show({
         type: 'success',
         text1: t('goals.goalWeight.saved', {
@@ -66,6 +76,9 @@ const GoalWeightSection: React.FC = () => {
       <FormInput
         value={text}
         onChangeText={setDraft}
+        // Until preferences load the unit is unknown, so a typed value could
+        // be read in the wrong unit.
+        editable={!isPreferencesLoading}
         keyboardType="decimal-pad"
         placeholder={t('goals.goalWeight.placeholder', {
           unit,
@@ -78,7 +91,7 @@ const GoalWeightSection: React.FC = () => {
         testID="goal-weight-input"
       />
       {draft !== null && draft.trim() !== '' && !isValid && (
-        <Text className="text-xs text-red-500">
+        <Text className="text-sm text-icon-danger">
           {t('goals.goalWeight.invalid', {
             defaultValue: 'Enter a weight above zero.',
           })}
