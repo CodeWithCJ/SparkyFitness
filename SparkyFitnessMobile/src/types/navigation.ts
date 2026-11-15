@@ -325,6 +325,7 @@ export type RootStackParamList = {
       }
     | {
         mode: 'adjust-entry-nutrition';
+        pendingNutritionLabelScan?: NutritionLabelScan;
         initialValues: Partial<FoodFormData>;
         returnTo: 'FoodEntryAdd' | 'FoodEntryView';
         returnKey: string;

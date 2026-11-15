@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, Dimensions } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import FoodForm from '../../src/components/FoodForm';
+import FoodForm, { type FoodFormProps } from '../../src/components/FoodForm';
 
 const mockBottomSheetPicker = jest.fn();
 const mockFoodUnitSelectorSheet = jest.fn();
@@ -90,6 +90,84 @@ jest.mock('../../src/hooks/usePreferences', () => ({
 }));
 
 describe('FoodForm', () => {
+  it('keeps scanned nutrition when the selected provider variant has a different serving basis', () => {
+    const onSubmit = jest.fn();
+    const initialValues = {
+      name: 'Provider yogurt',
+      brand: 'Test Brand',
+      servingSize: '170',
+      servingUnit: 'g',
+      calories: '0',
+      protein: '0',
+      carbs: '0',
+      fat: '3',
+      fiber: '3',
+    };
+    const variant = {
+      id: 'provider-serving',
+      serving_size: 170,
+      serving_unit: 'g',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 3,
+      dietary_fiber: 3,
+    };
+    const unitSelector: NonNullable<FoodFormProps['unitSelector']> = {
+      variants: [variant],
+      selectedSelection: { kind: 'existing', variant },
+      onUnitSelectionChange: jest.fn(),
+    };
+    const screen = render(
+      <FoodForm
+        initialValues={initialValues}
+        unitSelector={unitSelector}
+        onSubmit={onSubmit}
+      />
+    );
+    fireEvent.changeText(
+      screen.getByDisplayValue('Provider yogurt'),
+      'My draft'
+    );
+
+    screen.rerender(
+      <FoodForm
+        initialValues={initialValues}
+        unitSelector={unitSelector}
+        onSubmit={onSubmit}
+        nutritionLabelScan={{
+          result: {
+            name: 'Ignore scanned identity',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 184,
+            protein: 0,
+            carbs: 12.345,
+            fat: null,
+            fiber: null,
+          },
+          nonce: 1,
+        }}
+      />
+    );
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'My draft',
+        brand: 'Test Brand',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '184',
+        protein: '0',
+        carbs: '12.345',
+        fat: '3',
+        fiber: '3',
+      })
+    );
+  });
+
   it('merges a label into the live draft and submits the scanned precision', () => {
     const onSubmit = jest.fn();
     const initialValues = {
