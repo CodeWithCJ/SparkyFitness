@@ -185,6 +185,5 @@ export function useChallengeMutations() {
     joinChallenge: join.mutateAsync,
     leaveChallenge: leave.mutateAsync,
     isJoining: join.isPending,
-    isLeaving: leave.isPending,
   };
 }

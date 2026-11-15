@@ -270,7 +270,12 @@ export function challengeToday(
   challenge: Pick<ChallengeSummary, 'time_zone'>,
   now: Date
 ): string {
-  return instantToDay(now, challenge.time_zone);
+  try {
+    return instantToDay(now, challenge.time_zone);
+  } catch {
+    // A zone this device's Intl data does not know: use the device's day.
+    return instantToDay(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }
 }
 
 /** The signed-in user's row, which the server marks with `me`. */
@@ -319,10 +324,14 @@ export function weekLeaderNotificationDate(
 ): Date | null {
   if (challenge.rules.period !== 'week' || standings.final) return null;
   const hour = String(WEEK_LEADER_NOTIFICATION_HOUR).padStart(2, '0');
-  const fireAt = localDateTimeToUtc(
-    `${standings.period_end}T${hour}:00`,
-    challenge.time_zone
-  );
+  const local = `${standings.period_end}T${hour}:00`;
+  let fireAt: Date;
+  try {
+    fireAt = localDateTimeToUtc(local, challenge.time_zone);
+  } catch {
+    // A zone this device's Intl data does not know: device time instead.
+    fireAt = new Date(local);
+  }
   return fireAt.getTime() > now.getTime() ? fireAt : null;
 }
 

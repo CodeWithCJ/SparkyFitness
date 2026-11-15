@@ -18,10 +18,7 @@ jest.mock('../../../src/hooks/useChallenges', () => ({
     mockUseStandings(ids, date),
   useChallengesRuleChanges: () => ({ byId: new Map(), isLoading: false }),
 }));
-jest.mock('../../../src/utils/dateUtils', () => ({
-  ...jest.requireActual('../../../src/utils/dateUtils'),
-  getTodayDate: () => '2026-11-20',
-}));
+
 jest.mock('../../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
 }));
