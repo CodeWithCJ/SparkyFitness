@@ -1,10 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
   glucoseContextQueryKeyRoot,
-  caffeineActiveQueryKey,
   dailySummaryQueryKey,
   waterIntakeLogQueryKey,
 } from './queryKeys';
+import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 
 /**
  * Refreshes everything a changed drink touches for one day. Shared by the
@@ -18,6 +18,6 @@ export function invalidateWaterIntakeQueries(
   queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
   // The itemized log backs hydration reminders and the watch's log view.
   queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(date) });
-  // A linked container logs a drink that can move the day's caffeine curve.
-  queryClient.invalidateQueries({ queryKey: caffeineActiveQueryKey(date) });
+  // A linked container logs a drink that can move the day's intake curves.
+  void invalidateIntakeKinetics(queryClient, date);
 }

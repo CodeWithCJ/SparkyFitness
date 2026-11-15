@@ -30,7 +30,6 @@ import {
   updateEntry,
 } from '../services/api/medicationsApi';
 import {
-  caffeineActiveQueryKey,
   medicationsListQueryKey,
   medicationEntriesQueryKey,
   measurementsQueryKey,
@@ -39,6 +38,7 @@ import {
   waterContainersQueryKey,
   waterIntakeLogQueryKey,
 } from './queryKeys';
+import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { getTodayDate, addDays, getDeviceTimezone } from '../utils/dateUtils';
 import {
@@ -1261,9 +1261,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(payload.entryDate),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(payload.entryDate),
-          }),
+          invalidateIntakeKinetics(queryClient, payload.entryDate),
         ]);
 
         addLog(
@@ -1346,9 +1344,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(today),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(today),
-          }),
+          invalidateIntakeKinetics(queryClient, today),
         ]);
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');

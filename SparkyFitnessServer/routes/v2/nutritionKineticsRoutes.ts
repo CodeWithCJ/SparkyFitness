@@ -10,10 +10,13 @@ const router = express.Router();
 router.use(onBehalfOfMiddleware);
 router.use(checkPermissionMiddleware('diary'));
 
-const CaffeineActiveQuerySchema = z.object({
+const DayQuerySchema = z.object({
   date: z.string().refine(isDayString, {
     message: 'Date must be in YYYY-MM-DD format',
   }),
+});
+
+const CaffeineActiveQuerySchema = DayQuerySchema.extend({
   dose_mg: z.coerce.number().positive().optional(),
 });
 

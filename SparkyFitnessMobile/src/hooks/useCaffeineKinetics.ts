@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveCaffeine } from '../services/api/caffeineApi';
 import { caffeineActiveQueryKey } from './queryKeys';
+import { useKineticsClock } from './useKineticsClock';
 
 /**
  * Active caffeine for a day, plus a clock that advances on its own.
@@ -20,12 +20,7 @@ export function useCaffeineKinetics(date: string, enabled: boolean = true) {
     staleTime: 1000 * 60 * 5,
   });
 
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
-  useEffect(() => {
-    if (!enabled) return;
-    const interval = setInterval(() => setNowMs(Date.now()), 30000);
-    return () => clearInterval(interval);
-  }, [enabled]);
+  const nowMs = useKineticsClock(enabled);
 
   return {
     kinetics: query.data,

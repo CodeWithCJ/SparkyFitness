@@ -161,7 +161,6 @@ jest.mock('../../src/hooks', () => ({
     refetch: jest.fn(),
   })),
   useWidgetSync: jest.fn(),
-  caffeineActiveRootQueryKey: ['caffeine-active'],
   fastingRootQueryKey: ['fasting'],
   medicationsRootQueryKey: ['medications'],
 }));

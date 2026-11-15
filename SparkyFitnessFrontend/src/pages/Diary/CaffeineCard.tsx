@@ -1,22 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Coffee, Moon, Clock, AlertTriangle, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useActiveCaffeineQuery } from '@/hooks/Diary/useCaffeineKinetics';
+import { useNowTicker } from '@/hooks/useNowTicker';
 import { useTheme } from '@/contexts/ThemeContext';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ReferenceDot,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { ReferenceDot, ReferenceLine } from 'recharts';
+import { KineticsChart, KineticsDoseChips } from '@/components/KineticsChart';
+import { formatRelativeDateTime, localDayStartMs } from '@/utils/kineticsTime';
 import {
   activeCaffeineAt,
   caffeineCurve,
@@ -24,66 +17,7 @@ import {
   thresholdCrossingTime,
 } from '@workspace/shared';
 
-/** Local HH:MM for an instant, in the viewer's own zone. */
-const clockLabel = (instant: string | number) =>
-  new Date(instant).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-/**
- * Formats an instant relative to the diary day being viewed (YYYY-MM-DD).
- * - Same day: "HH:MM"
- * - Yesterday: "Yesterday, HH:MM"
- * - Tomorrow: "Tomorrow, HH:MM"
- * - Other days: "MMM D, HH:MM"
- */
-const formatRelativeDateTime = (
-  instant: string | number | Date,
-  viewedDateStr: string,
-  labels?: {
-    yesterday?: string;
-    tomorrow?: string;
-  }
-) => {
-  const d = instant instanceof Date ? instant : new Date(instant);
-  const time = clockLabel(d.getTime());
-
-  const [y, m, day] = viewedDateStr.split('-').map(Number);
-  if (!y || !m || !day) return time;
-
-  const viewedMidnight = new Date(y, m - 1, day, 0, 0, 0, 0).getTime();
-  const instantMidnight = new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    0,
-    0,
-    0,
-    0
-  ).getTime();
-
-  const diffDays = Math.round(
-    (instantMidnight - viewedMidnight) / (24 * 60 * 60 * 1000)
-  );
-
-  if (diffDays === 0) {
-    return time;
-  }
-  if (diffDays === -1) {
-    const yLabel = labels?.yesterday || 'Yesterday';
-    return `${yLabel}, ${time}`;
-  }
-  if (diffDays === 1) {
-    const tLabel = labels?.tomorrow || 'Tomorrow';
-    return `${tLabel}, ${time}`;
-  }
-  const dateStr = d.toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-  });
-  return `${dateStr}, ${time}`;
-};
+const CAFFEINE_COLOR = '#d97706';
 
 interface CaffeineCardProps {
   date: string;
@@ -95,30 +29,17 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const { data, isLoading } = useActiveCaffeineQuery(date, userId);
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
-
-  // Ticking timer: re-evaluate active caffeine continuous decay without refetching
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNowMs(Date.now());
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const nowMs = useNowTicker();
 
   // Derived above the early returns: hooks must run in the same order on every
   // render, and the card returns null on a day with no caffeine.
   const bedtimeMs = data ? new Date(data.bedtime_at).getTime() : 0;
 
   // The calendar start of the viewed day in local time
-  const [yearNum, monthNum, dayNum] = useMemo(
-    () => date.split('-').map(Number),
-    [date]
+  const dayStartMs = useMemo(
+    () => localDayStartMs(date) ?? bedtimeMs - 24 * 60 * 60 * 1000,
+    [date, bedtimeMs]
   );
-  const dayStartMs = useMemo(() => {
-    return yearNum && monthNum && dayNum
-      ? new Date(yearNum, monthNum - 1, dayNum, 0, 0, 0, 0).getTime()
-      : bedtimeMs - 24 * 60 * 60 * 1000;
-  }, [yearNum, monthNum, dayNum, bedtimeMs]);
 
   // The plotted window belongs to the day on screen: an hour before its first
   // dose to two hours past its bedtime, so the curve shows where it is heading
@@ -173,17 +94,6 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
       nowBelongsToDay,
     };
   }, [data, bedtimeMs, nowMs, dayStartMs]);
-
-  // Consistent 1-hour interval ticks across the plotted window
-  const ticks = useMemo(() => {
-    if (!windowMs) return [];
-    const result: number[] = [];
-    const ONE_HOUR_MS = 60 * 60 * 1000;
-    for (let t = windowMs.start; t <= windowMs.end; t += ONE_HOUR_MS) {
-      result.push(t);
-    }
-    return result;
-  }, [windowMs]);
 
   // "Now" on the day being viewed, otherwise that day's edge -- so the decay
   // figure and the cutoff describe the day on screen rather than this instant.
@@ -298,36 +208,6 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   // under the threshold for the entire day being viewed.
   const isCrossingRelevant =
     crossingAtMs !== null && crossingAtMs >= dayStartMs;
-
-  const formatTick = (instant: number) => {
-    const d = new Date(instant);
-    if (!yearNum || !monthNum || !dayNum) return clockLabel(instant);
-
-    const instantMidnight = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-      0,
-      0,
-      0,
-      0
-    ).getTime();
-    const diffDays = Math.round(
-      (instantMidnight - dayStartMs) / (24 * 60 * 60 * 1000)
-    );
-
-    const time = clockLabel(instant);
-    if (diffDays === 0) {
-      return time;
-    }
-    if (d.getHours() === 0 && d.getMinutes() === 0) {
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-    if (diffDays > 0) {
-      return `+${diffDays}d ${time}`;
-    }
-    return `${diffDays}d ${time}`;
-  };
 
   // A long half-life against a small headroom can push the cutoff a day or
   // more into the past, outside the plotted window. The marker is already
@@ -485,73 +365,19 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
             Evaluated client-side from the same doses the tiles use, so the
             chart and the numbers beside it cannot disagree. */}
         <div className="pt-1">
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart
+          {windowMs && (
+            <KineticsChart
               data={chart}
-              margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
+              dataKey="mg"
+              window={windowMs}
+              viewedDate={date}
+              yMax={Math.ceil(yMax)}
+              color={CAFFEINE_COLOR}
+              gradientId="caffeineFill"
+              nowMs={nowIsInWindow ? nowMs : null}
+              valueLabel={t('diary.caffeine.activeCaffeine', 'Active Caffeine')}
+              formatValue={(value) => `${Math.round(value)} mg`}
             >
-              <defs>
-                <linearGradient id="caffeineFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#d97706" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#d97706" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="t"
-                type="number"
-                scale="time"
-                domain={
-                  windowMs
-                    ? [windowMs.start, windowMs.end]
-                    : ['dataMin', 'dataMax']
-                }
-                ticks={ticks}
-                tickFormatter={formatTick}
-                stroke={isDark ? '#888' : '#666'}
-                fontSize={11}
-                minTickGap={30}
-              />
-              <YAxis
-                domain={[0, Math.ceil(yMax)]}
-                stroke={isDark ? '#888' : '#666'}
-                fontSize={11}
-                width={38}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: isDark ? '#1e1e1e' : '#fff',
-                  border: `1px solid ${isDark ? '#333' : '#ddd'}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                labelFormatter={(value) =>
-                  formatRelativeDateTime(Number(value), date, {
-                    yesterday: t('common.yesterday', 'Yesterday'),
-                    tomorrow: t('common.tomorrow', 'Tomorrow'),
-                  })
-                }
-                formatter={(
-                  value:
-                    string | number | ReadonlyArray<string | number> | undefined
-                ) => [
-                  `${Math.round(Number(value))} mg`,
-                  t('diary.caffeine.activeCaffeine', 'Active Caffeine'),
-                ]}
-              />
-              <Area
-                type="monotone"
-                dataKey="mg"
-                stroke="#d97706"
-                strokeWidth={2}
-                fill="url(#caffeineFill)"
-                isAnimationActive={false}
-                dot={false}
-              />
               <ReferenceLine
                 y={threshold_mg}
                 stroke={isDark ? '#f87171' : '#dc2626'}
@@ -562,13 +388,6 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 stroke={isDark ? '#818cf8' : '#6366f1'}
                 strokeDasharray="2 4"
               />
-              {nowIsInWindow && (
-                <ReferenceLine
-                  x={nowMs}
-                  stroke={isDark ? '#94a3b8' : '#475569'}
-                  strokeWidth={1}
-                />
-              )}
               {/* The moment another dose stops fitting under the threshold.
                   Hidden when it falls outside the plotted window rather than
                   clamped to the edge, which would put it at a time it is not. */}
@@ -585,7 +404,6 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                   to say so only once, for the whole day. */}
               {doses
                 .filter((dose) => {
-                  if (!windowMs) return true;
                   const doseMs = new Date(dose.at).getTime();
                   return doseMs >= windowMs.start && doseMs <= windowMs.end;
                 })
@@ -600,16 +418,16 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                       x={doseMs}
                       y={activeCaffeineAt(doses, doseMs, half_life_hours)}
                       r={4}
-                      fill={dose.is_estimated ? 'transparent' : '#d97706'}
-                      stroke="#d97706"
+                      fill={dose.is_estimated ? 'transparent' : CAFFEINE_COLOR}
+                      stroke={CAFFEINE_COLOR}
                       strokeWidth={dose.is_estimated ? 1.5 : 1}
                       strokeDasharray={dose.is_estimated ? '2 2' : '0'}
                       ifOverflow="hidden"
                     />
                   );
                 })}
-            </AreaChart>
-          </ResponsiveContainer>
+            </KineticsChart>
+          )}
           {/* Every mark on the plot is named here rather than labelled in
               place: in-plot labels were clipped by the top margin, and the
               "now" line had no label at all. */}
@@ -678,35 +496,15 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
           </p>
         </div>
 
-        {/* Dose list strip */}
-        {recentDoses.length > 0 && (
-          <div className="space-y-1.5 pt-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t('diary.caffeine.contributingDoses', 'Recent Doses (48h)')}
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {recentDoses.map((dose, idx) => (
-                <div
-                  key={`${dose.at}-${idx}`}
-                  className="text-xs px-2 py-1 rounded bg-muted flex items-center gap-1.5"
-                >
-                  <span className="font-medium">
-                    {dose.name || t('diary.caffeineCard.dose', 'Dose')}:
-                  </span>
-                  <span>{dose.mg}mg</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    (
-                    {formatRelativeDateTime(dose.at, date, {
-                      yesterday: t('common.yesterday', 'Yesterday'),
-                      tomorrow: t('common.tomorrow', 'Tomorrow'),
-                    })}
-                    )
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <KineticsDoseChips
+          title={t('diary.caffeine.contributingDoses', 'Recent Doses (48h)')}
+          doses={recentDoses.map((dose) => ({
+            at: dose.at,
+            label: dose.name || t('diary.caffeineCard.dose', 'Dose'),
+            amount: `${dose.mg}mg`,
+          }))}
+          viewedDate={date}
+        />
       </CardContent>
     </Card>
   );

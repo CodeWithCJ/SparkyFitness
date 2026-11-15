@@ -5,7 +5,6 @@ export {
   fastingRootQueryKey,
   chatHistoryQueryKey,
   medicationsRootQueryKey,
-  caffeineActiveRootQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';

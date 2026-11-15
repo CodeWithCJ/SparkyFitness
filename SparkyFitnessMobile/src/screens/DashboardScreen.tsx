@@ -54,7 +54,6 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
-  caffeineActiveRootQueryKey,
   fastingRootQueryKey,
   medicationsRootQueryKey,
   useCustomNutrients,
@@ -70,6 +69,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { invalidateIntakeKinetics } from '../hooks/invalidateIntakeKinetics';
 import {
   moodEntriesRootQueryKey,
   labLatestQueryKey,
@@ -436,8 +436,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       refetchCaffeine(),
-      // CaffeineCard and FastingCard own their own queries; nudge them on pull-to-refresh.
-      queryClient.invalidateQueries({ queryKey: caffeineActiveRootQueryKey }),
+      // The intake curve cards and FastingCard own their own queries; nudge them on pull-to-refresh.
+      invalidateIntakeKinetics(queryClient),
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
