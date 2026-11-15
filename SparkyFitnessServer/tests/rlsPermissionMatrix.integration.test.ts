@@ -1893,27 +1893,46 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     const held = new Promise<void>((r) => {
       release = r;
     });
-    const first = challengeRepository.withScoringLock(
-      challengeId,
-      AMY,
-      async () => {
-        order.push('first:start');
-        await held;
-        order.push('first:end');
+    let firstStarted!: () => void;
+    const started = new Promise<void>((r) => {
+      firstStarted = r;
+    });
+    const tasks: Promise<unknown>[] = [];
+    try {
+      tasks.push(
+        challengeRepository.withScoringLock(challengeId, AMY, async () => {
+          order.push('first:start');
+          firstStarted(); // the lock is held from here until release()
+          await held;
+          order.push('first:end');
+        })
+      );
+      await Promise.race([started, tasks[0]]);
+      expect(order).toEqual(['first:start']);
+      tasks.push(
+        challengeRepository.withScoringLock(challengeId, AMY, async () => {
+          order.push('second:start');
+        })
+      );
+      // Wait until the second run is queued behind the advisory lock
+      const deadline = Date.now() + 5000;
+      let waiting = 0;
+      while (waiting === 0 && Date.now() < deadline) {
+        const r = await sys.query(
+          `SELECT COUNT(*)::int AS n FROM pg_locks
+            WHERE locktype = 'advisory' AND NOT granted AND database = (
+              SELECT oid FROM pg_database WHERE datname = current_database())`
+        );
+        waiting = r.rows[0].n;
+        if (waiting === 0) await new Promise((r) => setImmediate(r));
       }
-    );
-    await new Promise((r) => setTimeout(r, 50));
-    const second = challengeRepository.withScoringLock(
-      challengeId,
-      AMY,
-      async () => {
-        order.push('second:start');
-      }
-    );
-    await new Promise((r) => setTimeout(r, 100));
-    expect(order).toEqual(['first:start']);
-    release();
-    await Promise.all([first, second]);
+      expect(waiting).toBe(1);
+      expect(order).toEqual(['first:start']);
+    } finally {
+      release();
+      await Promise.allSettled(tasks);
+    }
+    await Promise.all(tasks);
     expect(order).toEqual(['first:start', 'first:end', 'second:start']);
   });
 
