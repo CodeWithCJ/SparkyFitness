@@ -1,11 +1,12 @@
 {
-  "id": "20050_eccentric_heel_drop",
+  "id": "20050_step_eccentric_heel_drop",
   "numeric_id": "20050",
-  "slug": "eccentric_heel_drop",
-  "name": "Eccentric Heel Drop",
+  "slug": "step_eccentric_heel_drop",
+  "name": "Step Eccentric Heel Drop",
   "aliases": [
     "Alfredson Heel Drop",
-    "Step Heel Drop"
+    "Step Heel Drop",
+    "Eccentric Heel Drop"
   ],
   "taxonomy": {
     "modality": "reps_only",

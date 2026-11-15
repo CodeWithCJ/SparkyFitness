@@ -1,11 +1,12 @@
 {
-  "id": "20036_half_kneeling_dumbbell_shoulder_press",
+  "id": "20036_dumbbell_half_kneeling_shoulder_press",
   "numeric_id": "20036",
-  "slug": "half_kneeling_dumbbell_shoulder_press",
-  "name": "Half-Kneeling Dumbbell Shoulder Press",
+  "slug": "dumbbell_half_kneeling_shoulder_press",
+  "name": "Dumbbell Half-Kneeling Shoulder Press",
   "aliases": [
     "Half-Kneeling Overhead Press",
-    "Single-Arm Half-Kneeling Press"
+    "Single-Arm Half-Kneeling Press",
+    "Half-Kneeling Dumbbell Shoulder Press"
   ],
   "taxonomy": {
     "modality": "weight_reps",

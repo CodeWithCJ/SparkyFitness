@@ -105758,13 +105758,14 @@
     }
   },
   {
-    "id": "20020_seated_figure_four_stretch",
+    "id": "20020_chair_figure_four_stretch",
     "numeric_id": "20020",
-    "slug": "seated_figure_four_stretch",
-    "name": "Seated Figure-Four Stretch",
+    "slug": "chair_figure_four_stretch",
+    "name": "Chair Figure-Four Stretch",
     "aliases": [
       "Chair Piriformis Stretch",
-      "Seated Glute Stretch"
+      "Seated Glute Stretch",
+      "Seated Figure-Four Stretch"
     ],
     "taxonomy": {
       "modality": "duration",
@@ -105815,7 +105816,7 @@
       "attribution": "Cleveland Clinic Physical Therapy Mobility Handouts"
     },
     "instructions": "Sit tall on a sturdy chair with both feet flat on the floor. Lift your right leg and rest your right ankle across your left knee, creating a 'figure-4' shape. Keep your right foot lightly flexed to protect your knee joint. With your spine tall and chest lifted, gently hinge forward from your hips until you feel a comfortable stretch in your outer right hip. Hold for 20 to 30 seconds while breathing calmly, then return upright and repeat on the other side.",
-    "folder": "20020_seated_figure_four_stretch",
+    "folder": "20020_chair_figure_four_stretch",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -106827,13 +106828,14 @@
     }
   },
   {
-    "id": "20035_chest_supported_dumbbell_row",
+    "id": "20035_dumbbell_chest_supported_row",
     "numeric_id": "20035",
-    "slug": "chest_supported_dumbbell_row",
-    "name": "Chest-Supported Dumbbell Row",
+    "slug": "dumbbell_chest_supported_row",
+    "name": "Dumbbell Chest-Supported Row",
     "aliases": [
       "Incline Bench Dumbbell Row",
-      "Prone Incline Row"
+      "Prone Incline Row",
+      "Chest-Supported Dumbbell Row"
     ],
     "taxonomy": {
       "modality": "weight_reps",
@@ -106886,7 +106888,7 @@
       "attribution": "Spine-Sparing Strength Protocols"
     },
     "instructions": "Set an incline bench to roughly a 30 to 45-degree angle. Straddle the bench and lie chest-down against the pad, holding a pair of dumbbells with arms extended straight toward the floor. Plant your feet firmly on the ground behind you to stabilize your body. Pull your elbows back past your torso, retracting your shoulder blades and squeezing your upper back muscles at the top. Slowly lower the dumbbells back down until your arms are fully extended.",
-    "folder": "20035_chest_supported_dumbbell_row",
+    "folder": "20035_dumbbell_chest_supported_row",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -106899,13 +106901,14 @@
     }
   },
   {
-    "id": "20036_half_kneeling_dumbbell_shoulder_press",
+    "id": "20036_dumbbell_half_kneeling_shoulder_press",
     "numeric_id": "20036",
-    "slug": "half_kneeling_dumbbell_shoulder_press",
-    "name": "Half-Kneeling Dumbbell Shoulder Press",
+    "slug": "dumbbell_half_kneeling_shoulder_press",
+    "name": "Dumbbell Half-Kneeling Shoulder Press",
     "aliases": [
       "Half-Kneeling Overhead Press",
-      "Single-Arm Half-Kneeling Press"
+      "Single-Arm Half-Kneeling Press",
+      "Half-Kneeling Dumbbell Shoulder Press"
     ],
     "taxonomy": {
       "modality": "weight_reps",
@@ -106956,7 +106959,7 @@
       "attribution": "FMS Half-Kneeling Movement Progressions"
     },
     "instructions": "Assume a half-kneeling position on a mat with your right knee on the floor directly under your hip and left foot flat in front. Hold a dumbbell in your right hand at shoulder height, with elbow pointing forward at roughly a 45-degree angle. Squeeze your right glute and engage your core to lock your pelvis in place and prevent lower back arching. Press the dumbbell straight overhead until your arm is fully extended with your bicep near your ear. Lower the dumbbell with control back to shoulder height, completing all reps before switching sides.",
-    "folder": "20036_half_kneeling_dumbbell_shoulder_press",
+    "folder": "20036_dumbbell_half_kneeling_shoulder_press",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -106969,13 +106972,14 @@
     }
   },
   {
-    "id": "20037_standing_resistance_band_chest_press",
+    "id": "20037_band_standing_chest_press",
     "numeric_id": "20037",
-    "slug": "standing_resistance_band_chest_press",
-    "name": "Standing Resistance Band Chest Press",
+    "slug": "band_standing_chest_press",
+    "name": "Band Standing Chest Press",
     "aliases": [
       "Band Chest Press",
-      "Standing Band Push"
+      "Standing Band Push",
+      "Standing Resistance Band Chest Press"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107027,7 +107031,7 @@
       "attribution": "VA MOVE! Physical Therapy Band Guides"
     },
     "instructions": "Anchor a resistance band at chest height behind you, or loop it firmly across your upper back. Hold the band handles or ends at chest level with your elbows bent and palms facing downward. Step forward into a staggered stance with one foot ahead for stability, feeling light initial tension on the band. Press both hands straight forward, extending your arms and squeezing your chest muscles at the peak. Slowly reverse the movement, controlling the band's pull back to your chest without letting your elbows yank backward.",
-    "folder": "20037_standing_resistance_band_chest_press",
+    "folder": "20037_band_standing_chest_press",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107040,13 +107044,14 @@
     }
   },
   {
-    "id": "20038_standing_resistance_band_row",
+    "id": "20038_band_standing_row",
     "numeric_id": "20038",
-    "slug": "standing_resistance_band_row",
-    "name": "Standing Resistance Band Row",
+    "slug": "band_standing_row",
+    "name": "Band Standing Row",
     "aliases": [
       "Band Horizontal Row",
-      "Standing Band Pull"
+      "Standing Band Pull",
+      "Standing Resistance Band Row"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107099,7 +107104,7 @@
       "attribution": "APTA Resistance Band Posture Protocols"
     },
     "instructions": "Secure a resistance band around a sturdy anchor at chest height. Hold the band handles with arms extended in front of you, stepping back until there is light tension on the band. Stand tall with feet shoulder-width apart and knees slightly unlocked. Pull your elbows back past your sides, squeezing your shoulder blades together and keeping your chest proud. Hold the back contraction for one second, then slowly return your arms forward under control.",
-    "folder": "20038_standing_resistance_band_row",
+    "folder": "20038_band_standing_row",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107112,13 +107117,14 @@
     }
   },
   {
-    "id": "20039_resistance_band_pallof_press",
+    "id": "20039_band_pallof_press",
     "numeric_id": "20039",
-    "slug": "resistance_band_pallof_press",
-    "name": "Resistance Band Pallof Press",
+    "slug": "band_pallof_press",
+    "name": "Band Pallof Press",
     "aliases": [
       "Band Anti-Rotation Press",
-      "Pallof Press"
+      "Pallof Press",
+      "Resistance Band Pallof Press"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107170,7 +107176,7 @@
       "attribution": "McGill Spine Anti-Rotation Stabilization"
     },
     "instructions": "Anchor a resistance band at chest height and stand sideways to the anchor point with feet shoulder-width apart. Clasp the band handle with both hands at the center of your chest, stepping away from the anchor to create lateral tension. Soften your knees, engage your core, and press your hands straight forward in front of your chest. Hold your hands extended directly forward for two seconds, strongly resisting the band's rotational pull toward the anchor. Slowly bring your hands back into your chest, complete your reps, then turn to face the opposite direction.",
-    "folder": "20039_resistance_band_pallof_press",
+    "folder": "20039_band_pallof_press",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107253,13 +107259,14 @@
     }
   },
   {
-    "id": "20041_banded_clamshell",
+    "id": "20041_band_clamshell",
     "numeric_id": "20041",
-    "slug": "banded_clamshell",
-    "name": "Banded Clamshell",
+    "slug": "band_clamshell",
+    "name": "Band Clamshell",
     "aliases": [
       "Resistance Loop Clamshell",
-      "Mini-Band Clam"
+      "Mini-Band Clam",
+      "Banded Clamshell"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107310,7 +107317,7 @@
       "attribution": "APTA Hip Stabilizer Clinical Protocol"
     },
     "instructions": "Place a small resistance loop band around both thighs, resting just above your knees. Lie on your side with hips bent at 45 degrees, knees bent at 90 degrees, and feet stacked together. Engage your core to prevent your lower back or pelvis from rolling backward. Open your top knee against the resistance of the band while keeping your feet touching. Hold for one second at peak contraction, then lower slowly resisting the pull of the band.",
-    "folder": "20041_banded_clamshell",
+    "folder": "20041_band_clamshell",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107465,13 +107472,14 @@
     }
   },
   {
-    "id": "20044_terminal_knee_extension",
+    "id": "20044_band_terminal_knee_extension",
     "numeric_id": "20044",
-    "slug": "terminal_knee_extension",
-    "name": "Terminal Knee Extension",
+    "slug": "band_terminal_knee_extension",
+    "name": "Band Terminal Knee Extension",
     "aliases": [
       "Banded TKE",
-      "Standing Terminal Knee Extension"
+      "Standing Terminal Knee Extension",
+      "Terminal Knee Extension"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107522,7 +107530,7 @@
       "attribution": "AAOS Knee Rehabilitation Protocols"
     },
     "instructions": "Secure a resistance loop band to an anchor point at knee height. Step into the loop with your right leg, positioning the band behind the crease of your right knee. Step back until there is gentle tension on the band, standing with your weight balanced on your left leg and right heel resting on the ground with the knee slightly bent. Contract your right quadriceps muscle to push the back of your knee straight against the band's resistance until the leg is fully straight. Hold the contraction for two seconds, focusing on the inner quad (VMO), then slowly allow the knee to soften forward.",
-    "folder": "20044_terminal_knee_extension",
+    "folder": "20044_band_terminal_knee_extension",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107605,13 +107613,14 @@
     }
   },
   {
-    "id": "20046_copenhagen_plank",
+    "id": "20046_bench_copenhagen_plank",
     "numeric_id": "20046",
-    "slug": "copenhagen_plank",
-    "name": "Copenhagen Plank",
+    "slug": "bench_copenhagen_plank",
+    "name": "Bench Copenhagen Plank",
     "aliases": [
       "Adductor Side Plank",
-      "Short-Lever Copenhagen Plank"
+      "Short-Lever Copenhagen Plank",
+      "Copenhagen Plank"
     ],
     "taxonomy": {
       "modality": "duration",
@@ -107663,7 +107672,7 @@
       "attribution": "BJSM Copenhagen Adductor Exercise Clinical Trial"
     },
     "instructions": "Lie on your side next to a sturdy low bench or chair, resting on your bottom forearm. Place the knee and lower leg of your top leg on top of the bench. Rest your bottom leg on the floor beneath the bench. Press through your top knee and forearm to raise your hips off the floor into a side plank, lifting your bottom leg to hover just beneath the bench. Hold this rigid line for the target duration, feeling your inner thigh work strongly, then lower with control.",
-    "folder": "20046_copenhagen_plank",
+    "folder": "20046_bench_copenhagen_plank",
     "media": {
       "video_path": null,
       "video_vertical_path": null,
@@ -107888,13 +107897,14 @@
     }
   },
   {
-    "id": "20050_eccentric_heel_drop",
+    "id": "20050_step_eccentric_heel_drop",
     "numeric_id": "20050",
-    "slug": "eccentric_heel_drop",
-    "name": "Eccentric Heel Drop",
+    "slug": "step_eccentric_heel_drop",
+    "name": "Step Eccentric Heel Drop",
     "aliases": [
       "Alfredson Heel Drop",
-      "Step Heel Drop"
+      "Step Heel Drop",
+      "Eccentric Heel Drop"
     ],
     "taxonomy": {
       "modality": "reps_only",
@@ -107943,7 +107953,7 @@
       "attribution": "Håkan Alfredson Heavy-Load Eccentric Calf Training"
     },
     "instructions": "Stand with the balls of both feet on the edge of a sturdy step or stair, holding the handrail or wall for balance. Rise up onto the toes of both feet. Transfer all your weight onto the target leg (e.g., right foot). Slowly lower your right heel down below the level of the step over a count of 3 to 4 seconds, loading the Achilles tendon eccentrically. Place your left foot back on the step and use both feet to rise back up to the top, repeating the eccentric lowering on the target leg.",
-    "folder": "20050_eccentric_heel_drop",
+    "folder": "20050_step_eccentric_heel_drop",
     "media": {
       "video_path": null,
       "video_vertical_path": null,

@@ -1,11 +1,12 @@
 {
-  "id": "20039_resistance_band_pallof_press",
+  "id": "20039_band_pallof_press",
   "numeric_id": "20039",
-  "slug": "resistance_band_pallof_press",
-  "name": "Resistance Band Pallof Press",
+  "slug": "band_pallof_press",
+  "name": "Band Pallof Press",
   "aliases": [
     "Band Anti-Rotation Press",
-    "Pallof Press"
+    "Pallof Press",
+    "Resistance Band Pallof Press"
   ],
   "taxonomy": {
     "modality": "reps_only",

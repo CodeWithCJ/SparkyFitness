@@ -1,11 +1,12 @@
 {
-  "id": "20020_seated_figure_four_stretch",
+  "id": "20020_chair_figure_four_stretch",
   "numeric_id": "20020",
-  "slug": "seated_figure_four_stretch",
-  "name": "Seated Figure-Four Stretch",
+  "slug": "chair_figure_four_stretch",
+  "name": "Chair Figure-Four Stretch",
   "aliases": [
     "Chair Piriformis Stretch",
-    "Seated Glute Stretch"
+    "Seated Glute Stretch",
+    "Seated Figure-Four Stretch"
   ],
   "taxonomy": {
     "modality": "duration",

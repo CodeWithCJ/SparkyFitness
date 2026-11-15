@@ -1,11 +1,12 @@
 {
-  "id": "20035_chest_supported_dumbbell_row",
+  "id": "20035_dumbbell_chest_supported_row",
   "numeric_id": "20035",
-  "slug": "chest_supported_dumbbell_row",
-  "name": "Chest-Supported Dumbbell Row",
+  "slug": "dumbbell_chest_supported_row",
+  "name": "Dumbbell Chest-Supported Row",
   "aliases": [
     "Incline Bench Dumbbell Row",
-    "Prone Incline Row"
+    "Prone Incline Row",
+    "Chest-Supported Dumbbell Row"
   ],
   "taxonomy": {
     "modality": "weight_reps",

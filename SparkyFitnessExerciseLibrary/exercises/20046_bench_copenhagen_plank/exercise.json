@@ -1,11 +1,12 @@
 {
-  "id": "20046_copenhagen_plank",
+  "id": "20046_bench_copenhagen_plank",
   "numeric_id": "20046",
-  "slug": "copenhagen_plank",
-  "name": "Copenhagen Plank",
+  "slug": "bench_copenhagen_plank",
+  "name": "Bench Copenhagen Plank",
   "aliases": [
     "Adductor Side Plank",
-    "Short-Lever Copenhagen Plank"
+    "Short-Lever Copenhagen Plank",
+    "Copenhagen Plank"
   ],
   "taxonomy": {
     "modality": "duration",

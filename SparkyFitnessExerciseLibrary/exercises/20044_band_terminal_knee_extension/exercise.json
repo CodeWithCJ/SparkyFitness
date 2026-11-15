@@ -1,11 +1,12 @@
 {
-  "id": "20044_terminal_knee_extension",
+  "id": "20044_band_terminal_knee_extension",
   "numeric_id": "20044",
-  "slug": "terminal_knee_extension",
-  "name": "Terminal Knee Extension",
+  "slug": "band_terminal_knee_extension",
+  "name": "Band Terminal Knee Extension",
   "aliases": [
     "Banded TKE",
-    "Standing Terminal Knee Extension"
+    "Standing Terminal Knee Extension",
+    "Terminal Knee Extension"
   ],
   "taxonomy": {
     "modality": "reps_only",

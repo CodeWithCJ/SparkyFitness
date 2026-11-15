@@ -1,11 +1,12 @@
 {
-  "id": "20038_standing_resistance_band_row",
+  "id": "20038_band_standing_row",
   "numeric_id": "20038",
-  "slug": "standing_resistance_band_row",
-  "name": "Standing Resistance Band Row",
+  "slug": "band_standing_row",
+  "name": "Band Standing Row",
   "aliases": [
     "Band Horizontal Row",
-    "Standing Band Pull"
+    "Standing Band Pull",
+    "Standing Resistance Band Row"
   ],
   "taxonomy": {
     "modality": "reps_only",

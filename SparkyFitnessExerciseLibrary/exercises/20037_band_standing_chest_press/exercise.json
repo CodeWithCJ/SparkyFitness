@@ -1,11 +1,12 @@
 {
-  "id": "20037_standing_resistance_band_chest_press",
+  "id": "20037_band_standing_chest_press",
   "numeric_id": "20037",
-  "slug": "standing_resistance_band_chest_press",
-  "name": "Standing Resistance Band Chest Press",
+  "slug": "band_standing_chest_press",
+  "name": "Band Standing Chest Press",
   "aliases": [
     "Band Chest Press",
-    "Standing Band Push"
+    "Standing Band Push",
+    "Standing Resistance Band Chest Press"
   ],
   "taxonomy": {
     "modality": "reps_only",

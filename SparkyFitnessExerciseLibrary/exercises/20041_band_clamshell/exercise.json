@@ -1,11 +1,12 @@
 {
-  "id": "20041_banded_clamshell",
+  "id": "20041_band_clamshell",
   "numeric_id": "20041",
-  "slug": "banded_clamshell",
-  "name": "Banded Clamshell",
+  "slug": "band_clamshell",
+  "name": "Band Clamshell",
   "aliases": [
     "Resistance Loop Clamshell",
-    "Mini-Band Clam"
+    "Mini-Band Clam",
+    "Banded Clamshell"
   ],
   "taxonomy": {
     "modality": "reps_only",
