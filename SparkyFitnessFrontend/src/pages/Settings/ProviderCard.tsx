@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -771,6 +772,24 @@ export const ProviderCard = ({
             )}
           {provider.sync_frequency && (
             <span>{` - ${t('settings.providerCard.syncLabel', 'Sync:')} ${provider.sync_frequency}`}</span>
+          )}
+          {provider.provider_type === MCP_SERVER_PROVIDER_TYPE && (
+            <span>
+              {` - ${t(
+                'settings.providerCard.mcpServerToolCount',
+                'Chat may use {{count}} tools',
+                {
+                  count: provider.provider_options?.allowed_tools.length ?? 0,
+                  defaultValue_one: 'Chat may use {{count}} tool',
+                  defaultValue_other: 'Chat may use {{count}} tools',
+                }
+              )}`}
+              {provider.provider_options?.send_user_id &&
+                ` - ${t(
+                  'settings.providerCard.mcpServerSendsUserId',
+                  'Tells the server who is chatting'
+                )}`}
+            </span>
           )}
         </p>
 

@@ -85,6 +85,40 @@ describe('workoutPlayback utils', () => {
     expect(draft.exercises[1]?.image_url).toBe('Bent_Over_Barbell_Row/0.jpg');
   });
 
+  it('keeps the equipment the preset API sends on each exercise', () => {
+    // GET /api/workout-presets returns library equipment on the preset
+    // exercise itself, with no nested `exercise` object. The plate
+    // calculator in playback is offered only when this reaches the draft.
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise, index) => ({
+        ...exercise,
+        equipment: index === 0 ? ['Barbell'] : [],
+      })),
+    } as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.equipment).toEqual(['Barbell']);
+    expect(draft.exercises[1]?.equipment).toEqual([]);
+  });
+
+  it('falls back to the nested exercise equipment when the preset has none', () => {
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise) => ({
+        ...exercise,
+        exercise: { equipment: ['EZ Bar'] },
+      })),
+    } as unknown as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.equipment).toEqual(['EZ Bar']);
+  });
+
   it('builds a route state that carries the draft and return path', () => {
     const routeState = createWorkoutPlaybackRouteState(
       createPresetFixture(),

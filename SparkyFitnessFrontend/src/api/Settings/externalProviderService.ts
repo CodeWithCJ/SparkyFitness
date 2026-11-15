@@ -1,4 +1,9 @@
 import i18n from 'i18next';
+import type {
+  McpServerOptions,
+  McpServerToolsRequest,
+  McpServerToolsResponse,
+} from '@workspace/shared';
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall, HttpApiError } from '@/api/api';
 import { DataProvider } from '@/types/settings';
@@ -880,6 +885,7 @@ export interface CreateGlobalProviderPayload {
   app_key?: string | null;
   base_url?: string | null;
   is_active: boolean;
+  provider_options?: McpServerOptions;
 }
 
 export const getGlobalExternalProviders = async (): Promise<
@@ -906,6 +912,17 @@ export const updateGlobalExternalProvider = async (
   return apiCall(`/admin/external-data-providers/global/${providerId}`, {
     method: 'PUT',
     body: JSON.stringify(providerData),
+  });
+};
+
+// The form shows why the tools could not be loaded, so no toast.
+export const listMcpServerTools = async (
+  request: McpServerToolsRequest
+): Promise<McpServerToolsResponse> => {
+  return apiCall('/admin/external-data-providers/mcp-server/tools', {
+    method: 'POST',
+    body: JSON.stringify(request),
+    suppressErrorToast: true,
   });
 };
 

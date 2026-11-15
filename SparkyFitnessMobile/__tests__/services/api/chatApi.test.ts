@@ -177,3 +177,38 @@ describe('mapHistoryToInitialMessages', () => {
     ]);
   });
 });
+
+it('keeps pending approval parts, exact ids, arguments and source metadata on reload', () => {
+  const parts = [
+    {
+      type: 'tool-sparky_write',
+      toolCallId: 'call',
+      state: 'approval-requested',
+      input: { action: 'save' },
+      approval: { id: 'approval' },
+    },
+  ];
+  const metadata = {
+    custom: {
+      outsideSource: {
+        servers: ['Notes'],
+        toolServers: {},
+        approvalSources: { call: ['Notes'] },
+      },
+      savedMessageId: 'saved',
+    },
+  };
+  const [message] = mapHistoryToInitialMessages([
+    entry({ id: 'saved', message_type: 'assistant', parts, metadata }),
+  ]);
+  expect(message).toMatchObject({ id: 'saved', parts, metadata });
+});
+
+it('marks a legacy saved message as deletable even without stored metadata', () => {
+  const [message] = mapHistoryToInitialMessages([
+    entry({ id: 'saved-row', metadata: undefined }),
+  ]);
+  expect(message.metadata).toMatchObject({
+    custom: { savedMessageId: 'saved-row' },
+  });
+});

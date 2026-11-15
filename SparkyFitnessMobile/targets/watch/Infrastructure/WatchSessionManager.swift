@@ -783,7 +783,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         if workoutStore.plan?.sessionId == plan.sessionId { return }
         // A wrist-only run already holds the watch's one workout session; a
         // second would end one of them. The workout carries on on the phone.
-        if WatchRunStore.shared.isActive { return }
+        // So does an indoor run whose workout is still being written to Health.
+        if WatchRunStore.shared.isActive || WatchRunHealthKitController.shared.holdsWorkoutSession { return }
 
         // Recovery may still be reattaching the previous HealthKit session.
         // Queue the plan and let that finish (and stop the old session)

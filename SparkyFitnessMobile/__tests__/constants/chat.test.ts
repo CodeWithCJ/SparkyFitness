@@ -8,22 +8,22 @@ describe('getToolDisplay', () => {
   it('maps the high-traffic logging tools to friendly labels + icons', () => {
     expect(getToolDisplay('sparky_manage_food')).toEqual({
       labelKey: 'chat.tools.food',
-      defaultLabel: 'Food',
+      defaultLabel: '',
       icon: 'food',
     });
     expect(getToolDisplay('sparky_manage_exercise')).toEqual({
       labelKey: 'chat.tools.exercise',
-      defaultLabel: 'Exercise',
+      defaultLabel: '',
       icon: 'exercise',
     });
     expect(getToolDisplay('sparky_manage_checkin')).toEqual({
       labelKey: 'chat.tools.checkin',
-      defaultLabel: 'Check-in',
+      defaultLabel: '',
       icon: 'measurements',
     });
     expect(getToolDisplay('sparky_manage_goals')).toEqual({
       labelKey: 'chat.tools.goals',
-      defaultLabel: 'Goals',
+      defaultLabel: '',
       icon: 'flame',
     });
   });
@@ -36,13 +36,15 @@ describe('getToolDisplay', () => {
     });
   });
 
-  it('humanizes unmapped tool names and falls back to the wrench icon', () => {
+  it('uses the generic translated label for unmapped tool names', () => {
     expect(getToolDisplay('sparky_search_foods')).toEqual({
-      defaultLabel: 'Search foods',
+      labelKey: 'chat.tools.generic',
+      defaultLabel: '',
       icon: 'wrench',
     });
     expect(getToolDisplay('some_random_tool')).toEqual({
-      defaultLabel: 'Some random tool',
+      labelKey: 'chat.tools.generic',
+      defaultLabel: '',
       icon: 'wrench',
     });
   });

@@ -1,4 +1,5 @@
 import { Database, GripVertical } from 'lucide-react';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import {
   useExternalProviders,
@@ -245,7 +246,8 @@ const ExternalProviderList = ({
         editData.provider_type === 'open_meteo' ||
         editData.provider_type === 'free-exercise-db' ||
         editData.provider_type === 'openfoodfacts' ||
-        editData.provider_type === 'coros_mcp'
+        editData.provider_type === 'coros_mcp' ||
+        editData.provider_type === MCP_SERVER_PROVIDER_TYPE
           ? editData.base_url || null
           : null,
       withings_last_sync_at:
@@ -315,6 +317,10 @@ const ExternalProviderList = ({
           app_key: providerUpdateData.app_key,
           base_url: providerUpdateData.base_url,
           is_active: providerUpdateData.is_active,
+          provider_options:
+            editData.provider_type === MCP_SERVER_PROVIDER_TYPE
+              ? (editData.provider_options ?? undefined)
+              : undefined,
         };
         await updateGlobalProvider({
           id: providerId,
@@ -422,6 +428,7 @@ const ExternalProviderList = ({
       coros_token_expires: provider.coros_token_expires || '',
       liftosaur_last_sync_at: provider.liftosaur_last_sync_at || '',
       intervals_last_sync_at: provider.intervals_last_sync_at || '',
+      provider_options: provider.provider_options ?? null,
     });
   };
 

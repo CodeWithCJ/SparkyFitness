@@ -126,7 +126,14 @@ export type RootStackParamList = {
     { providerId: string; recipeSlug: string; scope: string } | undefined;
   MealPlans: undefined;
   WorkoutPlans: undefined;
-  WorkoutPlanForm: { template?: WorkoutPlanTemplate } | undefined;
+  WorkoutPlanForm:
+    | {
+        template?: WorkoutPlanTemplate;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      }
+    | undefined;
+  WorkoutPlanDetail: { template: WorkoutPlanTemplate };
   RunPrograms: undefined;
   RunProgramCalendar: undefined;
   RunProgramWorkout: { index: number };
@@ -512,6 +519,7 @@ export type RootStackParamList = {
   CustomCategoryEdit: { categoryId?: string } | undefined;
   WorkoutSettings: undefined;
   WarmupSettings: undefined;
+  TreadmillSettings: undefined;
   HeartRateZonesSettings: undefined;
   ServerSettings: undefined;
   PasskeySettings: undefined;

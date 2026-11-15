@@ -33,6 +33,7 @@ const MD4C_FLAGS = { latexMath: false } as const;
 const REMEND_OPTIONS = { katex: false, linkMode: 'text-only' } as const;
 
 function openLink({ url }: LinkPressEvent) {
+  if (!/^https?:\/\//i.test(url)) return;
   Linking.openURL(url).catch((error) => {
     addLog('Failed to open chat link', 'WARNING', [url, String(error)]);
   });
@@ -97,7 +98,12 @@ export default function MarkdownMessage({
     [body, muted, accent, raised, background, border, fontSize, styleOverrides]
   );
 
-  const markdown = useMemo(() => remend(text, REMEND_OPTIONS), [text]);
+  // The native API has no image filter. Escaping the image opener blocks
+  // inline and reference images before native code can start a download.
+  const markdown = useMemo(
+    () => remend(text, REMEND_OPTIONS).replace(/\\*!\[/g, '\\!['),
+    [text]
+  );
 
   return (
     <EnrichedMarkdownText

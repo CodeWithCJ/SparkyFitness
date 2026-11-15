@@ -19,18 +19,18 @@ vi.mock('../security/encryption.js', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 describe('externalProviderRepository base_url clearing', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: {
+    query: ReturnType<typeof vi.fn>;
+    release: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockClient = {
       query: vi.fn().mockResolvedValue({ rows: [{ id: 'provider-1' }] }),
       release: vi.fn(),
     };
-    // @ts-expect-error mock typing
-    getClient.mockResolvedValue(mockClient);
-    // @ts-expect-error mock typing
-    getSystemClient.mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(mockClient as never);
+    vi.mocked(getSystemClient).mockResolvedValue(mockClient as never);
   });
 
   afterEach(() => {
@@ -73,7 +73,9 @@ describe('externalProviderRepository base_url clearing', () => {
   it('updateGlobalExternalDataProvider passes clearBaseUrl=true when base_url is explicitly null', async () => {
     await updateGlobalExternalDataProvider('provider-1', { base_url: null });
 
-    const [query, params] = mockClient.query.mock.calls[0];
+    const [query, params] = mockClient.query.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE external_data_providers')
+    )!;
     expect(query).toContain(
       'base_url = CASE WHEN $15 THEN NULL ELSE COALESCE($4, base_url) END'
     );
@@ -86,7 +88,9 @@ describe('externalProviderRepository base_url clearing', () => {
       base_url: 'http://sparkyfitness-foodfacts:8080',
     });
 
-    const [, params] = mockClient.query.mock.calls[0];
+    const [, params] = mockClient.query.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE external_data_providers')
+    )!;
     expect(params[3]).toBe('http://sparkyfitness-foodfacts:8080');
     expect(params[14]).toBe(false);
   });
