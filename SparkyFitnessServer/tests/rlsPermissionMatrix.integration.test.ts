@@ -38,6 +38,10 @@ import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { getClient, getSystemClient, endPool } from '../db/poolManager.js';
+import challengeRepository, {
+  type QueuedMemberDays,
+} from '../models/challengeRepository.js';
+import { rulesForDay } from '../services/challengeService.js';
 
 // Probe the app role RLS actually needs, with a short timeout, using a
 // standalone client. Returns false on any failure so the suite skips rather
@@ -1718,13 +1722,16 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
   });
 
   afterAll(async () => {
-    await sys.query('DELETE FROM public.challenges WHERE id = $1', [
-      challengeId,
-    ]);
-    await sys.query('DELETE FROM public."user" WHERE id = ANY($1::uuid[])', [
-      USERS,
-    ]);
-    sys.release();
+    try {
+      await sys.query('DELETE FROM public.challenges WHERE id = $1', [
+        challengeId,
+      ]);
+      await sys.query('DELETE FROM public."user" WHERE id = ANY($1::uuid[])', [
+        USERS,
+      ]);
+    } finally {
+      sys.release();
+    }
   });
 
   const count = async (
@@ -1814,6 +1821,100 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       [challengeId, AMY]
     );
     expect(rows.map((r: { day: string }) => r.day)).toEqual(['2026-11-12']);
+  });
+
+  it('a taken queue day stays queued until it is acked, and a day queued again since survives the ack', async () => {
+    const mine = (batches: QueuedMemberDays[]) =>
+      batches.filter(
+        (b) => b.challenge_id === challengeId && b.user_id === AMY
+      );
+    const [batch] = mine(await challengeRepository.takeQueuedDays(500, 0, 600));
+    expect(batch?.days).toEqual(['2026-11-12']);
+    // Leased: still in the table, but not taken again
+    expect(mine(await challengeRepository.takeQueuedDays(500, 0, 600))).toEqual(
+      []
+    );
+    // A new edit re-queues the day while it is being scored; the ack keeps it
+    await challengeRepository.enqueueDays(challengeId, AMY, ['2026-11-12']);
+    await challengeRepository.ackQueuedDays(batch!);
+    const [again] = mine(await challengeRepository.takeQueuedDays(500, 0, 600));
+    expect(again?.days).toEqual(['2026-11-12']);
+    await challengeRepository.ackQueuedDays(again!);
+    const left = await sys.query(
+      'SELECT COUNT(*)::int AS n FROM public.challenge_score_queue WHERE challenge_id = $1',
+      [challengeId]
+    );
+    expect(left.rows[0].n).toBe(0);
+  });
+
+  it('two overlapping rules changes: the one written last wins, not the one that started first', async () => {
+    const steps = { version: 1, metric: 'steps' };
+    const a = await getSystemClient();
+    try {
+      await a.query('BEGIN');
+      await a.query('SELECT now()'); // A's transaction (and created_at) starts here
+      await new Promise((r) => setTimeout(r, 20));
+      await challengeRepository.updateRules(
+        challengeId,
+        HOST,
+        { ...steps, dailyCap: 5000 },
+        steps,
+        '2026-11-16',
+        1
+      );
+      await a.query(
+        'UPDATE public.challenges SET rules = $2::jsonb WHERE id = $1',
+        [challengeId, JSON.stringify({ ...steps, dailyCap: 7000 })]
+      );
+      await a.query(
+        `INSERT INTO public.challenge_rule_changes (challenge_id, changed_by_user_id, effective_from, rules)
+         VALUES ($1, $2, '2026-11-16', $3::jsonb)`,
+        [challengeId, HOST, JSON.stringify({ ...steps, dailyCap: 7000 })]
+      );
+      await a.query('COMMIT');
+    } finally {
+      a.release();
+    }
+    const changes = await challengeRepository.getRuleChanges(challengeId);
+    const late = changes.filter((c) => c.effective_from === '2026-11-16');
+    // A started first, so its created_at is earlier, but it was written last
+    expect(late.map((c) => (c.rules as { dailyCap: number }).dailyCap)).toEqual(
+      [5000, 7000]
+    );
+    expect(new Date(late[1]!.created_at).getTime()).toBeLessThan(
+      new Date(late[0]!.created_at).getTime()
+    );
+    expect(rulesForDay(changes, '2026-11-16').dailyCap).toBe(7000);
+  });
+
+  it('scoring runs for one member and challenge do not overlap', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const first = challengeRepository.withScoringLock(
+      challengeId,
+      AMY,
+      async () => {
+        order.push('first:start');
+        await held;
+        order.push('first:end');
+      }
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    const second = challengeRepository.withScoringLock(
+      challengeId,
+      AMY,
+      async () => {
+        order.push('second:start');
+      }
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    expect(order).toEqual(['first:start']);
+    release();
+    await Promise.all([first, second]);
+    expect(order).toEqual(['first:start', 'first:end', 'second:start']);
   });
 
   it("deleting an account removes that person's challenge rows", async () => {

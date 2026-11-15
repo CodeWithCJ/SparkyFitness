@@ -54,6 +54,8 @@ export interface ChallengeMemberRow {
 
 export interface ChallengeRuleChangeRow {
   id: string;
+  /** Write order; pg returns the bigint as a string. */
+  seq: string;
   challenge_id: string;
   changed_by_user_id: string | null;
   changed_by_display_name: string | null;
@@ -271,14 +273,14 @@ async function getRuleChangesForMember(
 ): Promise<ChallengeRuleChangeRow[]> {
   return asMember(userId, async (client) => {
     const { rows } = await client.query(
-      `SELECT r.id, r.challenge_id, r.changed_by_user_id, m.display_name AS changed_by_display_name,
+      `SELECT r.id, r.seq, r.challenge_id, r.changed_by_user_id, m.display_name AS changed_by_display_name,
               TO_CHAR(r.effective_from, 'YYYY-MM-DD') AS effective_from, r.rules,
               r.previous_rules, r.created_at
          FROM challenge_rule_changes r
          LEFT JOIN challenge_members m
            ON m.challenge_id = r.challenge_id AND m.user_id = r.changed_by_user_id
         WHERE r.challenge_id = $1
-        ORDER BY r.effective_from, r.created_at`,
+        ORDER BY r.effective_from, r.seq`,
       [challengeId]
     );
     return rows as ChallengeRuleChangeRow[];
@@ -329,11 +331,11 @@ async function getRuleChanges(
 ): Promise<ChallengeRuleChangeRow[]> {
   return withSystem(async (client) => {
     const { rows } = await client.query(
-      `SELECT id, challenge_id, changed_by_user_id, NULL AS changed_by_display_name,
+      `SELECT id, seq, challenge_id, changed_by_user_id, NULL AS changed_by_display_name,
               TO_CHAR(effective_from, 'YYYY-MM-DD') AS effective_from, rules,
               previous_rules, created_at
          FROM challenge_rule_changes WHERE challenge_id = $1
-        ORDER BY effective_from, created_at`,
+        ORDER BY effective_from, seq`,
       [challengeId]
     );
     return rows as ChallengeRuleChangeRow[];
@@ -397,8 +399,9 @@ async function createWithHost(input: NewChallenge): Promise<string> {
 }
 
 /**
- * Replaces the rules from `effectiveFrom` on and logs the change. A change
- * already waiting for the same day is replaced in the log by this one.
+ * Replaces the rules from `effectiveFrom` on and logs the change. The UPDATE
+ * locks the challenge row first, so the log's seq follows the order the
+ * changes were really written in; the latest change for a day wins.
  */
 async function updateRules(
   challengeId: string,
@@ -627,17 +630,23 @@ export interface QueuedMemberDays {
   challenge_id: string;
   user_id: string;
   days: string[];
+  /** The lease stamp the rows were taken with; pass it back to ackQueuedDays. */
+  claim: string;
 }
 
 /**
- * Takes up to `limit` member-days that have been quiet for `quietSeconds`,
- * removing them from the queue. SKIP LOCKED lets a second instance take
- * other rows at the same time. A day queued again while it is being scored
- * goes back in the queue and is scored on a later run.
+ * Takes up to `limit` member-days that have been quiet for `quietSeconds`.
+ * The rows stay in the queue: their queued_at moves `leaseSeconds` into the
+ * future, so no other run takes them meanwhile, and they are deleted by
+ * ackQueuedDays once the scores are saved. A worker that dies mid-run leaves
+ * them to come back when the lease runs out. SKIP LOCKED lets a second
+ * instance take other rows at the same time. A day queued again while it is
+ * being scored gets a new queued_at, so the ack leaves it for a later run.
  */
 async function takeQueuedDays(
   limit: number,
-  quietSeconds: number
+  quietSeconds: number,
+  leaseSeconds: number
 ): Promise<QueuedMemberDays[]> {
   return withSystem(async (client) => {
     const { rows } = await client.query(
@@ -649,29 +658,74 @@ async function takeQueuedDays(
           LIMIT $1
           FOR UPDATE SKIP LOCKED
        )
-       DELETE FROM challenge_score_queue q
-        USING taken t
+       UPDATE challenge_score_queue q
+          SET queued_at = now() + make_interval(secs => $3)
+         FROM taken t
         WHERE q.challenge_id = t.challenge_id AND q.user_id = t.user_id AND q.day = t.day
-       RETURNING q.challenge_id, q.user_id, TO_CHAR(q.day, 'YYYY-MM-DD') AS day`,
-      [limit, quietSeconds]
+       RETURNING q.challenge_id, q.user_id, TO_CHAR(q.day, 'YYYY-MM-DD') AS day,
+                 q.queued_at::text AS claim`,
+      [limit, quietSeconds, leaseSeconds]
     );
     const grouped = new Map<string, QueuedMemberDays>();
     for (const row of rows as {
       challenge_id: string;
       user_id: string;
       day: string;
+      claim: string;
     }[]) {
       const key = `${row.challenge_id}:${row.user_id}`;
       const entry = grouped.get(key) ?? {
         challenge_id: row.challenge_id,
         user_id: row.user_id,
         days: [],
+        claim: row.claim,
       };
       entry.days.push(row.day);
       grouped.set(key, entry);
     }
     return [...grouped.values()];
   });
+}
+
+/** Removes taken member-days once scored; a day queued again since keeps its row. */
+async function ackQueuedDays(batch: QueuedMemberDays): Promise<void> {
+  await withSystem((client) =>
+    client.query(
+      `DELETE FROM challenge_score_queue
+        WHERE challenge_id = $1 AND user_id = $2 AND day = ANY($3::date[])
+          AND queued_at = $4::timestamptz`,
+      [batch.challenge_id, batch.user_id, batch.days, batch.claim]
+    )
+  );
+}
+
+/**
+ * Runs one member's read-score-save cycle for one challenge while holding an
+ * advisory lock on that pair, across instances. The queue job and the
+ * finaliser both score through here, so a run that read older data can never
+ * save over the scores of a run that started after it, and the finaliser
+ * never freezes such a stale save.
+ */
+async function withScoringLock<T>(
+  challengeId: string,
+  userId: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const client = await getSystemClient();
+  const key = `challenge-score:${challengeId}:${userId}`;
+  let unlocked = false;
+  try {
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [key]);
+    try {
+      return await fn();
+    } finally {
+      await client.query('SELECT pg_advisory_unlock(hashtext($1))', [key]);
+      unlocked = true;
+    }
+  } finally {
+    // A session lock that could not be released goes with the connection.
+    client.release(unlocked ? undefined : true);
+  }
 }
 
 export interface DailyScoreInput {
@@ -937,6 +991,8 @@ export default {
   enqueueDays,
   enqueueRecentDaysForRunningChallenges,
   takeQueuedDays,
+  ackQueuedDays,
+  withScoringLock,
   saveMemberDays,
   hasResults,
   frozenPeriodStarts,

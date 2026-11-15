@@ -150,9 +150,12 @@ CREATE INDEX IF NOT EXISTS idx_challenge_results_user
 
 -- Every rules change, visible to all members, so nobody can move the
 -- goalposts unseen. A day is scored by the latest change effective on or
--- before it.
+-- before it. "Latest" is seq, taken when the row is inserted, after the
+-- update has locked the challenge row; created_at (transaction start) can be
+-- out of order between two overlapping changes.
 CREATE TABLE IF NOT EXISTS public.challenge_rule_changes (
     id UUID DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    seq BIGINT GENERATED ALWAYS AS IDENTITY,
     challenge_id UUID NOT NULL REFERENCES public.challenges(id) ON DELETE CASCADE,
     changed_by_user_id UUID REFERENCES public."user"(id) ON DELETE SET NULL,
     effective_from DATE NOT NULL,
@@ -162,11 +165,13 @@ CREATE TABLE IF NOT EXISTS public.challenge_rule_changes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_challenge_rule_changes_challenge
-    ON public.challenge_rule_changes(challenge_id, effective_from, created_at);
+    ON public.challenge_rule_changes(challenge_id, effective_from, seq);
 
 -- Member-days waiting to be scored again. Filled by the trigger below; the
 -- score job takes a day once it has been quiet for a short while, so a burst of
--- edits is scored once. The primary key collapses repeats.
+-- edits is scored once. The primary key collapses repeats. Taking a day pushes
+-- queued_at into the future as a lease; the row is deleted only after the
+-- scores are saved, so a worker that dies mid-run leaves the day queued.
 CREATE TABLE IF NOT EXISTS public.challenge_score_queue (
     challenge_id UUID NOT NULL,
     user_id UUID NOT NULL,

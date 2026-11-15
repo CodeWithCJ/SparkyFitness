@@ -18,6 +18,10 @@ export const challengeInviteCodeSchema = z
 export const CHALLENGE_DEFAULT_MEMBER_LIMIT = 50;
 export const CHALLENGE_MAX_MEMBER_LIMIT = 200;
 export const CHALLENGE_MAX_LENGTH_DAYS = 365;
+/** A new challenge may start at most this many days before today... */
+export const CHALLENGE_MAX_BACKDATE_DAYS = 31;
+/** ...and at most this many days after it. */
+export const CHALLENGE_MAX_START_AHEAD_DAYS = 365;
 export const CHALLENGE_INVITE_DEFAULT_DAYS = 7;
 export const CHALLENGE_INVITE_MAX_DAYS = 30;
 

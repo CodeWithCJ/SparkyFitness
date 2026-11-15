@@ -3,6 +3,8 @@ import { z } from 'zod';
 /** `public.challenge_rule_changes` (see the Challenges migration). */
 export const challengeRuleChangesSchema = z.object({
   id: z.string(),
+  /** Write order (identity), taken after the challenge row is locked. */
+  seq: z.coerce.number(),
   challenge_id: z.string(),
   changed_by_user_id: z.string().nullable(),
   effective_from: z.string(),

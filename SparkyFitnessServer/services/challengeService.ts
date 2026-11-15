@@ -1,13 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   CHALLENGE_DEFAULT_MEMBER_LIMIT,
+  CHALLENGE_MAX_BACKDATE_DAYS,
   CHALLENGE_MAX_LENGTH_DAYS,
+  CHALLENGE_MAX_START_AHEAD_DAYS,
   CHALLENGE_RULES_VERSION,
   DEFAULT_CHALLENGE_GOAL_TYPE,
   DEFAULT_CHALLENGE_PRESET_ID,
   addDays,
   challengeCountedEntries,
   challengeEntryClass,
+  challengeMeasuredMinutes,
   challengePeriodTotal,
   challengePeriodWindow,
   challengePeriodsUpTo,
@@ -81,6 +84,8 @@ export const INVITE_WINDOW_MS = 60 * 60 * 1000;
 export const LATE_SYNC_DAYS = 2;
 /** Score-queue rows wait this long after the last change before being scored. */
 export const SCORE_QUIET_SECONDS = 30;
+/** Taken queue rows are hidden this long; if the run dies they come back after it. */
+export const SCORE_LEASE_SECONDS = 10 * 60;
 const SCORE_BATCH = 500;
 /** History read before the first scored day, for PRs, averages and goals. */
 const MIN_LOOKBACK_DAYS = 35;
@@ -178,14 +183,16 @@ async function requireHost(
 export function rulesForDay(
   changes: readonly Pick<
     ChallengeRuleChangeRow,
-    'effective_from' | 'rules' | 'created_at'
+    'effective_from' | 'rules' | 'seq'
   >[],
   day: string
 ): ChallengeRules {
+  // seq is the write order; created_at is the transaction start and can be
+  // out of order between two overlapping changes.
   const ordered = [...changes].sort(
     (a, b) =>
       a.effective_from.localeCompare(b.effective_from) ||
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      Number(a.seq) - Number(b.seq)
   );
   let chosen = ordered[0];
   for (const change of ordered) {
@@ -223,6 +230,25 @@ function validateDates(
   }
 }
 
+/**
+ * A new challenge starts at most CHALLENGE_MAX_BACKDATE_DAYS before today and
+ * CHALLENGE_MAX_START_AHEAD_DAYS after it, in the challenge's zone. Scoring,
+ * the backfill and finalising all walk the days from the start, so a start
+ * date far in the past would make them walk years.
+ */
+function validateStartDate(startDate: string, today: string): void {
+  if (
+    startDate < addDays(today, -CHALLENGE_MAX_BACKDATE_DAYS) ||
+    startDate > addDays(today, CHALLENGE_MAX_START_AHEAD_DAYS)
+  ) {
+    throw new ChallengeError(
+      400,
+      'CHALLENGE_INVALID_DATES',
+      `start_date must be within ${CHALLENGE_MAX_BACKDATE_DAYS} days before and ${CHALLENGE_MAX_START_AHEAD_DAYS} days after today`
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Owner-only actions (the routes refuse a delegated or switched context)
 // ---------------------------------------------------------------------------
@@ -243,6 +269,7 @@ export async function createChallenge(
     body.time_zone && isValidTimeZone(body.time_zone)
       ? body.time_zone
       : await loadUserTimezone(userId);
+  validateStartDate(body.start_date, todayInZone(timeZone));
   const id = await challengeRepository.createWithHost({
     ownerUserId: userId,
     name: body.name,
@@ -478,10 +505,17 @@ async function queueBackfill(
   const today = todayInZone(timeZone);
   const last = endDate && endDate < today ? endDate : today;
   if (last < startDate) return;
+  // One backfill queues at most one maximum-length span, whatever the start
+  // (an open-ended challenge can run longer than that). Scoring runs from
+  // the earliest queued day on, and frozen periods are skipped anyway.
+  const first =
+    daysBetween(startDate, last) >= CHALLENGE_MAX_LENGTH_DAYS
+      ? addDays(last, -(CHALLENGE_MAX_LENGTH_DAYS - 1))
+      : startDate;
   await challengeRepository.enqueueDays(
     challengeId,
     userId,
-    daysInRange(startDate, last)
+    daysInRange(first, last)
   );
 }
 
@@ -707,8 +741,12 @@ export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
   };
 }
 
+/** The points builder, when the challenge scores points; other metrics ignore it. */
+const pointsRules = (rules: ChallengeRules) =>
+  rules.metric === 'points' ? rules.points : null;
+
 function lookbackDays(rules: ChallengeRules): number {
-  const p = rules.points;
+  const p = pointsRules(rules);
   if (!p) return 0;
   return Math.max(
     MIN_LOOKBACK_DAYS,
@@ -746,20 +784,35 @@ function rulesRuns(
 }
 
 /**
- * Scores one member of one challenge from `fromDay` to their latest day,
- * reading only that member's own data, and stores the days and cards. Days
- * in frozen periods are left alone.
+ * Scores one member of one challenge from `fromDay` to their latest day (or
+ * to `toDay`), reading only that member's own data, and stores the days and
+ * cards. Days in frozen periods are left alone. The whole read-score-save
+ * cycle holds the member's scoring lock, so overlapping runs (the queue job
+ * and the finaliser) save in the order they read.
  */
 export async function recomputeMember(
   challenge: ChallengeRow,
   member: Pick<ChallengeMemberRow, 'user_id' | 'goal_type'>,
-  fromDay: string
+  fromDay: string,
+  toDay?: string
+): Promise<void> {
+  await challengeRepository.withScoringLock(challenge.id, member.user_id, () =>
+    recomputeMemberLocked(challenge, member, fromDay, toDay)
+  );
+}
+
+async function recomputeMemberLocked(
+  challenge: ChallengeRow,
+  member: Pick<ChallengeMemberRow, 'user_id' | 'goal_type'>,
+  fromDay: string,
+  toDay: string | undefined
 ): Promise<void> {
   const changes = await challengeRepository.getRuleChanges(challenge.id);
   if (!changes.length) return;
   const today = todayInZone(challenge.time_zone);
   let to = addDays(today, 1);
   if (challenge.end_date && challenge.end_date < to) to = challenge.end_date;
+  if (toDay && toDay < to) to = toDay;
   let from = fromDay < challenge.start_date ? challenge.start_date : fromDay;
   const current = parseStoredRules(challenge.rules);
   const frozen = new Set(
@@ -791,14 +844,17 @@ export async function recomputeMember(
   for (const run of runs) {
     const days = scoreChallengeDays(data, run.from, run.to, run.rules);
     const counted = challengeCountedEntries(entries, run.rules);
+    const points = pointsRules(run.rules);
     for (const d of days) {
-      const goal = run.rules.points?.goal
+      // The goal counts the same workouts as the day scores (manual entries
+      // ignored, duplicates merged, filters applied).
+      const goal = points?.goal
         ? challengeWeekGoal(
-            entries,
+            counted,
             member.goal_type,
             challengeWeekStart(d.date),
             d.date,
-            run.rules.points
+            points
           )
         : null;
       scores.push({
@@ -824,6 +880,7 @@ export async function recomputeMember(
       const pointsById = new Map(d.entries.map((e) => [e.id, e.points]));
       for (const e of counted.filter((x) => x.date === d.date)) {
         const km = e.distanceM ? e.distanceM / 1000 : 0;
+        const measured = challengeMeasuredMinutes(e);
         const row = rows.find((r) => r.id === e.id);
         cards.push({
           exercise_entry_id: e.id,
@@ -833,7 +890,7 @@ export async function recomputeMember(
           minutes: e.durationMin,
           distance_meters: e.distanceM ?? null,
           pace_seconds_per_km:
-            km > 0 && e.durationMin > 0 ? (e.durationMin * 60) / km : null,
+            km > 0 && measured > 0 ? (measured * 60) / km : null,
           avg_heart_rate: e.avgHr ? Math.round(e.avgHr) : null,
           max_heart_rate:
             row && n(row.max_heart_rate)
@@ -859,7 +916,8 @@ export async function processScoreQueue(): Promise<number> {
   if (!(await challengesEnabled())) return 0;
   const batches = await challengeRepository.takeQueuedDays(
     SCORE_BATCH,
-    SCORE_QUIET_SECONDS
+    SCORE_QUIET_SECONDS,
+    SCORE_LEASE_SECONDS
   );
   let done = 0;
   const challenges = new Map<string, ChallengeRow | null>();
@@ -872,17 +930,21 @@ export async function processScoreQueue(): Promise<number> {
         );
       }
       const challenge = challenges.get(batch.challenge_id);
-      if (!challenge) continue;
-      const member = await challengeRepository.getMembership(
-        batch.challenge_id,
-        batch.user_id
-      );
-      if (!member) continue;
-      const fromDay = [...batch.days].sort()[0]!;
-      await recomputeMember(challenge, member, fromDay);
-      done += 1;
+      const member = challenge
+        ? await challengeRepository.getMembership(
+            batch.challenge_id,
+            batch.user_id
+          )
+        : null;
+      if (challenge && member) {
+        const fromDay = [...batch.days].sort()[0]!;
+        await recomputeMember(challenge, member, fromDay);
+        done += 1;
+      }
+      // Only now, with the scores saved, do the days leave the queue.
+      await challengeRepository.ackQueuedDays(batch);
     } catch (error) {
-      // Put the days back so the next run tries again.
+      // Put the days back now rather than when the lease runs out.
       try {
         await challengeRepository.enqueueDays(
           batch.challenge_id,
@@ -890,7 +952,7 @@ export async function processScoreQueue(): Promise<number> {
           batch.days
         );
       } catch {
-        // The nightly catch-up queues these days again.
+        // The lease runs out and the days come back on their own.
       }
       log(
         'error',
@@ -951,8 +1013,10 @@ export async function finalizeChallenge(
     if (frozen.has(window.start)) continue;
     if (addDays(window.end, LATE_SYNC_DAYS + 1) > today) break;
     const members = await challengeRepository.getMembers(challenge.id);
+    // Only this period: later days are scored by the queue and by their own
+    // period's finalising, so overdue periods do not rescore the same days.
     for (const member of members) {
-      await recomputeMember(challenge, member, window.start);
+      await recomputeMember(challenge, member, window.start, window.end);
     }
     const rules = rulesForDay(changes, window.start);
     const scores = await challengeRepository.getDailyScores(
