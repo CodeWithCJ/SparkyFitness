@@ -1,8 +1,7 @@
 import SwiftUI
 
-// The original layout of this page, kept as the default while the larger-
-// text `GoalSummaryView` is opt-in (Settings → Apple Watch → Larger text on Goals
-// and Water). `ContentView` picks between the two.
+// The original layout of this page, shown while Settings → Apple Watch → "Larger
+// text on the watch" is off; `GoalSummaryView` is the larger one. `ContentView` picks.
 
 /// Today's nutrition against the phone's goals
 ///

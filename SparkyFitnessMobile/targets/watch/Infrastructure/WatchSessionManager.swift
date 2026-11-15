@@ -738,6 +738,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         case "intervalTiming": handle(intervalTiming: payload)
         case "setTargets": handle(setTargets: payload)
         case "workoutPlanUpdate": handle(workoutPlanUpdate: payload)
+        case "exerciseImage":
+            if ExerciseDemoStore.receive(payload) { ExerciseDemoStore.shared.didChange() }
         case "recordingState":
             if let update = ContextPayloadMapper.recordingUpdate(from: payload) {
                 RecordingStore.shared.apply(update)
@@ -1611,6 +1613,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Ends the workout. The stop signal waits until HealthKit has finished
     /// the workout and the tail has been queued. See `finishCollection`.
     func endWorkout() {
+        // The summary will ask whether to update the saved workout: tell the
+        // phone first so it holds its own prompt for the answer.
+        if workoutStore.usesNewWorkoutView(), workoutStore.changedFromPreset,
+           let sessionId = workoutStore.plan?.sessionId, WCSession.isSupported() {
+            transfer(OutboundPayloads.presetUpdateAnswer(sessionId: sessionId, update: false, waiting: true))
+        }
         requestFinish(sendStop: true)
     }
 
@@ -1734,10 +1742,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
                     )
                 }
                 let next = self.pendingPlan
+                let watchStartedFinish = sendStop || self.pendingSendStop
                 self.pendingPlan = nil
                 self.pendingSendStop = false
                 self.workoutStore.recordFinalHeartRate(self.heartRateReadings(samples))
-                let summary = next == nil ? self.workoutStore.makeSummary() : nil
+                let summary = next == nil
+                    ? self.workoutStore.makeSummary(askPresetUpdate: watchStartedFinish)
+                    : nil
                 self.workoutStore.reset()
                 self.workoutStore.recordSummary(summary)
                 self.collectionInFlight = false

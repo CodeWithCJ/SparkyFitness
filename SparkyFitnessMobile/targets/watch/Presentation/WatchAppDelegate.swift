@@ -25,12 +25,28 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate, UNUserNotificatio
                     WKInterfaceDevice.current().play(.notification)
                 }
             }
+            WorkoutSessionStore.shared.countdownSeconds = {
+                MainActor.assumeIsolated { CheckInStore.shared.context.effectiveWorkoutCountdown }
+            }
+            WorkoutSessionStore.shared.holdCountdownEnabled = {
+                MainActor.assumeIsolated { CheckInStore.shared.context.effectiveHoldCountdown }
+            }
+            WorkoutSessionStore.shared.usesNewWorkoutView = {
+                MainActor.assumeIsolated { CheckInStore.shared.context.effectiveNewWorkout }
+            }
+            WorkoutSessionStore.shared.onCountdownTick = { Haptics.countdownTick() }
             WorkoutSessionStore.shared.onRestFinished = {
                 // Called by the main-actor workout store. Silent when the
                 // phone has haptics or its rest-complete alert switched off.
                 MainActor.assumeIsolated {
                     guard CheckInStore.shared.context.effectiveRestBuzzEnabled else { return }
-                    WKInterfaceDevice.current().play(.notification)
+                    // The new view uses one cue for a rest ending, a hold
+                    // ending and the hold starting after Get ready:
+                    // `.success`, a rising chime, unlike the single short
+                    // `.start` beep of each tick. The classic view keeps
+                    // `.notification`.
+                    let newView = CheckInStore.shared.context.effectiveNewWorkout
+                    WKInterfaceDevice.current().play(newView ? .success : .notification)
                 }
             }
         }

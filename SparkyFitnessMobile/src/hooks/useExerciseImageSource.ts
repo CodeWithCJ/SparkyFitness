@@ -1,14 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  getActiveServerConfig,
-  proxyHeadersToRecord,
-} from '../services/storage';
-import { normalizeUrl } from '../services/api/apiClient';
+import { getActiveServerConfig } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
-
-type ImageSource = { uri: string; headers: Record<string, string> };
+import {
+  resolveExerciseImageSource,
+  type ExerciseImageSource as ImageSource,
+} from '../utils/exerciseImageSource';
 
 export type GetImageSource = (imagePath: string) => ImageSource | null;
 
@@ -41,27 +39,9 @@ export function useExerciseImageSource() {
       const cached = cacheRef.current.get(imagePath);
       if (cached) return cached;
 
-      let source: ImageSource;
-      // Absolute URLs (external sources) — use directly
-      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-        source = { uri: imagePath, headers: {} };
-      } else if (imagePath.startsWith('/') && config) {
-        // Already server-rooted: the CSV importers persist downloadImage's
-        // return value (`/uploads/exercises/...`) verbatim, so appending it to
-        // the prefix below yields `/api/uploads/exercises//uploads/...`.
-        source = {
-          uri: `${normalizeUrl(config.url)}/api${imagePath}`,
-          headers: proxyHeadersToRecord(config.proxyHeaders),
-        };
-      } else if (!config) {
-        // Don't cache until config resolves, so the path resolves once ready.
-        return null;
-      } else {
-        source = {
-          uri: `${normalizeUrl(config.url)}/api/uploads/exercises/${imagePath}`,
-          headers: proxyHeadersToRecord(config.proxyHeaders),
-        };
-      }
+      // Don't cache until config resolves, so the path resolves once ready.
+      const source = resolveExerciseImageSource(imagePath, config);
+      if (!source) return null;
 
       cacheRef.current.set(imagePath, source);
       return source;

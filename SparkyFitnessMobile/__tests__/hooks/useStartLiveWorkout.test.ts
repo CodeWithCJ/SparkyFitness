@@ -686,4 +686,34 @@ describe('useStartLiveWorkout', () => {
       })
     );
   });
+
+  it('sends the equipment line and the bar and plates only for a barbell exercise', () => {
+    const base = makeSession().exercises[0];
+    const withEquipment = (id: string, equipment: string[]) =>
+      ({
+        ...base,
+        id,
+        exercise_snapshot: { ...base.exercise_snapshot, equipment },
+      }) as typeof base;
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout({
+        ...makeSession(),
+        exercises: [
+          withEquipment('bench', ['barbell']),
+          withEquipment('curl', ['dumbbell']),
+        ],
+      });
+    });
+
+    armWatchForActiveSession(
+      ((key: string, options?: { defaultValue?: string }) =>
+        options?.defaultValue ?? key) as never
+    );
+
+    const [bench, curl] = mockStartWorkout.mock.calls[0][0].exercises;
+    expect(bench.equipment).toBe('Barbell');
+    expect(bench.plates).toMatchObject({ unit: 'kg', barWeight: 20 });
+    expect(curl.equipment).toBe('Dumbbell');
+    expect(curl.plates).toBeUndefined();
+  });
 });
