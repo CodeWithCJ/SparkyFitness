@@ -15,6 +15,15 @@ packages:
 # lockfile and copies workspace packages in, so the output is self-contained.
 # Must be workspace-wide: per-package dependenciesMeta.injected is NOT enough,
 # deploy rejects it with ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE.
+allowBuilds:
+  '@parcel/watcher': set this to true or false
+  '@scarf/scarf': set this to true or false
+  '@shopify/react-native-skia': set this to true or false
+  esbuild: set this to true or false
+  react-native-enriched-markdown: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+
 injectWorkspacePackages: true
 
 minimumReleaseAge: 4320

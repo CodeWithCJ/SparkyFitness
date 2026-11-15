@@ -1058,8 +1058,18 @@ export const formatCustomChartData = (
         loggingLevel,
         `Reports: Mapping data point - original value: ${d.value}, converted value: ${convertedValue} `
       );
+      // An 'All' category logs events at arbitrary times, so the exact
+      // timestamp positions each entry even when an entry_hour was stored
+      // alongside. 'Hourly' categories keep their hour bucket.
+      const hasHour = d.entry_hour !== null && d.entry_hour !== undefined;
+      const date =
+        category.frequency === 'All' && d.entry_timestamp
+          ? d.entry_timestamp
+          : hasHour
+            ? `${d.entry_date} ${String(d.entry_hour).padStart(2, '0')}:00`
+            : d.entry_timestamp || d.entry_date;
       return {
-        date: `${d.entry_date} ${d.entry_hour !== null ? String(d.entry_hour).padStart(2, '0') + ':00' : ''} `,
+        date,
         value: convertedValue,
         notes: d.notes,
       };
