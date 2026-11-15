@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import WatchConnectivity from '../../modules/watch-connectivity';
 import {
   buildComplicationConfig,
+  type WatchBuiltInStyles,
   type WatchComplicationDefinition,
 } from '../utils/watchComplications';
 import { addLog } from './LogService';
@@ -14,12 +15,17 @@ import { addLog } from './LogService';
  */
 export async function sendComplicationsToWatch(
   list: readonly WatchComplicationDefinition[],
-  options: { reload?: boolean } = {}
+  options: { reload?: boolean; builtIns?: WatchBuiltInStyles } = {}
 ): Promise<void> {
   if (Platform.OS !== 'ios' || !WatchConnectivity) return;
   try {
     await WatchConnectivity.sendComplicationConfig(
-      buildComplicationConfig(list, Date.now(), options.reload === true)
+      buildComplicationConfig(
+        list,
+        Date.now(),
+        options.reload === true,
+        options.builtIns
+      )
     );
     addLog(`[Watch Complications] Sent ${list.length} to the watch`, 'INFO');
   } catch (error) {

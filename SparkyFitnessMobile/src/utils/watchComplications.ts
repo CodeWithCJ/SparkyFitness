@@ -579,10 +579,12 @@ export function parseComplicationsImport(
 export function buildComplicationConfig(
   list: readonly WatchComplicationDefinition[],
   revision: number = Date.now(),
-  reload = false
+  reload = false,
+  builtIns: WatchBuiltInStyles = {}
 ): WatchComplicationConfigPayload {
   return {
     revision,
+    builtIns: builtInStylesWire(builtIns),
     // Only on a manual reload: the watch then refreshes its picker and faces
     // even when nothing in the list changed.
     ...(reload ? { reload: true } : {}),
@@ -951,4 +953,157 @@ export function complicationSourceLabel(
   const nutrient = nutrientKeyOf(source);
   if (nutrient) return getNutrientLabel(t, nutrient);
   return COMPLICATION_SOURCE_LABELS[source as ComplicationSourceKey](t);
+}
+
+/**
+ * The complications that come with the watch app. Their numbers and layout are
+ * fixed, but the wearer can change the colour and icon of each; the choices are
+ * kept in `watchBuiltInStyles` and sent with the list. Each key is a wire value
+ * (`targets/watch-widget/BuiltInStyle.swift`). Daily Energy Goal is not here:
+ * it draws four colours at once.
+ */
+export const BUILT_IN_KEYS = [
+  'calorieGoal',
+  'proteinGoal',
+  'carbsGoal',
+  'fatGoal',
+  'water',
+  'fasting',
+  'steps',
+] as const;
+export type BuiltInKey = (typeof BUILT_IN_KEYS)[number];
+
+/** The source each built-in shows, which is where its default look comes from. */
+const BUILT_IN_SOURCES: Record<BuiltInKey, ComplicationSourceKey> = {
+  calorieGoal: 'calories',
+  proteinGoal: 'protein',
+  carbsGoal: 'carbs',
+  fatGoal: 'fat',
+  water: 'water',
+  fasting: 'fasting',
+  steps: 'steps',
+};
+
+/** What the wearer changed; a part left out keeps the built-in's own. */
+export interface BuiltInStyle {
+  color?: ComplicationColor;
+  icon?: ComplicationIcon;
+}
+export type WatchBuiltInStyles = Partial<Record<BuiltInKey, BuiltInStyle>>;
+
+export const BUILT_IN_LABELS: Record<BuiltInKey, (t: Translator) => string> = {
+  calorieGoal: (t) =>
+    t('watchComplications.builtIn.calorieGoal', {
+      defaultValue: 'Calorie Goal',
+    }),
+  proteinGoal: (t) =>
+    t('watchComplications.builtIn.proteinGoal', {
+      defaultValue: 'Protein Goal',
+    }),
+  carbsGoal: (t) =>
+    t('watchComplications.builtIn.carbsGoal', { defaultValue: 'Carbs Goal' }),
+  fatGoal: (t) =>
+    t('watchComplications.builtIn.fatGoal', { defaultValue: 'Fat Goal' }),
+  water: (t) =>
+    t('watchComplications.builtIn.water', { defaultValue: 'Water Intake' }),
+  fasting: (t) =>
+    t('watchComplications.builtIn.fasting', { defaultValue: 'Fasting' }),
+  steps: (t) =>
+    t('watchComplications.builtIn.steps', { defaultValue: 'Steps' }),
+};
+
+/** The colour and icon a built-in has until the wearer changes them. */
+export function builtInDefaultLook(key: BuiltInKey): {
+  color: ComplicationColor;
+  icon: ComplicationIcon;
+} {
+  const look = SOURCE_LOOKS[BUILT_IN_SOURCES[key]];
+  return { color: look.color, icon: look.icon };
+}
+
+/** The wearer's choice for one built-in, filled in with its own defaults. */
+export function resolveBuiltInLook(
+  styles: WatchBuiltInStyles,
+  key: BuiltInKey
+): { color: ComplicationColor; icon: ComplicationIcon } {
+  const base = builtInDefaultLook(key);
+  const style = styles[key];
+  return { color: style?.color ?? base.color, icon: style?.icon ?? base.icon };
+}
+
+/** What is saved, checked: unknown keys, colours and icons are dropped. */
+export function normalizeBuiltInStyles(input: unknown): WatchBuiltInStyles {
+  if (!input || typeof input !== 'object') return {};
+  const raw = input as Record<string, unknown>;
+  let result: WatchBuiltInStyles = {};
+  for (const key of BUILT_IN_KEYS) {
+    const entry = raw[key];
+    if (!entry || typeof entry !== 'object') continue;
+    const { color, icon } = entry as Record<string, unknown>;
+    result = withBuiltInStyle(result, key, {
+      color: (COMPLICATION_COLORS as readonly unknown[]).includes(color)
+        ? (color as ComplicationColor)
+        : undefined,
+      icon: (COMPLICATION_ICONS as readonly unknown[]).includes(icon)
+        ? (icon as ComplicationIcon)
+        : undefined,
+    });
+  }
+  return result;
+}
+
+/**
+ * Changes one built-in's look. A part equal to the built-in's own is not kept,
+ * so a built-in the wearer has put back the way it was is not stored at all;
+ * `null` puts both parts back.
+ */
+export function withBuiltInStyle(
+  styles: WatchBuiltInStyles,
+  key: BuiltInKey,
+  patch: BuiltInStyle | null
+): WatchBuiltInStyles {
+  const rest = { ...styles };
+  delete rest[key];
+  if (patch === null) return rest;
+  const base = builtInDefaultLook(key);
+  const merged = { ...styles[key], ...patch };
+  const next: BuiltInStyle = {};
+  if (merged.color && merged.color !== base.color) next.color = merged.color;
+  if (merged.icon && merged.icon !== base.icon) next.icon = merged.icon;
+  return next.color || next.icon ? { ...rest, [key]: next } : rest;
+}
+
+/** The changes as the watch gets them: one entry per built-in that has any. */
+export function builtInStylesWire(
+  styles: WatchBuiltInStyles
+): { key: BuiltInKey; color?: ComplicationColor; icon?: ComplicationIcon }[] {
+  return BUILT_IN_KEYS.flatMap((key) => {
+    const style = styles[key];
+    if (!style || (!style.color && !style.icon)) return [];
+    return [
+      {
+        key,
+        ...(style.color ? { color: style.color } : {}),
+        ...(style.icon ? { icon: style.icon } : {}),
+      },
+    ];
+  });
+}
+
+/** A definition the preview can draw for a built-in, in the wearer's look. */
+export function builtInPreviewDefinition(
+  key: BuiltInKey,
+  styles: WatchBuiltInStyles,
+  t: Translator
+): WatchComplicationDefinition {
+  const source = BUILT_IN_SOURCES[key];
+  const look = SOURCE_LOOKS[source];
+  return {
+    id: `built-in-${key}`,
+    name: BUILT_IN_LABELS[key](t),
+    source,
+    format: look.format,
+    gauge: true,
+    ...resolveBuiltInLook(styles, key),
+  };
 }

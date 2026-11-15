@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import ComplicationColorPicker from '../components/ComplicationColorPicker';
+import ComplicationIconPicker from '../components/ComplicationIconPicker';
 import ComplicationPreview from '../components/ComplicationPreview';
 import FormInput from '../components/FormInput';
 import { FooterSaveBar } from '../components/FormScreenChrome';
@@ -13,7 +14,6 @@ import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
-import WatchSymbol from '../components/WatchSymbol';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useWatchComplicationList } from '../hooks/useWatchComplicationList';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -21,10 +21,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
 import { newUuid } from '../utils/ids';
 import {
-  COMPLICATION_COLOR_HEX,
   COMPLICATION_FORMAT_LABELS,
-  COMPLICATION_ICON_LABELS,
-  COMPLICATION_ICONS,
   COMPLICATION_SOURCES,
   MAX_COMPLICATION_ITEMS,
   MAX_COMPLICATION_NAME_LENGTH,
@@ -392,35 +389,12 @@ const WatchComplicationEditScreen: React.FC<
         <Text className="text-sm font-semibold text-text-secondary mb-2 mt-4">
           {t('watchComplications.icon', { defaultValue: 'Icon' })}
         </Text>
-        <View className="flex-row flex-wrap gap-3">
-          {COMPLICATION_ICONS.map((icon) => {
-            const selected = form.icon === icon;
-            return (
-              <Pressable
-                key={icon}
-                testID={`watch-complication-icon-${icon}`}
-                accessibilityRole="button"
-                accessibilityLabel={COMPLICATION_ICON_LABELS[icon](t)}
-                accessibilityState={{ selected }}
-                onPress={() => update('icon', icon)}
-                className="items-center justify-center rounded-xl"
-                style={{
-                  width: 44,
-                  height: 44,
-                  backgroundColor: '#000000',
-                  borderWidth: selected ? 3 : 1,
-                  borderColor: selected ? '#3b82f6' : 'rgba(128,128,128,0.4)',
-                }}
-              >
-                <WatchSymbol
-                  name={icon}
-                  size={22}
-                  color={COMPLICATION_COLOR_HEX[form.color]}
-                />
-              </Pressable>
-            );
-          })}
-        </View>
+        <ComplicationIconPicker
+          value={form.icon}
+          color={form.color}
+          onSelect={(icon) => update('icon', icon)}
+          testIDPrefix="watch-complication-icon"
+        />
 
         <Text className="text-sm font-semibold text-text-secondary mb-1 mt-6">
           {t('watchComplications.moreValues', {

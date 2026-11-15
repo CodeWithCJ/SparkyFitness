@@ -68,6 +68,10 @@ Add these to a watch face for a one-tap glance that opens the matching page.
 
 The four sizes are circular, corner, rectangular and inline.
 
+### Change a built-in's colour and icon (Apple Watch)
+
+On the phone, open **Settings → Apple Watch → Complications** and scroll to **Built-in complications**. Tap Calorie Goal, Protein Goal, Carbs Goal, Fat Goal, Water Intake, Fasting or Steps, then pick a colour and an icon. **Put back the original look** undoes it. What each one shows stays the same, and a face that already uses it keeps working. Daily Energy Goal stays as it is, because it draws four colours at once. For different numbers or layouts, make a custom complication instead.
+
 ### Make your own (Apple Watch)
 
 On the phone, open **Settings → Apple Watch → Complications**. Add as many as you like, and for each one choose:

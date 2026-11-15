@@ -234,7 +234,7 @@ private func display(
     )
 }
 
-private func tint(_ color: String?) -> Color {
+func tint(_ color: String?) -> Color {
     switch color {
     case "calories": return ComplicationPalette.calories
     case "protein": return ComplicationPalette.protein

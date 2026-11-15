@@ -29,6 +29,13 @@ import {
   resolveComplications,
   starterComplications,
   type WatchComplicationDefinition,
+  BUILT_IN_KEYS,
+  builtInDefaultLook,
+  builtInPreviewDefinition,
+  builtInStylesWire,
+  normalizeBuiltInStyles,
+  resolveBuiltInLook,
+  withBuiltInStyle,
 } from '../../src/utils/watchComplications';
 
 // Fills {{name}} placeholders, as i18next does, so the preview's wording shows.
@@ -232,6 +239,7 @@ describe('buildComplicationConfig', () => {
   it('carries every field the watch reads, and the revision', () => {
     expect(buildComplicationConfig([sample], 1234)).toEqual({
       revision: 1234,
+      builtIns: [],
       definitions: [
         {
           id: 'c1',
@@ -711,5 +719,97 @@ describe('complicationItemPreviews', () => {
         t
       ).text
     ).toBe('82');
+  });
+});
+
+describe('built-in complication styles', () => {
+  it('starts every built-in from its own colour and icon', () => {
+    expect(builtInDefaultLook('proteinGoal')).toEqual({
+      color: 'protein',
+      icon: 'fish.fill',
+    });
+    expect(builtInDefaultLook('water')).toEqual({
+      color: 'water',
+      icon: 'drop.fill',
+    });
+    expect(BUILT_IN_KEYS).toHaveLength(7);
+  });
+
+  it('keeps only what differs from the built-in', () => {
+    const changed = withBuiltInStyle({}, 'steps', {
+      color: 'heart',
+      icon: 'figure.walk',
+    });
+    expect(changed).toEqual({ steps: { color: 'heart' } });
+    expect(resolveBuiltInLook(changed, 'steps')).toEqual({
+      color: 'heart',
+      icon: 'figure.walk',
+    });
+  });
+
+  it('forgets a built-in put back the way it was', () => {
+    const changed = withBuiltInStyle({}, 'steps', { color: 'heart' });
+    expect(withBuiltInStyle(changed, 'steps', { color: 'steps' })).toEqual({});
+  });
+
+  it('keeps the other part when one is changed', () => {
+    let styles = withBuiltInStyle({}, 'fasting', { color: 'heart' });
+    styles = withBuiltInStyle(styles, 'fasting', { icon: 'bolt.fill' });
+    expect(styles).toEqual({ fasting: { color: 'heart', icon: 'bolt.fill' } });
+  });
+
+  it('puts one back with null and leaves the others', () => {
+    let styles = withBuiltInStyle({}, 'fasting', { color: 'heart' });
+    styles = withBuiltInStyle(styles, 'water', { color: 'steps' });
+    expect(withBuiltInStyle(styles, 'fasting', null)).toEqual({
+      water: { color: 'steps' },
+    });
+  });
+
+  it('drops unknown keys, colours and icons when reading what is stored', () => {
+    expect(
+      normalizeBuiltInStyles({
+        steps: { color: 'heart', icon: 'not-an-icon' },
+        bogus: { color: 'heart' },
+        water: 'nope',
+        fatGoal: { color: 'chartreuse' },
+      })
+    ).toEqual({ steps: { color: 'heart' } });
+    expect(normalizeBuiltInStyles(null)).toEqual({});
+  });
+
+  it('sends one entry per changed built-in, in a fixed order', () => {
+    const styles = {
+      water: { icon: 'bolt.fill' },
+      calorieGoal: { color: 'heart' },
+    } as const;
+    expect(builtInStylesWire(styles)).toEqual([
+      { key: 'calorieGoal', color: 'heart' },
+      { key: 'water', icon: 'bolt.fill' },
+    ]);
+    expect(builtInStylesWire({})).toEqual([]);
+  });
+
+  it('puts the styles in the config the watch gets', () => {
+    const config = buildComplicationConfig([], 1, false, {
+      steps: { color: 'heart' },
+    });
+    expect(config.builtIns).toEqual([{ key: 'steps', color: 'heart' }]);
+  });
+
+  it('previews a built-in in the wearer’s look', () => {
+    const t = (_key: string, options: { defaultValue: string }) =>
+      options.defaultValue;
+    const preview = builtInPreviewDefinition(
+      'proteinGoal',
+      { proteinGoal: { color: 'heart' } },
+      t
+    );
+    expect(preview).toMatchObject({
+      name: 'Protein Goal',
+      source: 'protein',
+      color: 'heart',
+      icon: 'fish.fill',
+    });
   });
 });

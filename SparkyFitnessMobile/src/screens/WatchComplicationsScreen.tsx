@@ -3,12 +3,15 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import ComplicationColorPicker from '../components/ComplicationColorPicker';
+import ComplicationIconPicker from '../components/ComplicationIconPicker';
 import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import WatchSymbol from '../components/WatchSymbol';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useWatchBuiltInStyles } from '../hooks/useWatchBuiltInStyles';
 import { useWatchComplicationList } from '../hooks/useWatchComplicationList';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { sendComplicationsToWatch } from '../services/watchComplicationSync';
@@ -20,6 +23,8 @@ import {
 import type { RootStackScreenProps } from '../types/navigation';
 import { newUuid } from '../utils/ids';
 import {
+  BUILT_IN_KEYS,
+  BUILT_IN_LABELS,
   COMPLICATION_COLOR_HEX,
   COMPLICATION_FORMAT_LABELS,
   allowedFormats,
@@ -28,7 +33,9 @@ import {
   moveComplication,
   parseComplicationsImport,
   removeComplication,
+  resolveBuiltInLook,
   sourceHasProgress,
+  type BuiltInKey,
   type WatchComplicationDefinition,
 } from '../utils/watchComplications';
 
@@ -48,7 +55,10 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { list, isStarter, commit } = useWatchComplicationList();
 
+  const { styles: builtInStyles, change: changeBuiltIn } =
+    useWatchBuiltInStyles();
   const [reloading, setReloading] = useState(false);
+  const [openBuiltIn, setOpenBuiltIn] = useState<BuiltInKey | null>(null);
 
   // The watch caches its picker, and a send can go missing, so the wearer can
   // push the list again and make the watch refresh it, as Home Assistant's
@@ -56,7 +66,10 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   const handleReload = useCallback(async () => {
     setReloading(true);
     try {
-      await sendComplicationsToWatch(list, { reload: true });
+      await sendComplicationsToWatch(list, {
+        reload: true,
+        builtIns: builtInStyles,
+      });
       Toast.show({
         type: 'success',
         text1: t('watchComplications.reloaded', {
@@ -78,7 +91,7 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
     } finally {
       setReloading(false);
     }
-  }, [list, t]);
+  }, [builtInStyles, list, t]);
 
   const addComplication = useCallback(
     () => navigation.navigate('WatchComplicationEdit', {}),
@@ -427,6 +440,93 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
         ) : (
           list.map(renderRow)
         )}
+        <Text className="text-sm font-semibold text-text-secondary mb-1 mt-6">
+          {t('watchComplications.builtInTitle', {
+            defaultValue: 'Built-in complications',
+          })}
+        </Text>
+        <Text className="text-xs text-text-muted mb-3">
+          {t('watchComplications.builtInHelp', {
+            defaultValue:
+              'These come with the app. Change the colour and icon of each. Daily Energy Goal stays as it is.',
+          })}
+        </Text>
+        {BUILT_IN_KEYS.map((key) => {
+          const look = resolveBuiltInLook(builtInStyles, key);
+          const name = BUILT_IN_LABELS[key](t);
+          const open = openBuiltIn === key;
+          return (
+            <View
+              key={key}
+              testID={`watch-built-in-row-${key}`}
+              className="bg-surface rounded-xl mb-3 shadow-sm"
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('watchComplications.changeBuiltIn', {
+                  defaultValue: 'Change {{name}}',
+                  name,
+                })}
+                accessibilityState={{ expanded: open }}
+                className="flex-row items-center px-4 py-3"
+                style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+                onPress={() => setOpenBuiltIn(open ? null : key)}
+              >
+                <View
+                  className="items-center justify-center rounded-full mr-3"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                  }}
+                >
+                  <WatchSymbol
+                    name={look.icon}
+                    size={20}
+                    color={COMPLICATION_COLOR_HEX[look.color]}
+                  />
+                </View>
+                <Text className="flex-1 text-lg font-semibold text-text-primary">
+                  {name}
+                </Text>
+                <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} />
+              </Pressable>
+              {open ? (
+                <View className="px-4 pb-4">
+                  <Text className="text-sm font-semibold text-text-secondary mb-2">
+                    {t('watchComplications.color', { defaultValue: 'Color' })}
+                  </Text>
+                  <ComplicationColorPicker
+                    value={look.color}
+                    onSelect={(color) => changeBuiltIn(key, { color })}
+                    testIDPrefix={`watch-built-in-${key}-color`}
+                    size={34}
+                  />
+                  <Text className="text-sm font-semibold text-text-secondary mb-2 mt-4">
+                    {t('watchComplications.icon', { defaultValue: 'Icon' })}
+                  </Text>
+                  <ComplicationIconPicker
+                    value={look.icon}
+                    color={look.color}
+                    onSelect={(icon) => changeBuiltIn(key, { icon })}
+                    testIDPrefix={`watch-built-in-${key}-icon`}
+                  />
+                  {builtInStyles[key] ? (
+                    <Button
+                      variant="ghost"
+                      testID={`watch-built-in-${key}-reset`}
+                      onPress={() => changeBuiltIn(key, null)}
+                    >
+                      {t('watchComplications.builtInReset', {
+                        defaultValue: 'Put back the original look',
+                      })}
+                    </Button>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
         <Button
           variant="outline"
           testID="watch-complications-reload"
