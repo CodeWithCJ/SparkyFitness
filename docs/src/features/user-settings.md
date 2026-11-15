@@ -5,7 +5,7 @@ The Settings page is organized into four tabs. Each tab contains collapsible sec
 ## Profile & Account
 
 - **Profile Information**: profile photo, full name, phone number, date of birth, gender, height, and bio
-- **Preferences**: units (weight, measurement, distance, energy in kcal or kJ), date and time formats, chart scale mode, target bedtime, timezone, and the minimum logging level. See [Preferences](/features/settings/preferences)
+- **Preferences**: units (weight, measurement, distance, energy in kcal or kJ), date and time formats, chart scale mode, target bedtime, timezone, the minimum logging level, and the estimated blood alcohol settings (distribution formula, elimination rate, and display unit; see [Estimated Blood Alcohol](/features/diary/blood-alcohol)). See [Preferences](/features/settings/preferences)
 - **Family Access**: manage family and friend invitations and their permissions ([Family & Friends Sharing](/features/family-friends-sharing))
 - **Data Import**: bring in a food database or food diary from CSV
 - **Data Export**: download all of your data as CSV (comma or semicolon separator) ([Sharing](/features/sharing))

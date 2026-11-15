@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-05*
+*Last updated: 2026-11-11*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -82,6 +82,7 @@ Cheap ways to learn things:
   6. Update the user-facing documentation in `docs/src/features/family-friends-sharing.md`.
   7. Update the developer documentation in `docs/src/developer/database-security-tiers.md` to classify the table as Tier 1, Tier 2, or Tier 3.
 - **Heart rate zones have one source of truth:** `shared/src/utils/heartRateZones.ts` (`resolveHeartRateZones`, `heartRateZoneRange`, `computeTimeInZones`). Never re-derive max heart rate or zone floors in a package; server stored zones, training load, mobile suggested ranges and the web/mobile charts, Heart Rate reports and settings all call it (reports show the five zones, Zone 1 to 5, never fixed bpm tiers). Max heart rate is the person's own value, else Nes (211 - 0.64 x age) from date of birth, else 190. Settings never rewrite stored `exercise_entry_hr_zones` rows. iOS 27 can fill custom floors from Apple Health (`floorsFromAppleHeartRateZones`); that does not change max heart rate. A finished Apple workout's own zone group (`bucketsFromAppleWorkoutZones`) is stored as `device` zones instead of recomputing, so the chart matches Apple, including time below the first boundary.
+- **Estimated blood alcohol has one source of truth:** `shared/src/nutrients/alcoholKinetics.ts`. Server, web, mobile and AI tools never re-derive BAC; clients draw with `bloodAlcoholCurve(doses, bacModelOf(response), ...)` and `bloodAlcoholChartWindow`. It is always shown with the rough-estimate, not-for-driving disclaimer, and nothing (UI, API, tool text, docs) states a time when the level reaches zero.
 - Prefer the shared timezone helpers from `@workspace/shared` and `SparkyFitnessServer/utils/timezoneLoader.ts` for day-string logic. Avoid `toISOString().split('T')[0]` for user-facing or business-logic dates.
 - Keep `YYYY-MM-DD` values as calendar-day strings until you reach a database or external API boundary that needs UTC instants.
 - Auth or API contract changes usually need a quick check in both web and mobile because they share the same backend.

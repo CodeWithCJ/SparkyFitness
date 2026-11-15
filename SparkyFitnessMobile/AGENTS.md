@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-11_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -128,6 +128,7 @@ npx expo prebuild --clean
 - Exercise/workout preset list/search/detail invalidation belongs in their mutation hooks.
 - `useUpsertCheckIn` updates measurement queries and calls `refreshHealthSyncCache(queryClient)`.
 - Custom measurement categories are managed in `CustomCategoriesScreen` / `CustomCategoryEditScreen` (Settings > Custom Measurements) through `useCreateCustomCategory` / `useUpdateCustomCategory` / `useDeleteCustomCategory`, which invalidate the category list and every cached custom-entry day because entry rows embed their category.
+- The modeled intake curves (`CaffeineCard`, the opt-in `BloodAlcoholCard`) share `invalidateIntakeKinetics(queryClient, date?)`, `useKineticsClock` and `components/charts/KineticsCurveChart.tsx`; any write that can change a drink must call the helper, never one curve's key. The blood alcohol card always shows its disclaimer and never states a time the estimate reaches zero; its settings are edited on the web only.
 - `useWaterIntakeMutation` fetches `waterContainersQueryKey`, persists the selected container, and optimistically updates `dailySummaryQueryKey(date)`.
 - Active-server switches clear React Query state before refetching connection state.
 - Error-boundary retry flows call `queryClient.resetQueries()`.
