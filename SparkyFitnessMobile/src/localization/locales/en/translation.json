@@ -8321,7 +8321,17 @@
       "activity": "Water & exercise",
       "meals": "Meal calorie distribution",
       "presets": "Goal presets",
-      "weekly": "Weekly plans"
+      "weekly": "Weekly plans",
+      "goalWeight": "Goal weight"
+    },
+    "goalWeight": {
+      "description": "Your target weight. Weight charts use it to show your progress.",
+      "placeholder": "Goal weight ({{unit}})",
+      "invalid": "Enter a weight above zero.",
+      "save": "Save goal weight",
+      "clear": "Clear",
+      "saved": "Goal weight saved.",
+      "saveFailed": "Failed to save goal weight."
     },
     "meals": {
       "mustBe100": "Meal percentages must total 100%.",
