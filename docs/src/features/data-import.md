@@ -11,7 +11,7 @@ All three importers share the same workflow and controls:
 - **Loading** — upload a CSV (**Upload CSV**, max 25 MB) or paste its contents and press **Parse Text**. A **Download Template** button provides a sample file with the expected headers.
 - **Format bar** — delimiter, decimal separator, and quote character are auto-detected from the file and can be overridden individually, for files whose separators differ from the defaults.
 - **Column mapping** — most columns are auto-detected from the header row. Headers are normalized before matching (ignoring case, underscores, spaces, and punctuation, and stripping parenthetical units, so `Protein (g)` matches `Protein`), and common aliases are recognized: `Carbohydrates` → `carbs`, `Fiber` → `dietary_fiber`, `Sugar` → `sugars`, `Date` → `entry_date` (Workout History). Matching is by name only, never by position or content, so a column that can't be auto-matched is left unmapped rather than guessed. When a required column can't be matched, a mapping dialog appears and you assign the file column to the expected field by hand.
-- **Editable preview** — after loading (and confirming the mapping), the parsed rows appear in an editable table where you can fix cells, **Add Row**, or **Clear Data** before submitting.
+- **Editable preview** — after loading (and confirming the mapping), the parsed rows appear in an editable table where you can fix cells, **Add Row**, or **Clear Data** before submitting. Food Diary and Check-in & Health Data have this editable preview; **Workout History**'s preview is read-only (it shows the parsed entries as text, not editable controls), so to correct a value there you edit the CSV file and process it again.
 
 ## Food Diary
 
@@ -22,12 +22,12 @@ Field reference:
 | Field | Required | Type | Description |
 | --- | --- | --- | --- |
 | `date` | Yes | Date (`YYYY-MM-DD`) | The day the meal was logged. |
-| `meal_type` | Yes | Text | Matched against your meal types (`breakfast`, `lunch`, `dinner`, `snacks`, or custom); a value that matches none falls back to a default. |
+| `meal_type` | Yes | Text | Matched against your meal types (`breakfast`, `lunch`, `dinner`, `snacks`, or custom), case-insensitively; a value that matches none fails the import with `Invalid meal type`, so select an existing meal type for any unmatched value before importing. |
 | `meal_name` | No | Text | Groups rows into a named meal — see [Meal grouping](#meal-grouping). |
 | `food_name` | Yes* | Text | The food to match against your library or create. *Not needed when [importing as meal totals](#importing-per-meal-totals-aggregate-files). |
 | `brand` | No | Text | Optional brand, used to improve matching. |
 | `quantity` | Yes* | Number | Amount per the unit. *Not needed when importing as meal totals. |
-| `unit` | Yes* | Text | Matched against the known unit list (`g`, `kg`, `mg`, `oz`, `lb`, `ml`, `l`, `cup`, `tbsp`, `tsp`, `piece`, `slice`, `serving`, `can`, `bottle`, `packet`, `bag`, `bowl`, `plate`, `handful`, `scoop`, `bar`, `stick`, `whole`); a value that matches none falls back to `g`. |
+| `unit` | Yes* | Text | Matched against the known unit list (`g`, `kg`, `mg`, `oz`, `lb`, `ml`, `l`, `cup`, `tbsp`, `tsp`, `piece`, `slice`, `serving`, `can`, `bottle`, `packet`, `bag`, `bowl`, `plate`, `handful`, `scoop`, `bar`, `stick`, `whole`); a value that matches none is stored as-is (kept unchanged), so correct an unmatched unit before importing. |
 | `calories`, `protein`, `carbs`, `fat`, `saturated_fat`, `polyunsaturated_fat`, `monounsaturated_fat`, `trans_fat`, `cholesterol`, `sodium`, `potassium`, `dietary_fiber`, `sugars`, `vitamin_a`, `vitamin_c`, `calcium`, `iron` | No | Number | Standard nutrients; fill any subset you have. |
 | *(any other column)* | No | Number | Any column beyond the base set is treated as a custom nutrient by its header name. |
 
@@ -118,12 +118,12 @@ MyFitnessPal's file export is a **Premium / Premium+** feature — free accounts
 
 - `Nutrition-Summary-…` → **Food Diary** — **best support.** MFP's `Protein (g)`, `Carbohydrates (g)`, `Fiber`, `Sugar`, `Meal`, and `Date` all map automatically. Caveat: the export is one row per *meal* (nutrient totals, no individual foods), so the importer's **Import as meal totals** mode (see [Importing per-meal totals](#importing-per-meal-totals-aggregate-files)) is what makes it work — each meal's totals land as a single serving, not per-food entries.
 - `Measurement-Summary-…` → **Check-in & Health Data** — **works; tested with weight.** MFP's measurement file has `Date` and `Weight` with no unit column, so the **unit guard** forces you to declare the weight unit before import. Weight imports cleanly; the other measurement fields (height, neck, waist, hips) use the same path but haven't been exercised against real MFP data.
-- `Exercise-Summary-…` → **Workout History** — **limited.** Only `Date` and `Exercise` (the activity name) match the importer's expected fields. MFP's `Exercise Calories`, `Exercise Minutes`, `Sets`, `Reps Per Set`, `Pounds`, `Steps`, and `Note` don't match any template field, so they're dropped: the import yields a list of activity names with dates, not the calories, duration, steps, sets, or weight the export contains. Hand-mapping can't recover them, since there's no matching field. Useful for seeding a rough activity history; not a faithful exercise-log import.
+- `Exercise-Summary-…` → **Workout History** — **limited.** Only `Date` and `Exercise` (the activity name) match the importer's expected fields. The importer *does* support `calories_burned`, `distance`, `reps`, `weight`, `duration_min`, `rest_time_sec`, `entry_notes`, and set fields, but it reads them by their canonical column names and the header-mapping dialog only exposes the required fields — so MFP's `Exercise Calories`, `Exercise Minutes`, `Sets`, `Reps Per Set`, `Pounds`, `Steps`, and `Note` don't match and are dropped as-is. The import yields a list of activity names with dates, not the calories, duration, steps, sets, or weight the export contains. To recover any of them, rename the column to the matching canonical name (e.g. `Exercise Calories` → `calories_burned`, `Note` → `entry_notes`) in the CSV before processing; values that don't match a supported field are still dropped. Useful for seeding a rough activity history; not a faithful exercise-log import.
 
 Unzip the file, then import each CSV into its matching importer. The header matching above absorbs most of the differences; any remaining column is mapped by hand in the mapping dialog.
 
 > [!NOTE]
-> The MyFitnessPal export is a summary, not a detailed log, and the import reflects what the export contains — shaped by how well each file's column names match the importer's expected fields. The import can't produce detail the export doesn't have, and (for exercise) can't recover columns that have no matching field.
+> The MyFitnessPal export is a summary, not a detailed log, and the import reflects what the export contains — shaped by how well each file's column names match the importer's expected fields. The import can't produce detail the export doesn't have, and (for exercise) only recovers columns whose names match a supported field (rename them first if needed, as above).
 
 ## Why the importers are generic
 

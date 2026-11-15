@@ -20,6 +20,16 @@ import {
   type CsvFormatOptions,
 } from '@workspace/shared';
 
+// The measurement length fields, shared by mapMeasurementRow (conversion) and
+// the useHealthDataImport submit gate (unit-required check). One list so the
+// two can't drift apart.
+export const MEASUREMENT_LENGTH_FIELDS = [
+  'height',
+  'neck',
+  'waist',
+  'hips',
+] as const;
+
 const SLEEP_NUMERIC_FIELDS = [
   'duration_in_seconds',
   'time_asleep_in_seconds',
@@ -60,9 +70,14 @@ export interface HealthDataItem {
 
 // Client-side rejection (e.g. an unrecognized unit) surfaced alongside the
 // server's per-record errors so the user sees one combined failure list.
+// `key`/`params` localize the message: the pure mapper can't call
+// useTranslation, so it returns a key (plus an English fallback in `error`)
+// and the caller translates it before display.
 export interface ImportError {
   error: string;
   entry: Record<string, string>;
+  key?: string;
+  params?: Record<string, unknown>;
 }
 
 export interface MappedRows {
@@ -179,6 +194,7 @@ const mapMeasurementRow = (
           {
             error:
               'Weight is present but no unit is set. Choose a unit (kg or lb) for this import.',
+            key: 'healthDataImport.weightUnitMissing',
             entry: rowSnapshot(row),
           },
         ],
@@ -206,8 +222,7 @@ const mapMeasurementRow = (
     items.push({ ...base, type: 'body_fat', value: bodyFat, unit: '%' });
   }
 
-  const lengthTypes = ['height', 'neck', 'waist', 'hips'] as const;
-  for (const type of lengthTypes) {
+  for (const type of MEASUREMENT_LENGTH_FIELDS) {
     const read = readNumber(row, type, format);
     if (!read.ok) return numberError(row, type, read.raw);
     const value = read.value;
@@ -220,6 +235,8 @@ const mapMeasurementRow = (
         errors: [
           {
             error: `'${type}' is present but no unit is set. Choose a unit (cm, in, or m) for this import.`,
+            key: 'healthDataImport.lengthUnitMissing',
+            params: { type },
             entry: rowSnapshot(row),
           },
         ],

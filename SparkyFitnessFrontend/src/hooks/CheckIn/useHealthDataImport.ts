@@ -11,6 +11,7 @@ import {
   generateUniqueId,
   mapRowsToHealthItems,
   parseHealthCSV,
+  MEASUREMENT_LENGTH_FIELDS,
   type UnitOverrides,
 } from '@/utils/healthDataImport';
 import {
@@ -167,6 +168,12 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
         });
         return;
       }
+      // A new file must not inherit a unit override chosen for a previous
+      // one: a stale "lb" would silently mis-scale a unitless file that is
+      // actually in kg. The format-bar reparse effect (same file) does not
+      // go through here, so a legitimate reparse keeps its choice.
+      setWeightUnitOverride('');
+      setLengthUnitOverride('');
       setLoadedText(text);
       evaluateAndParse(text);
     };
@@ -277,7 +284,7 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
     // / lengthToCm would silently treat the values as already kg/cm.
     const hasWeightValues = csvData.some((r) => !isBlank(r['weight']));
     const hasLengthValues = csvData.some((r) =>
-      ['height', 'neck', 'waist', 'hips'].some((f) => !isBlank(r[f]))
+      MEASUREMENT_LENGTH_FIELDS.some((f) => !isBlank(r[f]))
     );
     if (needsWeightUnit && !weightUnitOverride && hasWeightValues) {
       toast({
@@ -308,12 +315,20 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
             lengthUnit: lengthUnitOverride || undefined,
           }
         : undefined;
-    const { items, errors: clientErrors } = mapRowsToHealthItems(
+    const { items, errors: rawClientErrors } = mapRowsToHealthItems(
       category,
       csvData,
       csvFormat.decimal,
       unitOverrides
     );
+    // Translate the pure mapper's error keys (it can't call useTranslation)
+    // before the result panel displays them; an English fallback covers a
+    // missing key. Strip the key/params so the result-panel shape stays
+    // { error, entry }.
+    const clientErrors = rawClientErrors.map(({ key, params, ...rest }) => ({
+      ...rest,
+      error: key ? t(key, params ?? {}) : rest.error,
+    }));
     if (items.length === 0 && clientErrors.length === 0) {
       toast({
         title: t('healthDataImport.validationError', 'Nothing to import'),

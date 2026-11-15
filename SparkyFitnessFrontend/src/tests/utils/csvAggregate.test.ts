@@ -68,4 +68,40 @@ describe('reshapeAggregateRow', () => {
       unit: 'serving',
     });
   });
+
+  it('preserves a user-mapped meal_name over meal_type', () => {
+    // Regression: a file that maps BOTH meal_name and meal_type must keep the
+    // explicit meal name — the meal is named after what the user named it, not
+    // defaulted to the meal type.
+    expect(
+      reshapeAggregateRow({ meal_name: 'Big Lunch', meal_type: 'lunch' })
+    ).toEqual({
+      meal_name: 'Big Lunch',
+      food_name: 'Big Lunch',
+      quantity: '1',
+      unit: 'serving',
+    });
+  });
+
+  it('trims a user-mapped meal_name before using it', () => {
+    expect(
+      reshapeAggregateRow({ meal_name: '  Snack  ', meal_type: 'snacks' })
+    ).toEqual({
+      meal_name: 'Snack',
+      food_name: 'Snack',
+      quantity: '1',
+      unit: 'serving',
+    });
+  });
+
+  it('uses meal_type when meal_name is blank/whitespace', () => {
+    expect(
+      reshapeAggregateRow({ meal_name: '   ', meal_type: 'dinner' })
+    ).toEqual({
+      meal_name: 'dinner',
+      food_name: 'dinner',
+      quantity: '1',
+      unit: 'serving',
+    });
+  });
 });

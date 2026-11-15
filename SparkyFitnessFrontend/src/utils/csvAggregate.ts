@@ -14,13 +14,16 @@ const AGGREGATE_UNMAPPED_HEADERS = ['food_name', 'quantity', 'unit'];
 
 // The field overrides a per-meal aggregate row receives when it is routed
 // through the meal-group import path: a single serving named after its meal
-// type, carrying the row's nutrient totals. Pure (depends only on the row's
-// meal_type), so it is testable without the component that applies it.
+// name (or type, when no name column is mapped), carrying the row's nutrient
+// totals. Pure (depends only on the row's meal_name/meal_type), so it is
+// testable without the component that applies it.
 export const reshapeAggregateRow = (row: Record<string, string>) => {
+  const mealName = (row['meal_name'] ?? '').trim();
   const mealType = (row['meal_type'] ?? '').trim();
+  const name = mealName || mealType;
   return {
-    meal_name: mealType,
-    food_name: mealType,
+    meal_name: name,
+    food_name: name,
     quantity: '1',
     unit: 'serving',
   };

@@ -7236,6 +7236,8 @@
     "weightUnitRequired": "Your file has no weight unit. Choose kg or lb before importing.",
     "lengthUnitLabel": "Length unit",
     "lengthUnitRequired": "Your file has no length unit. Choose cm, in, or m before importing.",
+    "weightUnitMissing": "Weight is present but no unit is set. Choose a unit (kg or lb) for this import.",
+    "lengthUnitMissing": "{{type}} is present but no unit is set. Choose a unit (cm, in, or m) for this import.",
     "unitRequired": "Unit required",
     "title": "Import Health Data",
     "uploadCSV": "Upload CSV",

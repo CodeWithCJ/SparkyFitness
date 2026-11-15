@@ -1,6 +1,7 @@
 import {
   mapRowsToHealthItems,
   parseHealthCSV,
+  MEASUREMENT_LENGTH_FIELDS,
   HealthImportRow,
 } from '@/utils/healthDataImport';
 
@@ -92,6 +93,54 @@ describe('mapRowsToHealthItems', () => {
       expect(items).toEqual([]);
       expect(errors).toHaveLength(1);
       expect(errors[0]!.error).toContain('no unit is set');
+    });
+
+    it('tags the weight no-unit error with a translation key (localized before display)', () => {
+      const { errors } = mapRowsToHealthItems('measurements', [
+        row({
+          date: '2026-01-02',
+          weight: '177',
+          weight_unit: '',
+          body_fat: '',
+          height: '',
+          neck: '',
+          waist: '',
+          hips: '',
+          length_unit: '',
+        }),
+      ]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.key).toBe('healthDataImport.weightUnitMissing');
+    });
+
+    it('tags the length no-unit error with a translation key and the field name', () => {
+      const { errors } = mapRowsToHealthItems('measurements', [
+        row({
+          date: '2026-01-02',
+          weight: '',
+          weight_unit: '',
+          body_fat: '',
+          height: '',
+          neck: '',
+          waist: '82',
+          hips: '',
+          length_unit: '',
+        }),
+      ]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.key).toBe('healthDataImport.lengthUnitMissing');
+      expect(errors[0]!.params).toEqual({ type: 'waist' });
+    });
+
+    it('exports the measurement length fields shared by the mapper and the submit gate', () => {
+      // One list drives both mapMeasurementRow (conversion) and the
+      // useHealthDataImport unit-required gate, so they can't drift apart.
+      expect(MEASUREMENT_LENGTH_FIELDS).toEqual([
+        'height',
+        'neck',
+        'waist',
+        'hips',
+      ]);
     });
 
     it('applies a weight unit override when the unit column is absent', () => {

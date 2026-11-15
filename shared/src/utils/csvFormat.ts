@@ -191,6 +191,30 @@ const normalizeHeader = (h: string): string =>
     .replace(/\([^)]*\)/g, '') // strip parenthetical units: "Protein (g)" -> "Protein"
     .replace(/[^a-z0-9]/g, ''); // strip whitespace + punctuation, keep letters+digits
 
+// The parenthetical unit a header carries, lower-cased ("Fat (kcal)" -> "kcal"),
+// or undefined when there is none. Matching strips it (see normalizeHeader), so
+// this is the only place the unit survives — it must be checked here, not lost.
+const extractUnit = (h: string): string | undefined => {
+  const m = h.match(/\(([^)]*)\)/);
+  return m?.[1]?.trim().toLowerCase();
+};
+
+// Parenthetical units that denote energy rather than mass. A mass-based
+// nutrient field (fat, protein, carbs, ...) must never be bound to an
+// energy-labelled column: the unit is stripped during matching, so without
+// this check "Fat (kcal)" would silently store an energy value as grams.
+const ENERGY_UNITS = new Set([
+  'kcal',
+  'cal',
+  'kcals',
+  'cals',
+  'kj',
+  'kilocalorie',
+  'kilocalories',
+]);
+// The only fields that are themselves energy and thus accept an energy unit.
+const ENERGY_FIELDS = new Set(['calories', 'energy']);
+
 /**
  * Known aliases for required headers, keyed by the normalized required header.
  * Values are normalized alias forms. Covers vendor exports that name a field
@@ -224,11 +248,19 @@ export function suggestHeaderMapping(
   for (const required of requiredHeaders) {
     const normalizedRequired = normalizeHeader(required);
     const aliases = HEADER_ALIASES[normalizedRequired] ?? [];
-    const matches = fileHeaders.filter(
-      (h) =>
-        normalizeHeader(h) === normalizedRequired ||
-        aliases.includes(normalizeHeader(h))
-    );
+    const isEnergyField = ENERGY_FIELDS.has(normalizedRequired);
+    const matches = fileHeaders.filter((h) => {
+      const nh = normalizeHeader(h);
+      if (!(nh === normalizedRequired || aliases.includes(nh))) return false;
+      // Reject an energy-labelled column for a mass-based field (e.g. "Fat
+      // (kcal)" for the gram-based "fat"). The unit is stripped during name
+      // matching, so without this guard the sole candidate would be bound and
+      // the energy value stored as a mass value. An energy field (calories)
+      // keeps its energy-labelled column.
+      const unit = extractUnit(h);
+      if (unit && ENERGY_UNITS.has(unit) && !isEnergyField) return false;
+      return true;
+    });
     if (matches.length === 1) {
       mapping[required] = matches[0] as string;
       continue;

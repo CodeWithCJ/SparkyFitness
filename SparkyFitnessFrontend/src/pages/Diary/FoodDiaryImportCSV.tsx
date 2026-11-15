@@ -566,13 +566,15 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       const entry: FoodDiaryImportRow = {
         ...(rest as unknown as FoodDiaryImportRow),
       };
-      // Aggregate reshape: route each per-meal row through the meal-group path
-      // (meal_name set) so the server logs the meal's nutrient totals as one
-      // serving of a quick food, instead of requiring a food_name + quantity.
-      // Gated on looksAggregate too, so a stale aggregateMode can never
-      // reshape a file whose current mapping isn't an aggregate one.
-      if (aggregateMode && looksAggregate) {
-        Object.assign(entry, reshapeAggregateRow(row));
+      // Normalize meal_type before submit: trim it (the server matches with
+      // LOWER(name)=LOWER($1) — case-insensitive but NOT trim-insensitive, so
+      // " Dinner " would be rejected) and resolve to the canonical option when
+      // it matches one (fixes case). An unmatched value stays trimmed so the
+      // server's "Invalid meal type" message names what the user typed.
+      const rawMealType = (row['meal_type'] ?? '').trim();
+      if (rawMealType) {
+        entry.meal_type =
+          matchDropdownValue(rawMealType, mealTypeOptions) || rawMealType;
       }
       // Base numeric fields go to the server as strings and are parsed there
       // with plain Number(), so normalize a locale-comma cell like "80,2" to
@@ -585,6 +587,17 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         if (num !== undefined) {
           (entry as Record<string, unknown>)[col] = String(num);
         }
+      }
+      // Aggregate reshape: route each per-meal row through the meal-group path
+      // (meal_name set) so the server logs the meal's nutrient totals as one
+      // serving of a quick food, instead of requiring a food_name + quantity.
+      // Applied AFTER the numeric normalization so the single serving holds
+      // even when a Quantity cell was edited (the loop would otherwise write
+      // the typed value back over the quantity: '1' override). Gated on
+      // looksAggregate too, so a stale aggregateMode can never reshape a file
+      // whose current mapping isn't an aggregate one.
+      if (aggregateMode && looksAggregate) {
+        Object.assign(entry, reshapeAggregateRow(row));
       }
       const cn: Record<string, number> = {};
       for (const col of customCols) {
@@ -737,6 +750,19 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
             ))}
           </SelectContent>
         </Select>
+      );
+    }
+    if (header === 'quantity' && aggregateMode && looksAggregate) {
+      // Aggregate mode submits a single serving per row (reshapeAggregateRow
+      // forces quantity to '1'). Show that effective value so a blank cell
+      // doesn't hide the one serving that is actually submitted.
+      return (
+        <Input
+          type="text"
+          value={'1'}
+          readOnly
+          className="w-full md:w-32 opacity-60"
+        />
       );
     }
     const isText = TEXT_HEADERS.has(header);

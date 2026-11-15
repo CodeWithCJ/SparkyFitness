@@ -256,10 +256,25 @@ describe('suggestHeaderMapping', () => {
     expect(mapping['entry_date']).toBeUndefined();
   });
 
-  it('leaves a header unmapped when several equally-ambiguous columns collide', () => {
-    // "Fat (g)" and "Fat (kcal)" both normalize to "fat" with no clean winner —
-    // never silently bind to the first; leave it for the user to map.
+  it('binds the gram column when a gram and an energy column both match', () => {
+    // "Fat (kcal)" is an energy value, not a mass value — it's rejected for the
+    // gram-based fat field, leaving "Fat (g)" as the sole valid match.
     const mapping = suggestHeaderMapping(['fat'], ['Fat (g)', 'Fat (kcal)']);
+    expect(mapping['fat']).toBe('Fat (g)');
+  });
+
+  it('leaves a mass field unmapped when its only candidate is energy-labelled', () => {
+    // Regression: a file whose only fat-like column is "Fat (kcal)" must NOT be
+    // bound to the gram-based fat field — the unit is stripped during matching,
+    // so without the guard the energy value would be stored as grams.
+    const mapping = suggestHeaderMapping(['fat'], ['Fat (kcal)']);
     expect(mapping['fat']).toBeUndefined();
+  });
+
+  it('keeps an energy field bound to an energy-labelled column', () => {
+    // "Calories" is itself an energy field, so "Calories (kcal)" is a valid
+    // match (not rejected) for it.
+    const mapping = suggestHeaderMapping(['calories'], ['Calories (kcal)']);
+    expect(mapping['calories']).toBe('Calories (kcal)');
   });
 });
