@@ -480,6 +480,8 @@ export interface WatchTelemetryFields {
   watch_duration_minutes?: number | null;
   /** Stride length in cm; null clears it. */
   stride_length_cm?: number | null;
+  /** Average cadence in steps per minute; null clears it. */
+  avg_cadence?: number | null;
 }
 
 /**
@@ -902,6 +904,9 @@ async function _updateExerciseEntryWithClient(
         ? updateData.water_estimated
         : currentEntry.water_estimated,
   };
+  // The entry's copy of the Health activity type (#1750) changes only when the
+  // entry is moved to another exercise, like its other snapshot fields.
+  let refreshedHealthActivityType: string | null | undefined;
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
     updateData.exercise_id &&
@@ -927,6 +932,7 @@ async function _updateExerciseEntryWithClient(
     mergedData.secondary_muscles = exercise.secondary_muscles;
     mergedData.instructions = exercise.instructions;
     mergedData.images = exercise.images;
+    refreshedHealthActivityType = exercise.health_activity_type ?? null;
   }
   // Telemetry columns: prefer an explicitly-provided updateData value, otherwise keep
   // whatever is already on the row. Using a raw object spread for these would let an
@@ -989,6 +995,11 @@ async function _updateExerciseEntryWithClient(
       ${telemetrySetClause},
       record_timezone = $${32 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length},
       manual_fields = $${33 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text[],
+      health_activity_type = CASE
+        WHEN $${34 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::boolean
+          THEN $${35 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text
+        ELSE health_activity_type
+      END,
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -1028,6 +1039,8 @@ async function _updateExerciseEntryWithClient(
       mergedData.record_timezone ?? null,
       // NULL while nothing is marked, so an untouched row keeps its shape.
       manualFields.length > 0 ? manualFields : null,
+      refreshedHealthActivityType !== undefined,
+      refreshedHealthActivityType ?? null,
     ]
   );
   // The row can be deleted by a competing writer between the existence check
@@ -1119,15 +1132,59 @@ async function acquireExerciseEntrySyncLockWithClient(
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
 }
 
+/** One set of an entry being created; columns of exercise_entry_sets. */
+interface ExerciseEntrySetInput {
+  set_number?: number | null;
+  set_type?: string | null;
+  reps?: number | null;
+  weight?: number | string | null;
+  duration?: number | null;
+  rest_time?: number | null;
+  notes?: string | null;
+  rpe?: number | null;
+  rir?: number | null;
+  completed_at?: string | Date | null;
+  is_pr?: boolean | null;
+  distance?: number | null;
+  started_at?: string | Date | null;
+}
+
+/**
+ * What every create path (diary, presets, plans, chatbot, Garmin, FIT,
+ * Liftosaur, health data) passes. Fields a path does not know are left out;
+ * the telemetry columns (EXERCISE_ENTRY_TELEMETRY_COLUMNS) and other provider
+ * extras ride along under the index signature and are read by name, and the
+ * whole object also feeds the update path when the entry already exists.
+ */
+interface ExerciseEntryCreateInput {
+  [column: string]: unknown;
+  /** A client-chosen entry id, so the entry keeps its identity across saves. */
+  id?: string | null;
+  exercise_id: string;
+  entry_date: string;
+  exercise_name?: string | null;
+  duration_minutes?: number | null;
+  calories_burned?: number | null;
+  notes?: string | null;
+  workout_plan_assignment_id?: string | number | null;
+  image_url?: string | null;
+  source_id?: string | null;
+  distance?: number | null;
+  avg_heart_rate?: number | null;
+  sort_order?: number | null;
+  steps?: number | null;
+  water_estimated?: number | null;
+  superset_group?: string | number | null;
+  entry_time?: string | null;
+  record_timezone?: string | null;
+  sets?: ExerciseEntrySetInput[] | null;
+}
+
 async function _createExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
+  client: PoolClient,
+  userId: string,
+  entryData: ExerciseEntryCreateInput,
+  createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
   options: { skipDuplicateCheck?: boolean } = {}
@@ -1253,7 +1310,7 @@ async function _createExerciseEntryWithClient(
       // No existing entry, create a new one
       // 1. Fetch the exercise details to create the snapshot
       const exerciseSnapshotQuery = await client.query(
-        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality
+        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality, health_activity_type
          FROM exercises WHERE id = $1`,
         [entryData.exercise_id]
       );
@@ -1303,6 +1360,7 @@ async function _createExerciseEntryWithClient(
         snapshot.modality,
         ...telemetryValuesFrom(entryData),
         entryData.record_timezone ?? null,
+        snapshot.health_activity_type ?? null,
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
@@ -1314,7 +1372,7 @@ async function _createExerciseEntryWithClient(
         'equipment, primary_muscles, secondary_muscles, instructions, images, ' +
         'distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated, ' +
         'superset_group, entry_time, modality';
-      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone${idColumn}`;
+      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone, health_activity_type${idColumn}`;
       const placeholders = entryValues
         .map((_, index) => `$${index + 1}`)
         .join(', ');
@@ -1326,8 +1384,7 @@ async function _createExerciseEntryWithClient(
       newEntryId = entryResult.rows[0].id;
       if (entryData.sets && entryData.sets.length > 0) {
         assertSetWeightSign(entryData.sets, snapshot.modality);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setsValues = entryData.sets.map((set: any) => [
+        const setsValues = entryData.sets.map((set) => [
           newEntryId,
           set.set_number,
           set.set_type,

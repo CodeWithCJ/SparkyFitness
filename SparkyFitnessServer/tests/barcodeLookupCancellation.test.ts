@@ -59,6 +59,7 @@ const provider = (type: string): ProviderDetails => ({
   sync_frequency: 'manual',
   app_id: 'test-client',
   app_key: 'test-credential',
+  has_app_key: true,
   token_expires_at: null,
   external_user_id: null,
   garth_dump: null,
@@ -67,6 +68,7 @@ const provider = (type: string): ProviderDetails => ({
   required_fields: [],
   field_labels: {},
   supports_barcode: true,
+  provider_options: null,
 });
 const options = {
   skipLocal: true,

@@ -25,7 +25,9 @@ const MAX_DETAIL_DATA_BYTES = 10 * 1024 * 1024;
 // Sports where FIT cadence is strides/min (one leg); steps/min doubles it.
 const DOUBLED_CADENCE_SPORTS = new Set(['running', 'walking', 'hiking']);
 
-export interface FitEntryData {
+// A type alias rather than an interface, so it fits the repository's
+// ExerciseEntryCreateInput, whose index signature carries the telemetry columns.
+export type FitEntryData = {
   duration_minutes: number;
   calories_burned: number;
   entry_date?: string;
@@ -35,7 +37,7 @@ export interface FitEntryData {
   notes: string;
   source_id: string;
   training_load?: number | null;
-}
+};
 
 interface MetricDescriptor {
   key: string;

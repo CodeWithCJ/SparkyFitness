@@ -341,6 +341,56 @@ describe('FoodFormScreen', () => {
     expect(navigation.dispatch).not.toHaveBeenCalled();
   });
 
+  it.each(['FoodEntryAdd', 'FoodEntryView'] as const)(
+    'scans a label over the %s nutrition adjustment without saving',
+    (returnTo) => {
+      const params = {
+        mode: 'adjust-entry-nutrition',
+        returnTo,
+        returnKey: `${returnTo}-key`,
+        initialValues: { name: 'Unsaved provider food', calories: '0' },
+      };
+      const screen = renderScreen(params);
+
+      fireEvent.press(screen.getByText('Scan nutrition label'));
+
+      expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
+        mode: 'capture-label',
+        returnKey: 'FoodForm-key',
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      expect(mockAddEntry).not.toHaveBeenCalled();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('delivers a partial label scan to the current nutrition adjustment for review', () => {
+    const scan = {
+      result: { calories: 184, protein: 0, fat: null, serving_size: 100 },
+      nonce: 1,
+    };
+    renderScreen({
+      mode: 'adjust-entry-nutrition',
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      initialValues: {
+        name: 'Unsaved provider food',
+        brand: 'Unsaved brand',
+        calories: '0',
+        fat: '3',
+      },
+      pendingNutritionLabelScan: scan,
+    });
+
+    expect(mockFoodForm).toHaveBeenLastCalledWith(
+      expect.objectContaining({ nutritionLabelScan: scan })
+    );
+    expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+    expect(mockAddEntry).not.toHaveBeenCalled();
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+  });
+
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
   const mockInvalidateCache = jest.fn();

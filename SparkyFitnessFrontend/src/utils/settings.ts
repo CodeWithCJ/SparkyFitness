@@ -1,5 +1,6 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { DataProvider } from '@/types/settings';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 
 export const providerRequirements: Record<string, string[]> = {
   mealie: ['base_url', 'app_key'],
@@ -57,6 +58,7 @@ const PROVIDERS_WITHOUT_APP_ID = [
   'free-exercise-db',
   'wger',
   'liftosaur',
+  MCP_SERVER_PROVIDER_TYPE,
 ];
 const OAUTH_TOKEN_PROVIDERS = [
   'googlehealth',
@@ -66,6 +68,20 @@ const OAUTH_TOKEN_PROVIDERS = [
   'polar',
   'coros_mcp',
 ];
+
+/**
+ * Whether a type is offered in the add and edit forms. The admin's global
+ * providers leave out strictly private types, which are personal, except the
+ * MCP tool server: it is strictly private so it is never shared, yet only an
+ * admin may add one. The personal form never offers it.
+ */
+export const isProviderTypeOffered = (
+  type: { id: string; is_strictly_private?: boolean | null },
+  isAdminMode: boolean
+): boolean =>
+  type.id === MCP_SERVER_PROVIDER_TYPE
+    ? isAdminMode
+    : !isAdminMode || !type.is_strictly_private;
 
 export const encodeYazioAppId = (
   username?: string | null,

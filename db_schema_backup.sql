@@ -2224,9 +2224,11 @@ CREATE TABLE public.exercise_entries (
     calories_applied numeric,
     calorie_link_id uuid,
     calorie_link_resolution text,
+    health_activity_type text,
     CONSTRAINT chk_exercise_entries_calorie_link_resolution CHECK (((calorie_link_resolution IS NULL) OR (calorie_link_resolution = ANY (ARRAY['sparkyfitness'::text, 'synced'::text, 'higher'::text, 'lower'::text, 'average'::text, 'custom'::text])))),
     CONSTRAINT chk_exercise_entries_calories_applied CHECK (((calories_applied IS NULL) OR (calories_applied >= (0)::numeric))),
     CONSTRAINT chk_exercise_entries_workout_effort CHECK (((workout_effort IS NULL) OR ((workout_effort >= 1) AND (workout_effort <= 10)))),
+    CONSTRAINT exercise_entries_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
@@ -2257,6 +2259,13 @@ COMMENT ON COLUMN public.exercise_entries.entry_time IS 'Optional wall-clock loc
 --
 
 COMMENT ON COLUMN public.exercise_entries.record_timezone IS 'IANA timezone entry_time is expressed in (e.g. America/New_York). NULL when unknown; read paths fall back to the profile timezone.';
+
+
+--
+-- Name: COLUMN exercise_entries.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.health_activity_type IS 'Snapshot of exercises.health_activity_type when the entry was created (#1750); used once the exercise is deleted.';
 
 
 --
@@ -2527,8 +2536,17 @@ CREATE TABLE public.exercises (
     images text,
     is_quick_exercise boolean DEFAULT false,
     modality text DEFAULT 'weight_reps'::text NOT NULL,
+    health_activity_type text,
+    CONSTRAINT exercises_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercises_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
+
+
+--
+-- Name: COLUMN exercises.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercises.health_activity_type IS 'Apple Health / Health Connect activity type key for write-back (#1750); NULL = automatic.';
 
 
 --
@@ -2571,7 +2589,8 @@ CREATE TABLE public.external_data_providers (
     is_public boolean DEFAULT false NOT NULL,
     sync_started_at timestamp with time zone,
     fit_downloads_day date,
-    fit_downloads_used integer DEFAULT 0 NOT NULL
+    fit_downloads_used integer DEFAULT 0 NOT NULL,
+    provider_options jsonb
 );
 
 
@@ -5294,6 +5313,7 @@ CREATE TABLE public.user_preferences (
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    chat_mcp_server_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),

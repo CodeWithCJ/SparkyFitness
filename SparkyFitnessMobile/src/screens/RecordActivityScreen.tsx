@@ -55,6 +55,10 @@ import RouteMap from '../components/exerciseStats/RouteMap';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { correctTreadmillDistance } from '../utils/treadmillCorrection';
+import { usePreferencesHydrated } from '../hooks/usePreferencesHydrated';
+import { formatTreadmillPercent } from '../utils/treadmillCorrectionFormat';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { usePreferences } from '../hooks/usePreferences';
 import { useSuggestedRanges } from '../hooks/useSuggestedRanges';
@@ -955,10 +959,44 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const indoorDistanceInvalid =
     indoorDistance !== null &&
     (!Number.isFinite(indoorDistance) || indoorDistance < 0);
-  const indoorDistanceKm =
-    indoorDistance !== null && Number.isFinite(indoorDistance)
-      ? (indoorDistance * unitMeters) / METERS_PER_KM
+  const preferencesHydrated = usePreferencesHydrated();
+  const treadmillCorrectionEnabled = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionEnabled
+  );
+  const treadmillCorrectionPercent = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionPercent
+  );
+  // Only a figure the person typed is a treadmill reading; the prefilled
+  // step estimate is already the phone's own measurement, so it is never
+  // corrected. What is saved, and what the stride learns from, is the corrected
+  // figure.
+  const typedIndoorMeters =
+    indoorDistanceText !== null &&
+    indoorDistance !== null &&
+    Number.isFinite(indoorDistance)
+      ? indoorDistance * unitMeters
       : null;
+  // The correction describes a treadmill, so it is for walks and runs only;
+  // an indoor ride's figure comes from another machine and is kept as typed.
+  const onTreadmill =
+    session?.activity === 'walk' || session?.activity === 'run';
+  const treadmillCorrection = useMemo(
+    () => ({
+      enabled: treadmillCorrectionEnabled && onTreadmill,
+      percent: treadmillCorrectionPercent,
+    }),
+    [onTreadmill, treadmillCorrectionEnabled, treadmillCorrectionPercent]
+  );
+  const indoorCorrected =
+    typedIndoorMeters !== null
+      ? correctTreadmillDistance(typedIndoorMeters, treadmillCorrection)
+      : null;
+  const indoorDistanceKm =
+    indoorCorrected?.applied === true
+      ? indoorCorrected.correctedMeters / METERS_PER_KM
+      : indoorDistance !== null && Number.isFinite(indoorDistance)
+        ? (indoorDistance * unitMeters) / METERS_PER_KM
+        : null;
 
   // A treadmill test's extra answers, asked after Finish.
   const [testTimeText, setTestTimeText] = useState<string | null>(null);
@@ -985,10 +1023,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       distanceMeters:
         indoorDistanceKm === null ? null : indoorDistanceKm * METERS_PER_KM,
       timeSeconds: typedTime,
+      // The split is read off the same treadmill as the total, so it takes
+      // the same correction; otherwise the last 20 minutes would mix a
+      // corrected total with a raw split.
       splitMeters:
         splitValue === null || !Number.isFinite(splitValue)
           ? null
-          : splitValue * unitMeters,
+          : correctTreadmillDistance(
+              splitValue * unitMeters,
+              treadmillCorrection
+            ).correctedMeters,
       inclinePercent: inclineInvalid ? null : inclineValue,
       adjustForIncline,
     });
@@ -1003,6 +1047,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testSplitText,
     testTimeText,
     testType,
+    treadmillCorrection,
     unitMeters,
   ]);
   const testMeasurement: FitnessTestMeasurement | null = useMemo(() => {
@@ -1037,6 +1082,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testIndoor && indoorTestResult && !indoorTestResult.ok
       ? indoorTestResult.reason
       : null;
+  // Only a test with a result is filed. One the result check refuses (a
+  // treadmill 5K stopped after a few seconds) is saved as an ordinary run,
+  // as the finished card says, rather than sent for the server to reject.
+  const testToSave = testOutcome ? testMeasurement : null;
 
   const handleSave = useCallback(async () => {
     if (!session) return;
@@ -1047,7 +1096,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         points,
         distanceUnit,
         session.indoor
-          ? session.fitnessTest === '5k' && indoorDistanceKm === null
+          ? testToSave?.type === '5k' && indoorDistanceKm === null
             ? FIVE_K_METERS / METERS_PER_KM
             : indoorDistanceKm
           : null,
@@ -1058,22 +1107,22 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // failure throws like any save failure: the recording is kept, and the
       // retry reuses the saved activity and replaces the test, never doubling it.
       let savedTest: FitnessTestResponse | null = null;
-      if (session.fitnessTest && testMeasurement) {
+      if (session.fitnessTest && testToSave) {
         savedTest = await saveFitnessTest({
-          test_type: testMeasurement.type,
+          test_type: testToSave.type,
           test_date: toLocalDateString(new Date(session.startedAt)),
-          distance_meters: testMeasurement.distanceMeters,
-          duration_seconds: testMeasurement.durationSeconds,
-          split_distance_meters: testMeasurement.splitDistanceMeters ?? null,
+          distance_meters: testToSave.distanceMeters,
+          duration_seconds: testToSave.durationSeconds,
+          split_distance_meters: testToSave.splitDistanceMeters ?? null,
           exercise_entry_id: saved.entryId,
           surface: session.indoor ? 'indoor' : 'outdoor',
           incline_percent: session.indoor
-            ? (testMeasurement.inclinePercent ?? null)
+            ? (testToSave.inclinePercent ?? null)
             : null,
           incline_adjusted:
             session.indoor === true &&
-            testMeasurement.inclinePercent != null &&
-            testMeasurement.adjustForIncline !== false,
+            testToSave.inclinePercent != null &&
+            testToSave.adjustForIncline !== false,
         });
       }
       // Ticks a program workout off only if the plan was followed to its end; a run cut short can be tried again. The day is the one the run
@@ -1183,7 +1232,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     queryClient,
     session,
     t,
-    testMeasurement,
+    testToSave,
     updateShoe,
   ]);
 
@@ -2053,6 +2102,24 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
                 {unitLabel}
               </Text>
             </View>
+            {indoorCorrected?.applied ? (
+              <Text className="text-text-secondary text-sm mt-2">
+                {t('recordActivity.indoorDistance.corrected', {
+                  defaultValue:
+                    'Treadmill showed {{shown}} {{unit}}. Saved as {{saved}} {{unit}} with your {{percent}} treadmill correction.',
+                  shown: formatLocalizedNumber(
+                    indoorCorrected.displayedMeters / unitMeters,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  ),
+                  saved: formatLocalizedNumber(
+                    indoorCorrected.correctedMeters / unitMeters,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  ),
+                  unit: unitLabel,
+                  percent: formatTreadmillPercent(indoorCorrected.percent),
+                })}
+              </Text>
+            ) : null}
             {indoorDistanceInvalid ? (
               <Text className="text-text-danger-subtle text-sm mt-2">
                 {t('recordActivity.indoorDistance.invalid', {
@@ -2082,7 +2149,12 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             <Button
               loading={busy}
               disabled={
-                indoorSession && (indoorDistanceInvalid || inclineInvalid)
+                indoorSession &&
+                (indoorDistanceInvalid ||
+                  inclineInvalid ||
+                  // A typed treadmill figure is corrected with the saved
+                  // setting; not before it is read, or the raw figure is stored.
+                  !preferencesHydrated)
               }
               onPress={() => void handleSave()}
             >
