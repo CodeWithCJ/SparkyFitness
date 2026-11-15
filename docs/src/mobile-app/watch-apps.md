@@ -81,7 +81,7 @@ On the phone, open **Settings → Apple Watch → Complications**. Add as many a
 - **A gauge**, a **color** and an **icon**.
 - **More values.** A complication can show up to three values together: concentric rings in the circular and corner sizes, a row for each in the rectangular size, and the values joined on one line inline. The editor previews all four sizes as you change things.
 
-The list starts with a set of ready-made ones, including Macros, which shows protein, carbs and fat as three rings, and Sleep score. Changing or adding one makes the list yours. **Reset to starters**, **Export** and **Import** are in the menu at the top right: Export saves your list as a file, and Import adds the complications in a file to your list or replaces it.
+The list starts with four ready-made ones that the built-in complications don't offer: Calories left, Macros (protein, carbs and fat as three rings), Weight and Sleep score. Changing or adding one makes the list yours. **Reset to starters**, **Export** and **Import** are in the menu at the top right: Export saves your list as a file, and Import adds the complications in a file to your list or replaces it.
 
 To use one, edit the watch face, tap a complication slot and choose **Custom Complication**, then pick one of yours. Put different ones in different slots.
 

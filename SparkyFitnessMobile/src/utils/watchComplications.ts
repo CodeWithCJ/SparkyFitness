@@ -380,24 +380,11 @@ export const COMPLICATION_SOURCE_LABELS: Record<
     }),
 };
 
-/** The sources a wearer who never customised anything is offered. */
-const STARTER_SOURCES: readonly ComplicationSourceKey[] = [
-  'calories',
-  'caloriesRemaining',
-  'protein',
-  'carbs',
-  'fat',
-  'water',
-  'steps',
-  'fasting',
-  'weight',
-  'sleepScore',
-];
-
 /**
- * The complications offered before the wearer has made any. The id is the
- * source, so it is the same on every launch and the watch's picker keeps
- * pointing at the same entry.
+ * The complications offered before the wearer has made any: only ones the
+ * built-in complications do not already cover (those can be recoloured under
+ * Built-in complications). The id is the source, so it is the same on every
+ * launch and the watch's picker keeps pointing at the same entry.
  */
 export function starterComplications(
   t: Translator
@@ -410,8 +397,8 @@ export function starterComplications(
     source,
     ...SOURCE_LOOKS[source],
   });
-  // The one starter with several values: the three macros as rings, like the
-  // Daily Energy complication. It sits after Fat.
+  // The starter with several values: the three macros as rings, like the
+  // Daily Energy complication.
   const macros: WatchComplicationDefinition = {
     id: 'starter-macros',
     name: t('watchComplications.starters.macros', { defaultValue: 'Macros' }),
@@ -422,9 +409,12 @@ export function starterComplications(
       { source: 'fat', format: 'percent', color: 'fat', icon: 'drop.fill' },
     ],
   };
-  return STARTER_SOURCES.flatMap((source) =>
-    source === 'fat' ? [single(source), macros] : [single(source)]
-  );
+  return [
+    single('caloriesRemaining'),
+    macros,
+    single('weight'),
+    single('sleepScore'),
+  ];
 }
 
 /** What the watch is sent: the wearer's own list, or the starter set until there is one. */

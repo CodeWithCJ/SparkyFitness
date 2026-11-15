@@ -171,7 +171,7 @@ describe('WatchComplicationsScreen', () => {
   test('shows the starter set with a note until the list is the wearer’s own', () => {
     renderScreen();
     expect(
-      screen.getByTestId('watch-complication-row-starter-calories')
+      screen.getByTestId('watch-complication-row-starter-caloriesRemaining')
     ).toBeTruthy();
     expect(screen.getByTestId('watch-complications-starter-note')).toBeTruthy();
     expect(useAppPreferencesStore.getState().watchComplications).toBeNull();
@@ -179,25 +179,25 @@ describe('WatchComplicationsScreen', () => {
 
   test('deleting asks first, then saves a list without it', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText('Delete Protein'));
+    fireEvent.press(screen.getByLabelText('Delete Weight'));
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(storedNames()).toEqual([]);
 
     pressAlertButton(alertSpy, 'Delete');
-    expect(storedNames()).not.toContain('Protein');
-    expect(storedNames()).toContain('Carbs');
+    expect(storedNames()).not.toContain('Weight');
+    expect(storedNames()).toContain('Macros');
     expect(screen.queryByTestId('watch-complications-starter-note')).toBeNull();
   });
 
   test('moves a row down', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText('Move Calories down'));
-    expect(storedNames().slice(0, 2)).toEqual(['Calories left', 'Calories']);
+    fireEvent.press(screen.getByLabelText('Move Calories left down'));
+    expect(storedNames().slice(0, 2)).toEqual(['Macros', 'Calories left']);
   });
 
   test('the first row cannot move up and the last cannot move down', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText('Move Calories up'));
+    fireEvent.press(screen.getByLabelText('Move Calories left up'));
     fireEvent.press(screen.getByLabelText('Move Sleep score down'));
     expect(useAppPreferencesStore.getState().watchComplications).toBeNull();
   });
@@ -224,9 +224,9 @@ describe('WatchComplicationsScreen', () => {
 
   test('tapping a row edits that complication', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText('Edit Water'));
+    fireEvent.press(screen.getByLabelText('Edit Weight'));
     expect(navigation.navigate).toHaveBeenCalledWith('WatchComplicationEdit', {
-      complicationId: 'starter-water',
+      complicationId: 'starter-weight',
     });
   });
 
@@ -236,7 +236,7 @@ describe('WatchComplicationsScreen', () => {
       menuItem('Export')?.onPress();
     });
     expect(files.shareComplicationsFile).toHaveBeenCalledTimes(1);
-    expect(files.shareComplicationsFile.mock.calls[0][0]).toHaveLength(11);
+    expect(files.shareComplicationsFile.mock.calls[0][0]).toHaveLength(4);
   });
 
   test('a failed export says so', async () => {
@@ -281,7 +281,7 @@ describe('WatchComplicationsScreen', () => {
     expect(alertSpy.mock.calls[0][1]).toContain('2 complications');
 
     pressAlertButton(alertSpy, 'Add');
-    expect(storedNames()).toHaveLength(13);
+    expect(storedNames()).toHaveLength(6);
     expect(storedNames().slice(-2)).toEqual(['Sodium', 'Fibre']);
   });
 
@@ -335,7 +335,7 @@ describe('WatchComplicationsScreen', () => {
     renderScreen();
     expect(menuItem('Reset to starters')).toBeUndefined();
 
-    fireEvent.press(screen.getByLabelText('Move Calories down'));
+    fireEvent.press(screen.getByLabelText('Move Calories left down'));
     expect(storedNames()).not.toHaveLength(0);
     screen.rerender(
       <WatchComplicationsScreen

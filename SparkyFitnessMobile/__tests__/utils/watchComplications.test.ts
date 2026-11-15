@@ -103,13 +103,10 @@ describe('starterComplications', () => {
     const second = starterComplications(t);
     expect(first.map((d) => d.id)).toEqual(second.map((d) => d.id));
     expect(first[0]).toMatchObject({
-      id: 'starter-calories',
-      name: 'Calories',
-      source: 'calories',
+      id: 'starter-caloriesRemaining',
+      name: 'Calories left',
+      source: 'caloriesRemaining',
     });
-    expect(first.find((d) => d.source === 'caloriesRemaining')?.name).toBe(
-      'Calories left'
-    );
   });
 
   it('only uses valid sources and unique ids', () => {
@@ -632,9 +629,16 @@ describe('extra values', () => {
 describe('the starter set', () => {
   const starters = starterComplications(t);
 
-  it('has a macros complication of three rings, after Fat', () => {
-    const ids = starters.map((d) => d.id);
-    expect(ids.indexOf('starter-macros')).toBe(ids.indexOf('starter-fat') + 1);
+  it('only offers what the built-in complications do not already cover', () => {
+    expect(starters.map((d) => d.id)).toEqual([
+      'starter-caloriesRemaining',
+      'starter-macros',
+      'starter-weight',
+      'starter-sleepScore',
+    ]);
+  });
+
+  it('has a macros complication of three rings', () => {
     const macros = starters.find((d) => d.id === 'starter-macros');
     expect(macros?.name).toBe('Macros');
     expect(itemsOf(macros!).map((i) => i.source)).toEqual([
