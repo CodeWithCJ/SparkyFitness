@@ -142,22 +142,48 @@ const rowSnapshot = (row: HealthImportRow): Record<string, string> => {
   return rest;
 };
 
+// A global unit to apply when the file has no unit column for a metric.
+// Without it, weightToKg/lengthToCm treat a blank unit as "already in the SI
+// unit" (kg/cm), which silently mis-scales imperial values (e.g. 177 lb ->
+// 177 kg). The caller supplies this only when the unit column is unmapped.
+export interface UnitOverrides {
+  weightUnit?: string;
+  lengthUnit?: string;
+}
+
 // Fan a single measurements row (one row per day, many columns) out into one
 // item per populated metric. Blank columns are omitted, never sent as 0. An
 // unrecognized weight/length unit fails the whole row rather than defaulting.
+// When a unit column is absent, `unitOverrides` supplies it; a populated cell
+// always wins over the override.
 const mapMeasurementRow = (
   row: HealthImportRow,
-  format: DecimalFormat
+  format: DecimalFormat,
+  unitOverrides?: UnitOverrides
 ): MappedRows => {
   const items: HealthDataItem[] = [];
   const base = baseFields(row);
-  const weightUnit = cell(row, 'weight_unit');
-  const lengthUnit = cell(row, 'length_unit');
+  const weightUnit = cell(row, 'weight_unit') || unitOverrides?.weightUnit;
+  const lengthUnit = cell(row, 'length_unit') || unitOverrides?.lengthUnit;
 
   const weightCell = readNumber(row, 'weight', format);
   if (!weightCell.ok) return numberError(row, 'weight', weightCell.raw);
   const weight = weightCell.value;
   if (weight !== undefined) {
+    // A present weight with no unit (and no override) must not be silently
+    // treated as kg — that mis-scales imperial values. Require the unit.
+    if (isBlank(weightUnit)) {
+      return {
+        items: [],
+        errors: [
+          {
+            error:
+              'Weight is present but no unit is set. Choose a unit (kg or lb) for this import.',
+            entry: rowSnapshot(row),
+          },
+        ],
+      };
+    }
     const kg = weightToKg(weight, weightUnit);
     if (kg === undefined) {
       return {
@@ -186,6 +212,19 @@ const mapMeasurementRow = (
     if (!read.ok) return numberError(row, type, read.raw);
     const value = read.value;
     if (value === undefined) continue;
+    // A present length with no unit (and no override) must not be silently
+    // treated as cm — require the unit.
+    if (isBlank(lengthUnit)) {
+      return {
+        items: [],
+        errors: [
+          {
+            error: `'${type}' is present but no unit is set. Choose a unit (cm, in, or m) for this import.`,
+            entry: rowSnapshot(row),
+          },
+        ],
+      };
+    }
     const cm = lengthToCm(value, lengthUnit);
     if (cm === undefined) {
       return {
@@ -370,11 +409,16 @@ const mapMoodRow = (
 export const mapRowsToHealthItems = (
   category: ImportCategory,
   rows: HealthImportRow[],
-  decimalChoice: DecimalFormatChoice = 'auto'
+  decimalChoice: DecimalFormatChoice = 'auto',
+  unitOverrides?: UnitOverrides
 ): MappedRows => {
   const mapper: Record<
     ImportCategory,
-    (row: HealthImportRow, format: DecimalFormat) => MappedRows
+    (
+      row: HealthImportRow,
+      format: DecimalFormat,
+      unitOverrides?: UnitOverrides
+    ) => MappedRows
   > = {
     measurements: mapMeasurementRow,
     sleep: mapSleepRow,
@@ -391,7 +435,7 @@ export const mapRowsToHealthItems = (
   const items: HealthDataItem[] = [];
   const errors: ImportError[] = [];
   for (const row of rows) {
-    const mapped = mapper[category](row, format);
+    const mapped = mapper[category](row, format, unitOverrides);
     items.push(...mapped.items);
     errors.push(...mapped.errors);
   }

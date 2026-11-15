@@ -132,6 +132,7 @@ export default defineConfig({
             { text: 'Goals', link: '/features/goals' },
             { text: 'Family & Friends Sharing', link: '/features/family-friends-sharing' },
             { text: 'Searching', link: '/features/searching' },
+            { text: 'Importing your data', link: '/features/data-import' },
             { text: 'Sharing', link: '/features/sharing' },
             { text: 'User Settings', link: '/features/user-settings' },
             { text: 'AI Nutrition Assistant', link: '/features/ai-assistant' },
