@@ -1,0 +1,60 @@
+{
+  "id": "20107_standing_wrist_flexor_stretch",
+  "numeric_id": "20107",
+  "slug": "standing_wrist_flexor_stretch",
+  "name": "Standing Wrist Flexor Stretch",
+  "aliases": [
+    "Wrist Flexor Stretch",
+    "Forearm Flexor Stretch",
+    "Prayer Wrist Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "body only",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "carpal_tunnel_tightness",
+      "medial_epicondylitis",
+      "forearm_flexor_spasm"
+    ],
+    "contraindications": [
+      "acute_median_nerve_neuritis_irritated_by_extension"
+    ],
+    "clinical_protocol": "AAOS Wrist Flexibility Protocol"
+  },
+  "steps": [
+    "Stand or sit tall and extend your target arm straight out in front of you at shoulder height.",
+    "Turn your palm to face forward with your fingers pointing upward toward the ceiling.",
+    "Use your opposite hand to gently grasp your fingers.",
+    "Pull your fingers and palm backward toward your body until you feel a comfortable stretch along the underside of your forearm and wrist.",
+    "Hold the stretch steady for 20 to 30 seconds while breathing normally.",
+    "Gently release and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Keep your elbow straight to stretch both the wrist and elbow attachments of the flexor muscles.",
+    "Apply gentle, even pressure across all four fingers without bending them excessively backward at the knuckle.",
+    "Do not force through tingling or numbness in the fingers."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

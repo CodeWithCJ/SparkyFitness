@@ -1,0 +1,57 @@
+{
+  "id": "20079_stick_shoulder_internal_rotation",
+  "numeric_id": "20079",
+  "slug": "stick_shoulder_internal_rotation",
+  "name": "Stick Shoulder Internal Rotation",
+  "aliases": [
+    "Cane Shoulder Internal Rotation",
+    "Wand Passive Internal Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "transverse",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "posterior_capsular_tightness",
+      "rotator_cuff_impingement",
+      "subscapularis_mobility"
+    ],
+    "contraindications": [
+      "acute_posterior_dislocation"
+    ],
+    "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+  },
+  "steps": [
+    "Stand tall holding a light stick, dowel, or cane horizontally behind your back with both hands.",
+    "Grip the stick with an overhand grip, keeping your elbows comfortably relaxed.",
+    "Using your unaffected arm, gently push or slide the stick across your lower back toward the affected side.",
+    "This guides your target arm into internal rotation and adduction across your lower back.",
+    "Hold the comfortable stretch for 3 to 5 seconds at the end-range of motion.",
+    "Slowly return to the starting position and repeat."
+  ],
+  "coaching_cues": [
+    "Keep your chest lifted and shoulders from hunching forward excessively.",
+    "The unaffected arm supplies the gentle driving force; the target shoulder should stay relaxed.",
+    "Never force through sharp, pinch-like pain."
+  ],
+  "sources": {
+    "attribution": "AAOS Shoulder Conditioning & Active-Assisted Range of Motion Protocol"
+  }
+}

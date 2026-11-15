@@ -1,0 +1,59 @@
+{
+  "id": "20072_single_leg_glute_bridge",
+  "numeric_id": "20072",
+  "slug": "single_leg_glute_bridge",
+  "name": "Single-Leg Glute Bridge",
+  "aliases": [
+    "One-Leg Bridge",
+    "Single-Leg Pelvic Lift"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "mobility",
+    "body_part": "glutes",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "gluteal_asymmetry",
+      "hamstring_strain_prevention",
+      "pelvic_instability"
+    ],
+    "contraindications": [
+      "acute_sacroiliitis_flare"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity Strengthening Protocol"
+  },
+  "steps": [
+    "Lie on your back with your knees bent and feet flat on the floor, about hip-width apart.",
+    "Extend one leg straight out in line with your opposite thigh, or bend it toward your chest.",
+    "Press firmly down through the heel of your grounded foot and squeeze your glute to lift your hips off the mat.",
+    "Lift until your body forms a straight line from your grounded knee through your hips to your shoulder.",
+    "Pause at the top for one second with your hips level, then slowly lower back to the mat."
+  ],
+  "coaching_cues": [
+    "Do not allow your pelvis to drop or rotate toward the non-working side.",
+    "Drive purely through the heel of the working leg to maximize glute contraction.",
+    "Keep your neck and upper shoulders relaxed on the mat."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Strengthening Protocol"
+  }
+}

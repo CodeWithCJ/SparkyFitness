@@ -1,0 +1,59 @@
+{
+  "id": "20075_push_up_plus",
+  "numeric_id": "20075",
+  "slug": "push_up_plus",
+  "name": "Push-Up Plus",
+  "aliases": [
+    "Plank Protraction",
+    "Serratus Push-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "mobility",
+    "body_part": "chest",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "scapular_winging",
+      "serratus_anterior_inhibition",
+      "subacromial_impingement"
+    ],
+    "contraindications": [
+      "acute_wrist_sprain"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+  },
+  "steps": [
+    "Start in a standard push-up position or from your knees, with hands placed directly beneath your shoulders.",
+    "Keep your arms completely straight with elbows locked throughout the entire movement.",
+    "Allow your chest to sag slightly toward the floor by letting your shoulder blades pinch together.",
+    "Push the floor firmly away, rounding your upper back upward toward the ceiling and spreading your shoulder blades as wide as possible.",
+    "Hold the peak 'plus' protraction for one second, then slowly lower back into retraction."
+  ],
+  "coaching_cues": [
+    "Your elbows must never bend; all movement is pure shoulder blade protraction and retraction.",
+    "Imagine pushing the floor away into the basement to spread your shoulder blades apart.",
+    "Maintain a rigid core so your hips do not sag."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Strengthening Protocol"
+  }
+}

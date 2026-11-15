@@ -1,0 +1,59 @@
+{
+  "id": "20087_band_standing_hip_extension",
+  "numeric_id": "20087",
+  "slug": "band_standing_hip_extension",
+  "name": "Band Standing Hip Extension",
+  "aliases": [
+    "Standing Band Glute Kickback",
+    "Resisted Hip Extension"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "glutes",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "gluteus_maximus_inhibition",
+      "postural_hip_weakness",
+      "running_gait_impairment"
+    ],
+    "contraindications": [
+      "acute_lumbar_facet_irritation"
+    ],
+    "clinical_protocol": "AAOS Hip Strengthening Protocol"
+  },
+  "steps": [
+    "Stand tall facing a sturdy wall or chair with a resistance band looped around both ankles.",
+    "Lightly rest your hands on the wall for balance and brace your core.",
+    "Keeping your target leg straight, slowly extend your leg backward behind you against the resistance of the band.",
+    "Squeeze your gluteus maximus firmly at the end-range of extension.",
+    "Hold for 1 to 2 seconds at the peak contraction.",
+    "Slowly return your leg forward under control."
+  ],
+  "coaching_cues": [
+    "Keep your torso upright and do not arch your lower back as your leg kicks back.",
+    "Focus all tension directly on the glute rather than your lower back.",
+    "Maintain a slight micro-bend in your standing knee for joint comfort."
+  ],
+  "sources": {
+    "attribution": "AAOS Hip Conditioning Program"
+  }
+}

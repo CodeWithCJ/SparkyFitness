@@ -1,0 +1,58 @@
+{
+  "id": "20064_dumbbell_supine_serratus_punch",
+  "numeric_id": "20064",
+  "slug": "dumbbell_supine_serratus_punch",
+  "name": "Dumbbell Supine Serratus Punch",
+  "aliases": [
+    "Supine Serratus Punch",
+    "Lying Protraction Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "chest",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "serratus_anterior_weakness",
+      "scapular_winging",
+      "subacromial_impingement"
+    ],
+    "contraindications": [
+      "acute_sternoclavicular_separation"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+  },
+  "steps": [
+    "Lie flat on your back on a mat with knees bent and feet flat on the floor.",
+    "Hold a light dumbbell in your hand with your arm extended straight up toward the ceiling over your shoulder.",
+    "Keeping your elbow completely locked and straight, punch the dumbbell directly upward toward the ceiling by lifting your shoulder blade off the floor.",
+    "Hold the peak protraction for one full second, feeling the muscle along your side ribs engage.",
+    "Slowly retract your shoulder blade, pulling it back flat against the mat without bending your elbow."
+  ],
+  "coaching_cues": [
+    "The elbow must stay straight; all motion occurs strictly from protracting and retracting your shoulder blade.",
+    "Push directly straight up toward the ceiling, not backward over your head.",
+    "Breathe out as you punch upward and breathe in as you lower."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Strengthening Protocol"
+  }
+}

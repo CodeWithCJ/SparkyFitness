@@ -1,0 +1,57 @@
+{
+  "id": "20103_dumbbell_wrist_radial_deviation",
+  "numeric_id": "20103",
+  "slug": "dumbbell_wrist_radial_deviation",
+  "name": "Dumbbell Wrist Radial Deviation",
+  "aliases": [
+    "Radial Deviation",
+    "Thumb-Up Wrist Lift",
+    "Wrist Radial Flexion"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "de_quervains_tenosynovitis",
+      "lateral_epicondylalgia_tennis_elbow",
+      "wrist_instability"
+    ],
+    "contraindications": [
+      "acute_scaphoid_fracture"
+    ],
+    "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+  },
+  "steps": [
+    "Sit with your forearm supported on a table or resting on your thigh, with your hand extending past the edge.",
+    "Hold a light dumbbell (1 to 3 lbs) with your thumb pointing straight up in a neutral 'hammer' position.",
+    "Keeping your forearm flat and still on the surface, lift your wrist upward toward the ceiling (in the direction of your thumb).",
+    "Hold for 1 second at the peak of radial deviation.",
+    "Slowly lower your wrist back to the neutral starting level under control."
+  ],
+  "coaching_cues": [
+    "Keep your forearm anchored to the table; only your wrist moves.",
+    "Do not twist or rotate your forearm; keep the thumb pointing directly up.",
+    "Use very light weight to protect the delicate wrist tendons."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

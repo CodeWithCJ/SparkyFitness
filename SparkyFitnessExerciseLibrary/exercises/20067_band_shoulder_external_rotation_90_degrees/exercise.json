@@ -1,0 +1,57 @@
+{
+  "id": "20067_band_shoulder_external_rotation_90_degrees",
+  "numeric_id": "20067",
+  "slug": "band_shoulder_external_rotation_90_degrees",
+  "name": "Band Shoulder External Rotation at 90 Degrees",
+  "aliases": [
+    "High Band External Rotation",
+    "Thrower 90/90 Band Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "intermediate",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "overhead_athlete_shoulder_instability",
+      "rotator_cuff_endurance_deficit"
+    ],
+    "contraindications": [
+      "acute_anterior_labral_tear_with_instability"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+  },
+  "steps": [
+    "Anchor a resistance band at shoulder height in front of you.",
+    "Stand facing the anchor, raising your target upper arm to shoulder height abducted at 90 degrees with elbow bent at 90 degrees.",
+    "Hold the band handle with your forearm parallel to the floor.",
+    "Rotate your forearm and hand upward until your forearm is vertical and perpendicular to the floor.",
+    "Pause for one count at peak external rotation, then slowly lower your forearm back parallel to the floor."
+  ],
+  "coaching_cues": [
+    "Keep your elbow fixed in space at shoulder height as the pivot point; do not drop your elbow.",
+    "Maintain an active core so your lower back does not arch as your hand rotates back.",
+    "Use a light resistance band to protect joint mechanics."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+  }
+}

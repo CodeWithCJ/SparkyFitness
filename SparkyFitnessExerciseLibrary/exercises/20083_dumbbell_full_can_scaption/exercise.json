@@ -1,0 +1,60 @@
+{
+  "id": "20083_dumbbell_full_can_scaption",
+  "numeric_id": "20083",
+  "slug": "dumbbell_full_can_scaption",
+  "name": "Dumbbell Full Can Scaption",
+  "aliases": [
+    "Full Can Exercise",
+    "Scaption Raise",
+    "Supraspinatus Full Can Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "supraspinatus_tendinopathy",
+      "subacromial_impingement",
+      "rotator_cuff_weakness"
+    ],
+    "contraindications": [
+      "acute_full_thickness_supraspinatus_tear"
+    ],
+    "clinical_protocol": "AAOS Rotator Cuff Conditioning Program"
+  },
+  "steps": [
+    "Stand upright holding very light dumbbells (1 to 5 lbs) at your sides with your feet shoulder-width apart.",
+    "Rotate your forearms so your thumbs are pointing upward and slightly outward, as if holding a full can of soda upright.",
+    "Keeping your elbows straight, raise your arms upward at a 30 to 45 degree angle in front of your body (the scapular plane).",
+    "Lift the dumbbells smoothly until your arms reach shoulder height (90 degrees of elevation).",
+    "Hold for 1 second at the top, maintaining the thumbs-up orientation.",
+    "Slowly lower the dumbbells back down to your sides over 2 seconds."
+  ],
+  "coaching_cues": [
+    "Always keep thumbs pointing toward the ceiling to open the subacromial space and prevent impingement.",
+    "Do not lift above shoulder height (keep arms below 90 degrees).",
+    "Use light resistance; strict form and muscle isolation take priority over weight."
+  ],
+  "sources": {
+    "attribution": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+  }
+}

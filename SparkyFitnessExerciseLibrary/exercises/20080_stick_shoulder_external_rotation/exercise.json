@@ -1,0 +1,58 @@
+{
+  "id": "20080_stick_shoulder_external_rotation",
+  "numeric_id": "20080",
+  "slug": "stick_shoulder_external_rotation",
+  "name": "Stick Shoulder External Rotation",
+  "aliases": [
+    "Cane External Rotation",
+    "Wand Shoulder External Rotation",
+    "Active-Assisted External Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "transverse",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "anterior_capsular_stiffness",
+      "post_op_rotator_cuff_mobility",
+      "frozen_shoulder"
+    ],
+    "contraindications": [
+      "acute_anterior_instability_or_labral_repair_without_clearance"
+    ],
+    "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+  },
+  "steps": [
+    "Lie on your back or sit upright holding a lightweight stick or cane horizontally with both hands.",
+    "Bend both elbows to 90 degrees and tuck your upper arms against your ribcage.",
+    "Grip the ends of the stick with your palms facing each other or facing upward.",
+    "Using your unaffected arm, gently push the stick horizontally across your body toward your affected side.",
+    "This pushes your affected forearm and hand outward into external rotation while keeping your elbow pinned to your side.",
+    "Hold the stretch for 3 to 5 seconds, then allow your unaffected arm to pull back to the starting center position."
+  ],
+  "coaching_cues": [
+    "Keep the elbow of your target arm pinned closely to your side throughout the rotation.",
+    "Do not allow your shoulder blade to shrug upward toward your ear.",
+    "Move smoothly without jerking or forcing past a comfortable stretching tension."
+  ],
+  "sources": {
+    "attribution": "AAOS Shoulder Conditioning Program"
+  }
+}

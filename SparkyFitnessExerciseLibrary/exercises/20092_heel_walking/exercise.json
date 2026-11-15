@@ -1,0 +1,56 @@
+{
+  "id": "20092_heel_walking",
+  "numeric_id": "20092",
+  "slug": "heel_walking",
+  "name": "Heel Walking",
+  "aliases": [
+    "Dorsiflexion Walking",
+    "Heel Walks"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "tibialis_anterior_weakness",
+      "foot_drop",
+      "shin_splints"
+    ],
+    "contraindications": [
+      "acute_calcaneal_stress_fracture_or_plantar_fasciitis_flare"
+    ],
+    "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+  },
+  "steps": [
+    "Stand tall in a clear hallway or open room with good posture.",
+    "Lift your toes and the balls of both feet off the floor, balancing entirely on your heels.",
+    "Keep your ankles strongly dorsiflexed with your toes pulled high toward your shins.",
+    "Take small, controlled steps forward on your heels while maintaining your balance.",
+    "Walk forward for the designated duration or distance without letting your toes touch the ground."
+  ],
+  "coaching_cues": [
+    "Stay tall with your chest up; avoid hunching your back or sticking your hips excessively backward.",
+    "Keep your toes lifted high throughout every single step to fire the anterior shin muscles.",
+    "Walk near a wall or railing if you need balance support."
+  ],
+  "sources": {
+    "attribution": "AAOS Foot and Ankle Conditioning Program"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "id": "20097_double_knee_to_chest_stretch",
+  "numeric_id": "20097",
+  "slug": "double_knee_to_chest_stretch",
+  "name": "Double Knee to Chest Stretch",
+  "aliases": [
+    "Bilateral Knee to Chest",
+    "Low Back Flexion Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "lower back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "spine",
+    "target_conditions": [
+      "lumbar_spinal_stenosis",
+      "paraspinal_hypertonicity",
+      "lumbar_facet_compression"
+    ],
+    "contraindications": [
+      "acute_posterior_lumbar_disc_protrusion"
+    ],
+    "clinical_protocol": "AAOS Spine Conditioning Program"
+  },
+  "steps": [
+    "Lie on your back on a mat with your knees bent and feet flat on the floor.",
+    "Bring one knee to your chest, followed by the other knee.",
+    "Wrap your arms around your shins or the backs of your thighs.",
+    "Gently pull both knees in toward your chest until your lower back gently flattens and rounds off the floor.",
+    "Hold the stretch for 20 to 30 seconds while taking slow, relaxed breaths.",
+    "Carefully lower one foot at a time back to the floor."
+  ],
+  "coaching_cues": [
+    "Keep your neck relaxed; do not strain or pull your chin to your knees unless guided.",
+    "Hold behind the thighs if you have sensitive knees.",
+    "Relax your lower back muscles completely into the stretch."
+  ],
+  "sources": {
+    "attribution": "AAOS Spine Conditioning Program"
+  }
+}

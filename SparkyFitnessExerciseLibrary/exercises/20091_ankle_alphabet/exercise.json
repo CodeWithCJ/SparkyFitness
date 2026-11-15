@@ -1,0 +1,56 @@
+{
+  "id": "20091_ankle_alphabet",
+  "numeric_id": "20091",
+  "slug": "ankle_alphabet",
+  "name": "Ankle Alphabet",
+  "aliases": [
+    "Alphabet Ankle Exercise",
+    "Ankle Mobility Alphabet"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "multiplanar",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "chronic_ankle_instability",
+      "subtalar_joint_stiffness",
+      "post_sprain_proprioception"
+    ],
+    "contraindications": [
+      "acute_unhealed_lateral_ligament_tear"
+    ],
+    "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+  },
+  "steps": [
+    "Sit comfortably on a chair with your leg lifted off the floor or resting on your opposite knee.",
+    "Imagine your big toe is a pen or pencil pointing forward.",
+    "Trace each capital letter of the alphabet in the air from A to Z using only your ankle and foot.",
+    "Make the letters as large as comfortable to move through all ranges of motion: dorsiflexion, plantarflexion, inversion, and eversion.",
+    "Complete the alphabet on one foot, then switch to the other side."
+  ],
+  "coaching_cues": [
+    "Isolate the movement to the ankle joint; do not rotate your whole leg from the knee or hip.",
+    "Trace both small curves and wide angles deliberately.",
+    "Take your time with letters like S, W, and Z that require multiplanar coordination."
+  ],
+  "sources": {
+    "attribution": "AAOS Foot and Ankle Conditioning Program"
+  }
+}

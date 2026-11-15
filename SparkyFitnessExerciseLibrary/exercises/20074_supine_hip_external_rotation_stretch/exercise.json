@@ -1,0 +1,58 @@
+{
+  "id": "20074_supine_hip_external_rotation_stretch",
+  "numeric_id": "20074",
+  "slug": "supine_hip_external_rotation_stretch",
+  "name": "Supine Hip External Rotation Stretch",
+  "aliases": [
+    "Supine Butterfly Hip Stretch",
+    "Lying External Hip Opener"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "groin_tightness",
+      "pelvic_floor_hypertonicity",
+      "hip_external_rotation_restriction"
+    ],
+    "contraindications": [
+      "acute_adductor_tendonitis_flare"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity Range of Motion Protocol"
+  },
+  "steps": [
+    "Lie comfortably on your back with your knees bent and feet flat on the floor.",
+    "Bring the soles of your feet together and slowly allow both knees to fall open to the sides toward the floor.",
+    "Rest your hands gently on your lower abdomen or alongside your body.",
+    "Feel a gentle, relaxing stretch through your inner thighs and groin.",
+    "Hold the position for 30 to 45 seconds while focusing on deep abdominal breathing."
+  ],
+  "coaching_cues": [
+    "Place yoga blocks or pillows under your outer thighs if the stretch feels too intense on your groin.",
+    "Do not arch your lower back aggressively off the floor.",
+    "Relax your inner thighs completely with each exhalation."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

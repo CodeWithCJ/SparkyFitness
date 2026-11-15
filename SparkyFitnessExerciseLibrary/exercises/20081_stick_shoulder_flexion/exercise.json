@@ -1,0 +1,60 @@
+{
+  "id": "20081_stick_shoulder_flexion",
+  "numeric_id": "20081",
+  "slug": "stick_shoulder_flexion",
+  "name": "Stick Shoulder Flexion",
+  "aliases": [
+    "Cane Overhead Shoulder Flexion",
+    "Wand Shoulder Flexion",
+    "Assisted Overhead Elevation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "limited_overhead_reach",
+      "frozen_shoulder",
+      "rotator_cuff_stiffness"
+    ],
+    "contraindications": [
+      "acute_subacromial_impingement_flare"
+    ],
+    "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+  },
+  "steps": [
+    "Lie on your back on a firm surface or bed holding a lightweight stick or cane with both hands shoulder-width apart.",
+    "Keep your arms straight with the stick resting across your upper thighs and your palms facing down.",
+    "Using the strength of your unaffected arm, slowly push the stick upward and backward overhead in a smooth arc.",
+    "Guide your affected arm upward into shoulder flexion until you feel a gentle, pain-free stretch in your shoulder and armpit.",
+    "Hold the overhead position for 3 to 5 seconds.",
+    "Slowly guide the stick back down to your thighs under control."
+  ],
+  "coaching_cues": [
+    "Keep your elbows straight or softly unlocked without bending them fully.",
+    "Do not arch your lower back off the floor to gain extra overhead distance.",
+    "Breathe out as you guide the stick overhead and inhale as you lower."
+  ],
+  "sources": {
+    "attribution": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+  }
+}

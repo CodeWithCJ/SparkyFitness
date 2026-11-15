@@ -107964,5 +107964,4208 @@
       "thumbnail_path": null,
       "image_path": null
     }
+  },
+  {
+    "id": "20051_band_ankle_dorsiflexion",
+    "numeric_id": "20051",
+    "slug": "band_ankle_dorsiflexion",
+    "name": "Band Ankle Dorsiflexion",
+    "aliases": [
+      "Resistance Band Toe Pull",
+      "Ankle Flexion with Band"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "bands",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "shin_splints",
+        "foot_drop",
+        "post_ankle_sprain_weakness"
+      ],
+      "contraindications": [
+        "acute_anterior_tibial_tendon_rupture"
+      ],
+      "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+    },
+    "steps": [
+      "Sit on the floor with your target leg extended straight in front of you.",
+      "Loop a resistance band around the ball of your foot and anchor the other end to a sturdy post in front of you.",
+      "Start with your foot pointed slightly forward with tension on the band.",
+      "Pull your toes and foot backward toward your shin against the resistance of the band, flexing your ankle fully.",
+      "Hold for one second at the top, then slowly release your foot forward under control."
+    ],
+    "coaching_cues": [
+      "Keep your leg straight without bending your knee to isolate the anterior shin muscles.",
+      "Control the return phase; do not let the band snap your foot forward.",
+      "Breathe out as you pull your toes back and breathe in as you release."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+    },
+    "instructions": "Sit on the floor with your target leg extended straight in front of you. Loop a resistance band around the ball of your foot and anchor the other end to a sturdy post in front of you. Start with your foot pointed slightly forward with tension on the band. Pull your toes and foot backward toward your shin against the resistance of the band, flexing your ankle fully. Hold for one second at the top, then slowly release your foot forward under control.",
+    "folder": "20051_band_ankle_dorsiflexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20052_band_ankle_plantarflexion",
+    "numeric_id": "20052",
+    "slug": "band_ankle_plantarflexion",
+    "name": "Band Ankle Plantarflexion",
+    "aliases": [
+      "Resistance Band Calf Press",
+      "Seated Ankle Point"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "bands",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "achilles_tendon_rehab",
+        "calf_weakness",
+        "ankle_sprain_recovery"
+      ],
+      "contraindications": [
+        "acute_achilles_tendon_tear"
+      ],
+      "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+    },
+    "steps": [
+      "Sit on the floor with your leg straight and hold the ends of a resistance band in both hands.",
+      "Loop the middle of the band around the ball of your foot, keeping tension with your hands.",
+      "Begin with your ankle flexed back toward your body.",
+      "Point your foot and toes forward away from you like pressing a gas pedal, pushing against the band.",
+      "Pause at peak extension for one second, then slowly return your foot to the flexed starting position."
+    ],
+    "coaching_cues": [
+      "Push firmly through the ball of your foot rather than curling just your toes.",
+      "Maintain steady resistance with your arms without letting your elbows move.",
+      "Perform smoothly and steadily without jerky bounces."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+    },
+    "instructions": "Sit on the floor with your leg straight and hold the ends of a resistance band in both hands. Loop the middle of the band around the ball of your foot, keeping tension with your hands. Begin with your ankle flexed back toward your body. Point your foot and toes forward away from you like pressing a gas pedal, pushing against the band. Pause at peak extension for one second, then slowly return your foot to the flexed starting position.",
+    "folder": "20052_band_ankle_plantarflexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20053_band_ankle_inversion",
+    "numeric_id": "20053",
+    "slug": "band_ankle_inversion",
+    "name": "Band Ankle Inversion",
+    "aliases": [
+      "Resistance Band Ankle Inward Pull",
+      "Ankle Inversion"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "bands",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "posterior_tibial_tendon_dysfunction",
+        "flat_foot_arch_collapse",
+        "ankle_instability"
+      ],
+      "contraindications": [
+        "acute_deltoid_ligament_sprain"
+      ],
+      "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+    },
+    "steps": [
+      "Sit with legs extended, crossing your non-target leg over the target leg.",
+      "Loop a resistance band around the inside of your target foot and anchor the other end to the outside of your resting foot.",
+      "Start with the target foot turned slightly outward under light tension.",
+      "Turn your target foot inward toward the center line of your body against the band's resistance.",
+      "Hold for one second at the end range, then slowly return to the starting position."
+    ],
+    "coaching_cues": [
+      "Isolate the movement to the ankle joint; do not rotate your entire leg or hip inward.",
+      "Feel the contraction along the inside of your lower calf and arch.",
+      "Move slowly and deliberately."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+    },
+    "instructions": "Sit with legs extended, crossing your non-target leg over the target leg. Loop a resistance band around the inside of your target foot and anchor the other end to the outside of your resting foot. Start with the target foot turned slightly outward under light tension. Turn your target foot inward toward the center line of your body against the band's resistance. Hold for one second at the end range, then slowly return to the starting position.",
+    "folder": "20053_band_ankle_inversion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20054_band_ankle_eversion",
+    "numeric_id": "20054",
+    "slug": "band_ankle_eversion",
+    "name": "Band Ankle Eversion",
+    "aliases": [
+      "Resistance Band Ankle Outward Pull",
+      "Peroneal Band Strengthener"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "bands",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "chronic_lateral_ankle_instability",
+        "peroneal_tendinopathy",
+        "recurrent_sprains"
+      ],
+      "contraindications": [
+        "acute_fibular_fracture"
+      ],
+      "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+    },
+    "steps": [
+      "Sit on the floor with both legs extended straight in front of you.",
+      "Loop a resistance band around the outside of your target foot and secure the other end around your opposite foot.",
+      "Start with your target foot relaxed in a neutral position with tension on the band.",
+      "Rotate your target foot outward away from your other leg, lifting the outer edge of your foot against the band.",
+      "Pause for one count at peak outward turn, then slowly lower back to the center."
+    ],
+    "coaching_cues": [
+      "Keep your knee pointing straight up toward the ceiling without letting your whole leg roll outward.",
+      "Focus on the peroneal muscles along the outer side of your lower leg.",
+      "Control the return so the band does not snap your foot inward."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+    },
+    "instructions": "Sit on the floor with both legs extended straight in front of you. Loop a resistance band around the outside of your target foot and secure the other end around your opposite foot. Start with your target foot relaxed in a neutral position with tension on the band. Rotate your target foot outward away from your other leg, lifting the outer edge of your foot against the band. Pause for one count at peak outward turn, then slowly lower back to the center.",
+    "folder": "20054_band_ankle_eversion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20055_wall_gastrocnemius_stretch",
+    "numeric_id": "20055",
+    "slug": "wall_gastrocnemius_stretch",
+    "name": "Wall Gastrocnemius Stretch",
+    "aliases": [
+      "Standing Calf Stretch at Wall",
+      "Straight-Leg Wall Calf Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "stretching",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [
+        "hamstrings"
+      ],
+      "level": "beginner",
+      "force": "static",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "isometric",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "plantar_fasciitis",
+        "achilles_tightness",
+        "calf_cramping"
+      ],
+      "contraindications": [
+        "acute_calf_muscle_tear"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+    },
+    "steps": [
+      "Stand facing a wall about an arm's length away and place both palms flat against the wall at shoulder height.",
+      "Step your target leg backward, keeping that back leg completely straight with the heel firmly on the ground.",
+      "Bend your front knee and gently lean your hips forward toward the wall.",
+      "Maintain the straight back leg and flat heel until you feel a comfortable stretch in the upper half of your back calf.",
+      "Hold steady for 20 to 30 seconds while breathing deeply, then switch legs."
+    ],
+    "coaching_cues": [
+      "Keep your back foot pointing directly forward toward the wall; do not let your toes flare outward.",
+      "Keep your back heel glued firmly to the floor throughout the stretch.",
+      "Maintain an upright posture without slouching through your lower back."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Stand facing a wall about an arm's length away and place both palms flat against the wall at shoulder height. Step your target leg backward, keeping that back leg completely straight with the heel firmly on the ground. Bend your front knee and gently lean your hips forward toward the wall. Maintain the straight back leg and flat heel until you feel a comfortable stretch in the upper half of your back calf. Hold steady for 20 to 30 seconds while breathing deeply, then switch legs.",
+    "folder": "20055_wall_gastrocnemius_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20056_wall_soleus_stretch",
+    "numeric_id": "20056",
+    "slug": "wall_soleus_stretch",
+    "name": "Wall Soleus Stretch",
+    "aliases": [
+      "Bent-Knee Wall Calf Stretch",
+      "Deep Calf Wall Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "stretching",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "static",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "isometric",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "achilles_insertion_tightness",
+        "limited_ankle_dorsiflexion",
+        "runner_stiffness"
+      ],
+      "contraindications": [
+        "acute_retrocalcaneal_bursitis_severe_flare"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+    },
+    "steps": [
+      "Stand facing a wall with hands resting flat against the wall for support.",
+      "Step your target leg back slightly, about 6 to 12 inches behind your front foot.",
+      "Unlike the standard calf stretch, bend both knees and sink your hips straight downward toward the floor.",
+      "Keep your back heel pressed down on the floor as you bend your back knee deeper.",
+      "Feel a deep, focused stretch in the lower portion of your calf and Achilles tendon, holding for 20 to 30 seconds."
+    ],
+    "coaching_cues": [
+      "Bending the knee takes tension off the gastrocnemius to isolate the deeper soleus muscle.",
+      "Keep your weight distributed evenly and do not let your back heel lift.",
+      "Breathe comfortably and allow the lower calf to release."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Stand facing a wall with hands resting flat against the wall for support. Step your target leg back slightly, about 6 to 12 inches behind your front foot. Unlike the standard calf stretch, bend both knees and sink your hips straight downward toward the floor. Keep your back heel pressed down on the floor as you bend your back knee deeper. Feel a deep, focused stretch in the lower portion of your calf and Achilles tendon, holding for 20 to 30 seconds.",
+    "folder": "20056_wall_soleus_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20057_towel_roll_quad_set",
+    "numeric_id": "20057",
+    "slug": "towel_roll_quad_set",
+    "name": "Towel Roll Quad Set",
+    "aliases": [
+      "Quad Set with Towel",
+      "Isometric Quad Press"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "thighs",
+      "equipment": "other",
+      "primary_muscles": [
+        "quadriceps"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-5-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "knee_arthroscopy_recovery",
+        "quadriceps_inhibition",
+        "patellar_tracking_deficit"
+      ],
+      "contraindications": [
+        "acute_quadriceps_rupture"
+      ],
+      "clinical_protocol": "Cornell Health Knee Rehabilitation Protocol"
+    },
+    "steps": [
+      "Sit on the floor or a firm bed with your target leg extended straight and opposite knee bent.",
+      "Place a small rolled towel or washcloth directly under the knee of your target leg.",
+      "Tighten your thigh muscles and press the back of your knee firmly down into the towel roll.",
+      "Hold the hard isometric quad contraction for 5 full seconds while feeling your kneecap pull upward.",
+      "Relax completely for 2 seconds, then repeat for the prescribed repetitions."
+    ],
+    "coaching_cues": [
+      "Focus on driving the back of your knee into the towel to activate the vastus medialis oblique.",
+      "Do not hold your breath during the 5-second hold; breathe steadily.",
+      "Ensure your heel stays in contact with the mat throughout."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Knee Conditioning Protocol"
+    },
+    "instructions": "Sit on the floor or a firm bed with your target leg extended straight and opposite knee bent. Place a small rolled towel or washcloth directly under the knee of your target leg. Tighten your thigh muscles and press the back of your knee firmly down into the towel roll. Hold the hard isometric quad contraction for 5 full seconds while feeling your kneecap pull upward. Relax completely for 2 seconds, then repeat for the prescribed repetitions.",
+    "folder": "20057_towel_roll_quad_set",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20058_wall_heel_slide",
+    "numeric_id": "20058",
+    "slug": "wall_heel_slide",
+    "name": "Wall Heel Slide",
+    "aliases": [
+      "Supine Wall Heel Slide",
+      "Knee Flexion on Wall"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "thighs",
+      "equipment": "body only",
+      "primary_muscles": [
+        "hamstrings"
+      ],
+      "secondary_muscles": [
+        "quadriceps"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "3-2-3-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "post_acl_knee_flexion_loss",
+        "knee_arthrofibrosis_prevention",
+        "total_knee_range_of_motion"
+      ],
+      "contraindications": [
+        "surgical_knee_flexion_angle_restriction"
+      ],
+      "clinical_protocol": "Cornell Health Post-Surgical Knee Protocol"
+    },
+    "steps": [
+      "Lie on your back with your glutes near a wall and legs resting vertically up against the wall.",
+      "Slowly slide the heel of your target leg downward along the wall, bending your knee as far as comfortably tolerated.",
+      "Let gravity assist the gentle bending of your knee into a pain-free stretch.",
+      "Pause at your maximum comfortable bend for 2 to 3 seconds.",
+      "Contract your quad and slide your heel back up the wall to the straight-leg starting position."
+    ],
+    "coaching_cues": [
+      "Wear a sock or place a small towel under your heel so it glides smoothly on the wall.",
+      "You can use your opposite foot to lightly support or guide the target foot if needed.",
+      "Never force into sharp joint pain; allow gentle progressive stretching."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Lie on your back with your glutes near a wall and legs resting vertically up against the wall. Slowly slide the heel of your target leg downward along the wall, bending your knee as far as comfortably tolerated. Let gravity assist the gentle bending of your knee into a pain-free stretch. Pause at your maximum comfortable bend for 2 to 3 seconds. Contract your quad and slide your heel back up the wall to the straight-leg starting position.",
+    "folder": "20058_wall_heel_slide",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20059_prone_knee_flexion",
+    "numeric_id": "20059",
+    "slug": "prone_knee_flexion",
+    "name": "Prone Knee Flexion",
+    "aliases": [
+      "Prone Hamstring Bend",
+      "Prone Active Knee Bend"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "hamstrings",
+      "equipment": "body only",
+      "primary_muscles": [
+        "hamstrings"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "hamstring_activation",
+        "knee_flexion_range_of_motion",
+        "post_arthroscopy_stiffness"
+      ],
+      "contraindications": [
+        "acute_hamstring_avulsion"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+    },
+    "steps": [
+      "Lie face down on a mat with your legs extended straight and forehead resting comfortably on your hands.",
+      "Keep your pelvis pressed gently into the mat so your lower back does not arch.",
+      "Slowly bend your target knee, drawing your heel toward your glute through a full, comfortable range of motion.",
+      "Pause for one second at the top of the curl, engaging your hamstring muscles.",
+      "Slowly lower your foot back down to the floor under control."
+    ],
+    "coaching_cues": [
+      "Keep your hips flat on the mat; do not lift your hip as your knee bends.",
+      "Perform smoothly without swinging or kicking.",
+      "Focus on a clean, active contraction of the hamstring."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Lie face down on a mat with your legs extended straight and forehead resting comfortably on your hands. Keep your pelvis pressed gently into the mat so your lower back does not arch. Slowly bend your target knee, drawing your heel toward your glute through a full, comfortable range of motion. Pause for one second at the top of the curl, engaging your hamstring muscles. Slowly lower your foot back down to the floor under control.",
+    "folder": "20059_prone_knee_flexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20060_step_lateral_step_down",
+    "numeric_id": "20060",
+    "slug": "step_lateral_step_down",
+    "name": "Step Lateral Step-Down",
+    "aliases": [
+      "Lateral Step-Down",
+      "Pelvic Drop Step Exercise"
+    ],
+    "taxonomy": {
+      "modality": "bodyweight_reps",
+      "category": "mobility",
+      "body_part": "thighs",
+      "equipment": "other",
+      "primary_muscles": [
+        "quadriceps"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "abductors"
+      ],
+      "level": "intermediate",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "3-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "patellofemoral_tracking_dysfunction",
+        "gluteus_medius_weakness",
+        "knee_valgus_correction"
+      ],
+      "contraindications": [
+        "acute_patellar_tendon_rupture"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "steps": [
+      "Stand tall on top of a low step or box (about 4 to 6 inches high) with your target leg bearing your weight on the edge.",
+      "Let your non-target leg hover freely off the side of the step.",
+      "Hinge your hips slightly back and bend your standing knee, slowly lowering your body until your hovering heel lightly taps the floor.",
+      "Keep your standing knee tracking straight over your second toe without caving inward.",
+      "Push through your standing heel to return to the starting position."
+    ],
+    "coaching_cues": [
+      "Do not put weight onto the foot tapping the floor; merely graze it like touching thin ice.",
+      "Keep your hips square and do not let your pelvis tilt or drop.",
+      "Lower slowly over a 3-second count to load the quadriceps eccentrically."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "instructions": "Stand tall on top of a low step or box (about 4 to 6 inches high) with your target leg bearing your weight on the edge. Let your non-target leg hover freely off the side of the step. Hinge your hips slightly back and bend your standing knee, slowly lowering your body until your hovering heel lightly taps the floor. Keep your standing knee tracking straight over your second toe without caving inward. Push through your standing heel to return to the starting position.",
+    "folder": "20060_step_lateral_step_down",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20061_step_forward_step_up",
+    "numeric_id": "20061",
+    "slug": "step_forward_step_up",
+    "name": "Step Forward Step-Up",
+    "aliases": [
+      "Low Step-Up",
+      "Forward Step-Up"
+    ],
+    "taxonomy": {
+      "modality": "bodyweight_reps",
+      "category": "mobility",
+      "body_part": "thighs",
+      "equipment": "other",
+      "primary_muscles": [
+        "quadriceps"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "calves"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "functional_gait_rehab",
+        "stair_climbing_weakness",
+        "quad_reconditioning"
+      ],
+      "contraindications": [
+        "severe_unstable_knee_ligament_sprain"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "steps": [
+      "Stand facing a sturdy low step or platform (4 to 8 inches high) with feet hip-width apart.",
+      "Place your entire right foot firmly onto the step.",
+      "Press down through your right heel to lift your body up, bringing your left foot onto the step beside your right.",
+      "Step backward with your left foot to the floor, followed by your right foot.",
+      "Repeat the movement leading with your left foot."
+    ],
+    "coaching_cues": [
+      "Do not push off with your trailing back foot; make the lead leg do the work of lifting your body.",
+      "Keep your torso upright with your chest proud and eyes forward.",
+      "Ensure your whole foot is planted securely on the step before pressing up."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "instructions": "Stand facing a sturdy low step or platform (4 to 8 inches high) with feet hip-width apart. Place your entire right foot firmly onto the step. Press down through your right heel to lift your body up, bringing your left foot onto the step beside your right. Step backward with your left foot to the floor, followed by your right foot. Repeat the movement leading with your left foot.",
+    "folder": "20061_step_forward_step_up",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20062_sleeper_stretch",
+    "numeric_id": "20062",
+    "slug": "sleeper_stretch",
+    "name": "Sleeper Stretch",
+    "aliases": [
+      "Side-Lying Shoulder Internal Rotation Stretch",
+      "Posterior Capsule Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "stretching",
+      "body_part": "shoulders",
+      "equipment": "body only",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "intermediate",
+      "force": "static",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "isometric",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "glenohumeral_internal_rotation_deficit",
+        "shoulder_impingement",
+        "thrower_shoulder_stiffness"
+      ],
+      "contraindications": [
+        "acute_anterior_shoulder_subluxation"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Stretching Protocol"
+    },
+    "steps": [
+      "Lie on your target side with your head comfortably supported by a pillow.",
+      "Extend your target upper arm straight out in front of your shoulder at a 90-degree angle, with your elbow bent at 90 degrees pointing your fingers toward the ceiling.",
+      "Roll your body slightly backward (about 20 degrees) so you are resting on the back of your shoulder blade, not directly on the shoulder joint.",
+      "Use your opposite hand to gently guide the wrist of your target arm downward toward the floor.",
+      "Stop at the first sensation of a gentle stretch deep in the back of your shoulder and hold for 20 to 30 seconds."
+    ],
+    "coaching_cues": [
+      "Apply very gentle, steady pressure with your top hand; never force the wrist down or push through sharp pain.",
+      "The stretch should be felt in the back of the shoulder capsule, never in the front.",
+      "Breathe slowly and deeply to help the posterior rotator cuff relax."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Range of Motion Protocol"
+    },
+    "instructions": "Lie on your target side with your head comfortably supported by a pillow. Extend your target upper arm straight out in front of your shoulder at a 90-degree angle, with your elbow bent at 90 degrees pointing your fingers toward the ceiling. Roll your body slightly backward (about 20 degrees) so you are resting on the back of your shoulder blade, not directly on the shoulder joint. Use your opposite hand to gently guide the wrist of your target arm downward toward the floor. Stop at the first sensation of a gentle stretch deep in the back of your shoulder and hold for 20 to 30 seconds.",
+    "folder": "20062_sleeper_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20063_dumbbell_side_lying_external_rotation",
+    "numeric_id": "20063",
+    "slug": "dumbbell_side_lying_external_rotation",
+    "name": "Dumbbell Side-Lying External Rotation",
+    "aliases": [
+      "Side-Lying Rotator Cuff Raise",
+      "Infraspinatus Dumbbell Raise"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "infraspinatus_teres_minor_weakness",
+        "rotator_cuff_tendinopathy",
+        "shoulder_instability"
+      ],
+      "contraindications": [
+        "acute_rotator_cuff_tear_early_post_op"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "steps": [
+      "Lie on your side with a small rolled towel placed between your top elbow and your ribs.",
+      "Hold a light dumbbell (1 to 5 lbs) in your top hand with your elbow bent at 90 degrees.",
+      "Rest your forearm across your abdomen.",
+      "Keeping your elbow pinned against the towel roll, rotate your forearm and dumbbell upward toward the ceiling.",
+      "Pause for one second at the top of the rotation, then slowly lower the dumbbell back across your stomach."
+    ],
+    "coaching_cues": [
+      "Use very light weight; the rotator cuff muscles are small stabilizers that respond best to light, strict resistance.",
+      "Do not roll your body backward to swing the weight up.",
+      "Keep your wrist straight and firm throughout."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "instructions": "Lie on your side with a small rolled towel placed between your top elbow and your ribs. Hold a light dumbbell (1 to 5 lbs) in your top hand with your elbow bent at 90 degrees. Rest your forearm across your abdomen. Keeping your elbow pinned against the towel roll, rotate your forearm and dumbbell upward toward the ceiling. Pause for one second at the top of the rotation, then slowly lower the dumbbell back across your stomach.",
+    "folder": "20063_dumbbell_side_lying_external_rotation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20064_dumbbell_supine_serratus_punch",
+    "numeric_id": "20064",
+    "slug": "dumbbell_supine_serratus_punch",
+    "name": "Dumbbell Supine Serratus Punch",
+    "aliases": [
+      "Supine Serratus Punch",
+      "Lying Protraction Press"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "chest",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "chest"
+      ],
+      "secondary_muscles": [
+        "shoulders"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "serratus_anterior_weakness",
+        "scapular_winging",
+        "subacromial_impingement"
+      ],
+      "contraindications": [
+        "acute_sternoclavicular_separation"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "steps": [
+      "Lie flat on your back on a mat with knees bent and feet flat on the floor.",
+      "Hold a light dumbbell in your hand with your arm extended straight up toward the ceiling over your shoulder.",
+      "Keeping your elbow completely locked and straight, punch the dumbbell directly upward toward the ceiling by lifting your shoulder blade off the floor.",
+      "Hold the peak protraction for one full second, feeling the muscle along your side ribs engage.",
+      "Slowly retract your shoulder blade, pulling it back flat against the mat without bending your elbow."
+    ],
+    "coaching_cues": [
+      "The elbow must stay straight; all motion occurs strictly from protracting and retracting your shoulder blade.",
+      "Push directly straight up toward the ceiling, not backward over your head.",
+      "Breathe out as you punch upward and breathe in as you lower."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "instructions": "Lie flat on your back on a mat with knees bent and feet flat on the floor. Hold a light dumbbell in your hand with your arm extended straight up toward the ceiling over your shoulder. Keeping your elbow completely locked and straight, punch the dumbbell directly upward toward the ceiling by lifting your shoulder blade off the floor. Hold the peak protraction for one full second, feeling the muscle along your side ribs engage. Slowly retract your shoulder blade, pulling it back flat against the mat without bending your elbow.",
+    "folder": "20064_dumbbell_supine_serratus_punch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20065_band_shoulder_external_rotation_neutral",
+    "numeric_id": "20065",
+    "slug": "band_shoulder_external_rotation_neutral",
+    "name": "Band Shoulder External Rotation in Neutral",
+    "aliases": [
+      "Standing Band External Rotation",
+      "Neutral Rotator Cuff Pull"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "rotator_cuff_weakness",
+        "shoulder_stability_deficit",
+        "postural_internal_rotation"
+      ],
+      "contraindications": [
+        "acute_shoulder_dislocation_acute_phase"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+    },
+    "steps": [
+      "Anchor a resistance band at elbow height.",
+      "Stand sideways to the anchor point with the target arm on the outside.",
+      "Bend your elbow to 90 degrees and hold the band handle across your belly, placing a rolled towel between your elbow and ribs.",
+      "Keeping your elbow pinned firmly to your side, rotate your forearm outward away from your body against the band's resistance.",
+      "Pause at peak external rotation for one second, then slowly return your forearm across your stomach."
+    ],
+    "coaching_cues": [
+      "Keep your elbow pinned to the towel roll; do not allow your elbow to flare away from your ribs.",
+      "Maintain an upright posture and avoid twisting your torso to help move the band.",
+      "Move with smooth, steady control in both directions."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+    },
+    "instructions": "Anchor a resistance band at elbow height. Stand sideways to the anchor point with the target arm on the outside. Bend your elbow to 90 degrees and hold the band handle across your belly, placing a rolled towel between your elbow and ribs. Keeping your elbow pinned firmly to your side, rotate your forearm outward away from your body against the band's resistance. Pause at peak external rotation for one second, then slowly return your forearm across your stomach.",
+    "folder": "20065_band_shoulder_external_rotation_neutral",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20066_band_shoulder_internal_rotation_neutral",
+    "numeric_id": "20066",
+    "slug": "band_shoulder_internal_rotation_neutral",
+    "name": "Band Shoulder Internal Rotation in Neutral",
+    "aliases": [
+      "Standing Band Internal Rotation",
+      "Subscapularis Band Pull"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "chest"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "subscapularis_weakness",
+        "anterior_capsule_laxity",
+        "rotator_cuff_imbalance"
+      ],
+      "contraindications": [
+        "acute_subscapularis_tendon_repair_early_phase"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+    },
+    "steps": [
+      "Anchor a resistance band at elbow height.",
+      "Stand sideways to the anchor point with your target arm closest to the anchor.",
+      "Bend your elbow to 90 degrees and hold the band handle with your forearm rotated outward away from your belly.",
+      "Keeping your elbow pinned to your side (with a small towel roll for feedback), rotate your forearm inward across your stomach.",
+      "Hold for one second against your belly, then slowly allow the band to rotate your forearm back out."
+    ],
+    "coaching_cues": [
+      "Keep your wrist straight and firm without curling it as you pull inward.",
+      "Keep your shoulder blade retracted and depressed, avoiding forward rounding.",
+      "Control the return phase smoothly."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+    },
+    "instructions": "Anchor a resistance band at elbow height. Stand sideways to the anchor point with your target arm closest to the anchor. Bend your elbow to 90 degrees and hold the band handle with your forearm rotated outward away from your belly. Keeping your elbow pinned to your side (with a small towel roll for feedback), rotate your forearm inward across your stomach. Hold for one second against your belly, then slowly allow the band to rotate your forearm back out.",
+    "folder": "20066_band_shoulder_internal_rotation_neutral",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20067_band_shoulder_external_rotation_90_degrees",
+    "numeric_id": "20067",
+    "slug": "band_shoulder_external_rotation_90_degrees",
+    "name": "Band Shoulder External Rotation at 90 Degrees",
+    "aliases": [
+      "High Band External Rotation",
+      "Thrower 90/90 Band Rotation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "intermediate",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "overhead_athlete_shoulder_instability",
+        "rotator_cuff_endurance_deficit"
+      ],
+      "contraindications": [
+        "acute_anterior_labral_tear_with_instability"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+    },
+    "steps": [
+      "Anchor a resistance band at shoulder height in front of you.",
+      "Stand facing the anchor, raising your target upper arm to shoulder height abducted at 90 degrees with elbow bent at 90 degrees.",
+      "Hold the band handle with your forearm parallel to the floor.",
+      "Rotate your forearm and hand upward until your forearm is vertical and perpendicular to the floor.",
+      "Pause for one count at peak external rotation, then slowly lower your forearm back parallel to the floor."
+    ],
+    "coaching_cues": [
+      "Keep your elbow fixed in space at shoulder height as the pivot point; do not drop your elbow.",
+      "Maintain an active core so your lower back does not arch as your hand rotates back.",
+      "Use a light resistance band to protect joint mechanics."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+    },
+    "instructions": "Anchor a resistance band at shoulder height in front of you. Stand facing the anchor, raising your target upper arm to shoulder height abducted at 90 degrees with elbow bent at 90 degrees. Hold the band handle with your forearm parallel to the floor. Rotate your forearm and hand upward until your forearm is vertical and perpendicular to the floor. Pause for one count at peak external rotation, then slowly lower your forearm back parallel to the floor.",
+    "folder": "20067_band_shoulder_external_rotation_90_degrees",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20068_band_shoulder_internal_rotation_90_degrees",
+    "numeric_id": "20068",
+    "slug": "band_shoulder_internal_rotation_90_degrees",
+    "name": "Band Shoulder Internal Rotation at 90 Degrees",
+    "aliases": [
+      "High Band Internal Rotation",
+      "Overhead Band Internal Rotation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "chest"
+      ],
+      "level": "intermediate",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "overhead_deceleration_deficit",
+        "subscapularis_endurance"
+      ],
+      "contraindications": [
+        "acute_shoulder_impingement_pain_in_abduction"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+    },
+    "steps": [
+      "Anchor a resistance band at shoulder height behind you.",
+      "Stand facing away from the anchor with your target upper arm raised to shoulder height and elbow bent at 90 degrees, holding the band with forearm vertical.",
+      "Rotate your forearm forward and downward until your forearm is parallel to the floor.",
+      "Pause for one count at the bottom of the internal rotation.",
+      "Slowly rotate your forearm back up to the vertical starting position under control."
+    ],
+    "coaching_cues": [
+      "Keep your upper arm level with your shoulder throughout the rotation.",
+      "Do not allow your shoulder to roll forward out of its socket at the bottom of the pull.",
+      "Maintain steady, controlled rhythm."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+    },
+    "instructions": "Anchor a resistance band at shoulder height behind you. Stand facing away from the anchor with your target upper arm raised to shoulder height and elbow bent at 90 degrees, holding the band with forearm vertical. Rotate your forearm forward and downward until your forearm is parallel to the floor. Pause for one count at the bottom of the internal rotation. Slowly rotate your forearm back up to the vertical starting position under control.",
+    "folder": "20068_band_shoulder_internal_rotation_90_degrees",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20069_band_wall_walk",
+    "numeric_id": "20069",
+    "slug": "band_wall_walk",
+    "name": "Band Wall Walk",
+    "aliases": [
+      "Banded Wall Crawl",
+      "Mini-Band Wall Walk"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back",
+        "traps"
+      ],
+      "level": "intermediate",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "rotator_cuff_stabilization",
+        "scapular_dyskinesis",
+        "shoulder_burnout"
+      ],
+      "contraindications": [
+        "acute_acromioclavicular_joint_sprain"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+    },
+    "steps": [
+      "Place a small resistance loop band around your wrists or forearms.",
+      "Stand facing a smooth wall with elbows bent at 90 degrees and forearms resting vertically against the wall at chest height.",
+      "Pull your wrists outward to create continuous outward tension on the band.",
+      "Maintaining that outward tension, slowly 'walk' your forearms upward along the wall in small alternating steps until your arms are nearly fully extended.",
+      "Walk your forearms back down in small controlled steps to chest height."
+    ],
+    "coaching_cues": [
+      "Keep continuous outward tension on the band; do not let your hands cave inward.",
+      "Keep your core braced so your lower back does not arch as your hands climb higher.",
+      "Move with tiny, deliberate hand steps."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+    },
+    "instructions": "Place a small resistance loop band around your wrists or forearms. Stand facing a smooth wall with elbows bent at 90 degrees and forearms resting vertically against the wall at chest height. Pull your wrists outward to create continuous outward tension on the band. Maintaining that outward tension, slowly 'walk' your forearms upward along the wall in small alternating steps until your arms are nearly fully extended. Walk your forearms back down in small controlled steps to chest height.",
+    "folder": "20069_band_wall_walk",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20070_mckenzie_prone_press_up",
+    "numeric_id": "20070",
+    "slug": "mckenzie_prone_press_up",
+    "name": "McKenzie Prone Press-Up",
+    "aliases": [
+      "Prone Lumbar Extension",
+      "McKenzie Cobra Press"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "lower back",
+      "equipment": "body only",
+      "primary_muscles": [
+        "lower back"
+      ],
+      "secondary_muscles": [
+        "abdominals"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "lumbar_spine",
+      "target_conditions": [
+        "lumbar_disc_herniation_derangement",
+        "sciatica_centralization",
+        "lumbar_flexion_intolerance"
+      ],
+      "contraindications": [
+        "spinal_stenosis_with_extension_pain",
+        "spondylolisthesis"
+      ],
+      "clinical_protocol": "Robin McKenzie Method of Mechanical Diagnosis and Therapy"
+    },
+    "steps": [
+      "Lie face down on an exercise mat with your hands placed flat beneath your shoulders as if doing a push-up.",
+      "Completely relax your glutes, hips, and lower back muscles.",
+      "Using your arm strength only, press down through your palms to gently lift your chest and upper torso off the mat.",
+      "Keep your pelvis and thighs resting heavy and relaxed on the floor as your lower back sags comfortably into extension.",
+      "Hold at the top for 2 to 3 seconds while taking a relaxed breath, then slowly lower your chest back down."
+    ],
+    "coaching_cues": [
+      "The lower back and glutes must remain completely limp; your arms do all the lifting.",
+      "If symptoms move away from your leg and centralize into your lower back, that is a positive clinical sign.",
+      "Stop immediately if extension increases leg pain or tingling."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Spine & McKenzie Extension Protocol"
+    },
+    "instructions": "Lie face down on an exercise mat with your hands placed flat beneath your shoulders as if doing a push-up. Completely relax your glutes, hips, and lower back muscles. Using your arm strength only, press down through your palms to gently lift your chest and upper torso off the mat. Keep your pelvis and thighs resting heavy and relaxed on the floor as your lower back sags comfortably into extension. Hold at the top for 2 to 3 seconds while taking a relaxed breath, then slowly lower your chest back down.",
+    "folder": "20070_mckenzie_prone_press_up",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20071_chair_thoracic_extension_mobilization",
+    "numeric_id": "20071",
+    "slug": "chair_thoracic_extension_mobilization",
+    "name": "Chair Thoracic Extension Mobilization",
+    "aliases": [
+      "Seated Thoracic Extension on Chair",
+      "Desk Back Extension"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "upper back",
+      "equipment": "other",
+      "primary_muscles": [
+        "middle back"
+      ],
+      "secondary_muscles": [
+        "chest",
+        "neck"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "3-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "thoracic_spine",
+      "target_conditions": [
+        "desk_slouch",
+        "thoracic_kyphosis",
+        "mid_back_stiffness"
+      ],
+      "contraindications": [
+        "acute_thoracic_spine_fracture"
+      ],
+      "clinical_protocol": "Cornell Health Spine Mobilization Protocol"
+    },
+    "steps": [
+      "Sit tall on a sturdy office chair with your back resting against the top rim of the backrest.",
+      "Interlace your fingers behind your head to support your neck.",
+      "Inhale deeply and gently arch your upper back backward over the top edge of the chair backrest.",
+      "Keep your elbows open wide and allow your chest to expand toward the ceiling.",
+      "Hold for two to three seconds at the comfortable end of extension, then exhale and return to an upright sitting posture."
+    ],
+    "coaching_cues": [
+      "The chair backrest acts as a fulcrum for your middle back; do not arch from your lower back.",
+      "Keep your neck supported and avoid yanking your head backward.",
+      "Perfect for a 30-second hourly posture reset during desk work."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Spine Exercise Protocol"
+    },
+    "instructions": "Sit tall on a sturdy office chair with your back resting against the top rim of the backrest. Interlace your fingers behind your head to support your neck. Inhale deeply and gently arch your upper back backward over the top edge of the chair backrest. Keep your elbows open wide and allow your chest to expand toward the ceiling. Hold for two to three seconds at the comfortable end of extension, then exhale and return to an upright sitting posture.",
+    "folder": "20071_chair_thoracic_extension_mobilization",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20072_single_leg_glute_bridge",
+    "numeric_id": "20072",
+    "slug": "single_leg_glute_bridge",
+    "name": "Single-Leg Glute Bridge",
+    "aliases": [
+      "One-Leg Bridge",
+      "Single-Leg Pelvic Lift"
+    ],
+    "taxonomy": {
+      "modality": "bodyweight_reps",
+      "category": "mobility",
+      "body_part": "glutes",
+      "equipment": "body only",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "hamstrings",
+        "lower back"
+      ],
+      "level": "intermediate",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "gluteal_asymmetry",
+        "hamstring_strain_prevention",
+        "pelvic_instability"
+      ],
+      "contraindications": [
+        "acute_sacroiliitis_flare"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "steps": [
+      "Lie on your back with your knees bent and feet flat on the floor, about hip-width apart.",
+      "Extend one leg straight out in line with your opposite thigh, or bend it toward your chest.",
+      "Press firmly down through the heel of your grounded foot and squeeze your glute to lift your hips off the mat.",
+      "Lift until your body forms a straight line from your grounded knee through your hips to your shoulder.",
+      "Pause at the top for one second with your hips level, then slowly lower back to the mat."
+    ],
+    "coaching_cues": [
+      "Do not allow your pelvis to drop or rotate toward the non-working side.",
+      "Drive purely through the heel of the working leg to maximize glute contraction.",
+      "Keep your neck and upper shoulders relaxed on the mat."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Strengthening Protocol"
+    },
+    "instructions": "Lie on your back with your knees bent and feet flat on the floor, about hip-width apart. Extend one leg straight out in line with your opposite thigh, or bend it toward your chest. Press firmly down through the heel of your grounded foot and squeeze your glute to lift your hips off the mat. Lift until your body forms a straight line from your grounded knee through your hips to your shoulder. Pause at the top for one second with your hips level, then slowly lower back to the mat.",
+    "folder": "20072_single_leg_glute_bridge",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20073_supine_hip_internal_rotation_stretch",
+    "numeric_id": "20073",
+    "slug": "supine_hip_internal_rotation_stretch",
+    "name": "Supine Hip Internal Rotation Stretch",
+    "aliases": [
+      "Lying Windshield Wiper Hip Stretch",
+      "Supine Internal Hip Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "stretching",
+      "body_part": "hips",
+      "equipment": "body only",
+      "primary_muscles": [
+        "abductors"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "static",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "isometric",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "hip_internal_rotation_deficit",
+        "anterior_hip_impingement",
+        "lower_back_compensation"
+      ],
+      "contraindications": [
+        "total_hip_replacement_anterior_approach_precautions"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "steps": [
+      "Lie on your back with knees bent and feet flat on the floor, placed slightly wider than hip-width apart.",
+      "Keeping your left knee pointing up, slowly let your right knee drop inward toward the floor and toward your left ankle.",
+      "Keep both shoulder blades and your lower back resting comfortably on the mat.",
+      "Feel a gentle stretch in the outer hip and front of your right hip joint.",
+      "Hold for 20 to 30 seconds, return the right knee upright, and repeat with the left leg."
+    ],
+    "coaching_cues": [
+      "Do not force your knee to touch the floor; allow gravity to create a gentle, comfortable stretch.",
+      "If you experience sharp pinching inside the hip joint, stop the stretch immediately.",
+      "Breathe slowly and rhythmically."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Lie on your back with knees bent and feet flat on the floor, placed slightly wider than hip-width apart. Keeping your left knee pointing up, slowly let your right knee drop inward toward the floor and toward your left ankle. Keep both shoulder blades and your lower back resting comfortably on the mat. Feel a gentle stretch in the outer hip and front of your right hip joint. Hold for 20 to 30 seconds, return the right knee upright, and repeat with the left leg.",
+    "folder": "20073_supine_hip_internal_rotation_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20074_supine_hip_external_rotation_stretch",
+    "numeric_id": "20074",
+    "slug": "supine_hip_external_rotation_stretch",
+    "name": "Supine Hip External Rotation Stretch",
+    "aliases": [
+      "Supine Butterfly Hip Stretch",
+      "Lying External Hip Opener"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "stretching",
+      "body_part": "hips",
+      "equipment": "body only",
+      "primary_muscles": [
+        "adductors"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "static",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "frontal",
+      "default_tempo": "isometric",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "groin_tightness",
+        "pelvic_floor_hypertonicity",
+        "hip_external_rotation_restriction"
+      ],
+      "contraindications": [
+        "acute_adductor_tendonitis_flare"
+      ],
+      "clinical_protocol": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "steps": [
+      "Lie comfortably on your back with your knees bent and feet flat on the floor.",
+      "Bring the soles of your feet together and slowly allow both knees to fall open to the sides toward the floor.",
+      "Rest your hands gently on your lower abdomen or alongside your body.",
+      "Feel a gentle, relaxing stretch through your inner thighs and groin.",
+      "Hold the position for 30 to 45 seconds while focusing on deep abdominal breathing."
+    ],
+    "coaching_cues": [
+      "Place yoga blocks or pillows under your outer thighs if the stretch feels too intense on your groin.",
+      "Do not arch your lower back aggressively off the floor.",
+      "Relax your inner thighs completely with each exhalation."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+    },
+    "instructions": "Lie comfortably on your back with your knees bent and feet flat on the floor. Bring the soles of your feet together and slowly allow both knees to fall open to the sides toward the floor. Rest your hands gently on your lower abdomen or alongside your body. Feel a gentle, relaxing stretch through your inner thighs and groin. Hold the position for 30 to 45 seconds while focusing on deep abdominal breathing.",
+    "folder": "20074_supine_hip_external_rotation_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20075_push_up_plus",
+    "numeric_id": "20075",
+    "slug": "push_up_plus",
+    "name": "Push-Up Plus",
+    "aliases": [
+      "Plank Protraction",
+      "Serratus Push-Up"
+    ],
+    "taxonomy": {
+      "modality": "bodyweight_reps",
+      "category": "mobility",
+      "body_part": "chest",
+      "equipment": "body only",
+      "primary_muscles": [
+        "chest"
+      ],
+      "secondary_muscles": [
+        "shoulders",
+        "abdominals"
+      ],
+      "level": "intermediate",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "scapular_winging",
+        "serratus_anterior_inhibition",
+        "subacromial_impingement"
+      ],
+      "contraindications": [
+        "acute_wrist_sprain"
+      ],
+      "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "steps": [
+      "Start in a standard push-up position or from your knees, with hands placed directly beneath your shoulders.",
+      "Keep your arms completely straight with elbows locked throughout the entire movement.",
+      "Allow your chest to sag slightly toward the floor by letting your shoulder blades pinch together.",
+      "Push the floor firmly away, rounding your upper back upward toward the ceiling and spreading your shoulder blades as wide as possible.",
+      "Hold the peak 'plus' protraction for one second, then slowly lower back into retraction."
+    ],
+    "coaching_cues": [
+      "Your elbows must never bend; all movement is pure shoulder blade protraction and retraction.",
+      "Imagine pushing the floor away into the basement to spread your shoulder blades apart.",
+      "Maintain a rigid core so your hips do not sag."
+    ],
+    "sources": {
+      "attribution": "Cornell Health Shoulder Strengthening Protocol"
+    },
+    "instructions": "Start in a standard push-up position or from your knees, with hands placed directly beneath your shoulders. Keep your arms completely straight with elbows locked throughout the entire movement. Allow your chest to sag slightly toward the floor by letting your shoulder blades pinch together. Push the floor firmly away, rounding your upper back upward toward the ceiling and spreading your shoulder blades as wide as possible. Hold the peak 'plus' protraction for one second, then slowly lower back into retraction.",
+    "folder": "20075_push_up_plus",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20076_bolster_short_arc_quad",
+    "numeric_id": "20076",
+    "slug": "bolster_short_arc_quad",
+    "name": "Bolster Short Arc Quad",
+    "aliases": [
+      "Short Arc Quad",
+      "Foam Roll Knee Extension",
+      "Terminal Knee Extension over Bolster"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "quads",
+      "equipment": "other",
+      "primary_muscles": [
+        "quadriceps"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "patellofemoral_pain_syndrome",
+        "post_op_quad_inhibition",
+        "knee_osteoarthritis"
+      ],
+      "contraindications": [
+        "acute_patellar_tendon_rupture"
+      ],
+      "clinical_protocol": "AAOS Knee Conditioning Protocol"
+    },
+    "steps": [
+      "Lie on your back on a firm, comfortable surface with a foam roller or rolled bolster placed horizontally under your target knee.",
+      "Allow your heel to rest on the floor with your knee bent at roughly a 20 to 30 degree angle over the bolster.",
+      "Keeping the back of your knee resting against the bolster, slowly straighten your lower leg by contracting the quadriceps on the front of your thigh.",
+      "Extend the knee until your leg is fully straight and your heel lifts completely off the floor.",
+      "Hold the straight-leg contraction for 3 to 5 seconds, focusing on squeezing the vastus medialis just above your knee.",
+      "Slowly lower your heel back down to the floor with control."
+    ],
+    "coaching_cues": [
+      "Do not lift your thigh or knee off the bolster; keep the back of the knee anchored to isolate terminal extension.",
+      "Keep your toes pointed straight up toward the ceiling throughout the movement.",
+      "Contract your thigh muscles firmly at the top without hyperextending violently."
+    ],
+    "sources": {
+      "attribution": "AAOS Knee Conditioning & Post-Operative Rehabilitation Protocol"
+    },
+    "instructions": "Lie on your back on a firm, comfortable surface with a foam roller or rolled bolster placed horizontally under your target knee. Allow your heel to rest on the floor with your knee bent at roughly a 20 to 30 degree angle over the bolster. Keeping the back of your knee resting against the bolster, slowly straighten your lower leg by contracting the quadriceps on the front of your thigh. Extend the knee until your leg is fully straight and your heel lifts completely off the floor. Hold the straight-leg contraction for 3 to 5 seconds, focusing on squeezing the vastus medialis just above your knee. Slowly lower your heel back down to the floor with control.",
+    "folder": "20076_bolster_short_arc_quad",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20077_seated_long_arc_quad",
+    "numeric_id": "20077",
+    "slug": "seated_long_arc_quad",
+    "name": "Seated Long Arc Quad",
+    "aliases": [
+      "Long Arc Quad",
+      "Active Seated Knee Extension"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "quads",
+      "equipment": "body only",
+      "primary_muscles": [
+        "quadriceps"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "knee",
+      "target_conditions": [
+        "quadriceps_weakness",
+        "knee_stiffness",
+        "patellofemoral_tracking"
+      ],
+      "contraindications": [
+        "severe_patellofemoral_arthrosis_with_active_crepitus"
+      ],
+      "clinical_protocol": "AAOS Knee Conditioning Protocol"
+    },
+    "steps": [
+      "Sit tall on a sturdy chair or examination table with your back supported and your knees bent at 90 degrees.",
+      "Rest your hands comfortably on your thighs or grip the sides of the seat for stability.",
+      "Slowly lift your target foot and straighten your leg out in front of you until your knee is fully extended and parallel to the floor.",
+      "Flex your ankle toward your shin and squeeze your quadriceps firmly at the top for 2 to 3 seconds.",
+      "Slowly lower your foot back down under control until it gently touches the floor."
+    ],
+    "coaching_cues": [
+      "Maintain an upright posture and avoid slouching or leaning back as your leg straightens.",
+      "Move smoothly without kicking or swinging using momentum.",
+      "Control the downward lowering phase over 2 full seconds."
+    ],
+    "sources": {
+      "attribution": "AAOS Knee Conditioning Protocol"
+    },
+    "instructions": "Sit tall on a sturdy chair or examination table with your back supported and your knees bent at 90 degrees. Rest your hands comfortably on your thighs or grip the sides of the seat for stability. Slowly lift your target foot and straighten your leg out in front of you until your knee is fully extended and parallel to the floor. Flex your ankle toward your shin and squeeze your quadriceps firmly at the top for 2 to 3 seconds. Slowly lower your foot back down under control until it gently touches the floor.",
+    "folder": "20077_seated_long_arc_quad",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20078_codman_shoulder_pendulum",
+    "numeric_id": "20078",
+    "slug": "codman_shoulder_pendulum",
+    "name": "Codman Shoulder Pendulum",
+    "aliases": [
+      "Pendulum Exercise",
+      "Codman Arm Swings",
+      "Passive Shoulder Pendulum"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "body only",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "adhesive_capsulitis_frozen_shoulder",
+        "acute_rotator_cuff_irritation",
+        "post_surgical_shoulder_stiffness"
+      ],
+      "contraindications": [
+        "acute_unreduced_glenohumeral_dislocation"
+      ],
+      "clinical_protocol": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+    },
+    "steps": [
+      "Stand beside a sturdy table or bench and bend forward at your hips roughly 75 to 90 degrees.",
+      "Place your unaffected hand and forearm firmly on the table for full torso support.",
+      "Allow your affected arm to hang completely limp and relaxed straight down toward the floor.",
+      "Gently shift your body weight and sway your hips from side to side, forward and backward, and in small circles.",
+      "Allow the passive momentum generated by your torso rocking to swing your relaxed arm in gentle circles without engaging your shoulder muscles.",
+      "Perform clockwise circles, counter-clockwise circles, and gentle pendulum swings for the prescribed duration."
+    ],
+    "coaching_cues": [
+      "The swinging arm must remain completely passive and limp; imagine it is an empty coat sleeve.",
+      "Do not actively contract your shoulder or arm muscles; let gravity and torso rocking do all the work.",
+      "Keep your neck relaxed and gaze down at the floor."
+    ],
+    "sources": {
+      "attribution": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+    },
+    "instructions": "Stand beside a sturdy table or bench and bend forward at your hips roughly 75 to 90 degrees. Place your unaffected hand and forearm firmly on the table for full torso support. Allow your affected arm to hang completely limp and relaxed straight down toward the floor. Gently shift your body weight and sway your hips from side to side, forward and backward, and in small circles. Allow the passive momentum generated by your torso rocking to swing your relaxed arm in gentle circles without engaging your shoulder muscles. Perform clockwise circles, counter-clockwise circles, and gentle pendulum swings for the prescribed duration.",
+    "folder": "20078_codman_shoulder_pendulum",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20079_stick_shoulder_internal_rotation",
+    "numeric_id": "20079",
+    "slug": "stick_shoulder_internal_rotation",
+    "name": "Stick Shoulder Internal Rotation",
+    "aliases": [
+      "Cane Shoulder Internal Rotation",
+      "Wand Passive Internal Rotation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "other",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "transverse",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "posterior_capsular_tightness",
+        "rotator_cuff_impingement",
+        "subscapularis_mobility"
+      ],
+      "contraindications": [
+        "acute_posterior_dislocation"
+      ],
+      "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+    },
+    "steps": [
+      "Stand tall holding a light stick, dowel, or cane horizontally behind your back with both hands.",
+      "Grip the stick with an overhand grip, keeping your elbows comfortably relaxed.",
+      "Using your unaffected arm, gently push or slide the stick across your lower back toward the affected side.",
+      "This guides your target arm into internal rotation and adduction across your lower back.",
+      "Hold the comfortable stretch for 3 to 5 seconds at the end-range of motion.",
+      "Slowly return to the starting position and repeat."
+    ],
+    "coaching_cues": [
+      "Keep your chest lifted and shoulders from hunching forward excessively.",
+      "The unaffected arm supplies the gentle driving force; the target shoulder should stay relaxed.",
+      "Never force through sharp, pinch-like pain."
+    ],
+    "sources": {
+      "attribution": "AAOS Shoulder Conditioning & Active-Assisted Range of Motion Protocol"
+    },
+    "instructions": "Stand tall holding a light stick, dowel, or cane horizontally behind your back with both hands. Grip the stick with an overhand grip, keeping your elbows comfortably relaxed. Using your unaffected arm, gently push or slide the stick across your lower back toward the affected side. This guides your target arm into internal rotation and adduction across your lower back. Hold the comfortable stretch for 3 to 5 seconds at the end-range of motion. Slowly return to the starting position and repeat.",
+    "folder": "20079_stick_shoulder_internal_rotation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20080_stick_shoulder_external_rotation",
+    "numeric_id": "20080",
+    "slug": "stick_shoulder_external_rotation",
+    "name": "Stick Shoulder External Rotation",
+    "aliases": [
+      "Cane External Rotation",
+      "Wand Shoulder External Rotation",
+      "Active-Assisted External Rotation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "other",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "transverse",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "anterior_capsular_stiffness",
+        "post_op_rotator_cuff_mobility",
+        "frozen_shoulder"
+      ],
+      "contraindications": [
+        "acute_anterior_instability_or_labral_repair_without_clearance"
+      ],
+      "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+    },
+    "steps": [
+      "Lie on your back or sit upright holding a lightweight stick or cane horizontally with both hands.",
+      "Bend both elbows to 90 degrees and tuck your upper arms against your ribcage.",
+      "Grip the ends of the stick with your palms facing each other or facing upward.",
+      "Using your unaffected arm, gently push the stick horizontally across your body toward your affected side.",
+      "This pushes your affected forearm and hand outward into external rotation while keeping your elbow pinned to your side.",
+      "Hold the stretch for 3 to 5 seconds, then allow your unaffected arm to pull back to the starting center position."
+    ],
+    "coaching_cues": [
+      "Keep the elbow of your target arm pinned closely to your side throughout the rotation.",
+      "Do not allow your shoulder blade to shrug upward toward your ear.",
+      "Move smoothly without jerking or forcing past a comfortable stretching tension."
+    ],
+    "sources": {
+      "attribution": "AAOS Shoulder Conditioning Program"
+    },
+    "instructions": "Lie on your back or sit upright holding a lightweight stick or cane horizontally with both hands. Bend both elbows to 90 degrees and tuck your upper arms against your ribcage. Grip the ends of the stick with your palms facing each other or facing upward. Using your unaffected arm, gently push the stick horizontally across your body toward your affected side. This pushes your affected forearm and hand outward into external rotation while keeping your elbow pinned to your side. Hold the stretch for 3 to 5 seconds, then allow your unaffected arm to pull back to the starting center position.",
+    "folder": "20080_stick_shoulder_external_rotation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20081_stick_shoulder_flexion",
+    "numeric_id": "20081",
+    "slug": "stick_shoulder_flexion",
+    "name": "Stick Shoulder Flexion",
+    "aliases": [
+      "Cane Overhead Shoulder Flexion",
+      "Wand Shoulder Flexion",
+      "Assisted Overhead Elevation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "other",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "traps"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "limited_overhead_reach",
+        "frozen_shoulder",
+        "rotator_cuff_stiffness"
+      ],
+      "contraindications": [
+        "acute_subacromial_impingement_flare"
+      ],
+      "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+    },
+    "steps": [
+      "Lie on your back on a firm surface or bed holding a lightweight stick or cane with both hands shoulder-width apart.",
+      "Keep your arms straight with the stick resting across your upper thighs and your palms facing down.",
+      "Using the strength of your unaffected arm, slowly push the stick upward and backward overhead in a smooth arc.",
+      "Guide your affected arm upward into shoulder flexion until you feel a gentle, pain-free stretch in your shoulder and armpit.",
+      "Hold the overhead position for 3 to 5 seconds.",
+      "Slowly guide the stick back down to your thighs under control."
+    ],
+    "coaching_cues": [
+      "Keep your elbows straight or softly unlocked without bending them fully.",
+      "Do not arch your lower back off the floor to gain extra overhead distance.",
+      "Breathe out as you guide the stick overhead and inhale as you lower."
+    ],
+    "sources": {
+      "attribution": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+    },
+    "instructions": "Lie on your back on a firm surface or bed holding a lightweight stick or cane with both hands shoulder-width apart. Keep your arms straight with the stick resting across your upper thighs and your palms facing down. Using the strength of your unaffected arm, slowly push the stick upward and backward overhead in a smooth arc. Guide your affected arm upward into shoulder flexion until you feel a gentle, pain-free stretch in your shoulder and armpit. Hold the overhead position for 3 to 5 seconds. Slowly guide the stick back down to your thighs under control.",
+    "folder": "20081_stick_shoulder_flexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20082_stick_shoulder_abduction",
+    "numeric_id": "20082",
+    "slug": "stick_shoulder_abduction",
+    "name": "Stick Shoulder Abduction",
+    "aliases": [
+      "Cane Shoulder Abduction",
+      "Wand Lateral Elevation",
+      "Assisted Lateral Raise"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "other",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "frontal",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "glenohumeral_stiffness",
+        "restricted_lateral_reach",
+        "capsular_adhesions"
+      ],
+      "contraindications": [
+        "acute_inferior_instability"
+      ],
+      "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+    },
+    "steps": [
+      "Stand tall holding a stick or cane horizontally in front of you with both hands.",
+      "Grip the ends of the stick with your palms facing forward or down.",
+      "Using your unaffected arm, push the stick sideways across your body to push your affected arm outward and upward away from your side in the frontal plane.",
+      "Continue lifting your affected arm out to the side until you reach comfortable stretching tension (aiming for shoulder height or as cleared).",
+      "Hold for 3 to 5 seconds at the top of the assisted abduction.",
+      "Slowly lower the stick back down to the center position."
+    ],
+    "coaching_cues": [
+      "Do not hike your shoulder toward your ear; keep your scapula depressed and stable.",
+      "Keep your torso upright without leaning to the opposite side.",
+      "Use your unaffected arm to do the lifting work; keep your recovering shoulder relaxed."
+    ],
+    "sources": {
+      "attribution": "AAOS Shoulder Conditioning Program"
+    },
+    "instructions": "Stand tall holding a stick or cane horizontally in front of you with both hands. Grip the ends of the stick with your palms facing forward or down. Using your unaffected arm, push the stick sideways across your body to push your affected arm outward and upward away from your side in the frontal plane. Continue lifting your affected arm out to the side until you reach comfortable stretching tension (aiming for shoulder height or as cleared). Hold for 3 to 5 seconds at the top of the assisted abduction. Slowly lower the stick back down to the center position.",
+    "folder": "20082_stick_shoulder_abduction",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20083_dumbbell_full_can_scaption",
+    "numeric_id": "20083",
+    "slug": "dumbbell_full_can_scaption",
+    "name": "Dumbbell Full Can Scaption",
+    "aliases": [
+      "Full Can Exercise",
+      "Scaption Raise",
+      "Supraspinatus Full Can Raise"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "traps"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "supraspinatus_tendinopathy",
+        "subacromial_impingement",
+        "rotator_cuff_weakness"
+      ],
+      "contraindications": [
+        "acute_full_thickness_supraspinatus_tear"
+      ],
+      "clinical_protocol": "AAOS Rotator Cuff Conditioning Program"
+    },
+    "steps": [
+      "Stand upright holding very light dumbbells (1 to 5 lbs) at your sides with your feet shoulder-width apart.",
+      "Rotate your forearms so your thumbs are pointing upward and slightly outward, as if holding a full can of soda upright.",
+      "Keeping your elbows straight, raise your arms upward at a 30 to 45 degree angle in front of your body (the scapular plane).",
+      "Lift the dumbbells smoothly until your arms reach shoulder height (90 degrees of elevation).",
+      "Hold for 1 second at the top, maintaining the thumbs-up orientation.",
+      "Slowly lower the dumbbells back down to your sides over 2 seconds."
+    ],
+    "coaching_cues": [
+      "Always keep thumbs pointing toward the ceiling to open the subacromial space and prevent impingement.",
+      "Do not lift above shoulder height (keep arms below 90 degrees).",
+      "Use light resistance; strict form and muscle isolation take priority over weight."
+    ],
+    "sources": {
+      "attribution": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+    },
+    "instructions": "Stand upright holding very light dumbbells (1 to 5 lbs) at your sides with your feet shoulder-width apart. Rotate your forearms so your thumbs are pointing upward and slightly outward, as if holding a full can of soda upright. Keeping your elbows straight, raise your arms upward at a 30 to 45 degree angle in front of your body (the scapular plane). Lift the dumbbells smoothly until your arms reach shoulder height (90 degrees of elevation). Hold for 1 second at the top, maintaining the thumbs-up orientation. Slowly lower the dumbbells back down to your sides over 2 seconds.",
+    "folder": "20083_dumbbell_full_can_scaption",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20084_cross_body_shoulder_stretch",
+    "numeric_id": "20084",
+    "slug": "cross_body_shoulder_stretch",
+    "name": "Cross-Body Shoulder Stretch",
+    "aliases": [
+      "Crossover Arm Stretch",
+      "Posterior Shoulder Stretch",
+      "Horizontal Adduction Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "shoulders",
+      "equipment": "body only",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "shoulder",
+      "target_conditions": [
+        "posterior_shoulder_tightness",
+        "overhead_athlete_shoulder_stiffness",
+        "posterior_capsule_hypertonicity"
+      ],
+      "contraindications": [
+        "anterior_subacromial_impingement_pain_on_adduction"
+      ],
+      "clinical_protocol": "AAOS Shoulder Flexibility Protocol"
+    },
+    "steps": [
+      "Stand or sit tall with your shoulders relaxed and pulled back.",
+      "Bring your target arm straight across your chest at upper-chest height.",
+      "Use your opposite hand to grasp your target arm just above the elbow.",
+      "Gently pull your arm closer into your chest until you feel a firm, comfortable stretch in the back of your shoulder.",
+      "Hold the stretch steady for 20 to 30 seconds while breathing normally.",
+      "Slowly release the tension and repeat on the opposite arm."
+    ],
+    "coaching_cues": [
+      "Keep your target shoulder blade down and back; avoid shrugging the shoulder up toward your chin.",
+      "Do not twist your torso; keep your chest facing directly forward.",
+      "Apply gentle, consistent pressure without bouncing."
+    ],
+    "sources": {
+      "attribution": "AAOS Shoulder Conditioning & Flexibility Program"
+    },
+    "instructions": "Stand or sit tall with your shoulders relaxed and pulled back. Bring your target arm straight across your chest at upper-chest height. Use your opposite hand to grasp your target arm just above the elbow. Gently pull your arm closer into your chest until you feel a firm, comfortable stretch in the back of your shoulder. Hold the stretch steady for 20 to 30 seconds while breathing normally. Slowly release the tension and repeat on the opposite arm.",
+    "folder": "20084_cross_body_shoulder_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20085_prone_straight_leg_raise",
+    "numeric_id": "20085",
+    "slug": "prone_straight_leg_raise",
+    "name": "Prone Straight Leg Raise",
+    "aliases": [
+      "Prone Hip Extension",
+      "Reverse Straight Leg Raise",
+      "Prone Glute Lift"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "glutes",
+      "equipment": "body only",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "hamstrings",
+        "lower back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "gluteal_amnesia",
+        "anterior_pelvic_tilt",
+        "hamstring_strain_rehab"
+      ],
+      "contraindications": [
+        "acute_lumbar_disc_herniation_with_extension_pain"
+      ],
+      "clinical_protocol": "AAOS Hip Conditioning Protocol"
+    },
+    "steps": [
+      "Lie face down (prone) on a mat with your legs extended straight and your forehead resting on your folded hands.",
+      "Tighten your abdominal muscles slightly to brace your lower back and keep your pelvis anchored to the floor.",
+      "Squeeze your glute on the target side and lift your entire straight leg roughly 4 to 6 inches off the floor.",
+      "Ensure your knee remains locked straight and your hip bone stays in contact with the mat.",
+      "Hold for 2 seconds at the peak of the lift, focusing on glute contraction.",
+      "Slowly lower your leg back down to the floor under control."
+    ],
+    "coaching_cues": [
+      "Do not arch your lower back or twist your hips to lift the leg higher; motion should come purely from the glute.",
+      "Keep your toes pointed down toward the floor.",
+      "Maintain steady abdominal bracing to protect your lumbar spine."
+    ],
+    "sources": {
+      "attribution": "AAOS Hip Conditioning Program"
+    },
+    "instructions": "Lie face down (prone) on a mat with your legs extended straight and your forehead resting on your folded hands. Tighten your abdominal muscles slightly to brace your lower back and keep your pelvis anchored to the floor. Squeeze your glute on the target side and lift your entire straight leg roughly 4 to 6 inches off the floor. Ensure your knee remains locked straight and your hip bone stays in contact with the mat. Hold for 2 seconds at the peak of the lift, focusing on glute contraction. Slowly lower your leg back down to the floor under control.",
+    "folder": "20085_prone_straight_leg_raise",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20086_band_standing_hip_abduction",
+    "numeric_id": "20086",
+    "slug": "band_standing_hip_abduction",
+    "name": "Band Standing Hip Abduction",
+    "aliases": [
+      "Standing Resisted Hip Abduction",
+      "Band Lateral Leg Lift"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "abductors",
+      "equipment": "bands",
+      "primary_muscles": [
+        "abductors"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "gluteus_medius_weakness",
+        "trendelenburg_gait",
+        "it_band_friction"
+      ],
+      "contraindications": [
+        "acute_greater_trochanteric_pain_syndrome_flare"
+      ],
+      "clinical_protocol": "AAOS Hip Strengthening Protocol"
+    },
+    "steps": [
+      "Stand tall with a resistance band looped around both ankles, holding a sturdy wall or chair for balance.",
+      "Keep your supporting leg slightly bent at the knee and your torso upright.",
+      "Slowly lift your target leg straight out to the side against the resistance of the band, keeping your toes pointing forward.",
+      "Lift outward approximately 30 to 45 degrees until you feel a firm contraction in your outer hip and glute.",
+      "Hold for 1 to 2 seconds at the peak abduction.",
+      "Slowly lower your foot back toward the center without letting your feet touch."
+    ],
+    "coaching_cues": [
+      "Do not lean your torso sideways to swing the leg; keep your upper body perfectly vertical.",
+      "Keep your toes pointing straight forward, not rotated upward toward the ceiling.",
+      "Squeeze the outer glute muscle on both the moving and stabilizing hips."
+    ],
+    "sources": {
+      "attribution": "AAOS Hip Conditioning & Gait Stability Protocol"
+    },
+    "instructions": "Stand tall with a resistance band looped around both ankles, holding a sturdy wall or chair for balance. Keep your supporting leg slightly bent at the knee and your torso upright. Slowly lift your target leg straight out to the side against the resistance of the band, keeping your toes pointing forward. Lift outward approximately 30 to 45 degrees until you feel a firm contraction in your outer hip and glute. Hold for 1 to 2 seconds at the peak abduction. Slowly lower your foot back toward the center without letting your feet touch.",
+    "folder": "20086_band_standing_hip_abduction",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20087_band_standing_hip_extension",
+    "numeric_id": "20087",
+    "slug": "band_standing_hip_extension",
+    "name": "Band Standing Hip Extension",
+    "aliases": [
+      "Standing Band Glute Kickback",
+      "Resisted Hip Extension"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "glutes",
+      "equipment": "bands",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "hamstrings"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "gluteus_maximus_inhibition",
+        "postural_hip_weakness",
+        "running_gait_impairment"
+      ],
+      "contraindications": [
+        "acute_lumbar_facet_irritation"
+      ],
+      "clinical_protocol": "AAOS Hip Strengthening Protocol"
+    },
+    "steps": [
+      "Stand tall facing a sturdy wall or chair with a resistance band looped around both ankles.",
+      "Lightly rest your hands on the wall for balance and brace your core.",
+      "Keeping your target leg straight, slowly extend your leg backward behind you against the resistance of the band.",
+      "Squeeze your gluteus maximus firmly at the end-range of extension.",
+      "Hold for 1 to 2 seconds at the peak contraction.",
+      "Slowly return your leg forward under control."
+    ],
+    "coaching_cues": [
+      "Keep your torso upright and do not arch your lower back as your leg kicks back.",
+      "Focus all tension directly on the glute rather than your lower back.",
+      "Maintain a slight micro-bend in your standing knee for joint comfort."
+    ],
+    "sources": {
+      "attribution": "AAOS Hip Conditioning Program"
+    },
+    "instructions": "Stand tall facing a sturdy wall or chair with a resistance band looped around both ankles. Lightly rest your hands on the wall for balance and brace your core. Keeping your target leg straight, slowly extend your leg backward behind you against the resistance of the band. Squeeze your gluteus maximus firmly at the end-range of extension. Hold for 1 to 2 seconds at the peak contraction. Slowly return your leg forward under control.",
+    "folder": "20087_band_standing_hip_extension",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20088_band_monster_walk",
+    "numeric_id": "20088",
+    "slug": "band_monster_walk",
+    "name": "Band Monster Walk",
+    "aliases": [
+      "Monster Walk",
+      "Resisted Forward Diagonal Walk"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "glutes",
+      "equipment": "bands",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "abductors",
+        "quadriceps"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "dynamic_knee_valgus",
+        "hip_abductor_endurance",
+        "patellofemoral_tracking"
+      ],
+      "contraindications": [
+        "acute_knee_sprain"
+      ],
+      "clinical_protocol": "Sports Medicine Hip & Core Protocol"
+    },
+    "steps": [
+      "Place a mini resistance band around your ankles or just above your knees.",
+      "Stand with your feet shoulder-width apart in an athletic quarter-squat position with your knees bent and chest up.",
+      "Step forward and outward at a 45 degree angle with your right foot, maintaining tension on the band.",
+      "Follow by stepping forward and outward with your left foot in a wide, diagonal zig-zag pattern.",
+      "Continue stepping forward for the prescribed distance or repetitions, then reverse backwards using the same diagonal path."
+    ],
+    "coaching_cues": [
+      "Never allow your knees to cave inward; push knees actively outward against the band.",
+      "Maintain a steady quarter-squat depth throughout the entire walk.",
+      "Keep your feet wide enough that tension is maintained on the band at all times."
+    ],
+    "sources": {
+      "attribution": "University Sports Medicine Hip & Core Conditioning Protocol"
+    },
+    "instructions": "Place a mini resistance band around your ankles or just above your knees. Stand with your feet shoulder-width apart in an athletic quarter-squat position with your knees bent and chest up. Step forward and outward at a 45 degree angle with your right foot, maintaining tension on the band. Follow by stepping forward and outward with your left foot in a wide, diagonal zig-zag pattern. Continue stepping forward for the prescribed distance or repetitions, then reverse backwards using the same diagonal path.",
+    "folder": "20088_band_monster_walk",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20089_band_lateral_walk",
+    "numeric_id": "20089",
+    "slug": "band_lateral_walk",
+    "name": "Band Lateral Walk",
+    "aliases": [
+      "Lateral Band Walk",
+      "Mini Band Side Steps",
+      "Crab Walk with Band"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "abductors",
+      "equipment": "bands",
+      "primary_muscles": [
+        "abductors"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "frontal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "hip",
+      "target_conditions": [
+        "gluteus_medius_hypotrophy",
+        "lateral_pelvic_instability",
+        "it_band_syndrome"
+      ],
+      "contraindications": [
+        "acute_greater_trochanteric_bursitis"
+      ],
+      "clinical_protocol": "Sports Medicine Hip & Core Protocol"
+    },
+    "steps": [
+      "Place a mini resistance band around your ankles or just above your knees.",
+      "Stand with feet shoulder-width apart in a quarter-squat athletic stance with your core braced and spine neutral.",
+      "Step laterally to the side with your lead foot, stretching the band wide.",
+      "Follow with your trailing foot, stepping in slowly while keeping enough width between your feet to maintain band tension.",
+      "Take several controlled steps in one direction, then reverse and step back in the opposite direction."
+    ],
+    "coaching_cues": [
+      "Keep your toes pointing straight ahead; do not turn your feet outward.",
+      "Do not let your feet come together or allow the band to go completely slack between steps.",
+      "Keep your hips level without bobbing up and down."
+    ],
+    "sources": {
+      "attribution": "Sports Medicine Hip & Core Stability Protocol"
+    },
+    "instructions": "Place a mini resistance band around your ankles or just above your knees. Stand with feet shoulder-width apart in a quarter-squat athletic stance with your core braced and spine neutral. Step laterally to the side with your lead foot, stretching the band wide. Follow with your trailing foot, stepping in slowly while keeping enough width between your feet to maintain band tension. Take several controlled steps in one direction, then reverse and step back in the opposite direction.",
+    "folder": "20089_band_lateral_walk",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20090_ankle_pumps",
+    "numeric_id": "20090",
+    "slug": "ankle_pumps",
+    "name": "Ankle Pumps",
+    "aliases": [
+      "Active Ankle Flexion",
+      "Gas Pedal Pumps",
+      "Ankle Plantar/Dorsiflexion"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "1-1-1-1",
+      "demonstration_reps": 6
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "post_sprain_edema",
+        "post_surgical_circulation",
+        "ankle_stiffness"
+      ],
+      "contraindications": [
+        "acute_unreduced_ankle_fracture"
+      ],
+      "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "steps": [
+      "Sit or lie comfortably with your legs extended straight in front of you.",
+      "Point your toes and feet forward away from your body as far as possible, as if depressing a car accelerator pedal.",
+      "Hold for 1 second in full plantarflexion.",
+      "Pull your toes and feet backward toward your shins into full dorsiflexion.",
+      "Hold for 1 second in dorsiflexion, feeling the calf and shin muscles alternately engage.",
+      "Continue pumping rhythmically between pointing and flexing for the prescribed repetitions."
+    ],
+    "coaching_cues": [
+      "Move strictly through your ankle joints while keeping your knees and hips still.",
+      "Perform smooth, rhythmic pumps to promote circulation and venous blood return.",
+      "Work through full available pain-free range of motion."
+    ],
+    "sources": {
+      "attribution": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "instructions": "Sit or lie comfortably with your legs extended straight in front of you. Point your toes and feet forward away from your body as far as possible, as if depressing a car accelerator pedal. Hold for 1 second in full plantarflexion. Pull your toes and feet backward toward your shins into full dorsiflexion. Hold for 1 second in dorsiflexion, feeling the calf and shin muscles alternately engage. Continue pumping rhythmically between pointing and flexing for the prescribed repetitions.",
+    "folder": "20090_ankle_pumps",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20091_ankle_alphabet",
+    "numeric_id": "20091",
+    "slug": "ankle_alphabet",
+    "name": "Ankle Alphabet",
+    "aliases": [
+      "Alphabet Ankle Exercise",
+      "Ankle Mobility Alphabet"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "multiplanar",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "chronic_ankle_instability",
+        "subtalar_joint_stiffness",
+        "post_sprain_proprioception"
+      ],
+      "contraindications": [
+        "acute_unhealed_lateral_ligament_tear"
+      ],
+      "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "steps": [
+      "Sit comfortably on a chair with your leg lifted off the floor or resting on your opposite knee.",
+      "Imagine your big toe is a pen or pencil pointing forward.",
+      "Trace each capital letter of the alphabet in the air from A to Z using only your ankle and foot.",
+      "Make the letters as large as comfortable to move through all ranges of motion: dorsiflexion, plantarflexion, inversion, and eversion.",
+      "Complete the alphabet on one foot, then switch to the other side."
+    ],
+    "coaching_cues": [
+      "Isolate the movement to the ankle joint; do not rotate your whole leg from the knee or hip.",
+      "Trace both small curves and wide angles deliberately.",
+      "Take your time with letters like S, W, and Z that require multiplanar coordination."
+    ],
+    "sources": {
+      "attribution": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "instructions": "Sit comfortably on a chair with your leg lifted off the floor or resting on your opposite knee. Imagine your big toe is a pen or pencil pointing forward. Trace each capital letter of the alphabet in the air from A to Z using only your ankle and foot. Make the letters as large as comfortable to move through all ranges of motion: dorsiflexion, plantarflexion, inversion, and eversion. Complete the alphabet on one foot, then switch to the other side.",
+    "folder": "20091_ankle_alphabet",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20092_heel_walking",
+    "numeric_id": "20092",
+    "slug": "heel_walking",
+    "name": "Heel Walking",
+    "aliases": [
+      "Dorsiflexion Walking",
+      "Heel Walks"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "tibialis_anterior_weakness",
+        "foot_drop",
+        "shin_splints"
+      ],
+      "contraindications": [
+        "acute_calcaneal_stress_fracture_or_plantar_fasciitis_flare"
+      ],
+      "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "steps": [
+      "Stand tall in a clear hallway or open room with good posture.",
+      "Lift your toes and the balls of both feet off the floor, balancing entirely on your heels.",
+      "Keep your ankles strongly dorsiflexed with your toes pulled high toward your shins.",
+      "Take small, controlled steps forward on your heels while maintaining your balance.",
+      "Walk forward for the designated duration or distance without letting your toes touch the ground."
+    ],
+    "coaching_cues": [
+      "Stay tall with your chest up; avoid hunching your back or sticking your hips excessively backward.",
+      "Keep your toes lifted high throughout every single step to fire the anterior shin muscles.",
+      "Walk near a wall or railing if you need balance support."
+    ],
+    "sources": {
+      "attribution": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "instructions": "Stand tall in a clear hallway or open room with good posture. Lift your toes and the balls of both feet off the floor, balancing entirely on your heels. Keep your ankles strongly dorsiflexed with your toes pulled high toward your shins. Take small, controlled steps forward on your heels while maintaining your balance. Walk forward for the designated duration or distance without letting your toes touch the ground.",
+    "folder": "20092_heel_walking",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20093_toe_walking",
+    "numeric_id": "20093",
+    "slug": "toe_walking",
+    "name": "Toe Walking",
+    "aliases": [
+      "Plantarflexion Walking",
+      "Tip-Toe Walks"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "calves",
+      "equipment": "body only",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "alternating",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "ankle_foot",
+      "target_conditions": [
+        "gastrocnemius_soleus_weakness",
+        "achilles_tendon_endurance",
+        "ankle_stability"
+      ],
+      "contraindications": [
+        "acute_achilles_tendon_rupture"
+      ],
+      "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "steps": [
+      "Stand upright in an open space with your feet hip-width apart.",
+      "Rise up as high as possible onto the balls of your feet and toes, lifting your heels completely off the ground.",
+      "Take small, steady steps forward while maintaining maximum height on your toes.",
+      "Walk for the prescribed duration or distance, keeping your calves contracted continuously."
+    ],
+    "coaching_cues": [
+      "Stay tall and maintain an engaged core for balance.",
+      "Do not allow your ankles to roll outward; keep weight evenly distributed across the balls of your feet and big toes.",
+      "Breathe evenly throughout the walk."
+    ],
+    "sources": {
+      "attribution": "AAOS Foot and Ankle Conditioning Program"
+    },
+    "instructions": "Stand upright in an open space with your feet hip-width apart. Rise up as high as possible onto the balls of your feet and toes, lifting your heels completely off the ground. Take small, steady steps forward while maintaining maximum height on your toes. Walk for the prescribed duration or distance, keeping your calves contracted continuously.",
+    "folder": "20093_toe_walking",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20094_supine_abdominal_bracing",
+    "numeric_id": "20094",
+    "slug": "supine_abdominal_bracing",
+    "name": "Supine Abdominal Bracing",
+    "aliases": [
+      "Abdominal Bracing",
+      "Transverse Abdominis Activation",
+      "Drawing-In Maneuver"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "abdominals",
+      "equipment": "body only",
+      "primary_muscles": [
+        "abdominals"
+      ],
+      "secondary_muscles": [
+        "lower back"
+      ],
+      "level": "beginner",
+      "force": "isometric",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "transverse",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "spine",
+      "target_conditions": [
+        "transversus_abdominis_inhibition",
+        "lumbar_segmental_instability",
+        "chronic_low_back_pain"
+      ],
+      "contraindications": [
+        "uncontrolled_hypertension_with_valsalva"
+      ],
+      "clinical_protocol": "AAOS Spine Conditioning Program"
+    },
+    "steps": [
+      "Lie on your back on the floor or a mat with your knees bent at 90 degrees and your feet flat on the floor.",
+      "Rest your arms comfortably at your sides and keep your head and shoulders relaxed.",
+      "Take a normal breath in, then as you exhale, gently tighten your deep abdominal muscles as if bracing for a light punch to the stomach.",
+      "Draw your navel slightly inward and flatten your lower back firmly against the floor.",
+      "Hold this firm abdominal contraction for 10 to 15 seconds while continuing to breathe shallowly.",
+      "Relax your muscles completely, then repeat for the prescribed repetitions."
+    ],
+    "coaching_cues": [
+      "Do not hold your breath; practice breathing steadily in and out while keeping your core braced.",
+      "Feel your lower back press flat against the floor.",
+      "Avoid curling your neck or shoulders off the floor."
+    ],
+    "sources": {
+      "attribution": "AAOS Spine Conditioning Program"
+    },
+    "instructions": "Lie on your back on the floor or a mat with your knees bent at 90 degrees and your feet flat on the floor. Rest your arms comfortably at your sides and keep your head and shoulders relaxed. Take a normal breath in, then as you exhale, gently tighten your deep abdominal muscles as if bracing for a light punch to the stomach. Draw your navel slightly inward and flatten your lower back firmly against the floor. Hold this firm abdominal contraction for 10 to 15 seconds while continuing to breathe shallowly. Relax your muscles completely, then repeat for the prescribed repetitions.",
+    "folder": "20094_supine_abdominal_bracing",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20095_supine_pelvic_tilt",
+    "numeric_id": "20095",
+    "slug": "supine_pelvic_tilt",
+    "name": "Supine Pelvic Tilt",
+    "aliases": [
+      "Pelvic Tilt",
+      "Posterior Pelvic Tilt"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "abdominals",
+      "equipment": "body only",
+      "primary_muscles": [
+        "abdominals"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "lower back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "spine",
+      "target_conditions": [
+        "excessive_lumbar_lordosis",
+        "lower_back_tightness",
+        "pelvic_motor_control"
+      ],
+      "contraindications": [
+        "acute_lumbar_disc_herniation_with_flexion_pain"
+      ],
+      "clinical_protocol": "AAOS Spine Conditioning Program"
+    },
+    "steps": [
+      "Lie on your back on a mat with your knees bent, feet flat on the floor, and arms resting at your sides.",
+      "Notice the small natural arch in your lower back between your spine and the mat.",
+      "Gently contract your abdominal muscles and squeeze your glutes to tilt your pelvis backward.",
+      "Press your lower back completely flat into the floor, eliminating the space under your lumbar spine.",
+      "Hold this flattened position for 5 seconds.",
+      "Relax your muscles and allow your pelvis to tilt forward back to its natural resting curve."
+    ],
+    "coaching_cues": [
+      "Think of rolling your belt buckle toward your chin as you flatten your spine.",
+      "Keep your feet flat and do not push with your legs; the movement comes from your abs and glutes.",
+      "Breathe smoothly and do not hold your breath."
+    ],
+    "sources": {
+      "attribution": "AAOS Spine Conditioning Program"
+    },
+    "instructions": "Lie on your back on a mat with your knees bent, feet flat on the floor, and arms resting at your sides. Notice the small natural arch in your lower back between your spine and the mat. Gently contract your abdominal muscles and squeeze your glutes to tilt your pelvis backward. Press your lower back completely flat into the floor, eliminating the space under your lumbar spine. Hold this flattened position for 5 seconds. Relax your muscles and allow your pelvis to tilt forward back to its natural resting curve.",
+    "folder": "20095_supine_pelvic_tilt",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20096_single_knee_to_chest_stretch",
+    "numeric_id": "20096",
+    "slug": "single_knee_to_chest_stretch",
+    "name": "Single Knee to Chest Stretch",
+    "aliases": [
+      "Knee to Chest",
+      "Unilateral Knee to Chest Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "lower back",
+      "equipment": "body only",
+      "primary_muscles": [
+        "lower back"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "hamstrings"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "spine",
+      "target_conditions": [
+        "quadratus_lumborum_tightness",
+        "lumbar_facet_syndrome",
+        "gluteal_tightness"
+      ],
+      "contraindications": [
+        "acute_hip_flexor_avulsion"
+      ],
+      "clinical_protocol": "AAOS Spine Conditioning Program"
+    },
+    "steps": [
+      "Lie flat on your back on the floor with your legs extended or knees comfortably bent.",
+      "Lift one leg and bring your knee up toward your chest.",
+      "Clasp both hands around your shin or the back of your thigh behind your knee.",
+      "Gently pull your knee closer to your chest until you feel a comfortable stretch in your lower back, buttocks, and hip.",
+      "Hold the stretch for 15 to 30 seconds while keeping your opposite leg relaxed on the floor.",
+      "Slowly release your leg back down, then switch sides."
+    ],
+    "coaching_cues": [
+      "Grasp behind your thigh if pulling on your shin causes knee discomfort.",
+      "Keep your head and shoulders resting comfortably on the floor.",
+      "Breathe deeply and sink into the stretch with each exhalation."
+    ],
+    "sources": {
+      "attribution": "AAOS Spine Conditioning Program"
+    },
+    "instructions": "Lie flat on your back on the floor with your legs extended or knees comfortably bent. Lift one leg and bring your knee up toward your chest. Clasp both hands around your shin or the back of your thigh behind your knee. Gently pull your knee closer to your chest until you feel a comfortable stretch in your lower back, buttocks, and hip. Hold the stretch for 15 to 30 seconds while keeping your opposite leg relaxed on the floor. Slowly release your leg back down, then switch sides.",
+    "folder": "20096_single_knee_to_chest_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20097_double_knee_to_chest_stretch",
+    "numeric_id": "20097",
+    "slug": "double_knee_to_chest_stretch",
+    "name": "Double Knee to Chest Stretch",
+    "aliases": [
+      "Bilateral Knee to Chest",
+      "Low Back Flexion Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "lower back",
+      "equipment": "body only",
+      "primary_muscles": [
+        "lower back"
+      ],
+      "secondary_muscles": [
+        "glutes"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "compound"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "spine",
+      "target_conditions": [
+        "lumbar_spinal_stenosis",
+        "paraspinal_hypertonicity",
+        "lumbar_facet_compression"
+      ],
+      "contraindications": [
+        "acute_posterior_lumbar_disc_protrusion"
+      ],
+      "clinical_protocol": "AAOS Spine Conditioning Program"
+    },
+    "steps": [
+      "Lie on your back on a mat with your knees bent and feet flat on the floor.",
+      "Bring one knee to your chest, followed by the other knee.",
+      "Wrap your arms around your shins or the backs of your thighs.",
+      "Gently pull both knees in toward your chest until your lower back gently flattens and rounds off the floor.",
+      "Hold the stretch for 20 to 30 seconds while taking slow, relaxed breaths.",
+      "Carefully lower one foot at a time back to the floor."
+    ],
+    "coaching_cues": [
+      "Keep your neck relaxed; do not strain or pull your chin to your knees unless guided.",
+      "Hold behind the thighs if you have sensitive knees.",
+      "Relax your lower back muscles completely into the stretch."
+    ],
+    "sources": {
+      "attribution": "AAOS Spine Conditioning Program"
+    },
+    "instructions": "Lie on your back on a mat with your knees bent and feet flat on the floor. Bring one knee to your chest, followed by the other knee. Wrap your arms around your shins or the backs of your thighs. Gently pull both knees in toward your chest until your lower back gently flattens and rounds off the floor. Hold the stretch for 20 to 30 seconds while taking slow, relaxed breaths. Carefully lower one foot at a time back to the floor.",
+    "folder": "20097_double_knee_to_chest_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20098_chair_seated_trunk_rotation",
+    "numeric_id": "20098",
+    "slug": "chair_seated_trunk_rotation",
+    "name": "Chair Seated Trunk Rotation",
+    "aliases": [
+      "Sitting Rotation Stretch",
+      "Chair Spinal Twist",
+      "Seated Trunk Rotation"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "middle back",
+      "equipment": "other",
+      "primary_muscles": [
+        "middle back"
+      ],
+      "secondary_muscles": [
+        "abdominals",
+        "lower back"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "transverse",
+      "default_tempo": "2-2-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "spine",
+      "target_conditions": [
+        "thoracolumbar_rotational_hypomobility",
+        "postural_stiffness",
+        "desk_worker_spine_rigidity"
+      ],
+      "contraindications": [
+        "severe_osteoporotic_vertebral_compression_fracture"
+      ],
+      "clinical_protocol": "AAOS Spine Conditioning Program"
+    },
+    "steps": [
+      "Sit tall in an armless chair or stool with your feet flat on the floor and knees hip-width apart.",
+      "Cross your arms over your chest or rest one hand on the opposite knee and the other on the back of the chair.",
+      "Lengthen your spine tall, then slowly rotate your upper torso to the right as far as comfortable.",
+      "Keep your hips square and feet anchored firmly to the floor to isolate the rotation to your spine.",
+      "Hold the stretch for 3 to 5 seconds, breathing smoothly.",
+      "Slowly unwind back to center, then rotate to the left side."
+    ],
+    "coaching_cues": [
+      "Sit tall through your crown before rotating; do not slump or slouch.",
+      "Rotate from your ribcage and upper spine rather than torquing your hips.",
+      "Do not yank or jerk using chair handles; allow your muscles to gently guide the twist."
+    ],
+    "sources": {
+      "attribution": "AAOS Spine Conditioning Program"
+    },
+    "instructions": "Sit tall in an armless chair or stool with your feet flat on the floor and knees hip-width apart. Cross your arms over your chest or rest one hand on the opposite knee and the other on the back of the chair. Lengthen your spine tall, then slowly rotate your upper torso to the right as far as comfortable. Keep your hips square and feet anchored firmly to the floor to isolate the rotation to your spine. Hold the stretch for 3 to 5 seconds, breathing smoothly. Slowly unwind back to center, then rotate to the left side.",
+    "folder": "20098_chair_seated_trunk_rotation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20099_cervical_isometric_flexion",
+    "numeric_id": "20099",
+    "slug": "cervical_isometric_flexion",
+    "name": "Cervical Isometric Flexion",
+    "aliases": [
+      "Neck Isometric Flexion",
+      "Resisted Neck Flexion"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "neck",
+      "equipment": "body only",
+      "primary_muscles": [
+        "neck"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "isometric",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "neck",
+      "target_conditions": [
+        "deep_cervical_flexor_weakness",
+        "forward_head_posture",
+        "cervicogenic_headaches"
+      ],
+      "contraindications": [
+        "acute_cervical_radiculopathy_flare"
+      ],
+      "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "steps": [
+      "Sit or stand tall with good posture, relaxed shoulders, and your head in a neutral position.",
+      "Place the palm of one or both hands flat against your forehead.",
+      "Gently press your forehead forward into your palm as if attempting to nod your head forward.",
+      "Simultaneously press back with your hand using equal force so your head does not move at all.",
+      "Maintain this static isometric contraction for 5 to 10 seconds while breathing normally.",
+      "Slowly release the pressure, relax for 2 seconds, and repeat."
+    ],
+    "coaching_cues": [
+      "Use only moderate effort (about 30-50% maximum effort); do not strain.",
+      "Your head must remain completely still in a neutral position throughout.",
+      "Keep your shoulders down and relaxed."
+    ],
+    "sources": {
+      "attribution": "Physiopedia Cervical Stabilization & Isometric Protocol"
+    },
+    "instructions": "Sit or stand tall with good posture, relaxed shoulders, and your head in a neutral position. Place the palm of one or both hands flat against your forehead. Gently press your forehead forward into your palm as if attempting to nod your head forward. Simultaneously press back with your hand using equal force so your head does not move at all. Maintain this static isometric contraction for 5 to 10 seconds while breathing normally. Slowly release the pressure, relax for 2 seconds, and repeat.",
+    "folder": "20099_cervical_isometric_flexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20100_cervical_isometric_extension",
+    "numeric_id": "20100",
+    "slug": "cervical_isometric_extension",
+    "name": "Cervical Isometric Extension",
+    "aliases": [
+      "Neck Isometric Extension",
+      "Resisted Neck Extension"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "neck",
+      "equipment": "body only",
+      "primary_muscles": [
+        "neck"
+      ],
+      "secondary_muscles": [
+        "traps"
+      ],
+      "level": "beginner",
+      "force": "isometric",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "bilateral",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "neck",
+      "target_conditions": [
+        "cervical_extensor_weakness",
+        "upper_crossed_syndrome",
+        "postural_neck_fatigue"
+      ],
+      "contraindications": [
+        "acute_cervical_facet_arthrosis_with_extension_pain"
+      ],
+      "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "steps": [
+      "Sit or stand tall with your spine erect and shoulders comfortably pulled back.",
+      "Clasp your hands together and place your palms against the back of your head (occiput).",
+      "Gently press the back of your head backward into your hands as if looking up.",
+      "Match the pressure with your hands so that no actual movement occurs.",
+      "Hold the isometric contraction for 5 to 10 seconds with steady breathing.",
+      "Gradually release the contraction and repeat."
+    ],
+    "coaching_cues": [
+      "Do not tilt your head back; maintain a level chin and neutral gaze.",
+      "Apply smooth, gentle pressure without yanking.",
+      "Keep your chest open and upright."
+    ],
+    "sources": {
+      "attribution": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "instructions": "Sit or stand tall with your spine erect and shoulders comfortably pulled back. Clasp your hands together and place your palms against the back of your head (occiput). Gently press the back of your head backward into your hands as if looking up. Match the pressure with your hands so that no actual movement occurs. Hold the isometric contraction for 5 to 10 seconds with steady breathing. Gradually release the contraction and repeat.",
+    "folder": "20100_cervical_isometric_extension",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20101_cervical_isometric_lateral_flexion",
+    "numeric_id": "20101",
+    "slug": "cervical_isometric_lateral_flexion",
+    "name": "Cervical Isometric Lateral Flexion",
+    "aliases": [
+      "Cervical Isometric Side Bending",
+      "Neck Side Isometric"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "neck",
+      "equipment": "body only",
+      "primary_muscles": [
+        "neck"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "isometric",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "neck",
+      "target_conditions": [
+        "lateral_cervical_strain",
+        "scalene_muscle_imbalance",
+        "torticollis_recovery"
+      ],
+      "contraindications": [
+        "cervical_foraminal_stenosis_with_ipsilateral_radiculopathy"
+      ],
+      "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "steps": [
+      "Sit tall with your shoulders relaxed and spine upright.",
+      "Place the palm of your left hand flat against the left side of your head just above your ear.",
+      "Gently push your head sideways to the left as if attempting to tilt your ear to your shoulder.",
+      "Provide equal resistance with your hand so your head stays perfectly upright and still.",
+      "Hold the static contraction for 5 to 10 seconds while breathing naturally.",
+      "Slowly release, rest for a moment, and repeat on the right side."
+    ],
+    "coaching_cues": [
+      "Keep your eyes looking straight ahead and do not let your head rotate.",
+      "Avoid raising your shoulder up toward your ear to cheat the movement.",
+      "Use gentle, steady force (no more than 40% maximum effort)."
+    ],
+    "sources": {
+      "attribution": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "instructions": "Sit tall with your shoulders relaxed and spine upright. Place the palm of your left hand flat against the left side of your head just above your ear. Gently push your head sideways to the left as if attempting to tilt your ear to your shoulder. Provide equal resistance with your hand so your head stays perfectly upright and still. Hold the static contraction for 5 to 10 seconds while breathing naturally. Slowly release, rest for a moment, and repeat on the right side.",
+    "folder": "20101_cervical_isometric_lateral_flexion",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20102_cervical_isometric_rotation",
+    "numeric_id": "20102",
+    "slug": "cervical_isometric_rotation",
+    "name": "Cervical Isometric Rotation",
+    "aliases": [
+      "Resisted Neck Rotation",
+      "Neck Isometric Turn"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "neck",
+      "equipment": "body only",
+      "primary_muscles": [
+        "neck"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "isometric",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "neck",
+      "target_conditions": [
+        "cervical_rotational_instability",
+        "sternocleidomastoid_imbalance",
+        "whiplash_recovery"
+      ],
+      "contraindications": [
+        "acute_vertebral_artery_insufficiency"
+      ],
+      "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "steps": [
+      "Sit or stand in an upright, balanced posture with your chin level.",
+      "Place your left hand on the left side of your head near your temple and cheekbone.",
+      "Attempt to turn your head to look over your left shoulder.",
+      "Use your hand to provide equal and opposite resistance, preventing any actual turning.",
+      "Hold the isometric rotation for 5 to 10 seconds while maintaining steady breathing.",
+      "Gradually release the pressure and repeat on the opposite side."
+    ],
+    "coaching_cues": [
+      "The head must remain facing squarely forward throughout the contraction.",
+      "Keep your jaw relaxed and teeth unclenched.",
+      "Apply smooth, controlled pressure without jerking."
+    ],
+    "sources": {
+      "attribution": "Physiopedia Cervical Stabilization Protocol"
+    },
+    "instructions": "Sit or stand in an upright, balanced posture with your chin level. Place your left hand on the left side of your head near your temple and cheekbone. Attempt to turn your head to look over your left shoulder. Use your hand to provide equal and opposite resistance, preventing any actual turning. Hold the isometric rotation for 5 to 10 seconds while maintaining steady breathing. Gradually release the pressure and repeat on the opposite side.",
+    "folder": "20102_cervical_isometric_rotation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20103_dumbbell_wrist_radial_deviation",
+    "numeric_id": "20103",
+    "slug": "dumbbell_wrist_radial_deviation",
+    "name": "Dumbbell Wrist Radial Deviation",
+    "aliases": [
+      "Radial Deviation",
+      "Thumb-Up Wrist Lift",
+      "Wrist Radial Flexion"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "de_quervains_tenosynovitis",
+        "lateral_epicondylalgia_tennis_elbow",
+        "wrist_instability"
+      ],
+      "contraindications": [
+        "acute_scaphoid_fracture"
+      ],
+      "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "steps": [
+      "Sit with your forearm supported on a table or resting on your thigh, with your hand extending past the edge.",
+      "Hold a light dumbbell (1 to 3 lbs) with your thumb pointing straight up in a neutral 'hammer' position.",
+      "Keeping your forearm flat and still on the surface, lift your wrist upward toward the ceiling (in the direction of your thumb).",
+      "Hold for 1 second at the peak of radial deviation.",
+      "Slowly lower your wrist back to the neutral starting level under control."
+    ],
+    "coaching_cues": [
+      "Keep your forearm anchored to the table; only your wrist moves.",
+      "Do not twist or rotate your forearm; keep the thumb pointing directly up.",
+      "Use very light weight to protect the delicate wrist tendons."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Sit with your forearm supported on a table or resting on your thigh, with your hand extending past the edge. Hold a light dumbbell (1 to 3 lbs) with your thumb pointing straight up in a neutral 'hammer' position. Keeping your forearm flat and still on the surface, lift your wrist upward toward the ceiling (in the direction of your thumb). Hold for 1 second at the peak of radial deviation. Slowly lower your wrist back to the neutral starting level under control.",
+    "folder": "20103_dumbbell_wrist_radial_deviation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20104_dumbbell_wrist_ulnar_deviation",
+    "numeric_id": "20104",
+    "slug": "dumbbell_wrist_ulnar_deviation",
+    "name": "Dumbbell Wrist Ulnar Deviation",
+    "aliases": [
+      "Ulnar Deviation",
+      "Pinky-Down Wrist Tilt",
+      "Wrist Ulnar Extension"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "frontal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "tfcc_rehab",
+        "medial_epicondylalgia_golfers_elbow",
+        "wrist_stabilization"
+      ],
+      "contraindications": [
+        "acute_tfcc_tear_flare"
+      ],
+      "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "steps": [
+      "Sit tall with your forearm resting securely on a table or your thigh, hand extending over the edge.",
+      "Hold a light dumbbell with your thumb pointing straight up in a neutral position.",
+      "Keeping your forearm anchored, tilt your wrist downward toward the floor (in the direction of your pinky finger).",
+      "Hold for 1 second in controlled ulnar deviation.",
+      "Slowly raise your wrist back up to the neutral starting position."
+    ],
+    "coaching_cues": [
+      "Do not allow your elbow to lift off the table.",
+      "Move smoothly without snapping or bouncing at the end range.",
+      "Control both the downward tilt and the return upward."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Sit tall with your forearm resting securely on a table or your thigh, hand extending over the edge. Hold a light dumbbell with your thumb pointing straight up in a neutral position. Keeping your forearm anchored, tilt your wrist downward toward the floor (in the direction of your pinky finger). Hold for 1 second in controlled ulnar deviation. Slowly raise your wrist back up to the neutral starting position.",
+    "folder": "20104_dumbbell_wrist_ulnar_deviation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20105_dumbbell_forearm_pronation",
+    "numeric_id": "20105",
+    "slug": "dumbbell_forearm_pronation",
+    "name": "Dumbbell Forearm Pronation",
+    "aliases": [
+      "Forearm Pronation",
+      "Palm-Down Forearm Rotation"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "pronator_teres_syndrome",
+        "golfers_elbow_rehab",
+        "distal_radioulnar_joint_stiffness"
+      ],
+      "contraindications": [
+        "acute_proximal_radioulnar_subluxation"
+      ],
+      "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "steps": [
+      "Sit with your elbow bent at 90 degrees and your forearm resting flat on a table, holding a light dumbbell or hammer upright.",
+      "Hold the dumbbell near the bottom of the handle to create an asymmetric rotational lever arm.",
+      "Start with the weight upright and your thumb pointing to the ceiling.",
+      "Slowly rotate your forearm inward so your palm turns to face downward toward the table.",
+      "Pause for 1 second in full pronation, feeling the pronator muscles on the inside of your forearm.",
+      "Slowly rotate your forearm back to the vertical starting position."
+    ],
+    "coaching_cues": [
+      "Keep your elbow tucked against your side or anchored on the table; do not swing your shoulder.",
+      "Use a light weight; rotational torque increases significantly with a long lever arm.",
+      "Maintain smooth, controlled speed throughout the rotation."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Sit with your elbow bent at 90 degrees and your forearm resting flat on a table, holding a light dumbbell or hammer upright. Hold the dumbbell near the bottom of the handle to create an asymmetric rotational lever arm. Start with the weight upright and your thumb pointing to the ceiling. Slowly rotate your forearm inward so your palm turns to face downward toward the table. Pause for 1 second in full pronation, feeling the pronator muscles on the inside of your forearm. Slowly rotate your forearm back to the vertical starting position.",
+    "folder": "20105_dumbbell_forearm_pronation",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20106_dumbbell_forearm_supination",
+    "numeric_id": "20106",
+    "slug": "dumbbell_forearm_supination",
+    "name": "Dumbbell Forearm Supination",
+    "aliases": [
+      "Forearm Supination",
+      "Palm-Up Forearm Rotation"
+    ],
+    "taxonomy": {
+      "modality": "weight_reps",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "dumbbell",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [
+        "biceps"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "biceps_brachii_distal_tendon_stiffness",
+        "tennis_elbow_rehab",
+        "supinator_weakness"
+      ],
+      "contraindications": [
+        "acute_biceps_tendon_rupture"
+      ],
+      "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "steps": [
+      "Sit with your elbow bent at 90 degrees and your forearm resting on a table, holding a light dumbbell or hammer upright.",
+      "Grip the lower portion of the handle to provide asymmetric rotational resistance.",
+      "Start in the vertical neutral position with your thumb pointing up.",
+      "Slowly rotate your forearm outward so your palm turns upward to face the ceiling.",
+      "Hold for 1 second in full supination, contracting the supinator and biceps muscles.",
+      "Slowly return the dumbbell back to the vertical starting position."
+    ],
+    "coaching_cues": [
+      "Ensure your elbow remains firmly against your side or the table; do not let your elbow flare out.",
+      "Control the outward rotation slowly over 2 seconds; do not let the weight drop.",
+      "Keep your wrist straight and firm throughout."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Sit with your elbow bent at 90 degrees and your forearm resting on a table, holding a light dumbbell or hammer upright. Grip the lower portion of the handle to provide asymmetric rotational resistance. Start in the vertical neutral position with your thumb pointing up. Slowly rotate your forearm outward so your palm turns upward to face the ceiling. Hold for 1 second in full supination, contracting the supinator and biceps muscles. Slowly return the dumbbell back to the vertical starting position.",
+    "folder": "20106_dumbbell_forearm_supination",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20107_standing_wrist_flexor_stretch",
+    "numeric_id": "20107",
+    "slug": "standing_wrist_flexor_stretch",
+    "name": "Standing Wrist Flexor Stretch",
+    "aliases": [
+      "Wrist Flexor Stretch",
+      "Forearm Flexor Stretch",
+      "Prayer Wrist Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "body only",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [
+        "biceps"
+      ],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "carpal_tunnel_tightness",
+        "medial_epicondylitis",
+        "forearm_flexor_spasm"
+      ],
+      "contraindications": [
+        "acute_median_nerve_neuritis_irritated_by_extension"
+      ],
+      "clinical_protocol": "AAOS Wrist Flexibility Protocol"
+    },
+    "steps": [
+      "Stand or sit tall and extend your target arm straight out in front of you at shoulder height.",
+      "Turn your palm to face forward with your fingers pointing upward toward the ceiling.",
+      "Use your opposite hand to gently grasp your fingers.",
+      "Pull your fingers and palm backward toward your body until you feel a comfortable stretch along the underside of your forearm and wrist.",
+      "Hold the stretch steady for 20 to 30 seconds while breathing normally.",
+      "Gently release and repeat on the other side."
+    ],
+    "coaching_cues": [
+      "Keep your elbow straight to stretch both the wrist and elbow attachments of the flexor muscles.",
+      "Apply gentle, even pressure across all four fingers without bending them excessively backward at the knuckle.",
+      "Do not force through tingling or numbness in the fingers."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Stand or sit tall and extend your target arm straight out in front of you at shoulder height. Turn your palm to face forward with your fingers pointing upward toward the ceiling. Use your opposite hand to gently grasp your fingers. Pull your fingers and palm backward toward your body until you feel a comfortable stretch along the underside of your forearm and wrist. Hold the stretch steady for 20 to 30 seconds while breathing normally. Gently release and repeat on the other side.",
+    "folder": "20107_standing_wrist_flexor_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20108_standing_wrist_extensor_stretch",
+    "numeric_id": "20108",
+    "slug": "standing_wrist_extensor_stretch",
+    "name": "Standing Wrist Extensor Stretch",
+    "aliases": [
+      "Wrist Extensor Stretch",
+      "Tennis Elbow Stretch",
+      "Forearm Extensor Stretch"
+    ],
+    "taxonomy": {
+      "modality": "duration",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "body only",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "pull",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "unpaced",
+      "demonstration_reps": 1
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "tennis_elbow_tightness",
+        "extensor_carpi_radialis_strain",
+        "dorsal_wrist_stiffness"
+      ],
+      "contraindications": [
+        "acute_radial_tunnel_syndrome_flare"
+      ],
+      "clinical_protocol": "AAOS Wrist Flexibility Protocol"
+    },
+    "steps": [
+      "Stand or sit upright and extend your target arm straight out in front of you at shoulder height.",
+      "Point your fingers downward toward the floor with your palm facing toward your body.",
+      "Use your opposite hand to grasp the back of your target hand near the knuckles.",
+      "Gently press the hand downward and backward toward your body until you feel a firm stretch across the top of your wrist and forearm.",
+      "Hold the stretch for 20 to 30 seconds with deep, relaxed breathing.",
+      "Release gently, then repeat on the opposite arm."
+    ],
+    "coaching_cues": [
+      "Keep your elbow completely straight to place full stretch on the common extensor tendon.",
+      "Apply smooth, steady pressure without bouncing.",
+      "Relax your shoulders away from your ears."
+    ],
+    "sources": {
+      "attribution": "AAOS Wrist and Forearm Conditioning Program"
+    },
+    "instructions": "Stand or sit upright and extend your target arm straight out in front of you at shoulder height. Point your fingers downward toward the floor with your palm facing toward your body. Use your opposite hand to grasp the back of your target hand near the knuckles. Gently press the hand downward and backward toward your body until you feel a firm stretch across the top of your wrist and forearm. Hold the stretch for 20 to 30 seconds with deep, relaxed breathing. Release gently, then repeat on the opposite arm.",
+    "folder": "20108_standing_wrist_extensor_stretch",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20109_hand_gripper_squeeze",
+    "numeric_id": "20109",
+    "slug": "hand_gripper_squeeze",
+    "name": "Hand Gripper Squeeze",
+    "aliases": [
+      "Grip Strengthener Squeeze",
+      "Hand Grip Squeeze"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "other",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "crush",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "sagittal",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "generalized_grip_weakness",
+        "post_fracture_hand_reconditioning",
+        "forearm_atrophy"
+      ],
+      "contraindications": [
+        "acute_carpal_tunnel_syndrome_flare_up"
+      ],
+      "clinical_protocol": "Orthopaedic Hand Conditioning Protocol"
+    },
+    "steps": [
+      "Sit or stand comfortably holding a hand gripper, therapeutic stress ball, or putty in the palm of your hand.",
+      "Wrap all four fingers securely around one handle and your thumb around the other.",
+      "Squeeze the gripper firmly and evenly until the handles touch or maximum safe resistance is achieved.",
+      "Hold the squeeze for 2 to 3 seconds, focusing on full forearm engagement.",
+      "Slowly open your hand over 2 seconds to release the tension with control."
+    ],
+    "coaching_cues": [
+      "Distribute pressure evenly across all fingers, including your pinky and ring finger.",
+      "Do not allow the gripper to snap open; resist during the opening phase.",
+      "Keep your wrist straight and avoid bending it while squeezing."
+    ],
+    "sources": {
+      "attribution": "Orthopaedic Hand & Forearm Conditioning Protocol"
+    },
+    "instructions": "Sit or stand comfortably holding a hand gripper, therapeutic stress ball, or putty in the palm of your hand. Wrap all four fingers securely around one handle and your thumb around the other. Squeeze the gripper firmly and evenly until the handles touch or maximum safe resistance is achieved. Hold the squeeze for 2 to 3 seconds, focusing on full forearm engagement. Slowly open your hand over 2 seconds to release the tension with control.",
+    "folder": "20109_hand_gripper_squeeze",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
+  },
+  {
+    "id": "20110_rubber_band_finger_extension",
+    "numeric_id": "20110",
+    "slug": "rubber_band_finger_extension",
+    "name": "Rubber Band Finger Extension",
+    "aliases": [
+      "Finger Extension with Band",
+      "Extensor Digitorum Strengthening",
+      "Elastic Band Hand Opener"
+    ],
+    "taxonomy": {
+      "modality": "reps_only",
+      "category": "mobility",
+      "body_part": "forearms",
+      "equipment": "bands",
+      "primary_muscles": [
+        "forearms"
+      ],
+      "secondary_muscles": [],
+      "level": "beginner",
+      "force": "push",
+      "mechanic": "isolation"
+    },
+    "biomechanics": {
+      "laterality": "unilateral_left",
+      "movement_plane": "transverse",
+      "default_tempo": "2-1-2-1",
+      "demonstration_reps": 4
+    },
+    "rehabilitation": {
+      "joint": "elbow_wrist",
+      "target_conditions": [
+        "flexor_overuse_imbalance",
+        "lateral_epicondylalgia_antagonist_training",
+        "extensor_tendon_gliding"
+      ],
+      "contraindications": [
+        "acute_extensor_tendon_laceration_repair"
+      ],
+      "clinical_protocol": "Hand & Forearm Tendon Glide Protocol"
+    },
+    "steps": [
+      "Place a sturdy rubber band or therapeutic extensor band around the outside of all five fingertips and thumb.",
+      "Start with your fingertips and thumb pinched together in a closed cone position.",
+      "Slowly spread your fingers and thumb outward against the elastic resistance of the rubber band as wide as possible.",
+      "Hold for 1 to 2 seconds at the maximum open hand position, feeling the muscles on the back of your hand and forearm contract.",
+      "Slowly close your fingertips back together under control."
+    ],
+    "coaching_cues": [
+      "Keep your wrist in a neutral straight position while opening your fingers.",
+      "Do not let the band snap your fingers closed; control the return phase.",
+      "This provides essential muscular balance against excessive gripping."
+    ],
+    "sources": {
+      "attribution": "Orthopaedic Hand & Forearm Conditioning Protocol"
+    },
+    "instructions": "Place a sturdy rubber band or therapeutic extensor band around the outside of all five fingertips and thumb. Start with your fingertips and thumb pinched together in a closed cone position. Slowly spread your fingers and thumb outward against the elastic resistance of the rubber band as wide as possible. Hold for 1 to 2 seconds at the maximum open hand position, feeling the muscles on the back of your hand and forearm contract. Slowly close your fingertips back together under control.",
+    "folder": "20110_rubber_band_finger_extension",
+    "media": {
+      "video_path": null,
+      "video_vertical_path": null,
+      "video_horizontal_path": null,
+      "animation_path": null,
+      "animation_vertical_path": null,
+      "animation_horizontal_path": null,
+      "thumbnail_path": null,
+      "image_path": null
+    }
   }
 ]

@@ -1,0 +1,58 @@
+{
+  "id": "20055_wall_gastrocnemius_stretch",
+  "numeric_id": "20055",
+  "slug": "wall_gastrocnemius_stretch",
+  "name": "Wall Gastrocnemius Stretch",
+  "aliases": [
+    "Standing Calf Stretch at Wall",
+    "Straight-Leg Wall Calf Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "plantar_fasciitis",
+      "achilles_tightness",
+      "calf_cramping"
+    ],
+    "contraindications": [
+      "acute_calf_muscle_tear"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+  },
+  "steps": [
+    "Stand facing a wall about an arm's length away and place both palms flat against the wall at shoulder height.",
+    "Step your target leg backward, keeping that back leg completely straight with the heel firmly on the ground.",
+    "Bend your front knee and gently lean your hips forward toward the wall.",
+    "Maintain the straight back leg and flat heel until you feel a comfortable stretch in the upper half of your back calf.",
+    "Hold steady for 20 to 30 seconds while breathing deeply, then switch legs."
+  ],
+  "coaching_cues": [
+    "Keep your back foot pointing directly forward toward the wall; do not let your toes flare outward.",
+    "Keep your back heel glued firmly to the floor throughout the stretch.",
+    "Maintain an upright posture without slouching through your lower back."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

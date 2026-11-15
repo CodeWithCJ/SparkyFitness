@@ -1,0 +1,57 @@
+{
+  "id": "20110_rubber_band_finger_extension",
+  "numeric_id": "20110",
+  "slug": "rubber_band_finger_extension",
+  "name": "Rubber Band Finger Extension",
+  "aliases": [
+    "Finger Extension with Band",
+    "Extensor Digitorum Strengthening",
+    "Elastic Band Hand Opener"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "bands",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "flexor_overuse_imbalance",
+      "lateral_epicondylalgia_antagonist_training",
+      "extensor_tendon_gliding"
+    ],
+    "contraindications": [
+      "acute_extensor_tendon_laceration_repair"
+    ],
+    "clinical_protocol": "Hand & Forearm Tendon Glide Protocol"
+  },
+  "steps": [
+    "Place a sturdy rubber band or therapeutic extensor band around the outside of all five fingertips and thumb.",
+    "Start with your fingertips and thumb pinched together in a closed cone position.",
+    "Slowly spread your fingers and thumb outward against the elastic resistance of the rubber band as wide as possible.",
+    "Hold for 1 to 2 seconds at the maximum open hand position, feeling the muscles on the back of your hand and forearm contract.",
+    "Slowly close your fingertips back together under control."
+  ],
+  "coaching_cues": [
+    "Keep your wrist in a neutral straight position while opening your fingers.",
+    "Do not let the band snap your fingers closed; control the return phase.",
+    "This provides essential muscular balance against excessive gripping."
+  ],
+  "sources": {
+    "attribution": "Orthopaedic Hand & Forearm Conditioning Protocol"
+  }
+}

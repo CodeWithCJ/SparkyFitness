@@ -1,0 +1,60 @@
+{
+  "id": "20096_single_knee_to_chest_stretch",
+  "numeric_id": "20096",
+  "slug": "single_knee_to_chest_stretch",
+  "name": "Single Knee to Chest Stretch",
+  "aliases": [
+    "Knee to Chest",
+    "Unilateral Knee to Chest Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "lower back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "spine",
+    "target_conditions": [
+      "quadratus_lumborum_tightness",
+      "lumbar_facet_syndrome",
+      "gluteal_tightness"
+    ],
+    "contraindications": [
+      "acute_hip_flexor_avulsion"
+    ],
+    "clinical_protocol": "AAOS Spine Conditioning Program"
+  },
+  "steps": [
+    "Lie flat on your back on the floor with your legs extended or knees comfortably bent.",
+    "Lift one leg and bring your knee up toward your chest.",
+    "Clasp both hands around your shin or the back of your thigh behind your knee.",
+    "Gently pull your knee closer to your chest until you feel a comfortable stretch in your lower back, buttocks, and hip.",
+    "Hold the stretch for 15 to 30 seconds while keeping your opposite leg relaxed on the floor.",
+    "Slowly release your leg back down, then switch sides."
+  ],
+  "coaching_cues": [
+    "Grasp behind your thigh if pulling on your shin causes knee discomfort.",
+    "Keep your head and shoulders resting comfortably on the floor.",
+    "Breathe deeply and sink into the stretch with each exhalation."
+  ],
+  "sources": {
+    "attribution": "AAOS Spine Conditioning Program"
+  }
+}

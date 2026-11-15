@@ -1,0 +1,58 @@
+{
+  "id": "20076_bolster_short_arc_quad",
+  "numeric_id": "20076",
+  "slug": "bolster_short_arc_quad",
+  "name": "Bolster Short Arc Quad",
+  "aliases": [
+    "Short Arc Quad",
+    "Foam Roll Knee Extension",
+    "Terminal Knee Extension over Bolster"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "quads",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "patellofemoral_pain_syndrome",
+      "post_op_quad_inhibition",
+      "knee_osteoarthritis"
+    ],
+    "contraindications": [
+      "acute_patellar_tendon_rupture"
+    ],
+    "clinical_protocol": "AAOS Knee Conditioning Protocol"
+  },
+  "steps": [
+    "Lie on your back on a firm, comfortable surface with a foam roller or rolled bolster placed horizontally under your target knee.",
+    "Allow your heel to rest on the floor with your knee bent at roughly a 20 to 30 degree angle over the bolster.",
+    "Keeping the back of your knee resting against the bolster, slowly straighten your lower leg by contracting the quadriceps on the front of your thigh.",
+    "Extend the knee until your leg is fully straight and your heel lifts completely off the floor.",
+    "Hold the straight-leg contraction for 3 to 5 seconds, focusing on squeezing the vastus medialis just above your knee.",
+    "Slowly lower your heel back down to the floor with control."
+  ],
+  "coaching_cues": [
+    "Do not lift your thigh or knee off the bolster; keep the back of the knee anchored to isolate terminal extension.",
+    "Keep your toes pointed straight up toward the ceiling throughout the movement.",
+    "Contract your thigh muscles firmly at the top without hyperextending violently."
+  ],
+  "sources": {
+    "attribution": "AAOS Knee Conditioning & Post-Operative Rehabilitation Protocol"
+  }
+}

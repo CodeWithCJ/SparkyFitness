@@ -1,0 +1,58 @@
+{
+  "id": "20063_dumbbell_side_lying_external_rotation",
+  "numeric_id": "20063",
+  "slug": "dumbbell_side_lying_external_rotation",
+  "name": "Dumbbell Side-Lying External Rotation",
+  "aliases": [
+    "Side-Lying Rotator Cuff Raise",
+    "Infraspinatus Dumbbell Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "infraspinatus_teres_minor_weakness",
+      "rotator_cuff_tendinopathy",
+      "shoulder_instability"
+    ],
+    "contraindications": [
+      "acute_rotator_cuff_tear_early_post_op"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Strengthening Protocol"
+  },
+  "steps": [
+    "Lie on your side with a small rolled towel placed between your top elbow and your ribs.",
+    "Hold a light dumbbell (1 to 5 lbs) in your top hand with your elbow bent at 90 degrees.",
+    "Rest your forearm across your abdomen.",
+    "Keeping your elbow pinned against the towel roll, rotate your forearm and dumbbell upward toward the ceiling.",
+    "Pause for one second at the top of the rotation, then slowly lower the dumbbell back across your stomach."
+  ],
+  "coaching_cues": [
+    "Use very light weight; the rotator cuff muscles are small stabilizers that respond best to light, strict resistance.",
+    "Do not roll your body backward to swing the weight up.",
+    "Keep your wrist straight and firm throughout."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Strengthening Protocol"
+  }
+}

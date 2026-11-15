@@ -1,0 +1,58 @@
+{
+  "id": "20108_standing_wrist_extensor_stretch",
+  "numeric_id": "20108",
+  "slug": "standing_wrist_extensor_stretch",
+  "name": "Standing Wrist Extensor Stretch",
+  "aliases": [
+    "Wrist Extensor Stretch",
+    "Tennis Elbow Stretch",
+    "Forearm Extensor Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "body only",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "tennis_elbow_tightness",
+      "extensor_carpi_radialis_strain",
+      "dorsal_wrist_stiffness"
+    ],
+    "contraindications": [
+      "acute_radial_tunnel_syndrome_flare"
+    ],
+    "clinical_protocol": "AAOS Wrist Flexibility Protocol"
+  },
+  "steps": [
+    "Stand or sit upright and extend your target arm straight out in front of you at shoulder height.",
+    "Point your fingers downward toward the floor with your palm facing toward your body.",
+    "Use your opposite hand to grasp the back of your target hand near the knuckles.",
+    "Gently press the hand downward and backward toward your body until you feel a firm stretch across the top of your wrist and forearm.",
+    "Hold the stretch for 20 to 30 seconds with deep, relaxed breathing.",
+    "Release gently, then repeat on the opposite arm."
+  ],
+  "coaching_cues": [
+    "Keep your elbow completely straight to place full stretch on the common extensor tendon.",
+    "Apply smooth, steady pressure without bouncing.",
+    "Relax your shoulders away from your ears."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "20053_band_ankle_inversion",
+  "numeric_id": "20053",
+  "slug": "band_ankle_inversion",
+  "name": "Band Ankle Inversion",
+  "aliases": [
+    "Resistance Band Ankle Inward Pull",
+    "Ankle Inversion"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "posterior_tibial_tendon_dysfunction",
+      "flat_foot_arch_collapse",
+      "ankle_instability"
+    ],
+    "contraindications": [
+      "acute_deltoid_ligament_sprain"
+    ],
+    "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+  },
+  "steps": [
+    "Sit with legs extended, crossing your non-target leg over the target leg.",
+    "Loop a resistance band around the inside of your target foot and anchor the other end to the outside of your resting foot.",
+    "Start with the target foot turned slightly outward under light tension.",
+    "Turn your target foot inward toward the center line of your body against the band's resistance.",
+    "Hold for one second at the end range, then slowly return to the starting position."
+  ],
+  "coaching_cues": [
+    "Isolate the movement to the ankle joint; do not rotate your entire leg or hip inward.",
+    "Feel the contraction along the inside of your lower calf and arch.",
+    "Move slowly and deliberately."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+  }
+}

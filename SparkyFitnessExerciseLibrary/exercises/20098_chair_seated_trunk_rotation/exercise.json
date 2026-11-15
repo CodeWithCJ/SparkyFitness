@@ -1,0 +1,61 @@
+{
+  "id": "20098_chair_seated_trunk_rotation",
+  "numeric_id": "20098",
+  "slug": "chair_seated_trunk_rotation",
+  "name": "Chair Seated Trunk Rotation",
+  "aliases": [
+    "Sitting Rotation Stretch",
+    "Chair Spinal Twist",
+    "Seated Trunk Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "middle back",
+    "equipment": "other",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "transverse",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "spine",
+    "target_conditions": [
+      "thoracolumbar_rotational_hypomobility",
+      "postural_stiffness",
+      "desk_worker_spine_rigidity"
+    ],
+    "contraindications": [
+      "severe_osteoporotic_vertebral_compression_fracture"
+    ],
+    "clinical_protocol": "AAOS Spine Conditioning Program"
+  },
+  "steps": [
+    "Sit tall in an armless chair or stool with your feet flat on the floor and knees hip-width apart.",
+    "Cross your arms over your chest or rest one hand on the opposite knee and the other on the back of the chair.",
+    "Lengthen your spine tall, then slowly rotate your upper torso to the right as far as comfortable.",
+    "Keep your hips square and feet anchored firmly to the floor to isolate the rotation to your spine.",
+    "Hold the stretch for 3 to 5 seconds, breathing smoothly.",
+    "Slowly unwind back to center, then rotate to the left side."
+  ],
+  "coaching_cues": [
+    "Sit tall through your crown before rotating; do not slump or slouch.",
+    "Rotate from your ribcage and upper spine rather than torquing your hips.",
+    "Do not yank or jerk using chair handles; allow your muscles to gently guide the twist."
+  ],
+  "sources": {
+    "attribution": "AAOS Spine Conditioning Program"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20082_stick_shoulder_abduction",
+  "numeric_id": "20082",
+  "slug": "stick_shoulder_abduction",
+  "name": "Stick Shoulder Abduction",
+  "aliases": [
+    "Cane Shoulder Abduction",
+    "Wand Lateral Elevation",
+    "Assisted Lateral Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "glenohumeral_stiffness",
+      "restricted_lateral_reach",
+      "capsular_adhesions"
+    ],
+    "contraindications": [
+      "acute_inferior_instability"
+    ],
+    "clinical_protocol": "AAOS Shoulder Active-Assisted Range of Motion Protocol"
+  },
+  "steps": [
+    "Stand tall holding a stick or cane horizontally in front of you with both hands.",
+    "Grip the ends of the stick with your palms facing forward or down.",
+    "Using your unaffected arm, push the stick sideways across your body to push your affected arm outward and upward away from your side in the frontal plane.",
+    "Continue lifting your affected arm out to the side until you reach comfortable stretching tension (aiming for shoulder height or as cleared).",
+    "Hold for 3 to 5 seconds at the top of the assisted abduction.",
+    "Slowly lower the stick back down to the center position."
+  ],
+  "coaching_cues": [
+    "Do not hike your shoulder toward your ear; keep your scapula depressed and stable.",
+    "Keep your torso upright without leaning to the opposite side.",
+    "Use your unaffected arm to do the lifting work; keep your recovering shoulder relaxed."
+  ],
+  "sources": {
+    "attribution": "AAOS Shoulder Conditioning Program"
+  }
+}
