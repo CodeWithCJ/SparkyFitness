@@ -52,6 +52,11 @@ import {
   type ProxyHeader,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import {
+  setPendingClientCertificateServer,
+  shouldSuggestClientCertificate,
+} from '../services/clientCertificate';
+import ClientCertificateSection from './ClientCertificateSection';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
@@ -135,6 +140,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       // Closing unmounts the focused input without firing onBlur, which
       // would leave a stale focus flag suppressing the URL echo on reopen.
       setIsServerUrlFocused(false);
+      void setPendingClientCertificateServer(null);
       return;
     }
 
@@ -204,6 +210,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     let isMounted = true;
     const fetchSettings = async () => {
       try {
+        // A server that is not saved yet may still require the TLS client
+        // certificate, so it has to be an allowed host before the first request.
+        await setPendingClientCertificateServer(url);
         const settings = await fetchAuthSettings(
           url,
           proxyHeadersToRecord(cleanedHeaders())
@@ -370,11 +379,19 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
+        const failed = t('auth.errors.connectionFailed', {
+          defaultValue:
+            'Could not connect to server. Check the URL and try again.',
+        });
+        // A proxy that wants a client certificate drops the connection, which
+        // looks the same as an unreachable server.
         setError(
-          t('auth.errors.connectionFailed', {
-            defaultValue:
-              'Could not connect to server. Check the URL and try again.',
-          })
+          shouldSuggestClientCertificate()
+            ? `${failed} ${t('auth.clientCertificate.connectionHint', {
+                defaultValue:
+                  'If your server requires a client certificate, add it under Advanced options.',
+              })}`
+            : failed
         );
       }
     } finally {
@@ -1283,6 +1300,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         </View>
                       </View>
                     ))}
+
+                    <ClientCertificateSection />
                   </View>
                 )}
 

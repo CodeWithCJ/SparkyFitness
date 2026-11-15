@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-14_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -315,6 +315,7 @@ npx expo prebuild --clean
 - Production rejects HTTP server URLs. Preserve HTTPS guards in onboarding, settings, raw fetch paths, and health sync.
 - Proxy headers support reverse-proxy auth. They must be injected before auth headers in `apiClient.ts` and raw fetch clients.
 - During login before a config is saved, `authService` manages pending proxy headers via `setPendingProxyHeaders()` / `clearPendingProxyHeaders()`.
+- TLS client certificate (mTLS, #123): one certificate for the whole app, imported from a `.p12` in `ClientCertificateSection` (server form and onboarding, under Advanced options) and held by `modules/client-certificate`. It is presented only to the saved servers' hosts. Any new native code that calls the user's server must use it: see [widgets-and-native-config.md](agent-docs/widgets-and-native-config.md#tls-client-certificate-mtls).
 - Prefer `getApiErrorMessage` / API error helpers over ad hoc error parsing in UI.
 - Screens that need the server wrap their content area (below the header) in `ServerGate` (`components/ServerGate.tsx`) instead of their own "No server configured" block. `useServerConnection().status` is `loading`, `notConfigured`, `unreachable` or `connected`; the gate shows a spinner, "No server configured", or "Can't reach your server" with Try again, and owns the copy. Use `ServerStatusView` directly only where the screen needs its own layout around the message (Dashboard, Diary, Library hide their date header while offline). The connection check runs on first load and on screen focus, and the shared query client (`hooks/queryClient.ts`) re-runs it, at most every 10 s, when a query fails with a network error, timeout, 5xx or 429, so Refresh and Retry also reach the offline state.
 

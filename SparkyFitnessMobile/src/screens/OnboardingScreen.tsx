@@ -42,6 +42,12 @@ import {
 } from '../services/api/authService';
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import {
+  isClientCertificateSupported,
+  setPendingClientCertificateServer,
+  shouldSuggestClientCertificate,
+} from '../services/clientCertificate';
+import ClientCertificateSection from '../components/ClientCertificateSection';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
@@ -93,6 +99,7 @@ export default function OnboardingScreen({ navigation }: Props) {
   // Page state
   const [page, setPage] = useState<1 | 2>(1);
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   // Shared state
   const [serverUrl, setServerUrl] = useState('');
@@ -156,6 +163,15 @@ export default function OnboardingScreen({ navigation }: Props) {
     };
   }, []);
 
+  // The server being connected to stops being a pending host once this
+  // screen is gone; by then it is either saved or abandoned.
+  useEffect(
+    () => () => {
+      void setPendingClientCertificateServer(null);
+    },
+    []
+  );
+
   // --- Navigation helpers ---
 
   const finishOnboarding = () => {
@@ -197,6 +213,9 @@ export default function OnboardingScreen({ navigation }: Props) {
     setError('');
 
     try {
+      // Not saved yet, but it may require the TLS client certificate, so it
+      // has to be an allowed host before the first request.
+      await setPendingClientCertificateServer(url);
       const settings = await fetchAuthSettings(url);
       setAuthSettings(settings);
 
@@ -228,11 +247,18 @@ export default function OnboardingScreen({ navigation }: Props) {
         setError('');
         setPage(2);
       } else {
+        const unreachable = t('onboarding.errors.serverUnreachable', {
+          defaultValue: 'Could not reach server. Check the URL and try again.',
+        });
+        // A proxy that wants a client certificate drops the connection, which
+        // looks the same as an unreachable server.
         setError(
-          t('onboarding.errors.serverUnreachable', {
-            defaultValue:
-              'Could not reach server. Check the URL and try again.',
-          })
+          shouldSuggestClientCertificate()
+            ? `${unreachable} ${t('auth.clientCertificate.connectionHint', {
+                defaultValue:
+                  'If your server requires a client certificate, add it under Advanced options.',
+              })}`
+            : unreachable
         );
       }
     } finally {
@@ -598,6 +624,11 @@ export default function OnboardingScreen({ navigation }: Props) {
     setLearnMoreExpanded((prev) => !prev);
   };
 
+  const toggleAdvanced = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setAdvancedExpanded((prev) => !prev);
+  };
+
   // --- Render ---
 
   const renderPage1 = () => (
@@ -683,6 +714,30 @@ export default function OnboardingScreen({ navigation }: Props) {
           loading={checkingUrl}
         />
       </View>
+
+      {/* Advanced: only what a server can need before the first connection. */}
+      {isClientCertificateSupported() && (
+        <View className="mt-4">
+          <Pressable
+            onPress={toggleAdvanced}
+            className="flex-row items-center self-start"
+            accessibilityRole="button"
+            accessibilityState={{ expanded: advancedExpanded }}
+          >
+            <Icon
+              name={advancedExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={14}
+              color={textMuted}
+            />
+            <Text className="text-sm ml-1 text-text-muted">
+              {t('auth.advancedOptions', {
+                defaultValue: 'Advanced options',
+              })}
+            </Text>
+          </Pressable>
+          {advancedExpanded && <ClientCertificateSection />}
+        </View>
+      )}
 
       {/* Learn more */}
       <View

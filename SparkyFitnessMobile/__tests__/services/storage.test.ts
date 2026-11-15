@@ -17,6 +17,8 @@ import {
   clearServerConfigCache,
   clearSessionToken,
   takeIdentityChangeServerConfigIds,
+  setOnServerConfigsChanged,
+  getSavedServerUrls,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -850,6 +852,74 @@ describe('storage', () => {
       original.mockImplementation(originalImpl);
       const retryResult = await getActiveServerConfig();
       expect(retryResult).toEqual(configA);
+    });
+  });
+
+  describe('getSavedServerUrls', () => {
+    test('lists the URL of every saved server', async () => {
+      await saveServerConfig({
+        id: 'u1',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      await saveServerConfig({
+        id: 'u2',
+        url: 'https://b.example',
+        apiKey: 'k',
+      });
+
+      expect(await getSavedServerUrls()).toEqual([
+        'https://a.example',
+        'https://b.example',
+      ]);
+    });
+
+    test('is empty when nothing is saved or the data is damaged', async () => {
+      expect(await getSavedServerUrls()).toEqual([]);
+      await AsyncStorage.setItem('serverConfigs', '{not json');
+      expect(await getSavedServerUrls()).toEqual([]);
+    });
+
+    test('rejects when storage cannot be read, unlike getAllServerConfigs', async () => {
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('storage down'));
+      await expect(getSavedServerUrls()).rejects.toThrow('storage down');
+
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('storage down'));
+      await expect(getAllServerConfigs()).resolves.toEqual([]);
+    });
+  });
+
+  describe('setOnServerConfigsChanged', () => {
+    const config: ServerConfig = {
+      id: 'changed-1',
+      url: 'https://fit.example.com',
+      apiKey: 'key',
+    };
+
+    afterEach(() => setOnServerConfigsChanged(null));
+
+    test('runs after a save and after a delete', async () => {
+      const onChanged = jest.fn();
+      setOnServerConfigsChanged(onChanged);
+
+      await saveServerConfig(config);
+      expect(onChanged).toHaveBeenCalledTimes(1);
+
+      await deleteServerConfig(config.id);
+      expect(onChanged).toHaveBeenCalledTimes(2);
+    });
+
+    test('a failing listener does not fail the save', async () => {
+      setOnServerConfigsChanged(() => {
+        throw new Error('listener');
+      });
+
+      await expect(saveServerConfig(config)).resolves.toBeUndefined();
+      expect(await getAllServerConfigs()).toHaveLength(1);
     });
   });
 });
