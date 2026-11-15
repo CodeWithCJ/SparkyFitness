@@ -270,6 +270,33 @@ describe('initSymptomNotificationActions', () => {
     expect(mockEnd).toHaveBeenCalledWith('ep-1', expect.anything(), serverA);
   });
 
+  it.each([
+    [
+      'stamped',
+      { episodeId: 'ep-1', symptomName: 'Migraine', serverId: 'server-a' },
+    ],
+    ['unstamped', { episodeId: 'ep-1', symptomName: 'Migraine' }],
+  ])(
+    'does not act on a %s nudge when no server is active',
+    async (_label, data) => {
+      mockCurrentServerConfig.mockResolvedValue(null);
+      const handle = listener();
+      handle(response('symptom-end-episode', { data }));
+      handle(response('symptom-still-ongoing', { data }));
+      await flush();
+
+      expect(mockEnd).not.toHaveBeenCalled();
+      expect(mockScheduleNudge).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledTimes(1);
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: 'Could not end the episode',
+        })
+      );
+    }
+  );
+
   it('removes the listener on cleanup', () => {
     const stop = initSymptomNotificationActions();
     stop();

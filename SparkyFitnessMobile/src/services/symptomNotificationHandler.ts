@@ -53,7 +53,7 @@ function readNudgeData(
 
 async function endEpisodeFromNudge(
   episodeId: string,
-  serverConfig: ServerConfig | undefined
+  serverConfig: ServerConfig
 ): Promise<void> {
   try {
     await endSymptomEpisode(
@@ -121,8 +121,23 @@ async function runNudgeAction(
   // server switch, acting on it would hit the wrong server. The checked
   // config is used for the action too, so a switch while it runs can't
   // redirect it.
-  const serverConfig = (await currentServerConfig()) ?? undefined;
-  if (belongsToOtherServer(nudge.serverId, serverConfig?.id ?? null)) {
+  const serverConfig = await currentServerConfig();
+  if (!serverConfig) {
+    // Nothing to check an unstamped (older) nudge against, and nothing to
+    // send the action to.
+    addLog('[Symptoms] Nudge action with no active server; ignored', 'WARNING');
+    if (actionIdentifier === SYMPTOM_END_EPISODE_ACTION) {
+      Toast.show({
+        type: 'error',
+        text1: notificationCopy(
+          'symptoms.endFailed',
+          'Could not end the episode'
+        ),
+      });
+    }
+    return;
+  }
+  if (belongsToOtherServer(nudge.serverId, serverConfig.id)) {
     addLog(
       '[Symptoms] Nudge action belongs to another server; ignored',
       'WARNING'
@@ -145,7 +160,7 @@ async function runNudgeAction(
       nudge.episodeId,
       nudge.symptomName,
       new Date().toISOString(),
-      { serverId: serverConfig?.id }
+      { serverId: serverConfig.id }
     );
   }
 }
