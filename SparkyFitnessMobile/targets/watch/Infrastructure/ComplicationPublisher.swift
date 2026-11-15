@@ -73,6 +73,28 @@ enum ComplicationPublisher {
         static let kind = "customComplication"
     }
 
+    /// The colour and icon the wearer chose for each built-in complication,
+    /// stored under `key` for the widgets (`BuiltInStyle.swift`).
+    private enum BuiltIn {
+        static let key = "builtInComplicationStyles"
+        /// Every complication a style can change, so a change reloads them all.
+        static let kinds = [
+            "calorieGoalComplication", "proteinGoalComplication", "carbsGoalComplication",
+            "fatGoalComplication", "waterGoalComplication", "fastingComplication",
+            "stepsComplication",
+        ]
+    }
+
+    /// One built-in complication's look. `key` is the phone's built-in key
+    /// (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
+    /// `steps`); only the parts the wearer changed are set. Field names are
+    /// decoded by `BuiltInStyle.swift` in targets/watch-widget.
+    struct BuiltInStyle: Codable, Equatable {
+        let key: String
+        let color: String?
+        let icon: String?
+    }
+
     /// Field names here are decoded by `CustomComplication`; the strings are
     /// the phone's wire values (`src/utils/watchComplications.ts`).
     struct CustomDefinition: Codable, Equatable {
@@ -187,7 +209,16 @@ enum ComplicationPublisher {
     /// `reload` is the phone's Reload button: the picker and every face slot
     /// refresh even when the list is the one already held, which is how a picker
     /// that cached an old answer is put right.
-    static func publish(customDefinitions: [CustomDefinition], revision: Double, reload: Bool = false) {
+    ///
+    /// `builtInStyles` rides in the same message (nil from a phone that does not
+    /// send them, which leaves the saved ones alone) and is held to the same
+    /// revision rule.
+    static func publish(
+        customDefinitions: [CustomDefinition],
+        revision: Double,
+        reload: Bool = false,
+        builtInStyles: [BuiltInStyle]? = nil
+    ) {
         guard let defaults = sharedDefaults() else { return }
         guard revision >= defaults.double(forKey: Custom.revisionKey) else { return }
         defaults.set(revision, forKey: Custom.revisionKey)
@@ -207,6 +238,22 @@ enum ComplicationPublisher {
         }
         if reload {
             WidgetCenter.shared.reloadTimelines(ofKind: Custom.kind)
+        }
+        if let builtInStyles {
+            publish(builtInStyles: builtInStyles, force: reload, defaults: defaults)
+        }
+    }
+
+    /// Saves the wearer's looks for the built-in complications and reloads them
+    /// when they changed (or when `force`, the phone's Reload button).
+    private static func publish(builtInStyles: [BuiltInStyle], force: Bool, defaults: UserDefaults) {
+        let previous = defaults.data(forKey: BuiltIn.key)
+            .flatMap { try? JSONDecoder().decode([BuiltInStyle].self, from: $0) }
+        guard force || previous != builtInStyles else { return }
+        guard let data = try? JSONEncoder().encode(builtInStyles) else { return }
+        defaults.set(data, forKey: BuiltIn.key)
+        for kind in BuiltIn.kinds {
+            WidgetCenter.shared.reloadTimelines(ofKind: kind)
         }
     }
 

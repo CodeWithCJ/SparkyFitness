@@ -3,14 +3,16 @@ import { useTranslation } from 'react-i18next';
 import WatchConnectivity from '../../modules/watch-connectivity';
 import { sendComplicationsToWatch } from '../services/watchComplicationSync';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useWatchBuiltInStyles } from './useWatchBuiltInStyles';
 import { resolveComplications } from '../utils/watchComplications';
 import { addLog } from '../services/LogService';
 
 /**
  * Keeps the watch's complication list the same as the phone's: sends it when
  * the app starts and whenever the wearer changes it. Until they have made
- * their own, the starter set is sent, named in the app's language. A list the
- * watch already has (same content) is not sent again on its own.
+ * their own, the starter set is sent, named in the app's language, and the
+ * colours and icons they chose for the built-in complications go with it. A
+ * list the watch already has (same content) is not sent again on its own.
  *
  * A send can still go missing (the watch app was not running, a queued copy
  * was lost), and nothing else would put it right, so the list is also sent
@@ -22,29 +24,34 @@ export function useWatchComplicationSync(enabled: boolean): void {
   const stored = useAppPreferencesStore((s) => s.watchComplications);
   const lastSentRef = useRef<string | null>(null);
   const list = useMemo(() => resolveComplications(stored, t), [stored, t]);
+  const { styles: builtIns } = useWatchBuiltInStyles();
   const listRef = useRef(list);
+  const builtInsRef = useRef(builtIns);
 
   useEffect(() => {
     listRef.current = list;
-  }, [list]);
+    builtInsRef.current = builtIns;
+  }, [list, builtIns]);
 
   useEffect(() => {
     if (!enabled) return;
-    const signature = JSON.stringify(list);
+    const signature = JSON.stringify({ list, builtIns });
     if (signature === lastSentRef.current) return;
     lastSentRef.current = signature;
-    sendComplicationsToWatch(list).catch((error) => {
+    sendComplicationsToWatch(list, { builtIns }).catch((error) => {
       // Sent again on the next change or launch; a failed attempt must not
       // block that by looking like it already went.
       lastSentRef.current = null;
       addLog(`[Watch Complications] Send failed: ${error}`, 'WARNING');
     });
-  }, [enabled, list]);
+  }, [enabled, list, builtIns]);
 
   useEffect(() => {
     if (!enabled || !WatchConnectivity) return;
     const resend = () => {
-      sendComplicationsToWatch(listRef.current).catch((error) => {
+      sendComplicationsToWatch(listRef.current, {
+        builtIns: builtInsRef.current,
+      }).catch((error) => {
         addLog(`[Watch Complications] Resend failed: ${error}`, 'WARNING');
       });
     };

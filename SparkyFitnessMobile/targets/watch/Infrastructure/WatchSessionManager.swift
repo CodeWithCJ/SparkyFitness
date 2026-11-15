@@ -756,7 +756,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 ComplicationPublisher.publish(
                     customDefinitions: config.definitions,
                     revision: config.revision,
-                    reload: config.reload
+                    reload: config.reload,
+                    builtInStyles: config.builtIns
                 )
             }
         case "routeSync":

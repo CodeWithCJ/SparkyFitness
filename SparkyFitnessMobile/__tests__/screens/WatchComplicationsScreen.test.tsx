@@ -117,10 +117,44 @@ describe('WatchComplicationsScreen', () => {
     expect(sync.sendComplicationsToWatch).toHaveBeenCalledTimes(1);
     const [list, options] = sync.sendComplicationsToWatch.mock.calls[0];
     expect(list.length).toBeGreaterThan(0);
-    expect(options).toEqual({ reload: true });
+    expect(options).toEqual({ reload: true, builtIns: {} });
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'success' })
     );
+  });
+
+  test('lists the built-in complications and opens one to change it', () => {
+    renderScreen();
+    expect(screen.getByTestId('watch-built-in-row-proteinGoal')).toBeTruthy();
+    expect(screen.getByTestId('watch-built-in-row-steps')).toBeTruthy();
+    expect(screen.queryByTestId('watch-built-in-steps-color-heart')).toBeNull();
+    fireEvent.press(screen.getByLabelText('Change Steps'));
+    expect(screen.getByTestId('watch-built-in-steps-color-heart')).toBeTruthy();
+  });
+
+  test('saves a built-in’s colour and icon, and puts them back', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('Change Steps'));
+    fireEvent.press(screen.getByTestId('watch-built-in-steps-color-heart'));
+    fireEvent.press(screen.getByTestId('watch-built-in-steps-icon-bolt.fill'));
+    expect(useAppPreferencesStore.getState().watchBuiltInStyles).toEqual({
+      steps: { color: 'heart', icon: 'bolt.fill' },
+    });
+    fireEvent.press(screen.getByTestId('watch-built-in-steps-reset'));
+    expect(useAppPreferencesStore.getState().watchBuiltInStyles).toEqual({});
+  });
+
+  test('Reload sends the built-in styles too', async () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('Change Steps'));
+    fireEvent.press(screen.getByTestId('watch-built-in-steps-color-heart'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('watch-complications-reload'));
+    });
+    expect(sync.sendComplicationsToWatch.mock.calls[0][1]).toEqual({
+      reload: true,
+      builtIns: { steps: { color: 'heart' } },
+    });
   });
 
   test('Reload says so when the send fails', async () => {

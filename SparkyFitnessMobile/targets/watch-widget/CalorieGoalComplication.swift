@@ -65,6 +65,10 @@ struct CalorieComplicationView: View {
 
     private var percent: Int { Int((entry.progress * 100).rounded()) }
 
+    private var look: BuiltInLook {
+        builtInLook("calorieGoal", color: ComplicationPalette.calories, icon: "flame.fill")
+    }
+
     var body: some View {
         content
             .widgetURL(ComplicationLink.goals.url)
@@ -81,26 +85,26 @@ struct CalorieComplicationView: View {
     private var content: some View {
         switch family {
         case .accessoryCorner:
-            Image(systemName: "flame.fill")
+            Image(systemName: look.icon)
                 .font(.system(.title3, design: .rounded).weight(.semibold))
-                .foregroundStyle(ComplicationPalette.calories)
+                .foregroundStyle(look.color)
                 .widgetLabel {
                     ProgressView(value: entry.progress) {
                         Text("\(percent)%")
                             .minimumScaleFactor(0.7)
                     }
-                    .tint(ComplicationPalette.calories)
+                    .tint(look.color)
                 }
         default:
             Gauge(value: entry.progress) {
-                Image(systemName: "flame.fill")
+                Image(systemName: look.icon)
             } currentValueLabel: {
                 Text("\(percent)%")
                     .monospacedDigit()
                     .minimumScaleFactor(0.6)
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(ComplicationPalette.calories)
+            .tint(look.color)
         }
     }
 }

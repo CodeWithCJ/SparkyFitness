@@ -63,6 +63,10 @@ struct StepsComplicationView: View {
     @Environment(\.widgetFamily) private var family
     let entry: StepsEntry
 
+    private var look: BuiltInLook {
+        builtInLook("steps", color: .mint, icon: "figure.walk")
+    }
+
     private var short: String {
         entry.count >= 10_000
             ? String(format: "%.1fk", Double(entry.count) / 1000)
@@ -80,34 +84,34 @@ struct StepsComplicationView: View {
     private var content: some View {
         switch family {
         case .accessoryCorner:
-            Image(systemName: "figure.walk")
+            Image(systemName: look.icon)
                 .font(.title3)
-                .foregroundStyle(.mint)
+                .foregroundStyle(look.color)
                 .widgetLabel {
-                    ProgressView(value: entry.progress).tint(.mint)
+                    ProgressView(value: entry.progress).tint(look.color)
                 }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Label(String(localized: "watch.steps.title", defaultValue: "Steps"), systemImage: "figure.walk")
+                Label(String(localized: "watch.steps.title", defaultValue: "Steps"), systemImage: look.icon)
                     .font(.headline)
-                    .foregroundStyle(.mint)
+                    .foregroundStyle(look.color)
                 Text(entry.count.formatted())
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                     .monospacedDigit()
-                ProgressView(value: entry.progress).tint(.mint)
+                ProgressView(value: entry.progress).tint(look.color)
             }
         case .accessoryInline:
-            Label(String(localized: "watch.steps.countLabel", defaultValue: "\(entry.count.formatted()) steps"), systemImage: "figure.walk")
+            Label(String(localized: "watch.steps.countLabel", defaultValue: "\(entry.count.formatted()) steps"), systemImage: look.icon)
         default:
             Gauge(value: entry.progress) {
-                Image(systemName: "figure.walk")
+                Image(systemName: look.icon)
             } currentValueLabel: {
                 Text(short)
                     .monospacedDigit()
                     .minimumScaleFactor(0.5)
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(.mint)
+            .tint(look.color)
         }
     }
 }

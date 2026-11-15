@@ -51,6 +51,15 @@ describe('sendComplicationsToWatch', () => {
     expect(module.sendComplicationConfig.mock.calls[0][0].reload).toBe(true);
   });
 
+  it('sends the built-in styles with the list', async () => {
+    await sendComplicationsToWatch([water], {
+      builtIns: { steps: { color: 'heart' } },
+    });
+    expect(module.sendComplicationConfig.mock.calls[0][0].builtIns).toEqual([
+      { key: 'steps', color: 'heart' },
+    ]);
+  });
+
   it('leaves the reload flag off for an ordinary send', async () => {
     await sendComplicationsToWatch([water]);
     expect(module.sendComplicationConfig.mock.calls[0][0]).not.toHaveProperty(

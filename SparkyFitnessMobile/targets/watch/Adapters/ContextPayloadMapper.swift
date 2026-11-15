@@ -326,7 +326,12 @@ enum ContextPayloadMapper {
     /// that adds a field does not break this build.
     static func complicationConfig(
         from payload: [String: Any]
-    ) -> (revision: Double, reload: Bool, definitions: [ComplicationPublisher.CustomDefinition])? {
+    ) -> (
+        revision: Double,
+        reload: Bool,
+        builtIns: [ComplicationPublisher.BuiltInStyle]?,
+        definitions: [ComplicationPublisher.CustomDefinition]
+    )? {
         guard
             let revision = doubleValue(payload["revision"]),
             let raw = payload["definitions"] as? [[String: Any]]
@@ -334,6 +339,18 @@ enum ContextPayloadMapper {
         // Set by the phone's Reload button: refresh the picker and faces even
         // when the list is the one already held.
         let reload = payload["reload"] as? Bool ?? false
+        // The wearer's colour and icon for the built-in complications. Nil when
+        // the phone did not send the field (an older build), which keeps what
+        // the watch already has; an empty list clears them.
+        let builtIns = (payload["builtIns"] as? [[String: Any]])?.compactMap {
+            entry -> ComplicationPublisher.BuiltInStyle? in
+            guard let key = entry["key"] as? String, !key.isEmpty else { return nil }
+            return ComplicationPublisher.BuiltInStyle(
+                key: key,
+                color: entry["color"] as? String,
+                icon: entry["icon"] as? String
+            )
+        }
         let definitions = raw.compactMap { entry -> ComplicationPublisher.CustomDefinition? in
             guard
                 let id = entry["id"] as? String, !id.isEmpty,
@@ -362,7 +379,7 @@ enum ContextPayloadMapper {
                 extras: extras.isEmpty ? nil : Array(extras)
             )
         }
-        return (revision, reload, definitions)
+        return (revision, reload, builtIns, definitions)
     }
 
     /// The route id a `routeRemove` names.

@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 import { useWatchComplicationSync } from '../../src/hooks/useWatchComplicationSync';
 import { sendComplicationsToWatch } from '../../src/services/watchComplicationSync';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
@@ -34,7 +34,10 @@ describe('useWatchComplicationSync', () => {
   beforeEach(() => {
     mockListeners.clear();
     jest.clearAllMocks();
-    useAppPreferencesStore.setState({ watchComplications: [mine] });
+    useAppPreferencesStore.setState({
+      watchComplications: [mine],
+      watchBuiltInStyles: {},
+    });
   });
 
   it('sends the list once on start', () => {
@@ -57,6 +60,24 @@ describe('useWatchComplicationSync', () => {
     mockListeners.get('onReachabilityChange')?.({ isReachable: false });
     expect(sendComplicationsToWatch).toHaveBeenCalledTimes(1);
     mockListeners.get('onReachabilityChange')?.({ isReachable: true });
+    expect(sendComplicationsToWatch).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends the built-in styles, and again when one changes', () => {
+    useAppPreferencesStore.setState({
+      watchBuiltInStyles: { steps: { color: 'heart' } },
+    });
+    const { rerender } = renderHook(() => useWatchComplicationSync(true));
+    expect(sendComplicationsToWatch).toHaveBeenCalledTimes(1);
+    expect((sendComplicationsToWatch as jest.Mock).mock.calls[0][1]).toEqual({
+      builtIns: { steps: { color: 'heart' } },
+    });
+    act(() => {
+      useAppPreferencesStore.setState({
+        watchBuiltInStyles: { steps: { color: 'water' } },
+      });
+    });
+    rerender({});
     expect(sendComplicationsToWatch).toHaveBeenCalledTimes(2);
   });
 
