@@ -12,15 +12,11 @@ jest.mock('@/api/Challenges/challengesApi');
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => jest.requireActual('./challengesTestKit').preferences,
 }));
-jest.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { id: 'user-me', fullName: 'Test Person' } }),
-}));
 
 const api = jest.mocked(challengesApi);
 
 describe('Challenge standings (Diary card)', () => {
-  it('shows each challenge with its current leaders and links to it', async () => {
-    api.getChallengeStandings.mockResolvedValue(standings());
+  const renderCard = () => {
     const { Wrapper } = wrapper();
     render(
       <Wrapper>
@@ -29,15 +25,32 @@ describe('Challenge standings (Diary card)', () => {
         </MemoryRouter>
       </Wrapper>
     );
+  };
+
+  it('shows your place and who leads in each challenge, linking to it', async () => {
+    api.getChallengeStandings.mockResolvedValue(standings());
+    renderCard();
     expect(screen.getByText('Challenge standings')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '🏆 Office cup' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /🏆 Office cup/ })).toHaveAttribute(
       'href',
       `/challenges/${challenge().id}`
     );
-    expect(await screen.findByText('Test B')).toBeInTheDocument();
-    expect(screen.getByText('120.5 pts')).toBeInTheDocument();
+    expect(await screen.findByText('#2 of 2 · 90 pts')).toBeInTheDocument();
+    expect(screen.getByText('Test B leads with 120.5 pts')).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'All challenges' })
     ).toHaveAttribute('href', '/challenges');
+  });
+
+  it('says you lead when your row is on rank 1', async () => {
+    const data = standings();
+    data.rows = [
+      { ...data.rows[1]!, rank: 1, total: 150 },
+      { ...data.rows[0]!, rank: 2 },
+    ];
+    api.getChallengeStandings.mockResolvedValue(data);
+    renderCard();
+    expect(await screen.findByText('#1 of 2 · 150 pts')).toBeInTheDocument();
+    expect(screen.getByText('You lead')).toBeInTheDocument();
   });
 });

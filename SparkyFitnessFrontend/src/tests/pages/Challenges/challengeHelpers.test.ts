@@ -4,16 +4,19 @@ import {
   challengeRulesSchema,
   type ChallengeRuleChange,
   type ChallengeRules,
+  type ChallengeStandingsResponse,
   type ChallengeSummary,
 } from '@workspace/shared';
 import {
   challengesForCard,
   changedRuleLines,
+  createErrorText,
   daysText,
   joinErrorText,
   metricValueText,
   pointsExample,
   ruleLines,
+  standingsSummary,
   targetFromInput,
   targetToInput,
   type MetricUnits,
@@ -171,6 +174,13 @@ describe('invite links', () => {
     expect(joinErrorText(t, 'CHALLENGE_INVITE_INVALID')).toMatch(/not valid/);
     expect(joinErrorText(t, undefined)).toBe('Could not join. Try again.');
   });
+
+  it('says why a new challenge was refused from the server code', () => {
+    expect(createErrorText(t, 'CHALLENGE_INVALID_DATES')).toBe(
+      'A challenge can start at most 31 days ago and at most 365 days from today, and lasts at most 365 days.'
+    );
+    expect(createErrorText(t, undefined)).toMatch(/Could not create/);
+  });
 });
 
 describe('periods', () => {
@@ -235,5 +245,58 @@ describe('the Diary card', () => {
       summary('new', '2026-11-09'),
     ];
     expect(challengesForCard(list).map((c) => c.id)).toEqual(['new', 'old']);
+  });
+});
+
+describe('standings summary (Diary card)', () => {
+  type Row = ChallengeStandingsResponse['rows'][number];
+  const row = (over: Partial<Row>): Row => ({
+    user_id: 'u',
+    display_name: 'Someone',
+    rank: 1,
+    total: 0,
+    minutes: 0,
+    winner: false,
+    reached_on: null,
+    ...over,
+  });
+  const pts = (n: number) => `${n} pts`;
+
+  it('gives your place and who leads, from rank and the me flag', () => {
+    const rows = [
+      row({ user_id: 'b', display_name: 'Test B', rank: 1, total: 340 }),
+      row({
+        user_id: 'a',
+        display_name: 'Test A',
+        rank: 2,
+        total: 295,
+        me: true,
+      }),
+    ];
+    expect(standingsSummary(t, rows, pts)).toEqual({
+      place: '#2 of 2 · 295 pts',
+      leader: 'Test B leads with 340 pts',
+    });
+  });
+
+  it('says you lead, or share the lead with a tied racer', () => {
+    const lead = [
+      row({ user_id: 'a', rank: 1, total: 340, me: true }),
+      row({ user_id: 'b', rank: 2, total: 295 }),
+    ];
+    expect(standingsSummary(t, lead, pts).leader).toBe('You lead');
+    const tied = [
+      row({ user_id: 'a', rank: 1, total: 100, me: true }),
+      row({ user_id: 'b', rank: 1, total: 100 }),
+    ];
+    expect(standingsSummary(t, tied, pts).leader).toBe('You share the lead');
+  });
+
+  it('names the leader even before you have a score', () => {
+    const rows = [row({ display_name: 'Test B', rank: 1, total: 340 })];
+    expect(standingsSummary(t, rows, pts)).toEqual({
+      place: 'No score yet',
+      leader: 'Test B leads with 340 pts',
+    });
   });
 });

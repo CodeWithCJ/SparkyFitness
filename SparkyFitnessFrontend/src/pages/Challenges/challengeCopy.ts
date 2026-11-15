@@ -1,5 +1,8 @@
 import type { TFunction } from 'i18next';
 import {
+  CHALLENGE_MAX_BACKDATE_DAYS,
+  CHALLENGE_MAX_LENGTH_DAYS,
+  CHALLENGE_MAX_START_AHEAD_DAYS,
   challengeDayEffort,
   challengeStepPoints,
   energyFromKcal,
@@ -8,6 +11,7 @@ import {
   type ActivitySport,
   type ChallengeFormat,
   type ChallengeGoalType,
+  type ChallengeStandingsResponse,
   type ChallengeSummary,
   type ChallengeManualEntryMode,
   type ChallengeMetric,
@@ -720,6 +724,81 @@ export function challengesForCard(
         b.start_date.localeCompare(a.start_date)
     )
     .slice(0, CARD_CHALLENGES_SHOWN);
+}
+
+type StandingRow = ChallengeStandingsResponse['rows'][number];
+
+/** The caller's own row; the server marks it with `me`. */
+export function ownStanding(
+  rows: readonly StandingRow[]
+): StandingRow | undefined {
+  return rows.find((row) => row.me === true);
+}
+
+/**
+ * Who leads the period: everyone on rank 1 (racers who finish on the same
+ * day share it). `winner` is only set once the period is final, so a running
+ * period's leader comes from the rank.
+ */
+export function standingsLeaders(rows: readonly StandingRow[]): StandingRow[] {
+  return rows.filter((row) => row.rank === 1);
+}
+
+/**
+ * The card's two lines for one challenge: your place ("#2 of 2 · 295 pts")
+ * and who leads ("Test B leads with 340 pts", or "You lead").
+ */
+export function standingsSummary(
+  t: TFunction,
+  rows: readonly StandingRow[],
+  formatTotal: (total: number) => string
+): { place: string; leader: string | null } {
+  const own = ownStanding(rows);
+  const leaders = standingsLeaders(rows);
+  const place = own
+    ? t('challenges.widget.place', '#{{rank}} of {{members}} · {{total}}', {
+        rank: own.rank,
+        members: rows.length,
+        total: formatTotal(own.total),
+      })
+    : t('challenges.widget.noScore', 'No score yet');
+  const other = leaders.find((row) => !row.me);
+  const leader =
+    own?.rank === 1
+      ? other
+        ? t('challenges.widget.youShareLead', 'You share the lead')
+        : t('challenges.widget.youLead', 'You lead')
+      : other
+        ? t('challenges.widget.leader', '{{name}} leads with {{total}}', {
+            name: other.display_name,
+            total: formatTotal(other.total),
+          })
+        : null;
+  return { place, leader };
+}
+
+/** Why the server refused a new challenge, from its error code. */
+export function createErrorText(
+  t: TFunction,
+  code: string | undefined
+): string {
+  switch (code) {
+    case 'CHALLENGE_INVALID_DATES':
+      return t(
+        'challenges.create.errors.invalidDates',
+        'A challenge can start at most {{back}} days ago and at most {{ahead}} days from today, and lasts at most {{length}} days.',
+        {
+          back: CHALLENGE_MAX_BACKDATE_DAYS,
+          ahead: CHALLENGE_MAX_START_AHEAD_DAYS,
+          length: CHALLENGE_MAX_LENGTH_DAYS,
+        }
+      );
+    default:
+      return t(
+        'challenges.create.errors.generic',
+        'Could not create the challenge. Try again.'
+      );
+  }
 }
 
 /** What went wrong, from the server's error code. */

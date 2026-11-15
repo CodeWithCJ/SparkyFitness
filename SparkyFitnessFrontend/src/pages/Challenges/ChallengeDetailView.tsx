@@ -134,7 +134,6 @@ const ChallengeDetailView = ({
             <CardContent className="pt-6">
               <ChallengeLeaderboard
                 challenge={challenge}
-                currentUserId={currentUserId}
                 units={units}
                 onSelectMember={(row, periodStart) =>
                   setMember({ row, periodStart })

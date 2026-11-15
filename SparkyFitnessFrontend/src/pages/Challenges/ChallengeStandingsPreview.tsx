@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Crown } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import type { ChallengeSummary } from '@workspace/shared';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -7,16 +7,14 @@ import {
   useChallengeUnits,
 } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
-import { metricValueText } from './challengeCopy';
+import { metricValueText, ownStanding } from './challengeCopy';
 
 /** The top of the current standings, plus the viewer's own place if lower. */
 const ChallengeStandingsPreview = ({
   challenge,
-  currentUserId,
   top = 3,
 }: {
   challenge: ChallengeSummary;
-  currentUserId: string | undefined;
   top?: number;
 }) => {
   const { t, i18n } = useTranslation();
@@ -32,7 +30,7 @@ const ChallengeStandingsPreview = ({
     );
   }
   const shown = rows.slice(0, top);
-  const mine = rows.find((r) => r.user_id === currentUserId);
+  const mine = ownStanding(rows);
   if (mine && !shown.includes(mine)) shown.push(mine);
   return (
     <ol className="space-y-1 text-sm" data-testid="standings-preview">
@@ -41,7 +39,7 @@ const ChallengeStandingsPreview = ({
           key={row.user_id}
           className={cn(
             'flex items-center justify-between gap-2 rounded px-1',
-            row.user_id === currentUserId && 'bg-accent/50 font-medium'
+            row.me && 'bg-accent/50 font-medium'
           )}
         >
           <span className="flex min-w-0 items-center gap-2">
@@ -49,7 +47,7 @@ const ChallengeStandingsPreview = ({
               {row.rank}
             </span>
             {row.winner && standings.data?.final && (
-              <Crown
+              <Trophy
                 className="h-3 w-3 shrink-0 text-amber-500"
                 aria-label={t('challenges.leaderboard.winner', 'Winner')}
               />

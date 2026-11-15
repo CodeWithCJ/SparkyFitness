@@ -100,14 +100,22 @@ describe('Challenges page', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Nov 9 – Nov 15')).toBeInTheDocument();
     expect(screen.getByText('In progress')).toBeInTheDocument();
+    // A running period has a leader (rank 1) but no winner yet.
+    expect(screen.getByText('Leads')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Winner')).not.toBeInTheDocument();
+    // The caller's row is the one the server marks with `me`.
+    expect(screen.getByText('You')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Test A/ }).closest('tr')
+    ).toHaveClass('bg-accent/50');
 
-    api.getChallengeStandings.mockResolvedValue(
-      standings({
-        period_start: '2026-11-02',
-        period_end: '2026-11-08',
-        final: true,
-      })
-    );
+    const final = standings({
+      period_start: '2026-11-02',
+      period_end: '2026-11-08',
+      final: true,
+    });
+    final.rows[0] = { ...final.rows[0]!, winner: true };
+    api.getChallengeStandings.mockResolvedValue(final);
     fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
     await waitFor(() =>
       expect(api.getChallengeStandings).toHaveBeenCalledWith(
@@ -116,6 +124,8 @@ describe('Challenges page', () => {
       )
     );
     expect(await screen.findByText('Final')).toBeInTheDocument();
+    expect(screen.getByLabelText('Winner')).toBeInTheDocument();
+    expect(screen.queryByText('Leads')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Current' }));
     expect(await screen.findByText('Nov 9 – Nov 15')).toBeInTheDocument();
   });
@@ -224,6 +234,40 @@ describe('Challenges page', () => {
       display_name: 'Test',
       rules: { metric: 'steps', format: 'race', target: 100000 },
     });
+  });
+
+  it('limits the start date and explains a refused one', async () => {
+    api.createChallenge.mockRejectedValue(
+      new HttpApiError(
+        'start_date must be within 31 days before and 365 days after today',
+        400,
+        'CHALLENGE_INVALID_DATES'
+      )
+    );
+    renderAt('/challenges');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New challenge' })
+    );
+    const today = todayInZone('UTC');
+    const start = screen.getByLabelText('Starts');
+    expect(start).toHaveAttribute('min', addDays(today, -31));
+    expect(start).toHaveAttribute('max', addDays(today, 365));
+
+    // Typed past the limit: the form says so and will not send it.
+    fireEvent.change(start, { target: { value: addDays(today, -40) } });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /The start must be between/
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create challenge' })
+    ).toBeDisabled();
+
+    // Inside the limit, but the server still refuses (its today differs).
+    fireEvent.change(start, { target: { value: today } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create challenge' }));
+    expect(
+      await screen.findByText(/can start at most 31 days ago/)
+    ).toBeInTheDocument();
   });
 
   it('sends a host setting changed in the form', async () => {

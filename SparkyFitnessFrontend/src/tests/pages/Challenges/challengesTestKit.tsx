@@ -85,6 +85,7 @@ export const standings = (
       total: 90,
       minutes: 45,
       winner: false,
+      me: true,
       reached_on: null,
     },
   ],

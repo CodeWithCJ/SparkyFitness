@@ -11276,7 +11276,8 @@
       "minutes": "Active min",
       "winner": "Winner",
       "reachedOn": "Reached {{day}}",
-      "daysHit": "Goal hit on {{hit}} of {{eligible}} days"
+      "daysHit": "Goal hit on {{hit}} of {{eligible}} days",
+      "leads": "Leads"
     },
     "joined": "Joined {{day}}",
     "invite": {
@@ -11386,7 +11387,12 @@
       "lateJoin": "Allow joining after the start",
       "rules": "Rules",
       "submit": "Create challenge",
-      "created": "Challenge created"
+      "created": "Challenge created",
+      "startOutOfRange": "The start must be between {{earliest}} and {{latest}}.",
+      "errors": {
+        "invalidDates": "A challenge can start at most {{back}} days ago and at most {{ahead}} days from today, and lasts at most {{length}} days.",
+        "generic": "Could not create the challenge. Try again."
+      }
     },
     "ownOnly": "Challenges are personal. Switch back to your own account to see yours.",
     "disabled": "Challenges are turned off on this server. An admin can turn them on in Admin settings.",
@@ -11511,7 +11517,12 @@
     "periodRange": "{{start}} – {{end}}",
     "widget": {
       "title": "Challenge standings",
-      "all": "All challenges"
+      "all": "All challenges",
+      "place": "#{{rank}} of {{members}} · {{total}}",
+      "noScore": "No score yet",
+      "youLead": "You lead",
+      "youShareLead": "You share the lead",
+      "leader": "{{name}} leads with {{total}}"
     },
     "errors": {
       "load": "Could not load your challenges.",

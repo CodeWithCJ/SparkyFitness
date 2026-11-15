@@ -183,10 +183,7 @@ const Challenges = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                <ChallengeStandingsPreview
-                  challenge={c}
-                  currentUserId={user?.id}
-                />
+                <ChallengeStandingsPreview challenge={c} />
               </CardContent>
             </Card>
           ))}

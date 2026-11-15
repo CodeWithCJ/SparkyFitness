@@ -2,8 +2,10 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CHALLENGE_DEFAULT_MEMBER_LIMIT,
+  CHALLENGE_MAX_BACKDATE_DAYS,
   CHALLENGE_MAX_LENGTH_DAYS,
   CHALLENGE_MAX_MEMBER_LIMIT,
+  CHALLENGE_MAX_START_AHEAD_DAYS,
   CHALLENGE_PRESETS,
   DEFAULT_CHALLENGE_GOAL_TYPE,
   DEFAULT_CHALLENGE_PRESET_ID,
@@ -33,12 +35,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
+  challengeErrorCode,
   useChallengeUnits,
   useCreateChallenge,
 } from '@/hooks/Challenges/useChallenges';
 import ChallengeRulesEditor from './ChallengeRulesEditor';
 import GoalTypeSelect from './GoalTypeSelect';
-import { presetDescription, presetName } from './challengeCopy';
+import {
+  createErrorText,
+  presetDescription,
+  presetName,
+} from './challengeCopy';
 
 interface CreateChallengeDialogProps {
   open: boolean;
@@ -67,7 +74,7 @@ const CreateChallengeDialog = ({
   onCreated,
 }: CreateChallengeDialogProps) => {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
+  const { timezone, formatDateInUserTimezone } = usePreferences();
   const units = useChallengeUnits();
   const create = useCreateChallenge();
   const today = todayInZone(timezone);
@@ -117,6 +124,21 @@ const CreateChallengeDialog = ({
 
   const rulesValid = challengeRulesSchema.safeParse(rules).success;
   const needsEnd = rules.period === 'challenge';
+  // The server takes a start at most 31 days back and 365 ahead, in the
+  // challenge's time zone (CHALLENGE_INVALID_DATES otherwise).
+  const earliestStart = addDays(today, -CHALLENGE_MAX_BACKDATE_DAYS);
+  const latestStart = addDays(today, CHALLENGE_MAX_START_AHEAD_DAYS);
+  const startProblem =
+    startDate < earliestStart || startDate > latestStart
+      ? t(
+          'challenges.create.startOutOfRange',
+          'The start must be between {{earliest}} and {{latest}}.',
+          {
+            earliest: formatDateInUserTimezone(earliestStart, 'MMM d, yyyy'),
+            latest: formatDateInUserTimezone(latestStart, 'MMM d, yyyy'),
+          }
+        )
+      : null;
   const endProblem =
     endDate && endDate < startDate
       ? t(
@@ -142,6 +164,7 @@ const CreateChallengeDialog = ({
     displayName.trim().length > 0 &&
     !!startDate &&
     rulesValid &&
+    !startProblem &&
     !endProblem &&
     memberLimit >= 2 &&
     memberLimit <= CHALLENGE_MAX_MEMBER_LIMIT &&
@@ -271,6 +294,8 @@ const CreateChallengeDialog = ({
                 id={ids.start}
                 type="date"
                 value={startDate}
+                min={earliestStart}
+                max={latestStart}
                 onChange={(e) => e.target.value && setStartDate(e.target.value)}
               />
             </div>
@@ -285,13 +310,14 @@ const CreateChallengeDialog = ({
                 type="date"
                 value={endDate}
                 min={startDate}
+                max={addDays(startDate, CHALLENGE_MAX_LENGTH_DAYS - 1)}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
           </div>
-          {endProblem && (
+          {(startProblem || endProblem) && (
             <p className="text-sm text-destructive" role="alert">
-              {endProblem}
+              {startProblem ?? endProblem}
             </p>
           )}
           <p className="text-xs text-muted-foreground">
@@ -366,6 +392,11 @@ const CreateChallengeDialog = ({
           </div>
         </div>
 
+        {create.isError && (
+          <p className="text-sm text-destructive" role="alert">
+            {createErrorText(t, challengeErrorCode(create.error))}
+          </p>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel', 'Cancel')}

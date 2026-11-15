@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, Crown, Flag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, Trophy } from 'lucide-react';
 import {
   todayInZone,
   type ChallengeDetail,
@@ -32,7 +32,6 @@ export type StandingRow = ChallengeStandingsResponse['rows'][number];
 
 interface ChallengeLeaderboardProps {
   challenge: ChallengeDetail;
-  currentUserId: string | undefined;
   units: MetricUnits;
   onSelectMember: (row: StandingRow, periodStart: string) => void;
 }
@@ -43,7 +42,6 @@ interface ChallengeLeaderboardProps {
  */
 const ChallengeLeaderboard = ({
   challenge,
-  currentUserId,
   units,
   onSelectMember,
 }: ChallengeLeaderboardProps) => {
@@ -167,10 +165,7 @@ const ChallengeLeaderboard = ({
             {data.rows.map((row) => (
               <TableRow
                 key={row.user_id}
-                className={cn(
-                  'cursor-pointer',
-                  row.user_id === currentUserId && 'bg-accent/50'
-                )}
+                className={cn('cursor-pointer', row.me && 'bg-accent/50')}
                 onClick={() => onSelectMember(row, data.period_start)}
               >
                 <TableCell className="font-medium">{row.rank}</TableCell>
@@ -184,7 +179,7 @@ const ChallengeLeaderboard = ({
                     }}
                   >
                     {row.winner && data.final && (
-                      <Crown
+                      <Trophy
                         className="h-4 w-4 text-amber-500"
                         aria-label={t(
                           'challenges.leaderboard.winner',
@@ -193,7 +188,12 @@ const ChallengeLeaderboard = ({
                       />
                     )}
                     <span>{row.display_name}</span>
-                    {row.user_id === currentUserId && (
+                    {!data.final && row.rank === 1 && (
+                      <Badge variant="secondary">
+                        {t('challenges.leaderboard.leads', 'Leads')}
+                      </Badge>
+                    )}
+                    {row.me && (
                       <Badge variant="outline">
                         {t('challenges.leaderboard.you', 'You')}
                       </Badge>

@@ -130,6 +130,8 @@ export const useCreateChallenge = () => {
     onSuccess: () => invalidateChallenges(queryClient),
     meta: {
       successMessage: i18n.t('challenges.create.created', 'Challenge created'),
+      // The dialog says what went wrong next to the form.
+      silentError: true,
     },
   });
 };

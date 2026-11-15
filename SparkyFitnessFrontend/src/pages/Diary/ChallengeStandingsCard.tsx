@@ -3,14 +3,66 @@ import { Link } from 'react-router-dom';
 import type { ChallengeSummary } from '@workspace/shared';
 import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
-import ChallengeStandingsPreview from '@/pages/Challenges/ChallengeStandingsPreview';
-import { challengesForCard } from '@/pages/Challenges/challengeCopy';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  useChallengeStandings,
+  useChallengeUnits,
+} from '@/hooks/Challenges/useChallenges';
+import {
+  challengesForCard,
+  metricValueText,
+  standingsSummary,
+} from '@/pages/Challenges/challengeCopy';
+
+/** One challenge on the card: your place and who leads this period. */
+const ChallengeStandingsLine = ({
+  challenge,
+}: {
+  challenge: ChallengeSummary;
+}) => {
+  const { t, i18n } = useTranslation();
+  const units = useChallengeUnits();
+  const standings = useChallengeStandings(challenge.id);
+  const rows = standings.data?.rows ?? [];
+  const summary = standingsSummary(t, rows, (total) =>
+    metricValueText(t, challenge.rules.metric, total, units, i18n.language)
+  );
+  return (
+    <Link
+      to={`/challenges/${challenge.id}`}
+      className="block space-y-0.5 rounded px-1 py-1 hover:bg-accent/50"
+      data-testid="challenge-standings-line"
+    >
+      <span className="block truncate text-sm font-medium">
+        {challenge.emoji ? `${challenge.emoji} ` : ''}
+        {challenge.name}
+      </span>
+      {standings.isLoading ? (
+        <Skeleton className="h-8 w-full" />
+      ) : rows.length === 0 ? (
+        <span className="block text-sm text-muted-foreground">
+          {t('challenges.leaderboard.empty', 'No scores yet in this period.')}
+        </span>
+      ) : (
+        <>
+          <span className="block text-lg font-semibold tabular-nums">
+            {summary.place}
+          </span>
+          {summary.leader && (
+            <span className="block text-sm text-muted-foreground">
+              {summary.leader}
+            </span>
+          )}
+        </>
+      )}
+    </Link>
+  );
+};
 
 /**
- * "Challenge standings" on the Diary: the current standings of the person's
- * challenges. The Diary only registers it while Challenges are on, the
- * person is on their own account and is in at least one challenge.
+ * "Challenge standings" on the Diary: your place and who leads in each of
+ * your current challenges. The Diary only registers it while Challenges are
+ * on, the person is on their own account and is in at least one challenge.
  */
 const ChallengeStandingsCard = ({
   challenges,
@@ -18,7 +70,6 @@ const ChallengeStandingsCard = ({
   challenges: readonly ChallengeSummary[];
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const shown = challengesForCard(challenges);
   return (
     <Card className="h-full flex flex-col">
@@ -28,18 +79,9 @@ const ChallengeStandingsCard = ({
           {t('challenges.widget.title', 'Challenge standings')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 p-3 dark:text-slate-300">
+      <CardContent className="space-y-3 p-3 dark:text-slate-300">
         {shown.map((c) => (
-          <div key={c.id} className="space-y-1">
-            <Link
-              to={`/challenges/${c.id}`}
-              className="block truncate text-sm font-medium hover:underline"
-            >
-              {c.emoji ? `${c.emoji} ` : ''}
-              {c.name}
-            </Link>
-            <ChallengeStandingsPreview challenge={c} currentUserId={user?.id} />
-          </div>
+          <ChallengeStandingsLine key={c.id} challenge={c} />
         ))}
         <Link
           to="/challenges"
