@@ -52,7 +52,7 @@ class ClientCertificateModule : Module() {
       try {
         val stream = context.contentResolver.openInputStream(Uri.parse(fileUri))
         if (stream == null) {
-          Log.w(LOG_TAG, "Could not open the picked file: $fileUri")
+          Log.w(LOG_TAG, "Could not open the picked file")
           return@AsyncFunction failure(ImportFailure.INVALID_FILE)
         }
         val info = stream.use { ClientCertificateStore.importPkcs12(it, characters) }
@@ -60,7 +60,8 @@ class ClientCertificateModule : Module() {
       } catch (e: ImportException) {
         failure(e.failure)
       } catch (e: Exception) {
-        Log.w(LOG_TAG, "Certificate import failed unexpectedly (file: $fileUri)", e)
+        // The exception message can carry the file path, so only its type is logged.
+        Log.w(LOG_TAG, "Certificate import failed unexpectedly (${e.javaClass.simpleName})")
         failure(ImportFailure.INVALID_FILE)
       } finally {
         characters.fill('\u0000')

@@ -137,7 +137,8 @@ object ClientCertificateStore {
   fun setAllowedHosts(hosts: List<String>) {
     val normalized = hosts.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
     if (normalized == allowedHosts) return
-    Log.d(LOG_TAG, "Allowed hosts: ${allowedHosts.sorted()} -> ${normalized.sorted()}")
+    // Counts only: the host names are the user's server names.
+    Log.d(LOG_TAG, "Allowed hosts changed: ${allowedHosts.size} -> ${normalized.size}")
     allowedHosts = normalized
     synchronized(lock) {
       if (installed) prefs.edit().putStringSet(PREFS_ALLOWED_HOSTS, normalized).apply()
@@ -320,11 +321,11 @@ object ClientCertificateStore {
     }
     val host = peerHost.lowercase()
     if (host !in allowedHosts) {
-      Log.d(LOG_TAG, "Certificate requested by $host: not offered (allowed hosts: ${allowedHosts.sorted()})")
+      Log.d(LOG_TAG, "A server asked for a client certificate: not offered (host not allowed)")
       return null
     }
     val alias = synchronized(lock) { activeAlias() }
-    Log.d(LOG_TAG, "Certificate requested by $host: ${if (alias != null) "offered" else "not offered (none stored)"}")
+    Log.d(LOG_TAG, "A server asked for a client certificate: ${if (alias != null) "offered" else "not offered (none stored)"}")
     return alias
   }
 
