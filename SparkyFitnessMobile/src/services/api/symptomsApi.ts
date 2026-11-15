@@ -14,7 +14,11 @@ import type {
 } from '@workspace/shared';
 import { apiFetch, normalizeUrl } from './apiClient';
 import { ApiError } from './errors';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+  type ServerConfig,
+} from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { addLog } from '../LogService';
 import { UPLOAD_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
@@ -171,9 +175,14 @@ export const patchSymptomEntry = (
     body,
   });
 
+/**
+ * `serverConfig` pins the request to one saved server (a notification button
+ * checked against the server it was scheduled for); otherwise the active one.
+ */
 export const endSymptomEpisode = (
   id: string,
-  body: EndSymptomEpisodeBody
+  body: EndSymptomEpisodeBody,
+  serverConfig?: ServerConfig
 ): Promise<SymptomEntryResponse> =>
   apiFetch<SymptomEntryResponse>({
     endpoint: `${BASE}/entries/${encodeURIComponent(id)}/end`,
@@ -181,6 +190,7 @@ export const endSymptomEpisode = (
     operation: 'end symptom episode',
     method: 'POST',
     body,
+    serverConfig,
   });
 
 export const addSymptomSeverity = (
