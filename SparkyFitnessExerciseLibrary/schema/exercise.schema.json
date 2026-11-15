@@ -271,6 +271,40 @@
         "type": "string"
       }
     },
+    "rehabilitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "joint": {
+          "type": "string",
+          "enum": [
+            "neck",
+            "shoulder",
+            "elbow_wrist",
+            "thoracic_spine",
+            "lumbar_spine",
+            "hip",
+            "knee",
+            "ankle_foot"
+          ],
+          "description": "Primary anatomical joint or region targeted for rehabilitation"
+        },
+        "target_conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Targeted clinical or orthopedic conditions (e.g., runner_knee, rotator_cuff_impingement, sciatica)"
+        },
+        "contraindications": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions or symptoms when this exercise should NOT be performed"
+        },
+        "clinical_protocol": {
+          "type": "string",
+          "description": "Clinical reference or guideline (e.g., AAOS Knee Protocol, McGill Spine, APTA)"
+        }
+      }
+    },
     "sources": {
       "type": "object",
       "additionalProperties": true,

@@ -1,0 +1,58 @@
+{
+  "id": "20043_chin_tuck",
+  "numeric_id": "20043",
+  "slug": "chin_tuck",
+  "name": "Chin Tuck",
+  "aliases": [
+    "Cervical Retraction",
+    "Double Chin Exercise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "neck",
+    "equipment": "body only",
+    "primary_muscles": [
+      "neck"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-3-2-1",
+    "demonstration_reps": 5
+  },
+  "rehabilitation": {
+    "joint": "neck",
+    "target_conditions": [
+      "forward_head_posture",
+      "text_neck",
+      "cervicogenic_headache"
+    ],
+    "contraindications": [
+      "acute_whiplash_instability"
+    ],
+    "clinical_protocol": "APTA Neck Pain Clinical Practice Guidelines"
+  },
+  "steps": [
+    "Sit or stand tall with your shoulders relaxed and gaze pointed straight ahead at eye level.",
+    "Place two fingers lightly on your chin as a tactile guide.",
+    "Without tilting your head up or down, glide your chin straight backward as if making a subtle double chin.",
+    "Feel a gentle lengthening sensation along the back of your neck and upper spine.",
+    "Hold the retracted position for 3 to 5 seconds, then relax your head back to its neutral starting position."
+  ],
+  "coaching_cues": [
+    "Move your head straight back horizontally, like closing a desk drawer.",
+    "Do not nod your head down or look at your chest.",
+    "Perform multiple sets throughout the workday to counteract desk posture."
+  ],
+  "sources": {
+    "attribution": "APTA Cervical Motor Control Clinical Practice Guidelines"
+  }
+}

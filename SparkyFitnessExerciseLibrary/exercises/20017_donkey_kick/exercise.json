@@ -1,0 +1,59 @@
+{
+  "id": "20017_donkey_kick",
+  "numeric_id": "20017",
+  "slug": "donkey_kick",
+  "name": "Donkey Kick",
+  "aliases": [
+    "Quadruped Hip Extension",
+    "Bent-Leg Glute Kickback"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "glutes",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "gluteus_maximus_inhibition",
+      "anterior_hip_pain",
+      "postural_pelvic_tilt"
+    ],
+    "contraindications": [
+      "acute_lumbar_facet_syndrome_flare"
+    ],
+    "clinical_protocol": "Mayo Clinic Hip & Glute Recovery"
+  },
+  "steps": [
+    "Start on hands and knees with your shoulders over wrists and hips over knees.",
+    "Brace your core to keep your spine completely neutral throughout the exercise.",
+    "Keeping your right knee bent at a 90-degree angle, lift your right leg behind you, pressing the sole of your foot toward the ceiling.",
+    "Squeeze your glute firmly at the top of the movement, ensuring your lower back does not arch.",
+    "Slowly lower the knee back down without touching the floor, completing all reps before switching sides."
+  ],
+  "coaching_cues": [
+    "The movement should come purely from the hip joint, not from sagging or arching your lower back.",
+    "Keep your neck neutral with your eyes looking down at the mat between your hands.",
+    "Push the floor away with your hands to keep your shoulders stable."
+  ],
+  "sources": {
+    "attribution": "Mayo Clinic Gluteal Activation Protocol"
+  }
+}

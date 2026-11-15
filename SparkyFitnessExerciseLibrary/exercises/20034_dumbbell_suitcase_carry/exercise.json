@@ -1,0 +1,60 @@
+{
+  "id": "20034_dumbbell_suitcase_carry",
+  "numeric_id": "20034",
+  "slug": "dumbbell_suitcase_carry",
+  "name": "Dumbbell Suitcase Carry",
+  "aliases": [
+    "Single-Arm Dumbbell Carry",
+    "Unilateral Farmer Walk"
+  ],
+  "taxonomy": {
+    "modality": "weight_distance",
+    "category": "strength",
+    "body_part": "waist",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "traps",
+      "glutes"
+    ],
+    "level": "intermediate",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "anti_lateral_flexion_weakness",
+      "quadratus_lumborum_imbalance",
+      "unilateral_pelvic_drop"
+    ],
+    "contraindications": [
+      "acute_lumbar_facet_syndrome_with_lateral_bending_pain"
+    ],
+    "clinical_protocol": "Functional Core & Anti-Lateral Flexion Training"
+  },
+  "steps": [
+    "Stand tall holding a single dumbbell in one hand by your side.",
+    "Brace your core strongly to keep your shoulders and hips completely level, resisting the pull of the weight.",
+    "Walk forward slowly in a straight line, keeping your torso completely upright.",
+    "Prevent your body from leaning toward the weighted side or over-compensating by leaning away.",
+    "Turn around smoothly, switch the dumbbell to the opposite hand, and repeat."
+  ],
+  "coaching_cues": [
+    "Imagine your torso is walking between two narrow panes of glass.",
+    "Keep your shoulders square and avoid hiking up the opposite shoulder.",
+    "Walk with calm, deliberate, controlled heel-to-toe steps."
+  ],
+  "sources": {
+    "attribution": "Clinical Spinal Biomechanics Anti-Lateral Flexion"
+  }
+}

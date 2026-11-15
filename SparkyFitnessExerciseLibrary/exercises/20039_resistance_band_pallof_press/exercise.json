@@ -1,0 +1,59 @@
+{
+  "id": "20039_resistance_band_pallof_press",
+  "numeric_id": "20039",
+  "slug": "resistance_band_pallof_press",
+  "name": "Resistance Band Pallof Press",
+  "aliases": [
+    "Band Anti-Rotation Press",
+    "Pallof Press"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "waist",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "glutes"
+    ],
+    "level": "intermediate",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "lumbar_rotational_instability",
+      "anti_rotation_core_deficit",
+      "sacroiliac_strain"
+    ],
+    "contraindications": [
+      "acute_lumbar_facet_sprain"
+    ],
+    "clinical_protocol": "Dr. Stuart McGill Rotary Torso Stabilization"
+  },
+  "steps": [
+    "Anchor a resistance band at chest height and stand sideways to the anchor point with feet shoulder-width apart.",
+    "Clasp the band handle with both hands at the center of your chest, stepping away from the anchor to create lateral tension.",
+    "Soften your knees, engage your core, and press your hands straight forward in front of your chest.",
+    "Hold your hands extended directly forward for two seconds, strongly resisting the band's rotational pull toward the anchor.",
+    "Slowly bring your hands back into your chest, complete your reps, then turn to face the opposite direction."
+  ],
+  "coaching_cues": [
+    "Do not allow your torso, hips, or knees to twist toward the anchor point; keep your body locked square.",
+    "Breathe out as you press forward and hold.",
+    "If your body begins to twist or shake uncontrollably, step slightly closer to the anchor to reduce tension."
+  ],
+  "sources": {
+    "attribution": "McGill Spine Anti-Rotation Stabilization"
+  }
+}

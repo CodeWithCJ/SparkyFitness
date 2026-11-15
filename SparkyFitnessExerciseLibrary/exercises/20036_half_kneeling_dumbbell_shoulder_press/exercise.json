@@ -1,0 +1,58 @@
+{
+  "id": "20036_half_kneeling_dumbbell_shoulder_press",
+  "numeric_id": "20036",
+  "slug": "half_kneeling_dumbbell_shoulder_press",
+  "name": "Half-Kneeling Dumbbell Shoulder Press",
+  "aliases": [
+    "Half-Kneeling Overhead Press",
+    "Single-Arm Half-Kneeling Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "shoulders",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "overhead_hyperextension_fault",
+      "core_pelvic_instability"
+    ],
+    "contraindications": [
+      "acute_subacromial_impingement"
+    ],
+    "clinical_protocol": "Functional Movement Systems (FMS) Half-Kneeling Progressions"
+  },
+  "steps": [
+    "Assume a half-kneeling position on a mat with your right knee on the floor directly under your hip and left foot flat in front.",
+    "Hold a dumbbell in your right hand at shoulder height, with elbow pointing forward at roughly a 45-degree angle.",
+    "Squeeze your right glute and engage your core to lock your pelvis in place and prevent lower back arching.",
+    "Press the dumbbell straight overhead until your arm is fully extended with your bicep near your ear.",
+    "Lower the dumbbell with control back to shoulder height, completing all reps before switching sides."
+  ],
+  "coaching_cues": [
+    "The half-kneeling position locks your pelvis and prevents you from arching your lower back to cheat the weight overhead.",
+    "Press in the scapular plane (elbow angled 30 to 45 degrees forward), not flared out wide.",
+    "Keep the front knee stacked over the front heel."
+  ],
+  "sources": {
+    "attribution": "FMS Half-Kneeling Movement Progressions"
+  }
+}

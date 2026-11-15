@@ -1,0 +1,58 @@
+{
+  "id": "20016_side_lying_inner_thigh_lift",
+  "numeric_id": "20016",
+  "slug": "side_lying_inner_thigh_lift",
+  "name": "Side-Lying Inner Thigh Lift",
+  "aliases": [
+    "Side-Lying Hip Adduction",
+    "Medial Leg Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "abdominals"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "groin_strain_recovery",
+      "knee_valgus",
+      "inner_thigh_weakness"
+    ],
+    "contraindications": [
+      "acute_adductor_avulsion"
+    ],
+    "clinical_protocol": "AAOS Lower Extremity Conditioning Guide"
+  },
+  "steps": [
+    "Lie on your side with your bottom leg straight and your head supported comfortably.",
+    "Cross your top leg over the bottom leg, placing the top foot flat on the floor in front of your bottom knee.",
+    "Keep your bottom leg straight and flex your bottom foot.",
+    "Lift the bottom leg upward toward the ceiling a few inches, squeezing your inner thigh muscles.",
+    "Hold for one second at the top, then slowly lower the leg back down without touching the floor."
+  ],
+  "coaching_cues": [
+    "Focus on lifting with your inner thigh rather than swinging the leg.",
+    "Keep your pelvis steady and avoid rocking backward.",
+    "Breathe out as you lift the leg and breathe in as you lower."
+  ],
+  "sources": {
+    "attribution": "AAOS Adductor Conditioning Guidelines"
+  }
+}

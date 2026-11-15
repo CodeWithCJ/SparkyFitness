@@ -1,0 +1,59 @@
+{
+  "id": "20013_kneeling_side_plank",
+  "numeric_id": "20013",
+  "slug": "kneeling_side_plank",
+  "name": "Kneeling Side Plank",
+  "aliases": [
+    "Modified Side Plank",
+    "Knee Side Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "waist",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "quadratus_lumborum_weakness",
+      "lateral_pelvic_tilt",
+      "back_fatigue"
+    ],
+    "contraindications": [
+      "acute_shoulder_rotator_cuff_tear"
+    ],
+    "clinical_protocol": "McGill Spine Big Three Core Stabilization"
+  },
+  "steps": [
+    "Lie on your side with your elbow directly beneath your shoulder and your knees bent back at 90 degrees.",
+    "Align your shoulders, hips, and knees in one straight diagonal line.",
+    "Engage your bottom oblique and hip muscles to raise your hips off the mat, supporting your weight on your forearm and knees.",
+    "Hold this position steady while keeping your chest open and neck in a neutral position.",
+    "Breathe steadily for the target duration, then gently lower your hips and switch sides."
+  ],
+  "coaching_cues": [
+    "Do not allow your top hip or shoulder to roll forward toward the floor.",
+    "Press through your bottom elbow to keep your neck long and avoid sagging into your shoulder joint.",
+    "Maintain a straight line from your knees through your hips to your crown."
+  ],
+  "sources": {
+    "attribution": "Dr. Stuart McGill Big 3 Stabilization Protocol"
+  }
+}

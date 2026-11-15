@@ -1,0 +1,58 @@
+{
+  "id": "20010_dead_bug_press",
+  "numeric_id": "20010",
+  "slug": "dead_bug_press",
+  "name": "Dead Bug Press",
+  "aliases": [
+    "Isometric Dead Bug",
+    "Dead Bug with Knee Push"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "waist",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "anterior_pelvic_tilt",
+      "core_inhibition",
+      "lower_back_ache"
+    ],
+    "contraindications": [
+      "acute_abdominal_hernia"
+    ],
+    "clinical_protocol": "Sahrmann Movement System Impairment Core Protocol"
+  },
+  "steps": [
+    "Lie on your back with your arms pointing toward the ceiling and knees bent at 90 degrees directly over your hips.",
+    "Gently press your lower back flat into the mat by engaging your deep abdominal muscles.",
+    "Place your right palm firmly against your right thigh, applying isometric pressure between your hand and knee.",
+    "While maintaining that pressure, slowly extend your left arm overhead and your left leg straight out hovering just above the floor.",
+    "Return the extended limbs to the starting position, switch the hand-to-knee press to the opposite side, and repeat."
+  ],
+  "coaching_cues": [
+    "Never allow your lower back to arch off the floor; only lower your leg as far as you can control your spine.",
+    "Maintain steady, calm breathing—do not hold your breath.",
+    "Focus on the deep bracing sensation behind your navel."
+  ],
+  "sources": {
+    "attribution": "Shirley Sahrmann Movement Impairment Syndromes"
+  }
+}

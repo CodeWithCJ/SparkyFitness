@@ -1,0 +1,59 @@
+{
+  "id": "20028_wall_push_up",
+  "numeric_id": "20028",
+  "slug": "wall_push_up",
+  "name": "Wall Push-Up",
+  "aliases": [
+    "Standing Wall Press",
+    "Vertical Push-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "chest",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "early_rotator_cuff_rehab",
+      "wrist_arthritis",
+      "beginner_chest_weakness"
+    ],
+    "contraindications": [
+      "acute_sternal_healing_phase"
+    ],
+    "clinical_protocol": "NIH Go4Life Senior Strength Guidelines"
+  },
+  "steps": [
+    "Stand facing a flat wall about an arm's length away, with feet hip-width apart.",
+    "Place your palms flat against the wall at shoulder height and shoulder-width apart.",
+    "Keeping your body in a straight line from heels to head, bend your elbows and slowly lower your chest toward the wall.",
+    "Pause when your nose or chest is an inch or two from the wall.",
+    "Push steadily through your palms to return to the starting upright position."
+  ],
+  "coaching_cues": [
+    "To make it easier, stand closer to the wall; to make it more challenging, step your feet further back.",
+    "Keep your core lightly engaged so your hips do not sag or stick out.",
+    "Keep elbows angled down at 45 degrees rather than high near your ears."
+  ],
+  "sources": {
+    "attribution": "NIH National Institute on Aging Exercise Protocols"
+  }
+}

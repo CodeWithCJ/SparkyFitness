@@ -1,0 +1,59 @@
+{
+  "id": "20007_wall_slide_with_overhead_reach",
+  "numeric_id": "20007",
+  "slug": "wall_slide_with_overhead_reach",
+  "name": "Wall Slide with Overhead Reach",
+  "aliases": [
+    "Wall Angel",
+    "Serratus Wall Slide"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "3-1-3-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "shoulder_impingement",
+      "limited_overhead_mobility",
+      "thoracic_tightness"
+    ],
+    "contraindications": [
+      "acute_shoulder_instability"
+    ],
+    "clinical_protocol": "Cleveland Clinic Shoulder Rehabilitation Protocols"
+  },
+  "steps": [
+    "Stand with your back, head, and glutes resting flat against a smooth wall, with your feet placed about 6 inches forward.",
+    "Bring your arms up into a 'goalpost' position with your elbows and backs of your wrists touching the wall if possible.",
+    "Flatten your lower back gently toward the wall to prevent excessive arching.",
+    "Slowly slide your arms upward along the wall into an overhead reach, maintaining contact with your elbows and hands as much as comfortable.",
+    "Pause at the top of your comfortable range, then slowly slide your arms back down to the goalpost position."
+  ],
+  "coaching_cues": [
+    "Do not force your wrists to touch the wall if it causes shoulder pain; stay within your pain-free zone.",
+    "Keep your ribs pulled down and avoid arching your lower back as your arms slide up.",
+    "Move with slow, deliberate control."
+  ],
+  "sources": {
+    "attribution": "Cleveland Clinic Physical Therapy Mobility Guidelines"
+  }
+}

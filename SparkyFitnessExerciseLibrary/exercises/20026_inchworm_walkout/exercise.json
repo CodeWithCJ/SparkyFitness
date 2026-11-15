@@ -1,0 +1,60 @@
+{
+  "id": "20026_inchworm_walkout",
+  "numeric_id": "20026",
+  "slug": "inchworm_walkout",
+  "name": "Inchworm Walkout",
+  "aliases": [
+    "Caterpillar Walk",
+    "Walkout to Plank"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hamstrings",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals",
+      "calves"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-1-3-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "posterior_chain_stiffness",
+      "shoulder_stability_deficit"
+    ],
+    "contraindications": [
+      "severe_wrist_arthritis",
+      "acute_lumbar_strain"
+    ],
+    "clinical_protocol": "NASM Full-Body Dynamic Warmup Guidelines"
+  },
+  "steps": [
+    "Stand upright with your feet hip-width apart and arms at your sides.",
+    "Hinge at your hips and bend forward, placing your hands flat on the floor in front of your feet (soften knees if needed).",
+    "Walk your hands forward one at a time across the floor until your body reaches a full, straight high plank position.",
+    "Pause in the high plank for one full second with your core tightly engaged.",
+    "Walk your hands backward toward your feet, keeping your legs as straight as comfortable, and return to a standing position."
+  ],
+  "coaching_cues": [
+    "Maintain steady core tension in the plank; do not allow your lower back or hips to sag.",
+    "Keep your hands under your shoulders as you walk forward.",
+    "Breathe naturally throughout the walkout."
+  ],
+  "sources": {
+    "attribution": "NASM Dynamic Flexibility Handbooks"
+  }
+}

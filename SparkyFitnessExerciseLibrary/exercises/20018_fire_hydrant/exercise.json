@@ -1,0 +1,58 @@
+{
+  "id": "20018_fire_hydrant",
+  "numeric_id": "20018",
+  "slug": "fire_hydrant",
+  "name": "Fire Hydrant",
+  "aliases": [
+    "Quadruped Hip Abduction",
+    "Bent-Leg Lateral Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "hip_stability_deficit",
+      "runner_knee",
+      "pelvic_drop"
+    ],
+    "contraindications": [
+      "acute_hip_labral_tear_with_impingement"
+    ],
+    "clinical_protocol": "APTA Hip Strengthening Clinical Guidelines"
+  },
+  "steps": [
+    "Begin on all fours on a comfortable mat with hands under shoulders and knees under hips.",
+    "Keep your core engaged and your weight evenly distributed across both hands.",
+    "Maintaining a 90-degree bend in your right knee, lift your right leg out to the side like a dog at a fire hydrant.",
+    "Lift only as high as you can without tilting your pelvis or shifting your torso to the left.",
+    "Pause briefly at the top, then slowly lower your knee back to the starting position."
+  ],
+  "coaching_cues": [
+    "Resist the urge to lean your body weight heavily toward the supporting side.",
+    "Focus on contracting the outer glute and hip rotators.",
+    "Keep your spine neutral throughout the repetition."
+  ],
+  "sources": {
+    "attribution": "APTA Pelvic & Hip Stabilizer Protocols"
+  }
+}

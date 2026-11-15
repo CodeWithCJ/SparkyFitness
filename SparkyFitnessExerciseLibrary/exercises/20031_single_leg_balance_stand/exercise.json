@@ -1,0 +1,59 @@
+{
+  "id": "20031_single_leg_balance_stand",
+  "numeric_id": "20031",
+  "slug": "single_leg_balance_stand",
+  "name": "Single-Leg Balance Stand",
+  "aliases": [
+    "One-Foot Balance Hold",
+    "Stork Stand"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "ankle_instability",
+      "post_sprain_recovery",
+      "poor_proprioception"
+    ],
+    "contraindications": [
+      "acute_grade_3_ankle_sprain"
+    ],
+    "clinical_protocol": "APTA Ankle Sprain Clinical Practice Guidelines"
+  },
+  "steps": [
+    "Stand upright with your feet hip-width apart near a sturdy surface or wall.",
+    "Shift your weight onto your left foot, keeping your standing knee soft and unlocked.",
+    "Lift your right foot off the floor, bending the right knee to roughly 90 degrees.",
+    "Keep your hips level and gaze focused on a stable point straight ahead.",
+    "Hold for 15 to 30 seconds, then gently lower your foot and repeat on the right leg."
+  ],
+  "coaching_cues": [
+    "Keep your standing foot firmly rooted with equal pressure across your big toe, pinky toe, and heel.",
+    "Keep a light fingertip on the wall if you feel unsteady.",
+    "To increase difficulty as you advance, try crossing your arms over your chest or closing your eyes."
+  ],
+  "sources": {
+    "attribution": "APTA Ankle Stability & Proprioception Guidelines"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20015_side_lying_leg_lift",
+  "numeric_id": "20015",
+  "slug": "side_lying_leg_lift",
+  "name": "Side-Lying Leg Lift",
+  "aliases": [
+    "Side-Lying Hip Abduction",
+    "Lateral Leg Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "runner_knee",
+      "it_band_syndrome",
+      "gluteus_medius_weakness"
+    ],
+    "contraindications": [
+      "acute_trochanteric_bursitis_severe_flare"
+    ],
+    "clinical_protocol": "AAOS Knee & Hip Conditioning Program"
+  },
+  "steps": [
+    "Lie on your side with your body in a straight line, resting your head on your bottom arm.",
+    "Keep your bottom leg slightly bent for stability and your top leg completely straight with toes pointed slightly downward.",
+    "Engage your outer hip and lift your top leg toward the ceiling roughly 45 degrees, leading with your heel.",
+    "Pause for one count at the top of the lift.",
+    "Slowly lower the leg back down without letting it rest heavily on the bottom leg."
+  ],
+  "coaching_cues": [
+    "Keep your top hip tilted slightly forward to isolate the gluteus medius and prevent hip flexor dominance.",
+    "Lead with your heel, not your toes, to keep the outer hip engaged.",
+    "Avoid rolling backward onto your glutes."
+  ],
+  "sources": {
+    "attribution": "AAOS Hip Strengthening Guidelines"
+  }
+}

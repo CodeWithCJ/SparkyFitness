@@ -1,0 +1,59 @@
+{
+  "id": "20030_tandem_heel_to_toe_walk",
+  "numeric_id": "20030",
+  "slug": "tandem_heel_to_toe_walk",
+  "name": "Tandem Heel-to-Toe Walk",
+  "aliases": [
+    "Heel-to-Toe Balance Walk",
+    "Tightrope Walk"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "quadriceps"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 6
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "balance_impairment",
+      "proprioception_loss",
+      "fall_prevention"
+    ],
+    "contraindications": [
+      "acute_vertigo_attack"
+    ],
+    "clinical_protocol": "CDC STEADI Balance Training & Otago Exercise Programme"
+  },
+  "steps": [
+    "Stand tall near a wall or countertop so you have a support surface within reach if needed.",
+    "Place the heel of your right foot directly in front of the toes of your left foot, touching or nearly touching.",
+    "Focus your eyes on a fixed point on the wall ahead to help maintain stability.",
+    "Take a step forward with your left foot, placing your left heel directly in front of your right toes.",
+    "Continue stepping forward in a straight line for 10 to 15 deliberate steps."
+  ],
+  "coaching_cues": [
+    "Keep your arms outstretched to your sides like a tightrope walker if helpful for balance.",
+    "Move with slow, deliberate precision rather than rushing forward.",
+    "Stand as tall as possible through your crown."
+  ],
+  "sources": {
+    "attribution": "Otago Exercise Programme Fall Prevention Guidelines"
+  }
+}

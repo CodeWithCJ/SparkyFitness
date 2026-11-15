@@ -1,0 +1,58 @@
+{
+  "id": "20005_prone_l_raise",
+  "numeric_id": "20005",
+  "slug": "prone_l_raise",
+  "name": "Prone L-Raise",
+  "aliases": [
+    "Floor L-Raise",
+    "Prone 90/90 External Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "intermediate",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "infraspinatus_weakness",
+      "swimmer_shoulder",
+      "pitcher_shoulder"
+    ],
+    "contraindications": [
+      "acute_rotator_cuff_tendinopathy_with_sharp_pain"
+    ],
+    "clinical_protocol": "AAOS Overhead Athlete Conditioning"
+  },
+  "steps": [
+    "Lie face down on a mat with your upper arms abducted straight out to your sides at 90 degrees.",
+    "Bend your elbows to 90 degrees so your forearms rest on the floor pointing directly forward, forming an 'L' shape.",
+    "Keeping your elbows on or slightly hovering off the floor, rotate your forearms and hands upward toward the ceiling.",
+    "Pause for one count at peak external rotation.",
+    "Slowly rotate your forearms back down until your hands gently touch the floor."
+  ],
+  "coaching_cues": [
+    "Pivot strictly around the elbow axis without sliding your elbows forward or back.",
+    "Only lift as high as comfortable without any pinching in the front of your shoulder.",
+    "Perform slowly and smoothly."
+  ],
+  "sources": {
+    "attribution": "AAOS Overhead Shoulder Conditioning Guidelines"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "20050_eccentric_heel_drop",
+  "numeric_id": "20050",
+  "slug": "eccentric_heel_drop",
+  "name": "Eccentric Heel Drop",
+  "aliases": [
+    "Alfredson Heel Drop",
+    "Step Heel Drop"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "other",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-1-1-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "achilles_tendinopathy",
+      "midportion_achilles_pain",
+      "plantar_fasciitis"
+    ],
+    "contraindications": [
+      "acute_achilles_tendon_partial_tear"
+    ],
+    "clinical_protocol": "Alfredson Eccentric Heel Drop Protocol"
+  },
+  "steps": [
+    "Stand with the balls of both feet on the edge of a sturdy step or stair, holding the handrail or wall for balance.",
+    "Rise up onto the toes of both feet.",
+    "Transfer all your weight onto the target leg (e.g., right foot).",
+    "Slowly lower your right heel down below the level of the step over a count of 3 to 4 seconds, loading the Achilles tendon eccentrically.",
+    "Place your left foot back on the step and use both feet to rise back up to the top, repeating the eccentric lowering on the target leg."
+  ],
+  "coaching_cues": [
+    "The magic of the Alfredson protocol is the slow eccentric lowering; use both feet to push back up.",
+    "Perform with both straight knee (gastrocnemius) and slightly bent knee (soleus).",
+    "A mild ache during the stretch is expected, but avoid sharp, unbearable pain."
+  ],
+  "sources": {
+    "attribution": "Håkan Alfredson Heavy-Load Eccentric Calf Training"
+  }
+}

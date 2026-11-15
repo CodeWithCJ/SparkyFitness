@@ -1,0 +1,61 @@
+{
+  "id": "20033_dumbbell_farmer_carry",
+  "numeric_id": "20033",
+  "slug": "dumbbell_farmer_carry",
+  "name": "Dumbbell Farmer's Carry",
+  "aliases": [
+    "Dumbbell Farmer Walk",
+    "Bilateral Loaded Carry"
+  ],
+  "taxonomy": {
+    "modality": "weight_distance",
+    "category": "strength",
+    "body_part": "forearms",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "abdominals",
+      "calves",
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "poor_grip_strength",
+      "scapular_postural_fatigue",
+      "core_bracing_deficit"
+    ],
+    "contraindications": [
+      "acute_cervical_disc_herniation_with_arm_traction_pain"
+    ],
+    "clinical_protocol": "Dr. Stuart McGill Loaded Carries for Spine Health"
+  },
+  "steps": [
+    "Stand between two matching dumbbells with feet shoulder-width apart.",
+    "Hinge at your hips with a flat back and bend your knees to pick up both dumbbells with a secure overhand grip.",
+    "Stand tall with shoulders rolled back, chest proud, and eyes forward.",
+    "Walk forward in a slow, controlled line taking short, deliberate strides.",
+    "Maintain an upright posture without leaning forward or swaying your torso from side to side."
+  ],
+  "coaching_cues": [
+    "Keep your ribs pulled down and your core braced as if preparing for a punch.",
+    "Do not allow the weights to bounce against your thighs.",
+    "Breathe through your diaphragm into your braced abdominal wall."
+  ],
+  "sources": {
+    "attribution": "McGill Spine Loaded Carry Mechanics"
+  }
+}

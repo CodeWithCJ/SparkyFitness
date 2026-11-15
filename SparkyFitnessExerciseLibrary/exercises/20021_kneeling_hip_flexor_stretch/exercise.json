@@ -1,0 +1,59 @@
+{
+  "id": "20021_kneeling_hip_flexor_stretch",
+  "numeric_id": "20021",
+  "slug": "kneeling_hip_flexor_stretch",
+  "name": "Kneeling Hip Flexor Stretch",
+  "aliases": [
+    "Half-Kneeling Psoas Stretch",
+    "Kneeling Lunge Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "thighs",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "anterior_pelvic_tilt",
+      "tight_psoas",
+      "lower_back_strain"
+    ],
+    "contraindications": [
+      "acute_knee_bursitis_on_kneeling_side"
+    ],
+    "clinical_protocol": "Mayo Clinic Hip Flexibility Exercises"
+  },
+  "steps": [
+    "Kneel on a soft exercise mat and step your right foot forward so your right knee is bent at 90 degrees directly above your ankle.",
+    "Keep your torso upright with hands on your front thigh or hips.",
+    "Gently tuck your pelvis under (posterior pelvic tilt) and squeeze your left glute to engage the front of your left hip.",
+    "Shift your weight slightly forward while keeping your chest tall until you feel a deep, gentle stretch in the front of your left hip and thigh.",
+    "Hold for 20 to 30 seconds, then switch legs."
+  ],
+  "coaching_cues": [
+    "Avoid hyperextending your lower back; the stretch comes from tucking the pelvis and squeezing the rear glute.",
+    "Place an extra towel or pillow under the back knee if you experience joint discomfort.",
+    "Breathe deeply and sink comfortably into the stretch."
+  ],
+  "sources": {
+    "attribution": "Mayo Clinic Lower Extremity Stretching Guide"
+  }
+}

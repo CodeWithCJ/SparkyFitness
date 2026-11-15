@@ -1,0 +1,60 @@
+{
+  "id": "20042_cat_cow",
+  "numeric_id": "20042",
+  "slug": "cat_cow",
+  "name": "Cat-Cow",
+  "aliases": [
+    "Cat-Camel",
+    "Spinal Wave Mobility"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "lower back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "abdominals",
+      "neck"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-1-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "spinal_stiffness",
+      "ankylosing_spondylitis_mobility",
+      "morning_back_ache"
+    ],
+    "contraindications": [
+      "acute_vertebral_fracture"
+    ],
+    "clinical_protocol": "Mayo Clinic Spinal Flexibility Protocols"
+  },
+  "steps": [
+    "Start on hands and knees in a tabletop position with wrists under shoulders and knees under hips.",
+    "Inhale and enter the 'Cow' pose: lower your belly toward the mat, gently arch your back, and lift your chest and chin toward the ceiling.",
+    "Exhale and transition into the 'Cat' pose: draw your belly button toward your spine, round your back up toward the ceiling, and tuck your chin to your chest.",
+    "Move slowly and rhythmically between Cat and Cow, matching movement to your breath.",
+    "Perform 8 to 10 fluid transitions through the full, comfortable range of your spine."
+  ],
+  "coaching_cues": [
+    "Flow through the spine segment by segment rather than moving rigidly.",
+    "Never force into extreme arching or rounding if you experience any pinching.",
+    "Keep your arms straight and shoulders relaxed away from your ears."
+  ],
+  "sources": {
+    "attribution": "Mayo Clinic Spinal Mobility Guidelines"
+  }
+}

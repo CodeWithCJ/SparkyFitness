@@ -1,0 +1,60 @@
+{
+  "id": "20027_chair_sit_to_stand",
+  "numeric_id": "20027",
+  "slug": "chair_sit_to_stand",
+  "name": "Chair Sit-to-Stand",
+  "aliases": [
+    "Box Squat to Chair",
+    "Chair Squat"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "knee_osteoarthritis",
+      "functional_quad_weakness",
+      "fall_risk"
+    ],
+    "contraindications": [
+      "uncontrolled_orthostatic_hypotension"
+    ],
+    "clinical_protocol": "CDC STEADI Fall Prevention & NIH Senior Health"
+  },
+  "steps": [
+    "Sit on the front half of a sturdy, armless chair with your feet flat on the floor, about shoulder-width apart.",
+    "Cross your arms over your chest or hold them extended straight in front of you for counter-balance.",
+    "Lean slightly forward from your hips, keeping your chest proud and spine long.",
+    "Push firmly down through your heels to rise smoothly to a full, balanced standing position.",
+    "Hinge your hips back and bend your knees to lower yourself gently back onto the chair under control without plopping down."
+  ],
+  "coaching_cues": [
+    "Do not rock back and forth to gain momentum; stand using leg strength alone.",
+    "Make sure your knees stay aligned over your second toes and do not cave inward.",
+    "Keep your eyes focused forward on the horizon."
+  ],
+  "sources": {
+    "attribution": "CDC STEADI Clinical Fall Prevention Standard"
+  }
+}

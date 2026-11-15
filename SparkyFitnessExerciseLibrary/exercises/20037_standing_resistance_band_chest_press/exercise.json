@@ -1,0 +1,59 @@
+{
+  "id": "20037_standing_resistance_band_chest_press",
+  "numeric_id": "20037",
+  "slug": "standing_resistance_band_chest_press",
+  "name": "Standing Resistance Band Chest Press",
+  "aliases": [
+    "Band Chest Press",
+    "Standing Band Push"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "chest",
+    "equipment": "bands",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "acromioclavicular_strain",
+      "safe_home_chest_strengthening"
+    ],
+    "contraindications": [
+      "acute_pectoralis_major_tear"
+    ],
+    "clinical_protocol": "VA MOVE! Resistance Band Physical Activity Guides"
+  },
+  "steps": [
+    "Anchor a resistance band at chest height behind you, or loop it firmly across your upper back.",
+    "Hold the band handles or ends at chest level with your elbows bent and palms facing downward.",
+    "Step forward into a staggered stance with one foot ahead for stability, feeling light initial tension on the band.",
+    "Press both hands straight forward, extending your arms and squeezing your chest muscles at the peak.",
+    "Slowly reverse the movement, controlling the band's pull back to your chest without letting your elbows yank backward."
+  ],
+  "coaching_cues": [
+    "Keep your shoulders pressed down away from your ears throughout the movement.",
+    "Maintain an upright torso and braced core; do not lean backward as the band pulls you.",
+    "Exhale as you press forward and inhale as you return."
+  ],
+  "sources": {
+    "attribution": "VA MOVE! Physical Therapy Band Guides"
+  }
+}

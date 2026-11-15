@@ -1,0 +1,59 @@
+{
+  "id": "20003_prone_w_raise",
+  "numeric_id": "20003",
+  "slug": "prone_w_raise",
+  "name": "Prone W-Raise",
+  "aliases": [
+    "Floor W-Raise",
+    "Prone External Rotation W"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "multiplanar",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "rotator_cuff_impingement",
+      "poor_external_rotation",
+      "desk_slouch"
+    ],
+    "contraindications": [
+      "acute_rotator_cuff_tear"
+    ],
+    "clinical_protocol": "APTA Shoulder Prehab Protocol"
+  },
+  "steps": [
+    "Lie prone on a mat with your forehead resting on the floor.",
+    "Bend your elbows to roughly 90 degrees and position your upper arms at a 45-degree angle to your torso, forming the letter 'W'.",
+    "Rotate your hands and forearms upward toward the ceiling, driving your elbows slightly back and pinching your shoulder blades together.",
+    "Hold the top contraction for two seconds, feeling the deep external rotators of your shoulders activate.",
+    "Slowly return your hands and elbows to the floor."
+  ],
+  "coaching_cues": [
+    "Keep wrists in line with forearms; avoid bending wrists backward.",
+    "Focus on rotating from the shoulder joint rather than lifting with your neck.",
+    "Maintain continuous smooth breathing throughout."
+  ],
+  "sources": {
+    "attribution": "Clinical Rotator Cuff Activation Protocols"
+  }
+}

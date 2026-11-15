@@ -1,0 +1,60 @@
+{
+  "id": "20009_bird_dog_hold",
+  "numeric_id": "20009",
+  "slug": "bird_dog_hold",
+  "name": "Bird-Dog Hold",
+  "aliases": [
+    "Quadraplex",
+    "Quadruped Opposite Arm-Leg Reach"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "lower back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "abdominals",
+      "shoulders"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "chronic_lower_back_pain",
+      "lumbar_instability",
+      "sacroiliac_dysfunction"
+    ],
+    "contraindications": [
+      "acute_vertebral_compression_fracture"
+    ],
+    "clinical_protocol": "McGill Spine Low Back Stabilization Protocol"
+  },
+  "steps": [
+    "Start on your hands and knees in a tabletop position, with wrists directly under your shoulders and knees under your hips.",
+    "Brace your core gently to maintain a neutral spine, as if balancing a cup of water on your lower back.",
+    "Slowly extend your right arm straight forward and your left leg straight backward until both are parallel to the floor.",
+    "Hold this position for 3 to 5 seconds, actively reaching through your fingertips and pushing through your back heel without rotating your hips.",
+    "Return smoothly to tabletop and repeat on the opposite side (left arm and right leg)."
+  ],
+  "coaching_cues": [
+    "Do not raise your arm or leg higher than your torso; avoid sagging or arching your lower back.",
+    "Keep your hips square to the floor throughout the entire movement.",
+    "Breathe smoothly and maintain consistent core abdominal pressure."
+  ],
+  "sources": {
+    "attribution": "Dr. Stuart McGill Low Back Disorders Clinical Protocol"
+  }
+}

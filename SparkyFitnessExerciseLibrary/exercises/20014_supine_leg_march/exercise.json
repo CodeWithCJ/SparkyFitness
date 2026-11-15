@@ -1,0 +1,58 @@
+{
+  "id": "20014_supine_leg_march",
+  "numeric_id": "20014",
+  "slug": "supine_leg_march",
+  "name": "Supine Leg March",
+  "aliases": [
+    "Supine Heel Tap",
+    "Hooklying March"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "waist",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "transverse_abdominis_inhibition",
+      "post_partum_core_weakness",
+      "early_spine_rehab"
+    ],
+    "contraindications": [
+      "acute_abdominal_surgery_healing_phase"
+    ],
+    "clinical_protocol": "APTA Core Motor Control Protocol"
+  },
+  "steps": [
+    "Lie on your back with your knees bent and feet flat on the floor, about hip-width apart.",
+    "Place your hands gently on your lower abdomen to feel your deep core muscles engage.",
+    "Draw your belly button gently inward to flatten your lower back slightly against the mat.",
+    "Slowly lift your right foot off the floor, bringing your right knee to a 90-degree angle without moving your pelvis.",
+    "Lower the right foot back down with control and repeat the movement with your left foot."
+  ],
+  "coaching_cues": [
+    "Imagine your pelvis is set in concrete; it should not tilt or wobble as your feet lift.",
+    "Keep the movement slow, rhythmic, and quiet.",
+    "Exhale on the lift and inhale as the foot returns to the floor."
+  ],
+  "sources": {
+    "attribution": "APTA Lumbar Motor Control Guidelines"
+  }
+}

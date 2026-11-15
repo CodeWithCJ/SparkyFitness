@@ -1,0 +1,59 @@
+{
+  "id": "20046_copenhagen_plank",
+  "numeric_id": "20046",
+  "slug": "copenhagen_plank",
+  "name": "Copenhagen Plank",
+  "aliases": [
+    "Adductor Side Plank",
+    "Short-Lever Copenhagen Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "hips",
+    "equipment": "other",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "glutes"
+    ],
+    "level": "intermediate",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "groin_strain_prevention",
+      "sports_hernia_prehab",
+      "pelvic_asymmetry"
+    ],
+    "contraindications": [
+      "acute_grade_3_adductor_tear"
+    ],
+    "clinical_protocol": "British Journal of Sports Medicine Copenhagen Adductor Protocol"
+  },
+  "steps": [
+    "Lie on your side next to a sturdy low bench or chair, resting on your bottom forearm.",
+    "Place the knee and lower leg of your top leg on top of the bench.",
+    "Rest your bottom leg on the floor beneath the bench.",
+    "Press through your top knee and forearm to raise your hips off the floor into a side plank, lifting your bottom leg to hover just beneath the bench.",
+    "Hold this rigid line for the target duration, feeling your inner thigh work strongly, then lower with control."
+  ],
+  "coaching_cues": [
+    "Beginners should start with the bench supporting from the knee (short lever) rather than the ankle.",
+    "Keep your shoulders and hips square without rotating toward the floor.",
+    "Breathe calmly and evenly throughout the hold."
+  ],
+  "sources": {
+    "attribution": "BJSM Copenhagen Adductor Exercise Clinical Trial"
+  }
+}

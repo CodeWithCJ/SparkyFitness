@@ -1,0 +1,56 @@
+{
+  "id": "20032_standing_calf_toe_raise",
+  "numeric_id": "20032",
+  "slug": "standing_calf_toe_raise",
+  "name": "Standing Calf Toe Raise",
+  "aliases": [
+    "Supported Heel Raise",
+    "Bilateral Heel Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "achilles_stiffness",
+      "plantar_fascia_weakness",
+      "gait_propulsion_deficit"
+    ],
+    "contraindications": [
+      "acute_achilles_tendon_rupture"
+    ],
+    "clinical_protocol": "NIH Senior Health & Physical Function Standards"
+  },
+  "steps": [
+    "Stand tall facing a wall or the back of a sturdy chair with feet hip-width apart.",
+    "Place your fingertips lightly on the support surface for balance.",
+    "Slowly raise your heels off the floor, pressing evenly through the balls of both feet until you are standing high on your toes.",
+    "Pause at the top for one full second, feeling your calf muscles fully contract.",
+    "Slowly lower your heels back down to the floor under control."
+  ],
+  "coaching_cues": [
+    "Push straight up through your big toes rather than rolling your weight to the outside edges of your feet.",
+    "Do not lean your upper body forward onto the support surface.",
+    "Maintain smooth, continuous movement on both the ascent and descent."
+  ],
+  "sources": {
+    "attribution": "NIH Lower Extremity Functional Strength Guidelines"
+  }
+}

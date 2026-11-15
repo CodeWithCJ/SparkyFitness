@@ -1,0 +1,60 @@
+{
+  "id": "20038_standing_resistance_band_row",
+  "numeric_id": "20038",
+  "slug": "standing_resistance_band_row",
+  "name": "Standing Resistance Band Row",
+  "aliases": [
+    "Band Horizontal Row",
+    "Standing Band Pull"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "upper back",
+    "equipment": "bands",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "lats",
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "posture_kyphosis",
+      "scapular_retraction_deficit",
+      "safe_home_pull"
+    ],
+    "contraindications": [
+      "acute_bicep_tendon_tear"
+    ],
+    "clinical_protocol": "APTA Home Resistance Band Conditioning"
+  },
+  "steps": [
+    "Secure a resistance band around a sturdy anchor at chest height.",
+    "Hold the band handles with arms extended in front of you, stepping back until there is light tension on the band.",
+    "Stand tall with feet shoulder-width apart and knees slightly unlocked.",
+    "Pull your elbows back past your sides, squeezing your shoulder blades together and keeping your chest proud.",
+    "Hold the back contraction for one second, then slowly return your arms forward under control."
+  ],
+  "coaching_cues": [
+    "Initiate the pull by pinching your shoulder blades together rather than pulling only with your arms.",
+    "Keep your shoulders down and relaxed, avoiding any shrugging.",
+    "Maintain an upright, neutral spine without leaning backward."
+  ],
+  "sources": {
+    "attribution": "APTA Resistance Band Posture Protocols"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20020_seated_figure_four_stretch",
+  "numeric_id": "20020",
+  "slug": "seated_figure_four_stretch",
+  "name": "Seated Figure-Four Stretch",
+  "aliases": [
+    "Chair Piriformis Stretch",
+    "Seated Glute Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "hips",
+    "equipment": "other",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "desk_hip_tightness",
+      "piriformis_syndrome",
+      "sciatic_nerve_tension"
+    ],
+    "contraindications": [
+      "acute_hip_arthroscopy_recovery"
+    ],
+    "clinical_protocol": "Cleveland Clinic Desk Ergonomics & Mobility"
+  },
+  "steps": [
+    "Sit tall on a sturdy chair with both feet flat on the floor.",
+    "Lift your right leg and rest your right ankle across your left knee, creating a 'figure-4' shape.",
+    "Keep your right foot lightly flexed to protect your knee joint.",
+    "With your spine tall and chest lifted, gently hinge forward from your hips until you feel a comfortable stretch in your outer right hip.",
+    "Hold for 20 to 30 seconds while breathing calmly, then return upright and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Hinge forward from your hip crease rather than rounding through your spine.",
+    "Do not press forcefully down on your raised knee.",
+    "Ideal for breaking up long periods of sitting at a desk."
+  ],
+  "sources": {
+    "attribution": "Cleveland Clinic Physical Therapy Mobility Handouts"
+  }
+}
