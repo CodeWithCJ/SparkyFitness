@@ -776,4 +776,73 @@ describe('review fixes (PR #3585)', () => {
       ['2026-11-16', '2026-11-22'],
     ]);
   });
+
+  describe('standings', () => {
+    const score = (user_id: string, total: number) => ({
+      challenge_id: challenge().id,
+      user_id,
+      day: '2026-11-10',
+      total,
+      effort: total,
+      step_points: 0,
+      pr_bonus: 0,
+      streak_bonus: 0,
+      beat_average_bonus: 0,
+      minutes: 30,
+      steps: 0,
+      workouts: 1,
+      eligible: true,
+      detail: {},
+    });
+    beforeEach(() => {
+      repo.getMembership.mockResolvedValue(member('amy'));
+      repo.getForMember.mockResolvedValue(challenge());
+      repo.getRuleChangesForMember.mockResolvedValue([
+        change('2026-11-09', allRounder),
+      ]);
+      repo.getMembersForMember.mockResolvedValue([
+        member('host', 'host'),
+        member('amy'),
+      ]);
+    });
+
+    it("a running period has no winner yet, and the caller's row is marked", async () => {
+      repo.getResultsForMember.mockResolvedValue([]);
+      repo.getDailyScoresForMember.mockResolvedValue([
+        score('amy', 40),
+        score('host', 25),
+      ]);
+      const res = await service.getStandings('amy', challenge().id);
+      expect(res.final).toBe(false);
+      expect(res.rows.map((r) => [r.user_id, r.rank, r.winner, r.me])).toEqual([
+        ['amy', 1, false, true],
+        ['host', 2, false, false],
+      ]);
+    });
+
+    it('a frozen period keeps its winner and marks the caller', async () => {
+      repo.getResultsForMember.mockResolvedValue(
+        ['amy', 'host'].map((user_id, i) => ({
+          challenge_id: challenge().id,
+          period_start: '2026-11-09',
+          period_end: '2026-11-15',
+          user_id,
+          display_name: user_id.toUpperCase(),
+          rank: i + 1,
+          total: 40 - i * 15,
+          minutes: 30,
+          is_winner: i === 0,
+          reached_on: null,
+          detail: {},
+          finalized_at: new Date(),
+        }))
+      );
+      const res = await service.getStandings('host', challenge().id);
+      expect(res.final).toBe(true);
+      expect(res.rows.map((r) => [r.user_id, r.winner, r.me])).toEqual([
+        ['amy', true, false],
+        ['host', false, true],
+      ]);
+    });
+  });
 });

@@ -646,6 +646,7 @@ export async function getStandings(
         total: Number(r.total),
         minutes: Number(r.minutes),
         winner: r.is_winner,
+        me: r.user_id === userId,
         reached_on: r.reached_on,
         days_hit:
           typeof r.detail?.daysHit === 'number' ? r.detail.daysHit : undefined,
@@ -686,7 +687,10 @@ export async function getStandings(
       rank: r.rank,
       total: r.total,
       minutes: r.minutes,
-      winner: r.winner,
+      // Nobody has won a period that is still open: a later workout or a
+      // late sync can change it until it is frozen.
+      winner: false,
+      me: r.userId === userId,
       reached_on: r.reachedOn ?? null,
       days_hit: r.daysHit,
       days_eligible: r.daysEligible,

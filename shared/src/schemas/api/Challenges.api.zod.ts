@@ -123,7 +123,10 @@ export const challengeStandingRowSchema = z.object({
   rank: z.number(),
   total: z.number(),
   minutes: z.number(),
+  /** Set only once the period is final; a running period has no winner yet. */
   winner: z.boolean(),
+  /** True on the caller's own row. */
+  me: z.boolean().optional(),
   reached_on: dayStringSchema.nullable(),
   days_hit: z.number().optional(),
   days_eligible: z.number().optional(),
