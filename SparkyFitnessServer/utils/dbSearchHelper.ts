@@ -51,7 +51,26 @@ export function buildSqlExactMatchOrder(
 ): string {
   return `(CASE WHEN ${nameColumn} ILIKE $${exactMatchParamIndex}::text THEN 0 ELSE 1 END)`;
 }
+export function buildSqlRelevanceOrder(
+  nameColumn: string,
+  fullColumn: string,
+  searchTerm: string,
+  baseParamIndex: number
+): { orderClause: string; queryParams: string[]; nextParamIndex: number } {
+  const term = searchTerm.trim();
+  const i = baseParamIndex;
+  return {
+    orderClause: `(CASE WHEN ${nameColumn} ILIKE $${i}::text THEN 0 WHEN ${fullColumn} ~* $${i + 1}::text THEN 1 WHEN ${fullColumn} ILIKE $${i + 2}::text THEN 2 ELSE 3 END)`,
+    queryParams: [
+      `${term}%`,
+      `\\m${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+      `%${term}%`,
+    ],
+    nextParamIndex: i + 3,
+  };
+}
 export default {
   buildSqlSearch,
   buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 };
