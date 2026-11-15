@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import ClientCertificateSection from '../../src/components/ClientCertificateSection';
 import * as service from '../../src/services/clientCertificate';
 
@@ -182,6 +182,77 @@ describe('ClientCertificateSection', () => {
     } finally {
       Platform.OS = original;
     }
+  });
+
+  describe('restart popup', () => {
+    const originalOs = Platform.OS;
+    let alertSpy: jest.SpyInstance;
+    beforeEach(() => {
+      alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      Platform.OS = originalOs;
+      alertSpy.mockRestore();
+    });
+
+    it('pops up after an import on iPhone, as well as the note', async () => {
+      Platform.OS = 'ios';
+      mocked.importClientCertificate.mockResolvedValue({ ok: true, info });
+      render(<ClientCertificateSection />);
+
+      await pickFile();
+      await act(async () => {
+        fireEvent.press(screen.getByText('Import'));
+      });
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(alertSpy.mock.calls[0][0]).toBe('Restart the app');
+      expect(alertSpy.mock.calls[0][1]).toMatch(/use the new certificate/);
+      expect(screen.getByText(/Fully close and reopen/)).toBeTruthy();
+      // The note is a warning box that screen readers announce.
+      expect(screen.getByRole('alert')).toBeTruthy();
+    });
+
+    it('pops up after a removal on iPhone', () => {
+      Platform.OS = 'ios';
+      mocked.getClientCertificateInfo
+        .mockReturnValueOnce(info) // shown at first
+        .mockReturnValueOnce(null); // gone after removal
+      render(<ClientCertificateSection />);
+
+      fireEvent.press(screen.getByText('Remove'));
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(alertSpy.mock.calls[0][1]).toMatch(
+        /stop using the old certificate/
+      );
+    });
+
+    it('does not pop up when a removal failed and the certificate is still there', () => {
+      Platform.OS = 'ios';
+      mocked.getClientCertificateInfo.mockReturnValue(info);
+      mocked.removeClientCertificate.mockImplementationOnce(() => {
+        throw new Error('native refused');
+      });
+      render(<ClientCertificateSection />);
+
+      fireEvent.press(screen.getByText('Remove'));
+
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('never pops up on Android', async () => {
+      Platform.OS = 'android';
+      mocked.importClientCertificate.mockResolvedValue({ ok: true, info });
+      render(<ClientCertificateSection />);
+
+      await pickFile();
+      await act(async () => {
+        fireEvent.press(screen.getByText('Import'));
+      });
+
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
   });
 
   it('does not ask Android users to restart', async () => {

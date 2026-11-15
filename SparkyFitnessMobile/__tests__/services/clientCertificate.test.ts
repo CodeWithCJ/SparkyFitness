@@ -49,6 +49,14 @@ describe('clientCertificate', () => {
   });
 
   describe('hostsForServerUrls', () => {
+    it('reads a backslash like the network code does', () => {
+      const { hostsForServerUrls } = loadService();
+
+      expect(hostsForServerUrls(['https://a.example\\@b.example'])).toEqual([
+        'a.example',
+      ]);
+    });
+
     it('keeps only the host, once, in lowercase', () => {
       const { hostsForServerUrls } = loadService();
 

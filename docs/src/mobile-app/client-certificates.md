@@ -224,8 +224,8 @@ The proxy now asks the web app for the certificate too. Import the same `.p12` i
 
 ### After importing or removing a certificate
 
-- **On iPhone, the server still says "no certificate was sent" right after importing.** iPhone keeps secure sessions it opened before the import and can reuse them, so the server keeps its old answer. Fully close the app (swipe it away), open it again, and then connect. The app shows a reminder after importing. The same applies in the other direction after removing a certificate.
-- **After removing or replacing the certificate, the app is still connected.** On Android the change applies to the next request. On iPhone an open secure connection can keep working briefly, so close and reopen the app to apply it at once. Removing the certificate from the app does not remove the copy you installed in the phone's settings for SSO and passkeys; delete that one there.
+- **On iPhone, the server still says "no certificate was sent" right after importing.** For the rest of that run, the iPhone app remembers that it sent no certificate to your server, and it keeps answering the same way. Fully close the app (swipe it away), open it again, and then connect. To avoid this, import the certificate before the first connection attempt. After an import or a removal the app shows a popup and a note telling you to do this. The same applies in the other direction after removing a certificate: the app keeps sending the old one until it is restarted.
+- **After removing or replacing the certificate, the app is still connected.** On Android the change applies at once: requests running at that moment are cancelled and the app retries them. On iPhone the app keeps using the certificate it already used until it is restarted, so close and reopen the app to apply it. Removing the certificate from the app does not remove the copy you installed in the phone's settings for SSO and passkeys; delete that one there.
 
 ### Browsers and sign-in
 

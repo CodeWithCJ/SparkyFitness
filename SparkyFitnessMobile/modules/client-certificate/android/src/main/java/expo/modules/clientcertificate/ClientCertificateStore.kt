@@ -221,10 +221,14 @@ object ClientCertificateStore {
     }
 
   /**
-   * Makes a change take effect for the next request instead of whenever the
-   * old connections and sessions happen to end: new requests get a fresh TLS
-   * context (and so no resumable session), and idle connections are closed.
-   * A request already in flight finishes on its old connection.
+   * Makes a change take effect at once instead of whenever the old
+   * connections and sessions happen to end: new requests get a fresh TLS
+   * context (and so no resumable session), requests still running are
+   * cancelled, and the connections are closed. Cancelling matters because a
+   * busy HTTP/2 connection is never idle, so it would otherwise carry new
+   * requests on the old certificate for as long as it stayed busy. The
+   * app retries whatever was cancelled, and a change is something the user
+   * just did on purpose.
    *
    * Best effort: the certificate is already stored or removed by now, so
    * nothing here may turn a finished import or removal into an error.
@@ -237,9 +241,10 @@ object ClientCertificateStore {
     }
     clients.forEach { client ->
       try {
+        client.dispatcher.cancelAll()
         client.connectionPool.evictAll()
       } catch (e: Exception) {
-        Log.w(LOG_TAG, "Could not close idle connections", e)
+        Log.w(LOG_TAG, "Could not close connections", e)
       }
     }
   }

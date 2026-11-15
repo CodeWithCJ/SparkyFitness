@@ -182,6 +182,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   useEffect(() => {
     if (!visible || !serverUrl) {
       setAuthSettings(null);
+      void setPendingClientCertificateServer(null);
       return;
     }
 
@@ -197,6 +198,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       if (validationError) {
         setError(validationError);
         setAuthSettings(null);
+        void setPendingClientCertificateServer(null);
         return;
       }
 
@@ -204,6 +206,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       setError('');
     } else {
       setAuthSettings(null);
+      void setPendingClientCertificateServer(null);
       return;
     }
 
@@ -211,8 +214,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const fetchSettings = async () => {
       try {
         // A server that is not saved yet may still require the TLS client
-        // certificate, so it has to be an allowed host before the first request.
-        await setPendingClientCertificateServer(url);
+        // certificate, so it has to be an allowed host before the request. Not
+        // while the address is still being typed, though: a half-typed
+        // `sparky.example.co` could be someone else's server, and it would be
+        // offered the certificate. The check runs again when the field is left.
+        if (!isServerUrlFocused) {
+          await setPendingClientCertificateServer(url);
+        }
         const settings = await fetchAuthSettings(
           url,
           proxyHeadersToRecord(cleanedHeaders())
@@ -240,7 +248,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     // Re-fetch only when the URL or visibility changes; `cleanedHeaders()` is read
     // at fetch time so proxy-header keystrokes don't re-trigger the debounced fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, visible]);
+  }, [serverUrl, visible, isServerUrlFocused]);
 
   // On small screens the error banner can push the primary action below the
   // fold; scroll the bottom of the card back into view once the banner has
@@ -342,6 +350,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await login(url, email.trim(), password);
@@ -387,10 +399,17 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         // looks the same as an unreachable server.
         setError(
           shouldSuggestClientCertificate()
-            ? `${failed} ${t('auth.clientCertificate.connectionHint', {
-                defaultValue:
-                  'If your server requires a client certificate, add it under Advanced options.',
-              })}`
+            ? `${failed} ${
+                Platform.OS === 'ios'
+                  ? t('auth.clientCertificate.connectionHintRestart', {
+                      defaultValue:
+                        'If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.',
+                    })
+                  : t('auth.clientCertificate.connectionHint', {
+                      defaultValue:
+                        'If your server requires a client certificate, add it under Advanced options.',
+                    })
+              }`
             : failed
         );
       }
@@ -424,6 +443,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await loginWithOidc(url, providerId);
@@ -480,6 +503,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await loginWithPasskey(url);
@@ -663,6 +690,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
     setLoading(true);
     setError('');
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const response = await fetchWithTimeout(

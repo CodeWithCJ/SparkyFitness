@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Text, View } from 'react-native';
+import { Alert, Platform, Text, View } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
+import Icon from './Icon';
 import FormInput from './FormInput';
 import {
   clientCertificateExpiry,
@@ -26,6 +28,7 @@ import { addLog } from '../services/LogService';
  */
 const ClientCertificateSection: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const iconWarning = useCSSVariable('--color-icon-warning') as string;
   const supported = isClientCertificateSupported();
   const [info, setInfo] = useState<ClientCertificateInfo | null>(() =>
     supported ? getClientCertificateInfo() : null
@@ -36,9 +39,11 @@ const ClientCertificateSection: React.FC = () => {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ClientCertificateImportError | null>(null);
-  // iPhone only: it keeps secure sessions made before a change and can reuse
-  // them, so the server may keep refusing (or accepting) the old answer until
-  // the app is restarted. Android starts fresh sessions on every change.
+  // iPhone only: the app's network session remembers what it answered for the
+  // server earlier in this run (no certificate, or the old one) and keeps
+  // answering the same until the app is restarted, which creates a new session.
+  // Resetting the session does not clear it (checked). Android starts fresh
+  // sessions on every change.
   const [restartHint, setRestartHint] = useState(false);
 
   useEffect(() => {
@@ -64,6 +69,28 @@ const ClientCertificateSection: React.FC = () => {
     },
     []
   );
+
+  // iPhone only. A popup as well as the note on the screen, because this is a
+  // step the user has to take and a line of text is easy to miss.
+  const announceRestartNeeded = (change: 'import' | 'remove') => {
+    if (Platform.OS !== 'ios') return;
+    setRestartHint(true);
+    Alert.alert(
+      t('auth.clientCertificate.restartTitle', {
+        defaultValue: 'Restart the app',
+      }),
+      change === 'import'
+        ? t('auth.clientCertificate.restartAfterImport', {
+            defaultValue:
+              'To use the new certificate, fully close the app (swipe it away in the app switcher) and open it again, then connect.',
+          })
+        : t('auth.clientCertificate.restartAfterRemove', {
+            defaultValue:
+              'To stop using the old certificate, fully close the app (swipe it away in the app switcher) and open it again.',
+          }),
+      [{ text: t('common.ok', { defaultValue: 'OK' }) }]
+    );
+  };
 
   const cancelImport = useCallback(() => {
     replacePicked(null, true);
@@ -105,7 +132,7 @@ const ClientCertificateSection: React.FC = () => {
       // The import already removed the cached copy.
       replacePicked(null, false);
       setPassword('');
-      setRestartHint(Platform.OS === 'ios');
+      announceRestartNeeded('import');
     } else {
       setError(result.error);
     }
@@ -118,8 +145,10 @@ const ClientCertificateSection: React.FC = () => {
       // Show what is really stored rather than assuming it is gone.
       addLog(`[ClientCertificate] Remove failed: ${String(err)}`, 'ERROR');
     }
-    setInfo(getClientCertificateInfo());
-    setRestartHint(Platform.OS === 'ios');
+    const remaining = getClientCertificateInfo();
+    setInfo(remaining);
+    // Only when it is really gone: a failed removal changed nothing.
+    if (remaining == null) announceRestartNeeded('remove');
   };
 
   if (!supported) return null;
@@ -215,12 +244,19 @@ const ClientCertificateSection: React.FC = () => {
       )}
 
       {restartHint && (
-        <Text className="text-xs text-text-primary mb-2">
-          {t('auth.clientCertificate.restartHint', {
-            defaultValue:
-              'Fully close and reopen the app so this applies. Until then the server may still answer as before.',
-          })}
-        </Text>
+        <View
+          accessible
+          accessibilityRole="alert"
+          className="flex-row items-start gap-2 rounded-lg bg-bg-warning px-3 py-2.5 mb-2"
+        >
+          <Icon name="warning" size={18} color={iconWarning} />
+          <Text className="flex-1 text-sm font-medium text-text-warning">
+            {t('auth.clientCertificate.restartHint', {
+              defaultValue:
+                'Fully close and reopen the app so this applies. Until then the server may still answer as before.',
+            })}
+          </Text>
+        </View>
       )}
 
       {hasClientCertificateGap() && (

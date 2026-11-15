@@ -992,7 +992,11 @@
       "replace": "Replace certificate",
       "remove": "Remove",
       "restartHint": "Fully close and reopen the app so this applies. Until then the server may still answer as before.",
+      "restartTitle": "Restart the app",
+      "restartAfterImport": "To use the new certificate, fully close the app (swipe it away in the app switcher) and open it again, then connect.",
+      "restartAfterRemove": "To stop using the old certificate, fully close the app (swipe it away in the app switcher) and open it again.",
       "connectionHint": "If your server requires a client certificate, add it under Advanced options.",
+      "connectionHintRestart": "If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.",
       "errors": {
         "wrongPassword": "That password does not open this file.",
         "invalidFile": "This file could not be read. Check the password, and that it is a .p12 or .pfx file. A file made with a recent OpenSSL may need to be exported again in the legacy format.",
