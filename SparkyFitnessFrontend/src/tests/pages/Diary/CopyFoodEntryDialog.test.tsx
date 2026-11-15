@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { format } from 'date-fns';
 import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
+import { addDays, todayInZone } from '@workspace/shared';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -52,21 +53,15 @@ describe('CopyFoodEntryDialog', () => {
     const onCopy = renderDialog('Coffee');
     fireEvent.click(screen.getByRole('button', { name: 'Now' }));
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    expect(onCopy).toHaveBeenCalledWith(
-      format(new Date(), 'yyyy-MM-dd'),
-      'breakfast',
-      'now'
-    );
+    expect(onCopy).toHaveBeenCalledWith(todayInZone('UTC'), 'breakfast', 'now');
   });
 
   it('copies to tomorrow and keeps the meal type', () => {
     const onCopy = renderDialog('Coffee');
     fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }));
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
     expect(onCopy).toHaveBeenCalledWith(
-      format(tomorrow, 'yyyy-MM-dd'),
+      addDays(todayInZone('UTC'), 1),
       'lunch',
       'tomorrow'
     );

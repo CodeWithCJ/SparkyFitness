@@ -17,9 +17,10 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { addDays, format } from 'date-fns';
+import { format } from 'date-fns';
 import {
   addDays as addCalendarDays,
+  dayToPickerDate,
   pickMealTypeForTime,
   todayInZone,
   userHourMinute,
@@ -79,8 +80,10 @@ const CopyFoodEntryDialog = ({
     : ['today', 'tomorrow'];
 
   const applyQuickTarget = (target: CopyQuickTarget) => {
+    // The picker shows the same preference-timezone day the copy submits.
+    const today = todayInZone(timezone);
     setSelectedDate(
-      target === 'tomorrow' ? addDays(new Date(), 1) : new Date()
+      dayToPickerDate(target === 'tomorrow' ? addCalendarDays(today, 1) : today)
     );
     // Now also picks the meal for the current time of day; Today and Tomorrow
     // keep the meal already chosen.

@@ -1,7 +1,4 @@
-import {
-  buildFoodEntryCopyPayload,
-  currentEntryTime,
-} from '../../src/utils/foodEntryCopy';
+import { buildFoodEntryCopyPayload } from '@workspace/shared';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
 const baseEntry: FoodEntry = {
@@ -88,6 +85,31 @@ describe('buildFoodEntryCopyPayload', () => {
     expect(payload.glycemic_index).toBe('low');
   });
 
+  it('carries the allergens, traces and photos from the snapshot', () => {
+    const payload = buildFoodEntryCopyPayload(
+      {
+        ...baseEntry,
+        allergens: [],
+        traces: ['nuts'],
+        images: ['/uploads/food_entries/a.jpg'],
+      },
+      '2026-11-02',
+      'lunch-id'
+    );
+    expect(payload.allergens).toEqual([]);
+    expect(payload.traces).toEqual(['nuts']);
+    expect(payload.images).toEqual(['/uploads/food_entries/a.jpg']);
+  });
+
+  it("leaves photos out when the entry shows its food's own", () => {
+    const payload = buildFoodEntryCopyPayload(
+      { ...baseEntry, images: [] },
+      '2026-11-02',
+      'lunch-id'
+    );
+    expect(payload.images).toBeUndefined();
+  });
+
   it('logs the copy at the given time instead of the original one', () => {
     const payload = buildFoodEntryCopyPayload(
       baseEntry,
@@ -96,14 +118,5 @@ describe('buildFoodEntryCopyPayload', () => {
       '21:36'
     );
     expect(payload.entry_time).toBe('21:36');
-  });
-});
-
-describe('currentEntryTime', () => {
-  afterEach(() => jest.useRealTimers());
-
-  it('is the device local time as HH:MM', () => {
-    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 21, 36, 15));
-    expect(currentEntryTime()).toBe('21:36');
   });
 });

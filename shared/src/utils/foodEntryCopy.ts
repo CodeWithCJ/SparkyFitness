@@ -1,35 +1,20 @@
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '../constants/foodVariantNutrients.ts';
+
 /**
  * Building the create-entry payload that logs a diary food again on another
  * day, meal or time. Used by the web diary and the mobile food entry screen.
  *
  * Diary entries are snapshots, so the copy carries the entry's own nutrition,
- * custom nutrients, note and time of day rather than the library food's
- * current values: the server lets these fields override the food it links.
+ * custom nutrients, allergens, traces, photos, note and time of day rather
+ * than the library food's current values: the server lets these fields
+ * override the food it links.
  * An entry whose food was deleted from the library is copied as a standalone
  * entry from the same snapshot.
  */
 
 export const FOOD_ENTRY_COPY_NUTRIENTS = [
-  'calories',
-  'protein',
-  'carbs',
-  'fat',
-  'saturated_fat',
-  'polyunsaturated_fat',
-  'monounsaturated_fat',
-  'sodium',
-  'dietary_fiber',
-  'sugars',
-  'trans_fat',
-  'potassium',
-  'calcium',
-  'iron',
-  'caffeine_mg',
+  ...FOOD_VARIANT_NUTRIENT_FIELDS,
   'water_ml',
-  'alcohol_g',
-  'cholesterol',
-  'vitamin_a',
-  'vitamin_c',
 ] as const;
 
 export type FoodEntryCopyNutrient = (typeof FOOD_ENTRY_COPY_NUTRIENTS)[number];
@@ -50,9 +35,15 @@ export type FoodEntryCopySource = {
   serving_unit?: string | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, string | number> | null;
+  allergens?: string[] | null;
+  traces?: string[] | null;
+  /** The entry's own photos; empty means it shows its food's photos. */
+  images?: string[] | null;
 } & { [K in FoodEntryCopyNutrient]?: NumericLike };
 
 export type FoodEntryCopyPayload = {
+  /** The diary to log into; the server defaults to the signed-in user's. */
+  user_id?: string;
   meal_type_id: string;
   quantity: number;
   unit: string;
@@ -67,6 +58,9 @@ export type FoodEntryCopyPayload = {
   serving_unit?: string;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  allergens?: string[];
+  traces?: string[];
+  images?: string[];
 } & { [K in FoodEntryCopyNutrient]?: number };
 
 function toNumber(value: unknown): number | undefined {
@@ -112,16 +106,11 @@ export function buildFoodEntryCopyPayload(
   if (entry.custom_nutrients) {
     payload.custom_nutrients = entry.custom_nutrients;
   }
+  // Likewise an empty list keeps the snapshot's "none" over the food's own.
+  if (entry.allergens) payload.allergens = entry.allergens;
+  if (entry.traces) payload.traces = entry.traces;
+  // Only the entry's own photos: without them the server falls back to the
+  // linked food's, just as the original entry shows them.
+  if (entry.images && entry.images.length > 0) payload.images = entry.images;
   return payload;
-}
-
-/** `{ hour, minute }` as the 'HH:MM' an entry_time takes. */
-export function hourMinuteToEntryTime({
-  hour,
-  minute,
-}: {
-  hour: number;
-  minute: number;
-}): string {
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }

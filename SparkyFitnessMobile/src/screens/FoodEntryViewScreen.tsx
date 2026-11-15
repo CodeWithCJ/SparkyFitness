@@ -34,10 +34,14 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
-import { toHourMinute } from '@workspace/shared';
+import { clockInZone, toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { usableFoodImages } from '../utils/foodImages';
-import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
+import {
+  normalizeDate,
+  formatDateLabel,
+  getDeviceTimezone,
+} from '../utils/dateUtils';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
   useMealTypes,
@@ -50,7 +54,6 @@ import {
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useCopyFoodEntry } from '../hooks/useCopyFoodEntry';
-import { currentEntryTime } from '../utils/foodEntryCopy';
 import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
@@ -1608,7 +1611,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               // "Now" logs the copy at the current time; any other target
               // keeps the time of day the food was first logged at.
               ...(quickTarget === 'now'
-                ? { entryTime: currentEntryTime() }
+                ? { entryTime: clockInZone(getDeviceTimezone()) }
                 : {}),
             })
           }

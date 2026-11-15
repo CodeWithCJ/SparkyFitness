@@ -1,10 +1,10 @@
 import { useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { buildFoodEntryCopyPayload } from '@workspace/shared';
 import Toast from 'react-native-toast-message';
 import { createFoodEntry } from '../services/api/foodEntriesApi';
 import type { FoodEntry } from '../types/foodEntries';
-import { buildFoodEntryCopyPayload } from '../utils/foodEntryCopy';
 import { invalidateFoodCache } from './invalidateFoodCache';
 
 interface CopyFoodEntryInput {

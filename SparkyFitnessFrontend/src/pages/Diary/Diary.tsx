@@ -61,10 +61,9 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import {
   buildFoodEntryCopyPayload,
-  hourMinuteToEntryTime,
+  clockInZone,
   prefillEntryTime,
   todayInZone,
-  userHourMinute,
 } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
@@ -222,9 +221,7 @@ const Diary = () => {
         entry,
         targetDate,
         mealType.id,
-        quickTarget === 'now'
-          ? hourMinuteToEntryTime(userHourMinute(timezone))
-          : undefined
+        quickTarget === 'now' ? clockInZone(timezone) : undefined
       ),
       // Copy into the diary being viewed, like adding a food does.
       user_id: currentUserId,
