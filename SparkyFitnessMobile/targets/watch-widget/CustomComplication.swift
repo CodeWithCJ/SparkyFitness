@@ -65,11 +65,7 @@ private func starterDefinitions() -> [StoredDefinition] {
         )
     }
     return [
-        starter("calories", String(localized: "watch.custom.starter.calories", defaultValue: "Calories"), "percent", true, "calories", "flame.fill"),
         starter("caloriesRemaining", String(localized: "watch.custom.starter.caloriesRemaining", defaultValue: "Calories left"), "value", false, "calories", "flame.fill"),
-        starter("protein", String(localized: "watch.custom.starter.protein", defaultValue: "Protein"), "percent", true, "protein", "fish.fill"),
-        starter("carbs", String(localized: "watch.custom.starter.carbs", defaultValue: "Carbs"), "percent", true, "carbs", "leaf.fill"),
-        starter("fat", String(localized: "watch.custom.starter.fat", defaultValue: "Fat"), "percent", true, "fat", "drop.fill"),
         // The macros as rings, like the Daily Energy complication. Its id is
         // `starter-macros`, not a source's, as on the phone.
         StoredDefinition(
@@ -81,9 +77,6 @@ private func starterDefinitions() -> [StoredDefinition] {
                 StoredItem(source: "fat", format: "percent", color: "fat", icon: "drop.fill"),
             ]
         ),
-        starter("water", String(localized: "watch.custom.starter.water", defaultValue: "Water"), "percent", true, "water", "drop.fill"),
-        starter("steps", String(localized: "watch.custom.starter.steps", defaultValue: "Steps"), "value", true, "steps", "figure.walk"),
-        starter("fasting", String(localized: "watch.custom.starter.fasting", defaultValue: "Fasting"), "value", true, "fasting", "timer"),
         starter("weight", String(localized: "watch.custom.starter.weight", defaultValue: "Weight"), "value", false, "weight", "scalemass.fill"),
         starter("sleepScore", String(localized: "watch.custom.starter.sleepScore", defaultValue: "Sleep score"), "percent", true, "sleep", "moon.zzz.fill"),
     ]

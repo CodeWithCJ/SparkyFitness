@@ -72,8 +72,8 @@ const renderScreen = (params?: { complicationId?: string }) =>
     />
   );
 
-// The starter set: calories ... weight, the macros, and the sleep score.
-const STARTER_COUNT = 11;
+// The starter set: calories left, the macros, weight and the sleep score.
+const STARTER_COUNT = 4;
 
 const stored = () => useAppPreferencesStore.getState().watchComplications;
 
@@ -209,27 +209,31 @@ describe('WatchComplicationEditScreen', () => {
   });
 
   test('editing keeps the id and replaces the entry in place', () => {
-    renderScreen({ complicationId: 'starter-water' });
-    expect(screen.getByDisplayValue('Water')).toBeTruthy();
-    fireEvent.changeText(screen.getByDisplayValue('Water'), 'Hydration');
+    renderScreen({ complicationId: 'starter-weight' });
+    expect(screen.getByDisplayValue('Weight')).toBeTruthy();
+    fireEvent.changeText(screen.getByDisplayValue('Weight'), 'Body');
     fireEvent.press(screen.getByTestId('watch-complication-color-steps'));
     fireEvent.press(screen.getByText('Save'));
 
     const list = stored() ?? [];
     expect(list).toHaveLength(STARTER_COUNT);
-    const edited = list.find((d) => d.id === 'starter-water');
-    expect(edited).toMatchObject({ name: 'Hydration', color: 'steps' });
-    // Water sits after Fat and the Macros starter.
-    expect(list.findIndex((d) => d.id === 'starter-water')).toBe(6);
+    const edited = list.find((d) => d.id === 'starter-weight');
+    expect(edited).toMatchObject({ name: 'Body', color: 'steps' });
+    // Weight sits after Calories left and the Macros starter.
+    expect(list.findIndex((d) => d.id === 'starter-weight')).toBe(2);
   });
 
   test('an existing complication keeps its look when its source changes', () => {
-    renderScreen({ complicationId: 'starter-water' });
+    renderScreen({ complicationId: 'starter-weight' });
     fireEvent.press(screen.getByTestId('source-option-steps'));
     fireEvent.press(screen.getByText('Save'));
     expect(
-      (stored() ?? []).find((d) => d.id === 'starter-water')
-    ).toMatchObject({ source: 'steps', color: 'water', icon: 'drop.fill' });
+      (stored() ?? []).find((d) => d.id === 'starter-weight')
+    ).toMatchObject({
+      source: 'steps',
+      color: 'weight',
+      icon: 'scalemass.fill',
+    });
   });
 
   test('nutrients shown on the watch’s Goals page can be chosen', () => {
