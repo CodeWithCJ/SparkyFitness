@@ -3,7 +3,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
   normalizeBuiltInStyles,
   withBuiltInStyle,
-  type BuiltInKey,
+  type BuiltInStyleKey,
   type BuiltInStyle,
 } from '../utils/watchComplications';
 
@@ -17,9 +17,17 @@ export function useWatchBuiltInStyles() {
   const setStored = useAppPreferencesStore((s) => s.setWatchBuiltInStyles);
   const styles = useMemo(() => normalizeBuiltInStyles(stored), [stored]);
   const change = useCallback(
-    (key: BuiltInKey, patch: BuiltInStyle | null) =>
+    (key: BuiltInStyleKey, patch: BuiltInStyle | null) =>
       setStored(withBuiltInStyle(styles, key, patch)),
     [setStored, styles]
   );
-  return { styles, change };
+  /** Puts several back at once, from one reading of what is saved. */
+  const clear = useCallback(
+    (keys: readonly BuiltInStyleKey[]) =>
+      setStored(
+        keys.reduce((acc, key) => withBuiltInStyle(acc, key, null), styles)
+      ),
+    [setStored, styles]
+  );
+  return { styles, change, clear };
 }

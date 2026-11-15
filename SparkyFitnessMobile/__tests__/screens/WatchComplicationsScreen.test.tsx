@@ -144,6 +144,22 @@ describe('WatchComplicationsScreen', () => {
     expect(useAppPreferencesStore.getState().watchBuiltInStyles).toEqual({});
   });
 
+  test('Daily Energy Goal has a colour for each part, and they can be put back', () => {
+    renderScreen();
+    expect(screen.getByTestId('watch-built-in-row-dailyEnergy')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Change Daily Energy Goal'));
+    fireEvent.press(
+      screen.getByTestId('watch-built-in-energyProtein-color-heart')
+    );
+    fireEvent.press(screen.getByTestId('watch-built-in-energyFat-color-water'));
+    expect(useAppPreferencesStore.getState().watchBuiltInStyles).toEqual({
+      energyProtein: { color: 'heart' },
+      energyFat: { color: 'water' },
+    });
+    fireEvent.press(screen.getByTestId('watch-built-in-dailyEnergy-reset'));
+    expect(useAppPreferencesStore.getState().watchBuiltInStyles).toEqual({});
+  });
+
   test('Reload sends the built-in styles too', async () => {
     renderScreen();
     fireEvent.press(screen.getByLabelText('Change Steps'));

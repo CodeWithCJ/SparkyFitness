@@ -3,8 +3,9 @@ import SwiftUI
 /// Mirrors `ComplicationPublisher.BuiltInStyle` (targets/watch): the colour and
 /// icon the wearer chose, on the phone, for one of the built-in complications.
 /// `key` is the phone's built-in key (`calorieGoal`, `proteinGoal`, `carbsGoal`,
-/// `fatGoal`, `water`, `fasting`, `steps`); the strings are the same wire values
-/// the custom complications use.
+/// `fatGoal`, `water`, `fasting`, `steps`) or one of Daily Energy Goal's four
+/// colours (`energyCalories`, `energyProtein`, `energyCarbs`, `energyFat`); the
+/// strings are the same wire values the custom complications use.
 private struct StoredBuiltInStyle: Decodable {
     let key: String
     let color: String?

@@ -949,8 +949,9 @@ export function complicationSourceLabel(
  * The complications that come with the watch app. Their numbers and layout are
  * fixed, but the wearer can change the colour and icon of each; the choices are
  * kept in `watchBuiltInStyles` and sent with the list. Each key is a wire value
- * (`targets/watch-widget/BuiltInStyle.swift`). Daily Energy Goal is not here:
- * it draws four colours at once.
+ * (`targets/watch-widget/BuiltInStyle.swift`). Daily Energy Goal draws four
+ * colours at once, so it has a colour for each part instead (`ENERGY_COLOR_KEYS`,
+ * colour only, kept in the same record).
  */
 export const BUILT_IN_KEYS = [
   'calorieGoal',
@@ -974,12 +975,56 @@ const BUILT_IN_SOURCES: Record<BuiltInKey, ComplicationSourceKey> = {
   steps: 'steps',
 };
 
+/** The four colours of Daily Energy Goal: the calorie ring and the three macros. */
+export const ENERGY_COLOR_KEYS = [
+  'energyCalories',
+  'energyProtein',
+  'energyCarbs',
+  'energyFat',
+] as const;
+export type EnergyColorKey = (typeof ENERGY_COLOR_KEYS)[number];
+
+/** What each of those colours is by default, and what it stands for. */
+const ENERGY_COLOR_DEFAULTS: Record<
+  EnergyColorKey,
+  { color: ComplicationColor; source: ComplicationSourceKey }
+> = {
+  energyCalories: { color: 'calories', source: 'calories' },
+  energyProtein: { color: 'protein', source: 'protein' },
+  energyCarbs: { color: 'carbs', source: 'carbs' },
+  energyFat: { color: 'fat', source: 'fat' },
+};
+
+/** Everything the wearer can restyle on a built-in complication. */
+export type BuiltInStyleKey = BuiltInKey | EnergyColorKey;
+const STYLE_KEYS: readonly BuiltInStyleKey[] = [
+  ...BUILT_IN_KEYS,
+  ...ENERGY_COLOR_KEYS,
+];
+
+function isEnergyColorKey(key: BuiltInStyleKey): key is EnergyColorKey {
+  return (ENERGY_COLOR_KEYS as readonly string[]).includes(key);
+}
+
 /** What the wearer changed; a part left out keeps the built-in's own. */
 export interface BuiltInStyle {
   color?: ComplicationColor;
   icon?: ComplicationIcon;
 }
-export type WatchBuiltInStyles = Partial<Record<BuiltInKey, BuiltInStyle>>;
+export type WatchBuiltInStyles = Partial<Record<BuiltInStyleKey, BuiltInStyle>>;
+
+/** What a Daily Energy colour is called: the part it paints. */
+export function energyColorLabel(key: EnergyColorKey, t: Translator): string {
+  return COMPLICATION_SOURCE_LABELS[ENERGY_COLOR_DEFAULTS[key].source](t);
+}
+
+/** The colour of one part of Daily Energy Goal, the wearer's or the default. */
+export function resolveEnergyColor(
+  styles: WatchBuiltInStyles,
+  key: EnergyColorKey
+): ComplicationColor {
+  return styles[key]?.color ?? ENERGY_COLOR_DEFAULTS[key].color;
+}
 
 export const BUILT_IN_LABELS: Record<BuiltInKey, (t: Translator) => string> = {
   calorieGoal: (t) =>
@@ -1026,7 +1071,7 @@ export function normalizeBuiltInStyles(input: unknown): WatchBuiltInStyles {
   if (!input || typeof input !== 'object') return {};
   const raw = input as Record<string, unknown>;
   let result: WatchBuiltInStyles = {};
-  for (const key of BUILT_IN_KEYS) {
+  for (const key of STYLE_KEYS) {
     const entry = raw[key];
     if (!entry || typeof entry !== 'object') continue;
     const { color, icon } = entry as Record<string, unknown>;
@@ -1049,25 +1094,33 @@ export function normalizeBuiltInStyles(input: unknown): WatchBuiltInStyles {
  */
 export function withBuiltInStyle(
   styles: WatchBuiltInStyles,
-  key: BuiltInKey,
+  key: BuiltInStyleKey,
   patch: BuiltInStyle | null
 ): WatchBuiltInStyles {
   const rest = { ...styles };
   delete rest[key];
   if (patch === null) return rest;
-  const base = builtInDefaultLook(key);
+  const energy = isEnergyColorKey(key);
+  const base = energy
+    ? { color: ENERGY_COLOR_DEFAULTS[key].color, icon: undefined }
+    : builtInDefaultLook(key);
   const merged = { ...styles[key], ...patch };
   const next: BuiltInStyle = {};
   if (merged.color && merged.color !== base.color) next.color = merged.color;
-  if (merged.icon && merged.icon !== base.icon) next.icon = merged.icon;
+  // A Daily Energy part has a colour only.
+  if (!energy && merged.icon && merged.icon !== base.icon) {
+    next.icon = merged.icon;
+  }
   return next.color || next.icon ? { ...rest, [key]: next } : rest;
 }
 
 /** The changes as the watch gets them: one entry per built-in that has any. */
-export function builtInStylesWire(
-  styles: WatchBuiltInStyles
-): { key: BuiltInKey; color?: ComplicationColor; icon?: ComplicationIcon }[] {
-  return BUILT_IN_KEYS.flatMap((key) => {
+export function builtInStylesWire(styles: WatchBuiltInStyles): {
+  key: BuiltInStyleKey;
+  color?: ComplicationColor;
+  icon?: ComplicationIcon;
+}[] {
+  return STYLE_KEYS.flatMap((key) => {
     const style = styles[key];
     if (!style || (!style.color && !style.icon)) return [];
     return [

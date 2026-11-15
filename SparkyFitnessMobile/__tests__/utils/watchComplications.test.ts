@@ -30,11 +30,14 @@ import {
   starterComplications,
   type WatchComplicationDefinition,
   BUILT_IN_KEYS,
+  ENERGY_COLOR_KEYS,
   builtInDefaultLook,
   builtInPreviewDefinition,
   builtInStylesWire,
+  energyColorLabel,
   normalizeBuiltInStyles,
   resolveBuiltInLook,
+  resolveEnergyColor,
   withBuiltInStyle,
 } from '../../src/utils/watchComplications';
 
@@ -815,5 +818,57 @@ describe('built-in complication styles', () => {
       color: 'heart',
       icon: 'fish.fill',
     });
+  });
+});
+
+describe('Daily Energy Goal colours', () => {
+  it('has a colour for the calorie ring and each macro', () => {
+    expect(ENERGY_COLOR_KEYS).toEqual([
+      'energyCalories',
+      'energyProtein',
+      'energyCarbs',
+      'energyFat',
+    ]);
+    expect(resolveEnergyColor({}, 'energyProtein')).toBe('protein');
+    expect(energyColorLabel('energyCarbs', t)).toBe('Carbs');
+  });
+
+  it('keeps a changed colour and forgets one put back to its default', () => {
+    const changed = withBuiltInStyle({}, 'energyFat', { color: 'heart' });
+    expect(changed).toEqual({ energyFat: { color: 'heart' } });
+    expect(resolveEnergyColor(changed, 'energyFat')).toBe('heart');
+    expect(withBuiltInStyle(changed, 'energyFat', { color: 'fat' })).toEqual(
+      {}
+    );
+  });
+
+  it('has no icon: one in a change is ignored', () => {
+    expect(
+      withBuiltInStyle({}, 'energyCalories', { icon: 'bolt.fill' })
+    ).toEqual({});
+    expect(
+      withBuiltInStyle({}, 'energyCalories', {
+        color: 'heart',
+        icon: 'bolt.fill',
+      })
+    ).toEqual({ energyCalories: { color: 'heart' } });
+  });
+
+  it('is saved, checked and sent with the other built-ins', () => {
+    expect(
+      normalizeBuiltInStyles({
+        energyProtein: { color: 'water', icon: 'bolt.fill' },
+        energyCarbs: { color: 'chartreuse' },
+      })
+    ).toEqual({ energyProtein: { color: 'water' } });
+    expect(
+      builtInStylesWire({
+        steps: { color: 'heart' },
+        energyProtein: { color: 'water' },
+      })
+    ).toEqual([
+      { key: 'steps', color: 'heart' },
+      { key: 'energyProtein', color: 'water' },
+    ]);
   });
 });

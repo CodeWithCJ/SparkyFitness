@@ -1093,7 +1093,9 @@ export interface WatchComplicationConfigPayload {
   /**
    * The colour and icon the wearer chose for each built-in complication
    * (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
-   * `steps`); only the parts they changed. Empty puts them all back.
+   * `steps`) and for each part of Daily Energy Goal (`energyCalories`,
+   * `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+   * they changed. Empty puts them all back.
    */
   builtIns?: { key: string; color?: string; icon?: string }[];
   definitions: {

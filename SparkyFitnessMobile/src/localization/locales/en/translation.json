@@ -7289,9 +7289,11 @@
     "reloadedSubtitle": "Open the watch app if the picker still shows the old list.",
     "reloadFailed": "Could not send to your watch",
     "builtInTitle": "Built-in complications",
-    "builtInHelp": "These come with the app. Change the colour and icon of each. Daily Energy Goal stays as it is.",
+    "builtInHelp": "These come with the app. Change their colours and icons.",
     "changeBuiltIn": "Change {{name}}",
     "builtInReset": "Put back the original look",
+    "builtInDailyEnergy": "Daily Energy Goal",
+    "builtInEnergyReset": "Put back the original colours",
     "builtIn": {
       "calorieGoal": "Calorie Goal",
       "proteinGoal": "Protein Goal",
