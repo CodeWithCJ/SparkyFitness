@@ -2474,6 +2474,7 @@ CREATE TABLE public.exercise_preset_entries (
     source text DEFAULT 'manual'::text NOT NULL,
     location character varying(255),
     workout_format character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    source_id text,
     finished_at timestamp with time zone,
     revision integer DEFAULT 1 NOT NULL,
     CONSTRAINT chk_exercise_preset_entries_format CHECK (((workout_format)::text = ANY ((ARRAY['standard'::character varying, 'interval'::character varying, 'tabata'::character varying, 'amrap'::character varying, 'emom'::character varying, 'for_time'::character varying])::text[])))
@@ -7908,6 +7909,13 @@ CREATE UNIQUE INDEX check_in_measurements_user_date_unique ON public.check_in_me
 --
 
 CREATE UNIQUE INDEX custom_categories_user_name_key ON public.custom_categories USING btree (user_id, name);
+
+
+--
+-- Name: exercise_preset_entries_provider_identity_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX exercise_preset_entries_provider_identity_idx ON public.exercise_preset_entries USING btree (user_id, source, source_id) WHERE (source_id IS NOT NULL);
 
 
 --
