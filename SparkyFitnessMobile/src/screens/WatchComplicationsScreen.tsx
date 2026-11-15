@@ -26,14 +26,17 @@ import {
   BUILT_IN_KEYS,
   BUILT_IN_LABELS,
   COMPLICATION_COLOR_HEX,
+  ENERGY_COLOR_KEYS,
   COMPLICATION_FORMAT_LABELS,
   allowedFormats,
   complicationSourceLabel,
+  energyColorLabel,
   itemsOf,
   moveComplication,
   parseComplicationsImport,
   removeComplication,
   resolveBuiltInLook,
+  resolveEnergyColor,
   sourceHasProgress,
   type BuiltInKey,
   type WatchComplicationDefinition,
@@ -55,10 +58,15 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { list, isStarter, commit } = useWatchComplicationList();
 
-  const { styles: builtInStyles, change: changeBuiltIn } =
-    useWatchBuiltInStyles();
+  const {
+    styles: builtInStyles,
+    change: changeBuiltIn,
+    clear: clearBuiltIns,
+  } = useWatchBuiltInStyles();
   const [reloading, setReloading] = useState(false);
-  const [openBuiltIn, setOpenBuiltIn] = useState<BuiltInKey | null>(null);
+  const [openBuiltIn, setOpenBuiltIn] = useState<
+    BuiltInKey | 'dailyEnergy' | null
+  >(null);
 
   // The watch caches its picker, and a send can go missing, so the wearer can
   // push the list again and make the watch refresh it, as Home Assistant's
@@ -448,7 +456,7 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
         <Text className="text-xs text-text-muted mb-3">
           {t('watchComplications.builtInHelp', {
             defaultValue:
-              'These come with the app. Change the colour and icon of each. Daily Energy Goal stays as it is.',
+              'These come with the app. Change their colours and icons.',
           })}
         </Text>
         {BUILT_IN_KEYS.map((key) => {
@@ -527,6 +535,92 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
             </View>
           );
         })}
+        <View
+          testID="watch-built-in-row-dailyEnergy"
+          className="bg-surface rounded-xl mb-3 shadow-sm"
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('watchComplications.changeBuiltIn', {
+              defaultValue: 'Change {{name}}',
+              name: t('watchComplications.builtInDailyEnergy', {
+                defaultValue: 'Daily Energy Goal',
+              }),
+            })}
+            accessibilityState={{ expanded: openBuiltIn === 'dailyEnergy' }}
+            className="flex-row items-center px-4 py-3"
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+            onPress={() =>
+              setOpenBuiltIn(
+                openBuiltIn === 'dailyEnergy' ? null : 'dailyEnergy'
+              )
+            }
+          >
+            <View
+              className="items-center justify-center rounded-full mr-3 flex-row flex-wrap"
+              style={{
+                width: 40,
+                height: 40,
+                backgroundColor: 'rgba(0,0,0,0.85)',
+                padding: 9,
+              }}
+            >
+              {ENERGY_COLOR_KEYS.map((key) => (
+                <View
+                  key={key}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor:
+                      COMPLICATION_COLOR_HEX[
+                        resolveEnergyColor(builtInStyles, key)
+                      ],
+                  }}
+                />
+              ))}
+            </View>
+            <Text className="flex-1 text-lg font-semibold text-text-primary">
+              {t('watchComplications.builtInDailyEnergy', {
+                defaultValue: 'Daily Energy Goal',
+              })}
+            </Text>
+            <Icon
+              name={
+                openBuiltIn === 'dailyEnergy' ? 'chevron-up' : 'chevron-down'
+              }
+              size={18}
+            />
+          </Pressable>
+          {openBuiltIn === 'dailyEnergy' ? (
+            <View className="px-4 pb-4">
+              {ENERGY_COLOR_KEYS.map((key) => (
+                <View key={key} className="mb-3">
+                  <Text className="text-sm font-semibold text-text-secondary mb-2">
+                    {energyColorLabel(key, t)}
+                  </Text>
+                  <ComplicationColorPicker
+                    value={resolveEnergyColor(builtInStyles, key)}
+                    onSelect={(color) => changeBuiltIn(key, { color })}
+                    testIDPrefix={`watch-built-in-${key}-color`}
+                    size={34}
+                  />
+                </View>
+              ))}
+              {ENERGY_COLOR_KEYS.some((key) => builtInStyles[key]) ? (
+                <Button
+                  variant="ghost"
+                  testID="watch-built-in-dailyEnergy-reset"
+                  onPress={() => clearBuiltIns(ENERGY_COLOR_KEYS)}
+                >
+                  {t('watchComplications.builtInEnergyReset', {
+                    defaultValue: 'Put back the original colours',
+                  })}
+                </Button>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
         <Button
           variant="outline"
           testID="watch-complications-reload"

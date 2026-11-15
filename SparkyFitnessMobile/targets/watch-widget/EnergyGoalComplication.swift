@@ -127,10 +127,33 @@ enum ComplicationPalette {
     static let protein = Color(red: 0.859, green: 0.690, blue: 0.435)
 }
 
+/// The four colours this complication draws with: the wearer's own from the
+/// phone (`builtInLook`, keys `energyCalories`, `energyProtein`, `energyCarbs`
+/// and `energyFat`), else the palette above.
+struct EnergyColors {
+    let calories: Color
+    let protein: Color
+    let carbs: Color
+    let fat: Color
+
+    static func current() -> EnergyColors {
+        func pick(_ key: String, _ fallback: Color) -> Color {
+            builtInLook(key, color: fallback, icon: "").color
+        }
+        return EnergyColors(
+            calories: pick("energyCalories", ComplicationPalette.calories),
+            protein: pick("energyProtein", ComplicationPalette.protein),
+            carbs: pick("energyCarbs", ComplicationPalette.carbs),
+            fat: pick("energyFat", ComplicationPalette.fat)
+        )
+    }
+}
+
 /// Inner ring: a single full-circle progress trim for the calorie goal.
 /// Reaching or passing the goal (progress == 1) draws a complete circle.
 private struct CalorieRing: View {
     let progress: Double
+    let color: Color
     let size: CGFloat
     let strokeWidth: CGFloat
 
@@ -141,7 +164,7 @@ private struct CalorieRing: View {
             Circle()
                 .trim(from: 0, to: CGFloat(progress))
                 .stroke(
-                    ComplicationPalette.calories,
+                    color,
                     style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
@@ -163,6 +186,7 @@ private struct CalorieRing: View {
 /// (that's the different composition-ring concept the iOS macroWidget uses).
 private struct MacroGoalRing: View {
     let snapshot: EnergyGoalSnapshot
+    let colors: EnergyColors
     let size: CGFloat
     let strokeWidth: CGFloat
 
@@ -182,9 +206,9 @@ private struct MacroGoalRing: View {
             trackSection(start: Self.third)
             trackSection(start: 2 * Self.third)
 
-            section(start: 0, filled: snapshot.fatGoalProgress, color: ComplicationPalette.fat)
-            section(start: Self.third, filled: snapshot.carbsGoalProgress, color: ComplicationPalette.carbs)
-            section(start: 2 * Self.third, filled: snapshot.proteinGoalProgress, color: ComplicationPalette.protein)
+            section(start: 0, filled: snapshot.fatGoalProgress, color: colors.fat)
+            section(start: Self.third, filled: snapshot.carbsGoalProgress, color: colors.carbs)
+            section(start: 2 * Self.third, filled: snapshot.proteinGoalProgress, color: colors.protein)
         }
         // Inset by half the stroke, because a stroke straddles the path it's
         // drawn on. This ring's frame is the full complication width, so
@@ -231,6 +255,7 @@ private struct MacroGoalRing: View {
 
 private struct EnergyGoalRings: View {
     let snapshot: EnergyGoalSnapshot
+    let colors: EnergyColors
 
     var body: some View {
         GeometryReader { geo in
@@ -241,8 +266,8 @@ private struct EnergyGoalRings: View {
             let innerSize = side - outerStroke * 2 - side * 0.06
 
             ZStack {
-                MacroGoalRing(snapshot: snapshot, size: outerSize, strokeWidth: outerStroke)
-                CalorieRing(progress: snapshot.calorieGoalProgress, size: innerSize, strokeWidth: innerStroke)
+                MacroGoalRing(snapshot: snapshot, colors: colors, size: outerSize, strokeWidth: outerStroke)
+                CalorieRing(progress: snapshot.calorieGoalProgress, color: colors.calories, size: innerSize, strokeWidth: innerStroke)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -256,6 +281,8 @@ private func percentText(_ fraction: Double) -> String {
 struct EnergyGoalComplicationEntryView: View {
     @Environment(\.widgetFamily) private var family
     var entry: EnergyGoalProvider.Entry
+
+    private var colors: EnergyColors { EnergyColors.current() }
 
     var body: some View {
         content
@@ -281,10 +308,10 @@ struct EnergyGoalComplicationEntryView: View {
         let snapshot = entry.snapshot
         let dot = Text(verbatim: " • ").foregroundStyle(.secondary)
         return (
-            coloured(snapshot.calorieGoalProgress, ComplicationPalette.calories)
-                + dot + coloured(snapshot.fatGoalProgress, ComplicationPalette.fat)
-                + dot + coloured(snapshot.carbsGoalProgress, ComplicationPalette.carbs)
-                + dot + coloured(snapshot.proteinGoalProgress, ComplicationPalette.protein)
+            coloured(snapshot.calorieGoalProgress, colors.calories)
+                + dot + coloured(snapshot.fatGoalProgress, colors.fat)
+                + dot + coloured(snapshot.carbsGoalProgress, colors.carbs)
+                + dot + coloured(snapshot.proteinGoalProgress, colors.protein)
         )
         .minimumScaleFactor(0.6)
         .lineLimit(1)
@@ -298,7 +325,7 @@ struct EnergyGoalComplicationEntryView: View {
             // and a curved row of coloured numbers beside them, one per ring
             // in ring order (calories, then fat, carbs, protein). It reads
             // differently from the calories-only Calorie Goal corner.
-            EnergyGoalRings(snapshot: entry.snapshot)
+            EnergyGoalRings(snapshot: entry.snapshot, colors: colors)
                 .widgetLabel {
                     cornerNumbers
                 }
@@ -306,7 +333,7 @@ struct EnergyGoalComplicationEntryView: View {
             // Bare ring, no visible text — Adam's choice, to keep the watch
             // face uncluttered. Everything still reaches VoiceOver/Assistive
             // Access through the accessibility label above.
-            EnergyGoalRings(snapshot: entry.snapshot)
+            EnergyGoalRings(snapshot: entry.snapshot, colors: colors)
         }
     }
 }

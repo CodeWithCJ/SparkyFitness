@@ -81,13 +81,15 @@ enum ComplicationPublisher {
         static let kinds = [
             "calorieGoalComplication", "proteinGoalComplication", "carbsGoalComplication",
             "fatGoalComplication", "waterGoalComplication", "fastingComplication",
-            "stepsComplication",
+            "stepsComplication", "energyGoalComplication",
         ]
     }
 
     /// One built-in complication's look. `key` is the phone's built-in key
     /// (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
-    /// `steps`); only the parts the wearer changed are set. Field names are
+    /// `steps`), or one of Daily Energy Goal's four colours (`energyCalories`,
+    /// `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+    /// the wearer changed are set. Field names are
     /// decoded by `BuiltInStyle.swift` in targets/watch-widget.
     struct BuiltInStyle: Codable, Equatable {
         let key: String
