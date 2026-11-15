@@ -154,6 +154,7 @@ export const PREFERENCE_DEFAULTS = {
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
+  focusNextSetOnRestEnd: true,
   plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
@@ -272,6 +273,12 @@ export type AppPreferencesData = {
    */
   duckMusicDuringCues: boolean;
   workoutKeepAwakeEnabled: boolean;
+  /**
+   * When a rest runs out on its own, put the cursor in the next set's first
+   * value cell and open the keyboard (#3581). On by default; off keeps the
+   * keyboard closed and the next set just becomes the active one.
+   */
+  focusNextSetOnRestEnd: boolean;
   /**
    * Live workouts started from a plan or saved workout show its planned
    * values as placeholders before last session's (#3417). Read once at live
@@ -419,6 +426,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setFocusNextSetOnRestEnd: (value: boolean) => void;
   setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
@@ -614,6 +622,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
+      setFocusNextSetOnRestEnd: (value) =>
+        set({ focusNextSetOnRestEnd: value }),
       setPlannedValuesAsPlaceholders: (value) =>
         set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
@@ -836,6 +846,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        focusNextSetOnRestEnd: state.focusNextSetOnRestEnd,
         plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
         warmupMethod: state.warmupMethod,

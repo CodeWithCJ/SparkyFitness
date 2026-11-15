@@ -946,6 +946,21 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
       expect(bar().queryByText('Log')).toBeTruthy();
     });
 
+    it('keeps the keyboard closed when "Focus the next set when a rest ends" is off (#3581)', () => {
+      useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+      const { getByTestId } = renderScreen();
+      const bar = () =>
+        within(
+          getByTestId('set-accessory-sticky', { includeHiddenElements: true })
+        );
+
+      expireRest();
+
+      expect(bar().queryByText('Next')).toBeNull();
+      expect(bar().queryByText('Log')).toBeNull();
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+    });
+
     describe('in the focus view', () => {
       beforeEach(() => {
         useAppPreferencesStore.getState().setActiveWorkoutView('focus');
@@ -980,6 +995,23 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
 
         expect(bar().queryByText('Next')).toBeTruthy();
         expect(bar().queryByText('Log')).toBeTruthy();
+      });
+
+      it('leaves a mounted on-deck set alone when the setting is off (#3581)', () => {
+        useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+        const { getByTestId } = renderScreen();
+        const bar = () =>
+          within(
+            getByTestId('set-accessory-sticky', {
+              includeHiddenElements: true,
+            })
+          );
+        fireEvent.press(getByTestId('focus-mount-102'));
+
+        expireRest();
+
+        expect(bar().queryByText('Next')).toBeNull();
+        expect(bar().queryByText('Log')).toBeNull();
       });
     });
 

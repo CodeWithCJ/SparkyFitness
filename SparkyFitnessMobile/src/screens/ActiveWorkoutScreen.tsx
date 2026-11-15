@@ -643,8 +643,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // value cell so the lifter can type without tapping. Skip / dismiss don't
   // stamp restExpiredAt, so they never steal focus, and neither does an
   // expiry while a set cell already has the keyboard: the lifter is typing
-  // there. A store subscription (not an effect on the value) because this
-  // reacts to an event, once.
+  // there. Turned off in Workout Settings (#3581), the rest ends with the
+  // keyboard closed. A store subscription (not an effect on the value)
+  // because this reacts to an event, once.
   const isFocusedRef = useRef(isFocused);
   useEffect(() => {
     isFocusedRef.current = isFocused;
@@ -658,6 +659,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         )
           return;
         if (
+          !useAppPreferencesStore.getState().focusNextSetOnRestEnd ||
           !isFocusedRef.current ||
           focusedSetKeyRef.current != null ||
           AppState.currentState !== 'active' ||
