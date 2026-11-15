@@ -90,6 +90,7 @@ packageExtensions:
 
 patchedDependencies:
   '@bacons/apple-targets@4.0.7': patches/@bacons__apple-targets@4.0.7.patch
+  '@kingstinct/react-native-healthkit@16.2.0': patches/@kingstinct__react-native-healthkit@16.2.0.patch
   expo-camera@57.0.6: patches/expo-camera@57.0.6.patch
   expo-modules-core@57.0.24: patches/expo-modules-core@57.0.24.patch
   react-native-bottom-tabs@1.4.0: patches/react-native-bottom-tabs@1.4.0.patch

@@ -37,8 +37,16 @@ import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import {
   WATCH_SESSION_METADATA_KEY,
   isOwnWatchWorkout,
+  EXERCISE_WRITEBACK_METADATA_KEY,
+  isOwnWrittenWorkout,
 } from './dataTransformation';
 import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
+import {
+  EXERCISE_FILTER_OWN_PREF,
+  EXERCISE_WRITTEN_QUANTITY_TYPES,
+  exerciseWriteTypes,
+} from './exerciseWriteback';
+import { loadHealthPreference } from './preferences';
 import {
   WORKOUT_EFFORT_IDENTIFIER,
   matchWorkoutEffort,
@@ -387,7 +395,14 @@ const healthKitAuthorizationTypes = (
             readPermissionsSet.add(identifier)
           );
         } else if (p.accessType === 'write') {
-          writePermissionsSet.add('HKWorkoutTypeIdentifier');
+          // Exercise write-back (#1750) attaches active energy and distance
+          // to each workout, and checks Apple Health's own workouts before
+          // writing so a session the watch already recorded is not added
+          // twice; that check needs workout read access.
+          exerciseWriteTypes().forEach((identifier) =>
+            writePermissionsSet.add(identifier)
+          );
+          readPermissionsSet.add('HKWorkoutTypeIdentifier');
         }
       } else if (p.recordType === 'ActiveCaloriesBurned') {
         // The daily active figure can come from the Move ring (an account
@@ -632,11 +647,26 @@ const queryDayStatistics = async (
   const now = new Date();
   const filterEnd = endDate.getTime() < now.getTime() ? endDate : now; // never query future dates
   const options: {
-    filter: { date: { startDate: Date; endDate: Date } };
+    filter: {
+      date: { startDate: Date; endDate: Date };
+      NOT?: { metadata: { withMetadataKey: string } }[];
+    };
     unit?: string;
   } = {
     filter: { date: { startDate: filterStart, endDate: filterEnd } },
   };
+  // Leave out the energy and distance exercise write-back saved (#1750), or
+  // Sparky would count a logged workout again as device activity. Only once
+  // something was written, so nobody who never turned it on sees a changed
+  // query.
+  if (
+    EXERCISE_WRITTEN_QUANTITY_TYPES.has(identifier) &&
+    (await loadHealthPreference<boolean>(EXERCISE_FILTER_OWN_PREF)) === true
+  ) {
+    options.filter.NOT = [
+      { metadata: { withMetadataKey: EXERCISE_WRITEBACK_METADATA_KEY } },
+    ];
+  }
   if (unit) {
     options.unit = unit;
   }
@@ -1341,7 +1371,9 @@ const handleWorkout: RecordHandler = async (
     }
     // Drop our own watch sessions before they claim telemetry-budget slots.
     // The transformer still skips them as defense in depth.
-    return !isOwnWatchWorkout(w as unknown as Record<string, unknown>);
+    const rec = w as unknown as Record<string, unknown>;
+    // Also drop workouts exercise write-back saved from the diary (#1750).
+    return !isOwnWatchWorkout(rec) && !isOwnWrittenWorkout(rec);
   });
 
   // Budget slots are assigned in list order (the query is newest-first) before
@@ -1561,6 +1593,15 @@ const handleWorkout: RecordHandler = async (
         record.metadata = {
           ...(record.metadata as Record<string, unknown> | undefined),
           [WATCH_SESSION_METADATA_KEY]: watchSessionId,
+        };
+      }
+      const writebackKey = (
+        w as unknown as { metadata?: Record<string, unknown> }
+      ).metadata?.[EXERCISE_WRITEBACK_METADATA_KEY];
+      if (writebackKey !== undefined) {
+        record.metadata = {
+          ...(record.metadata as Record<string, unknown> | undefined),
+          [EXERCISE_WRITEBACK_METADATA_KEY]: writebackKey,
         };
       }
 
