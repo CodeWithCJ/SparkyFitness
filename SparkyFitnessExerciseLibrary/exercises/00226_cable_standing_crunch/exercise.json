@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00226_cable_standing_crunch",
+  "numeric_id": "00226",
+  "slug": "cable_standing_crunch",
+  "name": "Cable Standing Crunch",
+  "aliases": [
+    "Cable Crunch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a cable handle to a high pulley and stand facing away from the machine.",
+    "Hold the handle with both hands and place it behind your head, keeping your elbows bent.",
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Keeping your abs engaged, exhale and crunch your torso down towards your knees, bringing your elbows towards your thighs.",
+    "Pause for a moment at the bottom of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0226",
+    "free_id": "Cable_Crunch"
+  }
+}

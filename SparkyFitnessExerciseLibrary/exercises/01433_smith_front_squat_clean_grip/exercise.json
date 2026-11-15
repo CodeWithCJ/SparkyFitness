@@ -1,0 +1,53 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01433_smith_front_squat_clean_grip",
+  "numeric_id": "01433",
+  "slug": "smith_front_squat_clean_grip",
+  "name": "Smith Front Squat (Clean Grip)",
+  "aliases": [
+    "Front Squat (Clean Grip)"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up the smith machine with the barbell at shoulder height.",
+    "Stand facing the barbell with your feet shoulder-width apart.",
+    "Grasp the barbell with an overhand grip, slightly wider than shoulder-width apart.",
+    "Step back and position the barbell on your front shoulders, resting it on your collarbone and deltoids.",
+    "Keep your chest up, back straight, and core engaged.",
+    "Lower your body by bending at the knees and hips, as if sitting back into a chair.",
+    "Continue lowering until your thighs are parallel to the ground or slightly below.",
+    "Pause for a moment, then push through your heels to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1433",
+    "free_id": "Front_Squat_Clean_Grip"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00721_side_wrist_pull_stretch",
+  "numeric_id": "00721",
+  "slug": "side_wrist_pull_stretch",
+  "name": "Side Wrist Pull Stretch",
+  "aliases": [
+    "Side Wrist Pull"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "forearms",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your arms extended in front of you.",
+    "Extend your right arm out to the side, parallel to the ground, with your palm facing down.",
+    "With your left hand, grab your right hand and gently pull it towards your body, feeling a stretch in your right forearm.",
+    "Hold the stretch for 15-30 seconds, then release.",
+    "Repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0721",
+    "free_id": "Side_Wrist_Pull"
+  }
+}

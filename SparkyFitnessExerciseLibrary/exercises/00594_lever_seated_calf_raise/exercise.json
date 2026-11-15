@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00594_lever_seated_calf_raise",
+  "numeric_id": "00594",
+  "slug": "lever_seated_calf_raise",
+  "name": "Lever Seated Calf Raise",
+  "aliases": [
+    "Seated Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height so that your knees are slightly bent and your feet are flat on the footplate.",
+    "Place your toes on the footplate with your heels hanging off the edge.",
+    "Grasp the handles or the sides of the seat for stability.",
+    "Push through the balls of your feet to raise your heels as high as possible.",
+    "Pause for a moment at the top, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0594",
+    "free_id": "Seated_Calf_Raise"
+  }
+}

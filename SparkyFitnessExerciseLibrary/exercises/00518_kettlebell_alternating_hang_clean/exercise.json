@@ -1,0 +1,55 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00518_kettlebell_alternating_hang_clean",
+  "numeric_id": "00518",
+  "slug": "kettlebell_alternating_hang_clean",
+  "name": "Kettlebell Alternating Hang Clean",
+  "aliases": [
+    "Alternating Hang Clean"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "forearms",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "traps",
+      "abdominals",
+      "biceps",
+      "calves",
+      "glutes",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in each hand with an overhand grip.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and chest up.",
+    "Allow the kettlebells to hang in front of your body with your arms fully extended.",
+    "In one fluid motion, explosively extend your hips, shrug your shoulders, and pull the kettlebells up towards your shoulders.",
+    "As the kettlebells reach shoulder height, rotate your wrists and catch the kettlebells in the rack position, with your palms facing inward and the kettlebells resting on the outside of your forearms.",
+    "Lower the kettlebells back down to the starting position and repeat the movement with the opposite arm.",
+    "Continue alternating arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0518",
+    "free_id": "Alternating_Hang_Clean"
+  }
+}

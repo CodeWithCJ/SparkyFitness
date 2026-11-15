@@ -2,7 +2,7 @@
   "$schema": "../../schema/exercise.schema.json",
   "id": "00857_ab_wheel_rollout",
   "numeric_id": "00857",
-  "slug": "ab_wheel_rollout",
+  "slug": "wheel_rollerout",
   "name": "Ab Wheel Rollout",
   "aliases": [
     "Wheel Rollerout",
@@ -10,30 +10,25 @@
     "Kneeling Ab Wheel Rollout"
   ],
   "taxonomy": {
-    "modality": "bodyweight_reps",
+    "modality": "weight_reps",
     "category": "waist",
     "body_part": "waist",
-    "mechanic": "compound",
-    "force": "pull",
+    "mechanic": "isolation",
+    "force": null,
     "level": "intermediate",
     "equipment": "other",
     "primary_muscles": [
       "abdominals"
     ],
     "secondary_muscles": [
-      "lower back",
-      "shoulders",
-      "lats"
+      "lower back"
     ]
   },
   "biomechanics": {
     "laterality": "bilateral",
     "movement_plane": "sagittal",
-    "default_tempo": "3-1-2-0",
+    "default_tempo": "2-0-2-0",
     "demonstration_reps": 2
-  },
-  "media": {
-    "thumbnail_timestamp": 3.0
   },
   "steps": [
     "Kneel on the floor and place the wheel roller in front of you.",
@@ -49,7 +44,10 @@
     "Pull back using your abdominals and lats, not by sitting back onto your heels"
   ],
   "sources": {
-    "external_id": "00857",
-    "attribution": "SparkyFitness Media"
+    "hasan_id": "0857",
+    "free_id": null
+  },
+  "media": {
+    "thumbnail_timestamp": 3
   }
 }

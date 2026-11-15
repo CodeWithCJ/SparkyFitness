@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00492_incline_push_up_depth_jump",
+  "numeric_id": "00492",
+  "slug": "incline_push_up_depth_jump",
+  "name": "Incline Push Up Depth Jump",
+  "aliases": [
+    "Incline Push-Up Depth Jump"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Find an elevated surface, such as a bench or step, and place your hands shoulder-width apart on the edge.",
+    "Step your feet back, keeping your body in a straight line from head to heels.",
+    "Lower your chest towards the edge of the surface, bending your elbows and keeping your body aligned.",
+    "Push through your palms to extend your arms and return to the starting position.",
+    "Jump off the edge of the surface, landing softly with your knees slightly bent.",
+    "Repeat the push-up and depth jump for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0492",
+    "free_id": "Incline_Push-Up_Depth_Jump"
+  }
+}

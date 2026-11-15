@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00447_ez_barbell_curl",
+  "numeric_id": "00447",
+  "slug": "ez_barbell_curl",
+  "name": "Ez Barbell Curl",
+  "aliases": [
+    "Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your feet shoulder-width apart and hold the ez barbell with an underhand grip, palms facing up.",
+    "Keep your elbows close to your torso and your upper arms stationary throughout the movement.",
+    "Exhale as you curl the barbell up towards your shoulders, contracting your biceps.",
+    "Pause for a moment at the top, then inhale as you slowly lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0447",
+    "free_id": "Barbell_Curl"
+  }
+}

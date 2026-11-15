@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00717_side_push_up",
+  "numeric_id": "00717",
+  "slug": "side_push_up",
+  "name": "Side Push-Up",
+  "aliases": [
+    "Push Up to Side Plank"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying on your side with your legs extended and stacked on top of each other.",
+    "Place your bottom hand on the ground directly under your shoulder, fingers pointing forward.",
+    "Press through your bottom hand to lift your body off the ground, keeping your legs straight and your core engaged.",
+    "Extend your top arm straight up towards the ceiling, creating a straight line from your head to your heels.",
+    "Lower your body back down to the starting position with control.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0717",
+    "free_id": "Push_Up_to_Side_Plank"
+  }
+}

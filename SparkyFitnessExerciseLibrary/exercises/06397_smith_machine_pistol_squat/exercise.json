@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06397_smith_machine_pistol_squat",
+  "numeric_id": "06397",
+  "slug": "smith_machine_pistol_squat",
+  "name": "Smith Machine Pistol Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "To begin, first set the bar to a position that best matches your height. Step under it and position the bar across the back of your shoulders.",
+    "Take the bar with your hands facing forward, unlock it and lift it off the rack by extending your legs. 3",
+    "Move one foot forward about 12 inches in front of the bar. Extend the other leg out in front of you, holding it off the ground. Look forward at all times and maintain a neutral or slightly arched spine. This will be your starting position.",
+    "Maintaining good posture, lower yourself by flexing the knee and hip, going down as far as flexibility allows.",
+    "Pause briefly at the bottom and then return to the starting position by driving through the heel of your foot, extending the knee and hip."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Smith_Machine_Pistol_Squat"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02963_captains_chair_straight_leg_raise",
+  "numeric_id": "02963",
+  "slug": "captains_chair_straight_leg_raise",
+  "name": "Captains Chair Straight Leg Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the captain's chair with your back against the backrest and your forearms resting on the arm pads.",
+    "Keep your upper body stable and your back straight.",
+    "Engage your abs and lift your legs up in front of you, keeping them straight.",
+    "Continue lifting until your legs are parallel to the ground or as high as you can comfortably go.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2963",
+    "free_id": null
+  }
+}

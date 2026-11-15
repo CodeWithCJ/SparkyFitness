@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00159_cable_decline_seated_wide_grip_row",
+  "numeric_id": "00159",
+  "slug": "cable_decline_seated_wide_grip_row",
+  "name": "Cable Decline Seated Wide-Grip Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the decline bench facing the cable machine with your feet securely placed on the footrests.",
+    "Grasp the cable attachment with a wide overhand grip, palms facing down.",
+    "Lean back slightly, keeping your back straight and your core engaged.",
+    "Pull the cable towards your lower chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak of the contraction, then slowly release the cable back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0159",
+    "free_id": null
+  }
+}

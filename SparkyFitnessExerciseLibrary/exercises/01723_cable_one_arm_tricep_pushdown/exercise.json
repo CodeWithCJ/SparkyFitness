@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01723_cable_one_arm_tricep_pushdown",
+  "numeric_id": "01723",
+  "slug": "cable_one_arm_tricep_pushdown",
+  "name": "Cable One Arm Tricep Pushdown",
+  "aliases": [
+    "Cable One Arm Tricep Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a cable machine with a straight bar attachment at chest height.",
+    "Grasp the bar with an overhand grip and step back to create tension in the cable.",
+    "Position your feet shoulder-width apart and slightly bend your knees.",
+    "Keep your back straight and core engaged throughout the exercise.",
+    "Start with your arm fully extended and perpendicular to the floor.",
+    "Keeping your upper arm stationary, exhale and push the bar down until your arm is fully extended.",
+    "Pause for a moment, then inhale and slowly return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1723",
+    "free_id": "Cable_One_Arm_Tricep_Extension"
+  }
+}

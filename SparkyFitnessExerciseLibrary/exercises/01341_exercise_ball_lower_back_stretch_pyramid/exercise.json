@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01341_exercise_ball_lower_back_stretch_pyramid",
+  "numeric_id": "01341",
+  "slug": "exercise_ball_lower_back_stretch_pyramid",
+  "name": "Exercise Ball Lower Back Stretch (Pyramid)",
+  "aliases": [
+    "Pyramid"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "lats",
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the stability ball with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Slowly walk your feet forward, rolling the ball down your back until your lower back is resting on the ball.",
+    "Place your hands behind your head or cross them over your chest.",
+    "Engage your core and slowly lower your upper body towards the ground, allowing your lower back to stretch over the ball.",
+    "Hold the stretch for a few seconds, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1341",
+    "free_id": "Pyramid"
+  }
+}

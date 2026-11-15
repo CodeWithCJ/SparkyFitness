@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01650_dumbbell_alternating_seated_bicep_curl_on_exercise",
+  "numeric_id": "01650",
+  "slug": "dumbbell_alternating_seated_bicep_curl_on_exercise_ball",
+  "name": "Dumbbell Alternating Seated Bicep Curl On Exercise Ball",
+  "aliases": [
+    "Dumbbell Bicep Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in each hand with your palms facing forward and your arms fully extended.",
+    "Keeping your upper arms stationary, exhale and curl one dumbbell while rotating your forearm until your palm is facing your shoulder.",
+    "Inhale and slowly lower the dumbbell back to the starting position.",
+    "Repeat the curl with the other arm.",
+    "Continue alternating curls for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1650",
+    "free_id": "Dumbbell_Bicep_Curl"
+  }
+}

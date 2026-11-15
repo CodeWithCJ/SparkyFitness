@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00354_dumbbell_one_arm_kickback",
+  "numeric_id": "00354",
+  "slug": "dumbbell_one_arm_kickback",
+  "name": "Dumbbell One Arm Kickback",
+  "aliases": [
+    "One-Arm Dumbbell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps",
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in your right hand.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Bring your right elbow up to your side, keeping it bent at a 90-degree angle.",
+    "Extend your right arm straight back, squeezing your triceps at the top of the movement.",
+    "Slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0354",
+    "free_id": "One-Arm_Dumbbell_Row"
+  }
+}

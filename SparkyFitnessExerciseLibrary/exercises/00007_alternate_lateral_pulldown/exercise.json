@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00007_alternate_lateral_pulldown",
+  "numeric_id": "00007",
+  "slug": "alternate_lateral_pulldown",
+  "name": "Alternate Lateral Pulldown",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the cable machine with your back straight and feet flat on the ground.",
+    "Grasp the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Lean back slightly and pull the handles towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak of the movement, then slowly release the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0007",
+    "free_id": null
+  }
+}

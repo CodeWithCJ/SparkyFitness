@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00197_cable_pulldown_pro_lat_bar",
+  "numeric_id": "00197",
+  "slug": "cable_pulldown_pro_lat_bar",
+  "name": "Cable Pulldown (Pro Lat Bar)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height so that your thighs are parallel to the ground and your feet are flat on the floor.",
+    "Grasp the lat bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Sit down and lean back slightly, keeping your chest up and your back straight.",
+    "Pull the bar down towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the bottom of the movement, then slowly release the bar back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0197",
+    "free_id": null
+  }
+}

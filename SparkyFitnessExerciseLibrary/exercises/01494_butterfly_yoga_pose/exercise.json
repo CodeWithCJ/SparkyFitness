@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01494_butterfly_yoga_pose",
+  "numeric_id": "01494",
+  "slug": "butterfly_yoga_pose",
+  "name": "Butterfly Yoga Pose",
+  "aliases": [
+    "Butterfly"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "adductors",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the floor with your legs extended in front of you.",
+    "Bend your knees and bring the soles of your feet together, allowing your knees to fall out to the sides.",
+    "Hold onto your ankles or feet with your hands.",
+    "Sit up tall and lengthen your spine.",
+    "Gently press your knees down towards the floor, feeling a stretch in your inner thighs.",
+    "Hold this position for a few breaths.",
+    "To release, slowly bring your knees back up and extend your legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1494",
+    "free_id": "Butterfly"
+  }
+}

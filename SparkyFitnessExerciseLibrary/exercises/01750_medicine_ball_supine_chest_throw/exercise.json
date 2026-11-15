@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01750_medicine_ball_supine_chest_throw",
+  "numeric_id": "01750",
+  "slug": "medicine_ball_supine_chest_throw",
+  "name": "Medicine Ball Supine Chest Throw",
+  "aliases": [
+    "Supine Chest Throw"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back on a bench with your knees bent and feet flat on the ground.",
+    "Hold the medicine ball with both hands, extending your arms straight up above your chest.",
+    "Lower the medicine ball towards your chest, keeping your elbows close to your body.",
+    "Explosively push the medicine ball upwards, extending your arms fully and throwing the ball as high as possible.",
+    "Catch the medicine ball and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1750",
+    "free_id": "Supine_Chest_Throw"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01431_assisted_standing_chin_up",
+  "numeric_id": "01431",
+  "slug": "assisted_standing_chin_up",
+  "name": "Assisted Standing Chin-Up",
+  "aliases": [
+    "Chin-Up"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to your desired assistance level.",
+    "Stand on the foot platform and grip the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Keep your chest up and shoulders back, engage your core, and slightly bend your knees.",
+    "Pull your body up by flexing your elbows and driving your elbows down towards your sides.",
+    "Continue pulling until your chin is above the bar.",
+    "Pause for a moment at the top, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1431",
+    "free_id": "Chin-Up"
+  }
+}

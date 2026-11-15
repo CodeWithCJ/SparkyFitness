@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01342_exercise_ball_lying_side_lat_stretch",
+  "numeric_id": "01342",
+  "slug": "exercise_ball_lying_side_lat_stretch",
+  "name": "Exercise Ball Lying Side Lat Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs extended and your head supported by the stability ball.",
+    "Place your top arm on the ball for stability.",
+    "Reach your top arm overhead and allow your torso to rotate slightly.",
+    "Feel the stretch in your lat muscles on the side of your body.",
+    "Hold the stretch for 20-30 seconds, then switch sides and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1342",
+    "free_id": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06246_medicine_ball_full_twist",
+  "numeric_id": "06246",
+  "slug": "medicine_ball_full_twist",
+  "name": "Medicine Ball Full Twist",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "For this exercise you will need a medicine ball and a partner. Stand back to back with your partner, spaced 2-3 feet apart. This will be your starting position.",
+    "Hold the ball in front of the trunk. Open the hips and turn the shoulders at the same time as your partner.",
+    "For full rotation, you and your partner should twist in the same direction, i.e. counter-clockwise.",
+    "Pass the ball to your partner, and both of you can now twist in the opposite direction to repeat the procedure."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Medicine_Ball_Full_Twist"
+  }
+}

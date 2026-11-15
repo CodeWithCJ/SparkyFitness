@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00399_dumbbell_seated_one_arm_rotate",
+  "numeric_id": "00399",
+  "slug": "dumbbell_seated_one_arm_rotate",
+  "name": "Dumbbell Seated One Arm Rotate",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and hold a dumbbell in one hand, resting it on your thigh.",
+    "Raise the dumbbell up to shoulder height, keeping your elbow close to your body.",
+    "Rotate your forearm outward, away from your body, while keeping your upper arm stationary.",
+    "Pause for a moment at the top, then slowly rotate your forearm back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0399",
+    "free_id": null
+  }
+}

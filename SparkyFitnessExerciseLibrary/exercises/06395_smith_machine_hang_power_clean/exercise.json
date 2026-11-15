@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06395_smith_machine_hang_power_clean",
+  "numeric_id": "06395",
+  "slug": "smith_machine_hang_power_clean",
+  "name": "Smith Machine Hang Power Clean",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back",
+      "quadriceps",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position the bar at knee height and load it to an appropriate weight.",
+    "Take a pronated grip on the bar outside of shoulder width and unhook the bar from the machine. Your arms should be fully extended with your head and chest up. Your elbows should be pointed out with your shoulders back and down. Your hips should be back, loading the tension into the hamstrings. This will be your starting position.",
+    "Initate the movement by forcefully extending the hips and knees, accelerating into the bar. Ensure that you keep your arms straight during this part of the motion.",
+    "Upon full extension, rebend the hips and knees to lower your receiving position.",
+    "Allow the arms to flex at this point, rotating the elbows around the bar to receive it on your shoulders.",
+    "Extend through the hips and knees to come to a standing position with the bar racked on your shoulders to complete the movement."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Smith_Machine_Hang_Power_Clean"
+  }
+}

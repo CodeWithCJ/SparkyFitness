@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01774_side_bridge_hip_abduction",
+  "numeric_id": "01774",
+  "slug": "side_bridge_hip_abduction",
+  "name": "Side Bridge Hip Abduction",
+  "aliases": [
+    "Side Bridge"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors",
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs extended and stacked on top of each other.",
+    "Prop yourself up on your forearm, keeping your elbow directly below your shoulder.",
+    "Engage your core and lift your hips off the ground, creating a straight line from your head to your feet.",
+    "While keeping your core engaged, lift your top leg as high as possible without rotating your hips.",
+    "Pause for a moment at the top, then lower your leg back down.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1774",
+    "free_id": "Side_Bridge"
+  }
+}

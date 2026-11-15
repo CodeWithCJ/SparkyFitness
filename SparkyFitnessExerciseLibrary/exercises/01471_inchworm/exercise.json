@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01471_inchworm",
+  "numeric_id": "01471",
+  "slug": "inchworm",
+  "name": "Inchworm",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": null,
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a standing position with your feet hip-width apart.",
+    "Bend forward at the waist and place your hands on the ground in front of you.",
+    "Walk your hands forward until you are in a high plank position, with your body in a straight line from head to toe.",
+    "Pause for a moment, then walk your hands back towards your feet, keeping your legs as straight as possible.",
+    "Once your hands reach your feet, stand back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1471",
+    "free_id": "Inchworm"
+  }
+}

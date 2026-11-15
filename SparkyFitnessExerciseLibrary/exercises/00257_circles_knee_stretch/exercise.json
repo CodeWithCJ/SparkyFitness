@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00257_circles_knee_stretch",
+  "numeric_id": "00257",
+  "slug": "circles_knee_stretch",
+  "name": "Circles Knee Stretch",
+  "aliases": [
+    "Knee Circles"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your hands on your hips.",
+    "Bend your knees slightly and lift your heels off the ground, balancing on the balls of your feet.",
+    "Keeping your knees bent, rotate your knees in a circular motion, first clockwise and then counterclockwise.",
+    "Perform the movement for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0257",
+    "free_id": "Knee_Circles"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01263_cable_one_arm_fly_on_exercise_ball",
+  "numeric_id": "01263",
+  "slug": "cable_one_arm_fly_on_exercise_ball",
+  "name": "Cable One Arm Fly On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your back straight.",
+    "Hold a cable handle in one hand and extend your arm out to the side, parallel to the ground.",
+    "Keep your elbow slightly bent and your palm facing forward.",
+    "Slowly bring your arm across your body, squeezing your chest muscles.",
+    "Pause for a moment at the end of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1263",
+    "free_id": null
+  }
+}

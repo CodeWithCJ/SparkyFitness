@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00709_side_hip_on_parallel_bars",
+  "numeric_id": "00709",
+  "slug": "side_hip_on_parallel_bars",
+  "name": "Side Hip (On Parallel Bars)",
+  "aliases": [
+    "Knee/Hip Raise On Parallel Bars"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand between two parallel bars with your feet shoulder-width apart.",
+    "Place your hands on the bars and lift your body off the ground, supporting your weight on your arms.",
+    "Engage your abs and slowly lift your legs to the side, keeping them straight.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0709",
+    "free_id": "Knee_Hip_Raise_On_Parallel_Bars"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01458_ez_barbell_seated_curls",
+  "numeric_id": "01458",
+  "slug": "ez_barbell_seated_curls",
+  "name": "Ez Barbell Seated Curls",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and your back straight.",
+    "Hold the ez barbell with an underhand grip, palms facing up, and your hands shoulder-width apart.",
+    "Rest your upper arms on your thighs, allowing the ez barbell to hang down in front of you.",
+    "Keeping your upper arms stationary, exhale and curl the ez barbell upwards towards your shoulders.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Inhale and slowly lower the ez barbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1458",
+    "free_id": null
+  }
+}

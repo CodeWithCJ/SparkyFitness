@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01564_intermediate_hip_flexor_and_quad_stretch",
+  "numeric_id": "01564",
+  "slug": "intermediate_hip_flexor_and_quad_stretch",
+  "name": "Intermediate Hip Flexor And Quad Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand upright with your feet shoulder-width apart.",
+    "Hold onto a stable object for support.",
+    "Bend your right knee and bring your right foot towards your glutes, grabbing the rope with your right hand.",
+    "Slowly pull your right foot towards your glutes, feeling a stretch in your right quad.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release the stretch and repeat on the left side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1564",
+    "free_id": "Intermediate_Hip_Flexor_and_Quad_Stretch"
+  }
+}

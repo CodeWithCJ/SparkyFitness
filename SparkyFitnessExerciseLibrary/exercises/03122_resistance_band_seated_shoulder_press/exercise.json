@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03122_resistance_band_seated_shoulder_press",
+  "numeric_id": "03122",
+  "slug": "resistance_band_seated_shoulder_press",
+  "name": "Resistance Band Seated Shoulder Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a chair or bench with your back straight and feet flat on the ground.",
+    "Hold the resistance band with both hands, palms facing forward, and bring it up to shoulder level.",
+    "Press the band overhead, extending your arms fully.",
+    "Pause for a moment at the top, then slowly lower the band back down to shoulder level.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3122",
+    "free_id": null
+  }
+}

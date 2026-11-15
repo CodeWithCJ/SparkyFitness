@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01387_one_leg_floor_calf_raise",
+  "numeric_id": "01387",
+  "slug": "one_leg_floor_calf_raise",
+  "name": "One Leg Floor Calf Raise",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart and place your hands on a wall or sturdy object for balance.",
+    "Lift one foot off the ground and balance on the other foot.",
+    "Slowly raise your heel off the ground, lifting your body up onto the ball of your foot.",
+    "Pause for a moment at the top, then slowly lower your heel back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1387",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

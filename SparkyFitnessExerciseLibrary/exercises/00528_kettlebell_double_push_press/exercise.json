@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00528_kettlebell_double_push_press",
+  "numeric_id": "00528",
+  "slug": "kettlebell_double_push_press",
+  "name": "Kettlebell Double Push Press",
+  "aliases": [
+    "Double Kettlebell Push Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals",
+      "calves",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a kettlebell in each hand at shoulder height.",
+    "Bend your knees slightly and engage your core.",
+    "Initiate the movement by explosively extending your hips, knees, and ankles, driving the kettlebells overhead.",
+    "As the kettlebells reach the top, press them fully overhead, locking out your arms.",
+    "Lower the kettlebells back to the starting position by bending your elbows and bringing them back down to shoulder height.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0528",
+    "free_id": "Double_Kettlebell_Push_Press"
+  }
+}

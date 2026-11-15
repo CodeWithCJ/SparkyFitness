@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00971_band_assisted_wheel_rollerout",
+  "numeric_id": "00971",
+  "slug": "band_assisted_wheel_rollerout",
+  "name": "Band Assisted Wheel Rollerout",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Kneel on the floor and hold the handles of the band with both hands, palms facing down.",
+    "Place the band on the ground in front of you and position your hands shoulder-width apart.",
+    "Engage your core and slowly roll the wheel forward, extending your body as far as you can while maintaining control.",
+    "Pause for a moment at the furthest point, then slowly roll the wheel back towards your knees to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0971",
+    "free_id": null
+  }
+}

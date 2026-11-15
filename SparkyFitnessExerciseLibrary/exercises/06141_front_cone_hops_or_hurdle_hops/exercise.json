@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06141_front_cone_hops_or_hurdle_hops",
+  "numeric_id": "06141",
+  "slug": "front_cone_hops_or_hurdle_hops",
+  "name": "Front Cone Hops (Or Hurdle Hops)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a row of cones or other small barriers, placing them a few feet apart.",
+    "Stand in front of the first cone with your feet shoulder width apart. This will be your starting position.",
+    "Begin by jumping with both feet over the first cone, swinging both arms as you jump.",
+    "Absorb the impact of landing by bending the knees, rebounding out of the first leap by jumping over the next cone.",
+    "Continue until you have jumped over all of the cones."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Front_Cone_Hops_or_hurdle_hops"
+  }
+}

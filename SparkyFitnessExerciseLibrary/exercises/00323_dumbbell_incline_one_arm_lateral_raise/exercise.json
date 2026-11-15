@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00323_dumbbell_incline_one_arm_lateral_raise",
+  "numeric_id": "00323",
+  "slug": "dumbbell_incline_one_arm_lateral_raise",
+  "name": "Dumbbell Incline One Arm Lateral Raise",
+  "aliases": [
+    "One-Arm Incline Lateral Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an incline bench with a dumbbell in one hand, resting it on your thigh.",
+    "Lean forward and position your upper arm against the inside of your thigh.",
+    "Raise the dumbbell to the side, keeping your arm slightly bent and your palm facing down.",
+    "Continue lifting until your arm is parallel to the floor.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0323",
+    "free_id": "One-Arm_Incline_Lateral_Raise"
+  }
+}

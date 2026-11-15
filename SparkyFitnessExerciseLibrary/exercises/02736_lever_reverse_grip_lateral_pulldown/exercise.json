@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02736_lever_reverse_grip_lateral_pulldown",
+  "numeric_id": "02736",
+  "slug": "lever_reverse_grip_lateral_pulldown",
+  "name": "Lever Reverse Grip Lateral Pulldown",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the machine with your knees under the pads and your feet flat on the ground.",
+    "Grasp the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Sit upright with your chest out and shoulders back, maintaining a slight arch in your lower back.",
+    "Pull the handles down towards your chest, leading with your elbows and squeezing your shoulder blades together.",
+    "Pause for a moment at the bottom of the movement, then slowly release the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2736",
+    "free_id": null
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01755_weighted_tricep_dips",
+  "numeric_id": "01755",
+  "slug": "weighted_tricep_dips",
+  "name": "Weighted Tricep Dips",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the edge of a bench or chair with your hands gripping the edge next to your hips.",
+    "Slide your butt off the front of the bench with your legs extended in front of you.",
+    "Keep your back close to the bench and your elbows slightly bent.",
+    "Lower your body by bending your elbows until your upper arms are parallel to the floor.",
+    "Push yourself back up to the starting position by straightening your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1755",
+    "free_id": null
+  }
+}

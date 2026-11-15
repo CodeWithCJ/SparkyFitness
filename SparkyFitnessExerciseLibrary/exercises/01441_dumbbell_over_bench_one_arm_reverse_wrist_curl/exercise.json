@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01441_dumbbell_over_bench_one_arm_reverse_wrist_curl",
+  "numeric_id": "01441",
+  "slug": "dumbbell_over_bench_one_arm_reverse_wrist_curl",
+  "name": "Dumbbell Over Bench One Arm Reverse Wrist Curl",
+  "aliases": [
+    "Standing One-Arm Dumbbell Curl Over Incline Bench"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and hold a dumbbell in one hand, palm facing down.",
+    "Rest your forearm on the bench with your wrist hanging off the edge.",
+    "Slowly curl your wrist upwards, bringing the dumbbell towards your forearm.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1441",
+    "free_id": "Standing_One-Arm_Dumbbell_Curl_Over_Incline_Bench"
+  }
+}

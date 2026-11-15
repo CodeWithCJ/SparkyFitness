@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00464_front_plank_with_twist",
+  "numeric_id": "00464",
+  "slug": "front_plank_with_twist",
+  "name": "Front Plank With Twist",
+  "aliases": [
+    "Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands directly under your shoulders and your body in a straight line from head to toe.",
+    "Engage your core and glutes to maintain a stable position.",
+    "Rotate your torso to the right, lifting your right arm and extending it towards the ceiling.",
+    "Keep your hips and legs stable as you twist.",
+    "Hold for a moment, then return to the starting position.",
+    "Repeat the twist on the left side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0464",
+    "free_id": "Plank"
+  }
+}

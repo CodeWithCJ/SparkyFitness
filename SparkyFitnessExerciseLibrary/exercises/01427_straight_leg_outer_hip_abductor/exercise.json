@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01427_straight_leg_outer_hip_abductor",
+  "numeric_id": "01427",
+  "slug": "straight_leg_outer_hip_abductor",
+  "name": "Straight Leg Outer Hip Abductor",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs straight and stacked on top of each other.",
+    "Place your bottom arm under your head for support.",
+    "Engage your core and lift your top leg as high as possible without rotating your hips or leaning backward.",
+    "Pause for a moment at the top, then slowly lower your leg back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1427",
+    "free_id": null
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00588_lever_narrow_grip_seated_row",
+  "numeric_id": "00588",
+  "slug": "lever_narrow_grip_seated_row",
+  "name": "Lever Narrow Grip Seated Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and footrests to ensure proper form.",
+    "Sit on the machine with your feet flat on the footrests and your knees slightly bent.",
+    "Grasp the handles with a narrow grip, palms facing each other.",
+    "Keep your back straight and lean slightly forward.",
+    "Pull the handles towards your torso, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak of the movement.",
+    "Slowly release the handles and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0588",
+    "free_id": null
+  }
+}

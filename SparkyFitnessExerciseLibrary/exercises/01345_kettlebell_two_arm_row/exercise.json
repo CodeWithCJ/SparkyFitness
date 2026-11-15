@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01345_kettlebell_two_arm_row",
+  "numeric_id": "01345",
+  "slug": "kettlebell_two_arm_row",
+  "name": "Kettlebell Two Arm Row",
+  "aliases": [
+    "Two-Arm Kettlebell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, knees slightly bent, and hold a kettlebell in each hand with your palms facing your body.",
+    "Bend forward at the hips, keeping your back straight and your core engaged.",
+    "Pull the kettlebells up towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the kettlebells back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1345",
+    "free_id": "Two-Arm_Kettlebell_Row"
+  }
+}

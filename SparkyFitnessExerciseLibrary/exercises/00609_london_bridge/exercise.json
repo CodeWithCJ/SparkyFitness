@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00609_london_bridge",
+  "numeric_id": "00609",
+  "slug": "london_bridge",
+  "name": "London Bridge",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the rope to a high anchor point.",
+    "Stand facing away from the anchor point with your feet shoulder-width apart.",
+    "Grasp the rope with an overhand grip, palms facing down.",
+    "Lean forward slightly, keeping your back straight and core engaged.",
+    "Pull the rope towards your body, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak of the movement, then slowly release the tension and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0609",
+    "free_id": null
+  }
+}

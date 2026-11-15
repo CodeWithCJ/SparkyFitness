@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03361_skater_hops",
+  "numeric_id": "03361",
+  "slug": "skater_hops",
+  "name": "Skater Hops",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Bend your knees slightly and jump to the right, landing on your right foot.",
+    "As you land, swing your left leg behind your right leg and tap the ground with your left toes.",
+    "Immediately jump to the left, landing on your left foot.",
+    "As you land, swing your right leg behind your left leg and tap the ground with your right toes.",
+    "Continue alternating sides, jumping and tapping the ground with each leg.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3361",
+    "free_id": null
+  }
+}

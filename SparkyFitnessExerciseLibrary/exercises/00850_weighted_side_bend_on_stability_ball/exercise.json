@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00850_weighted_side_bend_on_stability_ball",
+  "numeric_id": "00850",
+  "slug": "weighted_side_bend_on_stability_ball",
+  "name": "Weighted Side Bend (On Stability Ball)",
+  "aliases": [
+    "Weighted Ball Side Bend"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet shoulder-width apart and flat on the ground.",
+    "Hold a weight in one hand and place your other hand on your hip.",
+    "Engage your core and slowly bend sideways towards the weighted side, keeping your back straight.",
+    "Pause for a moment at the bottom, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0850",
+    "free_id": "Weighted_Ball_Side_Bend"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01420_kneeling_jump_squat",
+  "numeric_id": "01420",
+  "slug": "kneeling_jump_squat",
+  "name": "Kneeling Jump Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by kneeling on the ground with your feet hip-width apart and your toes pointing forward.",
+    "Hold a barbell across your upper back, resting it on your shoulders.",
+    "Engage your core and glutes, then explosively jump up into the air, extending your hips and knees.",
+    "As you jump, push through your toes and fully extend your ankles, knees, and hips.",
+    "Land softly back on the ground, bending your knees to absorb the impact.",
+    "Immediately go into the next repetition, repeating the jump squat motion."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1420",
+    "free_id": "Kneeling_Jump_Squat"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03299_full_planche",
+  "numeric_id": "03299",
+  "slug": "full_planche",
+  "name": "Full Planche",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands shoulder-width apart and your fingers pointing forward.",
+    "Engage your core and slowly shift your weight forward, lifting your feet off the ground.",
+    "Continue shifting your weight forward until your body is parallel to the ground, balancing on your hands.",
+    "Hold this position for as long as you can, maintaining a straight body line.",
+    "Slowly lower your feet back to the ground and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3299",
+    "free_id": null
+  }
+}

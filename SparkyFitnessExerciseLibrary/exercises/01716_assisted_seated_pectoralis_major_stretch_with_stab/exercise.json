@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01716_assisted_seated_pectoralis_major_stretch_with_stab",
+  "numeric_id": "01716",
+  "slug": "assisted_seated_pectoralis_major_stretch_with_stability_ball",
+  "name": "Assisted Seated Pectoralis Major Stretch With Stability Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet flat on the ground and your back straight.",
+    "Hold a stability ball with both hands and extend your arms straight out in front of you.",
+    "Slowly lower the stability ball towards your chest, feeling a stretch in your pectoral muscles.",
+    "Hold the stretch for a few seconds, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1716",
+    "free_id": null
+  }
+}

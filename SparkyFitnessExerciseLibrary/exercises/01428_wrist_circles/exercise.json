@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01428_wrist_circles",
+  "numeric_id": "01428",
+  "slug": "wrist_circles",
+  "name": "Wrist Circles",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Extend your arms straight out in front of you.",
+    "Make a fist with both hands.",
+    "Rotate your wrists in a circular motion, keeping your arms still.",
+    "Continue the wrist circles for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1428",
+    "free_id": "Wrist_Circles"
+  }
+}

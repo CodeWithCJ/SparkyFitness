@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02312_lying_elbow_to_knee",
+  "numeric_id": "02312",
+  "slug": "lying_elbow_to_knee",
+  "name": "Lying Elbow To Knee",
+  "aliases": [
+    "Elbow to Knee"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent and feet flat on the ground.",
+    "Place your hands behind your head with your elbows pointing outwards.",
+    "Engage your abs and lift your upper body off the ground, bringing your right elbow towards your left knee.",
+    "At the same time, extend your right leg straight out and lift it off the ground.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat the movement, this time bringing your left elbow towards your right knee and extending your left leg.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2312",
+    "free_id": "Elbow_to_Knee"
+  }
+}

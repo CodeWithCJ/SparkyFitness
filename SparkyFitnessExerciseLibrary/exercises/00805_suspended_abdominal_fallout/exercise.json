@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00805_suspended_abdominal_fallout",
+  "numeric_id": "00805",
+  "slug": "suspended_abdominal_fallout",
+  "name": "Suspended Abdominal Fallout",
+  "aliases": [
+    "Suspended Fallout"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "lower back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a suspension trainer to a high anchor point and adjust the straps to waist height.",
+    "Stand facing away from the anchor point and hold the handles with your arms extended in front of you.",
+    "Lean forward at the waist, keeping your body straight and your core engaged.",
+    "Lower your body as far as you can while maintaining control and tension in your abs.",
+    "Pause for a moment at the bottom, then slowly raise your body back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0805",
+    "free_id": "Suspended_Fallout"
+  }
+}

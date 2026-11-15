@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06472_wrist_rotations_with_straight_bar",
+  "numeric_id": "06472",
+  "slug": "wrist_rotations_with_straight_bar",
+  "name": "Wrist Rotations With Straight Bar",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hold a barbell with both hands and your palms facing down; hands spaced about shoulder width. This will be your starting position.",
+    "Alternating between each of your hands, perform the movement by extending the wrist as though you were rolling up a newspaper. Continue alternating back and forth until failure.",
+    "Reverse the motion by flexing the wrist, rolling the opposite direction. Continue the alternating motion until failure."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Wrist_Rotations_with_Straight_Bar"
+  }
+}

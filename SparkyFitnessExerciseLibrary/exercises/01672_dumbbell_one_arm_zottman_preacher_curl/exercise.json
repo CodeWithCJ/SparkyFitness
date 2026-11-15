@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01672_dumbbell_one_arm_zottman_preacher_curl",
+  "numeric_id": "01672",
+  "slug": "dumbbell_one_arm_zottman_preacher_curl",
+  "name": "Dumbbell One Arm Zottman Preacher Curl",
+  "aliases": [
+    "One Arm Dumbbell Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a preacher curl bench and hold a dumbbell in one hand with an underhand grip.",
+    "Rest your upper arm on the preacher bench pad, allowing your arm to fully extend.",
+    "Curl the dumbbell up towards your shoulder, keeping your upper arm stationary.",
+    "At the top of the curl, rotate your wrist so that your palm faces up.",
+    "Slowly lower the dumbbell back down to the starting position, rotating your wrist back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1672",
+    "free_id": "One_Arm_Dumbbell_Preacher_Curl"
+  }
+}

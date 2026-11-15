@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01745_exercise_ball_seated_triceps_stretch",
+  "numeric_id": "01745",
+  "slug": "exercise_ball_seated_triceps_stretch",
+  "name": "Exercise Ball Seated Triceps Stretch",
+  "aliases": [
+    "Triceps Stretch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in one hand and extend your arm straight up above your head.",
+    "Bend your elbow and lower the dumbbell behind your head, keeping your upper arm close to your ear.",
+    "Hold the stretch for a few seconds, then return to the starting position.",
+    "Repeat with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1745",
+    "free_id": "Triceps_Stretch"
+  }
+}

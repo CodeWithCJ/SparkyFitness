@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00020_balance_board",
+  "numeric_id": "00020",
+  "slug": "balance_board",
+  "name": "Balance Board",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": null,
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps",
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place the balance board on a flat surface.",
+    "Step onto the balance board with one foot, ensuring it is centered.",
+    "Slowly shift your weight onto the foot on the balance board, keeping your core engaged.",
+    "Maintain your balance and stability as you hold the position for a desired amount of time.",
+    "Repeat the exercise with the other foot."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0020",
+    "free_id": "Balance_Board"
+  }
+}

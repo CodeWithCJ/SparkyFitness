@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03666_walking_on_incline_treadmill",
+  "numeric_id": "03666",
+  "slug": "walking_on_incline_treadmill",
+  "name": "Walking On Incline Treadmill",
+  "aliases": [
+    "Walking, Treadmill"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the incline level on the treadmill to your desired intensity.",
+    "Stand on the treadmill with your feet shoulder-width apart.",
+    "Start walking at a comfortable pace, ensuring that you maintain proper form.",
+    "Engage your core muscles and keep your back straight throughout the exercise.",
+    "Continue walking on the incline treadmill for the desired duration of your cardio workout.",
+    "Gradually decrease the incline and speed of the treadmill to cool down before stopping."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3666",
+    "free_id": "Walking_Treadmill"
+  }
+}

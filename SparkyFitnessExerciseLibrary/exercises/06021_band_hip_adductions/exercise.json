@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06021_band_hip_adductions",
+  "numeric_id": "06021",
+  "slug": "band_hip_adductions",
+  "name": "Band Hip Adductions",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Anchor a band around a solid post or other object.",
+    "Stand with your left side to the post, and put your right foot through the band, getting it around the ankle.",
+    "Stand up straight and hold onto the post if needed. This will be your starting position.",
+    "Keeping the knee straight, raise your right legs out to the side as far as you can.",
+    "Return to the starting position and repeat for the desired rep count.",
+    "Switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Band_Hip_Adductions"
+  }
+}

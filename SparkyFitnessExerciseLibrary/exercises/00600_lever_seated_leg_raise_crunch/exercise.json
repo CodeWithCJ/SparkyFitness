@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00600_lever_seated_leg_raise_crunch",
+  "numeric_id": "00600",
+  "slug": "lever_seated_leg_raise_crunch",
+  "name": "Lever Seated Leg Raise Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the leverage machine with your back against the backrest and your feet on the footrests.",
+    "Grasp the handles or sidebars for stability.",
+    "Engage your abs and slowly raise your legs up towards your chest, curling your torso forward at the same time.",
+    "Pause for a moment at the top, then slowly lower your legs and torso back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0600",
+    "free_id": null
+  }
+}

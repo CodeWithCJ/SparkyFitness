@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00295_dumbbell_clean",
+  "numeric_id": "00295",
+  "slug": "dumbbell_clean",
+  "name": "Dumbbell Clean",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "calves",
+      "forearms",
+      "lower back",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand with an overhand grip.",
+    "Bend your knees and lower your hips into a squat position, keeping your back straight and chest up.",
+    "Explosively extend your hips and knees, driving through your heels to jump off the ground.",
+    "As you jump, shrug your shoulders and pull the dumbbells up towards your shoulders, keeping them close to your body.",
+    "Catch the dumbbells at shoulder height, with your elbows pointing forward and your palms facing up.",
+    "Lower the dumbbells back down to the starting position by reversing the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0295",
+    "free_id": "Dumbbell_Clean"
+  }
+}

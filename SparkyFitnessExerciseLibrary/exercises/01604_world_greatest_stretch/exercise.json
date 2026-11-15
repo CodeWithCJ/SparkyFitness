@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01604_world_greatest_stretch",
+  "numeric_id": "01604",
+  "slug": "world_greatest_stretch",
+  "name": "World Greatest Stretch",
+  "aliases": [
+    "World's Greatest Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "quadriceps",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a lunge position with your right foot forward and your left foot back.",
+    "Place your hands on the ground on either side of your right foot.",
+    "Lower your left knee to the ground and extend your right leg, keeping your right foot flat on the ground.",
+    "Rotate your torso to the right, reaching your right arm up towards the ceiling.",
+    "Hold this position for a few seconds, then return to the starting position.",
+    "Switch sides and repeat the stretch with your left foot forward."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1604",
+    "free_id": "Worlds_Greatest_Stretch"
+  }
+}

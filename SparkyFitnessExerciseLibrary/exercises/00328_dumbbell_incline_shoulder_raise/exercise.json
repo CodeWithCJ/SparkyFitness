@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00328_dumbbell_incline_shoulder_raise",
+  "numeric_id": "00328",
+  "slug": "dumbbell_incline_shoulder_raise",
+  "name": "Dumbbell Incline Shoulder Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set an incline bench to a 45-degree angle and sit on it with a dumbbell in each hand, palms facing down.",
+    "Rest the dumbbells on your thighs and lean back onto the bench.",
+    "Use your thighs to help raise the dumbbells to shoulder height, then rotate your wrists so that your palms are facing forward.",
+    "Exhale and slowly raise the dumbbells above your head, keeping a slight bend in your elbows.",
+    "Pause for a moment at the top, then inhale and slowly lower the dumbbells back to shoulder height.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0328",
+    "free_id": "Dumbbell_Incline_Shoulder_Raise"
+  }
+}

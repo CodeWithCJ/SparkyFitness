@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00558_kipping_muscle_up",
+  "numeric_id": "00558",
+  "slug": "kipping_muscle_up",
+  "name": "Kipping Muscle Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps",
+      "shoulders",
+      "abdominals",
+      "forearms",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with an overhand grip, hands slightly wider than shoulder-width apart.",
+    "Engage your core and use a swinging motion to generate momentum.",
+    "As you swing forward, pull your chest towards the bar, using your lats and biceps to initiate the movement.",
+    "Continue the upward motion until your chest reaches the bar, then transition into a dip position by pushing down on the bar and extending your arms.",
+    "Lower yourself back down to the starting position by bending your arms and controlling the descent.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0558",
+    "free_id": "Kipping_Muscle_Up"
+  }
+}

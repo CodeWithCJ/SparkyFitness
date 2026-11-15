@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00231_cable_standing_one_arm_triceps_extension",
+  "numeric_id": "00231",
+  "slug": "cable_standing_one_arm_triceps_extension",
+  "name": "Cable Standing One Arm Triceps Extension",
+  "aliases": [
+    "Standing One-Arm Dumbbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the cable machine.",
+    "Hold the cable handle with your right hand, palm facing down, and position your arm so that it is fully extended and parallel to the ground.",
+    "Keep your elbow stationary and close to your body.",
+    "Slowly bend your elbow, lowering the cable handle towards the back of your head.",
+    "Pause for a moment at the bottom of the movement, then extend your arm back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides and perform the exercise with your left arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0231",
+    "free_id": "Standing_One-Arm_Dumbbell_Triceps_Extension"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02571_rocking_frog_stretch",
+  "numeric_id": "02571",
+  "slug": "rocking_frog_stretch",
+  "name": "Rocking Frog Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by kneeling on the ground with your knees hip-width apart.",
+    "Place your hands on the ground in front of you for support.",
+    "Slowly lean forward, shifting your weight onto your hands and extending your legs behind you.",
+    "Keep your back straight and engage your glutes as you push your hips back and up towards the ceiling.",
+    "Hold this position for a few seconds, feeling a stretch in your glutes.",
+    "Slowly return to the starting position by bending your knees and lowering your hips back down.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2571",
+    "free_id": null
+  }
+}

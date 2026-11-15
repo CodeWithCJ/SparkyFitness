@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00010_assisted_hanging_knee_raise_with_throw_down",
+  "numeric_id": "00010",
+  "slug": "assisted_hanging_knee_raise_with_throw_down",
+  "name": "Assisted Hanging Knee Raise With Throw Down",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hang from a pull-up bar with your arms fully extended and your palms facing away from you.",
+    "Engage your core and lift your knees towards your chest, keeping your legs together.",
+    "Once your knees are at chest level, explosively throw your legs down towards the ground, extending them fully.",
+    "Allow your legs to swing back up and repeat the movement for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0010",
+    "free_id": null
+  }
+}

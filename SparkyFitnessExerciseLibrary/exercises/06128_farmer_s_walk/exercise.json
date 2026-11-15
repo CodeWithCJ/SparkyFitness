@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06128_farmer_s_walk",
+  "numeric_id": "06128",
+  "slug": "farmer_s_walk",
+  "name": "Farmer'S Walk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "glutes",
+      "hamstrings",
+      "lower back",
+      "quadriceps",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "There are various implements that can be used for the farmers walk. These can also be performed with heavy dumbbells or short bars if these implements aren't available. Begin by standing between the implements.",
+    "After gripping the handles, lift them up by driving through your heels, keeping your back straight and your head up.",
+    "Walk taking short, quick steps, and don't forget to breathe. Move for a given distance, typically 50-100 feet, as fast as possible."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Farmers_Walk"
+  }
+}

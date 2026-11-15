@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00985_band_kneeling_twisting_crunch",
+  "numeric_id": "00985",
+  "slug": "band_kneeling_twisting_crunch",
+  "name": "Band Kneeling Twisting Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a sturdy anchor point at waist height.",
+    "Kneel down facing away from the anchor point and hold the band with both hands, keeping your elbows bent and close to your sides.",
+    "Engage your abs and slowly twist your torso to one side, bringing your hands towards your opposite hip.",
+    "Pause for a moment, then slowly return to the starting position.",
+    "Repeat on the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0985",
+    "free_id": null
+  }
+}

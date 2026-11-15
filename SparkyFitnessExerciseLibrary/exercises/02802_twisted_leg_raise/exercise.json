@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02802_twisted_leg_raise",
+  "numeric_id": "02802",
+  "slug": "twisted_leg_raise",
+  "name": "Twisted Leg Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs extended and your arms by your sides.",
+    "Place your hands under your glutes for support.",
+    "Engage your abs and lift both legs off the ground, keeping them straight.",
+    "As you lift your legs, twist your hips to one side, bringing your legs towards your opposite shoulder.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat the movement, this time twisting your hips to the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2802",
+    "free_id": null
+  }
+}

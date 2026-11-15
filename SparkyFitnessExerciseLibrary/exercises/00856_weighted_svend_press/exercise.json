@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00856_weighted_svend_press",
+  "numeric_id": "00856",
+  "slug": "weighted_svend_press",
+  "name": "Weighted Svend Press",
+  "aliases": [
+    "Svend Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a weight plate in front of your chest with both hands.",
+    "Keep your elbows slightly bent and your palms facing each other.",
+    "Press the weight plate straight out in front of you, fully extending your arms.",
+    "Pause for a moment at the end of the movement, then slowly bring the weight plate back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0856",
+    "free_id": "Svend_Press"
+  }
+}

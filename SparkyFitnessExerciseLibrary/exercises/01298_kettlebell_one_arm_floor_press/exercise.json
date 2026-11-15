@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01298_kettlebell_one_arm_floor_press",
+  "numeric_id": "01298",
+  "slug": "kettlebell_one_arm_floor_press",
+  "name": "Kettlebell One Arm Floor Press",
+  "aliases": [
+    "One-Arm Kettlebell Floor Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back on the floor with your knees bent and feet flat on the ground.",
+    "Hold the kettlebell in one hand with your palm facing towards your feet and your arm extended straight up towards the ceiling.",
+    "Slowly lower the kettlebell towards your chest by bending your elbow, keeping your upper arm close to your body.",
+    "Pause for a moment when the kettlebell is just above your chest, then push it back up to the starting position by extending your elbow.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1298",
+    "free_id": "One-Arm_Kettlebell_Floor_Press"
+  }
+}

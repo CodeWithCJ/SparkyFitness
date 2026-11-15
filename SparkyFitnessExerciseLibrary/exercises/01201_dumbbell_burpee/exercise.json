@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01201_dumbbell_burpee",
+  "numeric_id": "01201",
+  "slug": "dumbbell_burpee",
+  "name": "Dumbbell Burpee",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a standing position with your feet shoulder-width apart and a dumbbell in each hand.",
+    "Lower your body into a squat position, placing the dumbbells on the ground in front of you.",
+    "Kick your feet back into a push-up position, keeping your body in a straight line.",
+    "Perform a push-up, bending your elbows and lowering your chest towards the ground.",
+    "Jump your feet back towards your hands, landing in a squat position.",
+    "Stand up explosively, lifting the dumbbells off the ground and bringing them to your shoulders.",
+    "Press the dumbbells overhead, fully extending your arms.",
+    "Lower the dumbbells back to your shoulders and repeat the entire sequence for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1201",
+    "free_id": null
+  }
+}

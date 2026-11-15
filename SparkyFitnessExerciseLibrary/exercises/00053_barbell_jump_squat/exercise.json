@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00053_barbell_jump_squat",
+  "numeric_id": "00053",
+  "slug": "barbell_jump_squat",
+  "name": "Barbell Jump Squat",
+  "aliases": [
+    "Barbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a barbell across your upper back.",
+    "Lower your body into a squat position by bending your knees and pushing your hips back.",
+    "Once you reach the bottom of the squat, explode upwards by jumping off the ground.",
+    "As you jump, extend your hips, knees, and ankles, pushing through your toes.",
+    "Land softly back into the squat position and immediately repeat the movement for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0053",
+    "free_id": "Barbell_Squat"
+  }
+}

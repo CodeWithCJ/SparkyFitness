@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00688_scapular_pull_up",
+  "numeric_id": "00688",
+  "slug": "scapular_pull_up",
+  "name": "Scapular Pull-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with your palms facing away from you and your arms fully extended.",
+    "Retract your shoulder blades by pulling them down and back.",
+    "Engage your back muscles and pull your body up towards the bar, focusing on squeezing your shoulder blades together.",
+    "Pause for a moment at the top of the movement, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0688",
+    "free_id": "Scapular_Pull-Up"
+  }
+}

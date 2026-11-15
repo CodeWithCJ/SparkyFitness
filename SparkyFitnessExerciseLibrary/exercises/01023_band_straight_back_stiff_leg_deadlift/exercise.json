@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01023_band_straight_back_stiff_leg_deadlift",
+  "numeric_id": "01023",
+  "slug": "band_straight_back_stiff_leg_deadlift",
+  "name": "Band Straight Back Stiff Leg Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band around your upper legs.",
+    "Hold the band with both hands in front of your thighs, palms facing your body.",
+    "Keeping your back straight and your knees slightly bent, hinge at the hips and lower the band towards the ground.",
+    "Feel the stretch in your hamstrings as you lower the band.",
+    "Engage your glutes and hamstrings to lift your body back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1023",
+    "free_id": null
+  }
+}

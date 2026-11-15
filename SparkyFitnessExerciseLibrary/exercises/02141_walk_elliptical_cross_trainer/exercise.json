@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02141_walk_elliptical_cross_trainer",
+  "numeric_id": "02141",
+  "slug": "walk_elliptical_cross_trainer",
+  "name": "Walk Elliptical Cross Trainer",
+  "aliases": [
+    "Elliptical Trainer"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the resistance level and incline of the elliptical machine to your desired settings.",
+    "Step onto the pedals of the machine and grip the handles lightly.",
+    "Begin by pushing down with your feet and pulling the handles towards your body.",
+    "Continue this motion, alternating between pushing and pulling, to simulate a walking or running motion.",
+    "Maintain a steady pace and keep your core engaged throughout the exercise.",
+    "Continue for the desired duration of your cardio workout.",
+    "Gradually decrease the intensity and speed of the machine before stepping off."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2141",
+    "free_id": "Elliptical_Trainer"
+  }
+}

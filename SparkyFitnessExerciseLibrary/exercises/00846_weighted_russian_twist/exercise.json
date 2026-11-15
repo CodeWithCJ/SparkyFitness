@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00846_weighted_russian_twist",
+  "numeric_id": "00846",
+  "slug": "weighted_russian_twist",
+  "name": "Weighted Russian Twist",
+  "aliases": [
+    "Russian Twist"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the ground with your knees bent and your feet flat on the floor.",
+    "Hold a weight or medicine ball with both hands in front of your chest.",
+    "Lean back slightly, keeping your back straight and your core engaged.",
+    "Slowly twist your torso to the right, bringing the weight or medicine ball towards the floor on your right side.",
+    "Pause for a moment, then twist your torso to the left, bringing the weight or medicine ball towards the floor on your left side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0846",
+    "free_id": "Russian_Twist"
+  }
+}

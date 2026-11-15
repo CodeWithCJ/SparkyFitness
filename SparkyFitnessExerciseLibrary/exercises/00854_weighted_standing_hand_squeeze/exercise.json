@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00854_weighted_standing_hand_squeeze",
+  "numeric_id": "00854",
+  "slug": "weighted_standing_hand_squeeze",
+  "name": "Weighted Standing Hand Squeeze",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a weight in each hand.",
+    "Extend your arms straight in front of you, palms facing each other.",
+    "Squeeze your hands together as hard as you can, engaging your forearms.",
+    "Hold the squeeze for a few seconds, then release.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0854",
+    "free_id": null
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02796_dumbbell_step_up_lunge",
+  "numeric_id": "02796",
+  "slug": "dumbbell_step_up_lunge",
+  "name": "Dumbbell Step-Up Lunge",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand in front of a step or platform with a dumbbell in each hand, palms facing your sides.",
+    "Place your right foot on the step, ensuring your entire foot is on the surface.",
+    "Push through your right heel and lift your body up onto the step, bringing your left foot up as well.",
+    "Once both feet are on the step, lower your left foot back down to the starting position, keeping your right foot on the step.",
+    "Repeat the movement, alternating which foot you step up with each time.",
+    "Continue for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2796",
+    "free_id": null
+  }
+}

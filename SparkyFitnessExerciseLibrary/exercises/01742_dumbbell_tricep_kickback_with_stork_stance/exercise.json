@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01742_dumbbell_tricep_kickback_with_stork_stance",
+  "numeric_id": "01742",
+  "slug": "dumbbell_tricep_kickback_with_stork_stance",
+  "name": "Dumbbell Tricep Kickback With Stork Stance",
+  "aliases": [
+    "Tricep Dumbbell Kickback"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in your right hand.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Bring your right elbow up to your side, keeping it bent at a 90-degree angle.",
+    "Extend your right arm straight back, squeezing your triceps.",
+    "Pause for a moment, then slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1742",
+    "free_id": "Tricep_Dumbbell_Kickback"
+  }
+}

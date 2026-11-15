@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00199_cable_pushdown_straight_arm_v_2",
+  "numeric_id": "00199",
+  "slug": "cable_pushdown_straight_arm_v_2",
+  "name": "Cable Pushdown (Straight Arm) V. 2",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a straight bar to a high pulley cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart and a slight bend in your knees.",
+    "Grasp the bar with an overhand grip, keeping your arms straight and your palms facing down.",
+    "Engage your core and keep your back straight as you exhale and push the bar down towards your thighs.",
+    "Pause for a moment at the bottom, then slowly return the bar to the starting position while inhaling.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0199",
+    "free_id": null
+  }
+}

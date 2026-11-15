@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06094_dancer_s_stretch",
+  "numeric_id": "06094",
+  "slug": "dancer_s_stretch",
+  "name": "Dancer'S Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit up on the floor.",
+    "Cross your right leg over your left, keeping the knee bent. Your left leg is straight and down on the floor.",
+    "Place your left arm on your right leg and your right hand on the floor.",
+    "Rotate your upper body to the right, and hold for 10-20 seconds. Switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Dancers_Stretch"
+  }
+}

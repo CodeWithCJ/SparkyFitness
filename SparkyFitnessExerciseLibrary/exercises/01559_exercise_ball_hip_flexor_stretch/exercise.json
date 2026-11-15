@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01559_exercise_ball_hip_flexor_stretch",
+  "numeric_id": "01559",
+  "slug": "exercise_ball_hip_flexor_stretch",
+  "name": "Exercise Ball Hip Flexor Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place the stability ball on the ground and kneel in front of it.",
+    "Place your right foot on top of the stability ball, with your knee bent at a 90-degree angle.",
+    "Extend your left leg behind you, keeping it straight.",
+    "Lean forward, pushing your hips towards the stability ball, until you feel a stretch in your right hip flexor.",
+    "Hold the stretch for 20-30 seconds, then switch sides and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1559",
+    "free_id": null
+  }
+}

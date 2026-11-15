@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00380_dumbbell_rear_lateral_raise",
+  "numeric_id": "00380",
+  "slug": "dumbbell_rear_lateral_raise",
+  "name": "Dumbbell Rear Lateral Raise",
+  "aliases": [
+    "Dumbbell Lying Rear Lateral Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in each hand, palms facing your body.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and core engaged.",
+    "Raise your arms out to the sides, keeping a slight bend in your elbows, until they are parallel to the floor.",
+    "Pause for a moment at the top, then slowly lower your arms back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0380",
+    "free_id": "Dumbbell_Lying_Rear_Lateral_Raise"
+  }
+}

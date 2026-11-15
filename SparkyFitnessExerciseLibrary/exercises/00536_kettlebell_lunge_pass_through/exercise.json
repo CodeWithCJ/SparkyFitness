@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00536_kettlebell_lunge_pass_through",
+  "numeric_id": "00536",
+  "slug": "kettlebell_lunge_pass_through",
+  "name": "Kettlebell Lunge Pass Through",
+  "aliases": [
+    "Lunge Pass Through"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in front of your chest with both hands.",
+    "Take a step forward with your right foot, lowering your body into a lunge position.",
+    "As you lunge forward, pass the kettlebell under your right thigh and transfer it to your left hand.",
+    "Push off with your right foot to return to the starting position, while simultaneously passing the kettlebell back to your right hand.",
+    "Repeat the lunge on the opposite side, passing the kettlebell under your left thigh.",
+    "Continue alternating lunges and passing the kettlebell between hands for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0536",
+    "free_id": "Lunge_Pass_Through"
+  }
+}

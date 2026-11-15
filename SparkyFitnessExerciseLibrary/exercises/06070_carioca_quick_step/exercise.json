@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06070_carioca_quick_step",
+  "numeric_id": "06070",
+  "slug": "carioca_quick_step",
+  "name": "Carioca Quick Step",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Begin with your feet a few inches apart and your left arm up in a relaxed, athletic position.",
+    "With your right foot, quick step behind and pull the knee up.",
+    "Fire your arms back up when you pull the right knee, being sure that your knee goes straight up and down. Avoid turning your feet as you move and continue to look forward as you move to the side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Carioca_Quick_Step"
+  }
+}

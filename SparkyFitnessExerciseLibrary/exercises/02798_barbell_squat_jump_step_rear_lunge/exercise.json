@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02798_barbell_squat_jump_step_rear_lunge",
+  "numeric_id": "02798",
+  "slug": "barbell_squat_jump_step_rear_lunge",
+  "name": "Barbell Squat Jump Step Rear Lunge",
+  "aliases": [
+    "Barbell Lunge"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a barbell across your upper back.",
+    "Lower your body into a squat position by bending your knees and pushing your hips back.",
+    "Explode upwards, jumping off the ground as high as you can.",
+    "Land softly on your feet and immediately step back with one leg into a reverse lunge.",
+    "Lower your body down until your front thigh is parallel to the ground, keeping your back straight.",
+    "Push through your front heel to return to the starting position.",
+    "Repeat the jump and lunge sequence on the other leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2798",
+    "free_id": "Barbell_Lunge"
+  }
+}

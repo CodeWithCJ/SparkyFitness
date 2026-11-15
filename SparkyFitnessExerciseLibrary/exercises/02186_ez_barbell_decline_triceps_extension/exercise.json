@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02186_ez_barbell_decline_triceps_extension",
+  "numeric_id": "02186",
+  "slug": "ez_barbell_decline_triceps_extension",
+  "name": "Ez Barbell Decline Triceps Extension",
+  "aliases": [
+    "Decline EZ Bar Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on a decline bench with your head lower than your feet and your feet secured.",
+    "Hold the ez barbell with an overhand grip, hands shoulder-width apart.",
+    "Extend your arms fully, keeping your elbows close to your head.",
+    "Lower the barbell slowly towards your forehead, bending your elbows.",
+    "Pause for a moment, then extend your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2186",
+    "free_id": "Decline_EZ_Bar_Triceps_Extension"
+  }
+}

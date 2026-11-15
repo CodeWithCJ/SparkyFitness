@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00158_cable_decline_fly",
+  "numeric_id": "00158",
+  "slug": "cable_decline_fly",
+  "name": "Cable Decline Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine to a decline position.",
+    "Stand facing away from the machine with your feet shoulder-width apart.",
+    "Hold the handles with your palms facing forward and your arms extended straight out in front of you.",
+    "Keeping a slight bend in your elbows, open your arms out to the sides in a controlled motion.",
+    "Pause for a moment at the fully extended position, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0158",
+    "free_id": null
+  }
+}

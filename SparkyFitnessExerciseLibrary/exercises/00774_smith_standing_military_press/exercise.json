@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00774_smith_standing_military_press",
+  "numeric_id": "00774",
+  "slug": "smith_standing_military_press",
+  "name": "Smith Standing Military Press",
+  "aliases": [
+    "Standing Military Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Grasp the barbell with an overhand grip, slightly wider than shoulder-width apart.",
+    "Lift the barbell off the rack and bring it down to shoulder level, with your palms facing forward.",
+    "Press the barbell upward until your arms are fully extended overhead.",
+    "Pause for a moment at the top, then slowly lower the barbell back down to shoulder level.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0774",
+    "free_id": "Standing_Military_Press"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06193_kettlebell_overhead_triceps_extension",
+  "numeric_id": "06193",
+  "slug": "kettlebell_overhead_triceps_extension",
+  "name": "Kettlebell Overhead Triceps Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart, holding a kettlebell by the horns with both hands. Press it overhead until your arms are extended, with the bell hanging behind your hands.",
+    "Brace your abdominals and keep your upper arms vertical and close to your head. This is your starting position.",
+    "Bend at the elbows to lower the kettlebell behind your head, going as far as your shoulder mobility allows without your elbows flaring outward.",
+    "Extend your elbows to press the kettlebell back to the starting position, keeping your upper arms still throughout.",
+    "Keep your ribcage down and avoid arching your lower back as you extend."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Kettlebell_Overhead_Triceps_Extension"
+  }
+}

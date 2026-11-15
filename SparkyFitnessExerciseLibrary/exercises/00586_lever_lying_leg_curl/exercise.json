@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00586_lever_lying_leg_curl",
+  "numeric_id": "00586",
+  "slug": "lever_lying_leg_curl",
+  "name": "Lever Lying Leg Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to fit your body and select the desired weight.",
+    "Lie face down on the machine with your legs straight and your heels against the padded lever.",
+    "Grasp the handles or the sides of the machine for stability.",
+    "Keeping your upper body stationary, exhale and curl your legs up as far as possible without lifting your hips off the pad.",
+    "Hold the contracted position for a brief pause as you squeeze your hamstrings.",
+    "Inhale and slowly lower the lever back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0586",
+    "free_id": null
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01423_reverse_hyper_on_flat_bench",
+  "numeric_id": "01423",
+  "slug": "reverse_hyper_on_flat_bench",
+  "name": "Reverse Hyper On Flat Bench",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie face down on a flat bench with your hips at the edge and your legs hanging off the bench.",
+    "Hold onto the bench for stability.",
+    "Keeping your legs straight, raise them up towards the ceiling as high as you can.",
+    "Squeeze your glutes at the top of the movement.",
+    "Slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1423",
+    "free_id": null
+  }
+}

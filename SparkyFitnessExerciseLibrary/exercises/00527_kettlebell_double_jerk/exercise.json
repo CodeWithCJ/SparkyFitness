@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00527_kettlebell_double_jerk",
+  "numeric_id": "00527",
+  "slug": "kettlebell_double_jerk",
+  "name": "Kettlebell Double Jerk",
+  "aliases": [
+    "Double Kettlebell Jerk"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals",
+      "calves",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in each hand at shoulder height.",
+    "Bend your knees slightly and engage your core.",
+    "Press the kettlebells overhead, fully extending your arms.",
+    "Bend your knees and quickly drop into a partial squat.",
+    "Explosively extend your hips and knees, driving the kettlebells overhead.",
+    "Lock out your arms and catch the kettlebells overhead with your knees slightly bent.",
+    "Stand up straight and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0527",
+    "free_id": "Double_Kettlebell_Jerk"
+  }
+}

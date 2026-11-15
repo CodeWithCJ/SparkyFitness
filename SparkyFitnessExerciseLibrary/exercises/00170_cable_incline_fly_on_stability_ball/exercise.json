@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00170_cable_incline_fly_on_stability_ball",
+  "numeric_id": "00170",
+  "slug": "cable_incline_fly_on_stability_ball",
+  "name": "Cable Incline Fly (On Stability Ball)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a stability ball at an incline angle.",
+    "Attach the cable handles to the high pulleys of a cable machine.",
+    "Sit on the stability ball facing away from the machine, with your feet firmly planted on the ground.",
+    "Grasp the cable handles with an overhand grip, palms facing forward.",
+    "Lean forward slightly, keeping your back straight and core engaged.",
+    "With a controlled motion, bring your arms out to the sides, keeping a slight bend in your elbows.",
+    "Continue the motion until your arms are parallel to the ground.",
+    "Pause for a moment, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0170",
+    "free_id": null
+  }
+}

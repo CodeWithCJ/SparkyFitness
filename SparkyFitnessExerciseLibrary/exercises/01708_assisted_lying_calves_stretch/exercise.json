@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01708_assisted_lying_calves_stretch",
+  "numeric_id": "01708",
+  "slug": "assisted_lying_calves_stretch",
+  "name": "Assisted Lying Calves Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your legs extended.",
+    "Bend one knee and place your foot flat on the ground.",
+    "Using your hands or a towel, gently pull your toes towards your body, feeling a stretch in your calf.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release the stretch and repeat on the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1708",
+    "free_id": null
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00377_dumbbell_rear_delt_row_shoulder",
+  "numeric_id": "00377",
+  "slug": "dumbbell_rear_delt_row_shoulder",
+  "name": "Dumbbell Rear Delt Row_shoulder",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and knees slightly bent.",
+    "Hold a dumbbell in each hand with your palms facing your body.",
+    "Bend forward at the waist, keeping your back straight and your core engaged.",
+    "Extend your arms straight down towards the floor, with a slight bend in your elbows.",
+    "Raise the dumbbells out to the sides, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0377",
+    "free_id": null
+  }
+}

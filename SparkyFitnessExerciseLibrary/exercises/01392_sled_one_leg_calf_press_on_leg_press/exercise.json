@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01392_sled_one_leg_calf_press_on_leg_press",
+  "numeric_id": "01392",
+  "slug": "sled_one_leg_calf_press_on_leg_press",
+  "name": "Sled One Leg Calf Press On Leg Press",
+  "aliases": [
+    "Calf Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat of the leg press machine so that your knees are slightly bent when your feet are on the sled.",
+    "Sit on the machine with your back against the backrest and your feet on the sled, shoulder-width apart.",
+    "Place your toes and the balls of your feet on the sled, keeping your heels off.",
+    "Push the sled forward by extending your ankles, keeping your knees slightly bent.",
+    "Pause for a moment at the top, then slowly lower the sled back down by flexing your ankles.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1392",
+    "free_id": "Calf_Press"
+  }
+}

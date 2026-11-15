@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00976_band_concentration_curl",
+  "numeric_id": "00976",
+  "slug": "band_concentration_curl",
+  "name": "Band Concentration Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your legs spread apart and your feet flat on the ground.",
+    "Hold one end of the band in your hand and step on the other end with your foot on the same side.",
+    "Lean forward slightly and rest your elbow on the inside of your thigh, just above the knee.",
+    "With your palm facing up, slowly curl your hand towards your shoulder, keeping your upper arm stationary.",
+    "Pause for a moment at the top, then slowly lower your hand back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0976",
+    "free_id": null
+  }
+}

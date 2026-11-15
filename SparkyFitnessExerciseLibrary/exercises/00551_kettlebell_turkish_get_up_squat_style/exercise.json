@@ -1,0 +1,55 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00551_kettlebell_turkish_get_up_squat_style",
+  "numeric_id": "00551",
+  "slug": "kettlebell_turkish_get_up_squat_style",
+  "name": "Kettlebell Turkish Get Up (Squat Style)",
+  "aliases": [
+    "Kettlebell Turkish Get-Up (Squat style)"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "glutes",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "abdominals",
+      "calves",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying on your back with your legs extended and the kettlebell held in your right hand, arm fully extended above your shoulder.",
+    "Bend your right knee and place your right foot flat on the ground, keeping your left leg extended.",
+    "Pressing through your right foot, lift your hips off the ground, coming into a bridge position.",
+    "Slide your left leg underneath your body, bending your left knee and placing your left foot flat on the ground.",
+    "Rotate your torso to the left, bringing your left hand to the ground for support.",
+    "Pressing through your right foot and left hand, lift your torso off the ground, coming into a kneeling position.",
+    "From the kneeling position, stand up, keeping the kettlebell extended overhead.",
+    "Reverse the movement to return to the starting position.",
+    "Repeat the exercise on the other side, starting with the kettlebell in your left hand."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0551",
+    "free_id": "Kettlebell_Turkish_Get-Up_Squat_style"
+  }
+}

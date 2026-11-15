@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00500_isometric_wipers",
+  "numeric_id": "00500",
+  "slug": "isometric_wipers",
+  "name": "Isometric Wipers",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying flat on your back on a mat or bench.",
+    "Extend your arms straight out to the sides, perpendicular to your body.",
+    "Engage your core and lift both legs off the ground, keeping them together and straight.",
+    "Slowly lower your legs to one side, aiming to touch the ground with your feet while maintaining control.",
+    "Pause for a moment, then use your core to lift your legs back to the starting position.",
+    "Repeat the movement, this time lowering your legs to the opposite side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0500",
+    "free_id": "Isometric_Wipers"
+  }
+}

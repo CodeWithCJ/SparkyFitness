@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00772_smith_standing_behind_head_military_press",
+  "numeric_id": "00772",
+  "slug": "smith_standing_behind_head_military_press",
+  "name": "Smith Standing Behind Head Military Press",
+  "aliases": [
+    "Standing Military Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height of the smith machine so that the bar is at shoulder level.",
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Grasp the bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Lift the bar off the rack and step back, maintaining a stable stance.",
+    "Position the bar behind your head, resting on your upper traps.",
+    "Keep your core engaged and your chest lifted throughout the exercise.",
+    "Press the bar overhead by extending your arms, fully straightening them.",
+    "Pause briefly at the top of the movement, then slowly lower the bar back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0772",
+    "free_id": "Standing_Military_Press"
+  }
+}

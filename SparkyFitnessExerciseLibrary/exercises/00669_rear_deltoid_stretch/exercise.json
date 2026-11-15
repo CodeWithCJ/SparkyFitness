@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00669_rear_deltoid_stretch",
+  "numeric_id": "00669",
+  "slug": "rear_deltoid_stretch",
+  "name": "Rear Deltoid Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand tall with your feet shoulder-width apart.",
+    "Extend your right arm across your chest, placing your left hand on your right elbow.",
+    "Gently pull your right arm towards your left shoulder, feeling a stretch in your right shoulder.",
+    "Hold the stretch for 15-30 seconds, then release.",
+    "Repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0669",
+    "free_id": null
+  }
+}

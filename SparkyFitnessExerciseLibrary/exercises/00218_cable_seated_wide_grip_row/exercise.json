@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00218_cable_seated_wide_grip_row",
+  "numeric_id": "00218",
+  "slug": "cable_seated_wide_grip_row",
+  "name": "Cable Seated Wide-Grip Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the cable row machine with your feet flat on the footrests and your knees slightly bent.",
+    "Grasp the handle with a wide overhand grip, palms facing down.",
+    "Keep your back straight and lean slightly forward from the hips.",
+    "Pull the handle towards your lower chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak of the contraction.",
+    "Slowly release the handle back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0218",
+    "free_id": null
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06207_lateral_box_jump",
+  "numeric_id": "06207",
+  "slug": "lateral_box_jump",
+  "name": "Lateral Box Jump",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Assume a comfortable standing position, with a short box positioned next to you. This will be your starting position.",
+    "Quickly dip into a quarter squat to initiate the stretch reflex, and immediately reverse direction to jump up and to the side.",
+    "Bring your knees high enough to ensure your feet have good clearance over the box.",
+    "Land on the center of the box, using your legs to absorb the impact.",
+    "Carefully jump down to the other side of the box, and continue going back and forth for several repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Lateral_Box_Jump"
+  }
+}

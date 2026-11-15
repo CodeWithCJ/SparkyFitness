@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02330_cable_lat_pulldown_full_range_of_motion",
+  "numeric_id": "02330",
+  "slug": "cable_lat_pulldown_full_range_of_motion",
+  "name": "Cable Lat Pulldown Full Range Of Motion",
+  "aliases": [
+    "Full Range-Of-Motion Lat Pulldown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the lat pulldown machine with your knees positioned under the pads.",
+    "Grasp the cable bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Lean back slightly and keep your chest up, maintaining a slight arch in your lower back.",
+    "Pull the bar down towards your upper chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the bottom of the movement, then slowly release the bar back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2330",
+    "free_id": "Full_Range-Of-Motion_Lat_Pulldown"
+  }
+}

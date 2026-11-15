@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00324_dumbbell_incline_palm_in_press",
+  "numeric_id": "00324",
+  "slug": "dumbbell_incline_palm_in_press",
+  "name": "Dumbbell Incline Palm-In Press",
+  "aliases": [
+    "Incline Dumbbell Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up an incline bench at a 45-degree angle.",
+    "Sit on the bench with a dumbbell in each hand, palms facing each other.",
+    "Plant your feet firmly on the ground and keep your back straight against the bench.",
+    "Start with the dumbbells at shoulder level, elbows bent and palms facing each other.",
+    "Press the dumbbells up and away from your body, extending your arms fully.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0324",
+    "free_id": "Incline_Dumbbell_Press"
+  }
+}

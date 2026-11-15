@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00192_cable_one_arm_lateral_raise",
+  "numeric_id": "00192",
+  "slug": "cable_one_arm_lateral_raise",
+  "name": "Cable One Arm Lateral Raise",
+  "aliases": [
+    "Lying One-Arm Lateral Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the cable machine.",
+    "Hold the cable handle with one hand, palm facing down, and stand far enough away from the machine so that there is tension on the cable.",
+    "Keep your arm straight and slowly raise it out to the side until it is parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower your arm back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0192",
+    "free_id": "Lying_One-Arm_Lateral_Raise"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01757_dumbbell_single_leg_deadlift",
+  "numeric_id": "01757",
+  "slug": "dumbbell_single_leg_deadlift",
+  "name": "Dumbbell Single Leg Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart, holding a dumbbell in your right hand.",
+    "Shift your weight onto your left leg and lift your right foot slightly off the ground.",
+    "Keeping your back straight, hinge forward at the hips and lower the dumbbell towards the ground.",
+    "At the same time, extend your right leg straight behind you, maintaining a slight bend in your left knee.",
+    "Lower the dumbbell until your torso and right leg are parallel to the ground.",
+    "Pause for a moment, then engage your glutes and hamstrings to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1757",
+    "free_id": null
+  }
+}

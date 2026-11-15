@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00519_kettlebell_alternating_press_on_floor",
+  "numeric_id": "00519",
+  "slug": "kettlebell_alternating_press_on_floor",
+  "name": "Kettlebell Alternating Press On Floor",
+  "aliases": [
+    "Alternating Floor Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying on your back on the floor with your knees bent and feet flat on the ground.",
+    "Hold a kettlebell in each hand, with your palms facing towards your feet and your arms extended straight up towards the ceiling.",
+    "Lower one kettlebell down towards your shoulder while keeping the other kettlebell extended straight up.",
+    "Press the lowered kettlebell back up to the starting position while simultaneously lowering the other kettlebell down towards your shoulder.",
+    "Continue alternating the press motion with each kettlebell for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0519",
+    "free_id": "Alternating_Floor_Press"
+  }
+}

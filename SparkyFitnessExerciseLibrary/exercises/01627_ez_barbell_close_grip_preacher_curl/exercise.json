@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01627_ez_barbell_close_grip_preacher_curl",
+  "numeric_id": "01627",
+  "slug": "ez_barbell_close_grip_preacher_curl",
+  "name": "Ez Barbell Close Grip Preacher Curl",
+  "aliases": [
+    "Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a preacher curl bench and place your upper arms on the pad, gripping the ez barbell with an underhand grip.",
+    "Rest your triceps on the pad and fully extend your arms, keeping your back straight.",
+    "Slowly curl the barbell towards your shoulders, contracting your biceps.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Lower the barbell back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1627",
+    "free_id": "Barbell_Curl"
+  }
+}

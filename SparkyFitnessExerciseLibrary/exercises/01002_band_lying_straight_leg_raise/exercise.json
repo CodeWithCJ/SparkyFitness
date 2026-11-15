@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01002_band_lying_straight_leg_raise",
+  "numeric_id": "01002",
+  "slug": "band_lying_straight_leg_raise",
+  "name": "Band Lying Straight Leg Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs straight and your feet together.",
+    "Place the band around the arches of your feet and hold the ends of the band with your hands.",
+    "Engaging your abs, lift both legs off the ground until they are perpendicular to the floor.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1002",
+    "free_id": null
+  }
+}

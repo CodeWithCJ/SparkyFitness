@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06388_sled_overhead_triceps_extension",
+  "numeric_id": "06388",
+  "slug": "sled_overhead_triceps_extension",
+  "name": "Sled Overhead Triceps Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach dual handles to a sled using a chain or rope. Load the sled to an appropriate load.",
+    "Facing away from the sled, step away until there is tension in the line. Raise your hands above your head, keeping them together, palms facing each other. Your elbows should be pointed upward with the elbows flexed. This will be your starting position.",
+    "Extend through the elbow to straighten the arm. Ensure that your upper arm stays in position to isolate the triceps.",
+    "Upon full extension, step forward to take the slack out of the line. You may keep your feet staggered for more stability."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Sled_Overhead_Triceps_Extension"
+  }
+}

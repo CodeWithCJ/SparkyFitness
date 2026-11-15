@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00109_barbell_standing_overhead_triceps_extension",
+  "numeric_id": "00109",
+  "slug": "barbell_standing_overhead_triceps_extension",
+  "name": "Barbell Standing Overhead Triceps Extension",
+  "aliases": [
+    "Standing Overhead Barbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell with an overhand grip.",
+    "Raise the barbell overhead, fully extending your arms.",
+    "Keeping your upper arms close to your head, slowly lower the barbell behind your head by bending your elbows.",
+    "Pause for a moment, then raise the barbell back to the starting position by extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0109",
+    "free_id": "Standing_Overhead_Barbell_Triceps_Extension"
+  }
+}

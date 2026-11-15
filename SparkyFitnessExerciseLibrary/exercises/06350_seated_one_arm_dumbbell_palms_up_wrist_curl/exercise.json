@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06350_seated_one_arm_dumbbell_palms_up_wrist_curl",
+  "numeric_id": "06350",
+  "slug": "seated_one_arm_dumbbell_palms_up_wrist_curl",
+  "name": "Seated One-Arm Dumbbell Palms-Up Wrist Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a flat bench with a dumbbell in your right hand.",
+    "Place your feet flat on the floor, at a distance that is slightly wider than shoulder width apart.",
+    "Lean forward and place your right forearm on top of your upper right thigh with your palm up. Tip: Make sure that the front of the wrist lies on top of your knees. This will be your starting position.",
+    "Lower the dumbbell as far as possible as you keep a tight grip on the dumbbell. Inhale as you perform this movement.",
+    "Now curl the dumbbell as high as possible as you contract the forearms and as you exhale. Keep the contraction for a second before you lower again. Tip: The only movement should happen at the wrist.",
+    "Perform for the recommended amount of repetitions, switch arms and repeat the movement."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Seated_One-Arm_Dumbbell_Palms-Up_Wrist_Curl"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00371_dumbbell_plyo_squat",
+  "numeric_id": "00371",
+  "slug": "dumbbell_plyo_squat",
+  "name": "Dumbbell Plyo Squat",
+  "aliases": [
+    "Dumbbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand at your sides.",
+    "Lower your body into a squat position by bending your knees and pushing your hips back.",
+    "As you reach the bottom of the squat, explode upward, jumping off the ground.",
+    "While in the air, quickly switch the position of your feet, landing with your opposite foot forward.",
+    "Immediately lower your body back into a squat position and repeat the jump, switching your feet again.",
+    "Continue alternating the position of your feet with each jump for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0371",
+    "free_id": "Dumbbell_Squat"
+  }
+}

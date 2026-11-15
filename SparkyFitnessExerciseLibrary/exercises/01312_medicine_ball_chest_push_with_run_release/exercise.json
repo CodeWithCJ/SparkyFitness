@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01312_medicine_ball_chest_push_with_run_release",
+  "numeric_id": "01312",
+  "slug": "medicine_ball_chest_push_with_run_release",
+  "name": "Medicine Ball Chest Push With Run Release",
+  "aliases": [
+    "Chest Push with Run Release"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a medicine ball at chest level.",
+    "Step forward with your right foot and simultaneously push the medicine ball forward, extending your arms fully.",
+    "As you push the ball forward, release it and let it roll forward.",
+    "Quickly run forward and catch the ball before it hits the ground.",
+    "Once you catch the ball, bring it back to your chest and repeat the movement with your left foot forward.",
+    "Continue alternating legs and repeating the exercise for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1312",
+    "free_id": "Chest_Push_with_Run_Release"
+  }
+}

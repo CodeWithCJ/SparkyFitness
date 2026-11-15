@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01405_back_pec_stretch",
+  "numeric_id": "01405",
+  "slug": "back_pec_stretch",
+  "name": "Back Pec Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand tall with your feet shoulder-width apart.",
+    "Extend your arms straight out in front of you, parallel to the ground.",
+    "Cross your arms in front of your body, with your right arm over your left arm.",
+    "Interlock your fingers and rotate your palms away from your body.",
+    "Slowly raise your arms up and away from your body, feeling a stretch in your back and chest.",
+    "Hold the stretch for 15-30 seconds, then release.",
+    "Repeat on the opposite side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1405",
+    "free_id": null
+  }
+}

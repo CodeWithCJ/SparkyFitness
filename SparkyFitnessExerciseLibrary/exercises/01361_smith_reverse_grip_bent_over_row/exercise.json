@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01361_smith_reverse_grip_bent_over_row",
+  "numeric_id": "01361",
+  "slug": "smith_reverse_grip_bent_over_row",
+  "name": "Smith Reverse Grip Bent Over Row",
+  "aliases": [
+    "Reverse Grip Bent-Over Rows"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up the smith machine with the bar at hip height.",
+    "Stand facing the bar with your feet shoulder-width apart.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Grasp the bar with an underhand grip, hands shoulder-width apart.",
+    "Pull the bar towards your lower chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the bar back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1361",
+    "free_id": "Reverse_Grip_Bent-Over_Rows"
+  }
+}

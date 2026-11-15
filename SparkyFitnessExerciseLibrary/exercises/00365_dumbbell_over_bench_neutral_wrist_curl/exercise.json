@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00365_dumbbell_over_bench_neutral_wrist_curl",
+  "numeric_id": "00365",
+  "slug": "dumbbell_over_bench_neutral_wrist_curl",
+  "name": "Dumbbell Over Bench Neutral Wrist Curl",
+  "aliases": [
+    "Palms-Down Dumbbell Wrist Curl Over A Bench"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps",
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and hold a dumbbell in each hand, palms facing up.",
+    "Rest your forearms on the bench, allowing your wrists to hang off the edge.",
+    "Keeping your upper arms stationary, exhale and curl the dumbbells up towards your shoulders.",
+    "Pause for a moment at the top, then inhale and slowly lower the dumbbells back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0365",
+    "free_id": "Palms-Down_Dumbbell_Wrist_Curl_Over_A_Bench"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03012_scapula_dips",
+  "numeric_id": "03012",
+  "slug": "scapula_dips",
+  "name": "Scapula Dips",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart and your arms extended in front of you.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Lower your body by bending your elbows and retracting your shoulder blades, as if you are trying to squeeze a pencil between them.",
+    "Pause for a moment at the bottom, then push through your hands to extend your elbows and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3012",
+    "free_id": null
+  }
+}

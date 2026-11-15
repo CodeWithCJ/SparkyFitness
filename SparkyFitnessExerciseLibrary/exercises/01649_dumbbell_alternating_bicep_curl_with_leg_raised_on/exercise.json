@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01649_dumbbell_alternating_bicep_curl_with_leg_raised_on",
+  "numeric_id": "01649",
+  "slug": "dumbbell_alternating_bicep_curl_with_leg_raised_on_exercise_ball",
+  "name": "Dumbbell Alternating Bicep Curl With Leg Raised On Exercise Ball",
+  "aliases": [
+    "Ball Leg Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "shoulders",
+      "calves",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in each hand, palms facing forward.",
+    "Place an exercise ball behind you and position one foot on top of it, keeping your balance.",
+    "With your arms fully extended and elbows close to your sides, curl one dumbbell towards your shoulder while keeping your upper arm stationary.",
+    "Lower the dumbbell back down to the starting position and repeat with the other arm.",
+    "Continue alternating arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1649",
+    "free_id": "Ball_Leg_Curl"
+  }
+}

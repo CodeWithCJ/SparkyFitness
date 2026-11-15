@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01642_cable_seated_one_arm_concentration_curl",
+  "numeric_id": "01642",
+  "slug": "cable_seated_one_arm_concentration_curl",
+  "name": "Cable Seated One Arm Concentration Curl",
+  "aliases": [
+    "Standing One-Arm Cable Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the floor and your back straight.",
+    "Hold a cable handle with one hand and place your elbow on the inside of your thigh, just above the knee.",
+    "Keep your upper arm stationary and curl the cable handle towards your shoulder while exhaling.",
+    "Pause for a moment at the top of the movement, squeezing your biceps.",
+    "Slowly lower the cable handle back to the starting position while inhaling.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1642",
+    "free_id": "Standing_One-Arm_Cable_Curl"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00593_lever_reverse_hyperextension",
+  "numeric_id": "00593",
+  "slug": "lever_reverse_hyperextension",
+  "name": "Lever Reverse Hyperextension",
+  "aliases": [
+    "Reverse Hyperextension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "lower back",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the leverage machine to fit your body and secure your feet in the foot pads.",
+    "Lie face down on the machine with your upper body hanging off the edge and your hips resting on the pad.",
+    "Cross your arms over your chest or place them behind your head.",
+    "Engage your glutes and hamstrings to lift your legs upward until they are parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0593",
+    "free_id": "Reverse_Hyperextension"
+  }
+}

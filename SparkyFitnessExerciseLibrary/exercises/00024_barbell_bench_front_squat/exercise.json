@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00024_barbell_bench_front_squat",
+  "numeric_id": "00024",
+  "slug": "barbell_bench_front_squat",
+  "name": "Barbell Bench Front Squat",
+  "aliases": [
+    "Front Barbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart and the barbell resting on your upper chest, just below your collarbone.",
+    "Hold the barbell with an overhand grip, keeping your elbows up and your upper arms parallel to the ground.",
+    "Lower your body down into a squat position by bending at the knees and hips, keeping your back straight and your chest up.",
+    "Pause for a moment at the bottom of the squat, then push through your heels to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0024",
+    "free_id": "Front_Barbell_Squat"
+  }
+}

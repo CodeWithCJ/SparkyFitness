@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00202_cable_rear_delt_row_stirrups",
+  "numeric_id": "00202",
+  "slug": "cable_rear_delt_row_stirrups",
+  "name": "Cable Rear Delt Row (Stirrups)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a stirrup handle to a low cable pulley and stand facing the machine.",
+    "Grasp the handle with your left hand and take a step back with your right foot, positioning your body at a slight angle.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and your core engaged.",
+    "With your left arm extended and your palm facing down, pull the handle towards your chest by retracting your shoulder blade.",
+    "Pause for a moment at the top of the movement, squeezing your shoulder blade.",
+    "Slowly release the handle back to the starting position and repeat for the desired number of repetitions.",
+    "Switch sides and repeat the exercise with your right arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0202",
+    "free_id": null
+  }
+}

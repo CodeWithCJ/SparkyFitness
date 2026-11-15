@@ -1,0 +1,55 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00648_power_clean",
+  "numeric_id": "00648",
+  "slug": "power_clean",
+  "name": "Power Clean",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "quadriceps",
+      "calves",
+      "forearms",
+      "lower back",
+      "middle back",
+      "shoulders",
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start with the barbell on the ground in front of you, with your feet shoulder-width apart.",
+    "Bend down and grip the barbell with an overhand grip, slightly wider than shoulder-width apart.",
+    "Keep your back straight and chest up as you lift the barbell off the ground, extending your hips and knees.",
+    "As the barbell reaches your mid-thigh, explosively pull it upwards, shrugging your shoulders and pulling your elbows high and to the sides.",
+    "As the barbell reaches its highest point, quickly drop underneath it, rotating your elbows around and catching the barbell on your shoulders in a front squat position.",
+    "Stand up with the barbell, fully extending your hips and knees.",
+    "Lower the barbell back down to the starting position, keeping control of the weight throughout the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0648",
+    "free_id": "Power_Clean"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01416_exercise_ball_one_leg_prone_lower_body_rotation",
+  "numeric_id": "01416",
+  "slug": "exercise_ball_one_leg_prone_lower_body_rotation",
+  "name": "Exercise Ball One Leg Prone Lower Body Rotation",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie face down on the stability ball with your hips resting on the ball and your legs extended straight behind you.",
+    "Place your hands on the ground in front of you for support.",
+    "Engage your glutes and core muscles to stabilize your body.",
+    "Slowly lift one leg off the ground, keeping it straight and parallel to the floor.",
+    "Rotate your leg outward, away from your body, while keeping your hips and upper body stable.",
+    "Pause for a moment at the end of the rotation, then slowly return your leg to the starting position.",
+    "Repeat the rotation with the other leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1416",
+    "free_id": null
+  }
+}

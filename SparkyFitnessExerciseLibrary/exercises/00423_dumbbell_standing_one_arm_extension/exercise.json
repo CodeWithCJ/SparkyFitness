@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00423_dumbbell_standing_one_arm_extension",
+  "numeric_id": "00423",
+  "slug": "dumbbell_standing_one_arm_extension",
+  "name": "Dumbbell Standing One Arm Extension",
+  "aliases": [
+    "Standing One-Arm Dumbbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in one hand.",
+    "Raise the dumbbell overhead, fully extending your arm.",
+    "Keep your upper arm close to your head and perpendicular to the ground.",
+    "Slowly lower the dumbbell behind your head, bending your elbow.",
+    "Pause for a moment, then raise the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0423",
+    "free_id": "Standing_One-Arm_Dumbbell_Triceps_Extension"
+  }
+}

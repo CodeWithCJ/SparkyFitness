@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00358_dumbbell_one_arm_reverse_wrist_curl",
+  "numeric_id": "00358",
+  "slug": "dumbbell_one_arm_reverse_wrist_curl",
+  "name": "Dumbbell One Arm Reverse Wrist Curl",
+  "aliases": [
+    "One Arm Dumbbell Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your feet flat on the ground.",
+    "Hold a dumbbell in one hand with an overhand grip, palm facing down.",
+    "Rest your forearm on your thigh, with your wrist hanging off the edge.",
+    "Slowly lower the dumbbell towards the ground by flexing your wrist.",
+    "Pause for a moment at the bottom, then slowly curl your wrist back up towards your body.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0358",
+    "free_id": "One_Arm_Dumbbell_Preacher_Curl"
+  }
+}

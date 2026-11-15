@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00114_barbell_step_up",
+  "numeric_id": "00114",
+  "slug": "barbell_step_up",
+  "name": "Barbell Step-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand in front of a bench or step with a barbell resting on your upper back.",
+    "Place one foot on the bench or step, ensuring your entire foot is in contact with the surface.",
+    "Push through your heel and step up onto the bench or step, fully extending your hip and knee.",
+    "Pause briefly at the top, then lower yourself back down to the starting position.",
+    "Repeat with the opposite leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0114",
+    "free_id": null
+  }
+}

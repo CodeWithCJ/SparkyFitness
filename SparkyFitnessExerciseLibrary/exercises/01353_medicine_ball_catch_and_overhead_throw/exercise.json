@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01353_medicine_ball_catch_and_overhead_throw",
+  "numeric_id": "01353",
+  "slug": "medicine_ball_catch_and_overhead_throw",
+  "name": "Medicine Ball Catch And Overhead Throw",
+  "aliases": [
+    "Catch and Overhead Throw"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a medicine ball in both hands at chest level.",
+    "Bend your knees slightly and engage your core.",
+    "Lower your body into a squat position, keeping your back straight and chest up.",
+    "Explosively extend your hips and legs, while simultaneously throwing the medicine ball overhead.",
+    "Release the ball at the top of the movement and catch it on the way down.",
+    "Lower your body back into the squat position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1353",
+    "free_id": "Catch_and_Overhead_Throw"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00033_barbell_decline_bench_press",
+  "numeric_id": "00033",
+  "slug": "barbell_decline_bench_press",
+  "name": "Barbell Decline Bench Press",
+  "aliases": [
+    "Decline Barbell Bench Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on a decline bench with your feet secured and your head lower than your hips.",
+    "Grasp the barbell with an overhand grip slightly wider than shoulder-width apart.",
+    "Unrack the barbell and lower it slowly towards your chest, keeping your elbows tucked in.",
+    "Pause for a moment at the bottom, then push the barbell back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0033",
+    "free_id": "Decline_Barbell_Bench_Press"
+  }
+}

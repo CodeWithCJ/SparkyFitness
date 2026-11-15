@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00859_wrist_rollerer",
+  "numeric_id": "00859",
+  "slug": "wrist_rollerer",
+  "name": "Wrist Rollerer",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a weight to one end of a rope or bar.",
+    "Hold the other end of the rope or bar with both hands, palms facing down.",
+    "Stand with your feet shoulder-width apart and your arms fully extended in front of you.",
+    "Slowly roll the weight up towards your hands by flexing your wrists.",
+    "Pause for a moment at the top, then slowly lower the weight back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0859",
+    "free_id": null
+  }
+}

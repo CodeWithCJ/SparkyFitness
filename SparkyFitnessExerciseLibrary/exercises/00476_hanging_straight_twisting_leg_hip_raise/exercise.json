@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00476_hanging_straight_twisting_leg_hip_raise",
+  "numeric_id": "00476",
+  "slug": "hanging_straight_twisting_leg_hip_raise",
+  "name": "Hanging Straight Twisting Leg Hip Raise",
+  "aliases": [
+    "Hanging Leg Raise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hang from a pull-up bar with your arms fully extended and your legs straight.",
+    "Engage your core and lift your legs up towards your chest, keeping them straight.",
+    "Once your legs are parallel to the ground, twist your hips to one side, bringing your legs towards that side.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat the movement, but this time twist your hips to the opposite side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0476",
+    "free_id": "Hanging_Leg_Raise"
+  }
+}

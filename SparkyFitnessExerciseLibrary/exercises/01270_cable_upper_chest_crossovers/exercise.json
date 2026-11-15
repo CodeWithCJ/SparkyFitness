@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01270_cable_upper_chest_crossovers",
+  "numeric_id": "01270",
+  "slug": "cable_upper_chest_crossovers",
+  "name": "Cable Upper Chest Crossovers",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the handles to the cables at chest height.",
+    "Stand in the center of the cable machine with one foot slightly in front of the other.",
+    "Grasp the handles with your palms facing down and your arms extended out to the sides.",
+    "Keep a slight bend in your elbows and engage your core.",
+    "Pull the cables together in front of your chest, crossing them over each other.",
+    "Squeeze your chest muscles at the peak of the movement.",
+    "Slowly release the cables back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1270",
+    "free_id": null
+  }
+}

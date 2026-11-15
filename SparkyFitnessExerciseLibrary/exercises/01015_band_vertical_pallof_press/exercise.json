@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01015_band_vertical_pallof_press",
+  "numeric_id": "01015",
+  "slug": "band_vertical_pallof_press",
+  "name": "Band Vertical Pallof Press",
+  "aliases": [
+    "Pallof Press"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "chest",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and wrap the band around a sturdy object at chest height.",
+    "Hold the band with both hands and step away from the anchor point, creating tension in the band.",
+    "Position yourself perpendicular to the anchor point, with your side facing the band.",
+    "Extend your arms straight out in front of you, keeping your hands at chest height.",
+    "Engage your core and press the band away from your chest, fully extending your arms.",
+    "Hold the position for a few seconds, then slowly bring the band back towards your chest.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1015",
+    "free_id": "Pallof_Press"
+  }
+}

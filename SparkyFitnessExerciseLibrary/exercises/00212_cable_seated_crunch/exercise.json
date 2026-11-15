@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00212_cable_seated_crunch",
+  "numeric_id": "00212",
+  "slug": "cable_seated_crunch",
+  "name": "Cable Seated Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a cable machine with your feet flat on the ground and your knees bent.",
+    "Hold the cable handle with both hands and position it behind your head.",
+    "Engage your abs and slowly curl your upper body forward, bringing your chest towards your knees.",
+    "Pause for a moment at the top, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0212",
+    "free_id": "Cable_Seated_Crunch"
+  }
+}

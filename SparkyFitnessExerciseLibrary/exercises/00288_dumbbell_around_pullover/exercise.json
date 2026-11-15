@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00288_dumbbell_around_pullover",
+  "numeric_id": "00288",
+  "slug": "dumbbell_around_pullover",
+  "name": "Dumbbell Around Pullover",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your head at one end and your feet firmly on the ground.",
+    "Hold a dumbbell with both hands and extend your arms straight above your chest.",
+    "Keeping your arms straight, slowly lower the dumbbell behind your head in an arc motion.",
+    "Pause for a moment at the bottom, then raise the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0288",
+    "free_id": null
+  }
+}

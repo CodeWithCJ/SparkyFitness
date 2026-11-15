@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00546_kettlebell_seated_press",
+  "numeric_id": "00546",
+  "slug": "kettlebell_seated_press",
+  "name": "Kettlebell Seated Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and feet flat on the ground.",
+    "Hold a kettlebell in each hand at shoulder height, palms facing forward.",
+    "Press the kettlebells overhead, fully extending your arms.",
+    "Lower the kettlebells back to shoulder height.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0546",
+    "free_id": "Kettlebell_Seated_Press"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00517_kettlebell_advanced_windmill",
+  "numeric_id": "00517",
+  "slug": "kettlebell_advanced_windmill",
+  "name": "Kettlebell Advanced Windmill",
+  "aliases": [
+    "Advanced Kettlebell Windmill"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart, toes pointing slightly outward.",
+    "Hold a kettlebell in your right hand, with your arm extended overhead and your palm facing forward.",
+    "Rotate your left foot slightly to the right, and shift your weight onto your left leg.",
+    "Bend your left knee and hinge at the hip, lowering your torso towards the left side.",
+    "Keep your right arm extended overhead and your eyes on the kettlebell.",
+    "As you lower your torso, allow your right leg to straighten and your right foot to pivot slightly.",
+    "Lower your torso until you feel a stretch in your left hamstring and your right arm is pointing towards the ground.",
+    "Pause for a moment, then engage your core and push through your left heel to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0517",
+    "free_id": "Advanced_Kettlebell_Windmill"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01729_dumbbell_lying_alternate_extension",
+  "numeric_id": "01729",
+  "slug": "dumbbell_lying_alternate_extension",
+  "name": "Dumbbell Lying Alternate Extension",
+  "aliases": [
+    "Lying Dumbbell Tricep Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with a dumbbell in each hand, palms facing each other.",
+    "Extend your arms straight up over your chest, keeping a slight bend in your elbows.",
+    "Lower one dumbbell down towards your head, bending at the elbow, while keeping the other arm extended.",
+    "Pause for a moment at the bottom, then raise the dumbbell back up to the starting position.",
+    "Repeat with the other arm, alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1729",
+    "free_id": "Lying_Dumbbell_Tricep_Extension"
+  }
+}

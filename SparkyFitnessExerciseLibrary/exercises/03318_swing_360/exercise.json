@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03318_swing_360",
+  "numeric_id": "03318",
+  "slug": "swing_360",
+  "name": "Swing 360",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and knees slightly bent.",
+    "Hold your arms straight out in front of you, parallel to the ground.",
+    "Engage your core and swing your arms in a circular motion, rotating your torso as you do so.",
+    "Continue the circular motion, swinging your arms and rotating your torso for the desired number of repetitions.",
+    "Remember to breathe throughout the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3318",
+    "free_id": null
+  }
+}

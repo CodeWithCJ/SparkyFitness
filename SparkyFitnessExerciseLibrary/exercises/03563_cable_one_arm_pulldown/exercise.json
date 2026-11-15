@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03563_cable_one_arm_pulldown",
+  "numeric_id": "03563",
+  "slug": "cable_one_arm_pulldown",
+  "name": "Cable One Arm Pulldown",
+  "aliases": [
+    "One Arm Lat Pulldown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a single handle to a high pulley cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Grasp the handle with an overhand grip and extend your arm fully.",
+    "Keep your back straight and your core engaged.",
+    "Pull the handle down towards your side while keeping your elbow close to your body.",
+    "Pause for a moment at the bottom of the movement, squeezing your lat muscle.",
+    "Slowly release the handle back to the starting position.",
+    "Repeat for the desired number of repetitions.",
+    "Switch sides and repeat the exercise with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3563",
+    "free_id": "One_Arm_Lat_Pulldown"
+  }
+}

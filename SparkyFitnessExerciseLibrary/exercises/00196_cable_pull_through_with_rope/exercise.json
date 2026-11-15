@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00196_cable_pull_through_with_rope",
+  "numeric_id": "00196",
+  "slug": "cable_pull_through_with_rope",
+  "name": "Cable Pull Through (With Rope)",
+  "aliases": [
+    "Pull Through"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing away from the cable machine with your feet shoulder-width apart.",
+    "Grab the rope attachment with both hands and step forward, creating tension in the cable.",
+    "Bend at the hips and lower your upper body until it is parallel to the ground, keeping your back straight.",
+    "Engage your glutes and hamstrings to pull your body back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0196",
+    "free_id": "Pull_Through"
+  }
+}

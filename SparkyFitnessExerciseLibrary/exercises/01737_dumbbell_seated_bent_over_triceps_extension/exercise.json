@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01737_dumbbell_seated_bent_over_triceps_extension",
+  "numeric_id": "01737",
+  "slug": "dumbbell_seated_bent_over_triceps_extension",
+  "name": "Dumbbell Seated Bent Over Triceps Extension",
+  "aliases": [
+    "Seated Bent-Over One-Arm Dumbbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and hold a dumbbell in each hand.",
+    "Bend forward at the waist, keeping your back straight and your head up.",
+    "Extend your arms straight back, keeping your elbows close to your head.",
+    "Pause for a moment, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1737",
+    "free_id": "Seated_Bent-Over_One-Arm_Dumbbell_Triceps_Extension"
+  }
+}

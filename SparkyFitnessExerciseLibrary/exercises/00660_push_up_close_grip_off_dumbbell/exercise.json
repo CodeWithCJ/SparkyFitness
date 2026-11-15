@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00660_push_up_close_grip_off_dumbbell",
+  "numeric_id": "00660",
+  "slug": "push_up_close_grip_off_dumbbell",
+  "name": "Push-Up Close-Grip Off Dumbbell",
+  "aliases": [
+    "Close-Grip Push-Up off of a Dumbbell"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands placed close together, directly under your shoulders.",
+    "Hold a dumbbell in each hand, resting them on the ground.",
+    "Lower your body towards the ground by bending your elbows, keeping them close to your sides.",
+    "Push through your palms to extend your arms and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0660",
+    "free_id": "Close-Grip_Push-Up_off_of_a_Dumbbell"
+  }
+}

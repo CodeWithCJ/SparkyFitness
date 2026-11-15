@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01644_cable_squatting_curl",
+  "numeric_id": "01644",
+  "slug": "cable_squatting_curl",
+  "name": "Cable Squatting Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a cable handle to the lowest setting on a cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Hold the cable handle with an underhand grip, palms facing up, and arms fully extended.",
+    "Lower your body into a squat position, keeping your back straight and knees behind your toes.",
+    "As you squat down, curl the cable handle towards your shoulders, keeping your elbows close to your sides.",
+    "Pause for a moment at the top of the curl, squeezing your biceps.",
+    "Slowly lower the cable handle back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1644",
+    "free_id": null
+  }
+}

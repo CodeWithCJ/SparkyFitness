@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03360_bear_crawl",
+  "numeric_id": "03360",
+  "slug": "bear_crawl",
+  "name": "Bear Crawl",
+  "aliases": [
+    "Bear Crawl Sled Drags"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "shoulders",
+      "triceps",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start on all fours with your hands directly under your shoulders and your knees directly under your hips.",
+    "Lift your knees slightly off the ground, keeping your back flat and your core engaged.",
+    "Move your right hand and left foot forward simultaneously, followed by your left hand and right foot.",
+    "Continue crawling forward, alternating your hand and foot movements.",
+    "Maintain a steady pace and keep your core tight throughout the exercise.",
+    "Continue for the desired distance or time."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3360",
+    "free_id": "Bear_Crawl_Sled_Drags"
+  }
+}

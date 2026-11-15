@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00248_cambered_bar_lying_row",
+  "numeric_id": "00248",
+  "slug": "cambered_bar_lying_row",
+  "name": "Cambered Bar Lying Row",
+  "aliases": [
+    "Lying Cambered Barbell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a barbell on the floor and lie face down on a bench with your chest just off the edge.",
+    "Reach down and grab the barbell with an overhand grip, slightly wider than shoulder-width apart.",
+    "With your legs straight and feet on the ground, lift the barbell off the floor by extending your arms.",
+    "Pull the barbell towards your chest, squeezing your shoulder blades together.",
+    "Lower the barbell back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0248",
+    "free_id": "Lying_Cambered_Barbell_Row"
+  }
+}

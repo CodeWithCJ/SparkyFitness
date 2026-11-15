@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01587_seated_wide_angle_pose_sequence",
+  "numeric_id": "01587",
+  "slug": "seated_wide_angle_pose_sequence",
+  "name": "Seated Wide Angle Pose Sequence",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the ground with your legs extended in a wide angle.",
+    "Flex your feet and engage your quadriceps.",
+    "Place your hands on the ground behind you for support.",
+    "Keeping your back straight, lean forward from your hips.",
+    "Continue leaning forward until you feel a stretch in your hamstrings.",
+    "Hold this position for a few breaths.",
+    "Slowly release the stretch and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1587",
+    "free_id": null
+  }
+}

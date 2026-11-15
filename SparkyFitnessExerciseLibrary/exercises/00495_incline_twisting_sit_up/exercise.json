@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00495_incline_twisting_sit_up",
+  "numeric_id": "00495",
+  "slug": "incline_twisting_sit_up",
+  "name": "Incline Twisting Sit-Up",
+  "aliases": [
+    "Sit-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up an incline bench at a 45-degree angle.",
+    "Lie down on the bench with your feet secured under the foot pads.",
+    "Place your hands behind your head or across your chest.",
+    "Engage your abs and lift your upper body off the bench, curling forward.",
+    "As you curl up, twist your torso to one side, bringing your elbow towards the opposite knee.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat the movement, this time twisting your torso to the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0495",
+    "free_id": "Sit-Up"
+  }
+}

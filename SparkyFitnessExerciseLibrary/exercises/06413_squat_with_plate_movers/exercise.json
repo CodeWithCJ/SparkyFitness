@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06413_squat_with_plate_movers",
+  "numeric_id": "06413",
+  "slug": "squat_with_plate_movers",
+  "name": "Squat With Plate Movers",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "To begin, first set the bar on a rack to just below shoulder level. Position a weight plate on the ground a couple feet back from the rack. Once the bar is loaded, step under it and place the back of your shoulders across it.",
+    "Hold on to the bar with both hands and lift it off the rack by first pushing with your legs and at the same time straighten your torso.",
+    "Step away from the rack and adopt a wide stance with the toes slightly pointed out, with one foot on the weight plate. Keep your head up at all times. This will be your starting position.",
+    "Begin to slowly lower the bar by bending the knees and hips. Continue down until the angle between the upper leg and the calves becomes slightly less than 90-degrees.",
+    "Raise the bar as you exhale by pushing the floor with the heels of your feet as you extend the hips and knees.",
+    "At the top of the movement, side step, bringing your feet together on the opposite side of the plate.",
+    "Using your inside foot, push the weight plate, sliding it across the floor to where you were just standing.",
+    "Place your inside foot on the weight plate, adopting a wide stance for the next repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Squat_with_Plate_Movers"
+  }
+}

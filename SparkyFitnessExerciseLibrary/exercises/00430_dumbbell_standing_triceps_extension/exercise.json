@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00430_dumbbell_standing_triceps_extension",
+  "numeric_id": "00430",
+  "slug": "dumbbell_standing_triceps_extension",
+  "name": "Dumbbell Standing Triceps Extension",
+  "aliases": [
+    "Standing Dumbbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in one hand.",
+    "Raise the dumbbell overhead, keeping your arm straight.",
+    "Bend your elbow and lower the dumbbell behind your head, keeping your upper arm stationary.",
+    "Extend your arm back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0430",
+    "free_id": "Standing_Dumbbell_Triceps_Extension"
+  }
+}

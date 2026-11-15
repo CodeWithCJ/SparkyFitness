@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01668_dumbbell_one_arm_seated_bicep_curl_on_exercise_bal",
+  "numeric_id": "01668",
+  "slug": "dumbbell_one_arm_seated_bicep_curl_on_exercise_ball",
+  "name": "Dumbbell One Arm Seated Bicep Curl On Exercise Ball",
+  "aliases": [
+    "Dumbbell Bicep Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in one hand with your palm facing up and your arm fully extended.",
+    "Keeping your upper arm stationary, curl the dumbbell towards your shoulder by contracting your biceps.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1668",
+    "free_id": "Dumbbell_Bicep_Curl"
+  }
+}

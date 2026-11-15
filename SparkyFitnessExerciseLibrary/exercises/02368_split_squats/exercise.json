@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02368_split_squats",
+  "numeric_id": "02368",
+  "slug": "split_squats",
+  "name": "Split Squats",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Take a step forward with one foot and place it about two feet in front of the other foot.",
+    "Lower your body by bending your knees and hips, keeping your back straight.",
+    "Continue lowering until your front thigh is parallel to the ground, and your back knee is hovering just above the ground.",
+    "Pause for a moment, then push through your front heel to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2368",
+    "free_id": "Split_Squats"
+  }
+}

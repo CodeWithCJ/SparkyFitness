@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01432_assisted_standing_pull_up",
+  "numeric_id": "01432",
+  "slug": "assisted_standing_pull_up",
+  "name": "Assisted Standing Pull-Up",
+  "aliases": [
+    "Band Assisted Pull-Up"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": null,
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "abdominals",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to your desired weight and height settings.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Grasp the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Engage your lats and biceps, and pull yourself up towards the handles.",
+    "Pause for a moment at the top, squeezing your back muscles.",
+    "Slowly lower yourself back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1432",
+    "free_id": "Band_Assisted_Pull-Up"
+  }
+}

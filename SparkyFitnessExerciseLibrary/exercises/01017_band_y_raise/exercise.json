@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01017_band_y_raise",
+  "numeric_id": "01017",
+  "slug": "band_y_raise",
+  "name": "Band Y-Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold the band in front of your thighs with your palms facing inwards.",
+    "Keep your arms straight and lift them up and out to the sides, forming a 'Y' shape with your body.",
+    "Squeeze your shoulder blades together at the top of the movement.",
+    "Slowly lower your arms back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1017",
+    "free_id": null
+  }
+}

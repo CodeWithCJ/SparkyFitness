@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00258_clock_push_up",
+  "numeric_id": "00258",
+  "slug": "clock_push_up",
+  "name": "Clock Push-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands directly under your shoulders and your body in a straight line.",
+    "Lower your body towards the ground by bending your elbows, keeping them close to your sides.",
+    "As you lower, rotate your body to the left, extending your left arm straight out to the side.",
+    "Push back up to the starting position, while rotating your body to the center.",
+    "Repeat the push-up, this time rotating your body to the right and extending your right arm out to the side.",
+    "Continue alternating sides with each repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0258",
+    "free_id": "Clock_Push-Up"
+  }
+}

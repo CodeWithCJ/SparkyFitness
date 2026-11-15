@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00553_kettlebell_two_arm_military_press",
+  "numeric_id": "00553",
+  "slug": "kettlebell_two_arm_military_press",
+  "name": "Kettlebell Two Arm Military Press",
+  "aliases": [
+    "Two-Arm Kettlebell Military Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in each hand at shoulder level with your palms facing forward.",
+    "Engage your core and press the kettlebells overhead, fully extending your arms.",
+    "Pause for a moment at the top, then slowly lower the kettlebells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0553",
+    "free_id": "Two-Arm_Kettlebell_Military_Press"
+  }
+}

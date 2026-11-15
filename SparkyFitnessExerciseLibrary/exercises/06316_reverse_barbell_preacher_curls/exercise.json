@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06316_reverse_barbell_preacher_curls",
+  "numeric_id": "06316",
+  "slug": "reverse_barbell_preacher_curls",
+  "name": "Reverse Barbell Preacher Curls",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Grab an EZ-bar using a shoulder width and palms down (pronated) grip.",
+    "Now place the upper part of both arms on top of the preacher bench and have your arms extended. This will be your starting position.",
+    "As you exhale, use the biceps to curl the weight up until your biceps are fully contracted and the barbell is at shoulder height. Squeeze the biceps hard for a second at the contracted position.",
+    "As you breathe in, slowly lower the barbell until your upper arms are extended and the biceps is fully stretched.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Reverse_Barbell_Preacher_Curls"
+  }
+}

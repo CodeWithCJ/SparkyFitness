@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00224_cable_standing_back_wrist_curl",
+  "numeric_id": "00224",
+  "slug": "cable_standing_back_wrist_curl",
+  "name": "Cable Standing Back Wrist Curl",
+  "aliases": [
+    "Cable Wrist Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a cable machine with your feet shoulder-width apart.",
+    "Hold the cable handle with an overhand grip, palms facing down.",
+    "Keep your arms straight and your elbows close to your sides.",
+    "Slowly curl your wrists upward, bringing the cable handle towards your body.",
+    "Pause for a moment at the top, then slowly lower the cable handle back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0224",
+    "free_id": "Cable_Wrist_Curl"
+  }
+}

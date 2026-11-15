@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00243_cable_twist",
+  "numeric_id": "00243",
+  "slug": "cable_twist",
+  "name": "Cable Twist",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the cable machine.",
+    "Hold the cable handle with both hands in front of your chest, keeping your arms slightly bent.",
+    "Engage your core and twist your torso to the right, pulling the cable across your body.",
+    "Pause for a moment at the end of the movement, feeling the contraction in your abs and obliques.",
+    "Slowly return to the starting position, resisting the cable's pull.",
+    "Repeat the movement to the left side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0243",
+    "free_id": null
+  }
+}

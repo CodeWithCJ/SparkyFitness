@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01652_dumbbell_bicep_curl_on_exercise_ball_with_leg_rais",
+  "numeric_id": "01652",
+  "slug": "dumbbell_bicep_curl_on_exercise_ball_with_leg_raised",
+  "name": "Dumbbell Bicep Curl On Exercise Ball With Leg Raised",
+  "aliases": [
+    "Ball Leg Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "shoulders",
+      "calves",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in each hand with your palms facing forward and your arms fully extended.",
+    "Slowly curl the dumbbells towards your shoulders, keeping your elbows close to your sides.",
+    "Pause for a moment at the top of the movement, then slowly lower the dumbbells back to the starting position.",
+    "While performing the bicep curl, raise one leg off the ground and hold it in the air for the duration of the exercise.",
+    "Repeat for the desired number of repetitions, then switch legs and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1652",
+    "free_id": "Ball_Leg_Curl"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02705_dumbbell_lying_pronation_on_floor",
+  "numeric_id": "02705",
+  "slug": "dumbbell_lying_pronation_on_floor",
+  "name": "Dumbbell Lying Pronation On Floor",
+  "aliases": [
+    "Dumbbell Lying Pronation"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on the floor with your face down and your arms extended straight out in front of you, holding a dumbbell in each hand.",
+    "Rotate your palms so they are facing down towards the floor.",
+    "Keeping your arms straight, lift the dumbbells off the floor by contracting your forearms.",
+    "Continue lifting until your forearms are fully contracted and the dumbbells are at shoulder level.",
+    "Hold for a moment, then slowly lower the dumbbells back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2705",
+    "free_id": "Dumbbell_Lying_Pronation"
+  }
+}

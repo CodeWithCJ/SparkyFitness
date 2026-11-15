@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00756_smith_hip_raise",
+  "numeric_id": "00756",
+  "slug": "smith_hip_raise",
+  "name": "Smith Hip Raise",
+  "aliases": [
+    "Smith Machine Hip Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position yourself on the smith machine with your back against the pad and your feet shoulder-width apart.",
+    "Place your hands on the barbell, slightly wider than shoulder-width apart.",
+    "Engage your core and glutes, then push through your heels to raise your hips off the ground.",
+    "Continue lifting until your body forms a straight line from your knees to your shoulders.",
+    "Hold for a moment at the top, then slowly lower your hips back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0756",
+    "free_id": "Smith_Machine_Hip_Raise"
+  }
+}

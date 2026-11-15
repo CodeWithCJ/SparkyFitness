@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00696_self_assisted_inverse_leg_curl_on_floor",
+  "numeric_id": "00696",
+  "slug": "self_assisted_inverse_leg_curl_on_floor",
+  "name": "Self Assisted Inverse Leg Curl (On Floor)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs extended and your arms by your sides.",
+    "Bend your knees and place your feet flat on the ground, hip-width apart.",
+    "Lift your hips off the ground, engaging your glutes and hamstrings.",
+    "Slowly curl your legs towards your glutes, keeping your hips lifted.",
+    "Pause for a moment at the top, then slowly extend your legs back to the starting position.",
+    "Lower your hips back down to the ground.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0696",
+    "free_id": null
+  }
+}

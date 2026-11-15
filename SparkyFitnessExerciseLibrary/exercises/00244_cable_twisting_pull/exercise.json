@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00244_cable_twisting_pull",
+  "numeric_id": "00244",
+  "slug": "cable_twisting_pull",
+  "name": "Cable Twisting Pull",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a cable handle to a low pulley and stand facing the machine.",
+    "Grasp the handle with your left hand and step away from the machine, extending your arm fully.",
+    "Position your feet shoulder-width apart, with your knees slightly bent.",
+    "Keep your back straight and your core engaged throughout the exercise.",
+    "Pull the handle towards your body, rotating your torso to the right as you do so.",
+    "Squeeze your back muscles at the end of the movement.",
+    "Slowly return to the starting position, keeping tension on the cable.",
+    "Repeat for the desired number of repetitions, then switch sides and perform with your right hand."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0244",
+    "free_id": null
+  }
+}

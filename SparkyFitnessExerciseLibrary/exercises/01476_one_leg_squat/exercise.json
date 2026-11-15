@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01476_one_leg_squat",
+  "numeric_id": "01476",
+  "slug": "one_leg_squat",
+  "name": "One Leg Squat",
+  "aliases": [
+    "One Leg Barbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Extend one leg forward, keeping it off the ground.",
+    "Bend your standing leg and lower your body down as if sitting back into a chair.",
+    "Keep your chest up and your back straight.",
+    "Push through your heel to return to the starting position.",
+    "Repeat with the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1476",
+    "free_id": "One_Leg_Barbell_Squat"
+  }
+}

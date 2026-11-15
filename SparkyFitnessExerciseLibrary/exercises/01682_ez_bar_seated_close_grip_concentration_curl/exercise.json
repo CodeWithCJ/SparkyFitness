@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01682_ez_bar_seated_close_grip_concentration_curl",
+  "numeric_id": "01682",
+  "slug": "ez_bar_seated_close_grip_concentration_curl",
+  "name": "Ez Bar Seated Close Grip Concentration Curl",
+  "aliases": [
+    "Close-Grip EZ Bar Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and hold an EZ barbell with an underhand grip.",
+    "Rest your elbow on the inside of your thigh, just above the knee.",
+    "Curl the barbell up towards your shoulder while keeping your upper arm stationary.",
+    "Squeeze your biceps at the top of the movement, then slowly lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1682",
+    "free_id": "Close-Grip_EZ_Bar_Curl"
+  }
+}

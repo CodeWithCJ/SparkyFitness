@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01689_push_and_pull_bodyweight",
+  "numeric_id": "01689",
+  "slug": "push_and_pull_bodyweight",
+  "name": "Push And Pull Bodyweight",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands slightly wider than shoulder-width apart and your body in a straight line.",
+    "Lower your chest towards the ground by bending your elbows, keeping your body straight.",
+    "Push through your palms to extend your arms and return to the starting position.",
+    "From the push-up position, pull your chest towards the ground by bending your elbows, keeping your body straight.",
+    "Push through your palms to extend your arms and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1689",
+    "free_id": null
+  }
+}

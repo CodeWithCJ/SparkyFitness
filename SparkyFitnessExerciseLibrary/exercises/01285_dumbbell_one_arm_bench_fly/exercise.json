@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01285_dumbbell_one_arm_bench_fly",
+  "numeric_id": "01285",
+  "slug": "dumbbell_one_arm_bench_fly",
+  "name": "Dumbbell One Arm Bench Fly",
+  "aliases": [
+    "One Arm Dumbbell Bench Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a flat bench with a dumbbell in one hand, resting it on top of your thigh.",
+    "Lie back on the bench, keeping the dumbbell pressed against your thigh.",
+    "Using your free hand, help lift the dumbbell up to the starting position.",
+    "Hold the dumbbell directly above your shoulder with your arm extended and palm facing inward.",
+    "Lower the dumbbell out to the side in a wide arc, keeping a slight bend in your elbow.",
+    "Pause when your arm is parallel to the ground, then reverse the movement and bring the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1285",
+    "free_id": "One_Arm_Dumbbell_Bench_Press"
+  }
+}

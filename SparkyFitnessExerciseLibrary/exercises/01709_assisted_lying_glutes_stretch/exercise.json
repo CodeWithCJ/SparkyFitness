@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01709_assisted_lying_glutes_stretch",
+  "numeric_id": "01709",
+  "slug": "assisted_lying_glutes_stretch",
+  "name": "Assisted Lying Glutes Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your legs extended.",
+    "Bend your right knee and place your right ankle on your left thigh, just above the knee.",
+    "Grasp your left thigh with both hands and gently pull it towards your chest.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1709",
+    "free_id": null
+  }
+}

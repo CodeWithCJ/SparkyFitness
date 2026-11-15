@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01271_chest_and_front_of_shoulder_stretch",
+  "numeric_id": "01271",
+  "slug": "chest_and_front_of_shoulder_stretch",
+  "name": "Chest And Front Of Shoulder Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand tall with your feet shoulder-width apart.",
+    "Extend your arms straight out in front of you at shoulder height.",
+    "Cross your arms in front of your body, with your right arm on top of your left arm.",
+    "Interlace your fingers and press your palms together.",
+    "Gently squeeze your shoulder blades together and push your hands forward, feeling a stretch in your chest and front of your shoulders.",
+    "Hold the stretch for 20-30 seconds, then release.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1271",
+    "free_id": "Chest_And_Front_Of_Shoulder_Stretch"
+  }
+}

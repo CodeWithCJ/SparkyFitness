@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03293_archer_pull_up",
+  "numeric_id": "03293",
+  "slug": "archer_pull_up",
+  "name": "Archer Pull Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Engage your core and pull your shoulder blades down and back.",
+    "As you pull yourself up, bend one arm and bring your elbow towards your side, while keeping the other arm straight.",
+    "Continue pulling until your chin is above the bar and your bent arm is fully flexed.",
+    "Lower yourself back down with control, straightening the bent arm and repeating the movement on the other side.",
+    "Alternate sides with each repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3293",
+    "free_id": null
+  }
+}

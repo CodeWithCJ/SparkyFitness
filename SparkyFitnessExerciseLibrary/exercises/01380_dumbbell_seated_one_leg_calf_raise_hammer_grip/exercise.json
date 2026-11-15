@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01380_dumbbell_seated_one_leg_calf_raise_hammer_grip",
+  "numeric_id": "01380",
+  "slug": "dumbbell_seated_one_leg_calf_raise_hammer_grip",
+  "name": "Dumbbell Seated One Leg Calf Raise - Hammer Grip",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your feet flat on the ground and a dumbbell resting on your thighs.",
+    "Place one foot on a raised surface, such as a step or block, with your heel hanging off the edge.",
+    "Hold the dumbbell with a hammer grip, meaning your palms are facing each other and your fingers are wrapped around the handle.",
+    "Keeping your core engaged and your back straight, slowly raise your heel as high as possible by pushing through the ball of your foot.",
+    "Pause for a moment at the top, then slowly lower your heel back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1380",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

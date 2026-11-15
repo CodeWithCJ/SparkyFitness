@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00538_kettlebell_one_arm_jerk",
+  "numeric_id": "00538",
+  "slug": "kettlebell_one_arm_jerk",
+  "name": "Kettlebell One Arm Jerk",
+  "aliases": [
+    "One-Arm Kettlebell Jerk"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals",
+      "calves",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in one hand at shoulder height.",
+    "Bend your knees slightly and engage your core.",
+    "Press the kettlebell overhead in a straight line, fully extending your arm.",
+    "As you press the kettlebell overhead, simultaneously dip your knees and quickly straighten them to generate momentum.",
+    "As the kettlebell reaches its highest point, quickly drop underneath it by bending your knees and hips.",
+    "Catch the kettlebell with a slight bend in your knees and hips, and your arm fully extended overhead.",
+    "Stand up straight, fully extending your knees and hips, and stabilize the kettlebell overhead.",
+    "Lower the kettlebell back to the starting position by bending your knees and hips, and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0538",
+    "free_id": "One-Arm_Kettlebell_Jerk"
+  }
+}

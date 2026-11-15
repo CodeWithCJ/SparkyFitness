@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00219_cable_shoulder_press",
+  "numeric_id": "00219",
+  "slug": "cable_shoulder_press",
+  "name": "Cable Shoulder Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine so that the handles are at shoulder height.",
+    "Stand facing away from the machine with your feet shoulder-width apart.",
+    "Grasp the handles with an overhand grip and bring them up to shoulder level, with your elbows bent and pointing outwards.",
+    "Press the handles upwards until your arms are fully extended overhead.",
+    "Pause for a moment at the top, then slowly lower the handles back down to shoulder level.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0219",
+    "free_id": "Cable_Shoulder_Press"
+  }
+}

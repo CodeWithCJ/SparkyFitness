@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00362_dumbbell_one_arm_triceps_extension_on_bench",
+  "numeric_id": "00362",
+  "slug": "dumbbell_one_arm_triceps_extension_on_bench",
+  "name": "Dumbbell One Arm Triceps Extension (On Bench)",
+  "aliases": [
+    "Dumbbell One-Arm Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and feet flat on the ground.",
+    "Hold a dumbbell in one hand and place your other hand on the bench for support.",
+    "Raise the dumbbell overhead, keeping your upper arm close to your head and your elbow pointing forward.",
+    "Lower the dumbbell behind your head by bending your elbow, keeping your upper arm stationary.",
+    "Extend your arm back up to the starting position, fully straightening your elbow.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0362",
+    "free_id": "Dumbbell_One-Arm_Triceps_Extension"
+  }
+}

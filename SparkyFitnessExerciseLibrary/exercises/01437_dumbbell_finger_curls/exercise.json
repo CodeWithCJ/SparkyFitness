@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01437_dumbbell_finger_curls",
+  "numeric_id": "01437",
+  "slug": "dumbbell_finger_curls",
+  "name": "Dumbbell Finger Curls",
+  "aliases": [
+    "Finger Curls"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in one hand with an underhand grip, resting your forearm on your thigh, palm facing up.",
+    "Allow the dumbbell to roll down to your fingertips, then curl it back up by flexing your fingers.",
+    "Repeat for the desired number of repetitions, then switch to the other hand."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1437",
+    "free_id": "Finger_Curls"
+  }
+}

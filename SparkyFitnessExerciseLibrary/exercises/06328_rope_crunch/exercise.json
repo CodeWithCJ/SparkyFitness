@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06328_rope_crunch",
+  "numeric_id": "06328",
+  "slug": "rope_crunch",
+  "name": "Rope Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Kneel 1-2 feet in front of a cable system with a rope attached.",
+    "After selecting an appropriate weight, grasp the rope with both hands reaching overhead. Your torso should be upright in the starting position.",
+    "To begin, flex at the spine, attempting to bring your rib cage to your legs as you pull the cable down.",
+    "Pause at the bottom of the motion, and then slowly return to the starting position.",
+    "These can be done with twists or to the side to hit the obliques."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Rope_Crunch"
+  }
+}

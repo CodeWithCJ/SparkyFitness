@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01616_lever_reverse_grip_preacher_curl",
+  "numeric_id": "01616",
+  "slug": "lever_reverse_grip_preacher_curl",
+  "name": "Lever Reverse Grip Preacher Curl",
+  "aliases": [
+    "Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the leverage machine.",
+    "Grasp the handles with an underhand grip, palms facing up.",
+    "Rest your upper arms on the preacher pad, ensuring your elbows are fully extended.",
+    "Keeping your upper arms stationary, exhale and curl the handles towards your shoulders.",
+    "Pause for a moment at the top of the movement, squeezing your biceps.",
+    "Inhale and slowly lower the handles back to the starting position, fully extending your elbows.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1616",
+    "free_id": "Preacher_Curl"
+  }
+}

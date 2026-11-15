@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01560_exercise_ball_seated_hamstring_stretch",
+  "numeric_id": "01560",
+  "slug": "exercise_ball_seated_hamstring_stretch",
+  "name": "Exercise Ball Seated Hamstring Stretch",
+  "aliases": [
+    "Hamstring Stretch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the stability ball with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Slowly roll the ball forward, walking your feet out until your upper back is resting on the ball and your legs are extended straight in front of you.",
+    "Place your hands on your hips for support.",
+    "Engage your core and slowly lower your upper body towards the ground, keeping your back straight and your chest lifted.",
+    "Stop when you feel a stretch in your hamstrings, and hold the position for 20-30 seconds.",
+    "Slowly return to the starting position by pushing through your heels and using your hamstrings to pull yourself back up.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1560",
+    "free_id": "Hamstring_Stretch"
+  }
+}

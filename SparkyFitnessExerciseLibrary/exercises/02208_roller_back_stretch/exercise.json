@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02208_roller_back_stretch",
+  "numeric_id": "02208",
+  "slug": "roller_back_stretch",
+  "name": "Roller Back Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "foam roll",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by sitting on the ground with your legs extended in front of you.",
+    "Place the roller perpendicular to your body, just below your glutes.",
+    "Slowly roll your body backwards, allowing the roller to move up your back.",
+    "Continue rolling until the roller reaches your upper back.",
+    "Pause for a moment, then slowly roll back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2208",
+    "free_id": null
+  }
+}

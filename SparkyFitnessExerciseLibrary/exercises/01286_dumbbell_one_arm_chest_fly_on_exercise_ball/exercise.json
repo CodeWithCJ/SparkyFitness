@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01286_dumbbell_one_arm_chest_fly_on_exercise_ball",
+  "numeric_id": "01286",
+  "slug": "dumbbell_one_arm_chest_fly_on_exercise_ball",
+  "name": "Dumbbell One Arm Chest Fly On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with a dumbbell in one hand and your feet flat on the ground.",
+    "Walk your feet forward, rolling the ball until your upper back is supported on the ball and your head, neck, and shoulders are off the ball.",
+    "Extend your arm with the dumbbell straight up above your chest, palm facing inward.",
+    "Slowly lower the dumbbell out to the side, keeping a slight bend in your elbow.",
+    "Pause for a moment when your arm is parallel to the ground.",
+    "Engage your chest muscles to bring the dumbbell back up to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1286",
+    "free_id": null
+  }
+}

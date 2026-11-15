@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01717_cable_squat_row_with_rope_attachment",
+  "numeric_id": "01717",
+  "slug": "cable_squat_row_with_rope_attachment",
+  "name": "Cable Squat Row (With Rope Attachment)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope to a cable machine at waist height.",
+    "Stand facing the cable machine with your feet shoulder-width apart.",
+    "Bend your knees and lower your body into a squat position, keeping your back straight and chest up.",
+    "Grasp the rope with an overhand grip, with your hands shoulder-width apart.",
+    "Engage your core and pull the rope towards your body, squeezing your shoulder blades together.",
+    "Keep your elbows close to your body and continue pulling until your hands reach your chest.",
+    "Pause for a moment at the top of the movement, then slowly release the rope and extend your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1717",
+    "free_id": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01687_posterior_step_to_overhead_reach",
+  "numeric_id": "01687",
+  "slug": "posterior_step_to_overhead_reach",
+  "name": "Posterior Step To Overhead Reach",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "quadriceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart and your arms by your sides.",
+    "Take a step back with your right foot, landing on the ball of your foot.",
+    "Bend your left knee and lower your body into a lunge position.",
+    "As you lower into the lunge, simultaneously reach your arms overhead.",
+    "Pause for a moment at the bottom of the lunge, then return to the starting position by pushing through your left heel and bringing your right foot forward.",
+    "Repeat the movement on the other side, stepping back with your left foot and bending your right knee.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1687",
+    "free_id": null
+  }
+}

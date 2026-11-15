@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03193_glute_ham_raise",
+  "numeric_id": "03193",
+  "slug": "glute_ham_raise",
+  "name": "Glute-Ham Raise",
+  "aliases": [
+    "Glute Ham Raise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the glute-ham raise machine to fit your body.",
+    "Position yourself face down on the machine with your ankles secured.",
+    "Place your hands on your chest or cross them over your chest.",
+    "Engage your hamstrings and glutes to lift your upper body up towards the ceiling.",
+    "Continue lifting until your body is in a straight line from your head to your heels.",
+    "Pause for a moment at the top, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3193",
+    "free_id": "Glute_Ham_Raise"
+  }
+}

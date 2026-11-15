@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00811_trap_bar_deadlift",
+  "numeric_id": "00811",
+  "slug": "trap_bar_deadlift",
+  "name": "Trap Bar Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and the trap bar on the ground in front of you.",
+    "Bend at the hips and knees to lower yourself down and grip the handles of the trap bar with an overhand grip.",
+    "Keep your back straight and chest up as you begin to lift the trap bar off the ground by extending your hips and knees.",
+    "As you lift, focus on driving through your heels and squeezing your glutes at the top of the movement.",
+    "Lower the trap bar back down to the ground by bending at the hips and knees, keeping your back straight throughout the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0811",
+    "free_id": "Trap_Bar_Deadlift"
+  }
+}

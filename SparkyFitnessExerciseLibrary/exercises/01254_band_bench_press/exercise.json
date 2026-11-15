@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01254_band_bench_press",
+  "numeric_id": "01254",
+  "slug": "band_bench_press",
+  "name": "Band Bench Press",
+  "aliases": [
+    "Reverse Band Bench Press"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "forearms",
+      "lats",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your feet flat on the ground and your back pressed against the bench.",
+    "Grasp the band handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Extend your arms fully, pushing the bands away from your chest.",
+    "Slowly lower the bands back down to your chest, keeping your elbows at a 90-degree angle.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1254",
+    "free_id": "Reverse_Band_Bench_Press"
+  }
+}

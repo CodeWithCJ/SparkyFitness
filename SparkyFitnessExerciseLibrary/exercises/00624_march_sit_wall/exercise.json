@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00624_march_sit_wall",
+  "numeric_id": "00624",
+  "slug": "march_sit_wall",
+  "name": "March Sit (Wall)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your back against a wall and your feet hip-width apart.",
+    "Slowly slide your back down the wall until your knees are bent at a 90-degree angle.",
+    "Lift your right foot off the ground and bring your knee towards your chest.",
+    "Lower your right foot back down and lift your left foot off the ground, bringing your knee towards your chest.",
+    "Continue alternating between lifting your right and left foot for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0624",
+    "free_id": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00749_smith_bent_knee_good_morning",
+  "numeric_id": "00749",
+  "slug": "smith_bent_knee_good_morning",
+  "name": "Smith Bent Knee Good Morning",
+  "aliases": [
+    "Good Morning"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "lower back",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, toes pointing forward.",
+    "Place the barbell across your upper back, resting it on your traps.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Lower your torso until it is parallel to the ground, feeling a stretch in your hamstrings.",
+    "Engage your glutes and hamstrings to raise your torso back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0749",
+    "free_id": "Good_Morning"
+  }
+}

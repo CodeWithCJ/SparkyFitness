@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06046_bodyweight_flyes",
+  "numeric_id": "06046",
+  "slug": "bodyweight_flyes",
+  "name": "Bodyweight Flyes",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position two equally loaded EZ bars on the ground next to each other. Ensure they are able to roll.",
+    "Assume a push-up position over the bars, supporting your weight on your toes and hands with your arms extended and body straight.",
+    "Place your hands on the bars. This will be your starting position.",
+    "Using a slow and controlled motion, move your hands away from the midline of your body, rolling the bars apart. Inhale during this portion of the motion.",
+    "After moving the bars as far apart as you can, return to the starting position by pulling them back together. Exhale as you perform this movement."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Bodyweight_Flyes"
+  }
+}

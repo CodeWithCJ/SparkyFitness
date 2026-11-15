@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00786_squat_jerk",
+  "numeric_id": "00786",
+  "slug": "squat_jerk",
+  "name": "Squat Jerk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves",
+      "abdominals",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start with the barbell resting on your shoulders, with your feet shoulder-width apart.",
+    "Lower your body into a squat position, keeping your chest up and your knees tracking over your toes.",
+    "As you reach the bottom of the squat, explosively drive through your legs and push the barbell overhead.",
+    "As the barbell reaches its peak, quickly drop into a split position, with one foot forward and one foot back.",
+    "Catch the barbell overhead with your arms fully extended and your back knee slightly touching the ground.",
+    "Stand up from the split position, bringing your feet back together.",
+    "Lower the barbell back to your shoulders and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0786",
+    "free_id": "Squat_Jerk"
+  }
+}

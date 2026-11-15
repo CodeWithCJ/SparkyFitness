@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00639_one_arm_dip",
+  "numeric_id": "00639",
+  "slug": "one_arm_dip",
+  "name": "One Arm Dip",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing away from a bench or chair, with your feet shoulder-width apart.",
+    "Place one hand on the bench or chair behind you, fingers pointing towards your body.",
+    "Extend your legs out in front of you, keeping your heels on the ground.",
+    "Bend your elbows and lower your body towards the ground, keeping your back close to the bench or chair.",
+    "Pause for a moment at the bottom, then push through your palms to straighten your arms and return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides and repeat with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0639",
+    "free_id": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03665_power_point_plank",
+  "numeric_id": "03665",
+  "slug": "power_point_plank",
+  "name": "Power Point Plank",
+  "aliases": [
+    "Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands directly under your shoulders and your body in a straight line from head to toe.",
+    "Engage your core and squeeze your glutes to maintain a stable position.",
+    "Lower your body down onto your forearms, one arm at a time, maintaining a straight line from head to toe.",
+    "Hold this position for the desired amount of time, keeping your core and glutes engaged.",
+    "To return to the starting position, push through your forearms and lift your body back up into a high plank position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3665",
+    "free_id": "Plank"
+  }
+}

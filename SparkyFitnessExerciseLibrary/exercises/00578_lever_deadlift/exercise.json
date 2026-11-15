@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00578_lever_deadlift",
+  "numeric_id": "00578",
+  "slug": "lever_deadlift",
+  "name": "Lever Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and foot platform to your desired position.",
+    "Sit on the machine with your back against the pad and your feet flat on the foot platform.",
+    "Grasp the handles or the sides of the seat for stability.",
+    "Engage your glutes and hamstrings, and push through your heels to lift the weight up.",
+    "Keep your back straight and avoid rounding your shoulders.",
+    "Extend your hips fully at the top of the movement, squeezing your glutes.",
+    "Lower the weight back down in a controlled manner, keeping tension on your glutes and hamstrings.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0578",
+    "free_id": null
+  }
+}

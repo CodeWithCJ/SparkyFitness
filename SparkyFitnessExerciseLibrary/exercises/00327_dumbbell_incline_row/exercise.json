@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00327_dumbbell_incline_row",
+  "numeric_id": "00327",
+  "slug": "dumbbell_incline_row",
+  "name": "Dumbbell Incline Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "shoulders",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up an incline bench at a 45-degree angle.",
+    "Grab a dumbbell in each hand and sit on the bench with your chest against the incline.",
+    "Extend your arms fully, allowing the dumbbells to hang straight down from your shoulders.",
+    "Pull the dumbbells up towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0327",
+    "free_id": "Dumbbell_Incline_Row"
+  }
+}

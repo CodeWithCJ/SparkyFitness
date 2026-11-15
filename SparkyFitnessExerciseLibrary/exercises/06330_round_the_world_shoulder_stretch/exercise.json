@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06330_round_the_world_shoulder_stretch",
+  "numeric_id": "06330",
+  "slug": "round_the_world_shoulder_stretch",
+  "name": "Round The World Shoulder Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "chest"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your legs together, holding a bodybar or broomstick.",
+    "Hold the pole behind your hips with a wider than shoulder width grip. Your palms should be down and your thumbs facing out.",
+    "Slowly lift your arms up behind your head. Don't force it if it gets hard to lift further."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Round_The_World_Shoulder_Stretch"
+  }
+}

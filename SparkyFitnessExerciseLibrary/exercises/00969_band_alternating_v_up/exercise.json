@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00969_band_alternating_v_up",
+  "numeric_id": "00969",
+  "slug": "band_alternating_v_up",
+  "name": "Band Alternating V-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs straight and your arms extended overhead, holding the band.",
+    "Engage your abs and lift your legs and upper body off the ground simultaneously, reaching your hands towards your toes.",
+    "As you lower your legs and upper body back down, switch the position of your legs, crossing one over the other.",
+    "Repeat the movement, alternating the position of your legs with each repetition.",
+    "Continue for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0969",
+    "free_id": null
+  }
+}

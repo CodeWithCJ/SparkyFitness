@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01393_smith_one_leg_floor_calf_raise",
+  "numeric_id": "01393",
+  "slug": "smith_one_leg_floor_calf_raise",
+  "name": "Smith One Leg Floor Calf Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position yourself on the floor under the smith machine bar, facing away from the machine.",
+    "Place the balls of your feet on a raised surface, such as a weight plate or block.",
+    "Position the smith machine bar across your lower legs, just above your ankles.",
+    "Hold onto the bar with your hands for stability.",
+    "Raise your heels off the ground by extending your ankles, lifting your body up.",
+    "Pause at the top of the movement, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1393",
+    "free_id": null
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01317_barbell_reverse_grip_incline_bench_row",
+  "numeric_id": "01317",
+  "slug": "barbell_reverse_grip_incline_bench_row",
+  "name": "Barbell Reverse Grip Incline Bench Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up an incline bench at a 45-degree angle.",
+    "Sit on the bench facing the backrest with your chest against it.",
+    "Grab the barbell with a reverse grip (palms facing down) and hands slightly wider than shoulder-width apart.",
+    "Keep your back straight and core engaged.",
+    "Pull the barbell towards your upper abdomen, squeezing your shoulder blades together.",
+    "Pause for a moment at the top of the movement.",
+    "Slowly lower the barbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1317",
+    "free_id": null
+  }
+}

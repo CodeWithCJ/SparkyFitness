@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00112_barbell_standing_twist",
+  "numeric_id": "00112",
+  "slug": "barbell_standing_twist",
+  "name": "Barbell Standing Twist",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell in front of your chest with both hands, palms facing down.",
+    "Engage your core and keep your back straight throughout the exercise.",
+    "Slowly twist your torso to the right, pivoting on your feet and hips, while keeping your lower body stable.",
+    "Pause for a moment at the end of the twist, then slowly return to the starting position.",
+    "Repeat the twist to the left side.",
+    "Continue alternating twists for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0112",
+    "free_id": null
+  }
+}

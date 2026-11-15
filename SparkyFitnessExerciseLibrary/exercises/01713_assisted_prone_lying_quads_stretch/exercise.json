@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01713_assisted_prone_lying_quads_stretch",
+  "numeric_id": "01713",
+  "slug": "assisted_prone_lying_quads_stretch",
+  "name": "Assisted Prone Lying Quads Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie face down on the ground with your legs extended.",
+    "Bend your left knee and reach back with your left hand to grab your left foot or ankle.",
+    "Gently pull your left foot towards your glutes, feeling a stretch in your left quad.",
+    "Hold the stretch for 20-30 seconds, then release.",
+    "Repeat with your right leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1713",
+    "free_id": null
+  }
+}

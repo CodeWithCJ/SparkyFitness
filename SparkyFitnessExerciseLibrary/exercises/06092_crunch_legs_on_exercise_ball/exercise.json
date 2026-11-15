@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06092_crunch_legs_on_exercise_ball",
+  "numeric_id": "06092",
+  "slug": "crunch_legs_on_exercise_ball",
+  "name": "Crunch - Legs On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your feet resting on an exercise ball and your knees bent at a 90 degree angle.",
+    "Place your feet three to four inches apart and point your toes inward so they touch.",
+    "Place your hands lightly on either side of your head keeping your elbows in. Tip: Don't lock your fingers behind your head.",
+    "Push the small of your back down in the floor in order to better isolate your abdominal muscles. This will be your starting position.",
+    "Begin to roll your shoulders off the floor and continue to push down as hard as you can with your lower back. Your shoulders should come up off the floor only about four inches, and your lower back should remain on the floor. Breathe out as you execute this portion of the movement. Squeeze your abdominals hard at the top of the contraction and hold for a second. Tip: Focus on a slow, controlled movement. Refrain from using momentum at any time.",
+    "Slowly go back down to the starting position as you inhale.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Crunch_-_Legs_On_Exercise_Ball"
+  }
+}

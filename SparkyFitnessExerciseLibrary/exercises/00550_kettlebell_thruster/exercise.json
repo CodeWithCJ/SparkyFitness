@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00550_kettlebell_thruster",
+  "numeric_id": "00550",
+  "slug": "kettlebell_thruster",
+  "name": "Kettlebell Thruster",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "glutes",
+      "abdominals",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a kettlebell in front of your chest with both hands, palms facing each other.",
+    "Lower into a squat position by bending your knees and pushing your hips back, keeping your chest up and your back straight.",
+    "As you reach the bottom of the squat, explosively drive through your heels to stand up, simultaneously pressing the kettlebell overhead.",
+    "Lock out your arms at the top of the movement, fully extending your elbows.",
+    "Lower the kettlebell back to the starting position by reversing the movement, bending your elbows and lowering the weight back to your chest.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0550",
+    "free_id": "Kettlebell_Thruster"
+  }
+}

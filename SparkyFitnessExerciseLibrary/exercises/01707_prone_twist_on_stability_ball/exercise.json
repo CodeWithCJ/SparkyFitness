@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01707_prone_twist_on_stability_ball",
+  "numeric_id": "01707",
+  "slug": "prone_twist_on_stability_ball",
+  "name": "Prone Twist On Stability Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying face down on a stability ball with your feet shoulder-width apart and your toes touching the ground.",
+    "Place your hands behind your head or cross them over your chest.",
+    "Engage your core muscles and slowly lift your upper body off the ball, keeping your back straight.",
+    "Rotate your torso to one side, bringing your shoulder towards your hip. Keep your hips and legs stable throughout the movement.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat the rotation to the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1707",
+    "free_id": null
+  }
+}

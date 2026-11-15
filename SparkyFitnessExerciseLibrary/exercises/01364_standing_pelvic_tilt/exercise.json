@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01364_standing_pelvic_tilt",
+  "numeric_id": "01364",
+  "slug": "standing_pelvic_tilt",
+  "name": "Standing Pelvic Tilt",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Place your hands on your hips or let them hang by your sides.",
+    "Engage your core muscles and tilt your pelvis forward, pushing your lower back towards the wall behind you.",
+    "Hold the position for a few seconds, then release and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1364",
+    "free_id": "Standing_Pelvic_Tilt"
+  }
+}

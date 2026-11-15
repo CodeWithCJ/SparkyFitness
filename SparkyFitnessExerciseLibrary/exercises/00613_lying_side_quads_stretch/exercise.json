@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00613_lying_side_quads_stretch",
+  "numeric_id": "00613",
+  "slug": "lying_side_quads_stretch",
+  "name": "Lying (Side) Quads Stretch",
+  "aliases": [
+    "Side-Lying Floor Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps",
+      "lats"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs straight.",
+    "Bend your top leg and grab your ankle or foot with your hand.",
+    "Gently pull your ankle or foot towards your glutes until you feel a stretch in your quads.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release the stretch and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0613",
+    "free_id": "Side-Lying_Floor_Stretch"
+  }
+}

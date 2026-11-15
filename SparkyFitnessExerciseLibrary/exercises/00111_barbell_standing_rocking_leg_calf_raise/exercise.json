@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00111_barbell_standing_rocking_leg_calf_raise",
+  "numeric_id": "00111",
+  "slug": "barbell_standing_rocking_leg_calf_raise",
+  "name": "Barbell Standing Rocking Leg Calf Raise",
+  "aliases": [
+    "Rocking Standing Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell across your upper back.",
+    "Raise your heels off the ground as high as possible, balancing on the balls of your feet.",
+    "Slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0111",
+    "free_id": "Rocking_Standing_Calf_Raise"
+  }
+}

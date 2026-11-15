@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01434_smith_low_bar_squat",
+  "numeric_id": "01434",
+  "slug": "smith_low_bar_squat",
+  "name": "Smith Low Bar Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up the smith machine with the barbell at a height that allows you to comfortably rest it on your upper back.",
+    "Stand with your feet shoulder-width apart, toes slightly turned outwards.",
+    "Step under the bar and position it across your upper back, resting it on your traps.",
+    "Grip the bar with your hands slightly wider than shoulder-width apart.",
+    "Unrack the bar by straightening your legs and stepping back from the rack.",
+    "Take a deep breath and brace your core.",
+    "Initiate the squat by pushing your hips back and bending your knees.",
+    "Lower your body until your thighs are parallel to the ground or slightly below.",
+    "Keep your chest up and your back straight throughout the movement.",
+    "Drive through your heels to stand back up, extending your hips and knees.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1434",
+    "free_id": null
+  }
+}

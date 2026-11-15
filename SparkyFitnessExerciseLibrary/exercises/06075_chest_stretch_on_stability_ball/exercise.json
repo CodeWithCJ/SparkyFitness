@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06075_chest_stretch_on_stability_ball",
+  "numeric_id": "06075",
+  "slug": "chest_stretch_on_stability_ball",
+  "name": "Chest Stretch On Stability Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Get on your hands and knees next to an exercise ball.",
+    "Place your elbows on top of the ball, keeping your arm out to your side. This will be your starting position.",
+    "Lower your torso towards the floor, keeping your elbow on top of the ball. Hold the stretch for 20-30 seconds, and repeat with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Chest_Stretch_on_Stability_Ball"
+  }
+}

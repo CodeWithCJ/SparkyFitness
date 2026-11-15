@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00606_lever_t_bar_row",
+  "numeric_id": "00606",
+  "slug": "lever_t_bar_row",
+  "name": "Lever T Bar Row",
+  "aliases": [
+    "Lying T-Bar Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and footplate position to ensure proper alignment.",
+    "Sit on the machine with your chest against the pad and your feet flat on the footplate.",
+    "Grasp the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Keep your back straight and engage your core.",
+    "Pull the handles towards your torso, squeezing your shoulder blades together.",
+    "Pause for a moment at the peak contraction, then slowly release the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0606",
+    "free_id": "Lying_T-Bar_Row"
+  }
+}

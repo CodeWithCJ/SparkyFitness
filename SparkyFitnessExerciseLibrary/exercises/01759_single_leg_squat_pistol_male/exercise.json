@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01759_single_leg_squat_pistol_male",
+  "numeric_id": "01759",
+  "slug": "single_leg_squat_pistol_male",
+  "name": "Single Leg Squat (Pistol) Male",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and arms extended in front of you.",
+    "Lift your right foot off the ground and extend it forward.",
+    "Slowly lower your body down by bending your left knee and pushing your hips back.",
+    "Keep your chest up and your back straight as you lower yourself down.",
+    "Lower until your left thigh is parallel to the ground, or as low as you can comfortably go.",
+    "Pause for a moment at the bottom, then push through your left heel to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1759",
+    "free_id": null
+  }
+}

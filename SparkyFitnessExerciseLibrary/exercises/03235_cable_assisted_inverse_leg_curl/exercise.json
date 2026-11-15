@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03235_cable_assisted_inverse_leg_curl",
+  "numeric_id": "03235",
+  "slug": "cable_assisted_inverse_leg_curl",
+  "name": "Cable Assisted Inverse Leg Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine so that the ankle attachment is at the lowest setting.",
+    "Lie face down on the bench with your legs straight and the ankle attachment secured to your ankles.",
+    "Hold onto the handles of the bench for stability.",
+    "Keeping your upper body stationary, exhale and curl your legs up towards your glutes by flexing your knees.",
+    "Pause for a moment at the top of the movement, squeezing your hamstrings.",
+    "Inhale and slowly lower your legs back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3235",
+    "free_id": null
+  }
+}

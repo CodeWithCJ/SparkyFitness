@@ -1,0 +1,55 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02459_tire_flip",
+  "numeric_id": "02459",
+  "slug": "tire_flip",
+  "name": "Tire Flip",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "abdominals",
+      "calves",
+      "chest",
+      "forearms",
+      "lower back",
+      "shoulders",
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the tire.",
+    "Bend your knees and hinge at the hips, lowering into a squat position.",
+    "Reach down and grab the bottom edge of the tire with both hands, fingers facing towards you.",
+    "Engage your glutes and leg muscles, and explosively drive through your legs to lift the tire off the ground.",
+    "As the tire flips over, use your upper body strength to guide it and maintain control.",
+    "Once the tire is fully flipped, quickly step back and reset your stance.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2459",
+    "free_id": "Tire_Flip"
+  }
+}

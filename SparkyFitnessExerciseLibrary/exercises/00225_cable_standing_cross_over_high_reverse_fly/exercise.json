@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00225_cable_standing_cross_over_high_reverse_fly",
+  "numeric_id": "00225",
+  "slug": "cable_standing_cross_over_high_reverse_fly",
+  "name": "Cable Standing Cross-Over High Reverse Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a D-handle to each side of a cable machine at shoulder height.",
+    "Stand in the middle of the cable machine with your feet shoulder-width apart.",
+    "Grasp the handles with an overhand grip and extend your arms out to the sides, palms facing forward.",
+    "Keep a slight bend in your elbows and maintain a straight back throughout the exercise.",
+    "Engage your shoulder muscles and squeeze your shoulder blades together as you pull the handles towards the front of your body.",
+    "Pause for a moment at the peak of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0225",
+    "free_id": null
+  }
+}

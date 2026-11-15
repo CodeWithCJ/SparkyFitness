@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01460_walking_lunge",
+  "numeric_id": "01460",
+  "slug": "walking_lunge",
+  "name": "Walking Lunge",
+  "aliases": [
+    "Barbell Walking Lunge"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Take a step forward with your right leg, lowering your body into a lunge position.",
+    "Keep your torso upright and your front knee aligned with your ankle.",
+    "Push off with your right foot and bring your left foot forward, stepping into a lunge position with your left leg.",
+    "Continue alternating legs and walking forward, maintaining a controlled and steady pace.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1460",
+    "free_id": "Barbell_Walking_Lunge"
+  }
+}

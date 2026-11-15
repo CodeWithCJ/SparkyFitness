@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00547_kettlebell_seesaw_press",
+  "numeric_id": "00547",
+  "slug": "kettlebell_seesaw_press",
+  "name": "Kettlebell Seesaw Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in each hand at shoulder height.",
+    "Press one kettlebell overhead while keeping the other kettlebell at shoulder height.",
+    "Lower the pressed kettlebell back to shoulder height while simultaneously pressing the other kettlebell overhead.",
+    "Continue alternating the pressing motion, creating a seesaw-like movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0547",
+    "free_id": "Kettlebell_Seesaw_Press"
+  }
+}

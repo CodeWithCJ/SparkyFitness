@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00439_dumbbell_zottman_curl",
+  "numeric_id": "00439",
+  "slug": "dumbbell_zottman_curl",
+  "name": "Dumbbell Zottman Curl",
+  "aliases": [
+    "Zottman Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in each hand, palms facing your body.",
+    "Keep your elbows close to your torso and rotate your palms to face forward.",
+    "Curl the dumbbells up to your shoulders while keeping your upper arms stationary.",
+    "At the top of the movement, rotate your wrists so that your palms are facing away from your body.",
+    "Slowly lower the dumbbells back to the starting position, rotating your palms back to facing your body.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0439",
+    "free_id": "Zottman_Curl"
+  }
+}

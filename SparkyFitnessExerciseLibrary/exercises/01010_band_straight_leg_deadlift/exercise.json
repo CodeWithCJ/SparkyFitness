@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01010_band_straight_leg_deadlift",
+  "numeric_id": "01010",
+  "slug": "band_straight_leg_deadlift",
+  "name": "Band Straight Leg Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band around your feet.",
+    "Hold the band with both hands, palms facing your body, and keep your arms straight.",
+    "Engage your core and maintain a slight bend in your knees.",
+    "Slowly hinge forward at your hips, keeping your back straight and chest lifted.",
+    "Lower the band towards the ground while keeping your legs straight.",
+    "Pause for a moment at the bottom, then squeeze your glutes and hamstrings to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1010",
+    "free_id": null
+  }
+}

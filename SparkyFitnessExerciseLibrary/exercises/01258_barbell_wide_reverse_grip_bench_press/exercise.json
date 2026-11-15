@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01258_barbell_wide_reverse_grip_bench_press",
+  "numeric_id": "01258",
+  "slug": "barbell_wide_reverse_grip_bench_press",
+  "name": "Barbell Wide Reverse Grip Bench Press",
+  "aliases": [
+    "Wide-Grip Barbell Bench Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your feet flat on the ground and your back pressed against the bench.",
+    "Grasp the barbell with a wide reverse grip, slightly wider than shoulder-width apart.",
+    "Lift the barbell off the rack and hold it directly above your chest with your arms fully extended.",
+    "Lower the barbell slowly towards your chest, keeping your elbows tucked in and your wrists straight.",
+    "Pause for a moment when the barbell touches your chest, then push it back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1258",
+    "free_id": "Wide-Grip_Barbell_Bench_Press"
+  }
+}

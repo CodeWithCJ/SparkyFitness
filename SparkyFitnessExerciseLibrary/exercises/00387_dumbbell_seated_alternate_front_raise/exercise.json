@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00387_dumbbell_seated_alternate_front_raise",
+  "numeric_id": "00387",
+  "slug": "dumbbell_seated_alternate_front_raise",
+  "name": "Dumbbell Seated Alternate Front Raise",
+  "aliases": [
+    "Front Dumbbell Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and feet flat on the ground.",
+    "Hold a dumbbell in each hand with your palms facing your body and arms extended down by your sides.",
+    "Keeping your arms straight, raise one dumbbell in front of you until it is parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat with the other arm.",
+    "Alternate between arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0387",
+    "free_id": "Front_Dumbbell_Raise"
+  }
+}

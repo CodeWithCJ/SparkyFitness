@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00386_dumbbell_rotation_reverse_fly",
+  "numeric_id": "00386",
+  "slug": "dumbbell_rotation_reverse_fly",
+  "name": "Dumbbell Rotation Reverse Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in each hand, palms facing inwards.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and chest up.",
+    "Raise your arms out to the sides, keeping a slight bend in your elbows, until they are parallel to the floor.",
+    "Rotate your arms so that your palms are facing downwards.",
+    "Slowly lower your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0386",
+    "free_id": null
+  }
+}

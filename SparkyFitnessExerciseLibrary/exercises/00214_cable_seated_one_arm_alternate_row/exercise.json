@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00214_cable_seated_one_arm_alternate_row",
+  "numeric_id": "00214",
+  "slug": "cable_seated_one_arm_alternate_row",
+  "name": "Cable Seated One Arm Alternate Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench facing a cable machine with your feet flat on the ground and knees slightly bent.",
+    "Grasp the handle with one hand and keep your arm fully extended in front of you.",
+    "Pull the handle towards your body, retracting your shoulder blade and keeping your elbow close to your side.",
+    "Pause for a moment at the top of the movement, squeezing your back muscles.",
+    "Slowly release the handle back to the starting position.",
+    "Repeat with the other arm.",
+    "Alternate between arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0214",
+    "free_id": null
+  }
+}

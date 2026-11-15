@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06443_supine_two_arm_overhead_throw",
+  "numeric_id": "06443",
+  "slug": "supine_two_arm_overhead_throw",
+  "name": "Supine Two-Arm Overhead Throw",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "lats",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lay on the ground on your back with your knees bent.",
+    "Hold the ball with both hands, extending the arms fully behind your head. This will be your starting position.",
+    "Initiate the movement at the shoulder, throwing the ball directly forward of you as you sit up, attempting to go for maximum distance.",
+    "The ball can be thrown to a partner or bounced off of a wall."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Supine_Two-Arm_Overhead_Throw"
+  }
+}

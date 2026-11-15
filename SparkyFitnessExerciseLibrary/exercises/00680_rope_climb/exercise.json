@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00680_rope_climb",
+  "numeric_id": "00680",
+  "slug": "rope_climb",
+  "name": "Rope Climb",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "middle back",
+      "lats"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "biceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing the rope with your feet shoulder-width apart.",
+    "Grab the rope with both hands, palms facing towards you.",
+    "Bend your knees slightly and engage your core.",
+    "Begin pulling yourself up the rope by alternating hand-over-hand movements.",
+    "Use your legs to assist in the upward movement.",
+    "Continue climbing until you reach the desired height or the top of the rope.",
+    "To descend, reverse the hand-over-hand movement while controlling your descent.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0680",
+    "free_id": "Rope_Climb"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00666_raise_single_arm_push_up",
+  "numeric_id": "00666",
+  "slug": "raise_single_arm_push_up",
+  "name": "Raise Single Arm Push-Up",
+  "aliases": [
+    "Single-Arm Push-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands slightly wider than shoulder-width apart and your feet together.",
+    "Extend one arm straight out to the side, parallel to the ground.",
+    "Lower your body towards the ground by bending your elbows, keeping your back straight and core engaged.",
+    "Push back up to the starting position, using your chest muscles to lift your body.",
+    "Repeat with the other arm extended."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0666",
+    "free_id": "Single-Arm_Push-Up"
+  }
+}

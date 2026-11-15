@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02298_inverted_row_on_bench",
+  "numeric_id": "02298",
+  "slug": "inverted_row_on_bench",
+  "name": "Inverted Row On Bench",
+  "aliases": [
+    "Inverted Row"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a bench at a height that allows your body to hang freely underneath it.",
+    "Lie face up on the ground with your head towards the bench.",
+    "Reach up and grab the bench with an overhand grip, slightly wider than shoulder-width apart.",
+    "Position your body so that your heels are on the ground and your arms are fully extended.",
+    "Engage your core and squeeze your shoulder blades together as you pull your chest up towards the bench.",
+    "Pause for a moment at the top of the movement, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2298",
+    "free_id": "Inverted_Row"
+  }
+}

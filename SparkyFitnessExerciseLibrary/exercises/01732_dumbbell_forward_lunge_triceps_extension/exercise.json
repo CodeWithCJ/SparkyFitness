@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01732_dumbbell_forward_lunge_triceps_extension",
+  "numeric_id": "01732",
+  "slug": "dumbbell_forward_lunge_triceps_extension",
+  "name": "Dumbbell Forward Lunge Triceps Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand.",
+    "Take a step forward with your right foot, lowering your body into a lunge position.",
+    "Keep your back straight and your chest up.",
+    "Extend your arms straight overhead, keeping your elbows close to your ears.",
+    "Lower the dumbbells behind your head by bending your elbows.",
+    "Pause for a moment, then straighten your arms to return to the starting position.",
+    "Repeat the movement for the desired number of repetitions, then switch legs and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1732",
+    "free_id": null
+  }
+}

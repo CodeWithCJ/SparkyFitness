@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01287_dumbbell_one_arm_decline_chest_press",
+  "numeric_id": "01287",
+  "slug": "dumbbell_one_arm_decline_chest_press",
+  "name": "Dumbbell One Arm Decline Chest Press",
+  "aliases": [
+    "Dumbbell One-Arm Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on a decline bench with a dumbbell in one hand, resting on your chest.",
+    "Place your feet flat on the ground and keep your back pressed against the bench.",
+    "Extend your arm and push the dumbbell up towards the ceiling, fully extending your elbow.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1287",
+    "free_id": "Dumbbell_One-Arm_Shoulder_Press"
+  }
+}

@@ -7,7 +7,10 @@
     "build": "node scripts/build.mjs",
     "validate": "node scripts/validate.mjs",
     "media": "node scripts/optimize-media.mjs",
-    "optimize-media": "node scripts/optimize-media.mjs"
+    "optimize-media": "node scripts/optimize-media.mjs",
+    "merge": "node scripts/merge-datasets.mjs",
+    "list": "node scripts/list.mjs",
+    "exercises": "node scripts/list.mjs"
   },
   "devDependencies": {
     "sharp": "^0.33.5"

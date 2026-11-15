@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00661_push_up_inside_leg_kick",
+  "numeric_id": "00661",
+  "slug": "push_up_inside_leg_kick",
+  "name": "Push-Up Inside Leg Kick",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands slightly wider than shoulder-width apart and your feet together.",
+    "Lower your body towards the ground by bending your elbows, keeping your back straight and your core engaged.",
+    "As you push back up, lift one leg off the ground and kick it out to the side, keeping it straight.",
+    "Lower your leg back down and repeat the push-up, then switch to the other leg.",
+    "Continue alternating leg kicks with each push-up repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0661",
+    "free_id": null
+  }
+}

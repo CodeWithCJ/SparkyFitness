@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00595_lever_seated_crunch_chest_pad",
+  "numeric_id": "00595",
+  "slug": "lever_seated_crunch_chest_pad",
+  "name": "Lever Seated Crunch (Chest Pad)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and chest pad position according to your comfort.",
+    "Sit on the machine with your back against the chest pad and your feet flat on the floor.",
+    "Grasp the handles or side bars for stability.",
+    "Engage your abs and slowly lean back, allowing the chest pad to move with you.",
+    "Pause for a moment at the maximum contraction, feeling the tension in your abs.",
+    "Slowly return to the starting position by contracting your abs and pulling yourself back up.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0595",
+    "free_id": null
+  }
+}

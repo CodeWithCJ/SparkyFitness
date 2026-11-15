@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01411_barbell_palms_down_wrist_curl_over_a_bench",
+  "numeric_id": "01411",
+  "slug": "barbell_palms_down_wrist_curl_over_a_bench",
+  "name": "Barbell Palms Down Wrist Curl Over A Bench",
+  "aliases": [
+    "Palms-Down Wrist Curl Over A Bench"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and your forearms resting on your thighs, palms facing down.",
+    "Hold a barbell with an overhand grip, hands shoulder-width apart.",
+    "Lower the barbell towards the ground by flexing your wrists, keeping your forearms stationary.",
+    "Pause for a moment at the bottom, then slowly raise the barbell back up by extending your wrists.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1411",
+    "free_id": "Palms-Down_Wrist_Curl_Over_A_Bench"
+  }
+}

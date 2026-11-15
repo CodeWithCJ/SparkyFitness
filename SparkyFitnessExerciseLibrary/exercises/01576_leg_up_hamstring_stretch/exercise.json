@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01576_leg_up_hamstring_stretch",
+  "numeric_id": "01576",
+  "slug": "leg_up_hamstring_stretch",
+  "name": "Leg Up Hamstring Stretch",
+  "aliases": [
+    "Leg-Up Hamstring Stretch"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs extended.",
+    "Bend one knee and bring it towards your chest, holding onto your thigh or shin.",
+    "Straighten your leg as much as possible while keeping it elevated.",
+    "Hold the stretch for 20-30 seconds.",
+    "Repeat with the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1576",
+    "free_id": "Leg-Up_Hamstring_Stretch"
+  }
+}

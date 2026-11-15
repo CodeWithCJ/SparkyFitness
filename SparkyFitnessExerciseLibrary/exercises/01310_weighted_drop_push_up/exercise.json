@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01310_weighted_drop_push_up",
+  "numeric_id": "01310",
+  "slug": "weighted_drop_push_up",
+  "name": "Weighted Drop Push Up",
+  "aliases": [
+    "Drop Push"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands slightly wider than shoulder-width apart and your feet together.",
+    "Lower your chest towards the ground, keeping your elbows close to your body.",
+    "Once your chest is just above the ground, explosively push yourself up, lifting your hands off the ground.",
+    "As you push up, quickly move your hands out to the sides and slightly forward, allowing your body to drop down towards the ground.",
+    "Catch yourself with your hands in the wider position and immediately lower your chest towards the ground again.",
+    "Repeat the push-up motion, dropping down and catching yourself with your hands in the narrower position.",
+    "Continue alternating between the wider and narrower hand positions for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1310",
+    "free_id": "Drop_Push"
+  }
+}

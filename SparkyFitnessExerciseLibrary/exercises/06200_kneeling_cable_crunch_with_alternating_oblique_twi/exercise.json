@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06200_kneeling_cable_crunch_with_alternating_oblique_twi",
+  "numeric_id": "06200",
+  "slug": "kneeling_cable_crunch_with_alternating_oblique_twists",
+  "name": "Kneeling Cable Crunch With Alternating Oblique Twists",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Connect a rope attachment to a high pulley cable and position a mat on the floor in front of it.",
+    "Grab the rope with both hands and kneel approximately two feet back from the tower.",
+    "Position the rope behind your head with your hands by your ears.",
+    "Keep your hands in the same place, contract your abs and pull downward on the rope in a crunching movement until your elbows reach your knees.",
+    "Pause briefly at the bottom and rise up in a slow and controlled manner until you reach the starting position.",
+    "Repeat the same downward movement until you're halfway down, at which time you'll begin rotating one of your elbows to the opposite knee.",
+    "Again, pause briefly at the bottom and rise up in a slow and controlled manner until you reach the starting position.",
+    "Repeat the same movement as before, but alternate the other elbow to the opposite knee.",
+    "Continue this series of movements to failure."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists"
+  }
+}

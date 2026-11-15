@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01381_dumbbell_seated_one_leg_calf_raise_palm_up",
+  "numeric_id": "01381",
+  "slug": "dumbbell_seated_one_leg_calf_raise_palm_up",
+  "name": "Dumbbell Seated One Leg Calf Raise - Palm Up",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your back straight and your feet flat on the ground.",
+    "Hold a dumbbell in one hand and place it on top of your thigh, palm facing up.",
+    "Lift one leg off the ground and extend it in front of you, keeping your knee slightly bent.",
+    "Raise your heel as high as possible by pushing through the ball of your foot.",
+    "Pause for a moment at the top, then slowly lower your heel back down.",
+    "Repeat for the desired number of repetitions, then switch legs and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1381",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

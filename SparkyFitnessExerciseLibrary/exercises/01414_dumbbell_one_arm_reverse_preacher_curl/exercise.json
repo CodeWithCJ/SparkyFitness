@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01414_dumbbell_one_arm_reverse_preacher_curl",
+  "numeric_id": "01414",
+  "slug": "dumbbell_one_arm_reverse_preacher_curl",
+  "name": "Dumbbell One Arm Reverse Preacher Curl",
+  "aliases": [
+    "One Arm Dumbbell Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a preacher bench with your chest against the pad and your arm extended over the edge of the bench, holding a dumbbell with an underhand grip.",
+    "Lower the dumbbell slowly until your arm is fully extended.",
+    "Curl the dumbbell back up towards your shoulder, keeping your upper arm stationary.",
+    "Squeeze your biceps at the top of the movement, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1414",
+    "free_id": "One_Arm_Dumbbell_Preacher_Curl"
+  }
+}

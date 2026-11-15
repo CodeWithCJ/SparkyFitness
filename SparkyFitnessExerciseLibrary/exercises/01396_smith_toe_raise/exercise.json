@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01396_smith_toe_raise",
+  "numeric_id": "01396",
+  "slug": "smith_toe_raise",
+  "name": "Smith Toe Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the smith machine bar to a height that allows you to comfortably stand with your feet flat on the ground.",
+    "Position yourself under the bar with your shoulders directly below it and your feet shoulder-width apart.",
+    "Place the balls of your feet on a raised platform or weight plates, with your heels hanging off the edge.",
+    "Grasp the bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Engage your core and keep your back straight throughout the exercise.",
+    "Slowly raise your heels as high as possible, lifting your body weight onto the balls of your feet.",
+    "Pause for a moment at the top, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1396",
+    "free_id": null
+  }
+}

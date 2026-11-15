@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06354_seated_palms_down_barbell_wrist_curl",
+  "numeric_id": "06354",
+  "slug": "seated_palms_down_barbell_wrist_curl",
+  "name": "Seated Palms-Down Barbell Wrist Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hold a barbell with both hands and your palms facing down; hands spaced about shoulder width.",
+    "Place your feet flat on the floor, at a distance that is slightly wider than shoulder width apart.",
+    "Lean forward and place your forearms on top of your upper thighs with your palms down. Tip: Make sure that the back of the wrists lay on top of your knees. This will be your starting position.",
+    "Lower the bar as far as possible while inhaling and keeping a tight grip.",
+    "Now curl bar up as high as possible while flexing the forearms and exhaling. Hold the contraction at the top for a second and Tip: Only the wrist should move."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Seated_Palms-Down_Barbell_Wrist_Curl"
+  }
+}

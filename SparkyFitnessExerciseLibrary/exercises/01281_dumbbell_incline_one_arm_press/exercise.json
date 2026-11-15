@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01281_dumbbell_incline_one_arm_press",
+  "numeric_id": "01281",
+  "slug": "dumbbell_incline_one_arm_press",
+  "name": "Dumbbell Incline One Arm Press",
+  "aliases": [
+    "Incline Dumbbell Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an incline bench with a dumbbell in one hand, resting on your thigh.",
+    "Lie back on the bench and position the dumbbell at shoulder level, palm facing forward.",
+    "Press the dumbbell upward and slightly inward, extending your arm fully.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1281",
+    "free_id": "Incline_Dumbbell_Press"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00730_single_leg_platform_slide",
+  "numeric_id": "00730",
+  "slug": "single_leg_platform_slide",
+  "name": "Single Leg Platform Slide",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with one foot on a platform or slide board.",
+    "Bend your knee slightly and slide the foot on the platform backward, extending your leg.",
+    "Keep your core engaged and maintain a straight posture throughout the movement.",
+    "Slowly return to the starting position by sliding your foot back to the initial position.",
+    "Repeat the movement for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0730",
+    "free_id": null
+  }
+}

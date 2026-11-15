@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00658_push_up_wall_v_2",
+  "numeric_id": "00658",
+  "slug": "push_up_wall_v_2",
+  "name": "Push-Up (Wall) V. 2",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a wall, about arm's length away.",
+    "Place your hands on the wall at shoulder height, slightly wider than shoulder-width apart.",
+    "Step back with your feet, keeping them hip-width apart.",
+    "Engage your core and keep your body in a straight line from head to heels.",
+    "Bend your elbows and lower your chest towards the wall, keeping your body straight.",
+    "Pause for a moment, then push yourself back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0658",
+    "free_id": null
+  }
+}

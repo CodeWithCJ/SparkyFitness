@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00766_smith_shoulder_press",
+  "numeric_id": "00766",
+  "slug": "smith_shoulder_press",
+  "name": "Smith Shoulder Press",
+  "aliases": [
+    "Smith Machine Overhead Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the smith machine with your feet shoulder-width apart.",
+    "Grasp the bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Lift the bar off the rack and position it at shoulder level, with your elbows bent and palms facing forward.",
+    "Press the bar upward until your arms are fully extended overhead.",
+    "Pause for a moment at the top, then slowly lower the bar back down to shoulder level.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0766",
+    "free_id": "Smith_Machine_Overhead_Shoulder_Press"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00415_dumbbell_standing_alternate_raise",
+  "numeric_id": "00415",
+  "slug": "dumbbell_standing_alternate_raise",
+  "name": "Dumbbell Standing Alternate Raise",
+  "aliases": [
+    "Dumbbell Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "forearms",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand with your palms facing your body.",
+    "Keep your back straight and your core engaged.",
+    "Raise one dumbbell to the side, keeping your arm straight and your palm facing down.",
+    "Continue lifting until your arm is parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back to the starting position.",
+    "Repeat with the other arm.",
+    "Alternate between arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0415",
+    "free_id": "Dumbbell_Raise"
+  }
+}

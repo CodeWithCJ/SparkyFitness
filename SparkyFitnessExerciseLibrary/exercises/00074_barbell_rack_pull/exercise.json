@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00074_barbell_rack_pull",
+  "numeric_id": "00074",
+  "slug": "barbell_rack_pull",
+  "name": "Barbell Rack Pull",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a barbell on a rack at knee height.",
+    "Stand with your feet shoulder-width apart, toes pointing slightly outwards.",
+    "Bend at the hips and knees to lower yourself down and grip the barbell with an overhand grip, hands shoulder-width apart.",
+    "Engage your core and lift the barbell by extending your hips and knees, pulling your shoulders back and squeezing your glutes at the top.",
+    "Lower the barbell back down to the starting position by bending at the hips and knees.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0074",
+    "free_id": null
+  }
+}
