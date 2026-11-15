@@ -190,6 +190,7 @@ object ClientCertificateStore {
 
     synchronized(lock) {
       val newAlias = "${KEY_ALIAS_PREFIX}_${System.currentTimeMillis()}"
+      val previousChoice = prefs.getString(PREFS_ACTIVE_ALIAS, null)
       try {
         keyStore.setKeyEntry(newAlias, key, null, chain)
         // commit(), not apply(): the old entries are deleted next, and the
@@ -199,11 +200,23 @@ object ClientCertificateStore {
         }
       } catch (e: Exception) {
         Log.w(LOG_TAG, "Android Keystore refused the key; keeping the previous certificate", e)
-        // Whatever was half-written goes; the previous certificate was never touched.
+        // A failed commit() still leaves the new value in memory, so put the
+        // previous choice back before the half-written key goes. The previous
+        // certificate itself was never touched.
+        prefs.edit().apply {
+          if (previousChoice != null) putString(PREFS_ACTIVE_ALIAS, previousChoice)
+          else remove(PREFS_ACTIVE_ALIAS)
+        }.apply()
         runCatching { if (keyStore.containsAlias(newAlias)) keyStore.deleteEntry(newAlias) }
         throw ImportException(ImportFailure.STORAGE, e)
       }
-      deleteCertificateEntries(except = newAlias)
+      // The new certificate is active now. Failing to delete an old one is not
+      // a failed import: log it and carry on, and the next import tries again.
+      try {
+        deleteCertificateEntries(except = newAlias)
+      } catch (e: Exception) {
+        Log.w(LOG_TAG, "Could not delete a previous certificate; the new one is in use", e)
+      }
     }
     dropOpenConnections()
     return info() ?: throw ImportException(ImportFailure.STORAGE)
@@ -230,11 +243,17 @@ object ClientCertificateStore {
     certificateAliases().filter { it != except }.forEach { keyStore.deleteEntry(it) }
   }
 
-  /** The alias of the certificate in use, or null when there is none (call with [lock] held). */
+  /**
+   * The alias of the certificate in use, or null when there is none (call with
+   * [lock] held). If the saved choice points at nothing, the newest stored
+   * certificate is used, so a stale preference can never leave a stored
+   * certificate unusable. The bare prefix from earlier builds sorts first, and
+   * the timestamps all have the same length, so the largest name is the newest.
+   */
   private fun activeAlias(): String? {
     val saved = prefs.getString(PREFS_ACTIVE_ALIAS, null)
     if (saved != null && keyStore.containsAlias(saved)) return saved
-    return if (keyStore.containsAlias(KEY_ALIAS_PREFIX)) KEY_ALIAS_PREFIX else null
+    return certificateAliases().maxOrNull()
   }
 
   fun info(): CertificateInfo? {
