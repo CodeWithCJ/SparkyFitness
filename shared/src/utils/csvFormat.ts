@@ -213,6 +213,8 @@ const ENERGY_UNITS = new Set([
   'kilocalories',
   'joules',
   'kilojoules',
+  'joule',
+  'kilojoule',
   'j',
 ]);
 // Energy units that are kilocalorie-equivalent. The energy fields store kcal,

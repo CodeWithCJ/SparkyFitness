@@ -301,4 +301,21 @@ describe('suggestHeaderMapping', () => {
     );
     expect(mapping['calories']).toBe('Calories (kcal)');
   });
+
+  it('leaves a mass field unmapped when its only candidate is singular joule-labelled', () => {
+    // "Fat (joule)" (singular) is an energy value, not a mass value — it's
+    // rejected for the gram-based fat field, just like "Fat (kcal)".
+    const mapping = suggestHeaderMapping(['fat'], ['Fat (joule)']);
+    expect(mapping['fat']).toBeUndefined();
+  });
+
+  it('rejects a singular kilojoule-labelled column for an energy field stored in kcal', () => {
+    // "Calories (kilojoule)" (singular) is kJ, not kcal — it must not bind to
+    // the kcal-stored energy field without conversion.
+    const mapping = suggestHeaderMapping(
+      ['calories'],
+      ['Calories (kilojoule)']
+    );
+    expect(mapping['calories']).toBeUndefined();
+  });
 });
