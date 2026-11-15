@@ -34,10 +34,12 @@ import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialo
 
 interface ExerciseEntryHistoryImportCSVProps {
   onImportComplete: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 const ExerciseEntryHistoryImportCSV = ({
   onImportComplete,
+  onDirtyChange,
 }: ExerciseEntryHistoryImportCSVProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +74,8 @@ const ExerciseEntryHistoryImportCSV = ({
   } = useExerciseHistoryImport(
     fileInputRef,
     onImportComplete,
-    csvFormat.options
+    csvFormat.options,
+    onDirtyChange
   );
   const { dateFormat, weightUnit, distanceUnit } = usePreferences();
 

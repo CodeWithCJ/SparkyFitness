@@ -18,7 +18,8 @@ const REPARSE_DEBOUNCE_MS = 400;
 
 export function useExerciseImport(
   onSave: (data: Omit<ExerciseCSVData, 'id'>[]) => Promise<void>,
-  csvFormat: CsvFormatOptions
+  csvFormat: CsvFormatOptions,
+  onDirtyChange: (dirty: boolean) => void
 ) {
   const { t } = useTranslation();
 
@@ -42,6 +43,17 @@ export function useExerciseImport(
   // or misaligned rows).
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // save doesn't clear the table, so remember the saved csvData reference and
+  // treat the form as clean until it changes again (state, not a ref, so the
+  // save boundary change triggers a re-render and recompute).
+  const [savedSnapshot, setSavedSnapshot] =
+    useState<ExerciseCSVData[]>(csvData);
+  const isDirty = csvData !== savedSnapshot || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   // Decides whether `text` parses directly under the current format, or
   // needs the header-mapping dialog, and acts on that decision. Shared by
@@ -354,6 +366,8 @@ export function useExerciseImport(
     setLoading(true);
     try {
       await onSave(csvData.map(({ id, ...rest }) => rest));
+      // Saved: the table now matches what's stored, so closing shouldn't prompt.
+      setSavedSnapshot(csvData);
     } catch (error) {
       console.error(error);
     } finally {

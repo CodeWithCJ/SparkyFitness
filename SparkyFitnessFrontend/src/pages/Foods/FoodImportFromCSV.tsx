@@ -41,6 +41,7 @@ import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialo
 
 interface ImportFromCSVProps {
   onSave: (foodData: FoodDataForBackend[], overwrite: boolean) => Promise<void>;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 export interface CSVData {
@@ -108,7 +109,7 @@ const servingUnitOptions = [
   'whole',
 ];
 
-const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
+const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
   // Food records have no date column, so this importer's format bar never
@@ -137,6 +138,17 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const [filterMissingDefault, setFilterMissingDefault] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // save doesn't clear the table, so remember the saved csvData reference and
+  // treat the form as clean until it changes again (state, not a ref, so the
+  // save boundary change triggers a re-render and recompute).
+  const [savedSnapshot, setSavedSnapshot] = useState<CSVData[]>(csvData);
+  const isDirty =
+    csvData !== savedSnapshot || csvText.trim() !== '' || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const textFields = new Set(['name', 'brand']);
   const booleanFields = new Set([
@@ -632,6 +644,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     // console.log(dataForBackend);
     try {
       await onSave(dataForBackend, overwriteExisting);
+      // Saved: the table now matches what's stored, so closing shouldn't prompt.
+      setSavedSnapshot(csvData);
     } catch (error) {
       console.error(
         'An error occurred while the parent was handling the save operation:',
