@@ -190,6 +190,22 @@ describe('bloodAlcoholCurve', () => {
     expect(peak!.permille).toBeLessThan(0.735);
   });
 
+  it('samples each drink time, so a rise never starts before the drink', () => {
+    // 21:07 falls between ten-minute grid points.
+    const second = at(1 + 7 / 60);
+    const doses: AlcoholDose[] = [...oneDrink, { at: second, grams: 20 }];
+    const curve = bloodAlcoholCurve(doses, widmarkMan, at(0), at(3));
+    const secondMs = Date.parse(second);
+    const atDrink = curve.find((point) => point.t === secondMs);
+    expect(atDrink?.permille).toBe(bloodAlcoholAt(doses, widmarkMan, secondMs));
+    // Before the second drink the curve matches the first drink alone.
+    for (const point of curve.filter((p) => p.t <= secondMs)) {
+      expect(point.permille).toBe(
+        bloodAlcoholAt(oneDrink, widmarkMan, point.t)
+      );
+    }
+  });
+
   it('returns nothing for an inverted window', () => {
     expect(bloodAlcoholCurve(oneDrink, widmarkMan, at(2), at(1))).toEqual([]);
   });

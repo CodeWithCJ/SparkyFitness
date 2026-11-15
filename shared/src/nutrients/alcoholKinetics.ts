@@ -333,10 +333,13 @@ export function bloodAlcoholCurve(
   toInstant: string | number | Date,
   stepMinutes: number = 10
 ): Array<{ t: number; permille: number }> {
+  // Sampling each drink's own time keeps the rise starting there, not at the
+  // grid point before it, and puts the drink markers on the line.
   const times = curveSampleTimes(
     instantToMs(fromInstant),
     instantToMs(toInstant),
-    stepMinutes
+    stepMinutes,
+    doses.map((dose) => instantToMs(dose.at))
   );
   const levels = bacSeries(doses, model, times);
   return times.map((t, i) => ({ t, permille: levels[i] ?? 0 }));

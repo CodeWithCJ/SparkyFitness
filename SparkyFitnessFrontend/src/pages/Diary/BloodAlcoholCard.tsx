@@ -120,7 +120,8 @@ export const BloodAlcoholCard = ({ date }: BloodAlcoholCardProps) => {
       <CardContent className="space-y-4">
         {content}
         {/* Shown in every state: the number is a model, not a measurement. */}
-        <Alert className="py-2">
+        {/* Compact padding: move the icon up with it so it sits on the first line. */}
+        <Alert className="py-2 [&>svg]:top-2 [&>svg+div]:translate-y-0">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-xs">
             {t(
