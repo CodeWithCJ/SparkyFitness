@@ -1132,13 +1132,58 @@ async function acquireExerciseEntrySyncLockWithClient(
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
 }
 
+/** One set of an entry being created; columns of exercise_entry_sets. */
+interface ExerciseEntrySetInput {
+  set_number?: number | null;
+  set_type?: string | null;
+  reps?: number | null;
+  weight?: number | string | null;
+  duration?: number | null;
+  rest_time?: number | null;
+  notes?: string | null;
+  rpe?: number | null;
+  rir?: number | null;
+  completed_at?: string | Date | null;
+  is_pr?: boolean | null;
+  distance?: number | null;
+  started_at?: string | Date | null;
+}
+
+/**
+ * What every create path (diary, presets, plans, chatbot, Garmin, FIT,
+ * Liftosaur, health data) passes. Fields a path does not know are left out;
+ * the telemetry columns (EXERCISE_ENTRY_TELEMETRY_COLUMNS) and other provider
+ * extras ride along under the index signature and are read by name, and the
+ * whole object also feeds the update path when the entry already exists.
+ */
+interface ExerciseEntryCreateInput {
+  [column: string]: unknown;
+  /** A client-chosen entry id, so the entry keeps its identity across saves. */
+  id?: string | null;
+  exercise_id: string;
+  entry_date: string;
+  exercise_name?: string | null;
+  duration_minutes?: number | null;
+  calories_burned?: number | null;
+  notes?: string | null;
+  workout_plan_assignment_id?: string | number | null;
+  image_url?: string | null;
+  source_id?: string | null;
+  distance?: number | null;
+  avg_heart_rate?: number | null;
+  sort_order?: number | null;
+  steps?: number | null;
+  water_estimated?: number | null;
+  superset_group?: string | number | null;
+  entry_time?: string | null;
+  record_timezone?: string | null;
+  sets?: ExerciseEntrySetInput[] | null;
+}
+
 async function _createExerciseEntryWithClient(
   client: PoolClient,
   userId: string,
-  // Still untyped: a dozen create paths (manual, presets, plans, Garmin,
-  // FIT, Liftosaur, health-data) pass different entry shapes.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
+  entryData: ExerciseEntryCreateInput,
   createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
@@ -1339,8 +1384,7 @@ async function _createExerciseEntryWithClient(
       newEntryId = entryResult.rows[0].id;
       if (entryData.sets && entryData.sets.length > 0) {
         assertSetWeightSign(entryData.sets, snapshot.modality);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setsValues = entryData.sets.map((set: any) => [
+        const setsValues = entryData.sets.map((set) => [
           newEntryId,
           set.set_number,
           set.set_type,
