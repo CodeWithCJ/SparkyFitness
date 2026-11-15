@@ -86,8 +86,13 @@ export function resolveEditedSets(
       if (fieldValue !== undefined) resolved[field] = fieldValue;
     }
     for (const field of SET_NUMBERS) {
-      if (resolved[field] !== null && resolved[field] !== undefined)
-        resolved[field] = Number(resolved[field]);
+      const value = resolved[field];
+      if (
+        typeof value === 'number' ||
+        (typeof value === 'string' && value.trim() !== '')
+      ) {
+        resolved[field] = Number(value);
+      }
     }
     if (resolved.is_pr !== undefined)
       resolved.is_pr = resolved.is_pr === true || resolved.is_pr === 'true';
@@ -100,11 +105,11 @@ export function resolveEditedSets(
     ) {
       resolved.completed_at = new Date(completed).toISOString();
     }
-    // Legacy routes accept fractional seconds. Keep their database rounding
-    // without applying a second, stricter API validator inside the row lock.
+    // Legacy routes accept numeric strings and fractional seconds. Normalize
+    // those before validation, while refusing blank or non-finite numbers.
     if (typeof resolved.duration === 'number')
       resolved.duration = Math.round(resolved.duration);
-    return resolved as ExerciseEntrySetRequest;
+    return exerciseEntrySetRequestSchema.parse(resolved);
   });
 }
 

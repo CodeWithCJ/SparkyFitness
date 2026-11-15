@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import exerciseEntryDb from '../models/exerciseEntry.js';
+import exerciseRepository from '../models/exercise.js';
 import * as poolManager from '../db/poolManager.js';
 
 vi.mock('../db/poolManager.js', () => ({
@@ -7,6 +8,9 @@ vi.mock('../db/poolManager.js', () => ({
   getSystemClient: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../models/exercise.js', () => ({
+  default: { getExerciseById: vi.fn() },
+}));
 
 // Editing a provider-synced entry used to reassign it to 'manual', because the
 // repository defaulted the source at the call site instead of letting the
@@ -72,4 +76,37 @@ describe('updateExerciseEntry preserves provider provenance', () => {
 
     expect(writtenSource()).toBe('manual');
   });
+
+  it.each([
+    ['Manual', 'new-library-source'],
+    ['Sparky', 'new-library-source'],
+    ['garmin', 'garmin-activity-9'],
+    ['Hevy', 'garmin-activity-9'],
+  ])(
+    'updates the library identity only for app-logged entries (%s)',
+    async (source, expectedSourceId) => {
+      mockClient.query.mockImplementation((sql: string) => {
+        if (/^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [] };
+        return { rows: [{ ...existingEntry, source }] };
+      });
+      (
+        exerciseRepository.getExerciseById as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        id: 'ex-2',
+        name: 'Replacement exercise',
+        source_id: 'new-library-source',
+      });
+
+      await exerciseEntryDb.updateExerciseEntry('entry-1', 'user-1', 'user-1', {
+        exercise_id: 'ex-2',
+      });
+
+      const update = mockClient.query.mock.calls.find(
+        ([sql]: unknown[]) =>
+          typeof sql === 'string' && /source_id\s*=\s*\$15/.test(sql)
+      );
+      expect(update).toBeDefined();
+      expect((update![1] as unknown[])[14]).toBe(expectedSourceId);
+    }
+  );
 });

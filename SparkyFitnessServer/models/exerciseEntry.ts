@@ -2,6 +2,7 @@ import type { ExerciseEntrySetRequest } from '@workspace/shared';
 import {
   compareByEntryTime,
   earliestEntryTime,
+  isAppLoggedWorkoutSource,
   type ExerciseEntryHrZonesInitializer,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
@@ -903,10 +904,11 @@ async function _updateExerciseEntryWithClient(
     mergedData.calories_per_hour = exercise.calories_per_hour;
     mergedData.category = exercise.category;
     mergedData.modality = exercise.modality;
-    // The exercise's provider ID identifies a library template, whereas an
-    // entry's source_id identifies this particular imported workout instance.
-    mergedData.source_id =
-      updateData.source_id || currentEntry.source_id || exercise.source_id;
+    // Only synced entries own a provider workout instance. App-logged entries
+    // follow the replacement exercise's library identity instead.
+    mergedData.source_id = isAppLoggedWorkoutSource(mergedData.source)
+      ? exercise.source_id
+      : updateData.source_id || currentEntry.source_id || exercise.source_id;
     mergedData.force = exercise.force;
     mergedData.level = exercise.level;
     mergedData.mechanic = exercise.mechanic;

@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 import {
   useCalorieLinkSuggestions,
   useClearCalorieLinkMutation,
@@ -258,26 +259,13 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
                     id="link-custom-calories"
                     type="number"
                     min={0}
-                    value={
-                      customInput === ''
-                        ? ''
-                        : Number(
-                            convertEnergy(
-                              customInput,
-                              'kcal',
-                              energyUnit
-                            ).toFixed(4)
-                          )
-                    }
+                    value={shownEnergyInput(customInput, energyUnit)}
                     onChange={(e) =>
                       setCustomInput(
-                        e.target.value === ''
-                          ? ''
-                          : convertEnergy(
-                              Number(e.target.value),
-                              energyUnit,
-                              'kcal'
-                            )
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
                       )
                     }
                   />

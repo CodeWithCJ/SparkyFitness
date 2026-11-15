@@ -149,6 +149,35 @@ beforeEach(() => {
 });
 
 describe('syncHevyData required API reads', () => {
+  it('retains a fetched identity when its day moves outside the live range after a timezone change', async () => {
+    mocks.loadUserTimezone.mockResolvedValue('America/New_York');
+    mockApi([
+      {
+        page: 1,
+        page_count: 1,
+        workouts: [workout('boundary-workout', '2026-11-01T00:30:00Z')],
+      },
+    ]);
+
+    await syncHevyData(
+      USER_ID,
+      USER_ID,
+      true,
+      PROVIDER_ID,
+      '2026-11-01',
+      '2026-11-01'
+    );
+
+    expect(mocks.processHevyWorkouts).not.toHaveBeenCalled();
+    expect(mocks.reconcileHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      ['boundary-workout'],
+      '2026-11-01',
+      '2026-11-01'
+    );
+  });
+
   it('reconciles a completed live range after its workouts are saved', async () => {
     await syncHevyData(
       USER_ID,

@@ -671,6 +671,9 @@ const EditExerciseEntryDialog = ({
     setSets((prev) => {
       const lastSet = prev[prev.length - 1] ?? {
         ...defaultSetForModality(modality),
+        notes: null,
+        is_pr: false,
+        completed_at: null,
         _dndId: uuidv4(),
       };
       return [

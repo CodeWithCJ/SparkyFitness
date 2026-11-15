@@ -155,6 +155,30 @@ describe('editedSyncFields', () => {
 });
 
 describe('sparse set identity', () => {
+  it.each([
+    { weight: '' },
+    { weight: '   ' },
+    { reps: 'abc' },
+    { duration: Number.POSITIVE_INFINITY },
+    { weight: false },
+  ])(
+    'rejects invalid numeric set input %j before it can be persisted',
+    (fields) => {
+      expect(() =>
+        resolveEditedSets([{ set_number: 1, ...fields }], [])
+      ).toThrow();
+    }
+  );
+
+  it('accepts legacy numeric strings while rounding fractional durations', () => {
+    expect(
+      resolveEditedSets(
+        [{ set_number: '1', weight: '40.5', reps: '8', duration: '42.5' }],
+        []
+      )
+    ).toEqual([{ set_number: 1, weight: 40.5, reps: 8, duration: 43 }]);
+  });
+
   it('normalizes legacy fractional durations without rejecting an otherwise valid edit', () => {
     expect(resolveEditedSets([{ set_number: 1, duration: 42.5 }], [])).toEqual([
       { set_number: 1, duration: 43 },

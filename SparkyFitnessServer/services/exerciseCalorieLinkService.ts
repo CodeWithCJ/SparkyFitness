@@ -191,6 +191,13 @@ async function getCalorieLinkSuggestions(
                WHERE p.id = exercise_entries.exercise_preset_entry_id) AS preset_name
        FROM exercise_entries
        WHERE user_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM exercise_entries sibling
+           WHERE sibling.user_id = $1
+             AND sibling.exercise_preset_entry_id = exercise_entries.exercise_preset_entry_id
+             AND sibling.calorie_link_id IS NOT NULL
+             AND sibling.calorie_link_id IS DISTINCT FROM $4::uuid
+         )
          AND entry_date = $2::date
          AND source IS NOT NULL AND lower(trim(source)) NOT IN ('manual', 'sparky')
          AND lower(trim(source)) <> 'hevy'

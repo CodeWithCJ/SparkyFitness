@@ -408,6 +408,33 @@ describe('EditExerciseEntryDialog calories after changing sets', () => {
     expect(data.calories_burned).toBeUndefined();
   });
 
+  it('clears deleted-set metadata when a new set is added after removing every set', async () => {
+    const entry = strengthEntry();
+    const { container } = renderDialog({
+      ...entry,
+      sets: entry.sets!.map((set) => ({
+        ...set,
+        notes: 'Deleted personal record',
+        is_pr: true,
+        completed_at: '2026-11-01T17:00:00Z',
+      })),
+    });
+    fireEvent.click(
+      container.ownerDocument
+        .querySelector('svg.lucide-trash-2')!
+        .closest('button')!
+    );
+    fireEvent.click(screen.getByText('Add Set'));
+
+    const { data } = await saveEntry();
+    expect(data.sets).toHaveLength(1);
+    expect(data.sets[0]).toMatchObject({
+      notes: null,
+      is_pr: false,
+      completed_at: null,
+    });
+  });
+
   it('recalculates the total when a two-set cardio entry drops to one set', async () => {
     const { container } = renderDialog(
       makeEntry({

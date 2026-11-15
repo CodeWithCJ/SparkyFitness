@@ -356,6 +356,50 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     expect(await countedCalories()).toBe(350);
   });
 
+  it.each(['Health Connect', 'HealthKit'])(
+    'does not suggest a grouped %s recording with a sibling linked to another workout',
+    async (source) => {
+      await sync([workout(), workout('another-session')]);
+      const imported = await entries();
+      const first = imported[0]!;
+      const other = imported.find(
+        (row) => row.exercise_preset_entry_id !== first.exercise_preset_entry_id
+      )!;
+      const health = await addGroupedHealthSession(source);
+      await setCalorieLink(userId, userId, first.id, {
+        synced_entry_id: health.entryIds[0]!,
+        resolution: 'custom',
+        custom_calories: 350,
+      });
+      // A legacy partial link must reserve the entire synced session.
+      await db.query(
+        `UPDATE exercise_entries SET calorie_link_id = NULL,
+           calories_applied = NULL
+         WHERE id = $1 AND user_id = $2`,
+        [health.entryIds[1]!, userId]
+      );
+
+      const suggestions = await calorieLinkService.getCalorieLinkSuggestions(
+        userId,
+        userId,
+        other.id
+      );
+      expect(suggestions.candidates).toEqual([]);
+
+      const ownerSuggestions =
+        await calorieLinkService.getCalorieLinkSuggestions(
+          userId,
+          userId,
+          first.id
+        );
+      expect(ownerSuggestions.candidates).toHaveLength(1);
+      expect(ownerSuggestions.candidates[0]).toMatchObject({
+        duration_minutes: 60,
+        calories_burned: 450,
+      });
+    }
+  );
+
   it.each([350, 0])(
     'returns the persisted link and custom total %s after reimport and a fresh session read',
     async (total) => {

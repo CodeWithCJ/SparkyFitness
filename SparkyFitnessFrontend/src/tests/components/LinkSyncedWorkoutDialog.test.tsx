@@ -191,7 +191,7 @@ describe('LinkSyncedWorkoutDialog', () => {
         }
       />
     );
-    expect(screen.getByLabelText(/Total for the session/)).toHaveValue(1464.4);
+    expect(screen.getByLabelText(/Total for the session/)).toHaveValue(1464);
     fireEvent.click(screen.getByText('Link workouts'));
     await waitFor(() =>
       expect(mockSetLink.mock.calls[0][0].body.custom_calories).toBe(350)

@@ -359,7 +359,7 @@ async function syncHevyData(
       await reconcileHevyWorkouts(
         userId,
         createdByUserId,
-        workouts.map((workout) => workout.id),
+        allWorkouts.map((workout) => workout.id),
         firstDay,
         endDate
       );
