@@ -24,7 +24,6 @@ jest.mock('../../src/hooks/useChallenges', () => ({
   useChallengeRuleChanges: () => ({ data: undefined }),
   useChallengeMutations: () => ({
     leaveChallenge: mockLeave,
-    isLeaving: false,
   }),
 }));
 

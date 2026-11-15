@@ -10855,9 +10855,12 @@
       "closed": "This challenge cannot be joined right now.",
       "codeLabel": "Invite code",
       "codePlaceholder": "Paste the code or link",
+      "ended": "This challenge has ended.",
       "failed": "Could not join the challenge.",
+      "full": "This challenge is full.",
       "invalidCode": "That code is not valid or has expired.",
       "joined": "Joined {{name}}",
+      "lateJoinClosed": "This challenge has started and does not take late joiners.",
       "nameLabel": "Your name in it",
       "namePlaceholder": "For example, your first name",
       "nameRequired": "Enter the name other members will see.",
@@ -10867,10 +10870,7 @@
       "submitting": "Joining…",
       "title": "Join a challenge",
       "tooMany": "Too many tries. Wait a few minutes and try again.",
-      "withCode": "Join with a code",
-      "full": "This challenge is full.",
-      "ended": "This challenge has ended.",
-      "lateJoinClosed": "This challenge has started and does not take late joiners."
+      "withCode": "Join with a code"
     },
     "leave": {
       "action": "Leave challenge",

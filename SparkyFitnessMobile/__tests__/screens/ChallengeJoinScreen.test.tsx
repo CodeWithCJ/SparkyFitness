@@ -77,6 +77,25 @@ describe('ChallengeJoinScreen', () => {
     });
   });
 
+  it('sends one join when Join is pressed twice before it answers', async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    mockJoin.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    renderScreen({ code: CODE });
+    fireEvent.changeText(screen.getByLabelText('Your name in it'), 'Sam');
+    await act(async () => {
+      fireEvent.press(screen.getByText('Join'));
+      fireEvent.press(screen.getByText('Join'));
+    });
+    expect(mockJoin).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ id: 'c1', name: 'Family Cup' });
+    });
+  });
+
   it('checks the code before asking the server', async () => {
     renderScreen();
     fill('nope', 'Sam');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
@@ -31,6 +31,9 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { joinChallenge, isJoining } = useChallengeMutations();
+  // Done and the Join button can both fire before a re-render shows the
+  // join pending, so a ref stops the second one.
+  const joiningRef = useRef(false);
 
   const joinErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) {
@@ -74,7 +77,7 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleJoin = () => {
     // The keyboard's Done can fire while a join is on its way.
-    if (isJoining) return;
+    if (joiningRef.current) return;
     const parsed = parseInviteCode(code);
     if (!parsed) {
       setError(
@@ -94,6 +97,7 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
     setError(null);
+    joiningRef.current = true;
     joinChallenge({ code: parsed, display_name: name })
       .then((challenge) => {
         Toast.show({
@@ -109,7 +113,10 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
           name: challenge.name,
         });
       })
-      .catch((err: unknown) => setError(joinErrorMessage(err)));
+      .catch((err: unknown) => setError(joinErrorMessage(err)))
+      .finally(() => {
+        joiningRef.current = false;
+      });
   };
 
   return (

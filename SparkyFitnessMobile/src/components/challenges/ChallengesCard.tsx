@@ -23,7 +23,6 @@ import {
   standingsLeader,
   type ChallengeUnits,
 } from '../../utils/challenges';
-import { getTodayDate } from '../../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../../types/navigation';
 
 type ChallengesCardNavigation = CompositeNavigationProp<
@@ -60,11 +59,7 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
     [challenges, selectedDate]
   );
   const ids = useMemo(() => running.map((c) => c.id), [running]);
-  // Today's standings share the cache entry the rest of the app uses.
-  const standings = useChallengesStandings(
-    ids,
-    selectedDate === getTodayDate() ? null : selectedDate
-  );
+  const standings = useChallengesStandings(ids, selectedDate);
   const ruleChanges = useChallengesRuleChanges(ids);
   const { preferences } = usePreferences({ enabled: running.length > 0 });
   const energyUnit = useEnergyUnit();
