@@ -316,11 +316,6 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
   };
 });
 
-jest.mock('../../src/components/WorkoutReorderList', () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 // Captures the custom-duration sheet's props and present args so tests can
 // assert the long-workout adjust wiring and drive onSave directly.
 const mockDurationSheet: {

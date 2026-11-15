@@ -176,6 +176,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'FoodPhotoFlow',
   'EditBarcode',
   'ExerciseSearch',
+  'WorkoutReorder',
   'WorkoutAdd',
   'ActivityAdd',
   'RecordActivity',

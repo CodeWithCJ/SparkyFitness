@@ -6,6 +6,7 @@ import {
   KeyboardProvider,
 } from 'react-native-keyboard-controller';
 import Button from './ui/Button';
+import SafeAreaModalBackdrop from './SafeAreaModalBackdrop';
 import FormInput from './FormInput';
 
 interface ActiveWorkoutRenameModalProps {
@@ -53,9 +54,7 @@ export default function ActiveWorkoutRenameModal({
           keyboard on both platforms (RN's own KAV is a no-op on Android). */}
       <KeyboardProvider>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <Pressable
-            className="flex-1 justify-center px-6"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          <SafeAreaModalBackdrop
             onPress={onCancel}
             accessibilityLabel={t('workout.dismissRename', {
               defaultValue: 'Dismiss rename',
@@ -95,7 +94,7 @@ export default function ActiveWorkoutRenameModal({
                 </Button>
               </View>
             </Pressable>
-          </Pressable>
+          </SafeAreaModalBackdrop>
         </KeyboardAvoidingView>
       </KeyboardProvider>
     </Modal>

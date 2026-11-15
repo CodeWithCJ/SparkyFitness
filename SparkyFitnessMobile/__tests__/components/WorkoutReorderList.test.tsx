@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { act, render, fireEvent } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ExerciseEntryResponse } from '@workspace/shared';
-import WorkoutReorderList, {
+import {
+  WorkoutReorderContent,
   computeReorderTargetIndex,
   REORDER_ROW_HEIGHT,
   REORDER_ITEM_GAP,
@@ -42,26 +43,23 @@ function makeCard(
 
 function renderList(
   exercises: WorkoutCardExercise[],
-  overrides?: Partial<Parameters<typeof WorkoutReorderList>[0]>
+  overrides?: Partial<Parameters<typeof WorkoutReorderContent>[0]>
 ) {
   const onMoveItem = jest.fn();
-  const onDone = jest.fn();
   const utils = render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
-      <WorkoutReorderList
-        visible
+      <WorkoutReorderContent
         exercises={exercises}
         getImageSource={getImageSource}
         onMoveItem={onMoveItem}
-        onDone={onDone}
         {...overrides}
       />
     </SafeAreaProvider>
   );
-  return { ...utils, onMoveItem, onDone };
+  return { ...utils, onMoveItem };
 }
 
-describe('WorkoutReorderList', () => {
+describe('WorkoutReorderContent', () => {
   // A(3), B(2, g1), C(4, g1), D(1) → items [A], [B,C run], [D].
   const exercises = [
     makeCard('a', 3),
@@ -110,12 +108,6 @@ describe('WorkoutReorderList', () => {
     const style = StyleSheet.flatten(getByTestId('reorder-item-a').props.style);
     expect(style.shadowOpacity).toBe(0);
     expect(style.elevation).toBe(0);
-  });
-
-  it('invokes onDone when Done is pressed', () => {
-    const { getByText, onDone } = renderList(exercises);
-    fireEvent.press(getByText('Done'));
-    expect(onDone).toHaveBeenCalledTimes(1);
   });
 
   describe('computeReorderTargetIndex', () => {
