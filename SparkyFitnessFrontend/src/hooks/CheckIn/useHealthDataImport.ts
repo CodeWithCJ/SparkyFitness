@@ -11,6 +11,8 @@ import {
   generateUniqueId,
   mapRowsToHealthItems,
   parseHealthCSV,
+  MEASUREMENT_LENGTH_FIELDS,
+  type UnitOverrides,
 } from '@/utils/healthDataImport';
 import {
   importHealthDataCsv,
@@ -21,6 +23,7 @@ import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 import {
   parseCsvHeaders,
   suggestHeaderMapping,
+  isBlank,
   MAX_CSV_FILE_SIZE_BYTES,
   type CsvFormatOptions,
 } from '@workspace/shared';
@@ -63,16 +66,34 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
   // parseHealthCSV against loadedText with no mapping, or against
   // rawCsvText with headerMapping.
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  // Global unit applied to a measurements row when its unit column is unmapped
+  // (e.g. a MyFitnessPal export with no weight/length unit). Empty = not set.
+  const [weightUnitOverride, setWeightUnitOverride] = useState('');
+  const [lengthUnitOverride, setLengthUnitOverride] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const config = useMemo(() => getCategoryConfig(category), [category]);
   const headers = config.requiredHeaders;
+
+  // A unit column is "unmapped" only on the mapping path when the user left it
+  // as None (the direct-parse path guarantees the column is present). When
+  // unmapped, a global unit must be chosen before the import can scale values.
+  const needsWeightUnit =
+    category === 'measurements' &&
+    mappingConfirmed &&
+    !headerMapping['weight_unit'];
+  const needsLengthUnit =
+    category === 'measurements' &&
+    mappingConfirmed &&
+    !headerMapping['length_unit'];
 
   const clearData = () => {
     setCsvData([]);
     setResult(null);
     setLoadedText('');
     setMappingConfirmed(false);
+    setWeightUnitOverride('');
+    setLengthUnitOverride('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -83,6 +104,8 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
     setShowMapping(false);
     setLoadedText('');
     setMappingConfirmed(false);
+    setWeightUnitOverride('');
+    setLengthUnitOverride('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -145,6 +168,12 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
         });
         return;
       }
+      // A new file must not inherit a unit override chosen for a previous
+      // one: a stale "lb" would silently mis-scale a unitless file that is
+      // actually in kg. The format-bar reparse effect (same file) does not
+      // go through here, so a legitimate reparse keeps its choice.
+      setWeightUnitOverride('');
+      setLengthUnitOverride('');
       setLoadedText(text);
       evaluateAndParse(text);
     };
@@ -250,11 +279,56 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { items, errors: clientErrors } = mapRowsToHealthItems(
+    // A unit column left unmapped must have a declared unit before scaling,
+    // when the corresponding value is actually present — otherwise weightToKg
+    // / lengthToCm would silently treat the values as already kg/cm.
+    const hasWeightValues = csvData.some((r) => !isBlank(r['weight']));
+    const hasLengthValues = csvData.some((r) =>
+      MEASUREMENT_LENGTH_FIELDS.some((f) => !isBlank(r[f]))
+    );
+    if (needsWeightUnit && !weightUnitOverride && hasWeightValues) {
+      toast({
+        title: t('healthDataImport.unitRequired', 'Unit required'),
+        description: t(
+          'healthDataImport.weightUnitRequired',
+          'Your file has no weight unit. Choose kg or lb before importing.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (needsLengthUnit && !lengthUnitOverride && hasLengthValues) {
+      toast({
+        title: t('healthDataImport.unitRequired', 'Unit required'),
+        description: t(
+          'healthDataImport.lengthUnitRequired',
+          'Your file has no length unit. Choose cm, in, or m before importing.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+    const unitOverrides: UnitOverrides | undefined =
+      needsWeightUnit || needsLengthUnit
+        ? {
+            weightUnit: weightUnitOverride || undefined,
+            lengthUnit: lengthUnitOverride || undefined,
+          }
+        : undefined;
+    const { items, errors: rawClientErrors } = mapRowsToHealthItems(
       category,
       csvData,
-      csvFormat.decimal
+      csvFormat.decimal,
+      unitOverrides
     );
+    // Translate the pure mapper's error keys (it can't call useTranslation)
+    // before the result panel displays them; an English fallback covers a
+    // missing key. Strip the key/params so the result-panel shape stays
+    // { error, entry }.
+    const clientErrors = rawClientErrors.map(({ key, params, ...rest }) => ({
+      ...rest,
+      error: key ? t(key, params ?? {}) : rest.error,
+    }));
     if (items.length === 0 && clientErrors.length === 0) {
       toast({
         title: t('healthDataImport.validationError', 'Nothing to import'),
@@ -368,5 +442,11 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
     handleAddNewRow,
     clearData,
     handleSubmit,
+    weightUnitOverride,
+    setWeightUnitOverride,
+    lengthUnitOverride,
+    setLengthUnitOverride,
+    needsWeightUnit,
+    needsLengthUnit,
   };
 }

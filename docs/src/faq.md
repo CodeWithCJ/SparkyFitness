@@ -55,7 +55,7 @@ https://developer.android.com/health-and-fitness/health-connect/availability
 https://developer.apple.com/documentation/healthkit/protecting-user-privacy
 
 *   **Can I migrate my data from Flo, MyFitnessPal, or other apps?**
-    While direct API integration with some platforms (like Hevy) is supported, many commercial apps (like Flo or MyFitnessPal) require enterprise credentials and restrict API access for self-hosted apps. However, SparkyFitness provides robust CSV import tools for Food, Exercises, and Check-ins. Support for importing Period, Pregnancy, and Medication history is planned for future updates.
+    While direct API integration with some platforms (like Hevy) is supported, many commercial apps (like Flo or MyFitnessPal) require enterprise credentials and restrict API access for self-hosted apps. However, SparkyFitness provides robust CSV import tools for Food, Exercises, and Check-ins that work with many apps (MyFitnessPal, Flo, Hevy, and others). See [Importing your data](/features/data-import). Support for importing Period, Pregnancy, and Medication history is planned for future updates.
 
 ---
 

@@ -36,6 +36,8 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useCsvFormat } from '@/hooks/useCsvFormat';
+import { matchDropdownValue } from '@/utils/dropdownMatch';
+import { isAggregateMapping, reshapeAggregateRow } from '@/utils/csvAggregate';
 import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
 import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
 import CsvImportResultPanel from '@/components/CsvImport/CsvImportResultPanel';
@@ -216,6 +218,10 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   const [includeFamily, setIncludeFamily] = useState(false);
   const [includePublic, setIncludePublic] = useState(false);
   const [overrideNutrition, setOverrideNutrition] = useState(false);
+  // Per-meal aggregate imports (e.g. MyFitnessPal) leave food_name/quantity/
+  // unit unmapped; when on, each such row reshapes into a meal-group row
+  // (meal_name = food_name = meal_type, 1 serving) so it logs the totals.
+  const [aggregateMode, setAggregateMode] = useState(false);
   const [uploadedHeaders, setUploadedHeaders] = useState<string[] | null>(null);
   const [result, setResult] = useState<FoodDiaryImportResult | null>(null);
   const [showMapping, setShowMapping] = useState(false);
@@ -266,6 +272,13 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     [activeHeaders]
   );
 
+  // True when the confirmed mapping is a per-meal aggregate file (identity
+  // columns unmapped, nutrients mapped). Drives the toggle's default.
+  const looksAggregate = useMemo(
+    () => isAggregateMapping(headerMapping, NUTRIENT_HEADERS),
+    [headerMapping]
+  );
+
   // Overriding stored food nutrition only applies to the user's own foods, so
   // family/public matching is disabled while it is on.
   useEffect(() => {
@@ -274,6 +287,14 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       setIncludePublic(false);
     }
   }, [overrideNutrition]);
+
+  // Default the aggregate toggle on when the confirmed mapping is a per-meal
+  // aggregate file; the user can still turn it off.
+  useEffect(() => {
+    if (mappingConfirmed && looksAggregate) {
+      setAggregateMode(true);
+    }
+  }, [mappingConfirmed, looksAggregate]);
 
   const validateHeaders = (fileHeaders: string[] | undefined) =>
     !!fileHeaders && BASE_HEADERS.every((h) => fileHeaders.includes(h));
@@ -299,6 +320,11 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     } = {}
   ) => {
     lastEvaluatedKeyRef.current = `${text}|${JSON.stringify(options)}`;
+    // Fresh file: clear prior aggregate state so a previous file's aggregate
+    // mode/mapping can't bleed into this one (a normal file uploaded after an
+    // aggregate one must not be reshaped into meal groups).
+    setAggregateMode(false);
+    setHeaderMapping({});
     const parsedFileHeaders = getCsvHeaders(text, options);
     if (!validateHeaders(parsedFileHeaders)) {
       setFileHeaders(parsedFileHeaders ?? []);
@@ -526,6 +552,11 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     setUploadedHeaders(null);
     setLoadedText('');
     setMappingConfirmed(false);
+    // Reset aggregate state too — clearData leaves loadedText empty, so the
+    // reparse effects bail out and never recompute looksAggregate; without
+    // this a prior aggregate file's state would reshape manually-added rows.
+    setAggregateMode(false);
+    setHeaderMapping({});
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -535,6 +566,16 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       const entry: FoodDiaryImportRow = {
         ...(rest as unknown as FoodDiaryImportRow),
       };
+      // Normalize meal_type before submit: trim it (the server matches with
+      // LOWER(name)=LOWER($1) — case-insensitive but NOT trim-insensitive, so
+      // " Dinner " would be rejected) and resolve to the canonical option when
+      // it matches one (fixes case). An unmatched value stays trimmed so the
+      // server's "Invalid meal type" message names what the user typed.
+      const rawMealType = (row['meal_type'] ?? '').trim();
+      if (rawMealType) {
+        entry.meal_type =
+          matchDropdownValue(rawMealType, mealTypeOptions) || rawMealType;
+      }
       // Base numeric fields go to the server as strings and are parsed there
       // with plain Number(), so normalize a locale-comma cell like "80,2" to
       // "80.2" here — otherwise the server-side Number() call silently drops
@@ -546,6 +587,17 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         if (num !== undefined) {
           (entry as Record<string, unknown>)[col] = String(num);
         }
+      }
+      // Aggregate reshape: route each per-meal row through the meal-group path
+      // (meal_name set) so the server logs the meal's nutrient totals as one
+      // serving of a quick food, instead of requiring a food_name + quantity.
+      // Applied AFTER the numeric normalization so the single serving holds
+      // even when a Quantity cell was edited (the loop would otherwise write
+      // the typed value back over the quantity: '1' override). Gated on
+      // looksAggregate too, so a stale aggregateMode can never reshape a file
+      // whose current mapping isn't an aggregate one.
+      if (aggregateMode && looksAggregate) {
+        Object.assign(entry, reshapeAggregateRow(row));
       }
       const cn: Record<string, number> = {};
       for (const col of customCols) {
@@ -655,9 +707,13 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       );
     }
     if (header === 'meal_type') {
+      // Bind through matchDropdownValue so a CSV value whose case differs from
+      // the option list (e.g. "Lunch" vs "lunch") still highlights the right
+      // option; Radix matches by strict equality, so the raw value alone
+      // would show the placeholder. The server already matches case-insensitively.
       return (
         <Select
-          value={row[header] || ''}
+          value={matchDropdownValue(row[header], mealTypeOptions)}
           onValueChange={(value) => handleEditCell(row.id, header, value)}
         >
           <SelectTrigger className="w-full md:w-36">
@@ -676,11 +732,15 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     if (header === 'unit') {
       return (
         <Select
-          value={row[header] || 'g'}
+          value={
+            row[header]?.trim()
+              ? matchDropdownValue(row[header], unitOptions)
+              : 'g'
+          }
           onValueChange={(value) => handleEditCell(row.id, header, value)}
         >
           <SelectTrigger className="w-full md:w-[100px]">
-            <SelectValue />
+            <SelectValue placeholder={t('diaryCsvImport.unit', 'Unit')} />
           </SelectTrigger>
           <SelectContent>
             {unitOptions.map((unit) => (
@@ -690,6 +750,19 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
             ))}
           </SelectContent>
         </Select>
+      );
+    }
+    if (header === 'quantity' && aggregateMode && looksAggregate) {
+      // Aggregate mode submits a single serving per row (reshapeAggregateRow
+      // forces quantity to '1'). Show that effective value so a blank cell
+      // doesn't hide the one serving that is actually submitted.
+      return (
+        <Input
+          type="text"
+          value={'1'}
+          readOnly
+          className="w-full md:w-32 opacity-60"
+        />
       );
     }
     const isText = TEXT_HEADERS.has(header);
@@ -920,6 +993,33 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
               </p>
             </div>
           </div>
+
+          {looksAggregate && (
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <Checkbox
+                id="aggregate-mode"
+                checked={aggregateMode}
+                onCheckedChange={(checked) =>
+                  setAggregateMode(checked === true)
+                }
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="aggregate-mode" className="cursor-pointer">
+                  {t(
+                    'diaryCsvImport.aggregateLabel',
+                    'Import as meal totals (per-meal aggregate)'
+                  )}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'diaryCsvImport.aggregateDescription',
+                    "This file has one row per meal with no food name or quantity. Log each row's nutrients as a single serving of a meal named after its type."
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           {csvData.length > 0 && (
             <div className="overflow-hidden">
