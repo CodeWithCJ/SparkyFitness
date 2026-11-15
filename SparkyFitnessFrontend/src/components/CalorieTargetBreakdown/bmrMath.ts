@@ -99,13 +99,13 @@ export const getBmrMathText = (
       result: Math.round(KCAL_PER_MJ * (slope * displayWeight + intercept)),
     };
     if (displayGender === 'male') {
-      return t('diary.calculateExplanation.oxfordMaleMath', {
+      return t('diary.calculateExplanation.oxfordMaleMathHenry2005', {
         defaultValue:
           'Formula: ({{slope}} × weight + {{intercept}}) × 239, for your age\nMath: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal',
         ...params,
       });
     } else {
-      return t('diary.calculateExplanation.oxfordFemaleMath', {
+      return t('diary.calculateExplanation.oxfordFemaleMathHenry2005', {
         defaultValue:
           'Formula: ({{slope}} × weight + {{intercept}}) × 239, for your age\nMath: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal',
         ...params,
