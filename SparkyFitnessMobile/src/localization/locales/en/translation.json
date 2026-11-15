@@ -1478,7 +1478,7 @@
     "oralCareRemoveReminder": "Remove brushing reminder {{number}}",
     "oralCareAddReminder": "Add reminder",
     "challengeWeek": "Week leader",
-    "challengeWeekSubtitle": "Sunday at 8 PM, who leads each weekly challenge you are in",
+    "challengeWeekSubtitle": "The last evening of each challenge week: who leads each weekly challenge you are in",
     "challenges": "Challenges"
   },
   "workoutSettings": {
@@ -10867,7 +10867,10 @@
       "submitting": "Joining…",
       "title": "Join a challenge",
       "tooMany": "Too many tries. Wait a few minutes and try again.",
-      "withCode": "Join with a code"
+      "withCode": "Join with a code",
+      "full": "This challenge is full.",
+      "ended": "This challenge has ended.",
+      "lateJoinClosed": "This challenge has started and does not take late joiners."
     },
     "leave": {
       "action": "Leave challenge",

@@ -2,6 +2,7 @@ import { apiFetch } from './apiClient';
 import { ApiError } from './errors';
 import type {
   ChallengeDetail,
+  ChallengeRuleChange,
   ChallengeStandingsResponse,
   ChallengeSummary,
   JoinChallengeBody,
@@ -58,6 +59,16 @@ export const fetchChallengeStandings = (
     }`,
     serviceName: SERVICE,
     operation: 'fetch standings',
+  });
+
+/** Every rules change, oldest first (by effective day, then write order). */
+export const fetchChallengeRuleChanges = (
+  id: string
+): Promise<ChallengeRuleChange[]> =>
+  apiFetch<ChallengeRuleChange[]>({
+    endpoint: `${BASE}/${encodeURIComponent(id)}/rule-changes`,
+    serviceName: SERVICE,
+    operation: 'fetch rule changes',
   });
 
 export const joinChallenge = (

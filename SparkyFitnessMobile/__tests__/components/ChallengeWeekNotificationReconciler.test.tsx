@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { act, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import ChallengeWeekNotificationReconciler from '../../src/components/ChallengeWeekNotificationReconciler';
@@ -9,6 +9,7 @@ import {
 } from '../../src/services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../../src/services/notifications';
 import {
+  fetchChallengeRuleChanges,
   fetchChallengeStandings,
   fetchChallenges,
   fetchChallengesStatus,
@@ -33,6 +34,7 @@ jest.mock('../../src/services/api/challengesApi', () => ({
   fetchChallengesStatus: jest.fn(),
   fetchChallenges: jest.fn(),
   fetchChallengeStandings: jest.fn(),
+  fetchChallengeRuleChanges: jest.fn(async () => []),
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
@@ -100,6 +102,7 @@ describe('ChallengeWeekNotificationReconciler', () => {
       }),
     ]);
     mockStandings.mockResolvedValue(makeStandings());
+    (fetchChallengeRuleChanges as jest.Mock).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -114,7 +117,8 @@ describe('ChallengeWeekNotificationReconciler', () => {
     expect(mockSchedule).toHaveBeenLastCalledWith([
       expect.objectContaining({
         challengeId: 'c1',
-        fireAt: new Date(2026, 10, 15, 20, 0, 0),
+        // 8 PM in the challenge's time zone (UTC in the fixture).
+        fireAt: new Date(Date.UTC(2026, 10, 15, 20, 0, 0)),
         leaderName: 'Alex',
         leaderTotal: '400 pts',
         own: { rank: 2, total: '250 pts' },
@@ -139,6 +143,50 @@ describe('ChallengeWeekNotificationReconciler', () => {
     await waitFor(() => expect(mockCancel).toHaveBeenCalled());
     expect(mockList).not.toHaveBeenCalled();
     expect(mockSchedule).not.toHaveBeenCalled();
+  });
+
+  it('keeps what is scheduled when the standings could not be read', async () => {
+    mockStandings.mockRejectedValue(new Error('offline'));
+    renderReconciler();
+    await waitFor(() => expect(mockStandings).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(mockSchedule).not.toHaveBeenCalled();
+  });
+
+  it('shows totals in the units of the rules that score this week', async () => {
+    const steps = makeChallenge().rules;
+    mockList.mockResolvedValue([
+      makeChallenge({
+        // Saved mid-week; counts from next week.
+        rules: { ...steps, metric: 'steps', points: null },
+      }),
+    ]);
+    (fetchChallengeRuleChanges as jest.Mock).mockResolvedValue([
+      {
+        id: 'r1',
+        changed_by_display_name: 'Alex',
+        effective_from: '2026-11-02',
+        rules: steps,
+        previous_rules: null,
+        created_at: '2026-11-01T00:00:00.000Z',
+      },
+      {
+        id: 'r2',
+        changed_by_display_name: 'Alex',
+        effective_from: '2026-11-16',
+        rules: { ...steps, metric: 'steps', points: null },
+        previous_rules: steps,
+        created_at: '2026-11-12T00:00:00.000Z',
+      },
+    ]);
+    renderReconciler();
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalled());
+    expect(mockSchedule).toHaveBeenLastCalledWith([
+      expect.objectContaining({ leaderTotal: '400 pts' }),
+    ]);
   });
 
   it('only cancels without notification permission', async () => {

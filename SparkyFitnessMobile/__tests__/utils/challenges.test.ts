@@ -8,6 +8,7 @@ import {
   isLeading,
   ownStanding,
   parseInviteCode,
+  rulesInEffect,
   showsTrophy,
   sortChallenges,
   standingsLeader,
@@ -100,6 +101,16 @@ describe('parseInviteCode', () => {
     expect(parseInviteCode('short')).toBeNull();
     expect(parseInviteCode('')).toBeNull();
   });
+
+  it('never takes part of a longer token, and prefers a code= parameter', () => {
+    expect(
+      parseInviteCode(
+        `https://fit.example.com/challenges/join?code=${CODE} see you Monday-morning-runners-club`
+      )
+    ).toBe(CODE);
+    expect(parseInviteCode(`${CODE}x`)).toBeNull();
+    expect(parseInviteCode('whatsapp_share_message_from_alex')).toBeNull();
+  });
 });
 
 describe('standings helpers', () => {
@@ -134,21 +145,33 @@ describe('standings helpers', () => {
 });
 
 describe('weekLeaderNotificationDate', () => {
-  const weekly = makeChallenge().rules;
+  const weekly = makeChallenge();
   const standings = makeStandings();
 
-  it('is 8 PM device time on the last day of the week', () => {
+  it('is 8 PM in the challenge time zone on the last day of the week', () => {
     const fireAt = weekLeaderNotificationDate(
       weekly,
       standings,
       new Date(2026, 10, 14, 9, 0)
     );
-    expect(fireAt).toEqual(new Date(2026, 10, 15, 20, 0, 0));
+    expect(fireAt).toEqual(new Date(Date.UTC(2026, 10, 15, 20, 0, 0)));
+    // Tokyo is UTC+9: its Sunday 8 PM is 11 AM UTC.
+    expect(
+      weekLeaderNotificationDate(
+        { ...weekly, time_zone: 'Asia/Tokyo' },
+        standings,
+        new Date(Date.UTC(2026, 10, 14))
+      )
+    ).toEqual(new Date(Date.UTC(2026, 10, 15, 11, 0, 0)));
   });
 
   it('is null once past, for a frozen week, or for another period', () => {
     expect(
-      weekLeaderNotificationDate(weekly, standings, new Date(2026, 10, 15, 21))
+      weekLeaderNotificationDate(
+        weekly,
+        standings,
+        new Date(Date.UTC(2026, 10, 15, 21))
+      )
     ).toBeNull();
     expect(
       weekLeaderNotificationDate(
@@ -159,7 +182,7 @@ describe('weekLeaderNotificationDate', () => {
     ).toBeNull();
     expect(
       weekLeaderNotificationDate(
-        { period: 'month' },
+        { ...weekly, rules: { period: 'month' } },
         standings,
         new Date(2026, 10, 14)
       )
@@ -168,8 +191,7 @@ describe('weekLeaderNotificationDate', () => {
 });
 
 describe('buildChallengeWeekNotices', () => {
-  const now = new Date(2026, 10, 14, 9, 0);
-  const today = '2026-11-14';
+  const now = new Date(Date.UTC(2026, 10, 14, 9, 0));
 
   it('names the leader and the user’s own place', () => {
     const challenge = makeChallenge({ emoji: '🏆' });
@@ -178,14 +200,13 @@ describe('buildChallengeWeekNotices', () => {
       new Map([[challenge.id, makeStandings()]]),
       KM,
       t,
-      now,
-      today
+      now
     );
     expect(notices).toEqual([
       {
         challengeId: 'c1',
         challengeName: '🏆 Family Cup',
-        fireAt: new Date(2026, 10, 15, 20, 0, 0),
+        fireAt: new Date(Date.UTC(2026, 10, 15, 20, 0, 0)),
         leaderName: 'Alex',
         leaderTotal: '400 pts',
         leaderIsMe: false,
@@ -201,8 +222,7 @@ describe('buildChallengeWeekNotices', () => {
       new Map([[challenge.id, standingsSeenBy(makeStandings(), FRIEND)]]),
       KM,
       t,
-      now,
-      today
+      now
     );
     expect(lead.leaderIsMe).toBe(true);
     expect(lead.own).toBeNull();
@@ -213,8 +233,7 @@ describe('buildChallengeWeekNotices', () => {
       new Map([[challenge.id, makeSharedLeadStandings()]]),
       KM,
       t,
-      now,
-      today
+      now
     );
     expect(shared.leaderIsMe).toBe(true);
     expect(shared.own).toBeNull();
@@ -228,8 +247,7 @@ describe('buildChallengeWeekNotices', () => {
         new Map([[challenge.id, empty]]),
         KM,
         t,
-        now,
-        today
+        now
       )
     ).toEqual([]);
   });
@@ -243,9 +261,42 @@ describe('buildChallengeWeekNotices', () => {
         new Map([['c1', makeStandings()]]),
         KM,
         t,
-        now,
-        today
+        now
       )
     ).toEqual([]);
+  });
+});
+
+describe('rulesInEffect', () => {
+  const base = makeChallenge().rules;
+  const later = { ...base, metric: 'steps' as const, points: null };
+  const latest = { ...base, metric: 'distance' as const, points: null };
+  const change = (id: string, effective_from: string, rules: typeof base) => ({
+    id,
+    changed_by_display_name: 'Alex',
+    effective_from,
+    rules,
+    previous_rules: null,
+    created_at: '2026-11-12T00:00:00.000Z',
+  });
+
+  it('picks the change in effect on the day, as the server does', () => {
+    const log = [
+      change('a', '2026-11-02', base),
+      change('b', '2026-11-16', later),
+    ];
+    expect(rulesInEffect(log, '2026-11-09', latest)).toBe(base);
+    expect(rulesInEffect(log, '2026-11-16', latest)).toBe(later);
+    // While the log loads, the newest saved rules stand in.
+    expect(rulesInEffect(undefined, '2026-11-09', latest)).toBe(latest);
+  });
+
+  it('keeps the server write order for changes on the same day', () => {
+    const log = [
+      change('a', '2026-11-02', base),
+      change('b', '2026-11-16', later),
+      change('c', '2026-11-16', latest),
+    ];
+    expect(rulesInEffect(log, '2026-11-16', base)).toBe(latest);
   });
 });
