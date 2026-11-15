@@ -88,6 +88,20 @@ describe('labelScanToFood', () => {
     expect(variant?.sodium).toBeUndefined();
   });
 
+  it.each(['g', 'ml', 'oz'])(
+    'uses one serving when the size is missing despite unit %s',
+    (serving_unit) => {
+      const variant = labelScanToFood(
+        nutritionLabelScanResultSchema.parse({ serving_unit, calories: 90 })
+      ).variants?.[0];
+      expect(variant).toMatchObject({
+        serving_size: 1,
+        serving_unit: 'serving',
+        calories: 90,
+      });
+    }
+  );
+
   it('reads the amounts as one serving when no serving size is printed', () => {
     const variant = labelScanToFood(
       nutritionLabelScanResultSchema.parse({ calories: 90 })

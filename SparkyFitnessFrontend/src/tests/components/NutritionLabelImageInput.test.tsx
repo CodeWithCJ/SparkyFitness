@@ -1,7 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { ReactElement } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { renderWithClient } from '@/tests/test-utils';
 import { NutritionLabelImageInput } from '@/components/FoodSearch/NutritionLabelImageInput';
 import { HttpApiError } from '@/api/api';
 import { scanNutritionLabel } from '@/api/Foods/foodService';
@@ -25,15 +24,6 @@ jest.mock('@/utils/nutritionLabelScan', () => ({
 const scan = jest.mocked(scanNutritionLabel);
 const prepare = jest.mocked(prepareLabelImage);
 const png = () => new File(['png'], 'label.png', { type: 'image/png' });
-
-function renderWithClient(ui: ReactElement) {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: 0 } },
-  });
-  return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>
-  );
-}
 
 function pasteImage() {
   const event = new Event('paste', { bubbles: true, cancelable: true });

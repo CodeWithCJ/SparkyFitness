@@ -15,6 +15,15 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({ activeUserId: 'user', isActingOnBehalf: false }),
 }));
 
+const mockUser = { id: 'account-a', activeUserId: 'profile-a' };
+const mockLabelScan = jest.fn<Promise<{ id: string; name: string }>, []>();
+
+beforeEach(() => {
+  mockUser.id = 'account-a';
+  mockUser.activeUserId = 'profile-a';
+  mockLabelScan.mockReset().mockResolvedValue({ id: '', name: 'Oat Bar' });
+});
+
 const mockEmpty: never[] = [];
 const mockSearchData = { pages: [] };
 const mockProviders: DataProvider[] = [
@@ -42,7 +51,7 @@ jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
 );
 jest.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { id: 'account-a', activeUserId: 'profile-a' } }),
+  useAuth: () => ({ user: mockUser }),
 }));
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
@@ -116,17 +125,24 @@ jest.mock('@/components/FoodSearch/BarcodeScannerDialog', () => ({
     isOpen: boolean;
     onBarcodeDetected: (barcode: string) => void;
     onLabelScanned?: (food: { id: string; name: string }) => void;
-  }) =>
-    isOpen ? (
+  }) => {
+    const { useMutation } = jest.requireActual<
+      typeof import('@tanstack/react-query')
+    >('@tanstack/react-query');
+    const { mutate } = useMutation({ mutationFn: mockLabelScan });
+    return isOpen ? (
       <>
         <button onClick={() => onBarcodeDetected('1234567890123')}>
           Detect barcode
         </button>
-        <button onClick={() => onLabelScanned?.({ id: '', name: 'Oat Bar' })}>
+        <button
+          onClick={() => mutate(undefined, { onSuccess: onLabelScanned })}
+        >
           Scan label
         </button>
       </>
-    ) : null,
+    ) : null;
+  },
 }));
 
 it('clears barcode loading when typed All Providers results replace a pending scan', async () => {
@@ -210,3 +226,48 @@ it('opens the food form with a scanned nutrition label', async () => {
     client.clear();
   }
 });
+
+it.each(['id', 'activeUserId'] as const)(
+  'discards a pending label scan when %s changes',
+  async (identityField) => {
+    let finish!: (food: { id: string; name: string }) => void;
+    mockLabelScan.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const client = new QueryClient();
+    const ui = () => (
+      <QueryClientProvider client={client}>
+        <FoodSearch onFoodSelect={jest.fn()} hideMealTab />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(ui());
+    try {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Scan Barcode or Label' })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Scan label' }));
+      await waitFor(() => expect(mockLabelScan).toHaveBeenCalledTimes(1));
+      // An ordinary rerender must preserve the open scanner.
+      rerender(ui());
+      expect(
+        screen.getByRole('button', { name: 'Scan label' })
+      ).toBeInTheDocument();
+      mockUser[identityField] = 'another-identity';
+      rerender(ui());
+      expect(
+        screen.queryByRole('button', { name: 'Scan label' })
+      ).not.toBeInTheDocument();
+      await act(async () => {
+        finish({ id: '', name: 'Previous account food' });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(
+        screen.queryByRole('dialog', { name: 'food form edit' })
+      ).not.toBeInTheDocument();
+    } finally {
+      client.clear();
+    }
+  }
+);

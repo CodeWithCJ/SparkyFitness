@@ -259,6 +259,7 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(false);
     setEditingProduct(null);
     setShowEditDialog(false);
+    setShowBarcodeScanner(false);
   }, [user?.id, user?.activeUserId]);
 
   const queryClient = useQueryClient();
@@ -1768,6 +1769,7 @@ const EnhancedFoodSearch = ({
         onSave={handleSaveEditedFood}
       />
       <BarcodeScannerDialog
+        key={JSON.stringify([user?.id, user?.activeUserId])}
         isOpen={showBarcodeScanner}
         onOpenChange={setShowBarcodeScanner}
         onBarcodeDetected={(barcode) => {

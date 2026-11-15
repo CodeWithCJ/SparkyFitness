@@ -46,7 +46,7 @@ const optionalAmount = (value: number | null): number | undefined =>
 export function labelScanToFood(result: NutritionLabelScanResult): Food {
   // Without a printed serving the amounts can only be read as one serving.
   const servingUnit =
-    result.serving_unit ?? (result.serving_size !== null ? 'g' : 'serving');
+    result.serving_size === null ? 'serving' : (result.serving_unit ?? 'g');
   const variant: FoodVariant = {
     serving_size: result.serving_size ?? 1,
     serving_unit: servingUnit,
