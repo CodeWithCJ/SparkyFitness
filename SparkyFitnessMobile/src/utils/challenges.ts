@@ -1,12 +1,15 @@
 import type { TFunction } from 'i18next';
-import type {
-  ChallengeFormat,
-  ChallengeMetric,
-  ChallengePeriod,
-  ChallengeRules,
-  ChallengeStandingsResponse,
-  ChallengeSummary,
-  EnergyUnit,
+import {
+  instantToDay,
+  localDateTimeToUtc,
+  type ChallengeFormat,
+  type ChallengeMetric,
+  type ChallengePeriod,
+  type ChallengeRuleChange,
+  type ChallengeRules,
+  type ChallengeStandingsResponse,
+  type ChallengeSummary,
+  type EnergyUnit,
 } from '@workspace/shared';
 import { formatLocalizedNumber, getAppLocale } from '../localization';
 import { formatEnergy } from './energyUnit';
@@ -23,7 +26,7 @@ export interface ChallengeUnits {
 /** `data.kind` of the week notification, for the tap handler and cancelling. */
 export const CHALLENGE_WEEK_LEADER_KIND = 'challenge-week-leader';
 
-/** The hour (device time) of the "who leads this week" notification on a week's last day. */
+/** The hour (challenge time) of the "who leads this week" notification on a week's last day. */
 export const WEEK_LEADER_NOTIFICATION_HOUR = 20;
 
 const METRES_PER_MILE = 1609.344;
@@ -222,16 +225,52 @@ export function sortChallenges<
   );
 }
 
-const INVITE_CODE_RE = /[A-Za-z0-9_-]{22}/g;
+// A whole 22-character base64url token, not the start of a longer one.
+const INVITE_CODE_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/g;
+const CODE_PARAM_RE = /[?&#]code=([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
 
 /**
  * The invite code in what was typed or pasted: the bare code, or a link or
- * message that carries it. Codes are 22 base64url characters; the last match
- * wins so a link's own path never shadows the code at its end.
+ * message that carries it. Codes are 22 base64url characters. A `code=`
+ * parameter wins; otherwise the last whole 22-character token, so a link's
+ * own path never shadows the code at its end.
  */
 export function parseInviteCode(text: string): string | null {
-  const matches = text.trim().match(INVITE_CODE_RE);
+  const trimmed = text.trim();
+  const param = CODE_PARAM_RE.exec(trimmed);
+  if (param?.[1]) return param[1];
+  const matches = trimmed.match(INVITE_CODE_RE);
   return matches?.[matches.length - 1] ?? null;
+}
+
+/**
+ * The rules that score `day`, picked from the change log as the server does:
+ * the last change in effect by then, else the earliest. The log comes from the
+ * server in effective-day then write order, and the sort is stable. Falls
+ * back to `current` (the newest saved rules) while the log is loading.
+ */
+export function rulesInEffect(
+  changes: readonly ChallengeRuleChange[] | undefined,
+  day: string,
+  current: ChallengeRules
+): ChallengeRules {
+  if (!changes?.length) return current;
+  const ordered = [...changes].sort((a, b) =>
+    a.effective_from.localeCompare(b.effective_from)
+  );
+  let chosen = ordered[0] as ChallengeRuleChange;
+  for (const change of ordered) {
+    if (change.effective_from <= day) chosen = change;
+  }
+  return chosen.rules;
+}
+
+/** The challenge's today, in its own time zone (as the server counts days). */
+export function challengeToday(
+  challenge: Pick<ChallengeSummary, 'time_zone'>,
+  now: Date
+): string {
+  return instantToDay(now, challenge.time_zone);
 }
 
 /** The signed-in user's row, which the server marks with `me`. */
@@ -266,24 +305,23 @@ export function showsTrophy(
 }
 
 /**
- * When the week's "who leads" notification fires: 8 PM device time on
- * the last day of a weekly period (Sunday, or the challenge's end day when it
- * ends mid-week). Null for other periods, a frozen week or a time already past.
+ * When the week's "who leads" notification fires: 8 PM on the last day of a
+ * weekly period (Sunday, or the challenge's end day when it ends mid-week),
+ * in the challenge's time zone, where its week closes at midnight. Null for
+ * other periods, a frozen week or a time already past.
  */
 export function weekLeaderNotificationDate(
-  rules: Pick<ChallengeRules, 'period'>,
+  challenge: Pick<ChallengeSummary, 'time_zone'> & {
+    rules: Pick<ChallengeRules, 'period'>;
+  },
   standings: Pick<ChallengeStandingsResponse, 'period_end' | 'final'>,
   now: Date
 ): Date | null {
-  if (rules.period !== 'week' || standings.final) return null;
-  const [year, month, day] = standings.period_end.split('-').map(Number);
-  const fireAt = new Date(
-    year,
-    month - 1,
-    day,
-    WEEK_LEADER_NOTIFICATION_HOUR,
-    0,
-    0
+  if (challenge.rules.period !== 'week' || standings.final) return null;
+  const hour = String(WEEK_LEADER_NOTIFICATION_HOUR).padStart(2, '0');
+  const fireAt = localDateTimeToUtc(
+    `${standings.period_end}T${hour}:00`,
+    challenge.time_zone
   );
   return fireAt.getTime() > now.getTime() ? fireAt : null;
 }
@@ -312,15 +350,15 @@ export function buildChallengeWeekNotices(
   standingsById: ReadonlyMap<string, ChallengeStandingsResponse>,
   units: ChallengeUnits,
   t: TFunction,
-  now: Date,
-  today: string
+  now: Date
 ): ChallengeWeekNotice[] {
   const notices: ChallengeWeekNotice[] = [];
   for (const challenge of challenges) {
-    if (challengeState(challenge, today) !== 'running') continue;
+    if (challengeState(challenge, challengeToday(challenge, now)) !== 'running')
+      continue;
     const standings = standingsById.get(challenge.id);
     if (!standings) continue;
-    const fireAt = weekLeaderNotificationDate(challenge.rules, standings, now);
+    const fireAt = weekLeaderNotificationDate(challenge, standings, now);
     const leader = standingsLeader(standings.rows);
     if (!fireAt || !leader) continue;
     const metric = challenge.rules.metric;

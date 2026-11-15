@@ -101,9 +101,20 @@ describe('ChallengeJoinScreen', () => {
     [404, '{}', 'That code is not valid or has expired.'],
     [
       409,
-      JSON.stringify({ error: 'This challenge is full' }),
-      'This challenge is full',
+      JSON.stringify({ error: 'x', code: 'CHALLENGE_FULL' }),
+      'This challenge is full.',
     ],
+    [
+      409,
+      JSON.stringify({ error: 'x', code: 'CHALLENGE_ENDED' }),
+      'This challenge has ended.',
+    ],
+    [
+      409,
+      JSON.stringify({ error: 'x', code: 'CHALLENGE_LATE_JOIN_CLOSED' }),
+      'This challenge has started and does not take late joiners.',
+    ],
+    [409, '{}', 'This challenge cannot be joined right now.'],
     [429, '{}', 'Too many tries. Wait a few minutes and try again.'],
     [500, '{}', 'Could not join the challenge.'],
   ])('explains a %s answer', async (status, body, message) => {

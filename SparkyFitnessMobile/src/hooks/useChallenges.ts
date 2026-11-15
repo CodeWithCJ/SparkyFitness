@@ -6,11 +6,13 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import type {
+  ChallengeRuleChange,
   ChallengeStandingsResponse,
   JoinChallengeBody,
 } from '@workspace/shared';
 import {
   fetchChallenge,
+  fetchChallengeRuleChanges,
   fetchChallengeStandings,
   fetchChallenges,
   fetchChallengesStatus,
@@ -32,6 +34,8 @@ export const challengeDetailQueryKey = (id: string) =>
 /** `date` is any day of the period; null asks for the server's today. */
 export const challengeStandingsQueryKey = (id: string, date: string | null) =>
   [...challengesQueryKeyRoot, 'standings', id, date ?? 'today'] as const;
+export const challengeRuleChangesQueryKey = (id: string) =>
+  [...challengesQueryKeyRoot, 'ruleChanges', id] as const;
 
 /**
  * The user's challenges, once the server says the feature is on. A server
@@ -85,12 +89,50 @@ function combineStandings(
 ): {
   byId: ReadonlyMap<string, ChallengeStandingsResponse>;
   isLoading: boolean;
+  isError: boolean;
 } {
   const byId = new Map<string, ChallengeStandingsResponse>();
   for (const result of results) {
     if (result.data) byId.set(result.data.challenge_id, result.data);
   }
-  return { byId, isLoading: results.some((result) => result.isLoading) };
+  return {
+    byId,
+    isLoading: results.some((result) => result.isLoading),
+    isError: results.some((result) => result.isError),
+  };
+}
+
+/**
+ * The rules change log of a challenge. A change made mid-period counts from
+ * the next one, so a period's totals are shown with the rules in effect then
+ * (`rulesInEffect`), not the newest saved rules.
+ */
+export function useChallengeRuleChanges(id: string) {
+  return useQuery({
+    queryKey: challengeRuleChangesQueryKey(id),
+    queryFn: () => fetchChallengeRuleChanges(id),
+    enabled: Boolean(id),
+  });
+}
+
+/** Rule change logs for several challenges, keyed by challenge id. */
+export function useChallengesRuleChanges(ids: readonly string[]) {
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: challengeRuleChangesQueryKey(id),
+      queryFn: () => fetchChallengeRuleChanges(id),
+    })),
+    combine: (results: UseQueryResult<ChallengeRuleChange[]>[]) => {
+      const byId = new Map<string, ChallengeRuleChange[]>();
+      results.forEach((result, i) => {
+        if (result.data) byId.set(ids[i] as string, result.data);
+      });
+      return {
+        byId: byId as ReadonlyMap<string, ChallengeRuleChange[]>,
+        isLoading: results.some((result) => result.isLoading),
+      };
+    },
+  });
 }
 
 /**
@@ -122,13 +164,20 @@ export function useChallengeMutations() {
   });
   const leave = useMutation({
     mutationFn: (id: string) => leaveChallenge(id),
-    // The left challenge can no longer be read; drop it rather than refetch a 404.
+    // The left challenge can no longer be read. Its screen is still mounted
+    // until the caller goes back, so mark its queries stale without
+    // refetching them (a refetch would only get a 404), and refresh the list
+    // without waiting for it.
     onSuccess: (_data, id) => {
-      queryClient.removeQueries({ queryKey: challengeDetailQueryKey(id) });
-      queryClient.removeQueries({
-        queryKey: [...challengesQueryKeyRoot, 'standings', id],
-      });
-      return invalidate();
+      for (const queryKey of [
+        challengeDetailQueryKey(id),
+        [...challengesQueryKeyRoot, 'standings', id],
+        challengeRuleChangesQueryKey(id),
+      ]) {
+        void queryClient.cancelQueries({ queryKey });
+        void queryClient.invalidateQueries({ queryKey, refetchType: 'none' });
+      }
+      void queryClient.invalidateQueries({ queryKey: challengesListQueryKey });
     },
   });
 

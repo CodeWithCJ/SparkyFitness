@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,7 @@ import ChallengeStandingsList from '../components/challenges/ChallengeStandingsL
 import {
   useChallenge,
   useChallengeMutations,
+  useChallengeRuleChanges,
   useChallengeStandings,
 } from '../hooks/useChallenges';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
@@ -30,7 +31,9 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate, getTodayDate } from '../utils/dateUtils';
 import {
   challengeRulesSummary,
+  challengeToday,
   formatChallengeValue,
+  rulesInEffect,
   type ChallengeUnits,
 } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -56,10 +59,14 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [periodDay, setPeriodDay] = useState<string | null>(null);
   const challengeQuery = useChallenge(id);
   const standingsQuery = useChallengeStandings(id, periodDay);
-  useRefetchOnFocus(() => {
-    void challengeQuery.refetch();
-    void standingsQuery.refetch();
-  }, true);
+  const ruleChangesQuery = useChallengeRuleChanges(id);
+  const { refetch: refetchChallenge } = challengeQuery;
+  const { refetch: refetchStandings } = standingsQuery;
+  const refetchOnFocus = useCallback(() => {
+    void refetchChallenge();
+    void refetchStandings();
+  }, [refetchChallenge, refetchStandings]);
+  useRefetchOnFocus(refetchOnFocus, true);
   const { preferences } = usePreferences();
   const energyUnit = useEnergyUnit();
   const units: ChallengeUnits = {
@@ -67,7 +74,10 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       preferences?.default_distance_unit === 'miles' ? 'miles' : 'km',
     energyUnit,
   };
-  const { leaveChallenge, isLeaving } = useChallengeMutations();
+  const { leaveChallenge } = useChallengeMutations();
+  // The Alert's handler keeps the render it was made in, so a second tap is
+  // stopped with a ref rather than the mutation's pending state.
+  const leavingRef = useRef(false);
 
   const challenge = challengeQuery.data;
   const standings = standingsQuery.data;
@@ -89,17 +99,19 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           text: t('challenges.leave.confirm', { defaultValue: 'Leave' }),
           style: 'destructive',
           onPress: () => {
-            if (isLeaving) return;
+            if (leavingRef.current) return;
+            leavingRef.current = true;
             leaveChallenge(id)
               .then(() => navigation.goBack())
-              .catch(() =>
+              .catch(() => {
+                leavingRef.current = false;
                 Toast.show({
                   type: 'error',
                   text1: t('challenges.leave.failed', {
                     defaultValue: 'Could not leave the challenge',
                   }),
-                })
-              );
+                });
+              });
           },
         },
       ]
@@ -129,11 +141,19 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       : null,
   });
 
-  const today = getTodayDate();
+  // The challenge's own today, as the server counts its days.
+  const today = challenge
+    ? challengeToday(challenge, new Date())
+    : getTodayDate();
   const canGoBack =
     !!challenge && !!standings && standings.period_start > challenge.start_date;
+  // Not past today, and not past the end: the server answers a later date
+  // with the final period again.
   const canGoForward =
-    !!standings && periodDay !== null && standings.period_end < today;
+    !!standings &&
+    periodDay !== null &&
+    standings.period_end < today &&
+    (!challenge?.end_date || standings.period_end < challenge.end_date);
 
   let body: React.ReactNode;
   if (challengeQuery.isLoading) {
@@ -155,7 +175,12 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
     );
   } else {
-    const rules = challenge.rules;
+    // The rules that scored the period shown (a change counts from the next).
+    const rules = rulesInEffect(
+      ruleChangesQuery.data,
+      standings?.period_start ?? today,
+      challenge.rules
+    );
     const dates = challenge.end_date
       ? t('challenges.dates.range', {
           defaultValue: '{{start}} to {{end}}',

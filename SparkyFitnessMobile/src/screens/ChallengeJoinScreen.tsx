@@ -5,9 +5,20 @@ import Toast from 'react-native-toast-message';
 import FormScreenChrome from '../components/FormScreenChrome';
 import FormInput from '../components/FormInput';
 import { useChallengeMutations } from '../hooks/useChallenges';
-import { ApiError, getApiErrorMessage } from '../services/api/errors';
+import { ApiError } from '../services/api/errors';
 import { parseInviteCode } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
+
+/** The server's error code (`CHALLENGE_FULL`, ...) in a failed request's body. */
+function joinErrorCode(err: ApiError): string | undefined {
+  try {
+    const body: unknown = err.body ? JSON.parse(err.body) : null;
+    const code = (body as { code?: unknown } | null)?.code;
+    return typeof code === 'string' ? code : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 type Props = RootStackScreenProps<'ChallengeJoin'>;
 
@@ -34,13 +45,26 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
         });
       }
       if (err.statusCode === 409) {
-        // Full, ended or closed to late joiners: the server says which.
-        return (
-          getApiErrorMessage(err) ??
-          t('challenges.join.closed', {
-            defaultValue: 'This challenge cannot be joined right now.',
-          })
-        );
+        // Full, ended or closed to late joiners: the server's code says which.
+        switch (joinErrorCode(err)) {
+          case 'CHALLENGE_FULL':
+            return t('challenges.join.full', {
+              defaultValue: 'This challenge is full.',
+            });
+          case 'CHALLENGE_ENDED':
+            return t('challenges.join.ended', {
+              defaultValue: 'This challenge has ended.',
+            });
+          case 'CHALLENGE_LATE_JOIN_CLOSED':
+            return t('challenges.join.lateJoinClosed', {
+              defaultValue:
+                'This challenge has started and does not take late joiners.',
+            });
+          default:
+            return t('challenges.join.closed', {
+              defaultValue: 'This challenge cannot be joined right now.',
+            });
+        }
       }
     }
     return t('challenges.join.failed', {
@@ -49,6 +73,8 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleJoin = () => {
+    // The keyboard's Done can fire while a join is on its way.
+    if (isJoining) return;
     const parsed = parseInviteCode(code);
     if (!parsed) {
       setError(

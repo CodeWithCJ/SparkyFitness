@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import i18n from '../localization/i18n';
 import {
   challengesQueryKeyRoot,
   useChallenges,
+  useChallengesRuleChanges,
   useChallengesStandings,
 } from '../hooks/useChallenges';
 import { usePreferences } from '../hooks/usePreferences';
@@ -17,10 +19,11 @@ import {
 } from '../services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../services/notifications';
 import { addLog } from '../services/LogService';
-import { getTodayDate } from '../utils/dateUtils';
 import {
   buildChallengeWeekNotices,
   challengeState,
+  challengeToday,
+  rulesInEffect,
   type ChallengeDistanceUnit,
 } from '../utils/challenges';
 
@@ -58,40 +61,62 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   );
   const active = prefEnabled && notificationsEnabled;
 
-  const { challenges } = useChallenges({ enabled: active });
-  const today = getTodayDate();
-  const weekly = useMemo(
-    () =>
-      active
-        ? challenges.filter(
-            (c) =>
-              c.rules.period === 'week' &&
-              challengeState(c, today) === 'running'
-          )
-        : [],
-    [active, challenges, today]
-  );
+  const [languageRevision, setLanguageRevision] = useState(0);
+  useEffect(() => {
+    const onLanguageChanged = () =>
+      setLanguageRevision((revision) => revision + 1);
+    i18n.on('languageChanged', onLanguageChanged);
+    return () => i18n.off('languageChanged', onLanguageChanged);
+  }, []);
+
+  const list = useChallenges({ enabled: active });
+  const { challenges } = list;
+  // Days are counted in each challenge's own time zone, as on the server.
+  // Worked out on every render, so a day turning over is picked up too.
+  const weekly = active
+    ? challenges.filter(
+        (c) =>
+          c.rules.period === 'week' &&
+          challengeState(c, challengeToday(c, new Date())) === 'running'
+      )
+    : [];
   const hasWeekly = weekly.length > 0;
-  const weeklyIds = useMemo(() => weekly.map((c) => c.id), [weekly]);
+  const weeklyIds = weekly.map((c) => c.id);
   const standings = useChallengesStandings(weeklyIds, null);
+  const ruleChanges = useChallengesRuleChanges(weeklyIds);
+  // Still loading, or a read failed: keep what is scheduled rather than
+  // cancel it on a launch without data (nothing here is persisted).
+  const waiting =
+    active &&
+    (list.isLoading ||
+      list.isError ||
+      standings.isLoading ||
+      standings.isError ||
+      ruleChanges.isLoading);
   const { preferences } = usePreferences({ enabled: hasWeekly });
   const energyUnit = useEnergyUnit();
   const distanceUnit: ChallengeDistanceUnit =
     preferences?.default_distance_unit === 'miles' ? 'miles' : 'km';
 
-  const notices = useMemo(
-    () =>
-      buildChallengeWeekNotices(
-        weekly,
-        standings.byId,
-        { distanceUnit, energyUnit },
-        t,
-        new Date(),
-        today
+  // Cheap to rebuild; the signature below decides whether anything changed.
+  const notices = buildChallengeWeekNotices(
+    // Totals in the units of the rules that score this week.
+    weekly.map((c) => ({
+      ...c,
+      rules: rulesInEffect(
+        ruleChanges.byId.get(c.id),
+        standings.byId.get(c.id)?.period_start ?? c.start_date,
+        c.rules
       ),
-    [weekly, standings.byId, distanceUnit, energyUnit, t, today]
+    })),
+    standings.byId,
+    { distanceUnit, energyUnit },
+    t,
+    new Date()
   );
-  const signature = JSON.stringify(
+  const signature = JSON.stringify([
+    waiting,
+    languageRevision,
     notices.map((n) => [
       n.challengeId,
       n.fireAt.getTime(),
@@ -100,14 +125,19 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
       n.leaderTotal,
       n.leaderIsMe,
       n.own,
-    ])
-  );
+    ]),
+  ]);
+  const waitingRef = useRef(waiting);
+  useEffect(() => {
+    waitingRef.current = waiting;
+  }, [waiting]);
   const noticesRef = useRef(notices);
   useEffect(() => {
     noticesRef.current = notices;
   }, [notices]);
 
   useEffect(() => {
+    if (waitingRef.current) return;
     void enqueue(async () => {
       await cancelChallengeWeekNotifications();
       const list = noticesRef.current;

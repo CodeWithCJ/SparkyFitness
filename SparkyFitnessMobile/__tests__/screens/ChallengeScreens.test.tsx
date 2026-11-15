@@ -21,6 +21,7 @@ jest.mock('../../src/hooks/useChallenges', () => ({
   useChallenge: () => mockUseChallenge(),
   useChallengeStandings: (id: string, date: string | null) =>
     mockUseStandings(id, date),
+  useChallengeRuleChanges: () => ({ data: undefined }),
   useChallengeMutations: () => ({
     leaveChallenge: mockLeave,
     isLeaving: false,
@@ -236,6 +237,38 @@ describe('ChallengeDetailScreen', () => {
 
     fireEvent.press(screen.getByLabelText('Next period'));
     expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-09');
+  });
+
+  it('stops at the final week of a challenge that has ended', () => {
+    mockUseChallenge.mockReturnValue({
+      data: makeChallenge({ start_date: '2026-10-26', end_date: '2026-11-08' }),
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    const finalWeek = makeStandings({
+      period_start: '2026-11-02',
+      period_end: '2026-11-08',
+      final: true,
+    });
+    const weekBefore = makeStandings({
+      period_start: '2026-10-26',
+      period_end: '2026-11-01',
+      final: true,
+    });
+    mockUseStandings.mockImplementation((_id: string, date: string | null) => ({
+      data: date === '2026-11-01' ? weekBefore : finalWeek,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderDetail();
+    fireEvent.press(screen.getByLabelText('Previous period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-01');
+    fireEvent.press(screen.getByLabelText('Next period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-02');
+    // The server would answer any later day with this week again.
+    expect(screen.getByLabelText('Next period')).toBeDisabled();
   });
 
   it('leaves after confirming and goes back', async () => {

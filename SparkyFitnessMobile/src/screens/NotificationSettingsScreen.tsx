@@ -726,7 +726,7 @@ const NotificationSettingsScreen: React.FC<
               })}
               subtitle={t('notificationSettings.challengeWeekSubtitle', {
                 defaultValue:
-                  'Sunday at 8 PM, who leads each weekly challenge you are in',
+                  'The last evening of each challenge week: who leads each weekly challenge you are in',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={

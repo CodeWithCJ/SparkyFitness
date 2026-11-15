@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from '../Icon';
 import {
   useChallenges,
+  useChallengesRuleChanges,
   useChallengesStandings,
 } from '../../hooks/useChallenges';
 import { useEnergyUnit } from '../../hooks/useEnergyUnit';
@@ -18,9 +19,11 @@ import {
   ownStanding,
   sortChallenges,
   isLeading,
+  rulesInEffect,
   standingsLeader,
   type ChallengeUnits,
 } from '../../utils/challenges';
+import { getTodayDate } from '../../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../../types/navigation';
 
 type ChallengesCardNavigation = CompositeNavigationProp<
@@ -57,7 +60,12 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
     [challenges, selectedDate]
   );
   const ids = useMemo(() => running.map((c) => c.id), [running]);
-  const standings = useChallengesStandings(ids, selectedDate);
+  // Today's standings share the cache entry the rest of the app uses.
+  const standings = useChallengesStandings(
+    ids,
+    selectedDate === getTodayDate() ? null : selectedDate
+  );
+  const ruleChanges = useChallengesRuleChanges(ids);
   const { preferences } = usePreferences({ enabled: running.length > 0 });
   const energyUnit = useEnergyUnit();
   const units: ChallengeUnits = {
@@ -87,7 +95,11 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         const period = standings.byId.get(challenge.id);
         const own = period ? ownStanding(period.rows) : null;
         const leader = period ? standingsLeader(period.rows) : null;
-        const metric = challenge.rules.metric;
+        const { metric } = rulesInEffect(
+          ruleChanges.byId.get(challenge.id),
+          period?.period_start ?? selectedDate,
+          challenge.rules
+        );
         const line = !period
           ? ' '
           : own
