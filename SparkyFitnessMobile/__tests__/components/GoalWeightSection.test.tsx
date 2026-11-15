@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -60,10 +61,10 @@ describe('GoalWeightSection edge cases', () => {
     fireEvent.changeText(input, '154');
     fireEvent.press(screen.getByTestId('goal-weight-save'));
     fireEvent.changeText(input, '160');
-    resolveSave();
-    await waitFor(() =>
-      expect(screen.getByTestId('goal-weight-input').props.value).toBe('160')
-    );
+    await act(async () => {
+      resolveSave();
+    });
+    expect(screen.getByTestId('goal-weight-input').props.value).toBe('160');
   });
 
   it('does not accept input until preferences have loaded', () => {
