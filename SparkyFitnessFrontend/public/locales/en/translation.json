@@ -1962,6 +1962,7 @@
     "meals": "Meals",
     "online": "Online",
     "scanBarcode": "Scan Barcode",
+    "scanBarcodeOrLabel": "Scan Barcode or Label",
     "customFood": "Custom Food",
     "importFromCSV": "Import from CSV",
     "searchFoodsPlaceholder": "Search for foods...",
@@ -1998,7 +1999,7 @@
     "editFoodDetailsDescription": "Adjust the food details before adding it to your custom database.",
     "addNewFood": "Add New Food",
     "addNewFoodDescription": "Enter the details for a new food item to add to your database.",
-    "scanBarcodeDescription": "Position the product barcode in front of your camera.",
+    "scanBarcodeDescription": "Position the product barcode in front of your camera, or use a picture of it.",
     "importFromCSVDescription": "Import a CSV file to add multiple foods at once.",
     "allProviders": "All Providers",
     "topMatches": "Top Matches",
@@ -9561,6 +9562,33 @@
     "barcodeScannerDialog": {
       "noActiveProvidersFound": "No active providers found",
       "loadingCameraModule": "Loading camera module..."
+    },
+    "barcodeImage": {
+      "upload": "Upload barcode image",
+      "notFound": "No barcode found in this image. Try a sharper picture with the whole barcode in view.",
+      "unreadable": "This image could not be opened. Try a JPEG or PNG file."
+    },
+    "imageSourceInput": {
+      "dropOrPaste": "or drop an image here, or paste a screenshot"
+    },
+    "nutritionLabelImage": {
+      "title": "Scan Nutrition Label",
+      "dialogDescription": "Create a food from a picture of its nutrition label.",
+      "description": "Use a photo of the Nutrition Facts panel. Your AI service reads the values, and you can check them before the food is saved.",
+      "upload": "Upload label image",
+      "reading": "Reading label...",
+      "errors": {
+        "noAiService": "Reading a label needs an AI service that supports images. Add one in Settings → AI Service.",
+        "aiServiceSetup": "Your AI service cannot be used to read labels: {{message}}",
+        "badImage": "This image could not be sent to your AI service. Try a JPEG or PNG photo.",
+        "unreadable": "No nutrition facts could be read from this image. Try a sharper, closer photo of the label.",
+        "unavailable": "Your AI service did not answer. Try again in a moment.",
+        "generic": "The label could not be read. Try again."
+      }
+    },
+    "scanModes": {
+      "barcode": "Barcode",
+      "label": "Nutrition label"
     },
     "foodResultCard": {
       "gi": "GI: {{glycemic_index}}"
