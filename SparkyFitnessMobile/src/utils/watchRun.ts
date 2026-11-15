@@ -42,6 +42,11 @@ export interface WatchRunPayload {
    * on the wrist; absent when they kept the watch's figure.
    */
   estimatedDistanceMeters?: number;
+  /**
+   * Set by the phone, never the watch: the treadmill figure the wearer entered
+   * when a treadmill correction was taken off it to give `distanceMeters`.
+   */
+  treadmillDisplayMeters?: number;
   /** Apple's time in each heart-rate zone, when the finished workout had one. */
   appleZones?: {
     index?: number;

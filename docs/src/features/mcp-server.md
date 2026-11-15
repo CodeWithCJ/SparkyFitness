@@ -4,6 +4,8 @@ SparkyFitness includes a powerful **Model Context Protocol (MCP)** server. This 
 
 When you enable the MCP Server, your AI assistant transforms into a **Personal Health Intelligence** layer that can read your health logs, track your progress, and provide hyper-personalized coaching based on your actual data.
 
+This page is about apps using SparkyFitness's tools. For the other direction, SparkyFitness's own chat using another MCP server's tools, see [Tools from an outside MCP server](/features/ai-assistant#tools-from-an-outside-mcp-server).
+
 ---
 
 ## 🛠 Available Tools & Capabilities

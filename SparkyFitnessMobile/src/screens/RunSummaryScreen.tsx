@@ -48,6 +48,15 @@ import {
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
 import { learnWatchIndoorScale } from '../services/watchIndoorScale';
+import { learnFromWatchRun } from '../services/stepDistance';
+import {
+  getTreadmillCorrection,
+  useAppPreferencesStore,
+  whenPreferencesHydrated,
+} from '../stores/appPreferencesStore';
+import { updatePendingWatchFormDistance } from '../services/pendingWatchForm';
+import { correctTreadmillDistance } from '../utils/treadmillCorrection';
+import { formatTreadmillPercent } from '../utils/treadmillCorrectionFormat';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
@@ -105,6 +114,17 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [distanceText, setDistanceText] = useState('');
   const [savingDistance, setSavingDistance] = useState(false);
   const [distanceSaved, setDistanceSaved] = useState(false);
+  // What the machine showed when a correction was taken off it: from the watch
+  // (typed on the wrist, corrected when the run was filed) or from here.
+  const [displayedMeters, setDisplayedMeters] = useState<number | null>(
+    summary.treadmillDisplayMeters ?? null
+  );
+  const treadmillCorrectionEnabled = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionEnabled
+  );
+  const treadmillCorrectionPercent = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionPercent
+  );
   // Stride is distance over steps, so a corrected distance moves it too.
   const [strideLengthCm, setStrideLengthCm] = useState(
     summary.form?.strideLengthCm ?? null
@@ -129,8 +149,12 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     summary.distanceMeters > 0 ? distanceMeters / summary.distanceMeters : 1;
   const saveDistance = async () => {
     const entered = parseDecimalInput(distanceText);
-    const km = miles ? (entered * METERS_PER_MILE) / METERS_PER_KM : entered;
-    if (!summary.entryId || !(km > 0) || km > 1000) {
+    const enteredKm = miles
+      ? (entered * METERS_PER_MILE) / METERS_PER_KM
+      : entered;
+    // The machine's figure with its known error taken off; this is what is
+    // stored and what the watch's factor learns from.
+    if (!summary.entryId || !(enteredKm > 0) || enteredKm > 1000) {
       showFailure(
         t('runSummary.distanceInvalid', {
           defaultValue: 'Enter the distance from the machine.',
@@ -140,17 +164,47 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     setSavingDistance(true);
     try {
+      // Not before the saved preferences are read: an early tap would
+      // otherwise use the default (no correction) and store the raw figure.
+      await whenPreferencesHydrated();
+      const corrected = correctTreadmillDistance(
+        enteredKm * METERS_PER_KM,
+        getTreadmillCorrection()
+      );
+      const km = corrected.correctedMeters / METERS_PER_KM;
       await setExerciseEntryDistance(summary.entryId, km);
+      // A run still waiting for its steps measures from this distance.
+      void updatePendingWatchFormDistance(summary.entryId, km * METERS_PER_KM);
       setDistanceMeters(km * METERS_PER_KM);
+      setDisplayedMeters(corrected.applied ? corrected.displayedMeters : null);
       await followStride(summary.entryId, km);
-      // The watch's indoor estimate learns from the machine's figure.
+      // The watch's indoor estimate and the stride learn from the machine's
+      // figure. Both are keyed by this run, so a figure already typed on the
+      // wrist (which taught them when the run was filed) is replaced by this
+      // one rather than counted as a second sample.
       if (summary.watchIndoor) {
+        const { estimatedMeters, startedAt, endedAt } = summary.watchIndoor;
         void learnWatchIndoorScale(
           summary.activity,
           summary.watchIndoor.scale,
-          summary.watchIndoor.estimatedMeters,
-          km * METERS_PER_KM
+          estimatedMeters,
+          km * METERS_PER_KM,
+          'phone',
+          summary.entryId
         );
+        if (startedAt != null && endedAt != null) {
+          // The stride too, from the steps Apple Health holds over the run.
+          void learnFromWatchRun(
+            {
+              activity: summary.activity,
+              startedAt,
+              finishedAt: endedAt,
+              activeSeconds: summary.activeSeconds,
+            },
+            km * METERS_PER_KM,
+            summary.entryId
+          );
+        }
       }
       setDistanceSaved(true);
       invalidateExerciseCache(queryClient, summary.entryDate);
@@ -382,6 +436,26 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                       'The watch estimated this distance. Enter what the machine showed to correct it.',
                   })}
             </Text>
+            {displayedMeters != null ? (
+              <Text className="text-text-secondary text-sm mt-1">
+                {t('runSummary.treadmillCorrected', {
+                  defaultValue:
+                    'Machine showed {{shown}} {{unit}}; saved as {{saved}} {{unit}} with your treadmill correction.',
+                  shown: number(displayedMeters / unitMeters),
+                  saved: number(distanceMeters / unitMeters),
+                  unit: unitLabel,
+                })}
+              </Text>
+            ) : treadmillCorrectionEnabled &&
+              treadmillCorrectionPercent !== 0 ? (
+              <Text className="text-text-secondary text-sm mt-1">
+                {t('runSummary.treadmillCorrectionOn', {
+                  defaultValue:
+                    'Your {{percent}} treadmill correction is taken off the figure you enter.',
+                  percent: formatTreadmillPercent(treadmillCorrectionPercent),
+                })}
+              </Text>
+            ) : null}
             <View className="flex-row items-center mt-3" style={{ gap: 8 }}>
               <FormInput
                 className="flex-1 bg-raised rounded-lg px-3 text-text-primary"

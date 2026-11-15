@@ -2571,7 +2571,8 @@ CREATE TABLE public.external_data_providers (
     is_public boolean DEFAULT false NOT NULL,
     sync_started_at timestamp with time zone,
     fit_downloads_day date,
-    fit_downloads_used integer DEFAULT 0 NOT NULL
+    fit_downloads_used integer DEFAULT 0 NOT NULL,
+    provider_options jsonb
 );
 
 
@@ -5294,6 +5295,7 @@ CREATE TABLE public.user_preferences (
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    chat_mcp_server_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),

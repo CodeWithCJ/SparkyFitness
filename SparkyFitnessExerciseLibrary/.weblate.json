@@ -1,0 +1,12 @@
+{
+  "weblate": {
+    "project": "sparkyfitness",
+    "component": "exercise-library",
+    "name": "Exercise Library",
+    "file_format": "json-nested",
+    "filemask": "SparkyFitnessExerciseLibrary/locales/*/exercises.json",
+    "template": "SparkyFitnessExerciseLibrary/locales/en/exercises.json",
+    "new_base": "SparkyFitnessExerciseLibrary/locales/en/exercises.json",
+    "language_code_style": "bcp47"
+  }
+}

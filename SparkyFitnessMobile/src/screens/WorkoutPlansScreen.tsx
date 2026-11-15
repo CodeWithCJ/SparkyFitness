@@ -16,9 +16,11 @@ import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
+import Switch from '../components/ui/Switch';
 import {
   useDeleteWorkoutPlan,
   useServerConnection,
+  useUpdateWorkoutPlan,
   useWorkoutPlans,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -28,7 +30,8 @@ import type {
   WorkoutPlanAssignment,
   WorkoutPlanTemplate,
 } from '../types/workoutPlans';
-import { formatDateLabel } from '../utils/dateUtils';
+import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { workoutPlanTemplateToPayload } from '../utils/workoutPlanForm';
 
 type WorkoutPlansScreenProps = RootStackScreenProps<'WorkoutPlans'>;
 
@@ -36,21 +39,23 @@ function assignmentName(assignment: WorkoutPlanAssignment): string {
   return assignment.workout_preset_name || assignment.exercise_name || '';
 }
 
-const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
-  navigation,
+interface PlanCardProps {
+  plan: WorkoutPlanTemplate;
+  isDeleting: boolean;
+  onOpen: (plan: WorkoutPlanTemplate) => void;
+  onDelete: (plan: WorkoutPlanTemplate) => void;
+}
+
+const PlanCard: React.FC<PlanCardProps> = ({
+  plan,
+  isDeleting,
+  onOpen,
+  onDelete,
 }) => {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
-  const [refreshing, setRefreshing] = useState(false);
-  const { isConnected } = useServerConnection();
-  const { workoutPlans, isLoading, isError, refetch } = useWorkoutPlans({
-    enabled: isConnected,
-  });
-  const { deleteWorkoutPlanAsync, isPending: isDeleting } =
-    useDeleteWorkoutPlan();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const { updateWorkoutPlanAsync, isPending: isToggling } =
+    useUpdateWorkoutPlan(plan.id);
   const weekdays = useMemo(
     () => [
       t('mealPlans.weekdaysShort.sunday', { defaultValue: 'Sun' }),
@@ -65,7 +70,7 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
   );
 
   const assignmentLabel = useCallback(
-    (plan: WorkoutPlanTemplate, assignment: WorkoutPlanAssignment): string => {
+    (assignment: WorkoutPlanAssignment): string => {
       const where =
         plan.schedule_type === 'sequential'
           ? assignment.session_name ||
@@ -76,8 +81,179 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
           : (weekdays[assignment.day_of_week ?? 0] ?? '');
       return [where, assignmentName(assignment)].filter(Boolean).join(' · ');
     },
-    [t, weekdays]
+    [plan.schedule_type, t, weekdays]
   );
+
+  const toggleActive = useCallback(
+    async (next: boolean) => {
+      try {
+        const updated = await updateWorkoutPlanAsync(
+          { ...workoutPlanTemplateToPayload(plan), is_active: next },
+          toLocalDateString(new Date())
+        );
+        if (updated?.regeneration_failed) {
+          Toast.show({
+            type: 'error',
+            text1: t('workoutPlans.regenerationFailed', {
+              defaultValue: 'Saved, but refreshing the diary failed',
+            }),
+            text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+          });
+          return;
+        }
+        const counts = updated?.regenerated_entries;
+        Toast.show({
+          type: 'success',
+          text1: next
+            ? t('workoutPlans.activated', {
+                defaultValue: 'Plan activated',
+              })
+            : t('workoutPlans.deactivated', {
+                defaultValue: 'Plan deactivated',
+              }),
+          ...(counts && counts.created > 0
+            ? {
+                text2: t('workoutPlans.refreshedSessions', {
+                  defaultValue: 'Refreshed {{count}} upcoming sessions',
+                  count: counts.created,
+                }),
+              }
+            : counts && counts.removed > 0
+              ? {
+                  text2: t('workoutPlans.removedSessions', {
+                    defaultValue: 'Removed {{count}} upcoming sessions',
+                    count: counts.removed,
+                  }),
+                }
+              : null),
+        });
+      } catch {
+        Toast.show({
+          type: 'error',
+          text1: t('workoutPlans.updateFailed', {
+            defaultValue: 'Failed to update workout plan',
+          }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+      }
+    },
+    [plan, t, updateWorkoutPlanAsync]
+  );
+
+  const assignments = plan.assignments ?? [];
+  return (
+    <View className="bg-surface rounded-xl px-4 py-4 mb-3 shadow-sm">
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onOpen(plan)}
+        style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+      >
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="text-lg font-semibold text-text-primary">
+              {plan.plan_name}
+            </Text>
+            {plan.description ? (
+              <Text className="text-sm text-text-secondary mt-1">
+                {plan.description}
+              </Text>
+            ) : null}
+          </View>
+          <Switch
+            accessibilityLabel={t('workoutPlans.activePlan', {
+              defaultValue: 'Active plan',
+            })}
+            value={plan.is_active}
+            disabled={isToggling}
+            onValueChange={(value) => void toggleActive(value)}
+          />
+        </View>
+        <Text className="text-sm text-text-secondary mt-3">
+          {[
+            plan.schedule_type === 'sequential'
+              ? t('workoutPlans.sequential', { defaultValue: 'Sequential' })
+              : t('workoutPlans.weekly', { defaultValue: 'Weekly' }),
+            plan.sequence_position
+              ? t('workoutPlans.sessionPosition', {
+                  defaultValue: 'Session {{current}} of {{total}}',
+                  current: plan.sequence_position.current,
+                  total: plan.sequence_position.total,
+                })
+              : plan.end_date
+                ? t('workoutPlans.dateRange', {
+                    defaultValue: '{{start}} – {{end}}',
+                    start: formatDateLabel(
+                      plan.start_date.slice(0, 10),
+                      t,
+                      dateLocale
+                    ),
+                    end: formatDateLabel(
+                      plan.end_date.slice(0, 10),
+                      t,
+                      dateLocale
+                    ),
+                  })
+                : t('workoutPlans.starting', {
+                    defaultValue: 'Starting {{date}}',
+                    date: formatDateLabel(
+                      plan.start_date.slice(0, 10),
+                      t,
+                      dateLocale
+                    ),
+                  }),
+          ].join(' · ')}
+        </Text>
+        <View className="mt-3">
+          {assignments.slice(0, 3).map((assignment) => (
+            <Text
+              key={assignment.id}
+              className="text-sm text-text-primary mb-1"
+            >
+              {assignmentLabel(assignment)}
+            </Text>
+          ))}
+          {assignments.length > 3 ? (
+            <Text className="text-sm text-text-secondary">
+              {t('workoutPlans.moreAssignments', {
+                defaultValue: '+{{count}} more',
+                count: assignments.length - 3,
+              })}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
+      <View className="flex-row justify-end mt-2 border-t border-border-subtle pt-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('workoutPlans.deleteNamed', {
+            defaultValue: 'Delete {{name}}',
+            name: plan.plan_name,
+          })}
+          disabled={isDeleting}
+          className="p-3"
+          onPress={() => onDelete(plan)}
+        >
+          <Icon name="trash" size={20} color="#dc2626" />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
+  navigation,
+}) => {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [refreshing, setRefreshing] = useState(false);
+  const { isConnected } = useServerConnection();
+  const { workoutPlans, isLoading, isError, refetch } = useWorkoutPlans({
+    enabled: isConnected,
+  });
+  const { deleteWorkoutPlanAsync, isPending: isDeleting } =
+    useDeleteWorkoutPlan();
 
   const showError = useCallback(
     (title: string) => {
@@ -151,113 +327,16 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
     },
   });
 
-  const renderPlan = ({ item }: { item: WorkoutPlanTemplate }) => {
-    const assignments = item.assignments ?? [];
-    return (
-      <View className="bg-surface rounded-xl px-4 py-4 mb-3 shadow-sm">
-        <Pressable
-          accessibilityRole="button"
-          onPress={() =>
-            navigation.navigate('WorkoutPlanForm', { template: item })
-          }
-          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-        >
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 mr-3">
-              <Text className="text-lg font-semibold text-text-primary">
-                {item.plan_name}
-              </Text>
-              {item.description ? (
-                <Text className="text-sm text-text-secondary mt-1">
-                  {item.description}
-                </Text>
-              ) : null}
-            </View>
-            <View
-              className={
-                item.is_active
-                  ? 'bg-success-soft px-2.5 py-1 rounded-full'
-                  : 'bg-raised px-2.5 py-1 rounded-full'
-              }
-            >
-              <Text
-                className={
-                  item.is_active
-                    ? 'text-success text-xs font-semibold'
-                    : 'text-text-secondary text-xs font-semibold'
-                }
-              >
-                {item.is_active
-                  ? t('workoutPlans.active', { defaultValue: 'Active' })
-                  : t('workoutPlans.inactive', { defaultValue: 'Inactive' })}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-sm text-text-secondary mt-3">
-            {[
-              item.schedule_type === 'sequential'
-                ? t('workoutPlans.sequential', { defaultValue: 'Sequential' })
-                : t('workoutPlans.weekly', { defaultValue: 'Weekly' }),
-              item.end_date
-                ? t('workoutPlans.dateRange', {
-                    defaultValue: '{{start}} – {{end}}',
-                    start: formatDateLabel(
-                      item.start_date.slice(0, 10),
-                      t,
-                      dateLocale
-                    ),
-                    end: formatDateLabel(
-                      item.end_date.slice(0, 10),
-                      t,
-                      dateLocale
-                    ),
-                  })
-                : t('workoutPlans.starting', {
-                    defaultValue: 'Starting {{date}}',
-                    date: formatDateLabel(
-                      item.start_date.slice(0, 10),
-                      t,
-                      dateLocale
-                    ),
-                  }),
-            ].join(' · ')}
-          </Text>
-          <View className="mt-3">
-            {assignments.slice(0, 3).map((assignment) => (
-              <Text
-                key={assignment.id}
-                className="text-sm text-text-primary mb-1"
-              >
-                {assignmentLabel(item, assignment)}
-              </Text>
-            ))}
-            {assignments.length > 3 ? (
-              <Text className="text-sm text-text-secondary">
-                {t('workoutPlans.moreAssignments', {
-                  defaultValue: '+{{count}} more',
-                  count: assignments.length - 3,
-                })}
-              </Text>
-            ) : null}
-          </View>
-        </Pressable>
-        <View className="flex-row justify-end mt-2 border-t border-border-subtle pt-2">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('workoutPlans.deleteNamed', {
-              defaultValue: 'Delete {{name}}',
-              name: item.plan_name,
-            })}
-            disabled={isDeleting}
-            className="p-3"
-            onPress={() => confirmDelete(item)}
-          >
-            <Icon name="trash" size={20} color="#dc2626" />
-          </Pressable>
-        </View>
-      </View>
-    );
-  };
+  const renderPlan = ({ item }: { item: WorkoutPlanTemplate }) => (
+    <PlanCard
+      plan={item}
+      isDeleting={isDeleting}
+      onOpen={(plan) =>
+        navigation.navigate('WorkoutPlanDetail', { template: plan })
+      }
+      onDelete={confirmDelete}
+    />
+  );
 
   const content = () => {
     if (isLoading) {

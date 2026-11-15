@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import { demoGuard } from '../middleware/demoGuardMiddleware.js';
 import externalProviderService from '../services/externalProviderService.js';
 import { log } from '../config/logging.js';
+import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
 const router = express.Router();
 router.use(express.json());
 /**
@@ -100,7 +101,9 @@ router.get('/', authenticate, async (req, res, next) => {
 });
 router.get('/types', authenticate, async (req, res, next) => {
   try {
-    const types = await externalProviderService.getExternalProviderTypes();
+    const types = await externalProviderService.getExternalProviderTypes({
+      includeAdminOnly: await resolveIsAdminByUserId(req.authenticatedUserId),
+    });
     res.status(200).json(types);
   } catch (error) {
     next(error);
@@ -299,7 +302,7 @@ router.post('/', authenticate, demoGuard, async (req, res, next) => {
  */
 router.put('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
   }
   try {
@@ -360,7 +363,7 @@ router.put('/:id', authenticate, demoGuard, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
   }
   try {
@@ -423,7 +426,7 @@ router.delete('/:id', authenticate, demoGuard, async (req, res, next) => {
  */
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  if (!id) {
+  if (typeof id !== 'string' || !id) {
     return res.status(400).json({ error: 'Missing provider ID' });
   }
   try {

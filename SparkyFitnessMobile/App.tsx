@@ -64,6 +64,7 @@ import {
   SafeMealPlanForm,
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
+  SafeWorkoutPlanDetail,
   SafeWaterContainers,
   SafeWaterLog,
   SafeWaterContainerEdit,
@@ -136,6 +137,7 @@ import {
   SafeCustomCategoryEdit,
   SafeWorkoutSettings,
   SafeWarmupSettings,
+  SafeTreadmillSettings,
   SafeHeartRateZonesSettings,
   SafeServerSettings,
   SafePasskeySettings,
@@ -751,6 +753,11 @@ function AppContent() {
             options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
+            name="WorkoutPlanDetail"
+            component={SafeWorkoutPlanDetail}
+            options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
             name="WaterContainers"
             component={SafeWaterContainers}
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
@@ -1300,6 +1307,11 @@ function AppContent() {
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
+          />
+          <Stack.Screen
+            name="TreadmillSettings"
+            component={SafeTreadmillSettings}
+            options={createStackScreenOptions(t('treadmillSettings.title', { defaultValue: 'Treadmill & Stride' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
           />
           <Stack.Screen
             name="HeartRateZonesSettings"

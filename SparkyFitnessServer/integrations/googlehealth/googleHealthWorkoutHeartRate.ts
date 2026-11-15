@@ -145,6 +145,7 @@ export async function attachHeartRateToLoggedWorkouts(
           undefined,
           undefined,
           undefined,
+          undefined,
           SOURCE
         );
         attached += 1;

@@ -22,10 +22,20 @@ export const createWorkoutPlanTemplate = async (
   });
 };
 
+/**
+ * The updated plan plus the diary regeneration outcome: the save itself
+ * commits, but prefill regeneration can fail afterwards, which the caller
+ * must surface (workoutPlanTemplateService resolves with this flag).
+ */
+export type UpdateWorkoutPlanTemplateResult = WorkoutPlanTemplate & {
+  regeneration_failed?: boolean;
+  regenerated_entries?: { created: number; removed: number };
+};
+
 export const updateWorkoutPlanTemplate = async (
   id: string,
   planData: Partial<WorkoutPlanTemplate>
-): Promise<WorkoutPlanTemplate> => {
+): Promise<UpdateWorkoutPlanTemplateResult> => {
   return apiCall(`/workout-plan-templates/${id}`, {
     method: 'PUT',
     body: JSON.stringify(planData),

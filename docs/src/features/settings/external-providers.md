@@ -31,6 +31,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Tandoor
 - Strava (partially tested)
 - [COROS](/features/settings/coros)
+- [MCP tool server](/features/ai-assistant#tools-from-an-outside-mcp-server) (gives chat the tools of another MCP server; admins only, under Admin → Global Data Providers)
 - NIH Dietary Supplement Label Database (fills in a supplement from its barcode; public, no key, active by default — deactivate it to turn it off). Open Food Facts is the fallback for supplement barcodes the NIH database does not have, mostly outside the US; with both off the supplement barcode scan is hidden
 
 ## Mealie ingredient meals

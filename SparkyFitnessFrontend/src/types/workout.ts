@@ -28,6 +28,8 @@ export interface WorkoutPresetExercise {
   sets: WorkoutPresetSet[];
   category?: string;
   modality?: ExerciseModality | null; // Populated from backend join
+  /** Library equipment, sent on the preset exercise itself by the presets API. */
+  equipment?: string[];
   superset_group?: number | null;
   /** Within-session per-set ramp, kg. Null = off. */
   ramp_increment?: number | null;
