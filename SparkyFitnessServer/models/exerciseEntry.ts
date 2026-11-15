@@ -2,6 +2,7 @@ import {
   compareByEntryTime,
   deriveWorkoutSessionStatus,
   earliestEntryTime,
+  isAppLoggedWorkoutSource,
   type ExerciseEntryHrZonesInitializer,
   type ExercisePresetEntries,
   type WorkoutSessionStatusSet,
@@ -794,6 +795,7 @@ async function _updateExerciseEntryWithClient(
     preserveManualFields?: boolean;
     markManualFields?: readonly string[];
     resolveUpdate?: ResolveExerciseEntryUpdate;
+    deferCalorieLinkReapply?: boolean;
   } = {}
 ) {
   // A link created after an unlocked read would be ignored, and locking one
@@ -817,6 +819,16 @@ async function _updateExerciseEntryWithClient(
   const currentEntry = existingEntryResult.rows[0];
   let markManualFields = options.markManualFields ?? [];
   if (options.resolveUpdate) {
+    if (updateData.sets !== undefined) {
+      // The edit comparison uses the same locked snapshot as scalar fields.
+      // Reading sets before this lock could freeze an unchanged client save,
+      // or miss a correction committed by another writer.
+      const currentSets = await client.query<Record<string, unknown>>(
+        'SELECT * FROM exercise_entry_sets WHERE exercise_entry_id = $1 ORDER BY set_number, id',
+        [id]
+      );
+      currentEntry.sets = currentSets.rows;
+    }
     ({ updateData, markManualFields } = options.resolveUpdate(currentEntry));
   }
   const currentManualFields = storedManualFields(currentEntry.manual_fields);
@@ -909,12 +921,13 @@ async function _updateExerciseEntryWithClient(
   let refreshedHealthActivityType: string | null | undefined;
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
-    updateData.exercise_id &&
+    typeof updateData.exercise_id === 'string' &&
     updateData.exercise_id !== currentEntry.exercise_id
   ) {
     const exercise = await exerciseRepository.getExerciseById(
       updateData.exercise_id,
-      userId
+      userId,
+      client
     );
     if (!exercise) {
       throw Object.assign(new Error('Exercise not found.'), { status: 404 });
@@ -923,7 +936,11 @@ async function _updateExerciseEntryWithClient(
     mergedData.calories_per_hour = exercise.calories_per_hour;
     mergedData.category = exercise.category;
     mergedData.modality = exercise.modality;
-    mergedData.source_id = exercise.source_id;
+    // Only synced entries own a provider workout instance. App-logged entries
+    // follow the replacement exercise's library identity instead.
+    mergedData.source_id = isAppLoggedWorkoutSource(mergedData.source)
+      ? exercise.source_id
+      : updateData.source_id || currentEntry.source_id || exercise.source_id;
     mergedData.force = exercise.force;
     mergedData.level = exercise.level;
     mergedData.mechanic = exercise.mechanic;
@@ -1079,8 +1096,8 @@ async function _updateExerciseEntryWithClient(
     );
     if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
       assertSetWeightSign(updateData.sets, mergedData.modality);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const setsValues = updateData.sets.map((set: any) => [
+      const sets = updateData.sets as Record<string, unknown>[];
+      const setsValues = sets.map((set) => [
         id,
         set.set_number,
         set.set_type,
@@ -1103,7 +1120,7 @@ async function _updateExerciseEntryWithClient(
       await client.query(setsQuery);
     }
   }
-  if (currentEntry.calorie_link_id) {
+  if (currentEntry.calorie_link_id && !options.deferCalorieLinkReapply) {
     await reapplyCalorieLinkWithClient(
       client,
       userId,
@@ -1160,7 +1177,7 @@ interface ExerciseEntryCreateInput {
   [column: string]: unknown;
   /** A client-chosen entry id, so the entry keeps its identity across saves. */
   id?: string | null;
-  exercise_id: string;
+  exercise_id: string | null;
   entry_date: string;
   exercise_name?: string | null;
   duration_minutes?: number | null;
@@ -1187,7 +1204,10 @@ async function _createExerciseEntryWithClient(
   createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
-  options: { skipDuplicateCheck?: boolean } = {}
+  options: {
+    skipDuplicateCheck?: boolean;
+    deferCalorieLinkReapply?: boolean;
+  } = {}
 ) {
   try {
     // Check for existing entry
@@ -1268,7 +1288,11 @@ async function _createExerciseEntryWithClient(
         entrySource,
         // A source_id match is the same provider workout sent again: keep
         // what the user corrected since the last sync.
-        { returnNullIfMissing: true, preserveManualFields: syncDuplicateCheck }
+        {
+          returnNullIfMissing: true,
+          preserveManualFields: syncDuplicateCheck,
+          deferCalorieLinkReapply: options.deferCalorieLinkReapply,
+        }
       );
       if (!updatedEntry) {
         // The writer that deleted the row is a delete-then-insert sync, so it
@@ -1298,6 +1322,7 @@ async function _createExerciseEntryWithClient(
             {
               returnNullIfMissing: true,
               preserveManualFields: syncDuplicateCheck,
+              deferCalorieLinkReapply: options.deferCalorieLinkReapply,
             }
           );
         }
@@ -1382,7 +1407,7 @@ async function _createExerciseEntryWithClient(
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
-      if (entryData.sets && entryData.sets.length > 0) {
+      if (Array.isArray(entryData.sets) && entryData.sets.length > 0) {
         assertSetWeightSign(entryData.sets, snapshot.modality);
         const setsValues = entryData.sets.map((set) => [
           newEntryId,
@@ -2336,16 +2361,13 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   // the enriched-session reuse cache makes every sync do once a session has
   // been collected once (#2191, #2300).
   //
-  // Everything else in the span is still deleted, so a workout removed upstream
-  // still disappears here. The client splits workout chunks on day boundaries,
-  // so one request always carries every workout for the days it covers and this
-  // exclusion cannot strand another chunk's rows.
   keepSourceIds?: string[]
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
-  const entryIdsResult = await client.query(
-    `SELECT id FROM exercise_entries
+  const readCleanupCandidates = () =>
+    client.query<{ id: string }>(
+      `SELECT id FROM exercise_entries
      WHERE user_id = $1
        AND entry_date BETWEEN $2 AND $3
        AND source = $4
@@ -2363,16 +2385,17 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
          OR source_id IS NULL
          OR NOT (source_id = ANY($6::text[]))
        )`,
-    [
-      userId,
-      startDate,
-      endDate,
-      entrySource,
-      excludedExerciseName ?? null,
-      keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
-    ]
-  );
-  const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
+      [
+        userId,
+        startDate,
+        endDate,
+        entrySource,
+        excludedExerciseName ?? null,
+        keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
+      ]
+    );
+  const entryIdsResult = await readCleanupCandidates();
+  const entryIds = entryIdsResult.rows.map((row) => row.id);
   if (entryIds.length > 0) {
     // A resync deletes the synced side in bulk. Clear the link first so the
     // logged workout that stays behind counts its own estimate again.
@@ -2723,6 +2746,7 @@ async function getExistingSourceIds(
 
 export { upsertExerciseEntryData };
 export { _createExerciseEntryWithClient };
+export { acquireExerciseEntrySyncLockWithClient };
 export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };

@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 import {
   useCalorieLinkSuggestions,
   useClearCalorieLinkMutation,
@@ -71,7 +72,11 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
     const linked = data.link?.synced_entry_id;
     const best = data.candidates.find((c) => c.match !== null);
     setSelectedId(linked ?? best?.id ?? '');
-    setResolution(data.link?.resolution ?? 'sparkyfitness');
+    setResolution(
+      data.link?.resolution ??
+        (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
+    );
+    setCustomInput(data.link?.custom_calories ?? '');
   }, [data]);
 
   const unit = getEnergyUnitString(energyUnit);
@@ -105,11 +110,7 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
         resolution,
         ...(resolution === 'custom' && customInput !== ''
           ? {
-              custom_calories: convertEnergy(
-                Number(customInput),
-                energyUnit,
-                'kcal'
-              ),
+              custom_calories: customInput,
             }
           : {}),
       },
@@ -258,10 +259,13 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
                     id="link-custom-calories"
                     type="number"
                     min={0}
-                    value={customInput}
+                    value={shownEnergyInput(customInput, energyUnit)}
                     onChange={(e) =>
                       setCustomInput(
-                        e.target.value === '' ? '' : Number(e.target.value)
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
                       )
                     }
                   />

@@ -20,7 +20,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   carryDistanceFromKm,
   carryDistanceUnitLabel,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
 } from '@workspace/shared';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import { ExerciseEntry, Exercise } from '@/types/exercises';
@@ -428,7 +428,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           />
         )}
         {onLink &&
-          isAppLoggedWorkoutSource(exerciseEntry.source) &&
+          isCalorieLinkWorkoutSource(exerciseEntry.source) &&
           !exerciseEntry.exercise_preset_entry_id &&
           !isActiveCalories && (
             <ActionButton

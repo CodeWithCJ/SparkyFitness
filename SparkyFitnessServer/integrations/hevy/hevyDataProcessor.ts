@@ -1,10 +1,13 @@
-import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
+import type { PoolClient } from 'pg';
 import measurementRepository from '../../models/measurementRepository.js';
-import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
-import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
 import hevyExerciseRepository from './hevyExerciseRepository.js';
+import {
+  syncHevyWorkout,
+  type HevyWorkoutImport,
+  type HevyWorkoutEntry,
+} from './hevyWorkoutRepository.js';
 import type {
   HevyWorkout,
   HevyUserInfoResponse,
@@ -29,12 +32,6 @@ interface ExerciseRow {
 }
 interface WorkoutPresetRow {
   id: number;
-}
-interface PresetEntryRow {
-  id: string;
-}
-interface ExerciseEntryRow {
-  id: string;
 }
 
 function errorMessage(error: unknown): string {
@@ -93,38 +90,6 @@ async function processHevyWorkouts(
     'info',
     `Processing ${workouts.length} Hevy workouts for user ${userId}...`
   );
-  // Mirror the Garmin re-sync model: before rebuilding, clear any existing Hevy
-  // sessions and exercise entries in the synced date range. This keeps re-syncs
-  // idempotent (workouts don't duplicate) at the cost of overwriting local edits
-  // to Hevy-sourced entries. Preset templates (workout_presets) are intentionally
-  // left intact and reused across occurrences.
-  if (workouts.length > 0) {
-    const entryDates = workouts.map((w) =>
-      instantToDay(new Date(w.start_time), timezone)
-    );
-    const startDate = entryDates.reduce((a, b) => (a < b ? a : b));
-    const endDate = entryDates.reduce((a, b) => (a > b ? a : b));
-    try {
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-        userId,
-        startDate,
-        endDate,
-        'Hevy'
-      );
-      await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDate(
-        userId,
-        startDate,
-        endDate,
-        'Hevy'
-      );
-    } catch (error) {
-      log(
-        'error',
-        `Failed to clear existing Hevy data before re-sync for user ${userId}: ${errorMessage(error)}`
-      );
-      throw error;
-    }
-  }
   // The raw bundle can hold the same workout under overlapping page keys
   // (e.g. `raw_workouts_page` and `raw_workouts_page_1`), and paginated API
   // fetches can overlap too. Process each workout id only once — otherwise a
@@ -134,7 +99,7 @@ async function processHevyWorkouts(
   const templatesById = new Map(
     templates.map((template) => [template.id, template])
   );
-  let failures = 0;
+  const failures: string[] = [];
   for (const workout of workouts) {
     if (workout.id) {
       if (seenWorkoutIds.has(workout.id)) {
@@ -144,36 +109,38 @@ async function processHevyWorkouts(
       seenWorkoutIds.add(workout.id);
     }
     try {
-      await processSingleWorkout(
-        userId,
-        createdByUserId,
-        workout,
-        timezone,
-        templatesById
+      await syncHevyWorkout(userId, createdByUserId, workout.id, (client) =>
+        prepareSingleWorkout(userId, client, workout, timezone, templatesById)
       );
     } catch (error) {
-      failures++;
+      const start = new Date(workout.start_time);
+      const day = Number.isFinite(start.getTime())
+        ? instantToDay(start, timezone)
+        : 'unknown date';
+      failures.push(`"${workout.title}" (${day})`);
       log(
         'error',
         `Failed to process Hevy workout ${workout.id}: ${errorMessage(error)}`
       );
     }
   }
-  if (failures > 0) {
-    throw new Error(`Failed to import ${failures} Hevy workout(s).`);
+  if (failures.length > 0) {
+    throw new Error(
+      `Failed to import ${failures.length} Hevy workout(s): ${failures.join('; ')}.`
+    );
   }
 }
 
 /**
- * Process a single workout from Hevy.
+ * Prepare a complete workout before its diary rows are changed.
  */
-async function processSingleWorkout(
+async function prepareSingleWorkout(
   userId: string,
-  createdByUserId: string,
+  client: PoolClient,
   workout: HevyWorkout,
   timezone = 'UTC',
   templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map()
-) {
+): Promise<HevyWorkoutImport> {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
   const workoutDurationMinutes = Math.round(
@@ -189,47 +156,48 @@ async function processSingleWorkout(
     `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`
   );
   // Find or create the reusable workout preset (the Hevy routine), matched by
-  // name to mirror Garmin. Then create one preset entry — the logged session —
-  // that every exercise in this workout attaches to, so the diary shows the
-  // whole workout as a single "Vid plan A" group instead of loose exercises.
+  // name. Session persistence uses the workout's provider ID, independently
+  // of the title, so renamed routines do not recreate logged workouts.
   let workoutPreset: WorkoutPresetRow | null =
-    await workoutPresetRepository.getWorkoutPresetByName(userId, workout.title);
+    await workoutPresetRepository.getWorkoutPresetByName(
+      userId,
+      workout.title,
+      client
+    );
   if (!workoutPreset) {
-    workoutPreset = await workoutPresetRepository.createWorkoutPreset({
-      user_id: userId,
-      name: workout.title,
-      description:
-        workout.description || `Workout session from Hevy: ${workout.title}`,
-      is_public: false,
-    });
+    workoutPreset = await workoutPresetRepository.createWorkoutPreset(
+      {
+        user_id: userId,
+        name: workout.title,
+        description:
+          workout.description || `Workout session from Hevy: ${workout.title}`,
+        is_public: false,
+      },
+      client
+    );
   }
   if (!workoutPreset) {
     throw new Error(
       `Failed to find or create workout preset for "${workout.title}"`
     );
   }
-  const presetEntry: PresetEntryRow =
-    await exercisePresetEntryRepository.createExercisePresetEntry(
-      userId,
-      {
-        user_id: userId,
-        workout_preset_id: workoutPreset.id,
-        name: workout.title,
-        description:
-          workout.description || `Logged session of ${workout.title}`,
-        entry_date: entryDate,
-        created_by_user_id: createdByUserId,
-        notes: `Hevy Workout Session: ${workout.title}`,
-        source: 'Hevy',
-      },
-      createdByUserId
-    );
+  const session = {
+    source_id: workout.id,
+    workout_preset_id: workoutPreset.id,
+    name: workout.title,
+    description: workout.description || `Logged session of ${workout.title}`,
+    entry_date: entryDate,
+    notes: `Hevy Workout Session: ${workout.title}`,
+  };
+  const entries: HevyWorkoutEntry[] = [];
 
   // Hevy identifies supersets by an opaque id; the DB stores superset_group as a
   // per-workout integer. Assign each distinct Hevy superset id a stable number
   // within this workout so grouped exercises share a value.
   const supersetGroupByHevyId = new Map<string, number>();
+  const exerciseOccurrences = new Map<string, number>();
   const exercises = workout.exercises ?? [];
+  let untimedDurationAllocated = false;
   for (
     let exerciseIndex = 0;
     exerciseIndex < exercises.length;
@@ -248,21 +216,27 @@ async function processSingleWorkout(
     ).filter((muscle) => !primaryMuscles.includes(muscle));
     // 1. Find or create exercise template
     let exercise: ExerciseRow | null = templateId
-      ? await hevyExerciseRepository.findByTemplateId(userId, templateId)
+      ? await hevyExerciseRepository.findByTemplateId(
+          userId,
+          templateId,
+          client
+        )
       : null;
     if (!exercise) {
       // Filter legacy records in the query itself: an unrelated public row
       // returned first by a general name search must not hide the owned row.
       exercise = await hevyExerciseRepository.findLegacyByName(
         userId,
-        hevyExercise.title
+        hevyExercise.title,
+        client
       );
     }
     if (!exercise) {
       exercise = await hevyExerciseRepository.findOwnedByName(
         userId,
         hevyExercise.title,
-        !templateId
+        !templateId,
+        client
       );
     }
     if (exercise?.source === 'Hevy' && templateId && template) {
@@ -272,7 +246,8 @@ async function processSingleWorkout(
           exercise.id,
           templateId,
           primaryMuscles,
-          secondaryMuscles
+          secondaryMuscles,
+          client
         );
       } catch (error) {
         log(
@@ -282,29 +257,30 @@ async function processSingleWorkout(
       }
     }
     if (!exercise) {
-      exercise = await exerciseRepository.createExercise({
-        user_id: userId,
-        name: hevyExercise.title,
-        source: 'Hevy',
-        source_id: templateId,
-        primary_muscles: primaryMuscles,
-        secondary_muscles: secondaryMuscles,
-        is_custom: true,
-        shared_with_public: false,
-      });
+      exercise = await exerciseRepository.createExercise(
+        {
+          user_id: userId,
+          name: hevyExercise.title,
+          source: 'Hevy',
+          source_id: templateId,
+          primary_muscles: primaryMuscles,
+          secondary_muscles: secondaryMuscles,
+          is_custom: true,
+          shared_with_public: false,
+        },
+        client
+      );
     }
     if (!exercise) {
-      log(
-        'error',
+      throw new Error(
         `Failed to find or create Hevy exercise "${hevyExercise.title}"`
       );
-      continue;
     }
     const sets = hevyExercise.sets ?? [];
     // Hevy has no per-exercise duration; it only reports whole-workout
     // start/end. When an exercise's sets carry real per-set durations (timed
     // exercises), use their sum. Otherwise attribute the whole-workout
-    // duration to the first exercise only (and 0 to the rest) so daily
+    // duration to the first untimed exercise only (and 0 to the rest) so daily
     // exercise-minute totals aren't multiplied by the number of exercises.
     const setDurationSeconds = sets.reduce(
       (sum, set) => sum + (set.duration_seconds || 0),
@@ -313,9 +289,10 @@ async function processSingleWorkout(
     const durationMinutes =
       setDurationSeconds > 0
         ? Math.round(setDurationSeconds / 60)
-        : exerciseIndex === 0
+        : !untimedDurationAllocated
           ? workoutDurationMinutes
           : 0;
+    if (setDurationSeconds <= 0) untimedDurationAllocated = true;
     // Sum any per-set distances Hevy reports. The Hevy API reports metres
     // (`distance_meters`) regardless of the user's display units, while
     // exercise_entries.distance is kilometres like every other integration
@@ -340,26 +317,26 @@ async function processSingleWorkout(
       }
       supersetGroup = supersetGroupByHevyId.get(key)!;
     }
-    // Stable per-exercise identity so re-syncs update in place instead of
-    // duplicating. Hevy workout ids are unique; exercise index is unique
-    // within a workout.
-    const sourceId = `${workout.id}_${hevyExercise.index}`;
+    // Provider indexes are ordering, not identity. Reordering must not move
+    // saved corrections onto a different exercise.
+    const identity = templateId || exercise.id;
+    const occurrence = exerciseOccurrences.get(identity) ?? 0;
+    exerciseOccurrences.set(identity, occurrence + 1);
+    const sourceId = `${workout.id}_exercise:${encodeURIComponent(identity)}:${occurrence}`;
     // 2. Prepare entry data
     const entryData = {
       exercise_id: exercise.id,
       entry_date: entryDate,
       entry_time: entryTime,
+      record_timezone: timezone,
       duration_minutes: durationMinutes,
-      calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       distance: distanceKm,
       superset_group: supersetGroup,
       source_id: sourceId,
-      exercise_preset_entry_id: presetEntry.id,
       notes:
         hevyExercise.notes ||
         workout.description ||
         `Synced from Hevy: ${workout.title}`,
-      entry_source: 'Hevy',
       sort_order: hevyExercise.index,
       sets: sets.map((set) => ({
         set_number: set.index + 1,
@@ -372,16 +349,20 @@ async function processSingleWorkout(
         rpe: set.rpe,
       })),
     };
-    // 3. Create the exercise entry, linked to the session (preset entry) via
-    // the 5th argument so it groups under the workout instead of standing alone.
-    const entry: ExerciseEntryRow | null =
-      await exerciseEntryRepository.createExerciseEntry(
-        userId,
-        entryData,
-        createdByUserId,
-        'Hevy',
-        presetEntry.id
-      );
+    entries.push({
+      data: entryData,
+      detail: {
+        workout: {
+          id: workout.id,
+          title: workout.title,
+          description: workout.description,
+          routine_id: workout.routine_id,
+          start_time: workout.start_time,
+          end_time: workout.end_time,
+        },
+        exercise: hevyExercise,
+      },
+    });
     // 4. Populate the reusable preset template with this exercise. Reuses the
     // existing exercise row when present and skips if it already has sets, so
     // repeat occurrences of the same routine don't duplicate template rows.
@@ -392,7 +373,13 @@ async function processSingleWorkout(
         exercise.id,
         null,
         entryData.sets,
-        hevyExercise.index
+        hevyExercise.index,
+        'rep_goal',
+        null,
+        'weight',
+        5,
+        null,
+        client
       );
     } catch (error) {
       log(
@@ -400,39 +387,8 @@ async function processSingleWorkout(
         `Failed to add Hevy exercise to workout preset ${workoutPreset.id}: ${errorMessage(error)}`
       );
     }
-    // 5. Stash the full raw Hevy payload as an activity detail (like Garmin),
-    // so nothing Hevy sends is lost and it stays visible/editable in the
-    // Advanced section of the exercise entry. The bulk cleanup above already
-    // removed any prior details (ON DELETE CASCADE from the entry), so this is
-    // a fresh insert.
-    if (entry?.id) {
-      try {
-        await activityDetailsRepository.createActivityDetail(userId, {
-          exercise_entry_id: entry.id,
-          provider_name: 'Hevy',
-          detail_type: 'full_activity_data',
-          detail_data: {
-            workout: {
-              id: workout.id,
-              title: workout.title,
-              description: workout.description,
-              routine_id: workout.routine_id,
-              start_time: workout.start_time,
-              end_time: workout.end_time,
-            },
-            exercise: hevyExercise,
-          },
-          created_by_user_id: createdByUserId,
-          updated_by_user_id: createdByUserId,
-        });
-      } catch (error) {
-        log(
-          'error',
-          `Failed to store Hevy activity detail for entry ${entry.id}: ${errorMessage(error)}`
-        );
-      }
-    }
   }
+  return { session, entries };
 }
 
 /**

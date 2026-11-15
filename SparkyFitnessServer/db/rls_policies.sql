@@ -745,6 +745,8 @@ USING (
 );
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
 
+-- Provider session identities (including Hevy source_id) use the same diary
+-- owner/delegate policy; a provider ID never grants access to another owner.
 SELECT create_diary_policy('exercise_preset_entries');
 
 -- Workout feedback (#1560) follows the diary rows it describes: readable by
