@@ -2862,6 +2862,8 @@ export function buildPresetUpdateExercises(
         matched.sets.length === 0 &&
         exercise.sets.length === 1 &&
         opts.completedSetIds[String(only.id)] == null &&
+        // The fabricated set is a normal one; a changed type is the lifter's.
+        (only.set_type ?? 'normal') === 'normal' &&
         only.weight == null &&
         only.reps == null &&
         only.duration == null &&

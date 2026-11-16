@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
 import FullScreenModalBody from './FullScreenModalBody';
@@ -90,82 +90,88 @@ function FocusEffortSheet({
       onRequestClose={onSkip}
     >
       <FullScreenModalBody className="px-4">
-        <View className="items-center">
-          <View className="max-w-full rounded-full bg-raised px-5 py-2.5">
+        {/* Scrolls when enlarged text outgrows the screen; Skip and Save stay below. */}
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="pb-4"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="items-center">
+            <View className="max-w-full rounded-full bg-raised px-5 py-2.5">
+              <Text
+                numberOfLines={1}
+                accessibilityRole="header"
+                className="text-[17px] font-bold text-text-primary"
+              >
+                {title}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-8 items-center">
+            <Text className="text-[14px] font-extrabold uppercase tracking-widest text-text-secondary">
+              {t('activeWorkout.focus.effort.question', {
+                defaultValue: 'How hard was that set?',
+              })}
+            </Text>
             <Text
-              numberOfLines={1}
-              accessibilityRole="header"
-              className="text-[17px] font-bold text-text-primary"
+              testID="focus-effort-value"
+              accessibilityLabel={`${value}. ${caption}`}
+              className="text-[120px] font-extrabold leading-[132px]"
+              style={{ color: effort, fontVariant: ['tabular-nums'] }}
             >
-              {title}
+              {value}
+            </Text>
+            <Text className="text-[24px] font-extrabold text-text-primary">
+              {caption}
+            </Text>
+            <Text className="mt-1 text-[15px] text-text-secondary">
+              {scaleNote}
             </Text>
           </View>
-        </View>
-        <View className="mt-8 items-center">
-          <Text className="text-[14px] font-extrabold uppercase tracking-widest text-text-secondary">
-            {t('activeWorkout.focus.effort.question', {
-              defaultValue: 'How hard was that set?',
-            })}
-          </Text>
-          <Text
-            testID="focus-effort-value"
-            accessibilityLabel={`${value}. ${caption}`}
-            className="text-[120px] font-extrabold leading-[132px]"
-            style={{ color: effort, fontVariant: ['tabular-nums'] }}
-          >
-            {value}
-          </Text>
-          <Text className="text-[24px] font-extrabold text-text-primary">
-            {caption}
-          </Text>
-          <Text className="mt-1 text-[15px] text-text-secondary">
-            {scaleNote}
-          </Text>
-        </View>
-        <View className="mt-8">
-          <View className="flex-row gap-1.5" accessible={false}>
-            {Array.from({ length: segments }, (_, i) => (
-              <View
-                key={i}
-                className="h-4 flex-1 rounded-full"
-                style={{ backgroundColor: i < filled ? effort : track }}
-              />
-            ))}
+          <View className="mt-8">
+            <View className="flex-row gap-1.5" accessible={false}>
+              {Array.from({ length: segments }, (_, i) => (
+                <View
+                  key={i}
+                  className="h-4 flex-1 rounded-full"
+                  style={{ backgroundColor: i < filled ? effort : track }}
+                />
+              ))}
+            </View>
+            <View className="mt-1.5 flex-row justify-between">
+              <Text className="text-[14px] text-text-secondary">
+                {t('activeWorkout.focus.effort.easy', { defaultValue: 'Easy' })}
+              </Text>
+              <Text className="text-[14px] text-text-secondary">
+                {t('activeWorkout.focus.effort.max', { defaultValue: 'Max' })}
+              </Text>
+            </View>
           </View>
-          <View className="mt-1.5 flex-row justify-between">
-            <Text className="text-[14px] text-text-secondary">
-              {t('activeWorkout.focus.effort.easy', { defaultValue: 'Easy' })}
-            </Text>
-            <Text className="text-[14px] text-text-secondary">
-              {t('activeWorkout.focus.effort.max', { defaultValue: 'Max' })}
-            </Text>
+          <View className="mt-6 flex-row justify-center gap-4">
+            <Pressable
+              testID="focus-effort-minus"
+              onPress={() => step(-1)}
+              accessibilityRole="button"
+              accessibilityLabel={t('activeWorkout.focus.effort.lower', {
+                defaultValue: 'Lower',
+              })}
+              className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
+            >
+              <Text className="text-[28px] font-bold text-text-primary">−</Text>
+            </Pressable>
+            <Pressable
+              testID="focus-effort-plus"
+              onPress={() => step(1)}
+              accessibilityRole="button"
+              accessibilityLabel={t('activeWorkout.focus.effort.higher', {
+                defaultValue: 'Higher',
+              })}
+              className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
+            >
+              <Icon name="add" size={26} color={textPrimary} />
+            </Pressable>
           </View>
-        </View>
-        <View className="mt-6 flex-row justify-center gap-4">
-          <Pressable
-            testID="focus-effort-minus"
-            onPress={() => step(-1)}
-            accessibilityRole="button"
-            accessibilityLabel={t('activeWorkout.focus.effort.lower', {
-              defaultValue: 'Lower',
-            })}
-            className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
-          >
-            <Text className="text-[28px] font-bold text-text-primary">−</Text>
-          </Pressable>
-          <Pressable
-            testID="focus-effort-plus"
-            onPress={() => step(1)}
-            accessibilityRole="button"
-            accessibilityLabel={t('activeWorkout.focus.effort.higher', {
-              defaultValue: 'Higher',
-            })}
-            className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
-          >
-            <Icon name="add" size={26} color={textPrimary} />
-          </Pressable>
-        </View>
-        <View className="flex-1" />
+        </ScrollView>
         <View className="flex-row gap-3">
           <View className="flex-1">
             <FocusPageButton

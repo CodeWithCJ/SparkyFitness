@@ -63,6 +63,8 @@
       --color-effort: hsl(280, 55%, 50%);
       --color-rest: hsl(24, 92%, 46%);
       --color-hold: hsl(172, 70%, 32%);
+      --color-on-rest: hsl(33, 100%, 6%);
+      --color-on-hold: hsl(171, 68%, 7%);
 
       --color-progress-track: hsl(218, 29%, 92%);
       --color-progress-rail: hsl(218, 29%, 95%);
@@ -165,6 +167,8 @@
       --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
       --color-hold: hsl(172, 62%, 55%);
+      --color-on-rest: hsl(33, 100%, 6%);
+      --color-on-hold: hsl(171, 68%, 7%);
 
       --color-progress-track: hsl(218, 41%, 23%);
       --color-progress-rail: hsl(218, 41%, 16%);
@@ -262,6 +266,8 @@
       --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
       --color-hold: hsl(172, 62%, 55%);
+      --color-on-rest: hsl(33, 100%, 6%);
+      --color-on-hold: hsl(171, 68%, 7%);
 
       --color-progress-track: hsl(218, 41%, 15%);
       --color-progress-rail: hsl(218, 41%, 9%);

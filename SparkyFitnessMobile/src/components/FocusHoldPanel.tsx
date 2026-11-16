@@ -44,10 +44,11 @@ function FocusHoldPanel({
   const { t } = useTranslation();
   const now = useClockTick(true);
   const beepSeconds = useCountdownSeconds();
-  const [holdColor, textMuted] = useCSSVariable([
+  const [holdColor, onHold, textMuted] = useCSSVariable([
     '--color-hold',
+    '--color-on-hold',
     '--color-text-muted',
-  ]) as [string, string];
+  ]) as [string, string, string];
   const { phase, targetSec, startedAt, getReadyEndsAt } = hold;
   const gettingReady = phase === 'getReady';
   const getReadyLeftMs =
@@ -168,7 +169,7 @@ function FocusHoldPanel({
                 >
                   <Text
                     className="text-xl font-bold"
-                    style={{ color: current ? '#06201c' : textMuted }}
+                    style={{ color: current ? onHold : textMuted }}
                   >
                     {n}
                   </Text>

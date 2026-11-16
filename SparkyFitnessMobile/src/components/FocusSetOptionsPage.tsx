@@ -19,6 +19,8 @@ type SetType = (typeof SET_TYPE_OPTIONS)[number];
 /** Board order: Normal and Warm-up on the first line, Drop set and Failure on the second. */
 const TYPE_ORDER: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
 const METRICS_TOP: ActiveWorkoutMetricColumn[] = ['rpe', 'rir'];
+/** A table held to RPE (timed and cardio sets) cannot show RIR, so it is not offered. */
+const METRICS_CLAMPED: ActiveWorkoutMetricColumn[] = ['rpe'];
 const METRICS_DERIVED: ActiveWorkoutMetricColumn[] = [
   'volume',
   'e1rm',
@@ -109,7 +111,7 @@ function RowButton({
       className="h-12 flex-row items-center justify-between rounded-2xl bg-raised px-4 active:opacity-70"
     >
       <Text
-        className={`text-[17px] font-bold ${danger ? 'text-text-danger-subtle' : 'text-text-primary'}`}
+        className={`text-[17px] font-bold ${danger ? 'text-icon-danger' : 'text-text-primary'}`}
       >
         {label}
       </Text>
@@ -144,7 +146,7 @@ function FocusSetOptionsPage({
   const { t } = useTranslation();
   const [textPrimary, danger] = useCSSVariable([
     '--color-text-primary',
-    '--color-text-danger-subtle',
+    '--color-icon-danger',
   ]) as [string, string];
   const typeLabels: Record<SetType, string> = {
     normal: t('workout.setTypeNormal', { defaultValue: 'Normal' }),
@@ -234,7 +236,7 @@ function FocusSetOptionsPage({
         })}
       >
         <View className="flex-row gap-1.5">
-          {METRICS_TOP.map((metric) => (
+          {(clampedToRpe ? METRICS_CLAMPED : METRICS_TOP).map((metric) => (
             <Segment
               key={metric}
               label={metricLabels[metric]}

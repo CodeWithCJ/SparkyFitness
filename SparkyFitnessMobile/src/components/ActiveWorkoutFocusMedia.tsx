@@ -117,7 +117,8 @@ function ActiveWorkoutFocusMedia({
         <View className="flex-row items-center gap-3">
           <Pressable
             onPress={onToggleExpanded}
-            onLongPress={openFullScreen}
+            // The thumbnail is the first picture, so that is the one opened.
+            onLongPress={() => openLightbox(usable, 0, exerciseName)}
             className="active:opacity-80"
             accessibilityRole="button"
             accessibilityLabel={t('activeWorkout.focus.media.expandLabel', {

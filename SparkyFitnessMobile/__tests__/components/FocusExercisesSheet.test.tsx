@@ -90,6 +90,30 @@ describe('FocusExercisesSheet', () => {
     expect(props.onSelectExercise).toHaveBeenCalledWith('lat');
   });
 
+  it('moves an item through the row accessibility actions, inside the list', () => {
+    const { getByTestId, props } = renderSheet();
+    // Items: bench, then the tri + lat superset.
+    const bench = getByTestId('focus-exercise-row-bench');
+    expect(
+      bench.props.accessibilityActions.map((a: { name: string }) => a.name)
+    ).toEqual(['increment']);
+    fireEvent(bench, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(props.onMoveItem).toHaveBeenCalledWith(0, 1);
+
+    // Either member moves the whole superset; the last item cannot move down.
+    const lat = getByTestId('focus-exercise-row-lat');
+    fireEvent(lat, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    fireEvent(lat, 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+    expect(props.onMoveItem).toHaveBeenCalledTimes(2);
+    expect(props.onMoveItem).toHaveBeenLastCalledWith(1, 0);
+  });
+
   it('undoes the last logged set, adds an exercise and ends the workout', () => {
     const { getByTestId, getByText, props } = renderSheet();
     fireEvent.press(getByTestId('focus-exercises-undo'));
