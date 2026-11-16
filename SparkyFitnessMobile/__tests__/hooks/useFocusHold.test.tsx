@@ -33,7 +33,10 @@ describe('useFocusHold', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(1_700_000_000_000);
-    useActiveWorkoutStore.setState({ setTimerStartedAt: {} });
+    useActiveWorkoutStore.setState({
+      setTimerStartedAt: {},
+      plannedSetValues: {},
+    });
     useAppPreferencesStore.setState({ watchHoldCountdown: true });
     (playIntervalCue as jest.Mock).mockClear();
   });
@@ -105,6 +108,20 @@ describe('useFocusHold', () => {
     });
     expect(onFinish).not.toHaveBeenCalled();
     expect(result.current.phase).toBe('running');
+  });
+
+  it('counts down the planned length when the set has none of its own', () => {
+    useAppPreferencesStore.setState({ watchHoldCountdown: false });
+    useActiveWorkoutStore.setState({
+      plannedSetValues: { '11': { weight: null, reps: null, duration: 30 } },
+    });
+    const { result, onFinish } = setup(null);
+    expect(result.current.targetSec).toBe(30);
+    act(() => result.current.start());
+    act(() => {
+      jest.advanceTimersByTime(30_000);
+    });
+    expect(onFinish).toHaveBeenCalledWith('11');
   });
 
   it('does not log a hold the watch started', () => {
