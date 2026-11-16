@@ -32,17 +32,21 @@ describe('searchWorkoutPresets query builder', () => {
     expect(params[0]).toBe('%full%');
     expect(params[1]).toBe('%body%');
     expect(params[2]).toBe('%push%');
-    // Exact match term should be next
-    expect(params[3]).toBe('%full body push%');
+    expect(params.slice(3, 7)).toEqual([
+      'full body push',
+      'full body push%',
+      '\\mfull body push\\M',
+      '%full body push%',
+    ]);
     // Limit should be last
-    expect(params[4]).toBe(10);
+    expect(params[7]).toBe(10);
 
     expect(sql).toContain('wp.name ILIKE $1');
     expect(sql).toContain('wp.name ILIKE $2');
     expect(sql).toContain('wp.name ILIKE $3');
     expect(sql).toContain(
-      'ORDER BY (CASE WHEN wp.name ILIKE $4::text THEN 0 ELSE 1 END), wp.name ASC'
+      'ORDER BY (CASE WHEN LOWER(wp.name) = LOWER($4::text) THEN 0 WHEN wp.name ILIKE $5::text THEN 1 WHEN wp.name ~* $6::text THEN 2 WHEN wp.name ILIKE $7::text THEN 3 ELSE 4 END), wp.name ASC'
     );
-    expect(sql).toContain('LIMIT $5');
+    expect(sql).toContain('LIMIT $8');
   });
 });

@@ -6,7 +6,7 @@ import type { PoolClient } from 'pg';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
 import {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 } from '../utils/dbSearchHelper.js';
 import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
 
@@ -583,10 +583,15 @@ async function searchWorkoutPresets(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (searchTerm) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${searchTerm}%`);
-      selectParamIndex++;
-      orderClause = `${buildSqlExactMatchOrder('wp.name', exactMatchParamIndex)}, wp.name ASC`;
+      const relevance = buildSqlRelevanceOrder(
+        'wp.name',
+        'wp.name',
+        searchTerm,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderClause = `${relevance.orderClause}, wp.name ASC`;
     }
 
     let query = `

@@ -32,17 +32,21 @@ describe('meal model search query builder', () => {
     expect(params[0]).toBe('%chicken%');
     expect(params[1]).toBe('%rice%');
     expect(params[2]).toBe('%bowl%');
-    // Exact match term should follow
-    expect(params[3]).toBe('%chicken rice bowl%');
+    expect(params.slice(3, 7)).toEqual([
+      'chicken rice bowl',
+      'chicken rice bowl%',
+      '\\mchicken rice bowl\\M',
+      '%chicken rice bowl%',
+    ]);
     // Limit should be last
-    expect(params[4]).toBe(10);
+    expect(params[7]).toBe(10);
 
     expect(sql).toContain('name ILIKE $1');
     expect(sql).toContain('name ILIKE $2');
     expect(sql).toContain('name ILIKE $3');
     expect(sql).toContain(
-      'ORDER BY (CASE WHEN name ILIKE $4::text THEN 0 ELSE 1 END), name ASC'
+      'ORDER BY (CASE WHEN LOWER(name) = LOWER($4::text) THEN 0 WHEN name ILIKE $5::text THEN 1 WHEN name ~* $6::text THEN 2 WHEN name ILIKE $7::text THEN 3 ELSE 4 END), name ASC'
     );
-    expect(sql).toContain('LIMIT $5');
+    expect(sql).toContain('LIMIT $8');
   });
 });

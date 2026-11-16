@@ -39,18 +39,6 @@ export function buildSqlSearch(
   };
 }
 
-/**
- * Generates SQL for prioritizing exact sequence matches in the ORDER BY clause.
- *
- * @param nameColumn The SQL column name or expression
- * @param exactMatchParamIndex The index of the parameter bound to `%${searchTerm}%`
- */
-export function buildSqlExactMatchOrder(
-  nameColumn: string,
-  exactMatchParamIndex: number
-): string {
-  return `(CASE WHEN ${nameColumn} ILIKE $${exactMatchParamIndex}::text THEN 0 ELSE 1 END)`;
-}
 export function buildSqlRelevanceOrder(
   nameColumn: string,
   fullColumn: string,
@@ -60,17 +48,17 @@ export function buildSqlRelevanceOrder(
   const term = searchTerm.trim();
   const i = baseParamIndex;
   return {
-    orderClause: `(CASE WHEN ${nameColumn} ILIKE $${i}::text THEN 0 WHEN ${fullColumn} ~* $${i + 1}::text THEN 1 WHEN ${fullColumn} ILIKE $${i + 2}::text THEN 2 ELSE 3 END)`,
+    orderClause: `(CASE WHEN LOWER(${nameColumn}) = LOWER($${i}::text) THEN 0 WHEN ${nameColumn} ILIKE $${i + 1}::text THEN 1 WHEN ${fullColumn} ~* $${i + 2}::text THEN 2 WHEN ${fullColumn} ILIKE $${i + 3}::text THEN 3 ELSE 4 END)`,
     queryParams: [
+      term,
       `${term}%`,
-      `\\m${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+      `\\m${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`,
       `%${term}%`,
     ],
-    nextParamIndex: i + 3,
+    nextParamIndex: i + 4,
   };
 }
 export default {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
   buildSqlRelevanceOrder,
 };

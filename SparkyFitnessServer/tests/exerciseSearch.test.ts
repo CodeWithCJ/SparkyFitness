@@ -61,13 +61,17 @@ describe('exercise model search query builder', () => {
       // Split terms should be first for WHERE clause
       expect(params[0]).toBe('%lunge%');
       expect(params[1]).toBe('%barbell%');
-      // Exact match pattern should follow at the end before pagination
-      expect(params[2]).toBe('%lunge barbell%');
+      expect(params.slice(2, 6)).toEqual([
+        'lunge barbell',
+        'lunge barbell%',
+        '\\mlunge barbell\\M',
+        '%lunge barbell%',
+      ]);
 
       expect(sql).toContain('name ILIKE $1');
       expect(sql).toContain('name ILIKE $2');
       expect(sql).toContain(
-        '(CASE WHEN name ILIKE $3::text THEN 0 ELSE 1 END), name ASC'
+        '(CASE WHEN LOWER(name) = LOWER($3::text) THEN 0 WHEN name ILIKE $4::text THEN 1 WHEN name ~* $5::text THEN 2 WHEN name ILIKE $6::text THEN 3 ELSE 4 END), name ASC'
       );
     });
 
@@ -124,12 +128,17 @@ describe('exercise model search query builder', () => {
 
       expect(params[0]).toBe('%lunge%');
       expect(params[1]).toBe('%barbell%');
-      expect(params[2]).toBe('%lunge barbell%');
+      expect(params.slice(2, 6)).toEqual([
+        'lunge barbell',
+        'lunge barbell%',
+        '\\mlunge barbell\\M',
+        '%lunge barbell%',
+      ]);
       expect(sql).toContain(
         'WHERE is_quick_exercise = FALSE AND name ILIKE $1 AND name ILIKE $2'
       );
       expect(sql).toContain(
-        'ORDER BY (CASE WHEN name ILIKE $3::text THEN 0 ELSE 1 END), name ASC'
+        'ORDER BY (CASE WHEN LOWER(name) = LOWER($3::text) THEN 0 WHEN name ILIKE $4::text THEN 1 WHEN name ~* $5::text THEN 2 WHEN name ILIKE $6::text THEN 3 ELSE 4 END), name ASC'
       );
       expect(sql).toContain('LIMIT 50');
     });
@@ -163,15 +172,18 @@ describe('exercise model search query builder', () => {
       // Check SELECT query
       const [selectSql, selectParams] = mockClient.query.mock.calls[1];
       expect(selectSql).toContain(
-        'ORDER BY (CASE WHEN name ILIKE $3::text THEN 0 ELSE 1 END), name ASC'
+        'ORDER BY (CASE WHEN LOWER(name) = LOWER($3::text) THEN 0 WHEN name ILIKE $4::text THEN 1 WHEN name ~* $5::text THEN 2 WHEN name ILIKE $6::text THEN 3 ELSE 4 END), name ASC'
       );
-      expect(selectSql).toContain('LIMIT $4 OFFSET $5');
+      expect(selectSql).toContain('LIMIT $7 OFFSET $8');
       expect(selectParams).toEqual([
-        '%lunge%', // $1
-        '%barbell%', // $2
-        '%lunge barbell%', // $3
-        5, // $4 (limit)
-        10, // $5 (offset)
+        '%lunge%',
+        '%barbell%',
+        'lunge barbell',
+        'lunge barbell%',
+        '\\mlunge barbell\\M',
+        '%lunge barbell%',
+        5,
+        10,
       ]);
 
       expect(result.totalCount).toBe(12);
