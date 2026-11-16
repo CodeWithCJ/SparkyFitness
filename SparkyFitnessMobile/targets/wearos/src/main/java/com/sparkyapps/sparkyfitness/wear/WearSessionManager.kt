@@ -24,9 +24,11 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.SparkyApps.SparkyFitnessMobile.R
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMap
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
@@ -164,9 +166,10 @@ class WearSessionManager private constructor(private val appContext: Context) :
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val key = dataMap.getString("key")
             val index = dataMap.getInt("index", -1)
-            val bytes = dataMap.getByteArray("data")
+            val gen = demoStore.currentGeneration()
+            val bytes = readExerciseImageBytes(dataMap)
             if (!key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && bytes != null) {
-              demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys())
+              demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys(), expectedGeneration = gen)
             }
             Wearable.getDataClient(appContext).deleteDataItems(item.uri).await()
           } else if (path.startsWith(PREFIX_PHONE_TO_WATCH)) {
@@ -185,6 +188,25 @@ class WearSessionManager private constructor(private val appContext: Context) :
       } catch (_: Throwable) {
         lastContextRequestMs.compareAndSet(requestStartedAt, 0L)
       }
+    }
+  }
+
+  private suspend fun readExerciseImageBytes(dataMap: DataMap): ByteArray? {
+    dataMap.getByteArray("data")?.let { return it }
+    val asset = dataMap.getAsset("asset") ?: return null
+    return readAssetBytes(asset)
+  }
+
+  private suspend fun readAssetBytes(asset: Asset): ByteArray? {
+    return try {
+      val response = Wearable.getDataClient(appContext).getFdForAsset(asset).await()
+      try {
+        response.inputStream?.use { it.readBytes() }
+      } finally {
+        response.release()
+      }
+    } catch (_: Throwable) {
+      null
     }
   }
 
@@ -213,11 +235,14 @@ class WearSessionManager private constructor(private val appContext: Context) :
         val dataMap = DataMapItem.fromDataItem(item).dataMap
         val key = dataMap.getString("key")
         val index = dataMap.getInt("index", -1)
-        val bytes = dataMap.getByteArray("data")
+        val inlineBytes = dataMap.getByteArray("data")
+        val asset = dataMap.getAsset("asset")
+        val gen = demoStore.currentGeneration()
         val uri = item.uri
         scope.launch(Dispatchers.IO) {
+          val bytes = inlineBytes ?: asset?.let { readAssetBytes(it) }
           if (!key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && bytes != null) {
-            demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys())
+            demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys(), expectedGeneration = gen)
           }
           try {
             Wearable.getDataClient(appContext).deleteDataItems(uri).await()
@@ -261,8 +286,9 @@ class WearSessionManager private constructor(private val appContext: Context) :
         val dataBase64 = json.optString("dataBase64")
         if (key.isNotEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && dataBase64.isNotEmpty()) {
           val keepKeys = workoutStore.activeDemoKeys()
+          val gen = demoStore.currentGeneration()
           scope.launch(Dispatchers.IO) {
-            demoStore.receiveBase64(key, index, dataBase64, keepKeys)
+            demoStore.receiveBase64(key, index, dataBase64, keepKeys, expectedGeneration = gen)
           }
         }
       }

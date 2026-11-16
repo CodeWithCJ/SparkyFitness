@@ -464,3 +464,44 @@ enum class EffortBand(val colorHex: Long) {
     }
   }
 }
+
+/**
+ * Pure set-completion reconciliation between phone snapshots and in-flight
+ * wrist logs/unlogs so an older phone removal never discards a newer
+ * unconfirmed wrist log.
+ */
+object SetCompletionSync {
+  data class State(
+    val completed: Set<String>,
+    val phoneConfirmed: Set<String>,
+    val wristLogged: Set<String>,
+    val pendingUnlogs: Set<String>
+  )
+
+  fun reconcile(
+    phoneDone: Set<String>,
+    prevPhoneConfirmed: Set<String>,
+    prevWristLogged: Set<String>,
+    prevPendingUnlogs: Set<String>
+  ): State {
+    val nextPhoneConfirmed = (prevPhoneConfirmed + phoneDone).toMutableSet()
+    val nextPendingUnlogs = prevPendingUnlogs.filter { phoneDone.contains(it) }.toSet()
+    val droppedByPhone = nextPhoneConfirmed.filter { !phoneDone.contains(it) }.toSet()
+    nextPhoneConfirmed.removeAll(droppedByPhone)
+    val nextWristLogged = prevWristLogged.filter { !phoneDone.contains(it) }.toSet()
+
+    val mergedDone = HashSet<String>()
+    mergedDone.addAll(phoneDone)
+    mergedDone.addAll(nextWristLogged)
+    mergedDone.removeAll(nextPendingUnlogs)
+    // Preserve any newly re-logged wrist IDs even when the phone is still acknowledging an earlier undo.
+    mergedDone.removeAll(droppedByPhone - nextWristLogged)
+
+    return State(
+      completed = mergedDone,
+      phoneConfirmed = nextPhoneConfirmed,
+      wristLogged = nextWristLogged,
+      pendingUnlogs = nextPendingUnlogs
+    )
+  }
+}

@@ -1083,6 +1083,7 @@ class WorkoutSessionStore(private val context: Context) {
   private val _stopwatchStoppedSeconds = MutableStateFlow<Map<String, Int>>(emptyMap())
   val stopwatchStoppedSeconds: StateFlow<Map<String, Int>> = _stopwatchStoppedSeconds.asStateFlow()
 
+  private val pendingRpeQueue = ArrayDeque<PendingRpeCompletion>()
   private val _pendingRpe = MutableStateFlow<PendingRpeCompletion?>(null)
   val pendingRpe: StateFlow<PendingRpeCompletion?> = _pendingRpe.asStateFlow()
 
@@ -1355,7 +1356,7 @@ class WorkoutSessionStore(private val context: Context) {
       _restDurationSeconds.value = 0
       _restEndsAtMs.value = null
       _restPausedRemaining.value = null
-      _pendingRpe.value = null
+      clearPendingRpeQueue()
       _setValues.value = emptyMap()
       completedSetIds.clear()
       wristLoggedSetIds.clear()
@@ -1447,21 +1448,22 @@ class WorkoutSessionStore(private val context: Context) {
 
     // Reconcile completions while preserving in-flight wrist logs and pending unlogs
     val phoneDone = update.completedSetIds
-    phoneConfirmedSetIds.addAll(phoneDone)
-    pendingUnlogs.retainAll(phoneDone)
-    val droppedByPhone = phoneConfirmedSetIds.filter { !phoneDone.contains(it) }.toSet()
-    phoneConfirmedSetIds.removeAll(droppedByPhone)
-    wristLoggedSetIds.removeAll(phoneDone)
-
-    val mergedDone = HashSet<String>()
-    mergedDone.addAll(phoneDone)
-    mergedDone.addAll(wristLoggedSetIds)
-    mergedDone.removeAll(pendingUnlogs)
-    mergedDone.removeAll(droppedByPhone)
+    val synced = SetCompletionSync.reconcile(
+      phoneDone = phoneDone,
+      prevPhoneConfirmed = phoneConfirmedSetIds,
+      prevWristLogged = wristLoggedSetIds,
+      prevPendingUnlogs = pendingUnlogs
+    )
+    phoneConfirmedSetIds.clear()
+    phoneConfirmedSetIds.addAll(synced.phoneConfirmed)
+    wristLoggedSetIds.clear()
+    wristLoggedSetIds.addAll(synced.wristLogged)
+    pendingUnlogs.clear()
+    pendingUnlogs.addAll(synced.pendingUnlogs)
 
     val curStepBefore = currentStep
     completedSetIds.clear()
-    completedSetIds.addAll(mergedDone)
+    completedSetIds.addAll(synced.completed)
     _completedSetIds.value = completedSetIds.toSet()
     _completedSetsCount.value = completedSetIds.size
     syncLoggedOrder(updatedSteps)
@@ -1492,10 +1494,12 @@ class WorkoutSessionStore(private val context: Context) {
       lastPhoneRest = incomingRest
       when (incomingRest) {
         is PhoneRest.Resting -> {
-          val now = System.currentTimeMillis()
-          val remSec = max(0, ((incomingRest.endsAtMs - now) / 1000L).toInt())
-          if (remSec > 0 && !StaleRest.isStale(incomingRest.endsAtMs, incomingRest.durationSeconds, restSkippedAtMs)) {
-            startRestUntil(incomingRest.endsAtMs, max(incomingRest.durationSeconds, remSec))
+          if (_phase.value != Phase.COMPLETED && _phase.value != Phase.ASKING_PRESET_UPDATE) {
+            val now = System.currentTimeMillis()
+            val remSec = max(0, ((incomingRest.endsAtMs - now) / 1000L).toInt())
+            if (remSec > 0 && !StaleRest.isStale(incomingRest.endsAtMs, incomingRest.durationSeconds, restSkippedAtMs)) {
+              startRestUntil(incomingRest.endsAtMs, max(incomingRest.durationSeconds, remSec))
+            }
           }
         }
         is PhoneRest.Paused -> {
@@ -1745,8 +1749,26 @@ class WorkoutSessionStore(private val context: Context) {
         _holdEndsAtMs.value = null
         _holdFinishedSetId.value = setId
         if (!cuesOwnEnd) Haptics.countdownEnd()
+        completeFinishedHold(setId = setId, durationSec = seconds, startedMs = nowMs)
       }
     }
+  }
+
+  private fun completeFinishedHold(setId: String, durationSec: Int, startedMs: Long) {
+    if (!usesNewWorkoutView()) return
+    val step = _steps.value.firstOrNull { it.setId == setId } ?: run {
+      clearHold()
+      return
+    }
+    if (isCompleted(step)) {
+      clearHold()
+      return
+    }
+    completeStepNewView(
+      step = step,
+      forcedHoldDurationSec = max(1, durationSec),
+      forcedHoldStartedAtMs = startedMs
+    )
   }
 
   fun holdRemainingSeconds(setId: String, nowMs: Long = System.currentTimeMillis()): Int {
@@ -1940,12 +1962,30 @@ class WorkoutSessionStore(private val context: Context) {
   }
 
   private fun completeCurrentSetNewView(step: WorkoutStep) {
+    completeStepNewView(step)
+  }
+
+  private fun completeStepNewView(
+    step: WorkoutStep,
+    forcedHoldDurationSec: Int? = null,
+    forcedHoldStartedAtMs: Long? = null
+  ) {
     if (isCompleted(step)) return
     val curPlan = _plan.value ?: return
     val nowMs = System.currentTimeMillis()
     var loggedDuration: Int? = null
     if (step.timed) {
-      if (_holdSetId.value == step.setId) {
+      if (forcedHoldDurationSec != null) {
+        loggedDuration = max(1, forcedHoldDurationSec)
+        val startedMs = forcedHoldStartedAtMs ?: (nowMs - loggedDuration * 1000L)
+        session?.sendMessageOrQueue(
+          OutboundPayloads.setTimerStopped(curPlan.sessionId, step.setId, loggedDuration, startedMs),
+          "setTimerStopped"
+        )
+        if (_holdSetId.value == step.setId || _holdFinishedSetId.value == step.setId) {
+          clearHold()
+        }
+      } else if (_holdSetId.value == step.setId) {
         val total = _holdTotalSeconds.value
         val rem = holdRemainingSeconds(step.setId, nowMs)
         val startedMs = holdStartedAtMs ?: (nowMs - max(1, total - rem) * 1000L)
@@ -1979,6 +2019,7 @@ class WorkoutSessionStore(private val context: Context) {
     val frozenValues = vals.copy(weightKg = weightKg, durationSec = loggedDuration)
     _setValues.value = _setValues.value + (step.setId to frozenValues)
 
+    val wasDisplayedStep = currentStep?.setId == step.setId
     completedSetIds.add(step.setId)
     wristLoggedSetIds.add(step.setId)
     pendingUnlogs.remove(step.setId)
@@ -1988,49 +2029,67 @@ class WorkoutSessionStore(private val context: Context) {
     recalculateTotalVolume()
     Haptics.success()
 
-    // Determine next incomplete step and rest via RestRule
+    // Determine next incomplete step and rest via RestRule.
+    // If a background hold finished while the user navigated to another set,
+    // keep the user on their current set unless every set is now complete.
     val all = _steps.value
-    val nextIdx = RestRule.nextIndex(_stepIndex.value, all.map { isCompleted(it) })
-    val restSec = if (nextIdx != null) {
-      RestRule.restAfter(step.toRestStepFacts(), all[nextIdx].toRestStepFacts())
-    } else {
-      0
-    }
-    if (nextIdx != null) {
-      _stepIndex.value = nextIdx
-      seedDraftsForCurrentStep()
-      if (restSec > 0) {
-        startRestTimer(restSec)
-      } else {
-        _phase.value = Phase.ACTIVE_SET
-      }
-    } else {
+    val stepPos = all.indexOfFirst { it.setId == step.setId }.takeIf { it >= 0 } ?: _stepIndex.value
+    val allDone = all.all { isCompleted(it) }
+    if (allDone) {
       cancelGetReady()
       stopRestInternal()
       _stepIndex.value = all.size
       _phase.value = Phase.ACTIVE_SET
+    } else if (wasDisplayedStep) {
+      val nextIdx = RestRule.nextIndex(stepPos, all.map { isCompleted(it) })
+      val restSec = if (nextIdx != null) {
+        RestRule.restAfter(step.toRestStepFacts(), all[nextIdx].toRestStepFacts())
+      } else {
+        0
+      }
+      if (nextIdx != null) {
+        _stepIndex.value = nextIdx
+        seedDraftsForCurrentStep()
+        if (restSec > 0) {
+          startRestTimer(restSec)
+        } else {
+          _phase.value = Phase.ACTIVE_SET
+        }
+      }
     }
 
     val rpeEnabled = checkInStore?.watchContext?.value?.rpeEnabled == true
     if (rpeEnabled) {
-      _pendingRpe.value = PendingRpeCompletion(
-        step = step,
-        values = frozenValues,
-        durationSeconds = loggedDuration,
-        completedAtMs = nowMs
+      enqueuePendingRpe(
+        PendingRpeCompletion(
+          step = step,
+          values = frozenValues,
+          durationSeconds = loggedDuration,
+          completedAtMs = nowMs
+        )
       )
     } else {
       sendCompletedSetPayload(curPlan.sessionId, step, frozenValues, loggedDuration, rpe = null, completedAtMs = nowMs)
     }
   }
 
+  private fun enqueuePendingRpe(item: PendingRpeCompletion) {
+    pendingRpeQueue.addLast(item)
+    _pendingRpe.value = pendingRpeQueue.firstOrNull()
+  }
+
+  private fun clearPendingRpeQueue() {
+    pendingRpeQueue.clear()
+    _pendingRpe.value = null
+  }
+
   fun submitPendingRpe(rpe: Double?) {
-    val pending = _pendingRpe.value ?: return
+    val pending = pendingRpeQueue.removeFirstOrNull() ?: return
+    _pendingRpe.value = pendingRpeQueue.firstOrNull()
     val curPlan = _plan.value ?: run {
-      _pendingRpe.value = null
+      clearPendingRpeQueue()
       return
     }
-    _pendingRpe.value = null
     sendCompletedSetPayload(
       sessionId = curPlan.sessionId,
       step = pending.step,
@@ -2066,9 +2125,15 @@ class WorkoutSessionStore(private val context: Context) {
   fun uncompleteStep(step: WorkoutStep): Boolean {
     val curPlan = _plan.value ?: return false
     if (!completedSetIds.contains(step.setId)) return false
+    val droppedUnsentRpe = pendingRpeQueue.removeAll { it.step.setId == step.setId }
+    if (droppedUnsentRpe) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
     completedSetIds.remove(step.setId)
     wristLoggedSetIds.remove(step.setId)
-    pendingUnlogs.add(step.setId)
+    if (!droppedUnsentRpe) {
+      pendingUnlogs.add(step.setId)
+    }
     _completedSetIds.value = completedSetIds.toSet()
     _completedSetsCount.value = completedSetIds.size
     syncLoggedOrder()
@@ -2082,10 +2147,12 @@ class WorkoutSessionStore(private val context: Context) {
       _phase.value = Phase.ACTIVE_SET
       seedDraftsForCurrentStep()
     }
-    session?.sendMessageOrQueue(
-      OutboundPayloads.setUncompleted(UUID.randomUUID().toString(), curPlan.sessionId, step.setId),
-      "setUncompleted"
-    )
+    if (!droppedUnsentRpe) {
+      session?.sendMessageOrQueue(
+        OutboundPayloads.setUncompleted(UUID.randomUUID().toString(), curPlan.sessionId, step.setId),
+        "setUncompleted"
+      )
+    }
     Haptics.click()
     return true
   }
@@ -2221,8 +2288,8 @@ class WorkoutSessionStore(private val context: Context) {
 
   fun finishWorkout(notifyPhone: Boolean) {
     val plan = _plan.value ?: return
-    // Flush any held RPE set completion before finishing
-    if (_pendingRpe.value != null) {
+    // Flush any held RPE set completions before finishing
+    while (pendingRpeQueue.isNotEmpty()) {
       submitPendingRpe(null)
     }
     tickerJob?.cancel()
@@ -2299,7 +2366,7 @@ class WorkoutSessionStore(private val context: Context) {
 
   fun discardWorkout(notifyPhone: Boolean = true) {
     val plan = _plan.value
-    _pendingRpe.value = null
+    clearPendingRpeQueue()
     tickerJob?.cancel()
     cancelGetReady()
     clearHold()

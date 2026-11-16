@@ -428,4 +428,29 @@ class WorkoutDomainTest {
         assertEquals("sess-new", effort.getString("sessionId"))
         assertEquals(8, effort.getInt("rating"))
     }
+
+    @Test
+    fun `set completion reconciliation preserves a new wrist log when phone acknowledges an earlier undo`() {
+        // Set A was confirmed by phone, then undone and re-logged on wrist before phone reports the undo.
+        val synced = SetCompletionSync.reconcile(
+            phoneDone = emptySet(),
+            prevPhoneConfirmed = setOf("set-a", "set-b"),
+            prevWristLogged = setOf("set-a"),
+            prevPendingUnlogs = emptySet()
+        )
+        // set-a has an unconfirmed new wrist log so it must stay completed,
+        // while set-b (removed by phone with no new wrist log) must be dropped.
+        assertTrue(synced.completed.contains("set-a"))
+        assertFalse(synced.completed.contains("set-b"))
+        assertTrue(synced.wristLogged.contains("set-a"))
+        assertFalse(synced.phoneConfirmed.contains("set-a"))
+    }
+
+    @Test
+    fun `formatNumberClean respects the active locale decimal separator`() {
+        assertEquals("12.5", formatNumberClean(12.5, java.util.Locale.US))
+        assertEquals("12,5", formatNumberClean(12.5, java.util.Locale.GERMANY))
+        assertEquals("185", formatNumberClean(185.0, java.util.Locale.GERMANY))
+        assertEquals("–", formatNumberClean(null, java.util.Locale.US))
+    }
 }

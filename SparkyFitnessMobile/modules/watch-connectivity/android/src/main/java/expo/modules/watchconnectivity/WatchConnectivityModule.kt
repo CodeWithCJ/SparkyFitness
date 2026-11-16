@@ -11,6 +11,7 @@ import androidx.wear.remote.interactions.RemoteActivityHelper
 import com.facebook.react.bridge.ReadableMap
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
@@ -327,23 +328,39 @@ internal object WatchConnectivityHub {
     }
   }
 
+  private const val MAX_INLINE_WEARABLE_BYTES = 80 * 1024
+
   suspend fun sendExerciseImage(context: Context, key: String, index: Int, bytes: ByteArray) {
     val appCtx = context.applicationContext
     val safeKey = key.replace(Regex("[^a-zA-Z0-9_-]"), "_")
-    val livePayload = JSONObject().apply {
-      put("type", "exerciseImage")
-      put("key", key)
-      put("index", index)
-      put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
-    }.toString().toByteArray(Charsets.UTF_8)
-    val sentLive = sendLiveBytes(appCtx, "/sparky/message", livePayload)
+    // Wearable MessageClient and inline DataItem payloads cap at ~100 KB.
+    // Only send live when the Base64-encoded JSON fits comfortably under that
+    // cap; otherwise go straight to a durable DataClient transfer using an
+    // Asset for oversized images.
+    val livePayload = if (bytes.size <= 58 * 1024) {
+      JSONObject().apply {
+        put("type", "exerciseImage")
+        put("key", key)
+        put("index", index)
+        put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+      }.toString().toByteArray(Charsets.UTF_8)
+    } else {
+      null
+    }
+    val sentLive = livePayload != null &&
+      livePayload.size <= MAX_INLINE_WEARABLE_BYTES &&
+      sendLiveBytes(appCtx, "/sparky/message", livePayload)
     if (!sentLive) {
       val path = "/sparky/transfer/phone/exerciseImage/${safeKey}_$index"
       try {
         val req = PutDataMapRequest.create(path).apply {
           dataMap.putString("key", key)
           dataMap.putInt("index", index)
-          dataMap.putByteArray("data", bytes)
+          if (bytes.size <= MAX_INLINE_WEARABLE_BYTES) {
+            dataMap.putByteArray("data", bytes)
+          } else {
+            dataMap.putAsset("asset", Asset.createFromBytes(bytes))
+          }
           dataMap.putLong("sentAt", System.currentTimeMillis())
         }.asPutDataRequest().setUrgent()
         Wearable.getDataClient(appCtx).putDataItem(req).await()

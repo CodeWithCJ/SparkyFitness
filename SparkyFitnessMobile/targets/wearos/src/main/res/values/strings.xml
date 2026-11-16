@@ -299,6 +299,21 @@
     <string name="workout_new_next_timed">Timed</string>
     <string name="workout_new_workout_complete">Workout complete</string>
     <string name="workout_new_finish">Finish</string>
+    <string name="workout_new_bw_label">BW</string>
+    <string name="workout_new_unit_sec">s</string>
+    <string name="workout_new_unit_min">m</string>
+    <string name="workout_new_unit_hour">h</string>
+    <string name="workout_new_unit_yd">yd</string>
+    <string name="workout_new_unit_m">m</string>
+    <string name="workout_new_short_sec">%1$ds</string>
+    <string name="workout_new_short_min">%1$dm</string>
+    <string name="workout_new_short_hour">%1$dh</string>
+    <plurals name="workout_new_reps_target">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <string name="workout_new_bw_reps">%1$s × %2$d</string>
+    <string name="workout_new_bw_delta_reps">%1$s %2$s%3$s × %4$d</string>
 
     <!-- More Page & Plate Calculator -->
     <string name="workout_new_more_title">More</string>

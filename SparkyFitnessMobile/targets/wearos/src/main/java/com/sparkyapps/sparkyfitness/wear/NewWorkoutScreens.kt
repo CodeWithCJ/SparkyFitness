@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -213,15 +214,6 @@ fun NewActiveWorkoutView(
       val shifted = (pagerState.currentPage + if (hasDemo) 1 else -1).coerceIn(0, pageKinds.lastIndex)
       pagerState.scrollToPage(shifted)
       prevHasDemo = hasDemo
-    }
-  }
-
-  // Auto-log when a timed hold reaches 0:00 (including if finished while another set was on screen)
-  val holdFinishedId by workoutStore.holdFinishedSetId.collectAsState()
-  LaunchedEffect(holdFinishedId, currentStep?.setId, completedIds) {
-    val step = currentStep ?: return@LaunchedEffect
-    if (holdFinishedId == step.setId && !completedIds.contains(step.setId)) {
-      workoutStore.completeCurrentSet()
     }
   }
 
@@ -420,7 +412,9 @@ fun NewActiveWorkoutView(
       val vals = workoutStore.valuesFor(currentStep)
       val unit = workoutStore.weightUnit
       val carryFactor = if (workoutStore.usesMiles) 1093.6133 else 1000.0
-      val carrySuffix = if (workoutStore.usesMiles) "yd" else "m"
+      val carrySuffix = stringResource(
+        if (workoutStore.usesMiles) R.string.workout_new_unit_yd else R.string.workout_new_unit_m
+      )
       val initialVal = when (field) {
         "weight" -> (vals.weightKg ?: 0.0).let { unit.displayedFromKg(it) }
         "distance" -> ((vals.distanceKm ?: 0.05) * carryFactor * 10.0).roundToInt() / 10.0
@@ -946,7 +940,9 @@ private fun NewWorkoutSetScreen(
             }
             currentStep.carry -> {
               val carryFactor = if (workoutStore.usesMiles) 1093.6133 else 1000.0
-              val carrySuffix = if (workoutStore.usesMiles) "yd" else "m"
+              val carrySuffix = stringResource(
+                if (workoutStore.usesMiles) R.string.workout_new_unit_yd else R.string.workout_new_unit_m
+              )
               val distDisp = values.distanceKm?.let { ((it * carryFactor) * 10.0).roundToInt() / 10.0 }
               ValueTile(
                 label = stringResource(R.string.workout_new_field_distance),
@@ -1539,7 +1535,7 @@ private fun HoldRunningView(
       CountdownRingCanvas(fraction = fraction, color = amber.color, trackColor = amber.mixed(0.26f), strokeDp = 8f)
       Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-          text = "${rem}s",
+          text = stringResource(R.string.workout_new_short_sec, rem),
           fontSize = 30.sp,
           fontWeight = FontWeight.Bold,
           color = amber.color
@@ -2465,7 +2461,9 @@ private fun EditPreviousSetOverlay(
   val curDistKm = if (draftSetId == step.setId && draftDistanceKm != null) draftDistanceKm else baseVals.distanceKm
   val unit = workoutStore.weightUnit
   val carryFactor = if (workoutStore.usesMiles) 1093.6133 else 1000.0
-  val carrySuffix = if (workoutStore.usesMiles) "yd" else "m"
+  val carrySuffix = stringResource(
+    if (workoutStore.usesMiles) R.string.workout_new_unit_yd else R.string.workout_new_unit_m
+  )
 
   if (editingField != null) {
     val field = editingField!!
@@ -2785,6 +2783,8 @@ internal fun EffortTrackBar(
   modifier: Modifier = Modifier
 ) {
   var trackWidthPx by remember { mutableIntStateOf(1) }
+  val currentSelectedIndex by rememberUpdatedState(selectedIndex)
+  val currentOnSelectIndex by rememberUpdatedState(onSelectIndex)
   val dense = values.size > 10
 
   fun indexForX(x: Float): Int {
@@ -2800,9 +2800,9 @@ internal fun EffortTrackBar(
       .pointerInput(values) {
         detectTapGestures { offset ->
           val next = indexForX(offset.x)
-          if (next != selectedIndex) {
+          if (next != currentSelectedIndex) {
             Haptics.click()
-            onSelectIndex(next)
+            currentOnSelectIndex(next)
           }
         }
       }
@@ -2810,9 +2810,9 @@ internal fun EffortTrackBar(
         detectHorizontalDragGestures { change, _ ->
           change.consume()
           val next = indexForX(change.position.x)
-          if (next != selectedIndex) {
+          if (next != currentSelectedIndex) {
             Haptics.click()
-            onSelectIndex(next)
+            currentOnSelectIndex(next)
           }
         }
       },
@@ -3526,46 +3526,56 @@ internal fun formatCompactElapsed(totalSeconds: Int): String {
   val hrs = s / 3600
   val mins = (s % 3600) / 60
   val rem = s % 60
+  val locale = Locale.getDefault()
   return if (hrs > 0) {
-    String.format(Locale.US, "%d:%02d:%02d", hrs, mins, rem)
+    String.format(locale, "%d:%02d:%02d", hrs, mins, rem)
   } else {
-    String.format(Locale.US, "%d:%02d", mins, rem)
+    String.format(locale, "%d:%02d", mins, rem)
   }
 }
 
+@Composable
 internal fun formatShortDuration(seconds: Int): String {
   val s = max(0, seconds)
-  if (s < 60) return "${s}s"
-  if (s % 3600 == 0) return "${s / 3600}h"
-  if (s % 60 == 0 && s < 3600) return "${s / 60}m"
+  if (s < 60) return stringResource(R.string.workout_new_short_sec, s)
+  if (s % 3600 == 0) return stringResource(R.string.workout_new_short_hour, s / 3600)
+  if (s % 60 == 0 && s < 3600) return stringResource(R.string.workout_new_short_min, s / 60)
   return formatCompactElapsed(s)
 }
 
+@Composable
 internal fun formatHoldParts(seconds: Int): Pair<String, String?> {
   val s = max(0, seconds)
   return when {
-    s < 60 -> "$s" to "s"
-    s % 60 == 0 -> "${s / 60}" to "m"
+    s < 60 -> "$s" to stringResource(R.string.workout_new_unit_sec)
+    s % 60 == 0 -> "${s / 60}" to stringResource(R.string.workout_new_unit_min)
     else -> formatCompactElapsed(s) to null
   }
 }
 
-internal fun formatNumberClean(value: Double?): String {
+internal fun formatNumberClean(value: Double?, locale: Locale = Locale.getDefault()): String {
   if (value == null) return "–"
+  val nf = NumberFormat.getNumberInstance(locale).apply {
+    isGroupingUsed = false
+    minimumFractionDigits = 0
+    maximumFractionDigits = 1
+  }
   val rounded = value.roundToInt().toDouble()
   return if (abs(value - rounded) < 1e-6) {
-    rounded.toInt().toString()
+    nf.format(rounded.toInt())
   } else {
-    String.format(Locale.US, "%.1f", value)
+    nf.format(value)
   }
 }
 
+@Composable
 internal fun formatBodyweightText(value: Double?): String {
-  if (value == null || abs(value) < 1e-6) return "BW"
+  if (value == null || abs(value) < 1e-6) return stringResource(R.string.workout_new_bw_label)
   val mag = formatNumberClean(abs(value))
   return if (value > 0.0) "+$mag" else "−$mag"
 }
 
+@Composable
 private fun formatSetTarget(step: WorkoutStep, workoutStore: WorkoutSessionStore, spaced: Boolean): String? {
   val v = workoutStore.valuesFor(step)
   val unit = workoutStore.weightUnit
@@ -3578,14 +3588,19 @@ private fun formatSetTarget(step: WorkoutStep, workoutStore: WorkoutSessionStore
   }
   if (step.carry && v.distanceKm != null) {
     val carryFactor = if (workoutStore.usesMiles) 1093.6133 else 1000.0
-    val carrySuffix = if (workoutStore.usesMiles) "yd" else "m"
+    val carrySuffix = stringResource(
+      if (workoutStore.usesMiles) R.string.workout_new_unit_yd else R.string.workout_new_unit_m
+    )
     val dist = "${(v.distanceKm * carryFactor).roundToInt()} $carrySuffix"
     return weight?.let { "$it × $dist" } ?: dist
   }
   val reps = v.reps
   return when {
     weight != null && reps != null -> "$weight × ${reps.roundToInt()}"
-    reps != null -> "${reps.roundToInt()} reps"
+    reps != null -> {
+      val count = reps.roundToInt()
+      pluralStringResource(R.plurals.workout_new_reps_target, count, count)
+    }
     else -> null
   }
 }
@@ -3601,10 +3616,20 @@ private fun formatNextTarget(step: WorkoutStep, workoutStore: WorkoutSessionStor
     return weight?.let { "$it × $timed" } ?: timed
   }
   if (step.bodyweight && !step.carry && v.reps != null) {
+    val bwLabel = stringResource(R.string.workout_new_bw_label)
     val kg = v.weightKg
-    if (kg == null || abs(kg) < 1e-6) return "BW × ${v.reps.roundToInt()}"
+    val repsCount = v.reps.roundToInt()
+    if (kg == null || abs(kg) < 1e-6) {
+      return stringResource(R.string.workout_new_bw_reps, bwLabel, repsCount)
+    }
     val sign = if (kg > 0.0) "+" else "−"
-    return "BW $sign${formatNumberClean(unit.displayedFromKg(abs(kg)))} × ${v.reps.roundToInt()}"
+    return stringResource(
+      R.string.workout_new_bw_delta_reps,
+      bwLabel,
+      sign,
+      formatNumberClean(unit.displayedFromKg(abs(kg))),
+      repsCount
+    )
   }
   return formatSetTarget(step, workoutStore, spaced = true)
 }

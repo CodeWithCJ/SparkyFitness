@@ -23,42 +23,70 @@ class ExerciseDemoStore(private val appContext: Context) {
 
   private val lock = Any()
   private val decoded = HashMap<String, List<ImageBitmap>>()
+  private var clearGeneration: Long = 0L
 
   private val directory: File
     get() = File(appContext.filesDir, "ExerciseDemo")
 
-  fun receive(key: String, index: Int, data: ByteArray, keepKeys: Set<String> = emptySet()): Boolean {
+  /** Monotonic generation incremented on every [clear]; pass to [receive] to drop stale queued writes. */
+  fun currentGeneration(): Long = synchronized(lock) { clearGeneration }
+
+  fun receive(
+    key: String,
+    index: Int,
+    data: ByteArray,
+    keepKeys: Set<String> = emptySet(),
+    expectedGeneration: Long? = null
+  ): Boolean {
     if (data.isEmpty() || data.size > 512 * 1024) return false
     val fileName = ExerciseDemoFiles.fileName(key, index) ?: return false
-    val written = writeAtomic(fileName, data)
+    val written = synchronized(lock) {
+      if (expectedGeneration != null && expectedGeneration != clearGeneration) {
+        return false
+      }
+      val ok = writeAtomicLocked(fileName, data)
+      if (ok) {
+        decoded.clear()
+        pruneLocked(keepKeys)
+      }
+      ok
+    }
     if (written) {
-      didChange(keepKeys)
+      _revision.value = _revision.value + 1
     }
     return written
   }
 
-  fun receiveBase64(key: String, index: Int, dataBase64: String, keepKeys: Set<String> = emptySet()): Boolean {
+  fun receiveBase64(
+    key: String,
+    index: Int,
+    dataBase64: String,
+    keepKeys: Set<String> = emptySet(),
+    expectedGeneration: Long? = null
+  ): Boolean {
     if (dataBase64.isEmpty()) return false
     val bytes = try {
       Base64.decode(dataBase64, Base64.DEFAULT)
     } catch (_: Throwable) {
       return false
     }
-    return receive(key, index, bytes, keepKeys)
+    return receive(key, index, bytes, keepKeys, expectedGeneration)
   }
 
   /**
    * Returns up to [maxCount] decoded pictures (start, then optional end) for [key].
-   * Returns empty until picture 0 has arrived (a lone picture 1 is ignored).
+   * Always caches all available frames on disk so a smaller [maxCount] request
+   * never hides a second frame from later callers. Returns empty until picture 0
+   * has arrived (a lone picture 1 is ignored).
    */
   fun images(key: String?, maxCount: Int = 2): List<ImageBitmap> {
     if (key.isNullOrEmpty() || maxCount <= 0) return emptyList()
     synchronized(lock) {
       decoded[key]?.let { return it.take(maxCount) }
-      val start = loadBitmap(key, 0) ?: return emptyList()
+      val start = loadBitmapLocked(key, 0) ?: return emptyList()
       val list = mutableListOf(start)
-      if (maxCount > 1) {
-        loadBitmap(key, 1)?.let { list.add(it) }
+      for (idx in 1..ExerciseDemoFiles.MAX_INDEX) {
+        loadBitmapLocked(key, idx)?.let { list.add(it) }
       }
       decoded[key] = list
       return list.take(maxCount)
@@ -68,12 +96,29 @@ class ExerciseDemoStore(private val appContext: Context) {
   fun didChange(keepKeys: Set<String> = emptySet()) {
     synchronized(lock) {
       decoded.clear()
+      pruneLocked(keepKeys)
     }
     _revision.value = _revision.value + 1
-    prune(keepKeys)
   }
 
   fun prune(keepKeys: Set<String>) {
+    synchronized(lock) {
+      pruneLocked(keepKeys)
+    }
+  }
+
+  fun clear() {
+    synchronized(lock) {
+      clearGeneration += 1L
+      decoded.clear()
+      try {
+        directory.listFiles()?.forEach { it.delete() }
+      } catch (_: Throwable) {}
+    }
+    _revision.value = _revision.value + 1
+  }
+
+  private fun pruneLocked(keepKeys: Set<String>) {
     try {
       val dir = directory
       if (!dir.exists()) return
@@ -88,17 +133,7 @@ class ExerciseDemoStore(private val appContext: Context) {
     } catch (_: Throwable) {}
   }
 
-  fun clear() {
-    synchronized(lock) {
-      decoded.clear()
-    }
-    try {
-      directory.listFiles()?.forEach { it.delete() }
-    } catch (_: Throwable) {}
-    _revision.value = _revision.value + 1
-  }
-
-  private fun writeAtomic(fileName: String, data: ByteArray): Boolean {
+  private fun writeAtomicLocked(fileName: String, data: ByteArray): Boolean {
     return try {
       val dir = directory
       if (!dir.exists()) dir.mkdirs()
@@ -115,7 +150,7 @@ class ExerciseDemoStore(private val appContext: Context) {
     }
   }
 
-  private fun loadBitmap(key: String, index: Int): ImageBitmap? {
+  private fun loadBitmapLocked(key: String, index: Int): ImageBitmap? {
     val fileName = ExerciseDemoFiles.fileName(key, index) ?: return null
     val file = File(directory, fileName)
     if (!file.isFile) return null
