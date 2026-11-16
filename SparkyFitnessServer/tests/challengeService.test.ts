@@ -888,6 +888,7 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
   ): NonNullable<MemberEntryRow['session']> => ({
     source: 'Workout Plan',
     finished_at: null,
+    edited: false,
     has_plan_assignment: true,
     sets: [{ completed_at: null }, { completed_at: null }],
     ...overrides,
@@ -922,6 +923,11 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
       )
     ).toBe(false);
     expect(service.isPlannedEntryRow(row({ edited: true }))).toBe(false);
+    // Reps and weights filled in on a plan session, nothing ticked: the
+    // plan regeneration keeps it as the member's workout, so it counts
+    expect(
+      service.isPlannedEntryRow(row({ session: session({ edited: true }) }))
+    ).toBe(false);
     expect(
       service.isPlannedEntryRow(
         row({
@@ -1056,6 +1062,7 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     expect(repo.createWithHost).not.toHaveBeenCalled();
 
     repo.getMembership.mockResolvedValue(member('host', 'host'));
+    repo.getChallenge.mockResolvedValue(challenge());
     vi.mocked(rateLimitWindowRepository.hit).mockResolvedValue({
       count: service.RULE_CHANGES_PER_WINDOW + 1,
       resetInMs: 5000,
@@ -1069,8 +1076,25 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     );
     expect(repo.updateRules).not.toHaveBeenCalled();
 
-    // A member who is not the host is refused before using up the host's limit
+    // Refused attempts do not use up the allowance: a change that is not
+    // allowed, a bad start date, a member who is not the host
     vi.mocked(rateLimitWindowRepository.hit).mockClear();
+    await expect(
+      service.updateRules('host', challenge().id, {
+        ...allRounder,
+        period: 'month',
+      })
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.createChallenge('host', {
+        name: 'Family',
+        start_date: '2020-01-01',
+        display_name: 'Host',
+        member_limit: 50,
+        late_join: true,
+      })
+    ).rejects.toMatchObject({ status: 400 });
+    expect(rateLimitWindowRepository.hit).not.toHaveBeenCalled();
     repo.getMembership.mockResolvedValue(member('amy'));
     await expect(
       service.updateRules('amy', challenge().id, allRounder)

@@ -266,11 +266,6 @@ export async function createChallenge(
   userId: string,
   body: CreateChallengeBody & { member_limit: number; late_join: boolean }
 ): Promise<ChallengeDetail> {
-  await rateLimit(
-    `challenge-create:${userId}`,
-    CREATES_PER_WINDOW,
-    CREATE_WINDOW_MS
-  );
   const preset = challengePreset(body.preset ?? DEFAULT_CHALLENGE_PRESET_ID);
   const rules = body.rules ? parseStoredRules(body.rules) : preset.rules;
   // An explicit null means open-ended; only a missing end_date takes the
@@ -287,6 +282,13 @@ export async function createChallenge(
       ? body.time_zone
       : await loadUserTimezone(userId);
   validateStartDate(body.start_date, todayInZone(timeZone));
+  // Counted only for a challenge that would be made, so a refused attempt
+  // does not use up the allowance.
+  await rateLimit(
+    `challenge-create:${userId}`,
+    CREATES_PER_WINDOW,
+    CREATE_WINDOW_MS
+  );
   const id = await challengeRepository.createWithHost({
     ownerUserId: userId,
     name: body.name,
@@ -349,12 +351,6 @@ export async function updateRules(
   input: unknown
 ): Promise<ChallengeDetail> {
   await requireHost(userId, challengeId);
-  // Per challenge: each change is one more rules run in every member's rescore.
-  await rateLimit(
-    `challenge-rules:${challengeId}`,
-    RULE_CHANGES_PER_WINDOW,
-    RULE_CHANGE_WINDOW_MS
-  );
   const challenge = await challengeRepository.getChallenge(challengeId);
   if (!challenge) throw notFound();
   if (challenge.ended_at) {
@@ -389,6 +385,13 @@ export async function updateRules(
       'No period is left for a rules change to apply to'
     );
   }
+  // Per challenge, and only for a change that will be saved: each change is
+  // one more rules run in every member's rescore.
+  await rateLimit(
+    `challenge-rules:${challengeId}`,
+    RULE_CHANGES_PER_WINDOW,
+    RULE_CHANGE_WINDOW_MS
+  );
   await challengeRepository.updateRules(
     challengeId,
     userId,
@@ -733,16 +736,19 @@ const n = (v: unknown): number | null => {
 };
 
 /**
- * A diary row that is only planned, so it earns nothing yet. A row in a
- * grouped session follows the session's lifecycle status (an untouched
- * session from a plan is 'planned' until a set is checked off or it is
- * finished). A single row a prefill plan generated is planned until the
- * member edits it or starts or checks off a set, the same "untouched" test
- * the plan regeneration uses before it removes generated rows.
+ * A diary row that is only planned, so it earns nothing yet: what a prefill
+ * plan generated and nobody has touched. A row in a grouped session is
+ * planned while the session's lifecycle status is 'planned' (no set checked
+ * off, not finished) and neither the session nor any of its exercises was
+ * edited. A single generated row is planned until the member edits it or
+ * starts or checks off a set. "Edited" is the test the plan regeneration
+ * uses before it removes generated rows (updated_at after created_at), so a
+ * workout the plan keeps as the member's own also counts here.
  */
 export function isPlannedEntryRow(row: MemberEntryRow): boolean {
   if (row.session) {
     return (
+      !row.session.edited &&
       deriveWorkoutSessionStatus({
         source: row.session.source,
         finishedAt: row.session.finished_at,
@@ -885,6 +891,7 @@ async function recomputeMemberLocked(
     memberZones(member.user_id),
   ]);
   const done = rows.filter((row) => !isPlannedEntryRow(row));
+  const doneById = new Map(done.map((row) => [row.id, row]));
   const entries = done.map(toChallengeEntry);
   const data = { entries, steps, zones };
 
@@ -930,7 +937,7 @@ async function recomputeMemberLocked(
       for (const e of counted.filter((x) => x.date === d.date)) {
         const km = e.distanceM ? e.distanceM / 1000 : 0;
         const measured = challengeMeasuredMinutes(e);
-        const row = done.find((r) => r.id === e.id);
+        const row = doneById.get(e.id);
         cards.push({
           exercise_entry_id: e.id,
           day: d.date,

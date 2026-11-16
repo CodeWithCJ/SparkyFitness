@@ -28,7 +28,11 @@ import {
   type ActivitySport,
   type PrSportGroup,
 } from '../utils/activitySport.ts';
-import { normalizeSource } from '../constants/exercise.ts';
+import {
+  isLiveWorkoutSource,
+  isUserOriginatedSource,
+  normalizeSource,
+} from '../constants/exercise.ts';
 import { heartRateZoneFor } from '../utils/heartRateZones.ts';
 import { challengeWeekStart, isoWeekday } from './periods.ts';
 import {
@@ -126,20 +130,15 @@ const hasHr = (e: ChallengeEntry): boolean =>
   num(e.avgHr) > 0 || (e.zoneSeconds ?? []).some((s) => s > 0);
 
 /**
- * Sources a member types in: the diary form ('Manual'), a logged preset and a
- * workout from a plan. A live workout ('sparky') is timed by the app, so it is
- * not one.
+ * Logged by hand: no heart rate, and no source or one a member makes in the
+ * app (the diary form's 'Manual', a logged preset, a plan workout), in any
+ * casing. A live workout ('sparky') is timed by the app, so it is not one.
  */
-const HAND_LOGGED_SOURCES: ReadonlySet<string> = new Set([
-  'manual',
-  'workout preset',
-  'workout plan',
-]);
-
-/** Logged by hand: no sync source (any casing) and no heart rate. */
 export function isManualEntry(e: ChallengeEntry): boolean {
-  const source = normalizeSource(e.source);
-  return (!source || HAND_LOGGED_SOURCES.has(source)) && !hasHr(e);
+  const typedIn =
+    !normalizeSource(e.source) ||
+    (isUserOriginatedSource(e.source) && !isLiveWorkoutSource(e.source));
+  return typedIn && !hasHr(e);
 }
 
 export type ChallengeRateBasis = 'zones' | 'average_hr' | 'no_hr';

@@ -140,6 +140,8 @@ export interface MemberEntryRow {
   session: {
     source: string | null;
     finished_at: string | null;
+    /** The session or one of its exercises was changed after it was created. */
+    edited: boolean;
     /** Whether any exercise of the session is linked to a plan assignment. */
     has_plan_assignment: boolean;
     /** Every set of the session, for its lifecycle status. */
@@ -414,10 +416,13 @@ async function createWithHost(input: NewChallenge): Promise<string> {
 /**
  * Replaces the rules from `effectiveFrom` on and logs the change. The UPDATE
  * locks the challenge row first, so the log's seq follows the order the
- * changes were really written in; the latest change for a day wins. Days
- * already scored on or after `effectiveFrom` (a member's day can run ahead of
- * the challenge's zone) are queued again in the same transaction, so they are
- * rescored under the new rules.
+ * changes were really written in; the latest change for a day wins. The
+ * first day it applies to is queued for every member in the same
+ * transaction: a rescore runs from the earliest queued day to the member's
+ * latest, so every day already scored from `effectiveFrom` on (a member's day
+ * can run ahead of the challenge's zone) is scored again under the new rules.
+ * A scoring run already under way when this commits keeps the day queued
+ * (its claim no longer matches), so it cannot leave old-rules scores behind.
  */
 async function updateRules(
   challengeId: string,
@@ -446,8 +451,8 @@ async function updateRules(
     );
     await client.query(
       `INSERT INTO challenge_score_queue (challenge_id, user_id, day)
-       SELECT challenge_id, user_id, day FROM challenge_daily_scores
-        WHERE challenge_id = $1 AND day >= $2
+       SELECT challenge_id, user_id, $2::date FROM challenge_members
+        WHERE challenge_id = $1
        ON CONFLICT (challenge_id, user_id, day) DO UPDATE SET queued_at = EXCLUDED.queued_at`,
       [challengeId, effectiveFrom]
     );
@@ -955,8 +960,37 @@ async function getMemberEntries(
   to: string
 ): Promise<MemberEntryRow[]> {
   return asMember(memberId, async (client) => {
+    // Each session's status inputs are built once (not once per exercise
+    // row), from the member's own rows only.
     const { rows } = await client.query(
-      `SELECT e.id, TO_CHAR(e.entry_date, 'YYYY-MM-DD') AS entry_date,
+      `WITH sessions AS (
+         SELECT pe.id, json_build_object(
+                  'source', pe.source,
+                  'finished_at', pe.finished_at,
+                  'edited', pe.updated_at > pe.created_at OR EXISTS (
+                    SELECT 1 FROM exercise_entries pe_e
+                     WHERE pe_e.exercise_preset_entry_id = pe.id
+                       AND pe_e.user_id = pe.user_id
+                       AND pe_e.updated_at > pe_e.created_at),
+                  'has_plan_assignment', EXISTS (
+                    SELECT 1 FROM exercise_entries pe_e
+                     WHERE pe_e.exercise_preset_entry_id = pe.id
+                       AND pe_e.user_id = pe.user_id
+                       AND pe_e.workout_plan_assignment_id IS NOT NULL),
+                  'sets', COALESCE((
+                    SELECT json_agg(json_build_object('completed_at', pe_s.completed_at))
+                      FROM exercise_entry_sets pe_s
+                      JOIN exercise_entries pe_e ON pe_e.id = pe_s.exercise_entry_id
+                     WHERE pe_e.exercise_preset_entry_id = pe.id
+                       AND pe_e.user_id = pe.user_id), '[]'::json)) AS session
+           FROM exercise_preset_entries pe
+          WHERE pe.user_id = $1
+            AND pe.id IN (
+              SELECT exercise_preset_entry_id FROM exercise_entries
+               WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+                 AND exercise_preset_entry_id IS NOT NULL)
+       )
+       SELECT e.id, TO_CHAR(e.entry_date, 'YYYY-MM-DD') AS entry_date,
               TO_CHAR(e.entry_time, 'HH24:MI') AS entry_time, e.duration_minutes,
               e.avg_heart_rate, e.max_heart_rate, e.exercise_name, e.category, e.source,
               e.exercise_id, e.distance, e.active_calories, e.calories_burned,
@@ -971,21 +1005,9 @@ async function getMemberEntries(
                         'weight', s.weight, 'reps', s.reps, 'set_type', s.set_type,
                         'completed_at', s.completed_at, 'started_at', s.started_at))
                  FROM exercise_entry_sets s WHERE s.exercise_entry_id = e.id) AS sets,
-              (SELECT json_build_object(
-                        'source', pe.source,
-                        'finished_at', pe.finished_at,
-                        'has_plan_assignment', EXISTS (
-                          SELECT 1 FROM exercise_entries pe_e
-                           WHERE pe_e.exercise_preset_entry_id = pe.id
-                             AND pe_e.workout_plan_assignment_id IS NOT NULL),
-                        'sets', COALESCE((
-                          SELECT json_agg(json_build_object('completed_at', pe_s.completed_at))
-                            FROM exercise_entry_sets pe_s
-                            JOIN exercise_entries pe_e ON pe_e.id = pe_s.exercise_entry_id
-                           WHERE pe_e.exercise_preset_entry_id = pe.id), '[]'::json))
-                 FROM exercise_preset_entries pe
-                WHERE pe.id = e.exercise_preset_entry_id) AS session
+              sessions.session
          FROM exercise_entries e
+         LEFT JOIN sessions ON sessions.id = e.exercise_preset_entry_id
         WHERE e.user_id = $1 AND e.entry_date BETWEEN $2 AND $3
         ORDER BY e.entry_date, e.entry_time NULLS LAST, e.id`,
       [memberId, from, to]

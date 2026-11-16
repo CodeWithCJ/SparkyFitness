@@ -1995,6 +1995,14 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     );
     expect(await queued()).toEqual(['amy 2026-11-19']);
     await clearQueue();
+    // Moved to another day: both days
+    await sys.query(
+      `UPDATE public.check_in_measurements SET entry_date = '2026-11-17'
+        WHERE user_id = $1 AND entry_date = '2026-11-18'`,
+      [AMY]
+    );
+    expect(await queued()).toEqual(['amy 2026-11-17', 'amy 2026-11-18']);
+    await clearQueue();
     await sys.query(
       "DELETE FROM public.daily_health_metrics WHERE user_id = $1 AND source_provider = 'rls-challenge'",
       [AMY]
@@ -2003,7 +2011,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       'DELETE FROM public.check_in_measurements WHERE user_id = $1',
       [AMY]
     );
-    expect(await queued()).toEqual(['amy 2026-11-18', 'amy 2026-11-19']);
+    expect(await queued()).toEqual(['amy 2026-11-17', 'amy 2026-11-19']);
     await clearQueue();
   });
 
@@ -2038,6 +2046,8 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     expect(planned?.session).toMatchObject({
       source: 'Workout Plan',
       finished_at: null,
+      edited: false,
+      has_plan_assignment: false,
       sets: [{ completed_at: null }],
     });
     expect(planned?.edited).toBe(false);
@@ -2066,6 +2076,19 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       'UPDATE public.exercise_preset_entries SET finished_at = now() WHERE id = $1',
       [sessionId]
     );
+    expect(await queued()).toEqual(['amy 2026-11-20']);
+    await clearQueue();
+    // A set added already started, then removed: the day is queued each time
+    const extra = await sys.query(
+      `INSERT INTO public.exercise_entry_sets (exercise_entry_id, set_number, reps, weight, started_at)
+       VALUES ($1, 2, 8, 60, now()) RETURNING id`,
+      [entryId]
+    );
+    expect(await queued()).toEqual(['amy 2026-11-20']);
+    await clearQueue();
+    await sys.query('DELETE FROM public.exercise_entry_sets WHERE id = $1', [
+      extra.rows[0].id,
+    ]);
     expect(await queued()).toEqual(['amy 2026-11-20']);
     await sys.query(
       'DELETE FROM public.exercise_preset_entries WHERE id = $1',
@@ -2136,12 +2159,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     await clearQueue();
   });
 
-  it('a rules change queues again the days already scored on or after it takes effect', async () => {
-    await sys.query(
-      `INSERT INTO public.challenge_daily_scores (challenge_id, user_id, day, total)
-       VALUES ($1, $2, '2026-11-23', 5000)`,
-      [challengeId, AMY]
-    );
+  it('a rules change queues its first day for every member, so days scored from it on are rescored', async () => {
     await clearQueue();
     await challengeRepository.updateRules(
       challengeId,
@@ -2151,12 +2169,24 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       '2026-11-23',
       1
     );
-    // The day scored on 11-10 is before the change and stays as it is
-    expect(await queued()).toEqual(['amy 2026-11-23']);
-    await sys.query(
-      "DELETE FROM public.challenge_daily_scores WHERE challenge_id = $1 AND day = '2026-11-23'",
-      [challengeId]
+    expect(await queued()).toEqual(['host 2026-11-23', 'amy 2026-11-23']);
+    // A run that took the day before the change keeps it queued: its ack no
+    // longer matches the requeued row
+    await clearQueue();
+    await challengeRepository.enqueueDays(challengeId, AMY, ['2026-11-23']);
+    const [taken] = (
+      await challengeRepository.takeQueuedDays(500, 0, 600)
+    ).filter((b) => b.challenge_id === challengeId && b.user_id === AMY);
+    await challengeRepository.updateRules(
+      challengeId,
+      HOST,
+      { version: 1, metric: 'steps', dailyCap: 6500 },
+      { version: 1, metric: 'steps', dailyCap: 6000 },
+      '2026-11-23',
+      1
     );
+    await challengeRepository.ackQueuedDays(taken!);
+    expect(await queued()).toEqual(['host 2026-11-23', 'amy 2026-11-23']);
     await clearQueue();
   });
 

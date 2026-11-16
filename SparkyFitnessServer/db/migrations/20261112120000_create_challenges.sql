@@ -214,10 +214,10 @@ BEGIN
 END;
 $$;
 
--- A workout added, changed, moved or removed: its old and new day.
--- Also used for a session being finished, reopened or renamed to another
--- source (exercise_preset_entries), which turns a planned workout into a
--- logged one.
+-- A row added, changed, moved or removed: its old and new day. Used for
+-- workouts (exercise_entries), a session being finished, reopened or given
+-- another source (exercise_preset_entries, which turns a planned workout into
+-- a logged one) and steps (check_in_measurements, daily_health_metrics).
 CREATE OR REPLACE FUNCTION public.queue_challenge_scores() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -252,97 +252,124 @@ CREATE TRIGGER queue_challenge_scores
           OR OLD.source IS DISTINCT FROM NEW.source)
     EXECUTE FUNCTION public.queue_challenge_scores();
 
--- A set checked off or un-checked: a planned workout counts from its first
--- checked-off set. Sets carry no owner or day, so both come from the entry.
-CREATE OR REPLACE FUNCTION public.queue_challenge_scores_for_set() RETURNS trigger
+-- A set checked off, un-checked, started, or moved to another workout: a
+-- planned workout counts from its first started or checked-off set. Sets carry
+-- no owner or day, so both come from the entry. Statement-level with
+-- transition tables, so an import or a session save that writes many sets
+-- queues each member-day once, not once per set.
+CREATE OR REPLACE FUNCTION public.queue_challenge_scores_for_sets() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  entry RECORD;
+  changed RECORD;
 BEGIN
-  IF TG_OP = 'INSERT' AND NEW.completed_at IS NULL THEN
-    RETURN NULL;
-  END IF;
-  IF TG_OP = 'DELETE' AND OLD.completed_at IS NULL THEN
-    RETURN NULL;
-  END IF;
-  IF TG_OP = 'UPDATE' AND NOT (
-    NEW.completed_at IS DISTINCT FROM OLD.completed_at
-    OR NEW.started_at IS DISTINCT FROM OLD.started_at
-  ) THEN
-    RETURN NULL;
-  END IF;
-  SELECT e.user_id, e.entry_date INTO entry
-    FROM public.exercise_entries e
-   WHERE e.id = CASE WHEN TG_OP = 'DELETE' THEN OLD.exercise_entry_id
-                     ELSE NEW.exercise_entry_id END;
-  -- A set removed with its entry: the entry's own trigger queued the day.
-  IF FOUND THEN
-    PERFORM public.queue_challenge_member_day(entry.user_id, entry.entry_date);
+  IF TG_OP = 'INSERT' THEN
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM new_sets n
+        JOIN public.exercise_entries e ON e.id = n.exercise_entry_id
+       WHERE n.completed_at IS NOT NULL OR n.started_at IS NOT NULL
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
+  ELSIF TG_OP = 'DELETE' THEN
+    -- A set removed with its entry finds no entry: the entry's own trigger
+    -- queued the day.
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM old_sets o
+        JOIN public.exercise_entries e ON e.id = o.exercise_entry_id
+       WHERE o.completed_at IS NOT NULL OR o.started_at IS NOT NULL
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
+  ELSE
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM new_sets n
+        JOIN old_sets o ON o.id = n.id
+        JOIN public.exercise_entries e
+          ON e.id IN (n.exercise_entry_id, o.exercise_entry_id)
+       WHERE n.completed_at IS DISTINCT FROM o.completed_at
+          OR n.started_at IS DISTINCT FROM o.started_at
+          OR n.exercise_entry_id IS DISTINCT FROM o.exercise_entry_id
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
   END IF;
   RETURN NULL;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS queue_challenge_scores ON public.exercise_entry_sets;
-CREATE TRIGGER queue_challenge_scores
-    AFTER INSERT OR UPDATE OF completed_at, started_at OR DELETE
-    ON public.exercise_entry_sets
-    FOR EACH ROW
-    EXECUTE FUNCTION public.queue_challenge_scores_for_set();
+DROP TRIGGER IF EXISTS queue_challenge_scores_insert ON public.exercise_entry_sets;
+CREATE TRIGGER queue_challenge_scores_insert
+    AFTER INSERT ON public.exercise_entry_sets
+    REFERENCING NEW TABLE AS new_sets
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores_update ON public.exercise_entry_sets;
+CREATE TRIGGER queue_challenge_scores_update
+    AFTER UPDATE ON public.exercise_entry_sets
+    REFERENCING OLD TABLE AS old_sets NEW TABLE AS new_sets
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores_delete ON public.exercise_entry_sets;
+CREATE TRIGGER queue_challenge_scores_delete
+    AFTER DELETE ON public.exercise_entry_sets
+    REFERENCING OLD TABLE AS old_sets
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
 
 -- Steps: a check-in (steps) or a synced daily summary (total_steps) that
--- adds, changes or removes a step count, so a steps challenge moves during the
--- day rather than at the nightly catch-up. A row whose steps stay empty (a
--- weight-only check-in) queues nothing.
-CREATE OR REPLACE FUNCTION public.queue_challenge_scores_for_steps() RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  steps_column TEXT := CASE TG_TABLE_NAME
-    WHEN 'daily_health_metrics' THEN 'total_steps' ELSE 'steps' END;
-  old_steps TEXT;
-  new_steps TEXT;
-BEGIN
-  IF TG_OP <> 'INSERT' THEN
-    old_steps := to_jsonb(OLD) ->> steps_column;
-  END IF;
-  IF TG_OP <> 'DELETE' THEN
-    new_steps := to_jsonb(NEW) ->> steps_column;
-  END IF;
-  IF TG_OP = 'UPDATE'
-     AND old_steps IS NOT DISTINCT FROM new_steps
-     AND OLD.user_id IS NOT DISTINCT FROM NEW.user_id
-     AND OLD.entry_date IS NOT DISTINCT FROM NEW.entry_date THEN
-    RETURN NULL;
-  END IF;
-  IF old_steps IS NOT NULL THEN
-    PERFORM public.queue_challenge_member_day(OLD.user_id, OLD.entry_date);
-  END IF;
-  IF new_steps IS NOT NULL THEN
-    PERFORM public.queue_challenge_member_day(NEW.user_id, NEW.entry_date);
-  END IF;
-  RETURN NULL;
-END;
-$$;
+-- adds, changes or removes a step count queues its day, so a steps challenge
+-- moves during the day rather than at the nightly catch-up. The WHEN clauses
+-- keep every other write (a weight-only check-in, a summary whose steps did
+-- not change) from calling anything.
+DROP TRIGGER IF EXISTS queue_challenge_scores_insert ON public.check_in_measurements;
+CREATE TRIGGER queue_challenge_scores_insert
+    AFTER INSERT ON public.check_in_measurements
+    FOR EACH ROW WHEN (NEW.steps IS NOT NULL)
+    EXECUTE FUNCTION public.queue_challenge_scores();
 
-DROP TRIGGER IF EXISTS queue_challenge_scores ON public.check_in_measurements;
-CREATE TRIGGER queue_challenge_scores
-    AFTER INSERT OR UPDATE OF steps, user_id, entry_date OR DELETE
-    ON public.check_in_measurements
-    FOR EACH ROW
-    EXECUTE FUNCTION public.queue_challenge_scores_for_steps();
+DROP TRIGGER IF EXISTS queue_challenge_scores_update ON public.check_in_measurements;
+CREATE TRIGGER queue_challenge_scores_update
+    AFTER UPDATE ON public.check_in_measurements
+    FOR EACH ROW WHEN (OLD.steps IS DISTINCT FROM NEW.steps
+                       OR ((OLD.steps IS NOT NULL OR NEW.steps IS NOT NULL)
+                           AND (OLD.entry_date IS DISTINCT FROM NEW.entry_date
+                                OR OLD.user_id IS DISTINCT FROM NEW.user_id)))
+    EXECUTE FUNCTION public.queue_challenge_scores();
 
-DROP TRIGGER IF EXISTS queue_challenge_scores ON public.daily_health_metrics;
-CREATE TRIGGER queue_challenge_scores
-    AFTER INSERT OR UPDATE OF total_steps, user_id, entry_date OR DELETE
-    ON public.daily_health_metrics
-    FOR EACH ROW
-    EXECUTE FUNCTION public.queue_challenge_scores_for_steps();
+DROP TRIGGER IF EXISTS queue_challenge_scores_delete ON public.check_in_measurements;
+CREATE TRIGGER queue_challenge_scores_delete
+    AFTER DELETE ON public.check_in_measurements
+    FOR EACH ROW WHEN (OLD.steps IS NOT NULL)
+    EXECUTE FUNCTION public.queue_challenge_scores();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores_insert ON public.daily_health_metrics;
+CREATE TRIGGER queue_challenge_scores_insert
+    AFTER INSERT ON public.daily_health_metrics
+    FOR EACH ROW WHEN (NEW.total_steps IS NOT NULL)
+    EXECUTE FUNCTION public.queue_challenge_scores();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores_update ON public.daily_health_metrics;
+CREATE TRIGGER queue_challenge_scores_update
+    AFTER UPDATE ON public.daily_health_metrics
+    FOR EACH ROW WHEN (OLD.total_steps IS DISTINCT FROM NEW.total_steps
+                       OR ((OLD.total_steps IS NOT NULL OR NEW.total_steps IS NOT NULL)
+                           AND (OLD.entry_date IS DISTINCT FROM NEW.entry_date
+                                OR OLD.user_id IS DISTINCT FROM NEW.user_id)))
+    EXECUTE FUNCTION public.queue_challenge_scores();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores_delete ON public.daily_health_metrics;
+CREATE TRIGGER queue_challenge_scores_delete
+    AFTER DELETE ON public.daily_health_metrics
+    FOR EACH ROW WHEN (OLD.total_steps IS NOT NULL)
+    EXECUTE FUNCTION public.queue_challenge_scores();
 
 -- Admin switch: Challenges is on by default; an admin can turn it off, which
 -- refuses the challenge routes and pauses the challenge jobs.

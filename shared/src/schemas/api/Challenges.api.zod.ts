@@ -33,6 +33,7 @@ export const createChallengeBodySchema = z.object({
   preset: z.enum(CHALLENGE_PRESET_IDS).optional(),
   rules: challengeRulesSchema.optional(),
   start_date: dayStringSchema,
+  /** Left out: the preset's length (if it has one). null: no end date. */
   end_date: dayStringSchema.nullable().optional(),
   /** IANA zone that decides when a period is over; defaults to the host's. */
   time_zone: z.string().min(1).max(64).optional(),
