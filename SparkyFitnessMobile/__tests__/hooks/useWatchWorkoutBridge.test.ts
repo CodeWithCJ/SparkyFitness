@@ -668,6 +668,46 @@ describe('useWatchWorkoutBridge', () => {
     expect(getStore().session!.exercises[0].sets[0].rpe).toBe(9.5);
   });
 
+  it('applies a follow-up RPE update to an already-completed set without overwriting its values or completion time', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'client-1',
+        sessionId: 'session-1',
+        setId: '101',
+        weightKg: 80,
+        reps: 8,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const firstCompletedAt = getStore().completedSetIds['101'];
+    expect(firstCompletedAt).toBeDefined();
+    expect(getStore().session!.exercises[0].sets[0].weight).toBe(80);
+    expect(getStore().session!.exercises[0].sets[0].rpe).toBeNull();
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'client-2',
+        sessionId: 'session-1',
+        setId: '101',
+        rpe: 8.5,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const set = getStore().session!.exercises[0].sets[0];
+    expect(set.weight).toBe(80);
+    expect(set.reps).toBe(8);
+    expect(set.rpe).toBe(8.5);
+    expect(getStore().completedSetIds['101']).toBe(firstCompletedAt);
+  });
+
   it('ignores an effort outside 1 to 10', async () => {
     renderHook(() => useWatchWorkoutBridge(true));
     act(() => {

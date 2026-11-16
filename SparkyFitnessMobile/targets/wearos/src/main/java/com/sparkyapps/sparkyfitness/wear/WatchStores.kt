@@ -1469,7 +1469,12 @@ class WorkoutSessionStore(private val context: Context) {
     wristLoggedSetIds.addAll(synced.wristLogged)
     pendingUnlogs.clear()
     pendingUnlogs.addAll(synced.pendingUnlogs)
-    unconfirmedCompletions.keys.retainAll(synced.wristLogged)
+    unconfirmedCompletions.entries.removeAll { (setId, completed) ->
+      setId !in synced.completed || (setId !in synced.wristLogged && completed.rpe == null)
+    }
+    if (pendingRpeQueue.removeAll { it.step.setId !in synced.completed }) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
 
     val curStepBefore = currentStep
     completedSetIds.clear()
@@ -2087,6 +2092,10 @@ class WorkoutSessionStore(private val context: Context) {
       }
     }
 
+    // Deliver the set completion immediately so a phone-initiated finish (or
+    // watch restart) while the RPE prompt is open never drops the logged set.
+    sendCompletedSetPayload(curPlan.sessionId, step, frozenValues, loggedDuration, rpe = null, completedAtMs = nowMs)
+
     val rpeEnabled = checkInStore?.watchContext?.value?.rpeEnabled == true
     if (rpeEnabled) {
       enqueuePendingRpe(
@@ -2097,8 +2106,6 @@ class WorkoutSessionStore(private val context: Context) {
           completedAtMs = nowMs
         )
       )
-    } else {
-      sendCompletedSetPayload(curPlan.sessionId, step, frozenValues, loggedDuration, rpe = null, completedAtMs = nowMs)
     }
   }
 
@@ -2115,18 +2122,35 @@ class WorkoutSessionStore(private val context: Context) {
   fun submitPendingRpe(rpe: Double?) {
     val pending = pendingRpeQueue.removeFirstOrNull() ?: return
     _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    if (rpe == null) return
     val curPlan = _plan.value ?: run {
       clearPendingRpeQueue()
       return
     }
-    sendCompletedSetPayload(
-      sessionId = curPlan.sessionId,
-      step = pending.step,
-      values = pending.values,
-      durationSeconds = pending.durationSeconds,
-      rpe = rpe,
-      completedAtMs = pending.completedAtMs
-    )
+    if (!completedSetIds.contains(pending.step.setId)) return
+    if (phoneConfirmedSetIds.contains(pending.step.setId)) {
+      // Phone already confirmed the completion: send an RPE-only follow-up so
+      // any phone-side weight/reps edits made in the meantime are preserved.
+      val rpeUpdate = CompletedSet(
+        clientId = UUID.randomUUID().toString(),
+        sessionId = curPlan.sessionId,
+        setId = pending.step.setId,
+        rpe = rpe,
+        completedAtMs = pending.completedAtMs
+      )
+      unconfirmedCompletions[pending.step.setId] = rpeUpdate
+      session?.sendMessageOrQueue(OutboundPayloads.setCompleted(rpeUpdate), "setCompleted")
+    } else {
+      val latestValues = _setValues.value[pending.step.setId] ?: pending.values
+      sendCompletedSetPayload(
+        sessionId = curPlan.sessionId,
+        step = pending.step,
+        values = latestValues,
+        durationSeconds = pending.durationSeconds,
+        rpe = rpe,
+        completedAtMs = pending.completedAtMs
+      )
+    }
   }
 
   private fun sendCompletedSetPayload(
@@ -2155,16 +2179,13 @@ class WorkoutSessionStore(private val context: Context) {
   fun uncompleteStep(step: WorkoutStep): Boolean {
     val curPlan = _plan.value ?: return false
     if (!completedSetIds.contains(step.setId)) return false
-    val droppedUnsentRpe = pendingRpeQueue.removeAll { it.step.setId == step.setId }
-    if (droppedUnsentRpe) {
+    if (pendingRpeQueue.removeAll { it.step.setId == step.setId }) {
       _pendingRpe.value = pendingRpeQueue.firstOrNull()
     }
     completedSetIds.remove(step.setId)
     wristLoggedSetIds.remove(step.setId)
     unconfirmedCompletions.remove(step.setId)
-    if (!droppedUnsentRpe) {
-      pendingUnlogs.add(step.setId)
-    }
+    pendingUnlogs.add(step.setId)
     _completedSetIds.value = completedSetIds.toSet()
     _completedSetsCount.value = completedSetIds.size
     syncLoggedOrder()
@@ -2178,12 +2199,10 @@ class WorkoutSessionStore(private val context: Context) {
       _phase.value = Phase.ACTIVE_SET
       seedDraftsForCurrentStep()
     }
-    if (!droppedUnsentRpe) {
-      session?.sendMessageOrQueue(
-        OutboundPayloads.setUncompleted(UUID.randomUUID().toString(), curPlan.sessionId, step.setId),
-        "setUncompleted"
-      )
-    }
+    session?.sendMessageOrQueue(
+      OutboundPayloads.setUncompleted(UUID.randomUUID().toString(), curPlan.sessionId, step.setId),
+      "setUncompleted"
+    )
     Haptics.click()
     return true
   }
@@ -2334,14 +2353,8 @@ class WorkoutSessionStore(private val context: Context) {
 
   fun finishWorkout(notifyPhone: Boolean) {
     val plan = _plan.value ?: return
-    // Flush any held RPE set completions before finishing when watch initiated the stop
-    if (notifyPhone) {
-      while (pendingRpeQueue.isNotEmpty()) {
-        submitPendingRpe(null)
-      }
-    } else {
-      clearPendingRpeQueue()
-    }
+    // Logged sets were already sent immediately on completion; dismiss any unanswered RPE prompts.
+    clearPendingRpeQueue()
     val pendingCompletions = unconfirmedCompletions.values.toList()
     unconfirmedCompletions.clear()
     tickerJob?.cancel()
