@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,7 +145,11 @@ const MoodTagsCell = ({
   );
 };
 
-const HealthDataImportCSV = () => {
+const HealthDataImportCSV = ({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
   const { t } = useTranslation();
   const csvFormat = useCsvFormat();
   const {
@@ -185,6 +189,13 @@ const HealthDataImportCSV = () => {
     () => (loadedText ? csvFormat.parse(loadedText, { numericColumns }) : null),
     [loadedText, csvFormat, numericColumns]
   );
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import clears the rows, so a clean state closes freely.
+  const isDirty = csvData.length > 0 || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleFileUploadWithReset: typeof handleFileUpload = (event) => {
     csvFormat.resetForNewInput();

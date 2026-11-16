@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,21 +26,37 @@ const statusVariant = (
   return 'default';
 };
 
-const ExerciseImportFit = () => {
+const ExerciseImportFit = ({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { importFiles, response, isImporting } = useFitImport();
+
+  // The launcher confirms closing only while this form is dirty. Importing
+  // clears the file list, so a clean state closes freely.
+  const isDirty = files.length > 0;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleFilesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFiles(Array.from(event.target.files ?? []).slice(0, MAX_FILES));
   };
 
   const handleImport = async () => {
-    await importFiles(files);
-    setFiles([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Clear the file list only when every file imported cleanly. On partial or
+    // request-level failure the files are retained so the user can fix and
+    // re-import them rather than losing them from the picker.
+    const succeeded = await importFiles(files);
+    if (succeeded) {
+      setFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
