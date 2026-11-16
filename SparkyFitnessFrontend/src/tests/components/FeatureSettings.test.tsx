@@ -87,11 +87,12 @@ describe('FeatureSettings', () => {
   });
 
   it.each(['loading', 'loadFailed'] as const)(
-    'cannot be switched while %s',
+    'names nothing while cycle settings are %s, as discreet mode is not known yet',
     (state) => {
-      mockCycle = { ...mockCycle, state };
-      renderSettings();
-      expect(screen.getByRole('switch', { name: 'Cycle' })).toBeDisabled();
+      mockCycle = { ...mockCycle, state, settings: undefined };
+      const { container } = renderSettings();
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/cycle|period|fertil|pregnan/i);
     }
   );
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { SharedCycleSettings } from '@workspace/shared';
-import { cycleKeys } from '@/hooks/useCycle';
+import { cycleKeys, useUpsertCycleSettingsMutation } from '@/hooks/useCycle';
 import {
   useCycleSwitch,
   useWebFeatures,
@@ -262,5 +262,59 @@ describe('withoutHiddenCategories', () => {
       withoutHiddenCategories(categories, new Set(['menstruation_flow']))
     ).toEqual([{ id: '1', name: 'blood_glucose' }]);
     expect(withoutHiddenCategories(categories, new Set())).toEqual(categories);
+  });
+});
+
+describe('useUpsertCycleSettingsMutation', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockActingOnBehalf = false;
+    getMock.mockResolvedValue(null);
+  });
+
+  function setupSave() {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    client.setQueryData(cycleKeys.settings(), cycleRow({ mode: 'standard' }));
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const rendered = renderHook(() => useUpsertCycleSettingsMutation(), {
+      wrapper,
+    });
+    return { ...rendered, client };
+  }
+
+  it('shows a save for the account still on screen', async () => {
+    putMock.mockResolvedValue(cycleRow({ mode: 'ttc' }));
+    const { result, client } = setupSave();
+
+    act(() => result.current.mutate({ mode: 'ttc' }));
+
+    await waitFor(() =>
+      expect(
+        client.getQueryData<SharedCycleSettings>(cycleKeys.settings())?.mode
+      ).toBe('ttc')
+    );
+  });
+
+  it("doesn't show a save that answers after another account took over", async () => {
+    const answer = deferred<SharedCycleSettings>();
+    putMock.mockReturnValueOnce(answer.promise);
+    const { result, client } = setupSave();
+
+    act(() => result.current.mutate({ mode: 'ttc' }));
+    await waitFor(() => expect(putMock).toHaveBeenCalled());
+    // useAuth clears the cache when another account takes over.
+    act(() => client.clear());
+    await act(async () => {
+      answer.resolve(cycleRow({ mode: 'ttc' }));
+    });
+
+    expect(client.getQueryData(cycleKeys.settings())).toBeUndefined();
   });
 });

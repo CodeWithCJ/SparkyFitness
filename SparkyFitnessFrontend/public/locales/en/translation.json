@@ -6753,6 +6753,7 @@
     "hub": "Cycle & Pregnancy Hub",
     "pregnancyHub": "Pregnancy Hub",
     "hubSubtitle": "Track, understand, and sync with your body.",
+    "ownerOnly": "Only the account owner can see and change this.",
     "off": {
       "title": "{{name}} is turned off",
       "description": "Your history is kept. Turn it back on to see it here again.",

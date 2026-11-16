@@ -133,6 +133,15 @@ describe('CyclePage', () => {
     expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
   });
 
+  it('shows only a note, never the wizard, while acting for someone else', () => {
+    mockCycle = { ...mockCycle, state: 'actingOnBehalf', settings: null };
+    renderPage();
+    expect(screen.queryByText('Setup wizard')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Only the account owner can see and change this.')
+    ).toBeInTheDocument();
+  });
+
   it('shows an error with Retry, never the wizard, when the settings could not load', () => {
     mockCycle = { ...mockCycle, state: 'loadFailed', settings: undefined };
     renderPage();

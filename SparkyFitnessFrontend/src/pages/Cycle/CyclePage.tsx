@@ -17,6 +17,19 @@ export default function CyclePage() {
   const { settings } = cycle;
   const [activeTab, setActiveTab] = useState('today');
 
+  // Cycle is the owner's own: the server keeps it from anyone acting for
+  // them, so the setup wizard (which would fail to save) never shows then.
+  if (cycle.state === 'actingOnBehalf') {
+    return (
+      <p className="p-6 text-center text-sm text-muted-foreground">
+        {t(
+          'cycle.ownerOnly',
+          'Only the account owner can see and change this.'
+        )}
+      </p>
+    );
+  }
+
   if (cycle.state === 'loading') {
     return (
       <div className="space-y-4 p-4">

@@ -45,6 +45,26 @@ function CycleFeatureRow() {
   const cycle = useCycleSwitch();
   const discreet = cycle.settings?.discreet_mode === true;
 
+  // Until the settings are known, so is discreet mode: show nothing that
+  // could name cycle.
+  if (cycle.state === 'loading') {
+    return (
+      <div className="h-10 animate-pulse rounded-md bg-muted/40" aria-hidden />
+    );
+  }
+  if (cycle.state === 'loadFailed') {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-sm text-destructive">
+          {t('settings.features.loadError', 'Could not load this setting.')}
+        </p>
+        <Button variant="outline" size="sm" onClick={cycle.reload}>
+          {t('common.retry', 'Retry')}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-4">
@@ -75,16 +95,6 @@ function CycleFeatureRow() {
           onCheckedChange={cycle.setOn}
         />
       </div>
-      {cycle.state === 'loadFailed' && (
-        <div className="flex flex-col items-start gap-2">
-          <p className="text-sm text-destructive">
-            {t('settings.features.loadError', 'Could not load this setting.')}
-          </p>
-          <Button variant="outline" size="sm" onClick={cycle.reload}>
-            {t('common.retry', 'Retry')}
-          </Button>
-        </div>
-      )}
       {cycle.needsSetup && <CycleSetupPrompt onOpen={cycle.openSetup} />}
     </div>
   );

@@ -95,6 +95,18 @@ const findCycleSettingsQuery = (queryClient: QueryClient) =>
     .getQueryCache()
     .find({ queryKey: cycleKeys.settings(), exact: true });
 
+/**
+ * useAuth clears the cache when the account changes, so a write whose cached
+ * settings are gone by the time it answers was made for an account that is no
+ * longer on screen: its answer must not be shown. Returned from `onMutate`.
+ */
+const startedOn = (queryClient: QueryClient) => {
+  const startedFrom = findCycleSettingsQuery(queryClient);
+  return {
+    isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
+  };
+};
+
 export const useUpsertCycleSettingsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -105,7 +117,10 @@ export const useUpsertCycleSettingsMutation = () => {
         reset_onboarding?: boolean;
       }
     ) => cycleService.putSettings(body),
-    onSuccess: (data) => showSavedCycleSettings(queryClient, data),
+    onMutate: () => startedOn(queryClient),
+    onSuccess: (data, _body, started) => {
+      if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
+    },
     meta: {
       errorMessage: i18n.t(
         'hooks.useCycle.couldNotSaveCycleSettings',
@@ -120,23 +135,16 @@ export const useUpsertCycleSettingsMutation = () => {
  * Turns cycle tracking on or off: only `enabled`, never `mark_onboarded`, so
  * the first time cycle is on its tab opens the setup wizard. Cycle is one
  * switch for the whole account, so this also shows or hides it in the app.
- *
- * useAuth clears the cache when the account changes, so a write whose cached
- * settings are gone by the time it answers was made for an account that is no
- * longer on screen, and its answer is not shown. What `onMutate` returns
- * carries that check (`isCurrent`) for callers that act on the answer.
+ * An answer for an account no longer on screen is not shown, and what
+ * `onMutate` returns carries that check (`isCurrent`) for callers that act on
+ * the answer.
  */
 export const useSetCycleEnabledMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     scope: CYCLE_SETTINGS_SCOPE,
     mutationFn: (enabled: boolean) => cycleService.putSettings({ enabled }),
-    onMutate: () => {
-      const startedFrom = findCycleSettingsQuery(queryClient);
-      return {
-        isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
-      };
-    },
+    onMutate: () => startedOn(queryClient),
     onSuccess: (data, _enabled, started) => {
       if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },
