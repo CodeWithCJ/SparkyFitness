@@ -70,7 +70,7 @@ export interface ChallengeEntry {
   exerciseKey?: string | null;
   activeCalories?: number | null;
   elevationM?: number | null;
-  /** Set by mergeDuplicates on the copy that was kept. */
+  /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
 }
 
@@ -203,14 +203,19 @@ export function challengeEntryRate(
   }
   const strength = isStrengthEntry(e);
   let strengthFloored = false;
-  if (
-    strength &&
-    rules.strengthFloor !== null &&
-    perMin < rules.strengthFloor
-  ) {
-    perMin = rules.strengthFloor;
+  const floor = rules.strengthFloor;
+  if (strength && floor !== null && buckets.some((b) => b.perMin < floor)) {
+    // Every lifting minute earns at least the floor, bucket by bucket, so a
+    // workout split in two scores the same as one.
+    buckets = buckets.map((b) => ({
+      minutes: b.minutes,
+      perMin: Math.max(b.perMin, floor),
+    }));
+    perMin =
+      minutes > 0
+        ? buckets.reduce((s, b) => s + b.minutes * b.perMin, 0) / minutes
+        : floor;
     strengthFloored = true;
-    buckets = [{ minutes, perMin }];
   }
   return {
     minutes,
@@ -446,56 +451,77 @@ export function mergeChallengeDuplicates(
   const out = new Map<string, ChallengeEntry>();
   const differentSource = (a: ChallengeEntry, b: ChallengeEntry): boolean =>
     a.source && b.source ? a.source !== b.source : hasHr(a) !== hasHr(b);
+  /** The length gap when `a` and `b` are copies of one workout, else null. */
+  const duplicateGap = (
+    a: ChallengeEntry,
+    b: ChallengeEntry
+  ): number | null => {
+    if (
+      !differentSource(a, b) ||
+      challengeEntryClass(a) !== challengeEntryClass(b)
+    )
+      return null;
+    const da = num(a.durationMin);
+    const db = num(b.durationMin);
+    const gap = Math.abs(da - db);
+    if (gap > Math.max(2, 0.1 * Math.max(da, db))) return null;
+    const ta = minuteOfDay(a.time);
+    const tb = minuteOfDay(b.time);
+    if (
+      ta !== null &&
+      tb !== null &&
+      Math.abs(ta - tb) > CHALLENGE_DUPLICATE_START_MINUTES
+    )
+      return null;
+    return gap;
+  };
   for (const day of groupByDate(list).values()) {
     const pairs: { a: ChallengeEntry; b: ChallengeEntry; gap: number }[] = [];
     for (let i = 0; i < day.length; i++) {
       for (let j = i + 1; j < day.length; j++) {
-        const a = day[i]!;
-        const b = day[j]!;
-        if (
-          !differentSource(a, b) ||
-          challengeEntryClass(a) !== challengeEntryClass(b)
-        )
-          continue;
-        const da = num(a.durationMin);
-        const db = num(b.durationMin);
-        const gap = Math.abs(da - db);
-        if (gap > Math.max(2, 0.1 * Math.max(da, db))) continue;
-        const ta = minuteOfDay(a.time);
-        const tb = minuteOfDay(b.time);
-        if (
-          ta !== null &&
-          tb !== null &&
-          Math.abs(ta - tb) > CHALLENGE_DUPLICATE_START_MINUTES
-        )
-          continue;
-        pairs.push({ a, b, gap });
+        const gap = duplicateGap(day[i]!, day[j]!);
+        if (gap !== null) pairs.push({ a: day[i]!, b: day[j]!, gap });
       }
     }
     pairs.sort((x, y) => x.gap - y.gap);
-    const used = new Set<string>();
+    // Closest pairs first, each copy joins one workout group in which every
+    // copy matches every other (so never two from one source): three sources
+    // of one run become one workout, two runs from one watch stay two.
+    const groupOf = new Map<string, ChallengeEntry[]>();
+    for (const e of day) groupOf.set(e.id, [e]);
     for (const { a, b } of pairs) {
-      if (used.has(a.id) || used.has(b.id)) continue;
-      used.add(a.id);
-      used.add(b.id);
-      const aHr = hasHr(a);
-      const bHr = hasHr(b);
-      const [keep, other] =
-        aHr !== bHr
-          ? aHr
-            ? [a, b]
-            : [b, a]
-          : num(a.durationMin) >= num(b.durationMin)
-            ? [a, b]
-            : [b, a];
-      const merged: ChallengeEntry = { ...keep, mergedFrom: other.id };
-      if (!merged.time && other.time) merged.time = other.time;
-      if (!(num(merged.distanceM) > 0) && num(other.distanceM) > 0)
-        merged.distanceM = other.distanceM;
-      if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
-        merged.bestE1rm = other.bestE1rm;
-      out.set(keep.id, merged);
-      drop.add(other.id);
+      const ga = groupOf.get(a.id)!;
+      const gb = groupOf.get(b.id)!;
+      if (ga === gb) continue;
+      // Every copy must match every other, so copies never chain through
+      // a middle one into a group whose ends are two workouts.
+      if (!ga.every((x) => gb.every((y) => duplicateGap(x, y) !== null)))
+        continue;
+      ga.push(...gb);
+      for (const y of gb) groupOf.set(y.id, ga);
+    }
+    for (const group of new Set(groupOf.values())) {
+      if (group.length < 2) continue;
+      // The copy with heart rate is kept (the longest if several or none
+      // have it); the others fill in what it lacks.
+      const [keep, ...others] = [...group].sort(
+        (x, y) =>
+          Number(hasHr(y)) - Number(hasHr(x)) ||
+          num(y.durationMin) - num(x.durationMin)
+      );
+      const merged: ChallengeEntry = {
+        ...keep!,
+        mergedFrom: others.map((o) => o.id).join(','),
+      };
+      for (const other of others) {
+        if (!merged.time && other.time) merged.time = other.time;
+        if (!(num(merged.distanceM) > 0) && num(other.distanceM) > 0)
+          merged.distanceM = other.distanceM;
+        if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
+          merged.bestE1rm = other.bestE1rm;
+        drop.add(other.id);
+      }
+      out.set(keep!.id, merged);
     }
   }
   return list.filter((e) => !drop.has(e.id)).map((e) => out.get(e.id) ?? e);
@@ -903,15 +929,52 @@ export interface ChallengePeriodTotal {
 }
 
 /**
+ * A week's goal bonus as it stood on `asOf` (the bonus is pro rata, so it
+ * grows through the week). Without `weekStart` and `asOf` it is simply added
+ * to the total and counts toward a finish only on the last day.
+ */
+export interface ChallengeGoalBonusInput {
+  rawBonus: number;
+  weekStart?: string;
+  asOf?: string;
+}
+
+/** The goal bonus earned by the end of `day` (undated bonuses only when `final`). */
+function goalBonusBy(
+  goals: readonly (ChallengeGoalBonusInput | null)[],
+  day: string | null,
+  final: boolean
+): number {
+  const latest = new Map<string, ChallengeGoalBonusInput>();
+  let undated = 0;
+  for (const g of goals) {
+    if (!g) continue;
+    if (!g.weekStart || !g.asOf) {
+      if (final) undated += g.rawBonus;
+      continue;
+    }
+    if (day !== null && g.asOf > day) continue;
+    const prev = latest.get(g.weekStart);
+    if (!prev || prev.asOf! < g.asOf) latest.set(g.weekStart, g);
+  }
+  let sum = undated;
+  for (const g of latest.values()) sum += g.rawBonus;
+  return sum;
+}
+
+/**
  * Adds a member's days up to a period total. In each Monday-to-Sunday week only
  * the best `bestDaysPerWeek` day totals count (sets day.counted). Goal bonuses
- * are added on top.
+ * are added on top. The finish day (`reachedOn`) is the first day whose own
+ * running total reached the target, with the best-days rule applied to the
+ * days up to it and the goal bonus earned by then, so a better day later in
+ * the week never moves an earlier finish.
  */
 export function challengePeriodTotal(
   days: ChallengeDayScore[],
   rules: ChallengeRules,
   upTo?: string,
-  goals: readonly (Pick<ChallengeWeekGoal, 'rawBonus'> | null)[] = []
+  goals: readonly (ChallengeGoalBonusInput | null)[] = []
 ): ChallengePeriodTotal {
   const inRange = days.filter((d) => !upTo || d.date <= upTo);
   for (const d of days) d.counted = false;
@@ -942,8 +1005,10 @@ export function challengePeriodTotal(
   let workouts = 0;
   let daysEligible = 0;
   let daysHit = 0;
-  let reachedOn: string | null = null;
-  for (const d of [...inRange].sort((a, b) => a.date.localeCompare(b.date))) {
+  const chronological = [...inRange].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+  for (const d of chronological) {
     minutes += d.minutes;
     workouts += d.workouts;
     if (d.eligible) {
@@ -959,18 +1024,35 @@ export function challengePeriodTotal(
     stepPts += d.stepPoints;
     bonus += d.streakBonus + d.beatAverageBonus + d.prBonus;
     prBonus += d.prBonus;
-    if (reachedOn === null && rules.target !== null && total >= rules.target)
-      reachedOn = d.date;
   }
-  const goalBonus = goals.reduce((s, g) => s + (g ? g.rawBonus : 0), 0);
+  const goalBonus = goalBonusBy(goals, null, true);
   total += goalBonus;
-  if (
-    reachedOn === null &&
-    rules.target !== null &&
-    total >= rules.target &&
-    inRange.length
-  ) {
-    reachedOn = inRange[inRange.length - 1]!.date;
+  let reachedOn: string | null = null;
+  if (rules.target !== null && total >= rules.target) {
+    const target = rules.target;
+    const dates = [...new Set(chronological.map((d) => d.date))];
+    for (const day of dates) {
+      // The total as it stood at the end of `day`
+      const weeks = new Map<string, number[]>();
+      for (const d of chronological) {
+        if (d.date > day) break;
+        if (!d.eligible) continue;
+        const k = challengeWeekStart(d.date);
+        const list = weeks.get(k);
+        if (list) list.push(d.rawTotal);
+        else weeks.set(k, [d.rawTotal]);
+      }
+      let sum = goalBonusBy(goals, day, day === dates[dates.length - 1]);
+      for (const list of weeks.values())
+        sum += list
+          .sort((a, b) => b - a)
+          .slice(0, best)
+          .reduce((x, y) => x + y, 0);
+      if (sum >= target) {
+        reachedOn = day;
+        break;
+      }
+    }
   }
   return {
     total: round1(total),

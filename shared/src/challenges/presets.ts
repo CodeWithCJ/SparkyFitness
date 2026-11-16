@@ -1,3 +1,5 @@
+import { addDays } from '../utils/timezone.ts';
+import { isoWeekday } from './periods.ts';
 import {
   CHALLENGE_RULES_VERSION,
   challengeRulesSchema,
@@ -116,4 +118,29 @@ export function challengePreset(id: ChallengePresetId): ChallengePreset {
   const preset = CHALLENGE_PRESETS.find((p) => p.id === id);
   if (!preset) throw new Error(`Unknown challenge preset: ${id}`);
   return preset;
+}
+
+/**
+ * The last day of a preset's suggested length from `start`, or null when it
+ * runs until ended. The window holds `lengthDays` days that count, so a preset
+ * scored only on some weekdays (Weekend Warrior: Saturday and Sunday) started
+ * on a Monday runs to that Sunday instead of ending before its first day.
+ */
+export function challengePresetEndDate(
+  id: ChallengePresetId,
+  start: string
+): string | null {
+  const { lengthDays, rules } = challengePreset(id);
+  if (lengthDays === null) return null;
+  const days = rules.days ?? [];
+  if (!days.length || days.length >= 7) return addDays(start, lengthDays - 1);
+  let counted = 0;
+  let day = start;
+  // At most lengthDays weeks: every week holds at least one counted day.
+  for (let i = 0; i < lengthDays * 7; i++) {
+    if (days.includes(isoWeekday(day))) counted += 1;
+    if (counted >= lengthDays) return day;
+    day = addDays(day, 1);
+  }
+  return addDays(start, lengthDays - 1);
 }

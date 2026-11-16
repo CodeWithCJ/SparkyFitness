@@ -26,7 +26,8 @@ vi.mock('../models/challengeRepository.js', () => ({
     takeQueuedDays: vi.fn(),
     ackQueuedDays: vi.fn(),
     withScoringLock: vi.fn(
-      async (_c: string, _u: string, fn: () => Promise<unknown>) => fn()
+      async (_c: string, _u: string, fn: (lock: unknown) => Promise<unknown>) =>
+        fn({ lockClient: true })
     ),
     saveMemberDays: vi.fn(),
     hasResults: vi.fn(),
@@ -139,6 +140,8 @@ beforeEach(() => {
   repo.frozenPeriodStarts.mockResolvedValue([]);
   repo.getMemberEntries.mockResolvedValue([]);
   repo.getMemberSteps.mockResolvedValue({});
+  repo.setInvite.mockResolvedValue(true);
+  repo.clearInvite.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -269,20 +272,18 @@ describe('changing the rules', () => {
       challenge().id,
       'host',
       expect.objectContaining({ bestDaysPerWeek: 4 }),
-      allRounder,
       '2026-11-16',
       1
     );
   });
 
-  it('after the start, a change applies from the next week and is logged with the old rules', async () => {
+  it('after the start, a change applies from the next week', async () => {
     repo.getChallenge.mockResolvedValue(challenge());
     await service.updateRules('host', challenge().id, {
       ...allRounder,
       bestDaysPerWeek: 4,
     });
-    expect(repo.updateRules.mock.calls[0]![4]).toBe('2026-11-16');
-    expect(repo.updateRules.mock.calls[0]![3]).toEqual(allRounder);
+    expect(repo.updateRules.mock.calls[0]![3]).toBe('2026-11-16');
   });
 
   it('the period cannot change once running, and an ended challenge is closed', async () => {
@@ -325,7 +326,8 @@ describe('invites', () => {
     expect(a.code).toMatch(/^[A-Za-z0-9_-]{22}$/);
     expect(Buffer.from(a.code, 'base64url')).toHaveLength(16);
     expect(a.code).not.toBe(b.code);
-    const [, storedHash, expiresAt] = repo.setInvite.mock.calls[0]!;
+    const [, hostUserId, storedHash, expiresAt] = repo.setInvite.mock.calls[0]!;
+    expect(hostUserId).toBe('host');
     expect(storedHash).toBe(createHash('sha256').update(a.code).digest('hex'));
     expect(storedHash).not.toContain(a.code);
     expect((expiresAt as Date).toISOString()).toBe('2026-11-19T12:00:00.000Z');
@@ -693,10 +695,11 @@ describe('review fixes (PR #3585)', () => {
 
   it('a member is scored inside their scoring lock, and the queue acks only after the save', async () => {
     let locked = false;
+    const lockClient = { lockClient: 'held' } as never;
     repo.withScoringLock.mockImplementationOnce(async (_c, _u, fn) => {
       locked = true;
       try {
-        return await fn();
+        return await fn(lockClient);
       } finally {
         locked = false;
       }
@@ -722,6 +725,8 @@ describe('review fixes (PR #3585)', () => {
       expect.any(Function)
     );
     expect(savedLocked).toBe(true);
+    // Saved on the connection that holds the lock, so a lost lock fails the save
+    expect(repo.saveMemberDays.mock.calls[0]![6]).toBe(lockClient);
     expect(repo.ackQueuedDays).toHaveBeenCalledTimes(1);
     expect(repo.saveMemberDays.mock.invocationCallOrder[0]!).toBeLessThan(
       repo.ackQueuedDays.mock.invocationCallOrder[0]!
@@ -1010,9 +1015,9 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     } as const;
     await service.createChallenge('host', { ...base, end_date: null });
     expect(repo.createWithHost.mock.calls[0]![0].endDate).toBeNull();
-    // Left out, the preset's 5 days still apply
+    // Left out, the preset's 5 weekdays still apply (Tuesday to Monday)
     await service.createChallenge('host', base);
-    expect(repo.createWithHost.mock.calls[1]![0].endDate).toBe('2026-11-14');
+    expect(repo.createWithHost.mock.calls[1]![0].endDate).toBe('2026-11-16');
   });
 
   it("the nightly catch-up works out each challenge's days in its own zone, and one bad zone does not stop the others", async () => {
@@ -1100,5 +1105,93 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
       service.updateRules('amy', challenge().id, allRounder)
     ).rejects.toMatchObject({ status: 403 });
     expect(rateLimitWindowRepository.hit).not.toHaveBeenCalled();
+  });
+});
+
+describe('bot review follow-ups (PRs #3594 and #3595)', () => {
+  it('an invite is set or cleared only while the caller is still the host', async () => {
+    repo.getMembership.mockResolvedValue(member('host', 'host'));
+    repo.getChallenge.mockResolvedValue(challenge());
+    repo.setInvite.mockResolvedValue(false); // hosting passed on meanwhile
+    await expect(
+      service.createInvite('host', challenge().id, 7)
+    ).rejects.toMatchObject({ status: 403, code: 'CHALLENGE_HOST_ONLY' });
+    repo.clearInvite.mockResolvedValue(false);
+    await expect(
+      service.revokeInvite('host', challenge().id)
+    ).rejects.toMatchObject({ status: 403 });
+    expect(repo.clearInvite).toHaveBeenCalledWith(challenge().id, 'host');
+  });
+
+  it('a repeated join queues the backfill again', async () => {
+    repo.joinByInviteHash.mockResolvedValue({
+      status: 'already_member',
+      challenge: challenge(),
+    });
+    repo.getMembership.mockResolvedValue(member('amy'));
+    repo.getForMember.mockResolvedValue(challenge());
+    repo.getMembersForMember.mockResolvedValue([member('amy')]);
+    await service.joinChallenge('amy', {
+      code: 'AAAAAAAAAAAAAAAAAAAAAA',
+      display_name: 'Amy',
+    });
+    expect(repo.enqueueDays).toHaveBeenCalledWith(challenge().id, 'amy', [
+      '2026-11-09',
+      '2026-11-10',
+      '2026-11-11',
+      '2026-11-12',
+    ]);
+  });
+
+  it('tomorrow is scored for members ahead of the zone but is an eligible day only with activity', async () => {
+    await service.recomputeMember(challenge(), member('amy'), '2026-11-12');
+    let scores = repo.saveMemberDays.mock.calls[0]![4];
+    expect(scores.map((d) => [d.day, d.eligible])).toEqual([
+      ['2026-11-12', true],
+      ['2026-11-13', false],
+    ]);
+    repo.getMemberSteps.mockResolvedValue({ '2026-11-13': 4000 });
+    await service.recomputeMember(challenge(), member('amy'), '2026-11-12');
+    scores = repo.saveMemberDays.mock.calls[1]![4];
+    expect(scores.find((d) => d.day === '2026-11-13')!.eligible).toBe(true);
+  });
+
+  it('a race finish counts the goal bonus on the day it was earned', () => {
+    const race = {
+      ...allRounder,
+      format: 'race' as const,
+      target: 100,
+    };
+    const day = (date: string, total: number) => ({
+      challenge_id: challenge().id,
+      user_id: 'amy',
+      day: date,
+      total,
+      effort: total,
+      step_points: 0,
+      pr_bonus: 0,
+      streak_bonus: 0,
+      beat_average_bonus: 0,
+      minutes: 30,
+      steps: 0,
+      workouts: 1,
+      eligible: true,
+      detail: { goal: { rawBonus: date >= '2026-11-11' ? 30 : 10 } },
+    });
+    const { rows } = service.standingsFromScores(
+      [member('amy')],
+      [
+        day('2026-11-09', 40),
+        day('2026-11-10', 20),
+        day('2026-11-11', 15),
+        day('2026-11-12', 0),
+      ],
+      race,
+      { start: '2026-11-09', end: '2026-11-15' },
+      '2026-11-12'
+    );
+    // 40 + 20 + 15 = 75, plus the goal's 30 by Wednesday = 105
+    expect(rows[0]!.reachedOn).toBe('2026-11-11');
+    expect(rows[0]!.total).toBe(105);
   });
 });

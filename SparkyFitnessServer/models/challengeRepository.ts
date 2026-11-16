@@ -168,20 +168,25 @@ async function withSystem<T>(
   }
 }
 
+async function transactionOn<T>(
+  client: PoolClient,
+  fn: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  await client.query('BEGIN');
+  try {
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+}
+
 async function inTransaction<T>(
   fn: (client: PoolClient) => Promise<T>
 ): Promise<T> {
-  return withSystem(async (client) => {
-    await client.query('BEGIN');
-    try {
-      const result = await fn(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    }
-  });
+  return withSystem((client) => transactionOn(client, fn));
 }
 
 async function asMember<T>(
@@ -414,8 +419,8 @@ async function createWithHost(input: NewChallenge): Promise<string> {
 }
 
 /**
- * Replaces the rules from `effectiveFrom` on and logs the change. The UPDATE
- * locks the challenge row first, so the log's seq follows the order the
+ * Replaces the rules from `effectiveFrom` on and logs the change. Reading the
+ * old rules locks the challenge row first, so the log's seq follows the order the
  * changes were really written in; the latest change for a day wins. The
  * first day it applies to is queued for every member in the same
  * transaction: a rescore runs from the earliest queued day to the member's
@@ -428,11 +433,17 @@ async function updateRules(
   challengeId: string,
   changedBy: string,
   rules: unknown,
-  previous: unknown,
   effectiveFrom: string,
   rulesVersion: number
 ): Promise<void> {
   await inTransaction(async (client) => {
+    // The rules being replaced, read under the row lock, so two overlapping
+    // changes log R0 -> R1 and R1 -> R2 rather than both from R0.
+    const locked = await client.query(
+      'SELECT rules FROM challenges WHERE id = $1 FOR UPDATE',
+      [challengeId]
+    );
+    const previous = (locked.rows[0] as { rules: unknown } | undefined)?.rules;
     await client.query(
       'UPDATE challenges SET rules = $2::jsonb, rules_version = $3, updated_at = now() WHERE id = $1',
       [challengeId, JSON.stringify(rules), rulesVersion]
@@ -446,7 +457,7 @@ async function updateRules(
         changedBy,
         effectiveFrom,
         JSON.stringify(rules),
-        JSON.stringify(previous),
+        previous === undefined ? null : JSON.stringify(previous),
       ]
     );
     await client.query(
@@ -459,12 +470,39 @@ async function updateRules(
   });
 }
 
+/**
+ * Runs `write` only while `userId` is still the host. The challenge row is
+ * locked first, the same lock leaving and passing on hosting take, so a host
+ * who left (or was replaced) meanwhile can no longer set or clear the invite.
+ * Returns false when they are not the host any more.
+ */
+async function asCurrentHost(
+  challengeId: string,
+  userId: string,
+  write: (client: PoolClient) => Promise<unknown>
+): Promise<boolean> {
+  return inTransaction(async (client) => {
+    await client.query('SELECT id FROM challenges WHERE id = $1 FOR UPDATE', [
+      challengeId,
+    ]);
+    const host = await client.query(
+      `SELECT 1 FROM challenge_members
+        WHERE challenge_id = $1 AND user_id = $2 AND role = 'host'`,
+      [challengeId, userId]
+    );
+    if (!host.rowCount) return false;
+    await write(client);
+    return true;
+  });
+}
+
 async function setInvite(
   challengeId: string,
+  hostUserId: string,
   codeHash: string,
   expiresAt: Date
-): Promise<void> {
-  await withSystem((client) =>
+): Promise<boolean> {
+  return asCurrentHost(challengeId, hostUserId, (client) =>
     client.query(
       'UPDATE challenges SET invite_code_hash = $2, invite_expires_at = $3, updated_at = now() WHERE id = $1',
       [challengeId, codeHash, expiresAt]
@@ -472,8 +510,11 @@ async function setInvite(
   );
 }
 
-async function clearInvite(challengeId: string): Promise<void> {
-  await withSystem((client) =>
+async function clearInvite(
+  challengeId: string,
+  hostUserId: string
+): Promise<boolean> {
+  return asCurrentHost(challengeId, hostUserId, (client) =>
     client.query(
       'UPDATE challenges SET invite_code_hash = NULL, invite_expires_at = NULL, updated_at = now() WHERE id = $1',
       [challengeId]
@@ -738,7 +779,7 @@ async function ackQueuedDays(batch: QueuedMemberDays): Promise<void> {
 async function withScoringLock<T>(
   challengeId: string,
   userId: string,
-  fn: () => Promise<T>
+  fn: (lock: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await getSystemClient();
   const key = `challenge-score:${challengeId}:${userId}`;
@@ -746,7 +787,7 @@ async function withScoringLock<T>(
   try {
     await client.query('SELECT pg_advisory_lock(hashtext($1))', [key]);
     try {
-      return await fn();
+      return await fn(client);
     } finally {
       await client.query('SELECT pg_advisory_unlock(hashtext($1))', [key]);
       unlocked = true;
@@ -786,9 +827,15 @@ async function saveMemberDays(
   from: string,
   to: string,
   scores: DailyScoreInput[],
-  cards: ChallengeActivityCardInput[]
+  cards: ChallengeActivityCardInput[],
+  lock?: PoolClient
 ): Promise<void> {
-  await inTransaction(async (client) => {
+  // On the connection that holds the member's scoring lock: if it was lost
+  // (and the lock with it) the save fails instead of landing after a newer
+  // run's.
+  const run = (fn: (client: PoolClient) => Promise<void>) =>
+    lock ? transactionOn(lock, fn) : inTransaction(fn);
+  await run(async (client) => {
     const member = await client.query(
       'SELECT 1 FROM challenge_members WHERE challenge_id = $1 AND user_id = $2 FOR SHARE',
       [challengeId, userId]

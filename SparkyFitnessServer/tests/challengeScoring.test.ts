@@ -9,6 +9,7 @@ import {
   challengePeriodWindow,
   challengePeriodsUpTo,
   challengePreset,
+  challengePresetEndDate,
   challengeRulesEffectiveFrom,
   challengeRulesSchema,
   challengeStepPoints,
@@ -1278,5 +1279,113 @@ describe('review fixes (PR #3585)', () => {
         activities: { includeSports: ['running', 'cycling'] },
       }).success
     ).toBe(true);
+  });
+});
+
+describe('bot review follow-ups (PRs #3594 and #3595)', () => {
+  it('the lifting floor applies minute by minute, so a split workout scores the same', () => {
+    const lift = (id: string, zoneSeconds: number[]): ChallengeEntry => ({
+      id,
+      date: '2026-11-06',
+      durationMin: zoneSeconds.reduce((s, x) => s + x, 0) / 60,
+      name: 'Bench Press',
+      category: 'Strength',
+      zoneSeconds,
+    });
+    const whole = score(
+      [lift('w', [1800, 0, 1800, 0, 0])],
+      '2026-11-06',
+      '2026-11-06'
+    )[0]!;
+    const split = score(
+      [lift('a', [1800, 0, 0, 0, 0]), lift('b', [0, 0, 1800, 0, 0])],
+      '2026-11-06',
+      '2026-11-06'
+    )[0]!;
+    // 30 min in zone 1 raised to 1.5, 30 min in zone 3 at 2
+    expect(whole.effort).toBe(105);
+    expect(split.effort).toBe(105);
+  });
+
+  it('one workout synced from three sources counts once', () => {
+    const copy = (
+      id: string,
+      source: string,
+      extra: Partial<ChallengeEntry> = {}
+    ): ChallengeEntry => ({
+      id,
+      date: '2026-11-06',
+      durationMin: 30,
+      name: 'Run',
+      time: '07:00',
+      source,
+      ...extra,
+    });
+    const out = mergeChallengeDuplicates([
+      copy('hc', 'health_connect', { distanceM: 5000 }),
+      copy('gm', 'garmin', { avgHr: 150 }),
+      copy('st', 'strava'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: 'gm', distanceM: 5000 });
+    expect(out[0]!.mergedFrom!.split(',').sort()).toEqual(['hc', 'st']);
+    // Two runs from one source stay two, even with a third copy around
+    expect(
+      mergeChallengeDuplicates([
+        copy('g1', 'garmin'),
+        copy('g2', 'garmin', { time: '07:05' }),
+        copy('s1', 'strava'),
+      ])
+    ).toHaveLength(2);
+    // A middle copy that matches both ends does not chain two workouts
+    expect(
+      mergeChallengeDuplicates([
+        copy('w', 'watch', { durationMin: 30, time: '10:00' }),
+        copy('p', 'phone', { durationMin: 33, time: '10:14' }),
+        copy('s', 'strava', { durationMin: 36, time: '10:28' }),
+      ])
+    ).toHaveLength(2);
+  });
+
+  it('a race finish is the first day the total got there, even when a better day later replaces it', () => {
+    const rules = challengeRulesSchema.parse({
+      version: 1,
+      metric: 'steps',
+      format: 'race',
+      target: 50,
+      bestDaysPerWeek: 1,
+    });
+    const days = score(
+      [],
+      '2026-11-02',
+      '2026-11-03',
+      { '2026-11-02': 60, '2026-11-03': 100 },
+      rules
+    );
+    const t = challengePeriodTotal(days, rules, '2026-11-03');
+    expect(t.total).toBe(100); // only Tuesday counts in the end
+    expect(t.reachedOn).toBe('2026-11-02'); // but Monday already finished
+  });
+});
+
+describe('preset windows', () => {
+  it('a preset scored on some weekdays runs until it holds its length in those days', () => {
+    // Monday 2026-11-16
+    expect(challengePresetEndDate('weekend_warrior', '2026-11-16')).toBe(
+      '2026-11-22'
+    );
+    expect(challengePresetEndDate('weekend_warrior', '2026-11-21')).toBe(
+      '2026-11-22'
+    );
+    expect(challengePresetEndDate('workweek_hustle', '2026-11-16')).toBe(
+      '2026-11-20'
+    );
+    expect(challengePresetEndDate('workweek_hustle', '2026-11-18')).toBe(
+      '2026-11-24'
+    );
+    expect(challengePresetEndDate('daily_showdown', '2026-11-16')).toBe(
+      '2026-11-16'
+    );
+    expect(challengePresetEndDate('all_rounder', '2026-11-16')).toBeNull();
   });
 });

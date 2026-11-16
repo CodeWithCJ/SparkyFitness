@@ -1861,7 +1861,6 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         challengeId,
         HOST,
         { ...steps, dailyCap: 5000 },
-        steps,
         '2026-11-16',
         1
       );
@@ -1921,10 +1920,16 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       const deadline = Date.now() + 5000;
       let waiting = 0;
       while (waiting === 0 && Date.now() < deadline) {
+        // Only this member's scoring lock (the key withScoringLock takes:
+        // a bigint split into classid and objid), so another test's
+        // advisory waiter cannot change the count
         const r = await sys.query(
           `SELECT COUNT(*)::int AS n FROM pg_locks
-            WHERE locktype = 'advisory' AND NOT granted AND database = (
-              SELECT oid FROM pg_database WHERE datname = current_database())`
+            WHERE locktype = 'advisory' AND NOT granted AND objsubid = 1
+              AND ((classid::bigint << 32) | objid::bigint) = hashtext($1)::bigint
+              AND database = (
+                SELECT oid FROM pg_database WHERE datname = current_database())`,
+          [`challenge-score:${challengeId}:${AMY}`]
         );
         waiting = r.rows[0].n;
         if (waiting === 0) await new Promise((r) => setImmediate(r));
@@ -2207,7 +2212,6 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       challengeId,
       HOST,
       { version: 1, metric: 'steps', dailyCap: 6000 },
-      { version: 1, metric: 'steps' },
       '2026-11-23',
       1
     );
@@ -2223,11 +2227,21 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       challengeId,
       HOST,
       { version: 1, metric: 'steps', dailyCap: 6500 },
-      { version: 1, metric: 'steps', dailyCap: 6000 },
       '2026-11-23',
       1
     );
     await challengeRepository.ackQueuedDays(taken!);
+    // The log records what each change replaced, read under the row lock
+    const log = await sys.query(
+      `SELECT rules->>'dailyCap' AS cap, previous_rules->>'dailyCap' AS prev
+         FROM public.challenge_rule_changes
+        WHERE challenge_id = $1 AND effective_from = '2026-11-23' ORDER BY seq`,
+      [challengeId]
+    );
+    expect(log.rows).toEqual([
+      { cap: '6000', prev: '7000' },
+      { cap: '6500', prev: '6000' },
+    ]);
     expect(await queued()).toEqual(['host 2026-11-23', 'amy 2026-11-23']);
     await clearQueue();
   });

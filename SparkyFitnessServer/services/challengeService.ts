@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import {
   CHALLENGE_DEFAULT_MEMBER_LIMIT,
   CHALLENGE_MAX_BACKDATE_DAYS,
@@ -15,6 +16,7 @@ import {
   challengePeriodWindow,
   challengePeriodsUpTo,
   challengePreset,
+  challengePresetEndDate,
   challengeRulesEffectiveFrom,
   challengeWeekGoal,
   challengeWeekStart,
@@ -33,6 +35,7 @@ import {
   type ChallengeDayScore,
   type ChallengeDetail,
   type ChallengeEntry,
+  type ChallengeGoalBonusInput,
   type ChallengeInviteResponse,
   type ChallengeMemberZones,
   type ChallengeRuleChange,
@@ -273,9 +276,9 @@ export async function createChallenge(
   const endDate =
     body.end_date !== undefined
       ? body.end_date
-      : body.rules || preset.lengthDays === null
+      : body.rules
         ? null
-        : addDays(body.start_date, preset.lengthDays - 1);
+        : challengePresetEndDate(preset.id, body.start_date);
   validateDates(body.start_date, endDate, rules);
   const timeZone =
     body.time_zone && isValidTimeZone(body.time_zone)
@@ -396,7 +399,6 @@ export async function updateRules(
     challengeId,
     userId,
     rules,
-    current,
     effectiveFrom,
     CHALLENGE_RULES_VERSION
   );
@@ -447,11 +449,13 @@ export async function createInvite(
   }
   const code = newInviteCode();
   const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-  await challengeRepository.setInvite(
+  const saved = await challengeRepository.setInvite(
     challengeId,
+    userId,
     hashInviteCode(code),
     expiresAt
   );
+  if (!saved) throw hostOnly();
   return { code, expires_at: expiresAt.toISOString() };
 }
 
@@ -460,7 +464,9 @@ export async function revokeInvite(
   challengeId: string
 ): Promise<void> {
   await requireHost(userId, challengeId);
-  await challengeRepository.clearInvite(challengeId);
+  if (!(await challengeRepository.clearInvite(challengeId, userId))) {
+    throw hostOnly();
+  }
 }
 
 export async function joinChallenge(
@@ -501,8 +507,9 @@ export async function joinChallenge(
       );
     case 'full':
       throw new ChallengeError(409, 'CHALLENGE_FULL', 'This challenge is full');
+    // A repeated join queues the backfill again (an upsert), so a join whose
+    // first backfill failed after the membership was saved is completed.
     case 'already_member':
-      return getChallenge(userId, outcome.challenge.id);
     default: {
       const c = outcome.challenge;
       await queueBackfill(c.id, userId, c.start_date, c.end_date, c.time_zone);
@@ -574,20 +581,30 @@ function storedDay(row: ChallengeDailyScoreRow): ChallengeDayScore {
   };
 }
 
-/** The goal bonus of each week starting in the window, from the latest scored day of that week. */
+/**
+ * The goal bonus of each week starting in the window as it stood on each
+ * scored day (the latest day of a week gives its bonus; the earlier days let
+ * a race finish on the day the bonus got there).
+ */
 function goalBonuses(
   rows: readonly ChallengeDailyScoreRow[],
   window: ChallengeWindow,
   upTo: string
-): { rawBonus: number }[] {
-  const out: { rawBonus: number }[] = [];
+): ChallengeGoalBonusInput[] {
+  const out: ChallengeGoalBonusInput[] = [];
   for (const monday of challengeWeeksIn(window.start, window.end, upTo)) {
-    const week = rows
-      .filter((r) => challengeWeekStart(r.day) === monday && r.day <= upTo)
-      .sort((a, b) => b.day.localeCompare(a.day));
-    const goal = week[0]?.detail?.goal as { rawBonus?: unknown } | undefined;
-    const raw = Number(goal?.rawBonus);
-    if (Number.isFinite(raw) && raw > 0) out.push({ rawBonus: raw });
+    for (const r of rows) {
+      if (challengeWeekStart(r.day) !== monday || r.day > upTo) continue;
+      const goal = r.detail?.goal as { rawBonus?: unknown } | undefined;
+      const raw = Number(goal?.rawBonus);
+      if (goal && Number.isFinite(raw)) {
+        out.push({
+          weekStart: monday,
+          asOf: r.day,
+          rawBonus: Math.max(0, raw),
+        });
+      }
+    }
   }
   return out;
 }
@@ -850,8 +867,10 @@ export async function recomputeMember(
   fromDay: string,
   toDay?: string
 ): Promise<void> {
-  await challengeRepository.withScoringLock(challenge.id, member.user_id, () =>
-    recomputeMemberLocked(challenge, member, fromDay, toDay)
+  await challengeRepository.withScoringLock(
+    challenge.id,
+    member.user_id,
+    (lock) => recomputeMemberLocked(challenge, member, fromDay, toDay, lock)
   );
 }
 
@@ -859,7 +878,8 @@ async function recomputeMemberLocked(
   challenge: ChallengeRow,
   member: Pick<ChallengeMemberRow, 'user_id' | 'goal_type'>,
   fromDay: string,
-  toDay: string | undefined
+  toDay: string | undefined,
+  lock: PoolClient
 ): Promise<void> {
   const changes = await challengeRepository.getRuleChanges(challenge.id);
   if (!changes.length) return;
@@ -924,7 +944,11 @@ async function recomputeMemberLocked(
         minutes: d.minutes,
         steps: d.steps,
         workouts: d.workouts,
-        eligible: d.eligible,
+        // Tomorrow in the challenge's zone is scored for members whose own
+        // day is already there; until it holds a workout or steps it is not
+        // an eligible day, so it never counts as a missed one.
+        eligible:
+          d.eligible && (d.date <= today || d.workouts > 0 || d.steps > 0),
         detail: {
           prs: d.prs,
           entries: d.entries,
@@ -963,7 +987,8 @@ async function recomputeMemberLocked(
     from,
     to,
     scores,
-    cards
+    cards,
+    lock
   );
 }
 
