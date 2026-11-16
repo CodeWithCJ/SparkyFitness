@@ -135,6 +135,10 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
     await db.query('DELETE FROM public.exercise_entries WHERE user_id = $1', [
       userId,
     ]);
+    await db.query(
+      'DELETE FROM public.exercise_preset_entries WHERE user_id = $1',
+      [userId]
+    );
     await db.query('DELETE FROM public.exercises WHERE user_id = $1', [userId]);
     await db.query('DELETE FROM public."user" WHERE id = $1', [userId]);
     await db.end();
@@ -312,6 +316,47 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
     expect(summary[0].id).toBe(stored.id);
     expect(summary[0].calories_burned).toBe(500);
   });
+
+  // Each case misses the summary's shape by exactly one condition, so removing
+  // any single guard from the cleanup makes its case fail.
+  it.each([
+    ['has a source_id', '2026-01-12', 'synthetic-hk-near-miss', 0, false],
+    ['has a duration', '2026-01-13', null, 15, false],
+    ['belongs to a preset', '2026-01-14', null, 0, true],
+  ] as const)(
+    'still removes a stale Active Calories row that %s',
+    async (_label, date, sourceId, duration, inPreset) => {
+      await sync([activeCalories(date, 400, 'HealthKit')]);
+      const [summary] = summaryOf(await dayRows(date));
+      const presetId = inPreset
+        ? (
+            await db.query<{ id: string }>(
+              `INSERT INTO public.exercise_preset_entries
+                 (user_id, name, entry_date, source)
+               VALUES ($1, 'Synthetic preset', $2, 'HealthKit')
+               RETURNING id`,
+              [userId, date]
+            )
+          ).rows[0].id
+        : null;
+      const nearMiss = await db.query<{ id: string }>(
+        `INSERT INTO public.exercise_entries
+           (user_id, entry_date, exercise_id, exercise_name, source,
+            source_id, duration_minutes, calories_burned,
+            exercise_preset_entry_id)
+         VALUES ($1, $2, $3, 'Active Calories', 'HealthKit', $4, $5, 50, $6)
+         RETURNING id`,
+        [userId, date, summary.exercise_id, sourceId, duration, presetId]
+      );
+
+      await sync([walk(date, 'HealthKit', 'synthetic-hk-near-miss-walk')]);
+
+      const named = summaryOf(await dayRows(date));
+      expect(named.map((row) => row.id)).toEqual([summary.id]);
+      expect(named.map((row) => row.id)).not.toContain(nearMiss.rows[0].id);
+      expect(named[0].calories_burned).toBe(400);
+    }
+  );
 
   it('keeps the existing exclusion parameter as on main (Garmin)', async () => {
     const date = '2026-01-11';
