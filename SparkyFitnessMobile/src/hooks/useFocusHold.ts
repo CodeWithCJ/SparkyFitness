@@ -96,8 +96,10 @@ export function useFocusHold({
     setId: string;
     endsAt: number;
   } | null>(null);
-  // The set whose hold this view started, the only one it logs on its own.
-  const ownedSetIdRef = useRef<string | null>(null);
+  // The hold this view started, the only one it logs on its own: the set and
+  // that timer's start, so a stopwatch restarted elsewhere (the list view, the
+  // watch) on the same set is not taken for it.
+  const ownedRef = useRef<{ setId: string; startedAt: number } | null>(null);
   const onFinishRef = useRef(onFinish);
   useEffect(() => {
     onFinishRef.current = onFinish;
@@ -119,11 +121,15 @@ export function useFocusHold({
   const targetSec = target?.targetSec ?? null;
 
   const run = useCallback((id: string) => {
-    ownedSetIdRef.current = id;
     setGetReady(null);
+    const store = useActiveWorkoutStore.getState();
+    // Already running: started elsewhere, so not this view's to own or cue.
+    if (store.setTimerStartedAt[id] != null) return;
     // The start cue, as the watch plays at the end of Get ready.
     playIntervalCue('work');
-    useActiveWorkoutStore.getState().startSetTimer(id);
+    const startedAt = Date.now();
+    store.startSetTimer(id, startedAt);
+    ownedRef.current = { setId: id, startedAt };
   }, []);
 
   // Get ready runs out into the hold.
@@ -143,7 +149,7 @@ export function useFocusHold({
       fireSuccessHaptic();
     }
     useActiveWorkoutStore.getState().stopSetTimer(id);
-    ownedSetIdRef.current = null;
+    ownedRef.current = null;
     onFinishRef.current(id);
   }, []);
 
@@ -151,14 +157,15 @@ export function useFocusHold({
   useEffect(() => {
     // A stopped timer releases this hold, so a later start elsewhere is not
     // logged from here.
-    if (startedAt == null && ownedSetIdRef.current === setId) {
-      ownedSetIdRef.current = null;
+    if (startedAt == null && ownedRef.current?.setId === setId) {
+      ownedRef.current = null;
     }
     if (
       setId == null ||
       startedAt == null ||
       targetSec == null ||
-      ownedSetIdRef.current !== setId
+      ownedRef.current?.setId !== setId ||
+      ownedRef.current.startedAt !== startedAt
     ) {
       return;
     }

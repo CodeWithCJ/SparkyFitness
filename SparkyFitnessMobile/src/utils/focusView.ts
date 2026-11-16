@@ -1,7 +1,10 @@
 import type { TFunction } from 'i18next';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import {
+  useActiveWorkoutStore,
+  type CompletedSetMap,
+} from '../stores/activeWorkoutStore';
 import type {
   ExerciseModality,
   ExerciseRecentSessionSet,
@@ -14,6 +17,7 @@ import {
   formatDurationSeconds,
   isCardioModality,
   isDurationModality,
+  isUntouchedFabricatedSet,
   isWarmupSetType,
   isWeightDistanceModality,
   isWeightDurationModality,
@@ -166,7 +170,8 @@ export function isFocusViewActive(): boolean {
 export function describePresetChanges(
   session: PresetSessionResponse,
   preset: WorkoutPreset,
-  t: TFunction
+  t: TFunction,
+  completedSetIds: CompletedSetMap
 ): string[] {
   const lines: string[] = [];
   const unmatched = [...preset.exercises];
@@ -194,12 +199,13 @@ export function describePresetChanges(
     const [match] = unmatched.splice(index, 1, null as never);
     const before = match.sets?.length ?? 0;
     // A preset exercise saved without sets shows one untouched placeholder
-    // set in the session; that is not a change. A set whose type was changed
-    // is no longer that placeholder (as buildPresetUpdateExercises).
-    const placeholderOnly =
-      before === 0 &&
-      exercise.sets.length === 1 &&
-      (exercise.sets[0].set_type ?? 'normal') === 'normal';
+    // set in the session; that is not a change. The same rule as
+    // buildPresetUpdateExercises, so a used set always gets its line.
+    const placeholderOnly = isUntouchedFabricatedSet(
+      before,
+      exercise.sets,
+      completedSetIds
+    );
     if (before !== exercise.sets.length && !placeholderOnly) {
       lines.push(
         t('workoutComplete.changes.sets', {

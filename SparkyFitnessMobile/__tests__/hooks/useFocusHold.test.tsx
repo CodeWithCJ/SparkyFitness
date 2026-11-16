@@ -116,4 +116,35 @@ describe('useFocusHold', () => {
     });
     expect(onFinish).not.toHaveBeenCalled();
   });
+
+  it('does not log a timer restarted elsewhere on a set it had started', () => {
+    useAppPreferencesStore.setState({ watchHoldCountdown: false });
+    const onFinish = jest.fn();
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useFocusHold({
+          session: makeSession(10),
+          activeSetId: '11',
+          enabled,
+          onFinish,
+        }),
+      { initialProps: { enabled: true } }
+    );
+    act(() => result.current.start());
+    expect(result.current.phase).toBe('running');
+
+    // The list view takes over, and its stopwatch is stopped and restarted.
+    rerender({ enabled: false });
+    act(() => {
+      useActiveWorkoutStore.getState().clearSetTimer('11');
+      jest.advanceTimersByTime(1_000);
+      useActiveWorkoutStore.getState().startSetTimer('11');
+    });
+    rerender({ enabled: true });
+    expect(result.current.phase).toBe('running');
+    act(() => {
+      jest.advanceTimersByTime(20_000);
+    });
+    expect(onFinish).not.toHaveBeenCalled();
+  });
 });

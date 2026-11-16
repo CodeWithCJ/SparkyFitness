@@ -176,10 +176,22 @@ export function useWorkoutCompletePresetSync({
     onNeedsUpdateRef.current?.({
       presetName: sourcePreset.name,
       describeChanges: (translate) =>
-        describePresetChanges(session, sourcePreset, translate),
+        describePresetChanges(
+          session,
+          sourcePreset,
+          translate,
+          completedSetIds
+        ),
       update: applyUpdate,
     });
-  }, [sourcePreset, presetUpdateExercises, profile?.id, applyUpdate, session]);
+  }, [
+    sourcePreset,
+    presetUpdateExercises,
+    profile?.id,
+    applyUpdate,
+    session,
+    completedSetIds,
+  ]);
 
   useEffect(() => {
     if (promptedRef.current || !isFocused || !appActive) return;

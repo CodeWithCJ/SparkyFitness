@@ -27,6 +27,7 @@ import {
   setExerciseEntryEffort,
 } from '../services/api/exerciseApi';
 import { fireSuccessHaptic } from '../services/haptics';
+import { getActiveServerConfig } from '../services/storage';
 import { formatDateToTimeLabel } from '../utils/entryTimeDisplay';
 import { setsDurationMinutes } from '@workspace/shared';
 import {
@@ -232,8 +233,17 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       // One write at a time, in tap order, so the last tap is the one stored;
       // a failed older write does not clear a newer pick.
       const write = ++effortWriteRef.current.latest;
+      // Read at the tap: a queued write starts later, and must still go to the
+      // server this entry is on.
+      const serverConfig = getActiveServerConfig();
       effortWriteRef.current.chain = effortWriteRef.current.chain
-        .then(() => setExerciseEntryEffort(entryId, rating))
+        .then(async () =>
+          setExerciseEntryEffort(
+            entryId,
+            rating,
+            (await serverConfig) ?? undefined
+          )
+        )
         .then(() =>
           queryClient.invalidateQueries({
             queryKey: workoutSessionQueryKey(session.id),
