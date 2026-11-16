@@ -114,10 +114,30 @@ describe('FocusHoldPanel', () => {
     expect(getByTestId('focus-hold-time').props.children).toMatch(/^1\ds$/);
     expect(queryByTestId('focus-hold-get-ready')).toBeNull();
     expect(
-      getByText('Tap the ring to end early. At 0 the set is logged.')
+      getByText('Tap the ring to end. At 0 it keeps going until you tap.')
     ).toBeTruthy();
     fireEvent.press(getByLabelText('End the hold and log the set'));
     expect(tap).toHaveBeenCalled();
+  });
+
+  it('counts up past the planned length instead of logging', () => {
+    const { getByTestId, getByText } = render(
+      <FocusHoldPanel
+        hold={{
+          phase: 'running',
+          targetSec: 20,
+          startedAt: Date.now() - 27_000,
+          getReadyEndsAt: null,
+          tap: jest.fn(),
+        }}
+        name="Plank"
+        subtitle="Set 1/3"
+      />
+    );
+    expect(getByTestId('focus-hold-time').props.children).toMatch(/^\+0:0\d$/);
+    expect(
+      getByText('Past the plan. Tap the ring when you are done to log the set.')
+    ).toBeTruthy();
   });
 
   it('runs a stopwatch with no planned length', () => {

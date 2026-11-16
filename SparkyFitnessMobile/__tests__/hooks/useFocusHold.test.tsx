@@ -61,7 +61,7 @@ describe('useFocusHold', () => {
     expect(result.current.targetSec).toBe(45);
   });
 
-  it('runs a 3 second Get ready, then the hold, then logs the set at zero', () => {
+  it('runs a 3 second Get ready, then the hold, then cues at zero without logging', () => {
     const { result, onFinish } = setup(10);
     act(() => result.current.start());
     expect(result.current.phase).toBe('getReady');
@@ -73,8 +73,16 @@ describe('useFocusHold', () => {
     act(() => {
       jest.advanceTimersByTime(10_000);
     });
-    expect(onFinish).toHaveBeenCalledWith('11');
     expect(playIntervalCue).toHaveBeenCalledWith('finish');
+    // Past zero the hold keeps running until a tap, so it can go longer.
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe('running');
+    act(() => {
+      jest.advanceTimersByTime(7000);
+    });
+    expect(onFinish).not.toHaveBeenCalled();
+    act(() => result.current.tap());
+    expect(onFinish).toHaveBeenCalledWith('11');
     expect(result.current.phase).toBe('idle');
   });
 
@@ -121,7 +129,8 @@ describe('useFocusHold', () => {
     act(() => {
       jest.advanceTimersByTime(30_000);
     });
-    expect(onFinish).toHaveBeenCalledWith('11');
+    expect(playIntervalCue).toHaveBeenCalledWith('finish');
+    expect(onFinish).not.toHaveBeenCalled();
   });
 
   it('does not log a hold the watch started', () => {

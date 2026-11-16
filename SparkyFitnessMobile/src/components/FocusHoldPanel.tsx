@@ -33,7 +33,8 @@ interface FocusHoldPanelProps {
  * The focus view's timed hold: a big ring counting the planned length down (or
  * a stopwatch with no plan), a 3-2-1 Get ready first when the watch's
  * "Countdown before holds" is on, and the live heart rate under the time. Tap
- * the ring to start now or to end early; at zero the set is logged.
+ * the ring to start now or to end. At zero the hold cues and keeps counting up
+ * ("+0:07") until the tap, which logs the time actually held.
  */
 function FocusHoldPanel({
   hold,
@@ -56,6 +57,10 @@ function FocusHoldPanel({
   const elapsedMs = startedAt != null ? Math.max(0, now - startedAt) : 0;
   const runningLeftMs =
     targetSec != null ? Math.max(0, targetSec * 1000 - elapsedMs) : 0;
+  // Past the planned length: counting up from the target.
+  const overtime =
+    phase === 'running' && targetSec != null && elapsedMs >= targetSec * 1000;
+  const overtimeMs = overtime ? elapsedMs - (targetSec ?? 0) * 1000 : 0;
 
   // The tick of each lead-in number (Get ready, or the hold's last seconds).
   const tick = () => {
@@ -69,7 +74,7 @@ function FocusHoldPanel({
     onTick: tick,
   });
   useCountdownCue({
-    active: phase === 'running' && targetSec != null,
+    active: phase === 'running' && targetSec != null && !overtime,
     remainingMs: runningLeftMs,
     seconds: beepSeconds,
     onTick: tick,
@@ -78,14 +83,18 @@ function FocusHoldPanel({
   const readyNumber = Math.max(1, Math.ceil(getReadyLeftMs / 1000));
   const bigText = gettingReady
     ? formatDurationSeconds(targetSec ?? 0)
-    : targetSec != null
-      ? formatDurationSeconds(Math.ceil(runningLeftMs / 1000))
-      : formatRestCountdown(Math.floor(elapsedMs / 1000) * 1000);
+    : overtime
+      ? `+${formatRestCountdown(Math.floor(overtimeMs / 1000) * 1000)}`
+      : targetSec != null
+        ? formatDurationSeconds(Math.ceil(runningLeftMs / 1000))
+        : formatRestCountdown(Math.floor(elapsedMs / 1000) * 1000);
   const progress = gettingReady
     ? 1
-    : targetSec != null
-      ? runningLeftMs / (targetSec * 1000)
-      : (elapsedMs % 60000) / 60000;
+    : overtime
+      ? 1
+      : targetSec != null
+        ? runningLeftMs / (targetSec * 1000)
+        : (elapsedMs % 60000) / 60000;
 
   const heading =
     targetSec != null
@@ -184,14 +193,19 @@ function FocusHoldPanel({
           ? t('activeWorkout.focus.hold.tapToStart', {
               defaultValue: 'Tap the ring to start now.',
             })
-          : targetSec != null
-            ? t('activeWorkout.focus.hold.tapToEnd', {
+          : overtime
+            ? t('activeWorkout.focus.hold.tapToEndOver', {
                 defaultValue:
-                  'Tap the ring to end early. At 0 the set is logged.',
+                  'Past the plan. Tap the ring when you are done to log the set.',
               })
-            : t('activeWorkout.focus.hold.tapToStop', {
-                defaultValue: 'Tap the ring to stop and log the set.',
-              })}
+            : targetSec != null
+              ? t('activeWorkout.focus.hold.tapToEnd', {
+                  defaultValue:
+                    'Tap the ring to end. At 0 it keeps going until you tap.',
+                })
+              : t('activeWorkout.focus.hold.tapToStop', {
+                  defaultValue: 'Tap the ring to stop and log the set.',
+                })}
       </Text>
     </View>
   );

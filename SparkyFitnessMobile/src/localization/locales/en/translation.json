@@ -662,7 +662,8 @@
         "end": "End the hold and log the set",
         "getReady": "Get ready",
         "tapToStart": "Tap the ring to start now.",
-        "tapToEnd": "Tap the ring to end early. At 0 the set is logged.",
+        "tapToEnd": "Tap the ring to end. At 0 it keeps going until you tap.",
+        "tapToEndOver": "Past the plan. Tap the ring when you are done to log the set.",
         "tapToStop": "Tap the ring to stop and log the set.",
         "setOf": "Set {{number}}/{{total}}"
       },
