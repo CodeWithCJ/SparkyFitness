@@ -28,6 +28,8 @@ export const foodEntryKeys = {
   byDate: (date: string) => [...foodEntryKeys.all, 'date', date] as const,
   foodIntake: (date: string) =>
     [...foodEntryKeys.all, 'foodIntake', date] as const,
+  lastCooked: (foodId: string) =>
+    [...foodEntryKeys.all, 'lastCooked', foodId] as const,
 };
 
 export const foodEntryMealKeys = {

@@ -120,6 +120,12 @@ jest.mock('../../src/hooks', () => ({
   })),
 }));
 
+const mockUseLastCookedFoodEntry = jest.fn(() => ({ data: null }));
+jest.mock('../../src/hooks/useLastCookedFoodEntry', () => ({
+  useLastCookedFoodEntry: (...args: unknown[]) =>
+    mockUseLastCookedFoodEntry(...args),
+}));
+
 jest.mock('../../src/hooks/useFoodVariants', () => ({
   useFoodVariants: jest.fn(),
   useCreateFoodVariant: jest.fn(),
@@ -3533,6 +3539,74 @@ describe('FoodEntryAddScreen', () => {
         'Adjust nutrition'
       );
       expect(edit?.disabled).toBe(false);
+    });
+  });
+
+  describe('Weighed it cooked (#3534)', () => {
+    const riceItem = {
+      ...baseLocalItem,
+      id: 'food-rice',
+      name: 'Rice',
+      servingSize: 100,
+      servingUnit: 'g',
+      calories: 360,
+      originalItem: { id: 'food-rice', name: 'Rice' },
+    };
+
+    it('logs the raw weight and the cooked weight eaten', () => {
+      const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
+      expect(mockUseLastCookedFoodEntry).toHaveBeenLastCalledWith(
+        'food-rice',
+        true
+      );
+      fireEvent(
+        screen.getByLabelText('Weighed it cooked'),
+        'valueChange',
+        true
+      );
+      fireEvent.changeText(
+        screen.getByLabelText('Raw weight of batch (g)'),
+        '200'
+      );
+      fireEvent.changeText(
+        screen.getByLabelText('Cooked weight of batch (g)'),
+        '500'
+      );
+      fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '300');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            food_id: 'food-rice',
+            quantity: 120,
+            unit: 'g',
+            cooked_quantity: 300,
+          }),
+        })
+      );
+    });
+
+    it('sends no cooked weight while the switch is off', () => {
+      const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(
+        mockAddEntry.mock.calls[0][0].createEntryPayload
+      ).not.toHaveProperty('cooked_quantity');
+    });
+
+    it('is not offered for a non-weight serving', () => {
+      const screen = renderScreen({ item: baseLocalItem });
+      expect(screen.queryByLabelText('Weighed it cooked')).toBeNull();
+    });
+
+    it('is not offered when picking a food for a meal', () => {
+      const screen = renderScreen({
+        item: riceItem,
+        pickerMode: 'meal-builder',
+      });
+      expect(screen.queryByLabelText('Weighed it cooked')).toBeNull();
     });
   });
 });

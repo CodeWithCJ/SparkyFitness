@@ -34,7 +34,14 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
-import { clockInZone, toHourMinute } from '@workspace/shared';
+import {
+  clockInZone,
+  isCookedWeightUnit,
+  toHourMinute,
+} from '@workspace/shared';
+import CookedWeightSection, {
+  type CookedWeightResult,
+} from '../components/CookedWeightSection';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { usableFoodImages } from '../utils/foodImages';
 import {
@@ -513,6 +520,28 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [adjustedValues, activeVariant]);
 
   const quantity = parseDecimalInput(quantityText) || 0;
+  // "Weighed it cooked" (#3534). The section is only mounted while editing,
+  // so it reopens with the stored yield and cooked weight each time.
+  const [cookedEnabled, setCookedEnabled] = useState(false);
+  const [cookedResult, setCookedResult] = useState<CookedWeightResult | null>(
+    null
+  );
+  const cookedSectionShown =
+    isEditing && isCookedWeightUnit(displayValues.servingUnit);
+  const quantityLocked = cookedSectionShown && cookedEnabled;
+  const handleCookedChange = useCallback(
+    (enabled: boolean, result: CookedWeightResult | null) => {
+      setCookedEnabled(enabled);
+      setCookedResult(result);
+      if (enabled && result) {
+        setEditState((prev) => ({
+          ...prev,
+          quantityText: String(result.rawQuantity),
+        }));
+      }
+    },
+    []
+  );
   const editServings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const scaled = (value: number) => value * editServings;
@@ -648,6 +677,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   );
 
   const updateQuantityText = (text: string) => {
+    // While "Weighed it cooked" is on, the raw quantity is calculated.
+    if (quantityLocked) return;
     if (DECIMAL_INPUT_REGEX.test(text)) {
       updateEdit({ quantityText: text });
     }
@@ -661,6 +692,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   };
 
   const adjustQuantity = (delta: number) => {
+    if (quantityLocked) return;
     updateEdit({
       quantityText: String(
         nextQuantity(quantity, delta, displayValues.servingSize)
@@ -797,6 +829,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       payload.unit = displayValues.servingUnit;
     }
     if (selectedDate !== initialDate) payload.entry_date = selectedDate;
+    // The server clears a stored cooked weight when quantity or unit change
+    // without one, so it travels with them, and on its own when only it changed.
+    const cookedQuantity =
+      quantityLocked && cookedResult ? cookedResult.cookedQuantity : null;
+    if (
+      payload.quantity !== undefined ||
+      payload.unit !== undefined ||
+      cookedQuantity !== (entry.cooked_quantity ?? null)
+    ) {
+      payload.cooked_quantity = cookedQuantity;
+    }
     if (effectiveMealId && effectiveMealId !== entry.meal_type_id) {
       payload.meal_type_id = effectiveMealId;
     }
@@ -987,7 +1030,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         ? {
             kind: 'primary',
             label: t('common.done', { defaultValue: 'Done' }),
-            disabled: isUpdatePending || quantity <= 0,
+            disabled:
+              isUpdatePending ||
+              quantity <= 0 ||
+              (quantityLocked && !cookedResult),
             onPress: handleSave,
             accessibilityLabel: t('foodEntryView.saveChanges', {
               defaultValue: 'Save food entry changes',
@@ -1060,6 +1106,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     onIncrement={() => adjustQuantity(1)}
                     onDecrement={() => adjustQuantity(-1)}
                     keyboardType="decimal-pad"
+                    inputProps={{ editable: !quantityLocked }}
                   />
                   <Text className="text-text-primary text-base font-medium ml-2">
                     {formatServingUnit(displayValues.servingUnit)}
@@ -1131,6 +1178,30 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     </Text>
                   )}
                 </View>
+                {cookedSectionShown ? (
+                  <CookedWeightSection
+                    key={displayValues.servingUnit}
+                    unit={displayValues.servingUnit}
+                    foodName={entry.food_name ?? ''}
+                    energyUnit={energyUnit}
+                    editingEntry={
+                      entry.cooked_quantity &&
+                      entry.unit === displayValues.servingUnit
+                        ? {
+                            quantity: entry.quantity,
+                            cookedQuantity: entry.cooked_quantity,
+                          }
+                        : null
+                    }
+                    caloriesFor={(rawQuantity) =>
+                      displayValues.servingSize > 0
+                        ? (displayValues.calories * rawQuantity) /
+                          displayValues.servingSize
+                        : null
+                    }
+                    onChange={handleCookedChange}
+                  />
+                ) : null}
               </View>
             </FadeView>
           ) : (

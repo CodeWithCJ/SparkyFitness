@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodEntryViewScreen from '../../src/screens/FoodEntryViewScreen';
@@ -454,5 +454,78 @@ describe('FoodEntryViewScreen', () => {
       })
     );
     expect(screen.queryByText('Create Draft Unit')).toBeNull();
+  });
+
+  describe('Weighed it cooked (#3534)', () => {
+    const riceVariants = {
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          is_default: true,
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          calories: 360,
+          protein: 7,
+          carbs: 79,
+          fat: 1,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    };
+    const cookedRice = {
+      ...baseEntry,
+      food_name: 'Rice',
+      quantity: 120,
+      unit: 'g',
+      serving_size: 100,
+      calories: 360,
+      cooked_quantity: 300,
+    };
+
+    it('reopens with the yield and sends the new raw and cooked quantity', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+
+      expect(screen.getByLabelText('Weighed it cooked').props.value).toBe(true);
+      expect(screen.getByText('Using 2.5× from this entry')).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '200');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('80');
+
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ quantity: 80, cooked_quantity: 200 })
+      );
+    });
+
+    it('clears the cooked weight when the switch is turned off', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      fireEvent(
+        screen.getByLabelText('Weighed it cooked'),
+        'valueChange',
+        false
+      );
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith({ cooked_quantity: null });
+    });
+
+    it('sends the cooked weight with a quantity change so the server keeps it in step', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({
+        entry: { ...cookedRice, cooked_quantity: null },
+      });
+      pressAction(screen, navigation, 'Edit');
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '150');
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith({
+        quantity: 150,
+        cooked_quantity: null,
+      });
+    });
   });
 });

@@ -52,6 +52,24 @@ interface SourceMealContainer {
   entry_total_servings: number | null;
 }
 
+/**
+ * Cooked weight for a copied entry: kept when the quantity is copied as is,
+ * dropped when a different quantity was picked for the copy (#3534).
+ */
+function copiedCookedQuantity(
+  entry: { quantity?: unknown; cooked_quantity?: number | null },
+  pickedQuantity: number | undefined
+): number | null {
+  if (entry.cooked_quantity === null || entry.cooked_quantity === undefined)
+    return null;
+  if (
+    pickedQuantity !== undefined &&
+    Number(pickedQuantity) !== Number(entry.quantity)
+  )
+    return null;
+  return entry.cooked_quantity;
+}
+
 function reviewedCopyConflict() {
   return Object.assign(
     new Error('One or more source entries changed. Refresh the family diary.'),
@@ -100,6 +118,10 @@ function reviewedCopyConflict() {
  *         unit:
  *           type: string
  *           description: The unit of measurement for the quantity (e.g., grams, oz, serving).
+ *         cooked_quantity:
+ *           type: number
+ *           nullable: true
+ *           description: Cooked weight eaten, in the same unit as quantity (which stays the raw weight). Only for g, kg, oz and lb. Omit on update to keep it; a quantity or unit change without it clears it.
  *         entry_date:
  *           type: string
  *           format: date
@@ -304,10 +326,11 @@ async function createFoodEntry(
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g
+         source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g,
+         cooked_quantity
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45, $46
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -408,6 +431,9 @@ async function createFoodEntry(
         snapshot.caffeine_mg,
         snapshot.water_ml,
         snapshot.alcohol_g,
+        // Cooked weight eaten (#3534). The route has already checked it, and
+        // provider re-syncs never send it, so it is absent from DO UPDATE.
+        entryData.cooked_quantity ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -435,6 +461,7 @@ async function getFoodEntryById(entryId: string, userId: string) {
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id, 
         fe.food_name, 
@@ -561,7 +588,9 @@ async function updateFoodEntry(
         notes = $36,
         caffeine_mg = $37,
         water_ml = $38,
-        alcohol_g = $39
+        alcohol_g = $39,
+        -- Resolved by the service like notes: the value the entry ends up with.
+        cooked_quantity = $40
       WHERE id = $30
       RETURNING *`,
       [
@@ -606,6 +635,7 @@ async function updateFoodEntry(
         snapshotData.caffeine_mg,
         snapshotData.water_ml,
         snapshotData.alcohol_g,
+        entryData.cooked_quantity ?? null,
       ]
     );
     return result.rows[0];
@@ -648,6 +678,7 @@ async function getFoodEntriesByDate(userId: string, selectedDate: string) {
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -718,6 +749,7 @@ async function getFoodEntriesByDateAndMealType(
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -789,6 +821,7 @@ async function getFoodEntriesByDateRange(
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -905,6 +938,7 @@ async function copyFoodEntriesWithReview({
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.variant_id,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
@@ -1102,11 +1136,12 @@ async function copyFoodEntriesWithReview({
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
           cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
           vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g,
-          glycemic_index, custom_nutrients, notes, meal_id
+          glycemic_index, custom_nutrients, notes, meal_id, cooked_quantity
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
+          $41
         ) RETURNING *`,
         [
           targetUserId,
@@ -1150,6 +1185,9 @@ async function copyFoodEntriesWithReview({
           sanitizeNotes(entry.notes) ?? null,
           // A source meal deletion must not cascade into the copied snapshot.
           null,
+          // The cooked weight belongs to the copied quantity. A quantity
+          // picked in the review no longer matches it, so it is dropped.
+          copiedCookedQuantity(entry, quantityByEntryId.get(entry.id)),
         ]
       );
       copiedEntries.push(...inserted.rows);
@@ -1237,7 +1275,8 @@ async function bulkCreateFoodEntriesWithClient(
         alcohol_g,
         glycemic_index,
         custom_nutrients,
-        notes
+        notes,
+        cooked_quantity
       )
       VALUES %L RETURNING *`;
   const values = entriesData.map((entry: FoodEntryInput) => [
@@ -1281,6 +1320,7 @@ async function bulkCreateFoodEntriesWithClient(
     entry.glycemic_index,
     entry.custom_nutrients || {},
     sanitizeNotes(entry.notes) ?? null,
+    entry.cooked_quantity ?? null,
   ]);
   const formattedQuery = format(query, values);
   const result = await client.query(formattedQuery);
@@ -1327,6 +1367,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.food_entry_meal_id,
         fe.food_name, 
         fe.brand_name, 
@@ -1403,6 +1444,7 @@ async function getFoodEntriesBatch(
         fe.entry_date,
         fe.entry_time,
         fe.notes,
+        fe.cooked_quantity,
         fe.food_name,
         fe.brand_name, 
         fe.serving_size, 
@@ -1545,6 +1587,32 @@ export { deleteFoodEntryComponentsByFoodEntryMealId };
 export { getFoodEntriesBatch };
 export { getRecentFoodEntries };
 export { getFoodUsage };
+
+/**
+ * The person's most recent entry of a food that was weighed cooked (#3534).
+ * Components of a logged meal are left out: meals carry their own batch
+ * cooked weight and never set cooked_quantity.
+ */
+async function getLastCookedFoodEntry(userId: string, foodId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT fe.id, fe.entry_date, fe.quantity, fe.unit, fe.cooked_quantity
+       FROM food_entries fe
+       WHERE fe.user_id = $1
+         AND fe.food_id = $2
+         AND fe.cooked_quantity IS NOT NULL
+         AND fe.food_entry_meal_id IS NULL
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT 1`,
+      [userId, foodId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+export { getLastCookedFoodEntry };
 export default {
   createFoodEntry,
   getFoodEntryOwnerId,
@@ -1565,6 +1633,7 @@ export default {
   getFoodEntriesBatch,
   getRecentFoodEntries,
   getFoodUsage,
+  getLastCookedFoodEntry,
 };
 
 export { bulkCreateFoodEntriesWithClient };

@@ -1,4 +1,11 @@
-import { useState, useMemo, useEffect, useRef, SubmitEvent } from 'react';
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  SubmitEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -49,7 +56,12 @@ import {
   type ConfidenceTone,
   toHourMinute,
   userHourMinute,
+  isCookedWeightUnit,
 } from '@workspace/shared';
+import {
+  CookedWeightSection,
+  type CookedWeightResult,
+} from '@/components/FoodUnitSelector/CookedWeightSection';
 import { formatServingLabel } from '@/utils/foodServing';
 import FoodEntryImageOverride from './FoodEntryImageOverride';
 import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
@@ -94,6 +106,21 @@ const EditFoodEntryDialog = ({
     toHourMinute(entry?.entry_time) || ''
   );
   const [entryNotes, setEntryNotes] = useState<string>(entry?.notes || '');
+  // "Weighed it cooked" (#3534): reopens with the stored yield and the cooked
+  // weight eaten. Sent with every save, because the server clears a stored
+  // cooked weight when quantity or unit change without one.
+  const [cookedEnabled, setCookedEnabled] = useState(false);
+  const [cookedResult, setCookedResult] = useState<CookedWeightResult | null>(
+    null
+  );
+  const handleCookedChange = useCallback(
+    (enabled: boolean, result: CookedWeightResult | null) => {
+      setCookedEnabled(enabled);
+      setCookedResult(result);
+      if (enabled && result) setQuantity(result.rawQuantity);
+    },
+    []
+  );
 
   // Photos a note may embed: this entry's own override if it has one, else the
   // parent food's. `diaryEntryImages` already resolves each to a usable src,
@@ -262,6 +289,14 @@ const EditFoodEntryDialog = ({
     },
   });
 
+  // Components of a logged meal keep no cooked weight: the meal has its own.
+  const cookedSectionShown =
+    isEditingAllowed &&
+    !!entry &&
+    !entry.food_entry_meal_id &&
+    !isConverting &&
+    isCookedWeightUnit(selectedVariant?.serving_unit);
+
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
       (p) => p.view_group === 'food_database' && p.platform === platform
@@ -317,6 +352,8 @@ const EditFoodEntryDialog = ({
           meal_type_id: mealId,
           entry_time: entryTime || null,
           notes: entryNotes.trim() || null,
+          // A new unit is saved as a new variant first; no cooked weight.
+          cooked_quantity: null,
         };
         await updateFoodEntry({
           id: entry.id,
@@ -343,6 +380,7 @@ const EditFoodEntryDialog = ({
       return;
     }
 
+    if (cookedSectionShown && cookedEnabled && !cookedResult) return;
     try {
       const updateData = {
         quantity,
@@ -355,6 +393,10 @@ const EditFoodEntryDialog = ({
             : selectedVariant.id,
         entry_time: entryTime || null,
         notes: entryNotes.trim() || null,
+        cooked_quantity:
+          cookedSectionShown && cookedEnabled && cookedResult
+            ? cookedResult.cookedQuantity
+            : null,
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });
@@ -447,6 +489,7 @@ const EditFoodEntryDialog = ({
                     min="0.01"
                     value={quantity}
                     ref={inputRef}
+                    disabled={cookedSectionShown && cookedEnabled}
                     onValueChange={(value) => setQuantity(value ?? 0)}
                   />
                 </div>
@@ -543,6 +586,30 @@ const EditFoodEntryDialog = ({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {cookedSectionShown && selectedVariant && (
+                  <div className="col-span-4">
+                    <CookedWeightSection
+                      key={selectedVariant.serving_unit}
+                      unit={selectedVariant.serving_unit}
+                      foodName={entry.food_name ?? ''}
+                      editingEntry={
+                        entry.cooked_quantity &&
+                        entry.unit === selectedVariant.serving_unit
+                          ? {
+                              quantity: entry.quantity,
+                              cookedQuantity: entry.cooked_quantity,
+                            }
+                          : null
+                      }
+                      caloriesFor={(rawQuantity) =>
+                        ((selectedVariant.calories || 0) * rawQuantity) /
+                        (selectedVariant.serving_size || 1)
+                      }
+                      onChange={handleCookedChange}
+                    />
+                  </div>
+                )}
 
                 <div className="col-span-4 space-y-1 max-w-[280px]">
                   <div className="flex items-center justify-between">
@@ -780,6 +847,7 @@ const EditFoodEntryDialog = ({
                   type="submit"
                   disabled={
                     createFoodVariantMutation.isPending ||
+                    (cookedSectionShown && cookedEnabled && !cookedResult) ||
                     (isConverting &&
                       (!pendingUnit.trim() ||
                         (autoConversionFactor === null &&
