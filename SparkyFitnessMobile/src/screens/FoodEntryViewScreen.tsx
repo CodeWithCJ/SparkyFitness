@@ -546,6 +546,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const scaled = (value: number) => value * editServings;
   const servingSizeRef = useRef(displayValues.servingSize);
+  const servingUnitRef = useRef(displayValues.servingUnit);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
     label: mealTypeLabel(mealType),
@@ -557,7 +558,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const adjustedCustomNutrientsFromNav = route.params?.adjustedCustomNutrients;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
-  }, [displayValues.servingSize]);
+    servingUnitRef.current = displayValues.servingUnit;
+  }, [displayValues.servingSize, displayValues.servingUnit]);
 
   useEffect(() => {
     if (
@@ -573,6 +575,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       parseDecimalInput(adjustedFromNav?.servingSize ?? '') ||
       adjustedUnitSelectionFromNav?.variant.serving_size ||
       previousServingSize;
+    // A raw quantity calculated from the cooked weight stays as it is while
+    // the unit does not change. A new unit remounts the cooked section, so the
+    // quantity follows the serving size like any other entry.
+    const previousServingUnit = servingUnitRef.current;
+    const nextServingUnit =
+      adjustedFromNav?.servingUnit ||
+      adjustedUnitSelectionFromNav?.variant.serving_unit ||
+      previousServingUnit;
+    const keepsCookedQuantity =
+      quantityLocked && nextServingUnit === previousServingUnit;
 
     if (adjustedUnitSelectionFromNav) {
       const isKnownVariant = (variants ?? []).some(
@@ -604,8 +616,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ...(adjustedCustomNutrientsFromNav !== undefined
         ? { adjustedCustomNutrients: adjustedCustomNutrientsFromNav }
         : {}),
-      // A raw quantity calculated from the cooked weight stays as it is.
-      ...(!quantityLocked && nextServingSize !== previousServingSize
+      ...(!keepsCookedQuantity && nextServingSize !== previousServingSize
         ? { quantityText: String(nextServingSize) }
         : {}),
     });

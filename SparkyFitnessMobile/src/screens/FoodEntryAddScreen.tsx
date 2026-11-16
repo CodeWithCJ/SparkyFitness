@@ -845,6 +845,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const servingSizeRef = useRef(displayValues.servingSize);
+  const servingUnitRef = useRef(displayValues.servingUnit);
   const pendingEquivalentsRef = useRef<EquivalentUnit[] | null>(null);
 
   const adjustedFromNav = route.params?.adjustedValues;
@@ -853,7 +854,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const pendingEquivalentsFromNav = route.params?.pendingEquivalents;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
-  }, [displayValues.servingSize]);
+    servingUnitRef.current = displayValues.servingUnit;
+  }, [displayValues.servingSize, displayValues.servingUnit]);
 
   useEffect(() => {
     if (
@@ -869,6 +871,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       parseDecimalInput(adjustedFromNav?.servingSize ?? '') ||
       adjustedUnitSelectionFromNav?.variant.serving_size ||
       previousServingSize;
+    // A raw quantity calculated from the cooked weight stays as it is while
+    // the unit does not change. A new unit remounts the cooked section, so the
+    // quantity follows the serving size like any other entry.
+    const previousServingUnit = servingUnitRef.current;
+    const nextServingUnit =
+      adjustedFromNav?.servingUnit ||
+      adjustedUnitSelectionFromNav?.variant.serving_unit ||
+      previousServingUnit;
+    const keepsCookedQuantity =
+      quantityLocked && nextServingUnit === previousServingUnit;
 
     if (adjustedUnitSelectionFromNav) {
       if (adjustedUnitSelectionFromNav.kind === 'draft') {
@@ -921,10 +933,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       setAdjustedCustomNutrients(adjustedCustomNutrientsFromNav);
     }
 
-    // A raw quantity calculated from the cooked weight stays as it is.
     if (
       !recipeImportTarget &&
-      !quantityLocked &&
+      !keepsCookedQuantity &&
       nextServingSize !== previousServingSize
     ) {
       setQuantityText(String(nextServingSize));

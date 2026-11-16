@@ -3588,6 +3588,97 @@ describe('FoodEntryAddScreen', () => {
       );
     });
 
+    const riceAdjustment = (servingSize: string, servingUnit: string) => ({
+      name: 'Rice',
+      brand: '',
+      servingSize,
+      servingUnit,
+      calories: '360',
+      protein: '7',
+      carbs: '79',
+      fat: '1',
+      fiber: '',
+      saturatedFat: '',
+      sodium: '',
+      sugars: '',
+      transFat: '',
+      potassium: '',
+      calcium: '',
+      iron: '',
+      cholesterol: '',
+      vitaminA: '',
+      vitaminC: '',
+    });
+
+    const cookRice = (screen: ReturnType<typeof renderScreen>) => {
+      fireEvent(
+        screen.getByLabelText('Weighed it cooked'),
+        'valueChange',
+        true
+      );
+      fireEvent.changeText(
+        screen.getByLabelText('Raw weight of batch (g)'),
+        '200'
+      );
+      fireEvent.changeText(
+        screen.getByLabelText('Cooked weight of batch (g)'),
+        '500'
+      );
+      fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '300');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+    };
+
+    const returnFromAdjust = (
+      screen: ReturnType<typeof renderScreen>,
+      adjustedValues: ReturnType<typeof riceAdjustment>
+    ) =>
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'FoodEntryAdd-key',
+                name: 'FoodEntryAdd',
+                params: { item: riceItem, date: '2026-11-15', adjustedValues },
+              } as any
+            }
+          />
+        </SafeAreaProvider>
+      );
+
+    it('keeps the calculated raw quantity when nutrition is adjusted in the same unit', () => {
+      const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
+      cookRice(screen);
+      returnFromAdjust(screen, riceAdjustment('200', 'g'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            quantity: 120,
+            unit: 'g',
+            cooked_quantity: 300,
+          }),
+        })
+      );
+    });
+
+    it('drops the calculated quantity when nutrition comes back in another unit', () => {
+      const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
+      cookRice(screen);
+      returnFromAdjust(screen, riceAdjustment('0.5', 'kg'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('0.5');
+
+      fireEvent.press(screen.getByText('Add Food'));
+      const payload = mockAddEntry.mock.calls[0][0].createEntryPayload;
+      expect(payload).toEqual(
+        expect.objectContaining({ quantity: 0.5, unit: 'kg' })
+      );
+      expect(payload).not.toHaveProperty('cooked_quantity');
+    });
+
     it('sends no cooked weight while the switch is off', () => {
       const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
       fireEvent.press(screen.getByText('Add Food'));
