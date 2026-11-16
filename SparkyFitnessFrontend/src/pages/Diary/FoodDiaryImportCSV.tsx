@@ -59,6 +59,7 @@ interface FoodDiaryImportCSVProps {
     scope: FoodDiaryImportScope,
     overrideNutrition: boolean
   ) => Promise<FoodDiaryImportResult>;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 interface CSVRow {
@@ -201,7 +202,10 @@ const parseCSV = (
   };
 };
 
-const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
+const FoodDiaryImportCSV = ({
+  onSave,
+  onDirtyChange,
+}: FoodDiaryImportCSVProps) => {
   const { t } = useTranslation();
   const { formatDate, parseDateInUserTimezone } = usePreferences();
   const { data: mealTypes } = useMealTypes();
@@ -241,6 +245,13 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   // format if we reused the preview's answer here.
   const [resolvedDecimal, setResolvedDecimal] = useState<DecimalFormat>('us');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import clears the table, so a clean state closes freely.
+  const isDirty = csvData.length > 0 || csvText.trim() !== '' || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const preview = useMemo(
     () =>

@@ -14,7 +14,7 @@ Your Basal Metabolic Rate (BMR) represents the energy your body requires to perf
 | **Revised Harris-Benedict**     | Age, Gender, Height, Weight | Historical comparison             | Male: `13.397W + 4.799H - 5.677A + 88.362`<br>Female: `9.247W + 3.098H - 4.33A + 447.593` |
 | **Katch-McArdle**               | Weight, Body Fat %          | Individuals with tracked body fat | `370 + 21.6 × LBM`<br>_(LBM = Lean Body Mass)_                                            |
 | **Cunningham**                  | Weight, Body Fat %          | Highly athletic/muscular builds   | `500 + 22 × LBM`                                                                          |
-| **Oxford**                      | Weight, Gender              | Varied age groups & demographics  | Male: `14.2W + 593`<br>Female: `10.9W + 677`                                              |
+| **Oxford**                      | Age, Gender, Weight         | Varied age groups & demographics  | `239 × (aW + b)`, by age band (Henry 2005):<br>Male 18-30: `0.0669W + 2.28`, 30-60: `0.0592W + 2.48`, 60+: `0.0563W + 2.15`<br>Female 18-30: `0.0546W + 2.33`, 30-60: `0.0407W + 2.90`, 60+: `0.0424W + 2.38` |
 
 _Note: Weight (`W`) is in kg, Height (`H`) is in cm, and Age (`A`) is in years._
 

@@ -5,7 +5,7 @@ The Settings page is organized into four tabs. Each tab contains collapsible sec
 ## Profile & Account
 
 - **Profile Information**: profile photo, full name, phone number, date of birth, gender, height, and bio
-- **Preferences**: units (weight, measurement, distance, energy in kcal or kJ), date and time formats, chart scale mode, target bedtime, timezone, and the minimum logging level. See [Preferences](/features/settings/preferences)
+- **Preferences**: units (weight, measurement, distance, energy in kcal or kJ), date and time formats, chart scale mode, target bedtime, timezone, the minimum logging level, and the estimated blood alcohol settings (distribution formula, elimination rate, and display unit; see [Estimated Blood Alcohol](/features/diary/blood-alcohol)). See [Preferences](/features/settings/preferences)
 - **Tabs**: choose which main tabs show on the website (Check-In, Medications, Lab results, Reports, Foods, Exercises, Goals). A hidden tab also leaves the + menu and the Diary links that only lead to it. Nothing is deleted, and opening the page by its address still works. Diary and Settings always show, Cycle keeps its own switch in its Wellness settings, and the mobile app has its own dashboard, quick action and watch page settings
 - **Family Access**: manage family and friend invitations and their permissions ([Family & Friends Sharing](/features/family-friends-sharing))
 - **Data Import**: bring in a food database or food diary from CSV

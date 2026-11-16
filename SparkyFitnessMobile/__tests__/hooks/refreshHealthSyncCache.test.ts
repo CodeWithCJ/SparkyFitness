@@ -33,6 +33,7 @@ describe('refreshHealthSyncCache', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dailySummary'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['measurements'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['bloodAlcohol'] });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['measurementsRange'],
     });

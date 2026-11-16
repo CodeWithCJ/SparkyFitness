@@ -439,6 +439,48 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
       'target_bedtime = COALESCE($52, user_preferences.target_bedtime)'
     );
   });
+
+  it('writes the blood alcohol settings at $65-$67 on update and upsert', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ user_id: 'user-1' }] });
+    const settings = {
+      bac_distribution_formula: 'seidl',
+      bac_elimination_rate: 0.12,
+      bac_display_unit: 'percent',
+    } as const;
+
+    await preferenceRepository.updateUserPreferences('user-1', settings);
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      ...settings,
+    });
+
+    const [updateSql, updateParams] = mockClient.query.mock.calls[0];
+    expect(updateSql).toContain(
+      'bac_distribution_formula = COALESCE($65, bac_distribution_formula)'
+    );
+    expect(updateParams.slice(64, 67)).toEqual(['seidl', 0.12, 'percent']);
+    const [upsertSql, upsertParams] = mockClient.query.mock.calls[1];
+    expect(upsertSql).toContain(
+      'bac_elimination_rate = COALESCE($66, user_preferences.bac_elimination_rate)'
+    );
+    expect(upsertSql).not.toContain('EXCLUDED.bac_');
+    expect(upsertParams.slice(64, 67)).toEqual(['seidl', 0.12, 'percent']);
+  });
+
+  it('leaves stored blood alcohol settings alone on an upsert that omits them', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'bac_display_unit = COALESCE($67, user_preferences.bac_display_unit)'
+    );
+    expect(params.slice(64, 67)).toEqual([undefined, undefined, undefined]);
+  });
 });
 
 describe('preferenceRepository mergeFeatureChoices', () => {

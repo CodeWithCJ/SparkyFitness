@@ -27,6 +27,10 @@ export const caffeineActiveRootQueryKey = ['caffeineActive'] as const;
 export const caffeineActiveQueryKey = (date: string) =>
   ['caffeineActive', date] as const;
 
+export const bloodAlcoholRootQueryKey = ['bloodAlcohol'] as const;
+export const bloodAlcoholQueryKey = (date: string) =>
+  ['bloodAlcohol', date] as const;
+
 export const measurementsQueryKey = (date: string) =>
   ['measurements', date] as const;
 

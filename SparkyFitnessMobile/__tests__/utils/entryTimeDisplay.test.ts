@@ -1,5 +1,6 @@
 import { initializeI18n } from '../../src/localization/i18n';
 import {
+  formatDateToTimeLabel,
   formatTimeLabel,
   is12HourTimeFormat,
 } from '../../src/utils/entryTimeDisplay';
@@ -36,5 +37,30 @@ describe('entry time display respects account time_format', () => {
     expect(is12HourTimeFormat('h:mm a')).toBe(true);
     // In English locale default, should be 12-hour
     expect(is12HourTimeFormat()).toBe(true);
+  });
+
+  test('formatDateToTimeLabel reads the clock in the given time zone', () => {
+    // 13:30 UTC is 15:30 in Berlin (CEST) and 09:30 in New York (EDT).
+    const instant = new Date('2026-07-01T13:30:00Z');
+    expect(formatDateToTimeLabel(instant, 'HH:mm', 'en', 'Europe/Berlin')).toBe(
+      '15:30'
+    );
+    expect(
+      formatDateToTimeLabel(instant, 'HH:mm', 'en', 'America/New_York')
+    ).toBe('09:30');
+    expect(
+      formatDateToTimeLabel(instant, 'h:mm a', 'en-US', 'Europe/Berlin')
+    ).toBe('3:30 PM');
+    expect(formatDateToTimeLabel(instant, null, 'en-US', 'Asia/Tokyo')).toBe(
+      '10:30 PM'
+    );
+  });
+
+  test('formatDateToTimeLabel keeps the device clock without a time zone', () => {
+    const instant = new Date('2026-07-01T13:30:00Z');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    expect(formatDateToTimeLabel(instant, 'HH:mm')).toBe(
+      `${pad(instant.getHours())}:${pad(instant.getMinutes())}`
+    );
   });
 });

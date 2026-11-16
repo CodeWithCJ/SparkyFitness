@@ -60,3 +60,9 @@ export const caffeineKeys = {
   active: (date: string, userId?: string) =>
     [...caffeineKeys.all, 'active', date, userId ?? 'current'] as const,
 };
+
+export const bloodAlcoholKeys = {
+  all: ['bloodAlcohol'] as const,
+  estimate: (date: string) =>
+    [...bloodAlcoholKeys.all, 'estimate', date] as const,
+};

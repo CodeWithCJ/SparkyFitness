@@ -17,7 +17,15 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
-import { type GlucoseUnit, STANDARD_DRINK_PRESETS } from '@workspace/shared';
+import {
+  BAC_DISTRIBUTION_FORMULAS,
+  BAC_ELIMINATION_RATE_RANGE,
+  DEFAULT_BAC_ELIMINATION_RATE,
+  type BacDisplayUnit,
+  type BacDistributionFormula,
+  type GlucoseUnit,
+  STANDARD_DRINK_PRESETS,
+} from '@workspace/shared';
 import {
   usePreferences,
   WeightUnit,
@@ -75,15 +83,74 @@ export const PreferenceSettings = () => {
     setCaffeineHalfLifeHours,
     targetBedtime,
     setTargetBedtime,
+    bacDistributionFormula,
+    setBacDistributionFormula,
+    bacEliminationRate,
+    setBacEliminationRate,
+    bacDisplayUnit,
+    setBacDisplayUnit,
     saveAllPreferences,
   } = usePreferences();
 
   const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
   const [loading, setLoading] = useState<boolean>(false);
+  // Typed freely and applied on blur: clamping each keystroke would turn the
+  // "0" of "0.12" into the minimum before the rest could be typed.
+  const [bacRateText, setBacRateText] = useState(String(bacEliminationRate));
 
   useEffect(() => {
     setLocalLoggingLevel(loggingLevel);
   }, [loggingLevel]);
+
+  useEffect(() => {
+    setBacRateText(String(bacEliminationRate));
+  }, [bacEliminationRate]);
+
+  const commitBacRate = () => {
+    const parsed = parseFloat(bacRateText);
+    const rate = Number.isFinite(parsed)
+      ? Math.min(
+          BAC_ELIMINATION_RATE_RANGE.max,
+          Math.max(BAC_ELIMINATION_RATE_RANGE.min, parsed)
+        )
+      : DEFAULT_BAC_ELIMINATION_RATE;
+    setBacRateText(String(rate));
+    if (rate !== bacEliminationRate) setBacEliminationRate(rate);
+  };
+
+  const bacFormulaLabels: Record<
+    BacDistributionFormula,
+    { name: string; description: string }
+  > = {
+    widmark: {
+      name: t('settings.preferences.bacFormula.widmark', 'Widmark'),
+      description: t(
+        'settings.preferences.bacFormula.widmarkDescription',
+        'Fixed body water share by sex. Needs sex and weight.'
+      ),
+    },
+    watson: {
+      name: t('settings.preferences.bacFormula.watson', 'Watson (default)'),
+      description: t(
+        'settings.preferences.bacFormula.watsonDescription',
+        'Body water from sex, age, height and weight.'
+      ),
+    },
+    seidl: {
+      name: t('settings.preferences.bacFormula.seidl', 'Seidl'),
+      description: t(
+        'settings.preferences.bacFormula.seidlDescription',
+        'From sex, height and weight.'
+      ),
+    },
+    forrest: {
+      name: t('settings.preferences.bacFormula.forrest', 'Forrest'),
+      description: t(
+        'settings.preferences.bacFormula.forrestDescription',
+        'From sex and body mass index (height and weight).'
+      ),
+    },
+  };
 
   const handlePreferencesUpdate = async () => {
     if (!user) return;
@@ -111,6 +178,9 @@ export const PreferenceSettings = () => {
         weeklyAlcoholLimitG,
         caffeineHalfLifeHours,
         targetBedtime,
+        bacDistributionFormula,
+        bacEliminationRate,
+        bacDisplayUnit,
       });
       toast({
         title: t('settings.preferences.successTitle', 'Success'),
@@ -478,6 +548,84 @@ export const PreferenceSettings = () => {
               value={targetBedtime}
               onChange={setTargetBedtime}
             />
+          </div>
+          <div>
+            <Label htmlFor="bac_distribution_formula">
+              {t(
+                'settings.preferences.bacDistributionFormula',
+                'Blood Alcohol Estimate Formula'
+              )}
+            </Label>
+            <Select
+              value={bacDistributionFormula}
+              onValueChange={(value) =>
+                setBacDistributionFormula(value as BacDistributionFormula)
+              }
+            >
+              <SelectTrigger id="bac_distribution_formula">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BAC_DISTRIBUTION_FORMULAS.map((formula) => (
+                  <SelectItem key={formula} value={formula}>
+                    {bacFormulaLabels[formula].name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {bacFormulaLabels[bacDistributionFormula].description}
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="bac_elimination_rate">
+              {t(
+                'settings.preferences.bacEliminationRate',
+                'Alcohol Elimination Rate (‰ per Hour)'
+              )}
+            </Label>
+            <Input
+              id="bac_elimination_rate"
+              type="number"
+              min={BAC_ELIMINATION_RATE_RANGE.min}
+              max={BAC_ELIMINATION_RATE_RANGE.max}
+              step="0.01"
+              value={bacRateText}
+              onChange={(e) => setBacRateText(e.target.value)}
+              onBlur={commitBacRate}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('settings.preferences.bacEliminationRateHint', {
+                defaultValue:
+                  'Between {{min}} and {{max}}, always in ‰ per hour. {{default}} is a common average.',
+                min: BAC_ELIMINATION_RATE_RANGE.min,
+                max: BAC_ELIMINATION_RATE_RANGE.max,
+                default: DEFAULT_BAC_ELIMINATION_RATE,
+              })}
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="bac_display_unit">
+              {t('settings.preferences.bacDisplayUnit', 'Blood Alcohol Unit')}
+            </Label>
+            <Select
+              value={bacDisplayUnit}
+              onValueChange={(value) =>
+                setBacDisplayUnit(value as BacDisplayUnit)
+              }
+            >
+              <SelectTrigger id="bac_display_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permille">
+                  {t('settings.preferences.bacPermille', 'Per mille (‰)')}
+                </SelectItem>
+                <SelectItem value="percent">
+                  {t('settings.preferences.bacPercent', 'Percent (%)')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="measurement_decimal_places">

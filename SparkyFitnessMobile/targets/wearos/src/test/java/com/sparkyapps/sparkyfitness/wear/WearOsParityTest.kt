@@ -511,13 +511,38 @@ class WearOsParityTest {
         assertEquals("24/32g", nutritionTile.macros[1].valueText)
         assertEquals(SparkyColors.Green.toArgb(), nutritionTile.macros[1].colorArgb)
 
+        val resolveString: (Int, Array<out Any>) -> String = { id, args ->
+            when (id) {
+                R.string.tile_sleep_no_logged -> "No sleep logged today"
+                R.string.tile_sleep_in_bed -> "In bed ${args[0]}"
+                R.string.tile_meds_not_synced -> "Not synced"
+                R.string.tile_meds_taken_count -> "${args[0]} / ${args[1]} Taken"
+                R.string.tile_meds_open_app -> "Open app to sync"
+                R.string.tile_meds_none_today -> "No doses scheduled today"
+                R.string.tile_meds_pending_today -> "${args[0]} pending today"
+                R.string.tile_meds_skipped_done -> "${args[0]} skipped \u00B7 All done"
+                R.string.tile_meds_all_done -> "All doses completed"
+                R.string.tile_exercise_steps_count -> "${args[0]} steps"
+                R.string.tile_exercise_goal_minutes -> "Goal ${args[0]}m"
+                R.string.tile_exercise_planned_today -> "Workout planned today"
+                R.string.tile_exercise_tap_start -> "Tap to start a workout"
+                else -> error("Unexpected string resource id: $id")
+            }
+        }
+        val resolvePlural: (Int, Int, Array<out Any>) -> String = { id, qty, args ->
+            when (id) {
+                R.plurals.tile_sleep_naps -> if (qty == 1) "${args[0]} nap (${args[1]})" else "${args[0]} naps (${args[1]})"
+                R.plurals.tile_exercise_workouts -> if (qty == 1) "${args[0]} workout" else "${args[0]} workouts"
+                else -> error("Unexpected plural resource id: $id")
+            }
+        }
+
         val sleepTile = TileModels.buildSleepTileModel(ctx.sleep)
         assertTrue(sleepTile.hasData)
-        assertEquals("7h 45m", sleepTile.durationText)
-        assertEquals("Score 86", sleepTile.scoreText)
+        assertEquals("7h 45m", TileModels.formatSleepDuration(sleepTile, resolveString))
         assertEquals(86, sleepTile.sleepScore)
-        assertEquals("11:00 PM \u2013 6:45 AM", sleepTile.windowText)
         assertEquals(SleepWindow.BedWake("11:00 PM", "6:45 AM"), sleepTile.window)
+        assertEquals("11:00 PM \u2013 6:45 AM", TileModels.formatSleepWindow(sleepTile.window, resolveString, resolvePlural))
         assertEquals(3, sleepTile.stages.size)
         assertEquals(R.string.sleep_stage_deep, sleepTile.stages[0].labelRes)
         assertEquals(R.string.sleep_stage_rem, sleepTile.stages[1].labelRes)
@@ -529,7 +554,8 @@ class WearOsParityTest {
         assertEquals(1, medsTile.takenCount)
         assertEquals(2, medsTile.totalCount)
         assertEquals(1, medsTile.pendingCount)
-        assertEquals("1 / 2 Taken", medsTile.headlineText)
+        assertEquals("1 / 2 Taken", TileModels.formatMedicationsHeadline(medsTile, resolveString))
+        assertEquals("1 pending today", TileModels.formatMedicationsSubtitle(medsTile, resolveString))
         assertEquals("Magnesium", medsTile.doseRows[0].name)
 
         val exerciseTile = TileModels.buildExerciseTileModel(
@@ -541,7 +567,8 @@ class WearOsParityTest {
         assertTrue(exerciseTile.hasData)
         assertEquals(45, exerciseTile.minutes)
         assertEquals(60, exerciseTile.minutesGoal)
-        assertEquals("45m \u00B7 380/500 kcal", exerciseTile.headlineText)
+        assertEquals("45m \u00B7 380/500 kcal", TileModels.formatExerciseHeadline(exerciseTile, resolveString))
+        assertEquals("Goal 60m \u00B7 1 workout", TileModels.formatExerciseSubtitle(exerciseTile, resolveString, resolvePlural))
         assertEquals("Upper Body Push", exerciseTile.rows[0].title)
     }
 }

@@ -1585,20 +1585,8 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
       }
     } else {
       item {
-        val resolvedDuration = model.inBedDurationText?.let {
-          stringResource(R.string.tile_sleep_in_bed, it)
-        } ?: model.durationText
-        val resolvedWindow = when (val window = model.window) {
-          is SleepWindow.NoSleepLogged -> stringResource(R.string.tile_sleep_no_logged)
-          is SleepWindow.BedWake -> "${window.bedtime} \u2013 ${window.wakeTime}"
-          is SleepWindow.Naps -> context.resources.getQuantityString(
-            R.plurals.tile_sleep_naps,
-            window.count,
-            window.count,
-            window.durationText
-          )
-          is SleepWindow.InBed -> stringResource(R.string.tile_sleep_in_bed, window.durationText)
-        }
+        val resolvedDuration = TileModels.formatSleepDuration(context, model)
+        val resolvedWindow = TileModels.formatSleepWindow(context, model.window)
         Column(
           horizontalAlignment = Alignment.CenterHorizontally,
           modifier = Modifier.padding(bottom = 8.dp)

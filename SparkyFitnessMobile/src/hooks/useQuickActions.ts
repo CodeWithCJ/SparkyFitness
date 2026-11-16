@@ -12,11 +12,8 @@ import {
   fetchWaterContainers,
 } from '../services/api/measurementsApi';
 import { DEFAULT_WATER_CONTAINER_ID } from './useWaterIntakeMutation';
-import {
-  caffeineActiveQueryKey,
-  dailySummaryQueryKey,
-  waterIntakeLogQueryKey,
-} from './queryKeys';
+import { dailySummaryQueryKey, waterIntakeLogQueryKey } from './queryKeys';
+import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 import { queryClient } from './queryClient';
 import { getTodayDate } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
@@ -92,9 +89,7 @@ async function logWaterDrink(): Promise<void> {
     void queryClient.invalidateQueries({
       queryKey: waterIntakeLogQueryKey(date),
     });
-    void queryClient.invalidateQueries({
-      queryKey: caffeineActiveQueryKey(date),
-    });
+    void invalidateIntakeKinetics(queryClient, date);
     Toast.show({
       type: 'success',
       text1: i18n.t('quickActions.waterLogged', {

@@ -1,4 +1,4 @@
-import { toHourMinute } from '@workspace/shared';
+import { instantHourMinute, toHourMinute } from '@workspace/shared';
 import { getAppLocale } from '../localization';
 
 /**
@@ -103,24 +103,34 @@ export function is12HourTimeFormat(
 
 /**
  * Formats a Date instance as a clock time string respecting the time format preference.
+ *
+ * With `timeZone` (an IANA name) the clock is read in that zone, for screens that
+ * show a day in the profile time zone; without it the device's own zone is used.
  */
 export function formatDateToTimeLabel(
   date: Date,
   timeFormat?: EntryTimeFormat | null,
-  locale: string = getAppLocale()
+  locale: string = getAppLocale(),
+  timeZone?: string
 ): string {
   if (timeFormat === 'HH:mm') {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const { hour, minute } = timeZone
+      ? instantHourMinute(date, timeZone)
+      : { hour: date.getHours(), minute: date.getMinutes() };
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
+  const zone = timeZone ? { timeZone } : {};
   if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') {
     return date.toLocaleTimeString(locale, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      ...zone,
     });
   }
   return date.toLocaleTimeString(locale, {
     hour: 'numeric',
     minute: '2-digit',
+    ...zone,
   });
 }

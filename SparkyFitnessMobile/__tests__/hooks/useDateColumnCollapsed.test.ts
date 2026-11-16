@@ -29,6 +29,15 @@ describe('dateColumnFits', () => {
     expect(dateColumnFits({ columnTop: top + 1, addTop })).toBe(false);
   });
 
+  it('takes the column top from the status strip region when there is one', () => {
+    // No header column exists yet at first render, so only the region answers.
+    expect(dateColumnFits({ addTop }, 124)).toBe(true);
+    // A live activity lengthens the region (measured 124 -> 224).
+    expect(dateColumnFits({ addTop }, 224)).toBe(false);
+    // The region wins over a stale laid-out column.
+    expect(dateColumnFits({ columnTop: 300, addTop }, 124)).toBe(true);
+  });
+
   it('returns null when either measurement is missing', () => {
     expect(dateColumnFits(null)).toBeNull();
     expect(dateColumnFits({ columnTop: 124 })).toBeNull();

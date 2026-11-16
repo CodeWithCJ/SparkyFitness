@@ -20,6 +20,10 @@ import { SET_ACCESSORY_BAR_HEIGHT } from '../../src/components/SetRowChrome';
 import type { ActionSheetItem } from '../../src/components/ActionSheet';
 import type { PresetSessionResponse } from '@workspace/shared';
 import { getActiveServerConfig } from '../../src/services/storage';
+import {
+  getWorkoutReorderSource,
+  setWorkoutReorderSource,
+} from '../../src/services/workoutReorderSource';
 import { getWorkout, updateWorkout } from '../../src/services/api/exerciseApi';
 
 jest.mock('../../src/services/storage', () => ({
@@ -316,11 +320,6 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
   };
 });
 
-jest.mock('../../src/components/WorkoutReorderList', () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 // Captures the custom-duration sheet's props and present args so tests can
 // assert the long-workout adjust wiring and drive onSave directly.
 const mockDurationSheet: {
@@ -460,6 +459,7 @@ const navigation = {
     screenFocused = false;
   }),
   navigate: jest.fn(),
+  push: jest.fn(),
   replace: jest.fn(() => {
     screenFocused = false;
   }),
@@ -537,6 +537,19 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     // Menu item must show the full action "Remove exercise", not the short
     // destructive alert button text "Remove".
     expect(remove?.label).toBe('Remove exercise');
+  });
+
+  it('opens a fresh reorder screen on the live session, not a form source left in the stack', () => {
+    // A reorder screen opened from a workout form leaves its list here; the
+    // active workout must not reuse it.
+    setWorkoutReorderSource({ exercises: [], onMove: jest.fn() });
+    renderScreen();
+
+    act(() => (mockHeaderProps.onReorder as () => void)());
+
+    expect(getWorkoutReorderSource()).toBeNull();
+    expect(navigation.push).toHaveBeenCalledWith('WorkoutReorder');
+    expect(navigation.navigate).not.toHaveBeenCalledWith('WorkoutReorder');
   });
 
   it('lists the upcoming exercises to do now, and does the picked one first', () => {

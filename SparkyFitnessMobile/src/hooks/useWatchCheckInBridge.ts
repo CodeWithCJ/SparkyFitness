@@ -30,7 +30,6 @@ import {
   updateEntry,
 } from '../services/api/medicationsApi';
 import {
-  caffeineActiveQueryKey,
   medicationsListQueryKey,
   medicationEntriesQueryKey,
   measurementsQueryKey,
@@ -39,6 +38,7 @@ import {
   waterContainersQueryKey,
   waterIntakeLogQueryKey,
 } from './queryKeys';
+import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { getTodayDate, addDays, getDeviceTimezone } from '../utils/dateUtils';
 import {
@@ -1278,9 +1278,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(payload.entryDate),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(payload.entryDate),
-          }),
+          invalidateIntakeKinetics(queryClient, payload.entryDate),
         ]);
 
         addLog(
@@ -1363,9 +1361,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(today),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(today),
-          }),
+          // The server also deletes a food entry linked to the log row (a
+          // drink container tied to a food, possibly alcoholic), and the
+          // delete carries no day: the row can be from an earlier day the
+          // watch still lists, so refresh every day's curves.
+          invalidateIntakeKinetics(queryClient),
         ]);
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');
