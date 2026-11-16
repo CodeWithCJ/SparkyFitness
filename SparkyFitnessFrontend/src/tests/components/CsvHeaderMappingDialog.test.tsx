@@ -79,4 +79,27 @@ describe('CsvHeaderMappingDialog', () => {
       screen.getByText(HEALTH_CSV_FIELD_DESCRIPTIONS['unit']!.fallback)
     ).toBeInTheDocument();
   });
+
+  it('associates the select trigger with the description via aria-describedby', () => {
+    renderWithClient(
+      <CsvHeaderMappingDialog
+        {...props}
+        requiredHeaders={['date', 'custom_field']}
+      />
+    );
+    const comboboxes = screen.getAllByRole('combobox');
+    expect(comboboxes).toHaveLength(2);
+
+    // 'date' has a description in CSV_FIELD_DESCRIPTIONS
+    const dateDescId = comboboxes[0]!.getAttribute('aria-describedby');
+    expect(dateDescId).toBe('csv-field-desc-date');
+    const descElement = document.getElementById(dateDescId!);
+    expect(descElement).toBeInTheDocument();
+    expect(descElement).toHaveTextContent(
+      CSV_FIELD_DESCRIPTIONS['date']!.fallback
+    );
+
+    // 'custom_field' has no description in the map, so aria-describedby is omitted
+    expect(comboboxes[1]).not.toHaveAttribute('aria-describedby');
+  });
 });

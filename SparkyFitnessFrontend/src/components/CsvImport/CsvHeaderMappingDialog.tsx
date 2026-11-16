@@ -93,6 +93,9 @@ const CsvHeaderMappingDialog = ({
             const description = entry
               ? t(entry.key, entry.fallback)
               : undefined;
+            const descriptionId = description
+              ? `csv-field-desc-${req.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+              : undefined;
             return (
               <div
                 key={req}
@@ -114,7 +117,10 @@ const CsvHeaderMappingDialog = ({
                     })
                   }
                 >
-                  <SelectTrigger className="w-full sm:w-50">
+                  <SelectTrigger
+                    className="w-full sm:w-50"
+                    aria-describedby={descriptionId}
+                  >
                     <SelectValue
                       placeholder={t('csvImport.selectHeader', 'Select header')}
                     />
@@ -131,7 +137,10 @@ const CsvHeaderMappingDialog = ({
                   </SelectContent>
                 </Select>
                 {description && (
-                  <span className="text-xs text-muted-foreground sm:flex-1">
+                  <span
+                    id={descriptionId}
+                    className="text-xs text-muted-foreground sm:flex-1"
+                  >
                     {description}
                   </span>
                 )}
