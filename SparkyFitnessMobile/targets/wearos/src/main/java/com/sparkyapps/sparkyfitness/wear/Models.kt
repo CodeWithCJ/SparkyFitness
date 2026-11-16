@@ -31,8 +31,9 @@ enum class WeightUnit(val rawValue: String, val suffix: String) {
   KG("kg", "kg"),
   LBS("lbs", "lbs");
 
-  fun fromKg(kg: Double): Double = if (this == LBS) kg * 2.20462262185 else kg
-  fun toKg(value: Double): Double = if (this == LBS) value / 2.20462262185 else value
+  fun fromKg(kg: Double): Double = if (this == LBS) kg / WeightRounding.KG_PER_LB else kg
+  fun toKg(value: Double): Double = if (this == LBS) value * WeightRounding.KG_PER_LB else value
+  fun displayedFromKg(kg: Double): Double = WeightRounding.displayed(kg = kg, lbs = this == LBS)
 
   companion object {
     fun fromRaw(raw: String?): WeightUnit? = when (raw?.lowercase()) {
@@ -371,6 +372,12 @@ data class WatchContext(
   val energyUnit: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
+  val newWorkout: Boolean? = null,
+  val workoutCountdown: Int? = null,
+  val holdCountdown: Boolean? = null,
+  val workoutTopLine: String? = null,
+  val heartRateZoneFloors: List<Double>? = null,
+  val exerciseDoNow: Boolean? = null,
   val medications: MedicationSnapshot? = null,
   val fast: WatchFast? = null,
   val fastSynced: Boolean = false,
@@ -388,6 +395,27 @@ data class WatchContext(
 ) {
   val effectiveWeightUnit: WeightUnit
     get() = weightUnit ?: WeightUnit.KG
+
+  val effectiveHapticsEnabled: Boolean
+    get() = hapticsEnabled != false
+
+  val effectiveRestBuzzEnabled: Boolean
+    get() = effectiveHapticsEnabled && restAlertsEnabled != false
+
+  val effectiveNewWorkout: Boolean
+    get() = newWorkout == true
+
+  val effectiveWorkoutCountdown: Int
+    get() = if (effectiveNewWorkout) maxOf(0, workoutCountdown ?: 3) else 0
+
+  val effectiveHoldCountdown: Boolean
+    get() = effectiveNewWorkout && holdCountdown != false
+
+  val effectiveWorkoutTopLineIsMetrics: Boolean
+    get() = workoutTopLine == "metrics"
+
+  val effectiveExerciseDoNow: Boolean
+    get() = exerciseDoNow == true
 
   val hasSeed: Boolean
     get() = todayWeightKg != null || lastWeightKg != null
@@ -439,6 +467,7 @@ data class PlannedSet(
   val targetReps: Double? = null,
   val targetWeightKg: Double? = null,
   val restSeconds: Int = 60,
+  val restAfterSeconds: Int? = null,
   val setType: String? = null,
   val targetDurationSec: Int? = null,
   val previousDurationSec: Int? = null,
@@ -453,6 +482,11 @@ data class PlannedExercise(
   val name: String,
   val supersetRun: Int? = null,
   val bodyweight: Boolean? = null,
+  val equipment: String? = null,
+  val plates: WatchPlateConfig? = null,
+  val imageKey: String? = null,
+  val imageCount: Int? = null,
+  val muscle: String? = null,
   val sets: List<PlannedSet>
 )
 
@@ -470,7 +504,27 @@ data class ActiveWorkoutPlan(
   val pausedAtMs: Long? = null,
   val excludedPauseSeconds: Int = 0,
   val prSetIds: Set<String> = emptySet()
-)
+) {
+  /** Maps each superset member's `exerciseEntryId` to its partner names. */
+  fun supersetPartners(): Map<String, String> {
+    val grouped = LinkedHashMap<Int, MutableList<PlannedExercise>>()
+    for (ex in exercises) {
+      val run = ex.supersetRun ?: continue
+      grouped.getOrPut(run) { mutableListOf() }.add(ex)
+    }
+    val partners = HashMap<String, String>()
+    for (members in grouped.values) {
+      if (members.size < 2) continue
+      for (member in members) {
+        val others = members.filter { it.exerciseEntryId != member.exerciseEntryId }.map { it.name }
+        if (others.isNotEmpty()) {
+          partners[member.exerciseEntryId] = others.joinToString(", ")
+        }
+      }
+    }
+    return partners
+  }
+}
 
 data class IntervalTimingUpdate(
   val sessionId: String,
@@ -488,6 +542,7 @@ data class WorkoutStep(
   val totalSetsInExercise: Int,
   val setType: String?,
   val supersetRun: Int?,
+  val supersetWith: String? = null,
   val bodyweight: Boolean,
   val timed: Boolean,
   val carry: Boolean,
@@ -497,8 +552,23 @@ data class WorkoutStep(
   val targetDurationSec: Int?,
   val previousDurationSec: Int?,
   val targetDistanceKm: Double?,
-  val restSeconds: Int
-)
+  val restSeconds: Int,
+  val restAfterSeconds: Int? = null,
+  val equipment: String? = null,
+  val plates: WatchPlateConfig? = null,
+  val imageKey: String? = null,
+  val imageCount: Int? = null,
+  val muscle: String? = null
+) {
+  fun toRestStepFacts(): RestStepFacts = RestStepFacts(
+    exerciseEntryId = exerciseEntryId,
+    supersetRun = supersetRun,
+    setNumber = setIndexInExercise,
+    isDrop = setType.equals("drop", ignoreCase = true),
+    ownRestSeconds = restAfterSeconds,
+    restBeforeSeconds = restSeconds
+  )
+}
 
 data class SetValues(
   val weightKg: Double? = null,
@@ -548,7 +618,8 @@ data class WorkoutSummary(
   val volumeKg: Double,
   val averageBpm: Double?,
   val maxBpm: Double?,
-  val activeEnergyKcal: Double?
+  val activeEnergyKcal: Double?,
+  val changedPresetName: String? = null
 )
 
 sealed class WorkoutEditAction {
@@ -557,6 +628,15 @@ sealed class WorkoutEditAction {
   data class SetSetType(val setId: String, val type: String) : WorkoutEditAction()
   data class AddExercise(val exerciseId: String) : WorkoutEditAction()
   data class DeleteExercise(val exerciseEntryId: String) : WorkoutEditAction()
+  data class DoExerciseNow(val exerciseEntryId: String, val anchorEntryId: String) : WorkoutEditAction()
+  data class SetValuesEdit(
+    val setId: String,
+    val weightKg: Double? = null,
+    val reps: Double? = null,
+    val distanceKm: Double? = null,
+    val atMs: Long = System.currentTimeMillis(),
+    val armedAtMs: Long? = null
+  ) : WorkoutEditAction()
 }
 
 // ---- Phone GPS Recording Models ----

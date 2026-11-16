@@ -57,6 +57,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
   val workoutStore = WorkoutSessionStore(appContext)
   val recordingStore = RecordingStore()
   val runStore = WatchRunStore(appContext)
+  val demoStore = ExerciseDemoStore(appContext)
   val sensorsController = WatchSensorsController(appContext, this)
 
   private val _requestedPage = MutableStateFlow<WatchPage?>(null)
@@ -80,10 +81,13 @@ class WearSessionManager private constructor(private val appContext: Context) :
 
   init {
     Haptics.init(appContext)
+    Haptics.hapticsEnabledProvider = { checkInStore.watchContext.value.effectiveHapticsEnabled }
+    Haptics.restBuzzEnabledProvider = { checkInStore.watchContext.value.effectiveRestBuzzEnabled }
     checkInStore.session = this
     workoutStore.session = this
     workoutStore.sensors = sensorsController
     workoutStore.checkInStore = checkInStore
+    workoutStore.demoStore = demoStore
     recordingStore.session = this
     recordingStore.sensors = sensorsController
     recordingStore.checkInStore = checkInStore
@@ -156,6 +160,15 @@ class WearSessionManager private constructor(private val appContext: Context) :
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val raw = dataMap.getString("json") ?: continue
             handleIncomingPayloadString(raw)
+          } else if (path.startsWith(PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE)) {
+            val dataMap = DataMapItem.fromDataItem(item).dataMap
+            val key = dataMap.getString("key")
+            val index = dataMap.getInt("index", -1)
+            val bytes = dataMap.getByteArray("data")
+            if (!key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && bytes != null) {
+              demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys())
+            }
+            Wearable.getDataClient(appContext).deleteDataItems(item.uri).await()
           } else if (path.startsWith(PREFIX_PHONE_TO_WATCH)) {
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val raw = dataMap.getString("json")
@@ -187,6 +200,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
       if (event.type == DataEvent.TYPE_DELETED && path == PATH_CONTEXT) {
         scope.launch {
           checkInStore.clearAccountState(newOwnerId = null)
+          demoStore.clear()
           clearQueuedWatchTransfers()
         }
         continue
@@ -195,6 +209,20 @@ class WearSessionManager private constructor(private val appContext: Context) :
       if (path == PATH_CONTEXT) {
         val raw = DataMapItem.fromDataItem(item).dataMap.getString("json") ?: continue
         handleIncomingPayloadString(raw)
+      } else if (path.startsWith(PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE)) {
+        val dataMap = DataMapItem.fromDataItem(item).dataMap
+        val key = dataMap.getString("key")
+        val index = dataMap.getInt("index", -1)
+        val bytes = dataMap.getByteArray("data")
+        val uri = item.uri
+        scope.launch(Dispatchers.IO) {
+          if (!key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && bytes != null) {
+            demoStore.receive(key, index, bytes, workoutStore.activeDemoKeys())
+          }
+          try {
+            Wearable.getDataClient(appContext).deleteDataItems(uri).await()
+          } catch (_: Throwable) {}
+        }
       } else if (path.startsWith(PREFIX_PHONE_TO_WATCH)) {
         val raw = DataMapItem.fromDataItem(item).dataMap.getString("json")
         if (raw != null) handleIncomingPayloadString(raw)
@@ -224,7 +252,19 @@ class WearSessionManager private constructor(private val appContext: Context) :
     when {
       type == "accountCleared" -> {
         checkInStore.clearAccountState(newOwnerId = null)
+        demoStore.clear()
         clearQueuedWatchTransfers()
+      }
+      type == "exerciseImage" -> {
+        val key = json.optString("key")
+        val index = json.optInt("index", -1)
+        val dataBase64 = json.optString("dataBase64")
+        if (key.isNotEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && dataBase64.isNotEmpty()) {
+          val keepKeys = workoutStore.activeDemoKeys()
+          scope.launch(Dispatchers.IO) {
+            demoStore.receiveBase64(key, index, dataBase64, keepKeys)
+          }
+        }
       }
       type == "context" || json.has("today") || json.has("caloriesConsumed") || json.has("waterConsumedMl") -> {
         checkInStore.applyRemoteContextJson(json, rawJson = raw)
@@ -405,6 +445,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
     const val PATH_CONTEXT = "/sparky/context"
     const val PATH_MESSAGE = "/sparky/message"
     const val PREFIX_PHONE_TO_WATCH = "/sparky/transfer/phone/"
+    const val PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE = "/sparky/transfer/phone/exerciseImage/"
     const val PREFIX_WATCH_TO_PHONE = "/sparky/transfer/watch/"
 
     @Volatile

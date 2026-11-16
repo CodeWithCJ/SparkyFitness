@@ -299,8 +299,8 @@ internal object WatchConnectivityHub {
     }
   }
 
-  private suspend fun sendLiveBytes(context: Context, path: String, bytes: ByteArray) {
-    try {
+  private suspend fun sendLiveBytes(context: Context, path: String, bytes: ByteArray): Boolean {
+    return try {
       val nodes = Wearable.getNodeClient(context).connectedNodes.await()
       val connected = nodes.isNotEmpty()
       val prev = isReachableFlag.getAndSet(connected)
@@ -311,15 +311,45 @@ internal object WatchConnectivityHub {
         activeModule?.emitEvent("onReachabilityChange", mapOf("isReachable" to connected))
       }
       val msgClient = Wearable.getMessageClient(context)
+      var delivered = false
       for (node in nodes) {
         try {
           msgClient.sendMessage(node.id, path, bytes).await()
+          delivered = true
         } catch (e: Throwable) {
           Log.w(TAG, "sendMessage to ${node.id} failed: ${e.message}")
         }
       }
+      delivered
     } catch (e: Throwable) {
       Log.w(TAG, "sendLiveBytes failed: ${e.message}")
+      false
+    }
+  }
+
+  suspend fun sendExerciseImage(context: Context, key: String, index: Int, bytes: ByteArray) {
+    val appCtx = context.applicationContext
+    val safeKey = key.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+    val livePayload = JSONObject().apply {
+      put("type", "exerciseImage")
+      put("key", key)
+      put("index", index)
+      put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+    }.toString().toByteArray(Charsets.UTF_8)
+    val sentLive = sendLiveBytes(appCtx, "/sparky/message", livePayload)
+    if (!sentLive) {
+      val path = "/sparky/transfer/phone/exerciseImage/${safeKey}_$index"
+      try {
+        val req = PutDataMapRequest.create(path).apply {
+          dataMap.putString("key", key)
+          dataMap.putInt("index", index)
+          dataMap.putByteArray("data", bytes)
+          dataMap.putLong("sentAt", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(appCtx).putDataItem(req).await()
+      } catch (e: Throwable) {
+        Log.w(TAG, "durable exerciseImage transfer ($path) failed: ${e.message}")
+      }
     }
   }
 
@@ -623,6 +653,7 @@ internal object WatchConnectivityHub {
             "targetDurationSec" to targetDurationSec,
             "targetDistanceKm" to targetDistanceKm,
             "restSeconds" to restSeconds,
+            "restAfterSeconds" to restSeconds,
             "setType" to setType
           )
           if (isTimed) setMap["timed"] = true
@@ -631,14 +662,25 @@ internal object WatchConnectivityHub {
           watchSets.add(setMap)
         }
 
-        watchExercises.add(
-          mapOf(
-            "exerciseEntryId" to entryId,
-            "name" to exName,
-            "bodyweight" to isBodyweight,
-            "sets" to watchSets
-          )
+        val exMap = mutableMapOf<String, Any?>(
+          "exerciseEntryId" to entryId,
+          "name" to exName,
+          "bodyweight" to isBodyweight,
+          "sets" to watchSets
         )
+        snap?.optJSONArray("equipment")?.optString(0)?.takeIf { it.isNotBlank() }?.let {
+          exMap["equipment"] = it
+        }
+        snap?.optJSONArray("primary_muscles")?.optString(0)?.takeIf { it.isNotBlank() }?.let {
+          exMap["muscle"] = it
+        }
+        val imageId = snap?.optString("id")?.takeIf { it.isNotBlank() }
+        val imagesArr = snap?.optJSONArray("images")
+        if (imageId != null && imagesArr != null && imagesArr.length() > 0) {
+          exMap["imageKey"] = imageId
+          exMap["imageCount"] = minOf(imagesArr.length(), 2)
+        }
+        watchExercises.add(exMap)
       }
 
       val nowMs = System.currentTimeMillis()
@@ -949,14 +991,39 @@ internal object WatchConnectivityHub {
           }
         }
       }
+      "workoutEffort" -> {
+        val event = mapOf(
+          "sessionId" to (payload["sessionId"] as? String ?: ""),
+          "rating" to (asInt(payload["rating"]) ?: 0)
+        )
+        if (mod != null) {
+          mod.emitEvent("onWorkoutEffort", event)
+        } else if (rawJson != null) {
+          enqueueInboundJson(context, rawJson)
+        }
+      }
+      "runEffort" -> {
+        val event = mapOf(
+          "clientId" to (payload["clientId"] as? String ?: ""),
+          "rating" to (asInt(payload["rating"]) ?: 0)
+        )
+        if (mod != null) {
+          mod.emitEvent("onRunEffort", event)
+        } else if (rawJson != null) {
+          enqueueInboundJson(context, rawJson)
+        }
+      }
       "workoutEdit" -> {
         val event = mutableMapOf<String, Any?>(
           "sessionId" to (payload["sessionId"] as? String ?: ""),
           "clientId" to (payload["clientId"] as? String ?: ""),
           "action" to (payload["action"] as? String ?: "")
         )
-        for (key in listOf("exerciseEntryId", "setId", "exerciseId", "setType")) {
+        for (key in listOf("exerciseEntryId", "anchorEntryId", "setId", "exerciseId", "setType")) {
           (payload[key] as? String)?.let { event[key] = it }
+        }
+        for (key in listOf("weightKg", "reps", "distanceKm", "at", "armedAt")) {
+          asDouble(payload[key])?.let { event[key] = it }
         }
         if (mod != null) {
           mod.emitEvent("onWorkoutEdit", event)
@@ -970,7 +1037,8 @@ internal object WatchConnectivityHub {
             "onPresetUpdateAnswer",
             mapOf(
               "sessionId" to (payload["sessionId"] as? String ?: ""),
-              "update" to (payload["update"] as? Boolean ?: false)
+              "update" to (payload["update"] as? Boolean ?: false),
+              "waiting" to (payload["waiting"] as? Boolean ?: false)
             )
           )
         } else if (rawJson != null) {
@@ -1520,6 +1588,7 @@ class WatchConnectivityModule : Module() {
       "onSetTimerStopped",
       "onHeartRateBatch",
       "onLiveHeartRate",
+      "onWorkoutEffort",
       "onWorkoutStop",
       "onWorkoutDiscard",
       "onWorkoutStartRequested",
@@ -1531,7 +1600,8 @@ class WatchConnectivityModule : Module() {
       "onFastEndRequested",
       "onRunLive",
       "onRunCue",
-      "onRunFinished"
+      "onRunFinished",
+      "onRunEffort"
     )
 
     OnCreate {
@@ -1604,6 +1674,41 @@ class WatchConnectivityModule : Module() {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
       }
       WatchConnectivityHub.launchWatchApp(ctx, "workout")
+    }
+
+    AsyncFunction("sendExerciseImage") { image: ReadableMap ->
+      val ctx = appContext.reactContext
+        ?: throw IllegalStateException("React context unavailable")
+      if (!WatchConnectivityHub.isSupportedFlag.get()) {
+        throw IllegalStateException("Wearable connectivity unsupported")
+      }
+      val map = image.toHashMap()
+      val key = (map["key"] as? String)?.trim()
+      val index = (map["index"] as? Number)?.toInt()
+      val uriStr = map["uri"] as? String
+      if (key.isNullOrEmpty() || key.length > 80 || index == null || index !in 0..1 || uriStr.isNullOrEmpty()) {
+        throw IllegalArgumentException("Invalid exercise image payload")
+      }
+      val parsed = Uri.parse(uriStr)
+      val filePath = if (parsed.scheme == "file") parsed.path else null
+      if (filePath.isNullOrEmpty()) {
+        throw IllegalArgumentException("Exercise image uri must be a file:// URL")
+      }
+      val file = File(filePath).canonicalFile
+      val cacheRoot = ctx.cacheDir.canonicalFile.path
+      val filesRoot = ctx.filesDir.canonicalFile.path
+      val insideAppStorage = file.path.startsWith("$cacheRoot${File.separator}") ||
+        file.path.startsWith("$filesRoot${File.separator}")
+      if (!insideAppStorage || !file.isFile) {
+        throw IllegalArgumentException("Exercise image file unreadable")
+      }
+      val bytes = file.readBytes()
+      if (bytes.isEmpty() || bytes.size > 256 * 1024) {
+        throw IllegalArgumentException("Exercise image size out of bounds")
+      }
+      WatchConnectivityHub.scope.launch {
+        WatchConnectivityHub.sendExerciseImage(ctx, key, index, bytes)
+      }
     }
 
     AsyncFunction("updateWorkoutPlan") { plan: ReadableMap ->

@@ -7124,6 +7124,7 @@
     "largerTextTitle": "Larger text on the watch",
     "largerTextSubtitle": "Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.",
     "newWorkoutSubtitle": "A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.",
+    "newWorkoutSubtitleWearOs": "A Log set button, a button to edit the previous set, exercise demos, plate calculator, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.",
     "topLineTitle": "Top line",
     "topLineDescription": "What the top of the watch workout shows first: the elapsed time or live heart rate and calories. Tap it on the watch to switch.",
     "topLineTime": "Time",

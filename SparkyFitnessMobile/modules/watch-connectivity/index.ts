@@ -1182,8 +1182,8 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
   /**
    * Transfers one exercise demo picture (a local JPEG, already scaled down) to
-   * the watch as queued user info (the session's reliable channel). `index` 0 is the start position,
-   * 1 the end. iOS only; absent on Android.
+   * the watch as a live message with durable queued fallback. `index` 0 is the
+   * start position, 1 the end. Supported on iOS and Android (Wear OS).
    */
   sendExerciseImage?(image: {
     key: string;
