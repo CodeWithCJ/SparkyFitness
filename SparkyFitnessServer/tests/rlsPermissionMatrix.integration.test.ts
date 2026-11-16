@@ -2053,6 +2053,48 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     expect(planned?.edited).toBe(false);
     expect(isPlannedEntryRow(planned!)).toBe(true);
 
+    // A note added to the untouched session: it is the member's workout now,
+    // and the day is queued once (a second save queues nothing more)
+    const plain = await sys.query(
+      `INSERT INTO public.exercise_preset_entries (user_id, name, entry_date, source)
+       VALUES ($1, 'rls-challenge plan note', '2026-11-21', 'Workout Plan') RETURNING id`,
+      [AMY]
+    );
+    await sys.query(
+      `INSERT INTO public.exercise_entries
+         (user_id, entry_date, calories_burned, duration_minutes, exercise_name, source, exercise_preset_entry_id)
+       VALUES ($1, '2026-11-21', 100, 30, 'rls-challenge squat', 'Workout Plan', $2)`,
+      [AMY, plain.rows[0].id]
+    );
+    await clearQueue();
+    await sys.query(
+      `UPDATE public.exercise_preset_entries
+          SET notes = 'felt good', updated_at = created_at + interval '1 minute'
+        WHERE id = $1`,
+      [plain.rows[0].id]
+    );
+    expect(await queued()).toEqual(['amy 2026-11-21']);
+    const [noted] = await challengeRepository.getMemberEntries(
+      AMY,
+      '2026-11-21',
+      '2026-11-21'
+    );
+    expect(noted?.session?.edited).toBe(true);
+    expect(isPlannedEntryRow(noted!)).toBe(false);
+    await clearQueue();
+    await sys.query(
+      `UPDATE public.exercise_preset_entries
+          SET notes = 'felt great', updated_at = created_at + interval '2 minutes'
+        WHERE id = $1`,
+      [plain.rows[0].id]
+    );
+    expect(await queued()).toEqual([]);
+    await sys.query(
+      'DELETE FROM public.exercise_preset_entries WHERE id = $1',
+      [plain.rows[0].id]
+    );
+    await clearQueue();
+
     // Editing reps alone changes no status: nothing queued by the set
     await sys.query(
       'UPDATE public.exercise_entry_sets SET reps = 9 WHERE id = $1',

@@ -245,11 +245,14 @@ CREATE TRIGGER queue_challenge_scores
     EXECUTE FUNCTION public.queue_challenge_scores();
 
 DROP TRIGGER IF EXISTS queue_challenge_scores ON public.exercise_preset_entries;
+-- Finished, reopened, another source, or edited for the first time (an
+-- untouched plan session counts once the member changes it).
 CREATE TRIGGER queue_challenge_scores
-    AFTER UPDATE OF finished_at, source ON public.exercise_preset_entries
+    AFTER UPDATE ON public.exercise_preset_entries
     FOR EACH ROW
     WHEN (OLD.finished_at IS DISTINCT FROM NEW.finished_at
-          OR OLD.source IS DISTINCT FROM NEW.source)
+          OR OLD.source IS DISTINCT FROM NEW.source
+          OR (OLD.updated_at <= OLD.created_at AND NEW.updated_at > NEW.created_at))
     EXECUTE FUNCTION public.queue_challenge_scores();
 
 -- A set checked off, un-checked, started, or moved to another workout: a
