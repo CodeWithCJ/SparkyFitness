@@ -49,6 +49,11 @@ export function useExerciseImport(
   // delayed reparse of the just-saved file can't replace csvData with new row
   // IDs and falsely mark the form dirty.
   const reparseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True once the user has edited the table (cell/row add/delete) since the
+  // last parse. Edited rows are the source of truth: a pending reparse must not
+  // rebuild them from the (now-stale) file text. Reset on every fresh parse and
+  // on clear.
+  const editedSinceParseRef = useRef(false);
 
   // The launcher confirms closing only while this form is dirty. A successful
   // save doesn't clear the table, so remember the saved csvData reference and
@@ -86,6 +91,7 @@ export function useExerciseImport(
       if (parsedData.length > 0 && header) {
         setHeaders(Object.keys(header).filter((key) => key !== 'id'));
         setCsvData(parsedData);
+        editedSinceParseRef.current = false;
       } else if (!silent) {
         toast({
           title: t('exercise.exerciseImportCSV.noDataFound', 'No Data Found'),
@@ -211,6 +217,7 @@ export function useExerciseImport(
       if (parsedData.length > 0 && header) {
         setHeaders(Object.keys(header).filter((key) => key !== 'id'));
         setCsvData(parsedData);
+        editedSinceParseRef.current = false;
       }
     }, REPARSE_DEBOUNCE_MS);
     reparseTimerRef.current = timer;
@@ -283,12 +290,14 @@ export function useExerciseImport(
     field: string,
     value: string | number | boolean
   ) => {
+    editedSinceParseRef.current = true;
     setCsvData((prev) =>
       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
     );
   };
 
   const handleDeleteRow = (id: string) => {
+    editedSinceParseRef.current = true;
     setCsvData((prev) => prev.filter((row) => row.id !== id));
   };
 
@@ -311,10 +320,12 @@ export function useExerciseImport(
       shared_with_public: false,
     };
     if (headers.length === 0) setHeaders(requiredHeaders);
+    editedSinceParseRef.current = true;
     setCsvData((prev) => [...prev, newRow]);
   };
 
   const clearData = () => {
+    editedSinceParseRef.current = false;
     setCsvData([]);
     setHeaders([]);
     setLoadedText('');
@@ -339,6 +350,7 @@ export function useExerciseImport(
     if (parsedData.length > 0 && header) {
       setHeaders(Object.keys(header).filter((key) => key !== 'id'));
       setCsvData(parsedData);
+      editedSinceParseRef.current = false;
       setShowMapping(false);
       setMappingConfirmed(true);
       toast({
@@ -370,21 +382,30 @@ export function useExerciseImport(
   // Applies a pending reparse-on-format-change synchronously, so a save issued
   // within the debounce window doesn't persist rows parsed under the previous
   // format (e.g. a decimal-format change that hasn't re-parsed yet). Returns
-  // the freshly parsed rows, or null if the reparse can't produce savable rows
-  // (the format change flipped the file into header-mapping mode). Clears the
-  // pending timer.
+  // the rows to save (the edited rows, or the freshly parsed rows), or null to
+  // abort the save (the format change flipped the file into header-mapping
+  // mode, where there's no confirmed table). Clears the pending timer.
   const flushPendingReparse = (): ExerciseCSVData[] | null => {
     if (!reparseTimerRef.current) return null;
     clearTimeout(reparseTimerRef.current);
     reparseTimerRef.current = null;
+    // Edited rows are the source of truth: a reparse would rebuild them from the
+    // (now-stale) file text and wipe the user's edits. Discard the reparse and
+    // save the edited rows as-is.
+    if (editedSinceParseRef.current) return csvData;
     if (mappingConfirmed && rawCsvText) {
       const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
       const header = parsedData[0];
       if (parsedData.length > 0 && header) {
         setHeaders(Object.keys(header).filter((key) => key !== 'id'));
         setCsvData(parsedData);
+        editedSinceParseRef.current = false;
         return parsedData;
       }
+      // The format change broke the confirmed parse; reopen mapping so the user
+      // remaps, and block saving the stale table.
+      setShowMapping(true);
+      return null;
     } else if (loadedText && !showMapping) {
       const { headers: parsedFileHeaders } = parseCsvHeaders(
         loadedText,
@@ -399,15 +420,25 @@ export function useExerciseImport(
         if (parsedData.length > 0 && header) {
           setHeaders(Object.keys(header).filter((key) => key !== 'id'));
           setCsvData(parsedData);
+          editedSinceParseRef.current = false;
           return parsedData;
         }
       }
+      // Headers no longer valid under the new format: enter mapping recovery
+      // (opens the dialog) instead of silently dropping the table, and block
+      // saving the stale rows.
+      evaluateAndParse(loadedText, { silent: true });
+      return null;
     }
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // While the header-mapping dialog is open there's no confirmed table to
+    // save — a format change that invalidated the headers opens it via
+    // flushPendingReparse, so don't persist the stale rows.
+    if (showMapping) return;
     if (csvData.some((row) => !row.name || String(row.name).trim() === '')) {
       toast({
         title: t(
