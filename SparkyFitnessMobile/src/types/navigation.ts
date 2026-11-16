@@ -423,6 +423,8 @@ export type RootStackParamList = {
   };
   ActiveWorkout:
     { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  // Native modal over ActiveWorkout; reads and reorders the live session.
+  WorkoutReorder: undefined;
   // Post-save celebration for a finished live workout. Renders entirely from
   // the store snapshot captured before `clearWorkout()`; only calories arrive
   // via a post-save session refetch.

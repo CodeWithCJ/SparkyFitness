@@ -421,6 +421,13 @@ function moveExerciseItemByFields<T extends object>(
   );
 }
 
+/** Reorder any `{ id, superset_group }` cards (the reorder screen's local copy). */
+export function moveCardExerciseItem<
+  T extends { id: string; superset_group?: number | null },
+>(exercises: T[], from: number, to: number): T[] {
+  return moveExerciseItemByFields(exercises, from, to, 'id', 'superset_group');
+}
+
 /** Reorder live-session entries by draggable item (see {@link moveExerciseItemByFields}). */
 export function moveSessionExerciseItem(
   exercises: ExerciseEntryResponse[],
