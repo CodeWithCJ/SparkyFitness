@@ -48,10 +48,15 @@ const ExerciseImportFit = ({
   };
 
   const handleImport = async () => {
-    await importFiles(files);
-    setFiles([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Clear the file list only when every file imported cleanly. On partial or
+    // request-level failure the files are retained so the user can fix and
+    // re-import them rather than losing them from the picker.
+    const succeeded = await importFiles(files);
+    if (succeeded) {
+      setFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 

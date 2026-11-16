@@ -43,6 +43,12 @@ export function useExerciseImport(
   // or misaligned rows).
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The pending reparse-on-format-change timer, if any. The two effects below
+  // are mutually exclusive (one requires mappingConfirmed, the other not), so
+  // at most one timer is live at a time. Cleared at the save boundary so a
+  // delayed reparse of the just-saved file can't replace csvData with new row
+  // IDs and falsely mark the form dirty.
+  const reparseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The launcher confirms closing only while this form is dirty. A successful
   // save doesn't clear the table, so remember the saved csvData reference and
@@ -50,7 +56,11 @@ export function useExerciseImport(
   // save boundary change triggers a re-render and recompute).
   const [savedSnapshot, setSavedSnapshot] =
     useState<ExerciseCSVData[]>(csvData);
-  const isDirty = csvData !== savedSnapshot || showMapping;
+  // Compare by reference only when there are rows: a freshly cleared/deleted
+  // empty table is a new array that would differ from the snapshot and falsely
+  // report dirty. An empty table with no pending mapping is clean.
+  const isDirty =
+    (csvData.length > 0 && csvData !== savedSnapshot) || showMapping;
   useEffect(() => {
     onDirtyChange(isDirty);
   }, [isDirty, onDirtyChange]);
@@ -178,9 +188,14 @@ export function useExerciseImport(
   useEffect(() => {
     if (!loadedText || showMapping || mappingConfirmed) return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       evaluateAndParse(loadedText, { silent: true });
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [csvFormat, loadedText]);
 
@@ -190,6 +205,7 @@ export function useExerciseImport(
   useEffect(() => {
     if (!mappingConfirmed || showMapping) return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
       const header = parsedData[0];
       if (parsedData.length > 0 && header) {
@@ -197,7 +213,11 @@ export function useExerciseImport(
         setCsvData(parsedData);
       }
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
   }, [csvFormat, rawCsvText, headerMapping, mappingConfirmed, showMapping]);
 
   const handleDownloadTemplate = () => {
@@ -365,6 +385,13 @@ export function useExerciseImport(
     }
     setLoading(true);
     try {
+      // A pending reparse (scheduled by a format-bar change) could fire after
+      // the save resolves and replace csvData with new row IDs, falsely marking
+      // the just-saved form dirty. Cancel it before stamping the snapshot.
+      if (reparseTimerRef.current) {
+        clearTimeout(reparseTimerRef.current);
+        reparseTimerRef.current = null;
+      }
       await onSave(csvData.map(({ id, ...rest }) => rest));
       // Saved: the table now matches what's stored, so closing shouldn't prompt.
       setSavedSnapshot(csvData);

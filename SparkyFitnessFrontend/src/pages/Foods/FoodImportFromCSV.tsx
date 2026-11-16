@@ -144,8 +144,14 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   // treat the form as clean until it changes again (state, not a ref, so the
   // save boundary change triggers a re-render and recompute).
   const [savedSnapshot, setSavedSnapshot] = useState<CSVData[]>(csvData);
+  // Compare the snapshot by reference only when there are rows: a freshly
+  // cleared/deleted empty table is a new array that would differ from the
+  // snapshot and falsely report dirty. An empty table with no pending text or
+  // mapping is clean.
   const isDirty =
-    csvData !== savedSnapshot || csvText.trim() !== '' || showMapping;
+    (csvData.length > 0 && csvData !== savedSnapshot) ||
+    csvText.trim() !== '' ||
+    showMapping;
   useEffect(() => {
     onDirtyChange(isDirty);
   }, [isDirty, onDirtyChange]);

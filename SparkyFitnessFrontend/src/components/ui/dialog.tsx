@@ -53,6 +53,13 @@ const DialogContent = React.forwardRef<
     const hiddenCloseRef = React.useRef<HTMLButtonElement>(null);
     const confirmActive = requireConfirmation && confirmWhen;
 
+    // If confirmation becomes inactive while the prompt is open (e.g. an import
+    // finishes, flipping confirmWhen false), reset the flag so a later re-enable
+    // doesn't resurrect the stale prompt without a fresh close attempt.
+    React.useEffect(() => {
+      if (!confirmActive) setShowConfirm(false);
+    }, [confirmActive]);
+
     const handleCloseAttempt = (e: Event | React.MouseEvent) => {
       if (confirmActive) {
         e.preventDefault();
