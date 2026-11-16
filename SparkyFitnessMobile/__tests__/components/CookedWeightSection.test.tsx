@@ -94,6 +94,7 @@ describe('CookedWeightSection (#3534)', () => {
     expect(screen.getByLabelText('Weighed it cooked').props.value).toBe(true);
     expect(screen.getByText(/^Using 2\.5× from your Rice on /)).toBeTruthy();
     expect(screen.queryByLabelText('Raw weight of batch (g)')).toBeNull();
+    expect(screen.getByText('Enter the cooked weight you ate.')).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '250');
     expect(onChange).toHaveBeenLastCalledWith(true, {

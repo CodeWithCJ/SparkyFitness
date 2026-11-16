@@ -8255,7 +8255,8 @@
       "cookedBatch": "Cooked weight of batch ({{unit}})",
       "eaten": "You ate (cooked, {{unit}})",
       "result": "= {{raw}} {{unit}} raw · {{calories}} {{energyUnit}}",
-      "incomplete": "Enter the weights to calculate the raw amount."
+      "incomplete": "Enter the weights to calculate the raw amount.",
+      "enterEaten": "Enter the cooked weight you ate."
     }
   },
   "healthMetrics": {

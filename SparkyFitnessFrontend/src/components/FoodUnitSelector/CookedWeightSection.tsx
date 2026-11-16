@@ -255,10 +255,15 @@ export const CookedWeightSection = ({
                     energyUnit: getEnergyUnitString(energyUnit),
                   }
                 )
-              : t(
-                  'foodUnitSelector.cooked.incomplete',
-                  'Enter the weights to calculate the raw amount.'
-                )}
+              : source !== 'batch' && reusedYield !== null
+                ? t(
+                    'foodUnitSelector.cooked.enterEaten',
+                    'Enter the cooked weight you ate.'
+                  )
+                : t(
+                    'foodUnitSelector.cooked.incomplete',
+                    'Enter the weights to calculate the raw amount.'
+                  )}
           </p>
         </>
       )}

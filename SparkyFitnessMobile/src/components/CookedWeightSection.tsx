@@ -254,10 +254,14 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
                       ? formatEnergy(calories, energyUnit, t)
                       : '–',
                 })
-              : t('foodEntryAdd.cooked.incomplete', {
-                  defaultValue:
-                    'Enter the weights to calculate the raw amount.',
-                })}
+              : source !== 'batch' && reusedYield !== null
+                ? t('foodEntryAdd.cooked.enterEaten', {
+                    defaultValue: 'Enter the cooked weight you ate.',
+                  })
+                : t('foodEntryAdd.cooked.incomplete', {
+                    defaultValue:
+                      'Enter the weights to calculate the raw amount.',
+                  })}
           </Text>
         </>
       ) : null}

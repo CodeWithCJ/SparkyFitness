@@ -750,6 +750,9 @@ describe('FoodUnitSelector', () => {
       expect(
         screen.queryByLabelText('Raw weight of batch (g)')
       ).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Enter the cooked weight you ate.'
+      );
 
       // Leftovers: only the plate weight.
       fireEvent.change(screen.getByLabelText('You ate (cooked, g)'), {
