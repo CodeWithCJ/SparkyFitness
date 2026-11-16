@@ -312,6 +312,10 @@ export function useWatchWorkoutBridge(
   // loading, or a flush already walking its snapshot, must not bring their
   // telemetry back and attach it to an entry that stays in the diary.
   const discardedSessionsRef = useRef<Set<string>>(new Set());
+  // Sessions the wearer finished on the watch, so clearing the phone's live
+  // store does not echo `stopWorkout` back while the watch's finish summary,
+  // effort prompt, or preset-update card is open.
+  const watchStoppedSessionsRef = useRef<Set<string>>(new Set());
   const onPendingChangeRef = useRef(onTelemetryPendingChange);
   const onWatchFinishedRef = useRef(onWatchFinishedWorkout);
   // Ratings from the watch waiting for their session to be saved and its
@@ -1024,6 +1028,7 @@ export function useWatchWorkoutBridge(
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
+      watchStoppedSessionsRef.current.add(payload.sessionId);
       useActiveWorkoutStore.getState().clearWorkout();
       onWatchFinishedRef.current?.(celebration, payload.sessionId);
       // The wearer may already have rated it while the save was running.
@@ -1524,11 +1529,13 @@ export function useWatchWorkoutBridge(
             activeSetId: prevState.activeSetId,
           };
         }
-        void WatchConnectivity?.stopWorkout(
-          ended,
-          new Date().toISOString(),
-          false
-        );
+        if (!watchStoppedSessionsRef.current.delete(ended)) {
+          void WatchConnectivity?.stopWorkout(
+            ended,
+            new Date().toISOString(),
+            false
+          );
+        }
         // Posts what has arrived so far. The watch answers that stop signal
         // with its own final drain, which lands afterwards and re-posts the
         // completed series — see `handleHeartRateBatch`.
@@ -1538,6 +1545,7 @@ export function useWatchWorkoutBridge(
         // The same diary session can be opened again after a discard. Its
         // new run is a fresh arm, so an old discard must not drop its data.
         discardedSessionsRef.current.delete(state.sessionId);
+        watchStoppedSessionsRef.current.delete(state.sessionId);
         track(state.sessionId, state.session);
       }
     });

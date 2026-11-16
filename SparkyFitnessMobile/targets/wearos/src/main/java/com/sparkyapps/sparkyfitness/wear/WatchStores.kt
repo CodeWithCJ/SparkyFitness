@@ -2317,11 +2317,30 @@ class WorkoutSessionStore(private val context: Context) {
     if (idx >= 0) jumpToStep(idx)
   }
 
+  fun handleRemoteWorkoutStop(sessionId: String, discarded: Boolean) {
+    when (
+      RemoteWorkoutStop.decide(
+        activeSessionId = _plan.value?.sessionId,
+        incomingSessionId = sessionId,
+        isWorkoutActive = isWorkoutActive,
+        discarded = discarded
+      )
+    ) {
+      RemoteWorkoutStop.Action.IGNORE -> Unit
+      RemoteWorkoutStop.Action.DISCARD -> discardWorkout(notifyPhone = false)
+      RemoteWorkoutStop.Action.FINISH -> finishWorkout(notifyPhone = false)
+    }
+  }
+
   fun finishWorkout(notifyPhone: Boolean) {
     val plan = _plan.value ?: return
-    // Flush any held RPE set completions before finishing
-    while (pendingRpeQueue.isNotEmpty()) {
-      submitPendingRpe(null)
+    // Flush any held RPE set completions before finishing when watch initiated the stop
+    if (notifyPhone) {
+      while (pendingRpeQueue.isNotEmpty()) {
+        submitPendingRpe(null)
+      }
+    } else {
+      clearPendingRpeQueue()
     }
     val pendingCompletions = unconfirmedCompletions.values.toList()
     unconfirmedCompletions.clear()

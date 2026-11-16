@@ -363,10 +363,12 @@ class WearSessionManager private constructor(private val appContext: Context) :
         bringAppToForeground()
       }
       type == "workoutStop" -> {
-        val identity = listOf(json.optString("sessionId"), json.optString("stoppedAt"))
+        val sessionId = json.optString("sessionId")
+        val identity = listOf(sessionId, json.optString("stoppedAt"))
         if (identity.all { it.isNotEmpty() } &&
           !firstTime("workoutStop:${identity.joinToString("|")}")) return
-        workoutStore.discardWorkout(notifyPhone = false)
+        val discarded = json.optBoolean("discarded", false)
+        workoutStore.handleRemoteWorkoutStop(sessionId = sessionId, discarded = discarded)
       }
       type == "setTargetsUpdate" || type == "setTargets" -> {
         val update = ContextPayloadMapper.parseSetTargets(json) ?: return

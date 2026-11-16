@@ -2855,6 +2855,26 @@ describe('useWatchWorkoutBridge across sessions, failures and watch finishes', (
     });
     expect(onWatchFinished).not.toHaveBeenCalled();
   });
+
+  it('does not echo stopWorkout back to the watch for a watch-initiated finish', async () => {
+    const onWatchFinished = jest.fn();
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    mockStopWorkout.mockClear();
+
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 6; i += 1) await Promise.resolve();
+    });
+
+    expect(getStore().sessionId).toBeNull();
+    expect(onWatchFinished).toHaveBeenCalledWith(null, 'session-1');
+    expect(mockStopWorkout).not.toHaveBeenCalled();
+  });
 });
 
 describe('useWatchWorkoutBridge workout effort from the watch', () => {

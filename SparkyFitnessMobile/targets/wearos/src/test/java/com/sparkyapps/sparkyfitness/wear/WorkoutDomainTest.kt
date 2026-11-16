@@ -488,4 +488,48 @@ class WorkoutDomainTest {
         assertEquals("set-2", arr.getJSONObject(1).getString("setId"))
         assertEquals(45, arr.getJSONObject(1).getInt("duration"))
     }
+
+    @Test
+    fun `remote workoutStop preserves watch finish summary and handles phone finish or discard`() {
+        // Watch already showing summary / effort / preset prompt -> ignore echoed stop
+        assertEquals(
+            RemoteWorkoutStop.Action.IGNORE,
+            RemoteWorkoutStop.decide(
+                activeSessionId = "sess-1",
+                incomingSessionId = "sess-1",
+                isWorkoutActive = false,
+                discarded = false
+            )
+        )
+        // Stale stop for a previous session must not affect the new live session
+        assertEquals(
+            RemoteWorkoutStop.Action.IGNORE,
+            RemoteWorkoutStop.decide(
+                activeSessionId = "sess-2",
+                incomingSessionId = "sess-1",
+                isWorkoutActive = true,
+                discarded = true
+            )
+        )
+        // Phone-initiated finish transitions active watch workout to summary without echoing stop
+        assertEquals(
+            RemoteWorkoutStop.Action.FINISH,
+            RemoteWorkoutStop.decide(
+                activeSessionId = "sess-1",
+                incomingSessionId = "sess-1",
+                isWorkoutActive = true,
+                discarded = false
+            )
+        )
+        // Phone-initiated discard tears down active watch workout without summary
+        assertEquals(
+            RemoteWorkoutStop.Action.DISCARD,
+            RemoteWorkoutStop.decide(
+                activeSessionId = "sess-1",
+                incomingSessionId = "sess-1",
+                isWorkoutActive = true,
+                discarded = true
+            )
+        )
+    }
 }

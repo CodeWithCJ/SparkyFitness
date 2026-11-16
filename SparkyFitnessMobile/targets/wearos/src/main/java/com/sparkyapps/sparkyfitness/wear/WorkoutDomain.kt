@@ -505,3 +505,26 @@ object SetCompletionSync {
     )
   }
 }
+
+/**
+ * Decision rule for a phone-sent `workoutStop` message arriving on the watch.
+ *
+ * Ignores stops for non-matching sessions or sessions already showing the
+ * finish summary / preset-update prompt (e.g. a phone echo after a watch
+ * finish) so the summary, effort prompt, and preset card are never wiped.
+ */
+object RemoteWorkoutStop {
+  enum class Action { IGNORE, FINISH, DISCARD }
+
+  fun decide(
+    activeSessionId: String?,
+    incomingSessionId: String,
+    isWorkoutActive: Boolean,
+    discarded: Boolean
+  ): Action {
+    if (activeSessionId == null) return Action.IGNORE
+    if (incomingSessionId.isNotEmpty() && activeSessionId != incomingSessionId) return Action.IGNORE
+    if (!isWorkoutActive) return Action.IGNORE
+    return if (discarded) Action.DISCARD else Action.FINISH
+  }
+}
