@@ -22,7 +22,7 @@ vi.mock('../models/challengeRepository.js', () => ({
     removeMember: vi.fn(),
     rehostOrphans: vi.fn(),
     enqueueDays: vi.fn(),
-    enqueueRecentDaysForRunningChallenges: vi.fn(),
+    enqueueDaysForAllMembers: vi.fn(),
     takeQueuedDays: vi.fn(),
     ackQueuedDays: vi.fn(),
     withScoringLock: vi.fn(
@@ -56,7 +56,9 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 import challengeRepository, {
   type ChallengeMemberRow,
   type ChallengeRow,
+  type MemberEntryRow,
 } from '../models/challengeRepository.js';
+import { log } from '../config/logging.js';
 import rateLimitWindowRepository from '../models/rateLimitWindowRepository.js';
 import { isChallengesEnabled } from '../models/globalSettingsRepository.js';
 import heartRateZoneService from '../services/heartRateZoneService.js';
@@ -442,7 +444,9 @@ describe('scoring jobs', () => {
         calories_burned: 300,
         elevation_gain_meters: null,
         zone_seconds: null,
+        edited: false,
         sets: null,
+        session: null,
       },
     ]);
     repo.getMemberSteps.mockResolvedValue({ '2026-11-10': 12000 });
@@ -579,7 +583,7 @@ describe('scoring jobs', () => {
     await service.nightlyCatchUp();
     expect(repo.takeQueuedDays).not.toHaveBeenCalled();
     expect(repo.listOpenChallenges).not.toHaveBeenCalled();
-    expect(repo.enqueueRecentDaysForRunningChallenges).not.toHaveBeenCalled();
+    expect(repo.enqueueDaysForAllMembers).not.toHaveBeenCalled();
   });
 
   it('the queue job scores each member once from their earliest changed day and requeues on failure', async () => {
@@ -747,7 +751,9 @@ describe('review fixes (PR #3585)', () => {
         calories_burned: null,
         elevation_gain_meters: null,
         zone_seconds: null,
+        edited: false,
         sets: null,
+        session: null,
       },
     ]);
     await service.recomputeMember(
@@ -844,5 +850,231 @@ describe('review fixes (PR #3585)', () => {
         ['host', false, true],
       ]);
     });
+  });
+});
+
+describe('review fixes from Jerrys-modz (PR #3585)', () => {
+  const row = (overrides: Partial<MemberEntryRow> = {}): MemberEntryRow => ({
+    id: '33333333-3333-4333-8333-333333333333',
+    entry_date: '2026-11-10',
+    entry_time: '07:00',
+    duration_minutes: 45,
+    avg_heart_rate: null,
+    max_heart_rate: null,
+    exercise_name: 'Bench Press',
+    category: 'Strength',
+    source: 'Workout Plan',
+    exercise_id: null,
+    distance: null,
+    active_calories: null,
+    calories_burned: 200,
+    elevation_gain_meters: null,
+    zone_seconds: null,
+    edited: false,
+    sets: [
+      {
+        weight: 60,
+        reps: 8,
+        set_type: 'Working Set',
+        completed_at: null,
+        started_at: null,
+      },
+    ],
+    session: null,
+    ...overrides,
+  });
+  const session = (
+    overrides: Partial<NonNullable<MemberEntryRow['session']>> = {}
+  ): NonNullable<MemberEntryRow['session']> => ({
+    source: 'Workout Plan',
+    finished_at: null,
+    has_plan_assignment: true,
+    sets: [{ completed_at: null }, { completed_at: null }],
+    ...overrides,
+  });
+
+  it('a planned workout from a prefill plan earns nothing until it is done', async () => {
+    // Untouched rows a plan generated: a single row and a grouped session
+    expect(service.isPlannedEntryRow(row())).toBe(true);
+    expect(service.isPlannedEntryRow(row({ session: session() }))).toBe(true);
+    // Plan-linked session logged under another source, still untouched
+    expect(
+      service.isPlannedEntryRow(
+        row({ source: 'Manual', session: session({ source: 'Manual' }) })
+      )
+    ).toBe(true);
+    // Done: a set checked off, the session finished, the row edited or started
+    expect(
+      service.isPlannedEntryRow(
+        row({
+          session: session({
+            sets: [
+              { completed_at: '2026-11-10T07:30:00Z' },
+              { completed_at: null },
+            ],
+          }),
+        })
+      )
+    ).toBe(false);
+    expect(
+      service.isPlannedEntryRow(
+        row({ session: session({ finished_at: '2026-11-10T08:00:00Z' }) })
+      )
+    ).toBe(false);
+    expect(service.isPlannedEntryRow(row({ edited: true }))).toBe(false);
+    expect(
+      service.isPlannedEntryRow(
+        row({
+          sets: [
+            {
+              weight: 60,
+              reps: 8,
+              set_type: null,
+              completed_at: null,
+              started_at: '2026-11-10T07:05:00Z',
+            },
+          ],
+        })
+      )
+    ).toBe(false);
+    // Anything not from a plan was logged, so it counts
+    expect(service.isPlannedEntryRow(row({ source: 'Manual' }))).toBe(false);
+    expect(service.isPlannedEntryRow(row({ source: 'garmin' }))).toBe(false);
+
+    // Scoring runs to tomorrow; tomorrow's planned workout is not scored
+    repo.getMemberEntries.mockResolvedValue([
+      row({ id: 'planned-today', entry_date: '2026-11-12' }),
+      row({
+        id: 'planned-tomorrow',
+        entry_date: '2026-11-13',
+        session: session(),
+      }),
+      row({ id: 'logged', entry_date: '2026-11-12', source: 'Manual' }),
+    ]);
+    await service.recomputeMember(challenge(), member('amy'), '2026-11-12');
+    const [, , , , scores, cards] = repo.saveMemberDays.mock.calls[0]!;
+    expect(cards.map((c) => c.exercise_entry_id)).toEqual(['logged']);
+    expect(scores.find((d) => d.day === '2026-11-12')!.workouts).toBe(1);
+    expect(scores.find((d) => d.day === '2026-11-13')!.workouts).toBe(0);
+    expect(scores.find((d) => d.day === '2026-11-13')!.total).toBe(0);
+  });
+
+  it("warm-up sets are left out of a lift's best with the shared isWarmupSetType", () => {
+    const sets = (setType: string) => [
+      {
+        weight: 140,
+        reps: 1,
+        set_type: setType,
+        completed_at: null,
+        started_at: null,
+      },
+      {
+        weight: 100,
+        reps: 5,
+        set_type: 'Working Set',
+        completed_at: null,
+        started_at: null,
+      },
+    ];
+    const working = service.toChallengeEntry(
+      row({ sets: sets('Working Set') })
+    );
+    for (const warmup of ['Warm-up', 'warmup', 'WARM UP']) {
+      const entry = service.toChallengeEntry(row({ sets: sets(warmup) }));
+      expect(entry.bestE1rm, warmup).toBeLessThan(working.bestE1rm!);
+      expect(entry.bestE1rm, warmup).toBeCloseTo(
+        service.toChallengeEntry(row({ sets: sets('Working Set').slice(1) }))
+          .bestE1rm!
+      );
+    }
+  });
+
+  it('an explicit end_date: null makes an open-ended challenge, not the preset length', async () => {
+    repo.createWithHost.mockResolvedValue(challenge().id);
+    repo.getMembership.mockResolvedValue(member('host', 'host'));
+    repo.getForMember.mockResolvedValue(challenge());
+    repo.getMembersForMember.mockResolvedValue([member('host', 'host')]);
+    const base = {
+      name: 'Hustle',
+      start_date: '2026-11-10',
+      display_name: 'Host',
+      preset: 'workweek_hustle',
+      member_limit: 50,
+      late_join: true,
+    } as const;
+    await service.createChallenge('host', { ...base, end_date: null });
+    expect(repo.createWithHost.mock.calls[0]![0].endDate).toBeNull();
+    // Left out, the preset's 5 days still apply
+    await service.createChallenge('host', base);
+    expect(repo.createWithHost.mock.calls[1]![0].endDate).toBe('2026-11-14');
+  });
+
+  it("the nightly catch-up works out each challenge's days in its own zone, and one bad zone does not stop the others", async () => {
+    vi.setSystemTime(new Date('2026-11-12T03:00:00Z')); // 11-11 in New York
+    repo.rehostOrphans.mockResolvedValue(0);
+    repo.listOpenChallenges.mockResolvedValue([
+      challenge({ id: 'bad', time_zone: 'Not/AZone' }),
+      challenge({ id: 'ny', time_zone: 'America/New_York' }),
+      challenge({ id: 'utc', start_date: '2026-11-11' }),
+      challenge({
+        id: 'ended',
+        start_date: '2026-10-01',
+        end_date: '2026-10-31',
+      }),
+    ]);
+    repo.enqueueDaysForAllMembers.mockResolvedValue(1);
+    await service.nightlyCatchUp();
+    expect(repo.enqueueDaysForAllMembers.mock.calls).toEqual([
+      ['ny', ['2026-11-09', '2026-11-10', '2026-11-11']],
+      ['utc', ['2026-11-11', '2026-11-12']],
+    ]);
+    expect(vi.mocked(log)).toHaveBeenCalledWith(
+      'error',
+      expect.stringContaining('bad'),
+      expect.anything()
+    );
+  });
+
+  it('creating challenges and changing rules are rate limited', async () => {
+    vi.mocked(rateLimitWindowRepository.hit).mockResolvedValue({
+      count: service.CREATES_PER_WINDOW + 1,
+      resetInMs: 5000,
+    });
+    await expect(
+      service.createChallenge('host', {
+        name: 'Family',
+        start_date: '2026-11-10',
+        display_name: 'Host',
+        member_limit: 50,
+        late_join: true,
+      })
+    ).rejects.toMatchObject({ status: 429, code: 'CHALLENGE_RATE_LIMITED' });
+    expect(rateLimitWindowRepository.hit).toHaveBeenLastCalledWith(
+      'challenge-create:host',
+      service.CREATE_WINDOW_MS
+    );
+    expect(repo.createWithHost).not.toHaveBeenCalled();
+
+    repo.getMembership.mockResolvedValue(member('host', 'host'));
+    vi.mocked(rateLimitWindowRepository.hit).mockResolvedValue({
+      count: service.RULE_CHANGES_PER_WINDOW + 1,
+      resetInMs: 5000,
+    });
+    await expect(
+      service.updateRules('host', challenge().id, allRounder)
+    ).rejects.toMatchObject({ status: 429, code: 'CHALLENGE_RATE_LIMITED' });
+    expect(rateLimitWindowRepository.hit).toHaveBeenLastCalledWith(
+      `challenge-rules:${challenge().id}`,
+      service.RULE_CHANGE_WINDOW_MS
+    );
+    expect(repo.updateRules).not.toHaveBeenCalled();
+
+    // A member who is not the host is refused before using up the host's limit
+    vi.mocked(rateLimitWindowRepository.hit).mockClear();
+    repo.getMembership.mockResolvedValue(member('amy'));
+    await expect(
+      service.updateRules('amy', challenge().id, allRounder)
+    ).rejects.toMatchObject({ status: 403 });
+    expect(rateLimitWindowRepository.hit).not.toHaveBeenCalled();
   });
 });

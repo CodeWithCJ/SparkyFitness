@@ -21,8 +21,11 @@ import {
   challengeWeeksIn,
   daysBetween,
   daysInRange,
+  deriveWorkoutSessionStatus,
   effortAdjustedOneRepMaxKg,
   isValidTimeZone,
+  isWarmupSetType,
+  isWorkoutPlanGeneratedSource,
   parseChallengeRules,
   rankChallengeStandings,
   scoreChallengeDays,
@@ -80,6 +83,12 @@ export const JOIN_WINDOW_MS = 15 * 60 * 1000;
 /** Invite codes made per person in a window. */
 export const INVITES_PER_WINDOW = 20;
 export const INVITE_WINDOW_MS = 60 * 60 * 1000;
+/** Challenges a person creates in a window. */
+export const CREATES_PER_WINDOW = 10;
+export const CREATE_WINDOW_MS = 60 * 60 * 1000;
+/** Rules changes a host makes to one challenge in a window. */
+export const RULE_CHANGES_PER_WINDOW = 10;
+export const RULE_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** A finished period stays open this long for workouts that sync late. */
 export const LATE_SYNC_DAYS = 2;
 /** Score-queue rows wait this long after the last change before being scored. */
@@ -257,13 +266,21 @@ export async function createChallenge(
   userId: string,
   body: CreateChallengeBody & { member_limit: number; late_join: boolean }
 ): Promise<ChallengeDetail> {
+  await rateLimit(
+    `challenge-create:${userId}`,
+    CREATES_PER_WINDOW,
+    CREATE_WINDOW_MS
+  );
   const preset = challengePreset(body.preset ?? DEFAULT_CHALLENGE_PRESET_ID);
   const rules = body.rules ? parseStoredRules(body.rules) : preset.rules;
+  // An explicit null means open-ended; only a missing end_date takes the
+  // preset's length.
   const endDate =
-    body.end_date ??
-    (body.rules || preset.lengthDays === null
-      ? null
-      : addDays(body.start_date, preset.lengthDays - 1));
+    body.end_date !== undefined
+      ? body.end_date
+      : body.rules || preset.lengthDays === null
+        ? null
+        : addDays(body.start_date, preset.lengthDays - 1);
   validateDates(body.start_date, endDate, rules);
   const timeZone =
     body.time_zone && isValidTimeZone(body.time_zone)
@@ -332,6 +349,12 @@ export async function updateRules(
   input: unknown
 ): Promise<ChallengeDetail> {
   await requireHost(userId, challengeId);
+  // Per challenge: each change is one more rules run in every member's rescore.
+  await rateLimit(
+    `challenge-rules:${challengeId}`,
+    RULE_CHANGES_PER_WINDOW,
+    RULE_CHANGE_WINDOW_MS
+  );
   const challenge = await challengeRepository.getChallenge(challengeId);
   if (!challenge) throw notFound();
   if (challenge.ended_at) {
@@ -709,19 +732,40 @@ const n = (v: unknown): number | null => {
   return Number.isFinite(x) ? x : null;
 };
 
-const isWarmup = (setType: string | null): boolean =>
-  !!setType &&
-  setType
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .startsWith('warmup');
+/**
+ * A diary row that is only planned, so it earns nothing yet. A row in a
+ * grouped session follows the session's lifecycle status (an untouched
+ * session from a plan is 'planned' until a set is checked off or it is
+ * finished). A single row a prefill plan generated is planned until the
+ * member edits it or starts or checks off a set, the same "untouched" test
+ * the plan regeneration uses before it removes generated rows.
+ */
+export function isPlannedEntryRow(row: MemberEntryRow): boolean {
+  if (row.session) {
+    return (
+      deriveWorkoutSessionStatus({
+        source: row.session.source,
+        finishedAt: row.session.finished_at,
+        hasPlanAssignment: row.session.has_plan_assignment,
+        sets: row.session.sets ?? [],
+      }) === 'planned'
+    );
+  }
+  return (
+    isWorkoutPlanGeneratedSource(row.source) &&
+    !row.edited &&
+    !(row.sets ?? []).some(
+      (s) => s.completed_at !== null || s.started_at !== null
+    )
+  );
+}
 
 /** A diary row as the scorer reads it. Distance is stored in km and scored in metres. */
 export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
   const bestE1rm = Math.max(
     0,
     ...(row.sets ?? [])
-      .filter((s) => !isWarmup(s.set_type))
+      .filter((s) => !isWarmupSetType(s.set_type))
       .map((s) => effortAdjustedOneRepMaxKg(s.weight, s.reps, null))
   );
   const km = n(row.distance);
@@ -840,7 +884,8 @@ async function recomputeMemberLocked(
     challengeRepository.getMemberSteps(member.user_id, from, to),
     memberZones(member.user_id),
   ]);
-  const entries = rows.map(toChallengeEntry);
+  const done = rows.filter((row) => !isPlannedEntryRow(row));
+  const entries = done.map(toChallengeEntry);
   const data = { entries, steps, zones };
 
   const scores: DailyScoreInput[] = [];
@@ -885,7 +930,7 @@ async function recomputeMemberLocked(
       for (const e of counted.filter((x) => x.date === d.date)) {
         const km = e.distanceM ? e.distanceM / 1000 : 0;
         const measured = challengeMeasuredMinutes(e);
-        const row = rows.find((r) => r.id === e.id);
+        const row = done.find((r) => r.id === e.id);
         cards.push({
           exercise_entry_id: e.id,
           day: d.date,
@@ -968,15 +1013,39 @@ export async function processScoreQueue(): Promise<number> {
   return done;
 }
 
-/** Nightly catch-up: re-scores the last few days (steps sync without a trigger) and re-hosts orphaned challenges. */
+/**
+ * Nightly catch-up: re-scores the last few days of every running challenge
+ * (a late sync the triggers missed, the day rolling over) and re-hosts
+ * orphaned challenges. Each challenge's days are worked out in its own zone
+ * here, one challenge at a time, so one bad challenge never stops the rest.
+ */
 export async function nightlyCatchUp(): Promise<void> {
   if (!(await challengesEnabled())) return;
   const rehosted = await challengeRepository.rehostOrphans();
   if (rehosted > 0)
     log('info', `[CHALLENGES] Passed hosting on for ${rehosted} challenge(s).`);
-  await challengeRepository.enqueueRecentDaysForRunningChallenges(
-    LATE_SYNC_DAYS + 1
-  );
+  for (const challenge of await challengeRepository.listOpenChallenges()) {
+    try {
+      const today = todayInZone(challenge.time_zone);
+      const back = addDays(today, -(LATE_SYNC_DAYS + 1));
+      const first = back > challenge.start_date ? back : challenge.start_date;
+      const last =
+        challenge.end_date && challenge.end_date < today
+          ? challenge.end_date
+          : today;
+      if (first > last) continue;
+      await challengeRepository.enqueueDaysForAllMembers(
+        challenge.id,
+        daysInRange(first, last)
+      );
+    } catch (error) {
+      log(
+        'error',
+        `[CHALLENGES] Nightly catch-up for ${challenge.id} failed:`,
+        error
+      );
+    }
+  }
 }
 
 /**

@@ -127,11 +127,24 @@ export interface MemberEntryRow {
   calories_burned: number | null;
   elevation_gain_meters: number | null;
   zone_seconds: number[] | null;
+  /** The row was changed after it was created (updated_at > created_at). */
+  edited: boolean;
   sets: Array<{
     weight: number | null;
     reps: number | null;
     set_type: string | null;
+    completed_at: string | null;
+    started_at: string | null;
   }> | null;
+  /** The grouped session the row belongs to, when it has one. */
+  session: {
+    source: string | null;
+    finished_at: string | null;
+    /** Whether any exercise of the session is linked to a plan assignment. */
+    has_plan_assignment: boolean;
+    /** Every set of the session, for its lifecycle status. */
+    sets: Array<{ completed_at: string | null }>;
+  } | null;
 }
 
 const CHALLENGE_COLUMNS = `
@@ -401,7 +414,10 @@ async function createWithHost(input: NewChallenge): Promise<string> {
 /**
  * Replaces the rules from `effectiveFrom` on and logs the change. The UPDATE
  * locks the challenge row first, so the log's seq follows the order the
- * changes were really written in; the latest change for a day wins.
+ * changes were really written in; the latest change for a day wins. Days
+ * already scored on or after `effectiveFrom` (a member's day can run ahead of
+ * the challenge's zone) are queued again in the same transaction, so they are
+ * rescored under the new rules.
  */
 async function updateRules(
   challengeId: string,
@@ -427,6 +443,13 @@ async function updateRules(
         JSON.stringify(rules),
         JSON.stringify(previous),
       ]
+    );
+    await client.query(
+      `INSERT INTO challenge_score_queue (challenge_id, user_id, day)
+       SELECT challenge_id, user_id, day FROM challenge_daily_scores
+        WHERE challenge_id = $1 AND day >= $2
+       ON CONFLICT (challenge_id, user_id, day) DO UPDATE SET queued_at = EXCLUDED.queued_at`,
+      [challengeId, effectiveFrom]
     );
   });
 }
@@ -603,24 +626,25 @@ async function enqueueDays(
   );
 }
 
-/** Queues `days` for every member of every challenge that is still running on `today`. */
-async function enqueueRecentDaysForRunningChallenges(
-  lookbackDays: number
+/**
+ * Queues `days` for every member of one challenge. The nightly catch-up works
+ * out each challenge's days in its own zone in JS, so one zone Postgres does
+ * not know can never fail the statement for every other challenge.
+ */
+async function enqueueDaysForAllMembers(
+  challengeId: string,
+  days: string[]
 ): Promise<number> {
+  if (!days.length) return 0;
   return withSystem(async (client) => {
     const result = await client.query(
       `INSERT INTO challenge_score_queue (challenge_id, user_id, day)
        SELECT m.challenge_id, m.user_id, d::date
-         FROM challenges c
-         JOIN challenge_members m ON m.challenge_id = c.id
-         CROSS JOIN LATERAL generate_series(
-           GREATEST(c.start_date, (now() AT TIME ZONE c.time_zone)::date - $1::int),
-           LEAST(COALESCE(c.end_date, 'infinity'::date), (now() AT TIME ZONE c.time_zone)::date),
-           INTERVAL '1 day'
-         ) AS d
-        WHERE c.ended_at IS NULL
+         FROM challenge_members m
+         CROSS JOIN unnest($2::text[]) AS d
+        WHERE m.challenge_id = $1
        ON CONFLICT (challenge_id, user_id, day) DO NOTHING`,
-      [lookbackDays]
+      [challengeId, days]
     );
     return result.rowCount ?? 0;
   });
@@ -747,6 +771,9 @@ export interface DailyScoreInput {
  * Stores a member's scored days and the workout cards of those days. Only
  * runs while the member still belongs to the challenge (the insert's foreign
  * key fails otherwise), so a member who left mid-run leaves nothing behind.
+ * A workout has one card: one moved here from a day outside [from, to] (a
+ * frozen period included) takes its card along rather than leaving the old
+ * one in place.
  */
 async function saveMemberDays(
   challengeId: string,
@@ -796,7 +823,13 @@ async function saveMemberDays(
              exercise_entry_id uuid, day date, activity_type text, name text, minutes float8,
              distance_meters float8, pace_seconds_per_km float8, avg_heart_rate int,
              max_heart_rate int, points float8)
-         ON CONFLICT (challenge_id, exercise_entry_id) DO NOTHING`,
+         ON CONFLICT (challenge_id, exercise_entry_id) DO UPDATE SET
+           day = EXCLUDED.day, activity_type = EXCLUDED.activity_type, name = EXCLUDED.name,
+           minutes = EXCLUDED.minutes, distance_meters = EXCLUDED.distance_meters,
+           pace_seconds_per_km = EXCLUDED.pace_seconds_per_km,
+           avg_heart_rate = EXCLUDED.avg_heart_rate, max_heart_rate = EXCLUDED.max_heart_rate,
+           points = EXCLUDED.points
+         WHERE challenge_activity_cards.user_id = EXCLUDED.user_id`,
         [challengeId, userId, JSON.stringify(cards)]
       );
     }
@@ -933,8 +966,25 @@ async function getMemberEntries(
                  LEFT JOIN exercise_entry_hr_zones z
                    ON z.exercise_entry_id = e.id AND z.zone_index = zi
                 HAVING SUM(COALESCE(z.seconds_in_zone, 0)) > 0) AS zone_seconds,
-              (SELECT json_agg(json_build_object('weight', s.weight, 'reps', s.reps, 'set_type', s.set_type))
-                 FROM exercise_entry_sets s WHERE s.exercise_entry_id = e.id) AS sets
+              e.updated_at > e.created_at AS edited,
+              (SELECT json_agg(json_build_object(
+                        'weight', s.weight, 'reps', s.reps, 'set_type', s.set_type,
+                        'completed_at', s.completed_at, 'started_at', s.started_at))
+                 FROM exercise_entry_sets s WHERE s.exercise_entry_id = e.id) AS sets,
+              (SELECT json_build_object(
+                        'source', pe.source,
+                        'finished_at', pe.finished_at,
+                        'has_plan_assignment', EXISTS (
+                          SELECT 1 FROM exercise_entries pe_e
+                           WHERE pe_e.exercise_preset_entry_id = pe.id
+                             AND pe_e.workout_plan_assignment_id IS NOT NULL),
+                        'sets', COALESCE((
+                          SELECT json_agg(json_build_object('completed_at', pe_s.completed_at))
+                            FROM exercise_entry_sets pe_s
+                            JOIN exercise_entries pe_e ON pe_e.id = pe_s.exercise_entry_id
+                           WHERE pe_e.exercise_preset_entry_id = pe.id), '[]'::json))
+                 FROM exercise_preset_entries pe
+                WHERE pe.id = e.exercise_preset_entry_id) AS session
          FROM exercise_entries e
         WHERE e.user_id = $1 AND e.entry_date BETWEEN $2 AND $3
         ORDER BY e.entry_date, e.entry_time NULLS LAST, e.id`,
@@ -989,7 +1039,7 @@ export default {
   removeMember,
   rehostOrphans,
   enqueueDays,
-  enqueueRecentDaysForRunningChallenges,
+  enqueueDaysForAllMembers,
   takeQueuedDays,
   ackQueuedDays,
   withScoringLock,

@@ -114,6 +114,7 @@ router.get('/', async (req, res, next) => {
  *     responses:
  *       201: { description: The new challenge }
  *       400: { description: Invalid rules or dates }
+ *       429: { description: Too many challenges made }
  */
 router.post('/', async (req, res, next) => {
   try {
@@ -184,6 +185,7 @@ router.get('/:id', async (req, res, next) => {
  *     responses:
  *       200: { description: The challenge with its new rules }
  *       403: { description: Only the host can change the rules }
+ *       429: { description: Too many rules changes to this challenge }
  */
 router.put('/:id/rules', async (req, res, next) => {
   try {

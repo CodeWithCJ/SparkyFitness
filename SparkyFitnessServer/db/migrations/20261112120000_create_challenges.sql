@@ -185,37 +185,55 @@ CREATE TABLE IF NOT EXISTS public.challenge_score_queue (
 CREATE INDEX IF NOT EXISTS idx_challenge_score_queue_queued_at
     ON public.challenge_score_queue(queued_at);
 
--- Queues the changed day for every challenge the entry's owner is in, so
--- every writer of exercise_entries (the diary, provider syncs, imports, the
--- AI tools) is covered without calling anything. SECURITY DEFINER because the
--- queue is closed to the app role; it reads only the owner's own memberships.
+-- Queues one member-day for every running challenge that person is in and
+-- whose dates hold the day. The trigger functions below call it, so every
+-- writer (the diary, provider syncs, imports, the AI tools) is covered without
+-- calling anything. It runs as its caller (SECURITY INVOKER): the trigger
+-- functions are SECURITY DEFINER because the queue is closed to the app role,
+-- and they read only the changed row owner's own memberships, while a direct
+-- call by the app role is refused by the queue's permissions.
+CREATE OR REPLACE FUNCTION public.queue_challenge_member_day(p_user_id UUID, p_day DATE)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF p_user_id IS NULL OR p_day IS NULL THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.challenge_score_queue (challenge_id, user_id, day)
+  SELECT m.challenge_id, m.user_id, p_day
+    FROM public.challenge_members m
+    JOIN public.challenges c ON c.id = m.challenge_id
+   WHERE m.user_id = p_user_id
+     AND c.ended_at IS NULL
+     AND p_day >= c.start_date
+     AND (c.end_date IS NULL OR p_day <= c.end_date)
+  ON CONFLICT (challenge_id, user_id, day)
+    DO UPDATE SET queued_at = EXCLUDED.queued_at;
+END;
+$$;
+
+-- A workout added, changed, moved or removed: its old and new day.
+-- Also used for a session being finished, reopened or renamed to another
+-- source (exercise_preset_entries), which turns a planned workout into a
+-- logged one.
 CREATE OR REPLACE FUNCTION public.queue_challenge_scores() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-  changed RECORD;
 BEGIN
-  FOR changed IN
-    SELECT NEW.user_id AS user_id, NEW.entry_date AS day WHERE TG_OP <> 'DELETE'
-    UNION
-    SELECT OLD.user_id, OLD.entry_date WHERE TG_OP <> 'INSERT'
-  LOOP
-    IF changed.user_id IS NULL OR changed.day IS NULL THEN
-      CONTINUE;
-    END IF;
-    INSERT INTO public.challenge_score_queue (challenge_id, user_id, day)
-    SELECT m.challenge_id, m.user_id, changed.day
-      FROM public.challenge_members m
-      JOIN public.challenges c ON c.id = m.challenge_id
-     WHERE m.user_id = changed.user_id
-       AND c.ended_at IS NULL
-       AND changed.day >= c.start_date
-       AND (c.end_date IS NULL OR changed.day <= c.end_date)
-    ON CONFLICT (challenge_id, user_id, day)
-      DO UPDATE SET queued_at = EXCLUDED.queued_at;
-  END LOOP;
+  IF TG_OP <> 'INSERT' THEN
+    PERFORM public.queue_challenge_member_day(OLD.user_id, OLD.entry_date);
+  END IF;
+  IF TG_OP <> 'DELETE' AND (
+    TG_OP = 'INSERT'
+    OR NEW.user_id IS DISTINCT FROM OLD.user_id
+    OR NEW.entry_date IS DISTINCT FROM OLD.entry_date
+  ) THEN
+    PERFORM public.queue_challenge_member_day(NEW.user_id, NEW.entry_date);
+  END IF;
   RETURN NULL;
 END;
 $$;
@@ -225,6 +243,106 @@ CREATE TRIGGER queue_challenge_scores
     AFTER INSERT OR UPDATE OR DELETE ON public.exercise_entries
     FOR EACH ROW
     EXECUTE FUNCTION public.queue_challenge_scores();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores ON public.exercise_preset_entries;
+CREATE TRIGGER queue_challenge_scores
+    AFTER UPDATE OF finished_at, source ON public.exercise_preset_entries
+    FOR EACH ROW
+    WHEN (OLD.finished_at IS DISTINCT FROM NEW.finished_at
+          OR OLD.source IS DISTINCT FROM NEW.source)
+    EXECUTE FUNCTION public.queue_challenge_scores();
+
+-- A set checked off or un-checked: a planned workout counts from its first
+-- checked-off set. Sets carry no owner or day, so both come from the entry.
+CREATE OR REPLACE FUNCTION public.queue_challenge_scores_for_set() RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  entry RECORD;
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.completed_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF TG_OP = 'DELETE' AND OLD.completed_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF TG_OP = 'UPDATE' AND NOT (
+    NEW.completed_at IS DISTINCT FROM OLD.completed_at
+    OR NEW.started_at IS DISTINCT FROM OLD.started_at
+  ) THEN
+    RETURN NULL;
+  END IF;
+  SELECT e.user_id, e.entry_date INTO entry
+    FROM public.exercise_entries e
+   WHERE e.id = CASE WHEN TG_OP = 'DELETE' THEN OLD.exercise_entry_id
+                     ELSE NEW.exercise_entry_id END;
+  -- A set removed with its entry: the entry's own trigger queued the day.
+  IF FOUND THEN
+    PERFORM public.queue_challenge_member_day(entry.user_id, entry.entry_date);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS queue_challenge_scores ON public.exercise_entry_sets;
+CREATE TRIGGER queue_challenge_scores
+    AFTER INSERT OR UPDATE OF completed_at, started_at OR DELETE
+    ON public.exercise_entry_sets
+    FOR EACH ROW
+    EXECUTE FUNCTION public.queue_challenge_scores_for_set();
+
+-- Steps: a check-in (steps) or a synced daily summary (total_steps) that
+-- adds, changes or removes a step count, so a steps challenge moves during the
+-- day rather than at the nightly catch-up. A row whose steps stay empty (a
+-- weight-only check-in) queues nothing.
+CREATE OR REPLACE FUNCTION public.queue_challenge_scores_for_steps() RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  steps_column TEXT := CASE TG_TABLE_NAME
+    WHEN 'daily_health_metrics' THEN 'total_steps' ELSE 'steps' END;
+  old_steps TEXT;
+  new_steps TEXT;
+BEGIN
+  IF TG_OP <> 'INSERT' THEN
+    old_steps := to_jsonb(OLD) ->> steps_column;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    new_steps := to_jsonb(NEW) ->> steps_column;
+  END IF;
+  IF TG_OP = 'UPDATE'
+     AND old_steps IS NOT DISTINCT FROM new_steps
+     AND OLD.user_id IS NOT DISTINCT FROM NEW.user_id
+     AND OLD.entry_date IS NOT DISTINCT FROM NEW.entry_date THEN
+    RETURN NULL;
+  END IF;
+  IF old_steps IS NOT NULL THEN
+    PERFORM public.queue_challenge_member_day(OLD.user_id, OLD.entry_date);
+  END IF;
+  IF new_steps IS NOT NULL THEN
+    PERFORM public.queue_challenge_member_day(NEW.user_id, NEW.entry_date);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS queue_challenge_scores ON public.check_in_measurements;
+CREATE TRIGGER queue_challenge_scores
+    AFTER INSERT OR UPDATE OF steps, user_id, entry_date OR DELETE
+    ON public.check_in_measurements
+    FOR EACH ROW
+    EXECUTE FUNCTION public.queue_challenge_scores_for_steps();
+
+DROP TRIGGER IF EXISTS queue_challenge_scores ON public.daily_health_metrics;
+CREATE TRIGGER queue_challenge_scores
+    AFTER INSERT OR UPDATE OF total_steps, user_id, entry_date OR DELETE
+    ON public.daily_health_metrics
+    FOR EACH ROW
+    EXECUTE FUNCTION public.queue_challenge_scores_for_steps();
 
 -- Admin switch: Challenges is on by default; an admin can turn it off, which
 -- refuses the challenge routes and pauses the challenge jobs.

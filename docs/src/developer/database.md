@@ -1,6 +1,6 @@
 # Database Schema & Migrations
 
-*Last updated: 2026-10-20*
+*Last updated: 2026-11-16*
 
 This document covers the database structure, schema design, and migration process for SparkyFitness.
 
@@ -186,7 +186,7 @@ Written only by the server (owner pool) after `services/challengeService.ts` has
 | `challenge_activity_cards` | The per-workout summary members see (type, name, minutes, distance in metres, pace, heart rate, points); deleted with the workout |
 | `challenge_results` | A finished period frozen once its 48 h late-sync window has passed, one row per member; never rewritten; removed with the member's account |
 | `challenge_rule_changes` | Every rules change with the day it takes effect (the challenge start, or the next period once running), visible to all members |
-| `challenge_score_queue` | Member-days waiting to be scored again, filled by the `queue_challenge_scores` trigger on `exercise_entries` and the nightly catch-up; drained by the score job. Deny-all to the app role |
+| `challenge_score_queue` | Member-days waiting to be scored again, filled by the `queue_challenge_scores` triggers (workouts, sets checked off, sessions finished, steps), rules changes and the nightly catch-up; drained by the score job. Deny-all to the app role |
 
 ### Cycle & Pregnancy (Tier 1: Owner-Only)
 | Table | Purpose |
