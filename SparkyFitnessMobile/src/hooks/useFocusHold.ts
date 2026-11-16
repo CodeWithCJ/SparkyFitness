@@ -31,7 +31,10 @@ export interface FocusHold {
   startedAt: number | null;
   /** Begins the hold: Get ready first when the watch setting has it on. */
   start: () => void;
-  /** Skips the rest of Get ready, or stops a running hold and logs the set. */
+  /**
+   * Skips the rest of Get ready, or stops a running hold and logs the set with
+   * the time held (before or after the planned length).
+   */
   tap: () => void;
 }
 
@@ -77,8 +80,8 @@ function findTimedTarget(
  * "Countdown before holds"), then a countdown to the planned length, or a
  * stopwatch when none is planned. The running timer is the store's per-set
  * timer, so the watch still sees it and the list's own stopwatch button stays
- * in step; this adds Get ready, the countdown's auto-log at zero and a tap to
- * end early. A timer the watch started is shown but never logged from here.
+ * in step; this adds Get ready, the cue at zero (the hold then counts up until
+ * a tap) and the tap that ends the hold. A timer the watch started is shown but never logged from here.
  * `onFinish` runs when a hold started here ends, to log the set.
  */
 export function useFocusHold({
@@ -153,17 +156,15 @@ export function useFocusHold({
     return () => clearTimeout(timer);
   }, [getReady, getReadyEndsAt, run]);
 
-  const finish = useCallback((id: string, ranOut = false) => {
-    if (ranOut) {
-      playIntervalCue('finish');
-      fireSuccessHaptic();
-    }
+  const finish = useCallback((id: string) => {
     useActiveWorkoutStore.getState().stopSetTimer(id);
     ownedRef.current = null;
     onFinishRef.current(id);
   }, []);
 
-  // A countdown started here logs the set when it reaches zero.
+  // A countdown started here cues at zero and then keeps counting up: the set
+  // is logged by the tap that ends the hold, with the time actually held, so
+  // going past the plan is possible (a plank held longer than last time).
   useEffect(() => {
     // A stopped timer releases this hold, so a later start elsewhere is not
     // logged from here.
@@ -180,7 +181,10 @@ export function useFocusHold({
       return;
     }
     const timer = setTimeout(
-      () => finish(setId, true),
+      () => {
+        playIntervalCue('finish');
+        fireSuccessHaptic();
+      },
       Math.max(0, startedAt + targetSec * 1000 - Date.now())
     );
     return () => clearTimeout(timer);
