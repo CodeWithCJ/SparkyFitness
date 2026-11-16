@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -19,10 +19,11 @@ import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { formatShortDate, getTodayDate } from '../utils/dateUtils';
+import { formatShortDate } from '../utils/dateUtils';
 import {
   challengeRulesSummary,
   challengeState,
+  challengeToday,
   sortChallenges,
 } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -109,11 +110,13 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
   const { challenges, isEnabled, isLoading, isError, refetch } =
     useChallenges();
   useRefetchOnFocus(() => void refetch(), true);
-  const today = getTodayDate();
-  const sorted = useMemo(
-    () => sortChallenges(challenges, today),
-    [challenges, today]
-  );
+  // Each challenge's own today, in its time zone, as the server counts days
+  // (and the detail screen shows them). Worked out on every render, so a day
+  // turning over is picked up too.
+  const now = new Date();
+  const todayOf = (challenge: ChallengeSummary) =>
+    challengeToday(challenge, now);
+  const sorted = sortChallenges(challenges, todayOf);
   const openJoin = () => navigation.navigate('ChallengeJoin');
 
   const header = useScreenHeader({
@@ -188,7 +191,7 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
       <ChallengeRow
         key={challenge.id}
         challenge={challenge}
-        today={today}
+        today={todayOf(challenge)}
         onPress={() =>
           navigation.navigate('ChallengeDetail', {
             id: challenge.id,

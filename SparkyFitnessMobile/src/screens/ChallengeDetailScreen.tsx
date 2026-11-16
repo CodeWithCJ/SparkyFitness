@@ -62,10 +62,14 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const ruleChangesQuery = useChallengeRuleChanges(id);
   const { refetch: refetchChallenge } = challengeQuery;
   const { refetch: refetchStandings } = standingsQuery;
+  const { refetch: refetchRuleChanges } = ruleChangesQuery;
+  // The rule log is read with the standings, or a rule changed since the
+  // last visit would show new totals in the old rules' units.
   const refetchOnFocus = useCallback(() => {
     void refetchChallenge();
     void refetchStandings();
-  }, [refetchChallenge, refetchStandings]);
+    void refetchRuleChanges();
+  }, [refetchChallenge, refetchStandings, refetchRuleChanges]);
   useRefetchOnFocus(refetchOnFocus, true);
   const { preferences } = usePreferences();
   const energyUnit = useEnergyUnit();
@@ -176,11 +180,15 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   } else {
     // The rules that scored the period shown (a change counts from the next).
-    const rules = rulesInEffect(
-      ruleChangesQuery.data,
-      standings?.period_start ?? today,
-      challenge.rules
-    );
+    // Nothing rule-bound is shown until the rule log is read: the current
+    // rules can count another unit than the period's.
+    const rules = ruleChangesQuery.data
+      ? rulesInEffect(
+          ruleChangesQuery.data,
+          standings?.period_start ?? today,
+          challenge.rules
+        )
+      : null;
     const dates = challenge.end_date
       ? t('challenges.dates.range', {
           defaultValue: '{{start}} to {{end}}',
@@ -192,7 +200,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           start: formatShortDate(challenge.start_date, locale),
         });
     const target =
-      rules.target !== null && rules.format !== 'leaderboard'
+      rules && rules.target !== null && rules.format !== 'leaderboard'
         ? formatChallengeValue(rules.target, rules.metric, units, t)
         : null;
 
@@ -209,9 +217,11 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               {challenge.description}
             </Text>
           ) : null}
-          <Text className="text-sm text-text-primary mt-3">
-            {challengeRulesSummary(rules, t, locale)}
-          </Text>
+          {rules ? (
+            <Text className="text-sm text-text-primary mt-3">
+              {challengeRulesSummary(rules, t, locale)}
+            </Text>
+          ) : null}
           {target ? (
             <Text className="text-sm text-text-secondary mt-1">
               {t('challenges.target', {
@@ -301,7 +311,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </Pressable>
           </View>
 
-          {rules.format === 'group_goal' && standings && target ? (
+          {rules?.format === 'group_goal' && standings && target ? (
             <Text className="text-sm text-text-secondary mb-2">
               {t('challenges.standings.groupTotal', {
                 defaultValue: 'Together: {{total}} of {{target}}',
@@ -316,8 +326,23 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           ) : null}
 
-          {standingsQuery.isLoading ? (
+          {standingsQuery.isLoading || ruleChangesQuery.isLoading ? (
             <ActivityIndicator className="my-4" />
+          ) : !rules ? (
+            <View className="items-center py-4">
+              <Text className="text-text-secondary text-sm mb-3">
+                {t('challenges.standings.rulesLoadFailed', {
+                  defaultValue:
+                    'Could not load the rules that scored this period.',
+                })}
+              </Text>
+              <Button
+                variant="secondary"
+                onPress={() => void ruleChangesQuery.refetch()}
+              >
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </View>
           ) : standingsQuery.isError || !standings ? (
             <View className="items-center py-4">
               <Text className="text-text-secondary text-sm mb-3">

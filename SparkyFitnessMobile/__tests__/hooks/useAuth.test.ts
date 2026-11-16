@@ -12,6 +12,10 @@ import { clearServerConfigCache } from '../../src/services/storage';
 import { clearBackgroundWater } from '../../src/services/backgroundWater';
 import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyncService';
 import { addLog } from '../../src/services/LogService';
+import {
+  cancelChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
+} from '../../src/services/challengeWeekNotificationService';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
@@ -66,6 +70,14 @@ jest.mock('../../src/offline/cacheStore', () => ({
 }));
 jest.mock('../../src/offline/offlineImages', () => ({
   clearAllOfflineImages: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../src/services/challengeWeekNotificationService', () => ({
+  cancelChallengeWeekNotifications: jest.fn().mockResolvedValue(true),
+  enqueueChallengeWeekNotificationTask: jest.fn(
+    async (task: () => Promise<unknown>) => {
+      await task();
+    }
+  ),
 }));
 
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
@@ -247,6 +259,21 @@ describe('useAuth', () => {
     );
     expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
     expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  test("identity changed callback cancels the previous account's challenge week notices in their queue", async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledWith(
+      cancelChallengeWeekNotifications
+    );
+    expect(cancelChallengeWeekNotifications).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback drops the image caches', async () => {

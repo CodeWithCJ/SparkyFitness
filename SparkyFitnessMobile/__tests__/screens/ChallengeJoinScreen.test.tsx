@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import ChallengeJoinScreen from '../../src/screens/ChallengeJoinScreen';
 import { ApiError } from '../../src/services/api/errors';
 import { initializeI18n } from '../../src/localization/i18n';
@@ -75,6 +76,21 @@ describe('ChallengeJoinScreen', () => {
       id: 'c1',
       name: 'Family Cup',
     });
+  });
+
+  it('stays put when the user left the screen before the join answered', async () => {
+    mockJoin.mockResolvedValue({ id: 'c1', name: 'Family Cup' });
+    (mockNavigation.isFocused as jest.Mock).mockReturnValueOnce(false);
+    const toast = jest.spyOn(Toast, 'show');
+    renderScreen({ code: CODE });
+    fireEvent.changeText(screen.getByLabelText('Your name in it'), 'Sam');
+    await pressJoin();
+    expect(mockJoin).toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', text1: 'Joined Family Cup' })
+    );
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
   it('sends one join when Join is pressed twice before it answers', async () => {

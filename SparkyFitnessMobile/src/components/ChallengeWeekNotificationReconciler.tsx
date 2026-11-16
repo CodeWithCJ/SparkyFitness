@@ -15,10 +15,10 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import {
   cancelChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
   scheduleChallengeWeekNotifications,
 } from '../services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../services/notifications';
-import { addLog } from '../services/LogService';
 import {
   buildChallengeWeekNotices,
   challengeState,
@@ -29,20 +29,6 @@ import {
 
 /** Re-read the standings on return to the app at most this often. */
 const FOREGROUND_REFRESH_MS = 15 * 60 * 1000;
-
-let queue: Promise<void> = Promise.resolve();
-
-// Runs are serialized so a quick change can't interleave its cancel/schedule
-// with the previous run's and leave a stale notification behind.
-function enqueue(task: () => Promise<void>): Promise<void> {
-  queue = queue.then(task).catch((error: unknown) => {
-    addLog(
-      `Challenge week notification sync failed: ${String(error)}`,
-      'ERROR'
-    );
-  });
-  return queue;
-}
 
 /**
  * Keeps one local notification per running weekly challenge scheduled for
@@ -138,7 +124,7 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
 
   useEffect(() => {
     if (waitingRef.current) return;
-    void enqueue(async () => {
+    void enqueueChallengeWeekNotificationTask(async () => {
       await cancelChallengeWeekNotifications();
       const list = noticesRef.current;
       if (list.length > 0 && (await hasNotificationPermission())) {

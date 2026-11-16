@@ -56,7 +56,9 @@ export function useChallenges({ enabled = true }: { enabled?: boolean } = {}) {
   });
 
   return {
-    challenges: list.data ?? [],
+    // Turning a query off keeps its cached data, so a list read before the
+    // feature was turned off is not handed out after.
+    challenges: isEnabled ? (list.data ?? []) : [],
     isEnabled,
     /** True while either answer is still on its way. */
     isLoading: status.isLoading || (isEnabled && list.isLoading),
@@ -130,6 +132,13 @@ export function useChallengesRuleChanges(ids: readonly string[]) {
       return {
         byId: byId as ReadonlyMap<string, ChallengeRuleChange[]>,
         isLoading: results.some((result) => result.isLoading),
+        isError: results.some((result) => result.isError),
+        /** Reads the failed logs again. */
+        retry: () => {
+          for (const result of results) {
+            if (result.isError) void result.refetch();
+          }
+        },
       };
     },
   });

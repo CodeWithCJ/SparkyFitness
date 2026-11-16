@@ -58,25 +58,75 @@ export function challengeWeekNoticeContent(notice: ChallengeWeekNotice): {
   };
 }
 
-/** Cancels every scheduled challenge week notification. */
-export async function cancelChallengeWeekNotifications(): Promise<void> {
+/**
+ * Waits before each retry of a cancellation that failed. A failed one is
+ * tried again, as the reconciler does not run again on its own (the user
+ * turned the notice off, or switched accounts).
+ */
+export const CANCEL_RETRY_DELAYS_MS = [1000, 5000, 15000] as const;
+
+/** One pass; returns how many could not be cancelled (or listed). */
+async function cancelOnce(): Promise<number> {
+  let scheduled: Notifications.NotificationRequest[];
   try {
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    await Promise.all(
-      scheduled
-        .filter((n) => n.content.data?.kind === CHALLENGE_WEEK_LEADER_KIND)
-        .map((n) =>
-          Notifications.cancelScheduledNotificationAsync(n.identifier).catch(
-            () => undefined
-          )
-        )
-    );
+    scheduled = await Notifications.getAllScheduledNotificationsAsync();
   } catch (err) {
     addLog(
-      `cancelChallengeWeekNotifications failed: ${(err as Error).message}`,
-      'ERROR'
+      `cancelChallengeWeekNotifications could not list: ${(err as Error).message}`,
+      'WARNING'
     );
+    return 1;
   }
+  const results = await Promise.allSettled(
+    scheduled
+      .filter((n) => n.content.data?.kind === CHALLENGE_WEEK_LEADER_KIND)
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+  );
+  return results.filter((result) => result.status === 'rejected').length;
+}
+
+/**
+ * Cancels every scheduled challenge week notification. What fails is tried
+ * again (each pass re-reads what is still scheduled) after each delay in
+ * `CANCEL_RETRY_DELAYS_MS`; returns false when some are still left after
+ * the last.
+ */
+export async function cancelChallengeWeekNotifications(): Promise<boolean> {
+  for (let attempt = 0; ; attempt++) {
+    const failed = await cancelOnce();
+    if (failed === 0) return true;
+    const delay = CANCEL_RETRY_DELAYS_MS[attempt];
+    if (delay === undefined) {
+      addLog(
+        `cancelChallengeWeekNotifications gave up with ${failed} left after ${attempt + 1} tries`,
+        'ERROR'
+      );
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
+let queue: Promise<void> = Promise.resolve();
+
+/**
+ * Runs `task` after every earlier one, so a quick change can't interleave
+ * its cancel/schedule with the previous run's and leave a stale notification
+ * behind. A failure is logged and does not stop the next task.
+ */
+export function enqueueChallengeWeekNotificationTask(
+  task: () => Promise<unknown>
+): Promise<void> {
+  queue = queue
+    .then(task)
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      addLog(
+        `Challenge week notification sync failed: ${String(error)}`,
+        'ERROR'
+      );
+    });
+  return queue;
 }
 
 /**

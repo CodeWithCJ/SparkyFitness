@@ -23,6 +23,10 @@ import { clearBackgroundWater } from '../services/backgroundWater';
 import { refreshClientCertificateHosts } from '../services/clientCertificate';
 import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
 import {
+  cancelChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
+} from '../services/challengeWeekNotificationService';
+import {
   deleteWatchTelemetryForConfig,
   notifyWatchTelemetryAccountSwitch,
 } from '../utils/watchTelemetryPersistence';
@@ -99,6 +103,14 @@ export function useAuth() {
       void clearAndroidWidgetSnapshots().catch((err: unknown) => {
         addLog(`Failed to clear the widget snapshots: ${err}`, 'WARNING');
       });
+      // The challenge week notices carry the previous account's challenge
+      // names, members and totals, and no account to tell them apart. With
+      // the cache gone the reconciler waits for the new account's reads and
+      // would leave them scheduled, so they are cancelled here, in its queue
+      // so a run already under way cannot schedule them again after.
+      void enqueueChallengeWeekNotificationTask(
+        cancelChallengeWeekNotifications
+      );
       // The Siri and Shortcuts copy holds the previous login and proxy
       // headers; the dashboard writes a fresh one once the new identity's
       // preferences and container load.
