@@ -6265,6 +6265,8 @@
     "sets_one": "{{count}} set",
     "sets_other": "{{count}} sets",
     "drag": "Drag to reorder",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "title": "Reorder exercises",
     "doneHint": "Done reordering"
   },

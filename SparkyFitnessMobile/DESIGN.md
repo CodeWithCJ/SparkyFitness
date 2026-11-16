@@ -128,6 +128,8 @@ Eight balanced hues for things that need a distinct color but no fixed meaning. 
 | Effort Lilac    | `--color-effort` (JS only)     | #9739C6   | #CC86EA  | Focus view post-set effort sheet (number, filled segments, Save)                                            |
 | Rest Orange     | `--color-rest` (JS only)       | #E16009   | #FF9A52  | Focus view rest card, ring and Skip rest button                                                             |
 | Hold Teal       | `--color-hold` (JS only)       | #188B7B   | #45D3C0  | Focus view timed hold ring and Get ready number                                                             |
+| On Rest         | `--color-on-rest` (JS only)    | #1F1100   | #1F1100  | Label and icon on a Rest Orange fill (Skip rest)                                                            |
+| On Hold         | `--color-on-hold` (JS only)    | #06201C   | #06201C  | Number on a Hold Teal fill (the current Get ready count)                                                    |
 
 ### Progress tracks
 

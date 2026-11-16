@@ -2008,7 +2008,9 @@ describe('ActiveWorkoutScreen focus view', () => {
     renderScreen();
     expect(mockExercisesSheet.props.visible).toBe(false);
 
-    act(() => mockHeaderProps.focusBar.onOpenList());
+    act(() =>
+      (mockHeaderProps.focusBar as { onOpenList: () => void }).onOpenList()
+    );
     expect(mockExercisesSheet.props.visible).toBe(true);
 
     act(() => mockExercisesSheet.props.onClose());

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -199,7 +199,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     onNeedsUpdate: focusStyle
       ? (offer) => {
           // No card without a change to list.
-          if (offer.changes.length > 0) setPresetOffer(offer);
+          if (offer.describeChanges(t).length > 0) setPresetOffer(offer);
         }
       : undefined,
   });
@@ -216,6 +216,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   // they tap here. One rating speaks for the whole session on the server.
   const queryClient = useQueryClient();
   const [pickedEffort, setPickedEffort] = useState<number | null>(null);
+  const effortWriteRef = useRef<{ latest: number; chain: Promise<unknown> }>({
+    latest: 0,
+    chain: Promise.resolve(),
+  });
   const savedEffort = summarizeWorkoutEffort(
     (refreshedSession ?? session).exercises
   );
@@ -225,13 +229,19 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       const entryId = session.exercises[0]?.id;
       if (entryId == null) return;
       setPickedEffort(rating);
-      void setExerciseEntryEffort(entryId, rating)
+      // One write at a time, in tap order, so the last tap is the one stored;
+      // a failed older write does not clear a newer pick.
+      const write = ++effortWriteRef.current.latest;
+      effortWriteRef.current.chain = effortWriteRef.current.chain
+        .then(() => setExerciseEntryEffort(entryId, rating))
         .then(() =>
           queryClient.invalidateQueries({
             queryKey: workoutSessionQueryKey(session.id),
           })
         )
-        .catch(() => setPickedEffort(null));
+        .catch(() => {
+          if (effortWriteRef.current.latest === write) setPickedEffort(null);
+        });
     },
     [session.exercises, session.id, queryClient]
   );
@@ -292,7 +302,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
               presetOffer={
                 presetOffer != null
                   ? {
-                      changes: presetOffer.changes,
+                      changes: presetOffer.describeChanges(t),
                       onUpdate: () => void handleUpdatePreset(),
                       onKeep: handleKeepPreset,
                       updating: updatingPreset,

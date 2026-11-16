@@ -178,7 +178,7 @@ function FocusWorkoutSummary({
         />
         <Tile
           label={t('workoutComplete.focus.avgBpm', { defaultValue: 'Avg bpm' })}
-          value={avgBpm != null ? String(avgBpm) : '—'}
+          value={avgBpm != null ? formatLocalizedNumber(avgBpm) : '—'}
           color={avgBpm != null ? (zoneColor ?? heartRateColor) : undefined}
         />
       </View>
@@ -219,7 +219,7 @@ function FocusWorkoutSummary({
               className="text-[22px] font-extrabold"
               style={{ color: bandColor[effortBand(effort)] }}
             >
-              {`${effort} · ${bandLabel[effortBand(effort)]}`}
+              {`${formatLocalizedNumber(effort)} · ${bandLabel[effortBand(effort)]}`}
             </Text>
           )}
         </View>

@@ -105,6 +105,9 @@ export function useFocusHold({
 
   // Moving the cursor off the set drops a pending Get ready.
   if (getReady != null && getReady.setId !== setId) setGetReady(null);
+  // A timer started elsewhere (the watch) ends Get ready: the hold is already
+  // running and is not this view's to own or log.
+  if (getReady != null && startedAt != null) setGetReady(null);
   const activeGetReady =
     getReady != null && getReady.setId === setId ? getReady : null;
   const phase: FocusHold['phase'] =
@@ -146,6 +149,11 @@ export function useFocusHold({
 
   // A countdown started here logs the set when it reaches zero.
   useEffect(() => {
+    // A stopped timer releases this hold, so a later start elsewhere is not
+    // logged from here.
+    if (startedAt == null && ownedSetIdRef.current === setId) {
+      ownedSetIdRef.current = null;
+    }
     if (
       setId == null ||
       startedAt == null ||

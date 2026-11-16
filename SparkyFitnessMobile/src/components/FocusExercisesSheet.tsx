@@ -1,6 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, Text, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Text,
+  View,
+  type AccessibilityActionEvent,
+} from 'react-native';
 import {
   GestureHandlerRootView,
   GestureDetector,
@@ -70,6 +76,8 @@ interface Props {
 interface ItemProps {
   item: ExerciseReorderItem;
   index: number;
+  /** Index of the last item, so a move stays inside the list. */
+  lastIndex: number;
   letter: string | null;
   exercisesById: Map<string, Exercise>;
   completedSetIds: CompletedSetMap;
@@ -77,11 +85,41 @@ interface ItemProps {
   groupColor: string;
   drag: ReorderDrag;
   onSelectExercise: (entryId: string) => void;
+  onMoveItem: (fromItemIndex: number, toItemIndex: number) => void;
+}
+
+/**
+ * One row's drag handle. Each handle makes its own gesture: a superset draws
+ * one handle per member, and a gesture instance may sit on one detector only.
+ * Either handle drags the whole item, since they share its index.
+ */
+function ExercisesDragHandle({
+  entryId,
+  index,
+  drag,
+}: {
+  entryId: string;
+  index: number;
+  drag: ReorderDrag;
+}) {
+  const textMuted = useCSSVariable('--color-text-muted') as string;
+  const { gesture } = useReorderItemDrag(index, drag);
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        testID={`focus-exercise-handle-${entryId}`}
+        className="h-full w-12 items-center justify-center"
+      >
+        <Icon name="reorder-handle" size={22} color={textMuted} />
+      </View>
+    </GestureDetector>
+  );
 }
 
 function ExercisesItem({
   item,
   index,
+  lastIndex,
   letter,
   exercisesById,
   completedSetIds,
@@ -89,15 +127,44 @@ function ExercisesItem({
   groupColor,
   drag,
   onSelectExercise,
+  onMoveItem,
 }: ItemProps) {
   const { t } = useTranslation();
-  const [textMuted, accent, borderStrong] = useCSSVariable([
-    '--color-text-muted',
+  const [accent, borderStrong] = useCSSVariable([
     '--color-accent-primary',
     '--color-border-strong',
-  ]) as [string, string, string];
-  const { animatedStyle, gesture } = useReorderItemDrag(index, drag);
+  ]) as [string, string];
+  const { animatedStyle } = useReorderItemDrag(index, drag);
   const isGroup = item.groupId != null;
+
+  // The row is one accessible element, so the handle inside it is not
+  // reachable on its own: the row carries the reorder actions, and a screen
+  // reader can move the item without a long-press drag.
+  const reorderActions = [
+    ...(index > 0
+      ? [
+          {
+            name: 'decrement',
+            label: t('workoutReorder.moveUp', { defaultValue: 'Move up' }),
+          },
+        ]
+      : []),
+    ...(index < lastIndex
+      ? [
+          {
+            name: 'increment',
+            label: t('workoutReorder.moveDown', { defaultValue: 'Move down' }),
+          },
+        ]
+      : []),
+  ];
+  const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
+    const { actionName } = event.nativeEvent;
+    if (actionName === 'decrement' && index > 0) onMoveItem(index, index - 1);
+    if (actionName === 'increment' && index < lastIndex) {
+      onMoveItem(index, index + 1);
+    }
+  };
 
   const rows = item.entryIds.map((entryId, memberIndex) => {
     const exercise = exercisesById.get(entryId);
@@ -125,6 +192,8 @@ function ExercisesItem({
         onPress={() => onSelectExercise(entryId)}
         accessibilityRole="button"
         accessibilityState={{ selected: current }}
+        accessibilityActions={reorderActions}
+        onAccessibilityAction={handleAccessibilityAction}
         accessibilityLabel={`${name}, ${progress}${badge ? `, ${t('activeWorkout.focus.exercises.supersetMember', { defaultValue: 'superset {{badge}}', badge })}` : ''}`}
         className={`flex-row items-center gap-3 rounded-2xl pl-3.5 ${isGroup ? 'bg-background' : 'bg-raised'}`}
         style={{
@@ -168,18 +237,7 @@ function ExercisesItem({
             </Text>
           </View>
         )}
-        <GestureDetector gesture={gesture}>
-          <View
-            testID={`focus-exercise-handle-${entryId}`}
-            className="h-full w-12 items-center justify-center"
-            accessibilityRole="adjustable"
-            accessibilityLabel={t('workoutReorder.drag', {
-              defaultValue: 'Drag to reorder',
-            })}
-          >
-            <Icon name="reorder-handle" size={22} color={textMuted} />
-          </View>
-        </GestureDetector>
+        <ExercisesDragHandle entryId={entryId} index={index} drag={drag} />
       </Pressable>
     );
   });
@@ -246,7 +304,7 @@ function FocusExercisesSheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [dangerText, textPrimary] = useCSSVariable([
-    '--color-text-danger-subtle',
+    '--color-icon-danger',
     '--color-text-primary',
   ]) as [string, string];
   const items = useMemo(
@@ -349,6 +407,7 @@ function FocusExercisesSheet({
                 key={item.key}
                 item={item}
                 index={index}
+                lastIndex={items.length - 1}
                 letter={letters[index]}
                 exercisesById={exercisesById}
                 completedSetIds={completedSetIds}
@@ -356,6 +415,7 @@ function FocusExercisesSheet({
                 groupColor={groupColor}
                 drag={drag}
                 onSelectExercise={handleSelect}
+                onMoveItem={onMoveItem}
               />
             ))}
           </Animated.ScrollView>

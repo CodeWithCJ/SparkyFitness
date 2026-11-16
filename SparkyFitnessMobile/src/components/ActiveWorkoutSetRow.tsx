@@ -828,6 +828,8 @@ function ActiveWorkoutSetRow({
       commitRpeValue(text);
       const value = parseEffortInput(text);
       setRpeDraft(value != null ? formatRpe(value) : '');
+      // Committed, so a later store change (a watch edit) is not written over.
+      setEdited((previous) => ({ ...previous, effort: false }));
     },
     [commitRpeValue, parseEffortInput]
   );
@@ -900,11 +902,9 @@ function ActiveWorkoutSetRow({
   });
   useEffect(() => () => unmountFlushRef.current(), []);
 
-  // Log the set: flush any in-progress edits first so the values the user
-  // sees are exactly what gets completed (and autosaved). The completion
-  // haptic fires in the store (selection tick, or the stronger success buzz on
-  // a PR), so it stays mutually exclusive.
-  const handleLog = useCallback(() => {
+  // Commit every in-progress draft of the row, for the row's own Log and for
+  // a Log pressed outside it (the bottom bar, through the accessory handle).
+  const commitDrafts = useCallback(() => {
     if (durationLike) {
       commitDuration(durationDraft);
       if (cardioDistance) commitDistance(distanceDraft);
@@ -919,7 +919,6 @@ function ActiveWorkoutSetRow({
       commitReps(repsDraft);
     }
     if (isEffortColumn) commitRpe(rpeDraft);
-    onComplete?.(setId);
   }, [
     durationLike,
     cardioDistance,
@@ -931,14 +930,20 @@ function ActiveWorkoutSetRow({
     commitDistance,
     commitRpe,
     isEffortColumn,
-    onComplete,
-    setId,
     weightDraft,
     repsDraft,
     durationDraft,
     distanceDraft,
     rpeDraft,
   ]);
+  // Log the set: flush any in-progress edits first so the values the user
+  // sees are exactly what gets completed (and autosaved). The completion
+  // haptic fires in the store (selection tick, or the stronger success buzz on
+  // a PR), so it stays mutually exclusive.
+  const handleLog = useCallback(() => {
+    commitDrafts();
+    onComplete?.(setId);
+  }, [commitDrafts, onComplete, setId]);
 
   // Register this row's accessory handle for the screen's sticky bar (live
   // and edit — view rows have nothing to dispatch to). The handle is
@@ -949,10 +954,14 @@ function ActiveWorkoutSetRow({
   const handleLogRef = useRef(handleLog);
   const handleAdvanceRef = useRef(handleAdvance);
   const flushWeightRef = useRef(() => commitWeight(weightDraft));
+  // Edit rows are written per keystroke by the form reducer and their local
+  // drafts can be stale, so only a live row flushes every draft.
+  const flushDraftsRef = useRef(() => {});
   useEffect(() => {
     handleLogRef.current = handleLog;
     handleAdvanceRef.current = handleAdvance;
     flushWeightRef.current = () => commitWeight(weightDraft);
+    flushDraftsRef.current = isLive ? commitDrafts : () => {};
   });
   useEffect(() => {
     if (readOnly || !onRegisterAccessoryHandle) return;
@@ -974,7 +983,7 @@ function ActiveWorkoutSetRow({
       },
       advance: () => handleAdvanceRef.current(),
       flushWeight: () => flushWeightRef.current(),
-      flushDrafts: () => flushWeightRef.current(),
+      flushDrafts: () => flushDraftsRef.current(),
     });
     return () => onRegisterAccessoryHandle(key, null);
   }, [readOnly, renderKey, setId, onRegisterAccessoryHandle]);

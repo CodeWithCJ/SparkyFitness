@@ -111,7 +111,7 @@ export function FocusPageButton({
       className={`h-14 items-center justify-center rounded-full active:opacity-80 ${primary ? 'bg-accent-primary' : 'bg-raised'} ${disabled ? 'opacity-50' : ''}`}
     >
       <Text
-        className={`text-[18px] font-bold ${primary ? 'text-white' : variant === 'danger' ? 'text-text-danger-subtle' : 'text-text-primary'}`}
+        className={`text-[18px] font-bold ${primary ? 'text-white' : variant === 'danger' ? 'text-icon-danger' : 'text-text-primary'}`}
       >
         {label}
       </Text>

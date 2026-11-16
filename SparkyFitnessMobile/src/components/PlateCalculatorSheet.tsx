@@ -57,12 +57,18 @@ export default function PlateCalculatorSheet({
   onUseWeight,
 }: PlateCalculatorSheetProps) {
   const { t } = useTranslation();
-  const { inventory } = usePlateInventory(weightUnit);
-  // The page's − / + move the target to the next loadable weight.
+  const { inventory, isLoading: inventoryLoading } =
+    usePlateInventory(weightUnit);
+  // The page's − / + move the target to the next loadable weight. A step is
+  // only valid for the target and the plates it was worked out from, so a new
+  // target or a changed inventory (the saved one arriving) drops it.
   const [adjustedWeight, setAdjustedWeight] = useState<number | null>(null);
-  const [adjustedFrom, setAdjustedFrom] = useState(targetWeight);
-  if (adjustedFrom !== targetWeight) {
-    setAdjustedFrom(targetWeight);
+  const [adjustedFrom, setAdjustedFrom] = useState({ targetWeight, inventory });
+  if (
+    adjustedFrom.targetWeight !== targetWeight ||
+    adjustedFrom.inventory !== inventory
+  ) {
+    setAdjustedFrom({ targetWeight, inventory });
     setAdjustedWeight(null);
   }
   const shownTarget = page ? (adjustedWeight ?? targetWeight) : targetWeight;
@@ -79,7 +85,9 @@ export default function PlateCalculatorSheet({
   }, [inventory, bar, shownTarget, weightUnit]);
 
   const stepTo = (direction: 'up' | 'down') => {
-    if (!bar || shownTarget == null) return null;
+    // Until the saved inventory has loaded the plates are the standard preset,
+    // not necessarily the ones owned, so no other weight is offered yet.
+    if (inventoryLoading || !bar || shownTarget == null) return null;
     return nextLoadableWeight(
       plateCalcInputFor(inventory, bar, shownTarget, weightUnit),
       direction
@@ -101,6 +109,9 @@ export default function PlateCalculatorSheet({
       : (result?.below ?? result?.above ?? null);
   const ownedPlates = inventory.plates.filter((plate) => plate.pairs > 0);
   const unitLabel = plateUnitLabel(t, unit);
+  // The target and the weights stepped to are in the person's weight unit,
+  // which can differ from the inventory's.
+  const targetUnitLabel = plateUnitLabel(t, weightUnit);
   const [red, blue, yellow, green, white, grey] = useCSSVariable([
     '--color-plate-red',
     '--color-plate-blue',
@@ -146,7 +157,7 @@ export default function PlateCalculatorSheet({
                 label={t('plates.useWeight', {
                   defaultValue: 'Use {{weight}} {{unit}}',
                   weight: formatPlateWeight(shownTarget),
-                  unit: unitLabel,
+                  unit: targetUnitLabel,
                 })}
                 onPress={() => onUseWeight(shownTarget)}
               />
@@ -189,7 +200,7 @@ export default function PlateCalculatorSheet({
                 className="text-[44px] font-extrabold leading-[50px] text-text-primary"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
-                {`${formatPlateWeight(shownTarget)} ${plateUnitLabel(t, weightUnit)}`}
+                {`${formatPlateWeight(shownTarget)} ${targetUnitLabel}`}
               </Text>
               <View className="flex-row gap-2.5">
                 <StepButton
@@ -289,10 +300,10 @@ export default function PlateCalculatorSheet({
             <Text className="text-[15px] text-text-secondary">
               {[
                 lighter != null
-                  ? `− ${formatPlateWeight(lighter)} ${unitLabel}`
+                  ? `− ${formatPlateWeight(lighter)} ${targetUnitLabel}`
                   : null,
                 heavier != null
-                  ? `+ ${formatPlateWeight(heavier)} ${unitLabel}`
+                  ? `+ ${formatPlateWeight(heavier)} ${targetUnitLabel}`
                   : null,
               ]
                 .filter((part) => part != null)

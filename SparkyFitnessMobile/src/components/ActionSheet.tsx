@@ -94,13 +94,13 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       windowHeight - sheetInsets.top - sheetInsets.bottom - 24
     );
 
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, dangerSubtle] =
+    const [surfaceBg, textMuted, accentPrimary, textPrimary, iconDanger] =
       useCSSVariable([
         '--color-surface',
         '--color-text-muted',
         '--color-accent-primary',
         '--color-text-primary',
-        '--color-text-danger-subtle',
+        '--color-icon-danger',
       ]) as [string, string, string, string, string];
 
     const clearScheduledPresent = useCallback(() => {
@@ -250,13 +250,29 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
         <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
           {layout === 'cards' ? (
             <View className="px-4 pb-6 pt-1">
-              <Text
-                numberOfLines={1}
-                accessibilityRole="header"
-                className="mb-3 text-[26px] font-extrabold text-text-primary"
-              >
-                {title}
-              </Text>
+              <View className="mb-3 flex-row items-center gap-1">
+                {onBack && (
+                  <Pressable
+                    testID="action-sheet-back"
+                    onPress={onBack}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.back', {
+                      defaultValue: 'Back',
+                    })}
+                    className="-ml-2 h-11 w-9 items-center justify-center"
+                  >
+                    <Icon name="chevron-back" size={22} color={accentPrimary} />
+                  </Pressable>
+                )}
+                <Text
+                  numberOfLines={1}
+                  accessibilityRole="header"
+                  className="min-w-0 flex-1 text-[26px] font-extrabold text-text-primary"
+                >
+                  {title}
+                </Text>
+              </View>
               <View className="gap-2">
                 {items.map((item) => (
                   <Pressable
@@ -276,13 +292,13 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
                         <Icon
                           name={item.icon}
                           size={22}
-                          color={item.destructive ? dangerSubtle : textPrimary}
+                          color={item.destructive ? iconDanger : textPrimary}
                         />
                       </View>
                     )}
                     <View className="min-w-0 flex-1">
                       <Text
-                        className={`text-[17px] font-bold ${item.destructive ? 'text-text-danger-subtle' : 'text-text-primary'}`}
+                        className={`text-[17px] font-bold ${item.destructive ? 'text-icon-danger' : 'text-text-primary'}`}
                       >
                         {item.label}
                       </Text>

@@ -7026,6 +7026,33 @@ describe('workoutSession', () => {
       ).toBeNull();
     });
 
+    it('keeps an untouched fabricated set whose type was changed', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            sets: [
+              makeSessionSet({
+                weight: null,
+                reps: null,
+                set_type: 'warmup',
+                rest_time: DEFAULT_REST_SEC,
+              }),
+            ],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ sets: [] })],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, {
+        completedSetIds: {},
+        plannedSetValues: {},
+      });
+      expect(payload![0].sets).toEqual([
+        expect.objectContaining({ set_type: 'warmup' }),
+      ]);
+    });
+
     it('writes the fabricated set into a zero-set preset exercise once it was actually used', () => {
       const session = makePreset({
         exercises: [

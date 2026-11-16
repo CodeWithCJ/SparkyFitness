@@ -89,5 +89,17 @@ describe('describePresetChanges (structure beyond counts)', () => {
       exercises: [presetExercise('a', 'a', 0)],
     } as unknown as WorkoutPreset;
     expect(describePresetChanges(placeholder, empty, t)).toEqual([]);
+    // A placeholder whose type was changed is the lifter's own set.
+    const warmup = {
+      exercises: [
+        {
+          ...(exercise('a', 'a', 1) as object),
+          sets: [{ id: 1, set_type: 'warmup' }],
+        },
+      ],
+    } as unknown as PresetSessionResponse;
+    expect(describePresetChanges(warmup, empty, t)).toEqual([
+      'a 1 sets, was 0.',
+    ]);
   });
 });

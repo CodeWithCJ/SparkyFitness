@@ -108,6 +108,7 @@ function ActiveWorkoutRestBar({
     chromeBorder,
     textPrimary,
     restColor,
+    onRest,
   ] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -115,7 +116,8 @@ function ActiveWorkoutRestBar({
     '--color-chrome-border',
     '--color-text-primary',
     '--color-rest',
-  ]) as [string, string, string, string, string, string];
+    '--color-on-rest',
+  ]) as [string, string, string, string, string, string, string];
 
   // Lead-in beeps for the last seconds of the rest (the watch's Countdown
   // setting: Off, 3 or 5). The beep at zero is the rest-complete chime, which
@@ -214,8 +216,8 @@ function ActiveWorkoutRestBar({
           className="mt-2 h-14 flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
           style={{ backgroundColor: restColor }}
         >
-          <Icon name="skip-forward" size={20} color="#1f1100" weight="bold" />
-          <Text className="text-xl font-bold" style={{ color: '#1f1100' }}>
+          <Icon name="skip-forward" size={20} color={onRest} weight="bold" />
+          <Text className="text-xl font-bold" style={{ color: onRest }}>
             {t('activeWorkout.focus.rest.skip', { defaultValue: 'Skip rest' })}
           </Text>
         </Pressable>

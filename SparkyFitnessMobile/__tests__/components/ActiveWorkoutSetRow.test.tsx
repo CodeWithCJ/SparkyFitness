@@ -780,6 +780,22 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
+    it('flushDrafts commits every typed field without completing the set', () => {
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+      });
+      const [, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+
+      fireEvent.changeText(getByLabelText('Reps'), '12');
+      act(() => handle.flushDrafts());
+
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        reps: 12,
+      });
+      expect(callbacks.onComplete).not.toHaveBeenCalled();
+    });
+
     it('unregisters the sticky-bar handle on unmount', () => {
       const { unmount, callbacks } = renderRow({ state: 'current' });
       unmount();

@@ -194,8 +194,12 @@ export function describePresetChanges(
     const [match] = unmatched.splice(index, 1, null as never);
     const before = match.sets?.length ?? 0;
     // A preset exercise saved without sets shows one untouched placeholder
-    // set in the session; that is not a change.
-    const placeholderOnly = before === 0 && exercise.sets.length === 1;
+    // set in the session; that is not a change. A set whose type was changed
+    // is no longer that placeholder (as buildPresetUpdateExercises).
+    const placeholderOnly =
+      before === 0 &&
+      exercise.sets.length === 1 &&
+      (exercise.sets[0].set_type ?? 'normal') === 'normal';
     if (before !== exercise.sets.length && !placeholderOnly) {
       lines.push(
         t('workoutComplete.changes.sets', {
