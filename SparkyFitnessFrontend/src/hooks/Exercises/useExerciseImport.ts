@@ -458,7 +458,34 @@ export function useExerciseImport(
     // save — a format change that invalidated the headers opens it via
     // flushPendingReparse, so don't persist the stale rows.
     if (showMapping) return;
-    if (csvData.some((row) => !row.name || String(row.name).trim() === '')) {
+    // A pending reparse (scheduled by a format-bar change) would otherwise save
+    // rows parsed under the previous format. Apply it first so the saved values
+    // reflect the current format, and stamp the snapshot with the same rows so
+    // the form closes cleanly.
+    let dataToSave: ExerciseCSVData[];
+    if (reparseTimerRef.current) {
+      const flushed = flushPendingReparse();
+      if (flushed === null) {
+        // The pending reparse can't be applied safely (edits + format change,
+        // or the file flipped into header-mapping mode). Abort rather than
+        // persist stale rows; the user lets the reparse settle and retries.
+        toast({
+          title: t('exercise.exerciseImportCSV.reparsePending', 'Please Wait'),
+          description: t(
+            'exercise.exerciseImportCSV.reparsePendingDescription',
+            'A format change is still processing. Try again in a moment.'
+          ),
+          variant: 'default',
+        });
+        return;
+      }
+      dataToSave = flushed;
+    } else {
+      dataToSave = csvData;
+    }
+    // Validate the rows that will actually be saved (post-flush), not the
+    // pre-flush table, so a quote/format change that empties a name is caught.
+    if (dataToSave.some((row) => !row.name || String(row.name).trim() === '')) {
       toast({
         title: t(
           'exercise.exerciseImportCSV.validationError',
@@ -474,34 +501,6 @@ export function useExerciseImport(
     }
     setLoading(true);
     try {
-      // A pending reparse (scheduled by a format-bar change) would otherwise
-      // save rows parsed under the previous format. Apply it first so the
-      // saved values reflect the current format, and stamp the snapshot with
-      // the same rows so the form closes cleanly.
-      let dataToSave: ExerciseCSVData[];
-      if (reparseTimerRef.current) {
-        const flushed = flushPendingReparse();
-        if (flushed === null) {
-          // The pending reparse can't be applied safely (edits + format change,
-          // or the file flipped into header-mapping mode). Abort rather than
-          // persist stale rows; the user lets the reparse settle and retries.
-          toast({
-            title: t(
-              'exercise.exerciseImportCSV.reparsePending',
-              'Please Wait'
-            ),
-            description: t(
-              'exercise.exerciseImportCSV.reparsePendingDescription',
-              'A format change is still processing. Try again in a moment.'
-            ),
-            variant: 'default',
-          });
-          return;
-        }
-        dataToSave = flushed;
-      } else {
-        dataToSave = csvData;
-      }
       await onSave(dataToSave.map(({ id, ...rest }) => rest));
       // Saved: the table now matches what's stored, so closing shouldn't prompt.
       setSavedSnapshot(dataToSave);

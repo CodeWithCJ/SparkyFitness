@@ -76,6 +76,26 @@ export interface CSVData {
 const generateUniqueId = () =>
   `temp_${Math.random().toString(36).slice(2, 11)}`;
 
+const getFoodKey = (row: CSVData) =>
+  `${(row.name || '').trim().toLowerCase()}::${(row.brand || '').trim().toLowerCase()}`;
+
+const getFoodKeysWithoutDefault = (rows: CSVData[]): Set<string> => {
+  const defaultMap = new Map<string, boolean>();
+  rows.forEach((row) => {
+    const key = getFoodKey(row);
+    if (row.is_default === true) {
+      defaultMap.set(key, true);
+    } else if (!defaultMap.has(key)) {
+      defaultMap.set(key, false);
+    }
+  });
+  const invalid = new Set<string>();
+  defaultMap.forEach((hasDefault, key) => {
+    if (!hasDefault) invalid.add(key);
+  });
+  return invalid;
+};
+
 // Debounce for the reparse-on-format-change effect below — collapses rapid
 // format-bar clicks into a single re-parse instead of one per click.
 const REPARSE_DEBOUNCE_MS = 400;
@@ -627,25 +647,10 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     [loadedText, csvFormat]
   );
 
-  const getFoodKey = (row: CSVData) =>
-    `${(row.name || '').trim().toLowerCase()}::${(row.brand || '').trim().toLowerCase()}`;
-
-  const invalidFoodKeys = useMemo(() => {
-    const defaultMap = new Map<string, boolean>();
-    csvData.forEach((row) => {
-      const key = getFoodKey(row);
-      if (row.is_default === true) {
-        defaultMap.set(key, true);
-      } else if (!defaultMap.has(key)) {
-        defaultMap.set(key, false);
-      }
-    });
-    const invalid = new Set<string>();
-    defaultMap.forEach((hasDefault, key) => {
-      if (!hasDefault) invalid.add(key);
-    });
-    return invalid;
-  }, [csvData]);
+  const invalidFoodKeys = useMemo(
+    () => getFoodKeysWithoutDefault(csvData),
+    [csvData]
+  );
 
   const foodsWithoutDefaultCount = invalidFoodKeys.size;
 
@@ -720,7 +725,34 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     // save — a format change that invalidated the headers opens it via
     // flushPendingReparse, so don't persist the stale rows.
     if (showMapping) return;
-    const invalidRow = csvData.find(
+    // A pending reparse (scheduled by a format-bar change) would otherwise save
+    // rows parsed under the previous format. Apply it first so the saved values
+    // reflect the current format, and stamp the snapshot with the same rows so
+    // the form closes cleanly.
+    let dataToSave: CSVData[];
+    if (reparseTimerRef.current) {
+      const flushed = flushPendingReparse();
+      if (flushed === null) {
+        // The pending reparse can't be applied safely (edits + format change,
+        // or the file flipped into header-mapping mode). Abort rather than
+        // persist stale rows; the user lets the reparse settle and retries.
+        toast({
+          title: t('foodCsvImport.reparsePendingTitle', 'Please Wait'),
+          description: t(
+            'foodCsvImport.reparsePendingDescription',
+            'A format change is still processing. Try again in a moment.'
+          ),
+          variant: 'default',
+        });
+        return;
+      }
+      dataToSave = flushed;
+    } else {
+      dataToSave = csvData;
+    }
+    // Validate the rows that will actually be saved (post-flush), not the
+    // pre-flush table, so a quote/format change that empties a name is caught.
+    const invalidRow = dataToSave.find(
       (row) => !row.name || String(row.name).trim() === ''
     );
     if (invalidRow) {
@@ -734,7 +766,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       });
       return;
     }
-    if (foodsWithoutDefaultCount > 0) {
+    if (getFoodKeysWithoutDefault(dataToSave).size > 0) {
       toast({
         title: t('foodCsvImport.validationErrorTitle', 'Validation Error'),
         description: t(
@@ -747,31 +779,6 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     }
     setLoading(true);
     try {
-      // A pending reparse (scheduled by a format-bar change) would otherwise
-      // save rows parsed under the previous format. Apply it first so the
-      // saved values reflect the current format, and stamp the snapshot with
-      // the same rows so the form closes cleanly.
-      let dataToSave: CSVData[];
-      if (reparseTimerRef.current) {
-        const flushed = flushPendingReparse();
-        if (flushed === null) {
-          // The pending reparse can't be applied safely (edits + format change,
-          // or the file flipped into header-mapping mode). Abort rather than
-          // persist stale rows; the user lets the reparse settle and retries.
-          toast({
-            title: t('foodCsvImport.reparsePendingTitle', 'Please Wait'),
-            description: t(
-              'foodCsvImport.reparsePendingDescription',
-              'A format change is still processing. Try again in a moment.'
-            ),
-            variant: 'default',
-          });
-          return;
-        }
-        dataToSave = flushed;
-      } else {
-        dataToSave = csvData;
-      }
       // CSV import never creates quick foods; that is a separate workflow.
       const dataForBackend = dataToSave.map(({ id, ...rest }) => ({
         ...rest,
