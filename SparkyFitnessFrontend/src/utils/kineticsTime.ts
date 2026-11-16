@@ -17,7 +17,6 @@ import {
 import { getDateLocale } from '@/utils/languageUtils';
 import { formatTimeInZone } from '@/utils/timeFormatters';
 
-const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
 /** How instants are read and written: the profile's zone, time format and language. */
@@ -126,42 +125,25 @@ export const formatDayRelativeTick = (
   return `${diffDays}d ${time}`;
 };
 
-/** Time since the last full hour of `timeZone` on its clock, in ms. */
-const pastFullHourMs = (instant: number, timeZone: string) => {
-  const { minute } = instantHourMinute(instant, timeZone);
-  // Zone offsets are whole minutes, so seconds and milliseconds are the same
-  // in every zone.
-  return minute * MINUTE_MS + (((instant % MINUTE_MS) + MINUTE_MS) % MINUTE_MS);
-};
+// Every zone offset in use is a multiple of 15 minutes, so every full hour of
+// any zone falls on a UTC quarter hour.
+const QUARTER_HOUR_MS = 15 * MINUTE_MS;
 
-/** The first full hour of `timeZone` at or after `instant`. */
-const fullHourAtOrAfter = (instant: number, timeZone: string) => {
-  const pastMs = pastFullHourMs(instant, timeZone);
-  return pastMs === 0 ? instant : instant + (HOUR_MS - pastMs);
-};
-
-/** Ticks on each full hour of `timeZone` from `start` to `end`, both included. */
+/**
+ * Ticks on each full hour of `timeZone` from `start` to `end`, both included.
+ * It checks every UTC quarter hour, so an offset change (e.g. Lord Howe's
+ * 30-minute DST) can never leave a tick off the hour.
+ */
 export const hourlyTicks = (
   start: number,
   end: number,
   timeZone: string
 ): number[] => {
   const ticks: number[] = [];
-  let t = fullHourAtOrAfter(start, timeZone);
-  while (t <= end) {
-    ticks.push(t);
-    // One hour on is the next full hour unless the offset changed in between
-    // (e.g. Lord Howe's 30-minute DST). Then take the full hour just before
-    // it when that is still after this tick, else the next one.
-    const later = t + HOUR_MS;
-    const pastMs = pastFullHourMs(later, timeZone);
-    const before = later - pastMs;
-    t =
-      pastMs === 0
-        ? later
-        : before > t && pastFullHourMs(before, timeZone) === 0
-          ? before
-          : later + (HOUR_MS - pastMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return ticks;
+  const first = Math.ceil(start / QUARTER_HOUR_MS) * QUARTER_HOUR_MS;
+  for (let t = first; t <= end; t += QUARTER_HOUR_MS) {
+    if (instantHourMinute(t, timeZone).minute === 0) ticks.push(t);
   }
   return ticks;
 };

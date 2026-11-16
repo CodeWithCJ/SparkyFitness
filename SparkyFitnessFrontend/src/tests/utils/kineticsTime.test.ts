@@ -131,4 +131,30 @@ describe('kineticsTime', () => {
       '04:00',
     ]);
   });
+
+  it('starts on a full hour when the window begins off the hour next to an offset change', () => {
+    const zone = 'Australia/Lord_Howe';
+    const clock = kineticsClock(zone, 'HH:mm', 'en');
+    // 01:45 at +10:30; 02:00 does not exist on 2026-10-04, so 03:00 is first.
+    const forward = hourlyTicks(
+      Date.parse('2026-10-03T15:15:00.000Z'),
+      Date.parse('2026-10-03T17:00:00.000Z'),
+      zone
+    );
+    expect(forward.map((t) => new Date(t).toISOString())).toEqual([
+      '2026-10-03T16:00:00.000Z', // 03:00 +11
+      '2026-10-03T17:00:00.000Z', // 04:00 +11
+    ]);
+    expect(forward.map(clock.time)).toEqual(['03:00', '04:00']);
+    // 01:45 at +11; the clock goes back to 01:30, so 02:00 +10:30 is first.
+    const backward = hourlyTicks(
+      Date.parse('2026-04-04T14:45:00.000Z'),
+      Date.parse('2026-04-04T16:30:00.000Z'),
+      zone
+    );
+    expect(backward.map((t) => new Date(t).toISOString())).toEqual([
+      '2026-04-04T15:30:00.000Z', // 02:00 +10:30
+      '2026-04-04T16:30:00.000Z', // 03:00 +10:30
+    ]);
+  });
 });
