@@ -184,3 +184,57 @@ describe('processHealthData pre-cleanup (#2938)', () => {
     });
   });
 });
+
+// The day's Active Calories summary shares the provider source with the
+// workouts but is written by `active_calories`, often in another request, so a
+// workout re-sync must not range-delete it (#3620).
+describe('processHealthData pre-cleanup keeps Active Calories (#3620)', () => {
+  it.each(['HealthKit', 'Health Connect'])(
+    'excludes the Active Calories summary from the %s workout delete',
+    async (source) => {
+      await measurementService.processHealthData(
+        [
+          workout({ source, source_id: 'synthetic-walk-1' }),
+          workout({ source, source_id: 'synthetic-walk-2' }),
+        ],
+        'user-1',
+        'user-1'
+      );
+
+      expect(deleteMock()).toHaveBeenCalledTimes(1);
+      const [
+        userId,
+        startDate,
+        endDate,
+        deletedSource,
+        excludedExerciseName,
+        keepSourceIds,
+      ] = deleteMock().mock.calls[0];
+      expect({ userId, startDate, endDate, deletedSource }).toEqual({
+        userId: 'user-1',
+        startDate: '2026-10-16',
+        endDate: '2026-10-16',
+        deletedSource: source,
+      });
+      expect(excludedExerciseName).toBe('Active Calories');
+      expect([...keepSourceIds].sort()).toEqual([
+        'synthetic-walk-1',
+        'synthetic-walk-2',
+      ]);
+    }
+  );
+
+  it('still passes an empty keep list for workouts without a source_id', async () => {
+    await measurementService.processHealthData(
+      [workout({ source: 'HealthKit' })],
+      'user-1',
+      'user-1'
+    );
+
+    expect(deleteMock()).toHaveBeenCalledTimes(1);
+    const [, , , , excludedExerciseName, keepSourceIds] =
+      deleteMock().mock.calls[0];
+    expect(excludedExerciseName).toBe('Active Calories');
+    expect(keepSourceIds).toEqual([]);
+  });
+});

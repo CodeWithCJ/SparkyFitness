@@ -2380,6 +2380,13 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
              AND e.name = $5
          )
        )
+       -- A row whose library exercise was deleted (exercise_id SET NULL) is
+       -- matched by its snapshot name instead.
+       AND NOT (
+         $5::text IS NOT NULL
+         AND exercise_id IS NULL
+         AND exercise_name IS NOT DISTINCT FROM $5
+       )
        AND (
          $6::text[] IS NULL
          OR source_id IS NULL
