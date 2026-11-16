@@ -1039,7 +1039,8 @@ export function challengePeriodTotal(
     bonus += d.streakBonus + d.beatAverageBonus + d.prBonus;
     prBonus += d.prBonus;
   }
-  const goalBonus = goalBonusBy(goals, null, true);
+  // Only goal progress up to `upTo`, like the days
+  const goalBonus = goalBonusBy(goals, upTo ?? null, true);
   total += goalBonus;
   let reachedOn: string | null = null;
   if (rules.target !== null && total >= rules.target) {

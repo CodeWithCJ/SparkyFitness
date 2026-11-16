@@ -1435,3 +1435,26 @@ describe('duplicate merge, second round', () => {
     expect(counted.map((e) => e.id)).toEqual(['s']);
   });
 });
+
+describe('period totals up to a day', () => {
+  it('goal progress dated after upTo does not count, so total and finish agree', () => {
+    const rules = challengeRulesSchema.parse({
+      version: 1,
+      metric: 'steps',
+      format: 'race',
+      target: 50,
+    });
+    const days = score(
+      [],
+      '2026-11-02',
+      '2026-11-03',
+      { '2026-11-02': 10, '2026-11-03': 10 },
+      rules
+    );
+    const t = challengePeriodTotal(days, rules, '2026-11-03', [
+      { weekStart: '2026-11-02', asOf: '2026-11-04', rawBonus: 50 },
+    ]);
+    expect(t.total).toBe(20);
+    expect(t.reachedOn).toBeNull();
+  });
+});
