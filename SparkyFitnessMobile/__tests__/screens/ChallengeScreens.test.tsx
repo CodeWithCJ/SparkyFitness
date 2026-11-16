@@ -15,13 +15,14 @@ import {
 const mockUseChallenges = jest.fn();
 const mockUseChallenge = jest.fn();
 const mockUseStandings = jest.fn();
+const mockUseRuleChanges = jest.fn();
 const mockLeave = jest.fn();
 jest.mock('../../src/hooks/useChallenges', () => ({
   useChallenges: () => mockUseChallenges(),
   useChallenge: () => mockUseChallenge(),
   useChallengeStandings: (id: string, date: string | null) =>
     mockUseStandings(id, date),
-  useChallengeRuleChanges: () => ({ data: undefined }),
+  useChallengeRuleChanges: () => mockUseRuleChanges(),
   useChallengeMutations: () => ({
     leaveChallenge: mockLeave,
   }),
@@ -31,8 +32,9 @@ jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
 }));
 jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
-  useRefetchOnFocus: jest.fn(),
+  useRefetchOnFocus: (refetch: () => void) => mockUseRefetchOnFocus(refetch),
 }));
+const mockUseRefetchOnFocus = jest.fn();
 jest.mock('../../src/components/ServerGate', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => children,
@@ -136,6 +138,41 @@ describe('ChallengesScreen', () => {
     });
   });
 
+  it('counts each challenge’s state in its own time zone', () => {
+    // Nov 16 in UTC, still Nov 15 in Los Angeles.
+    jest.useFakeTimers({ now: new Date('2026-11-16T00:30:00Z') });
+    try {
+      mockUseChallenges.mockReturnValue(
+        listState({
+          challenges: [
+            makeChallenge({
+              id: 'utc',
+              name: 'UTC Cup',
+              start_date: '2026-11-01',
+              end_date: '2026-11-15',
+            }),
+            makeChallenge({
+              id: 'la',
+              name: 'LA Cup',
+              start_date: '2026-10-01',
+              end_date: '2026-11-15',
+              time_zone: 'America/Los_Angeles',
+            }),
+          ],
+        })
+      );
+      renderList();
+      const names = screen
+        .getAllByText(/UTC Cup|LA Cup/)
+        .map((node) => node.props.children);
+      expect(names).toEqual(['LA Cup', 'UTC Cup']);
+      expect(screen.getByText('Running')).toBeTruthy();
+      expect(screen.getByText('Ended')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('offers join by code when the user is in none', () => {
     mockUseChallenges.mockReturnValue(listState());
     renderList();
@@ -180,6 +217,58 @@ describe('ChallengeDetailScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
+    mockUseRuleChanges.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+  });
+
+  it('reads the rule log again on focus with the challenge and standings', () => {
+    const refetches = [
+      mockUseChallenge,
+      mockUseStandings,
+      mockUseRuleChanges,
+    ].map((hook) => {
+      const refetch = jest.fn();
+      hook.mockReturnValue({ ...hook(), refetch });
+      return refetch;
+    });
+    renderDetail();
+    const onFocus = mockUseRefetchOnFocus.mock.calls.at(-1)![0] as () => void;
+    onFocus();
+    for (const refetch of refetches) expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the rule log before showing any total', () => {
+    mockUseRuleChanges.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    renderDetail();
+    expect(screen.queryByText('400 pts')).toBeNull();
+    expect(screen.queryByText('Points · Weekly · Leaderboard')).toBeNull();
+  });
+
+  it('offers a retry instead of totals when the rule log fails', () => {
+    const refetch = jest.fn();
+    mockUseRuleChanges.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+    renderDetail();
+    expect(
+      screen.getByText('Could not load the rules that scored this period.')
+    ).toBeTruthy();
+    expect(screen.queryByText('400 pts')).toBeNull();
+    expect(screen.queryByText('250 pts')).toBeNull();
+    fireEvent.press(screen.getByText('Retry'));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('shows the open week’s standings with the user marked and no trophy', () => {

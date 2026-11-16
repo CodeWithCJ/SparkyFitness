@@ -22,8 +22,11 @@ import { initializeI18n } from '../../src/localization/i18n';
 import { makeChallenge, makeStandings } from '../helpers/challengeFixtures';
 
 jest.mock('../../src/services/challengeWeekNotificationService', () => ({
-  cancelChallengeWeekNotifications: jest.fn(async () => undefined),
+  cancelChallengeWeekNotifications: jest.fn(async () => true),
   scheduleChallengeWeekNotifications: jest.fn(async () => []),
+  enqueueChallengeWeekNotificationTask: jest.requireActual(
+    '../../src/services/challengeWeekNotificationService'
+  ).enqueueChallengeWeekNotificationTask,
 }));
 
 jest.mock('../../src/services/notifications', () => ({

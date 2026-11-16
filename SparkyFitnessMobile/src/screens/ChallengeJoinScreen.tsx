@@ -107,11 +107,15 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
             name: challenge.name,
           }),
         });
-        navigation.goBack();
-        navigation.navigate('ChallengeDetail', {
-          id: challenge.id,
-          name: challenge.name,
-        });
+        // The user can go back (system Back or swipe) while the join is
+        // still on its way; only move on when this screen is still in front.
+        if (navigation.isFocused()) {
+          navigation.goBack();
+          navigation.navigate('ChallengeDetail', {
+            id: challenge.id,
+            name: challenge.name,
+          });
+        }
       })
       .catch((err: unknown) => setError(joinErrorMessage(err)))
       .finally(() => {

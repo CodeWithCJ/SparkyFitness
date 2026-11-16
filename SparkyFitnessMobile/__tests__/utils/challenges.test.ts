@@ -88,6 +88,25 @@ describe('challengeState and sortChallenges', () => {
       sortChallenges([ended, upcoming, running], today).map((c) => c.id)
     ).toEqual(['run', 'up', 'end']);
   });
+
+  it('sorts by each challenge’s own today when given one per challenge', () => {
+    const a = makeChallenge({
+      id: 'a',
+      start_date: '2026-11-01',
+      end_date: '2026-11-15',
+    });
+    const b = makeChallenge({
+      id: 'b',
+      start_date: '2026-10-01',
+      end_date: '2026-11-15',
+    });
+    const todayOf = (c: { id: string }) =>
+      c.id === 'b' ? '2026-11-15' : '2026-11-16';
+    expect(sortChallenges([a, b], todayOf).map((c) => c.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
 });
 
 describe('parseInviteCode', () => {

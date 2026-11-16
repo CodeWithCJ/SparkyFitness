@@ -87,11 +87,16 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         <Icon name="chevron-forward" size={14} color={accentPrimary} />
       </View>
       {running.map((challenge, index) => {
-        const period = standings.byId.get(challenge.id);
+        // A total is shown in the units of the rules that scored its period,
+        // so it waits for the challenge's rule log; the current rules can
+        // count something else.
+        const changes = ruleChanges.byId.get(challenge.id);
+        const period = changes ? standings.byId.get(challenge.id) : undefined;
+        const logFailed = !changes && ruleChanges.isError;
         const own = period ? ownStanding(period.rows) : null;
         const leader = period ? standingsLeader(period.rows) : null;
         const { metric } = rulesInEffect(
-          ruleChanges.byId.get(challenge.id),
+          changes,
           period?.period_start ?? selectedDate,
           challenge.rules
         );
@@ -147,6 +152,20 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
               <Text className="text-xs text-text-muted mt-0.5">
                 {leaderLine}
               </Text>
+            ) : null}
+            {logFailed ? (
+              <Pressable
+                testID={`challenges-card-retry-${challenge.id}`}
+                onPress={ruleChanges.retry}
+                hitSlop={8}
+                accessibilityRole="button"
+              >
+                <Text className="text-xs text-accent-primary mt-0.5">
+                  {t('challenges.card.loadFailed', {
+                    defaultValue: 'Could not load the score. Tap to retry.',
+                  })}
+                </Text>
+              </Pressable>
             ) : null}
           </Pressable>
         );

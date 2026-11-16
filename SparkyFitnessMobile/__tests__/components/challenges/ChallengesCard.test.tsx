@@ -12,11 +12,12 @@ import {
 
 const mockUseChallenges = jest.fn();
 const mockUseStandings = jest.fn();
+const mockUseRuleChanges = jest.fn();
 jest.mock('../../../src/hooks/useChallenges', () => ({
   useChallenges: () => mockUseChallenges(),
   useChallengesStandings: (ids: string[], date: string) =>
     mockUseStandings(ids, date),
-  useChallengesRuleChanges: () => ({ byId: new Map(), isLoading: false }),
+  useChallengesRuleChanges: () => mockUseRuleChanges(),
 }));
 
 jest.mock('../../../src/hooks/usePreferences', () => ({
@@ -46,6 +47,43 @@ describe('ChallengesCard', () => {
       byId: new Map([['c1', makeStandings()]]),
       isLoading: false,
     });
+    mockUseRuleChanges.mockReturnValue({
+      byId: new Map([['c1', []]]),
+      isLoading: false,
+      isError: false,
+      retry: jest.fn(),
+    });
+  });
+
+  it('shows no total until the challenge’s rule log is read', () => {
+    mockUseRuleChanges.mockReturnValue({
+      byId: new Map(),
+      isLoading: true,
+      isError: false,
+      retry: jest.fn(),
+    });
+    mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
+    renderCard();
+    expect(screen.queryByText(/250 pts|400 pts/)).toBeNull();
+    expect(screen.queryByTestId('challenges-card-retry-c1')).toBeNull();
+  });
+
+  it('offers a retry when the rule log could not be read', () => {
+    const retry = jest.fn();
+    mockUseRuleChanges.mockReturnValue({
+      byId: new Map(),
+      isLoading: false,
+      isError: true,
+      retry,
+    });
+    mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
+    renderCard();
+    expect(screen.queryByText(/250 pts|400 pts/)).toBeNull();
+    fireEvent.press(
+      screen.getByText('Could not load the score. Tap to retry.')
+    );
+    expect(retry).toHaveBeenCalled();
+    expect(navigation.navigate).not.toHaveBeenCalled();
   });
 
   it('shows the user’s place and the leader for the selected day', () => {

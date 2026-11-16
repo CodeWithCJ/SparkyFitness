@@ -10833,6 +10833,7 @@
     "card": {
       "a11y": "Challenges",
       "leader": "{{name}} leads with {{total}}",
+      "loadFailed": "Could not load the score. Tap to retry.",
       "noScore": "No score yet",
       "youLead": "You lead",
       "yourPlace": "#{{rank}} of {{members}} · {{total}}"
@@ -10911,6 +10912,7 @@
       "loadFailed": "Could not load the standings.",
       "minutes": "{{value}} active min",
       "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "rulesLoadFailed": "Could not load the rules that scored this period.",
       "you": "{{name}} (you)"
     },
     "state": {

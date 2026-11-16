@@ -1,8 +1,10 @@
 import * as Notifications from 'expo-notifications';
 
 import {
+  CANCEL_RETRY_DELAYS_MS,
   cancelChallengeWeekNotifications,
   challengeWeekNoticeContent,
+  enqueueChallengeWeekNotificationTask,
   scheduleChallengeWeekNotifications,
 } from '../../src/services/challengeWeekNotificationService';
 import { initializeI18n } from '../../src/localization/i18n';
@@ -86,8 +88,76 @@ describe('cancelChallengeWeekNotifications', () => {
       },
       { identifier: 'b', content: { data: { kind: 'mood-checkin' } } },
     ]);
-    await cancelChallengeWeekNotifications();
+    await expect(cancelChallengeWeekNotifications()).resolves.toBe(true);
     expect(mockCancel).toHaveBeenCalledTimes(1);
     expect(mockCancel).toHaveBeenCalledWith('a');
+  });
+
+  describe('when a cancellation fails', () => {
+    const weekNotice = {
+      identifier: 'a',
+      content: { data: { kind: CHALLENGE_WEEK_LEADER_KIND } },
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('tries the one still scheduled again after a wait', async () => {
+      mockGetAll
+        .mockResolvedValueOnce([weekNotice])
+        .mockResolvedValueOnce([weekNotice]);
+      mockCancel.mockRejectedValueOnce(new Error('busy'));
+      const done = cancelChallengeWeekNotifications();
+      await jest.advanceTimersByTimeAsync(CANCEL_RETRY_DELAYS_MS[0]);
+      await expect(done).resolves.toBe(true);
+      expect(mockCancel).toHaveBeenCalledTimes(2);
+      expect(mockCancel).toHaveBeenLastCalledWith('a');
+    });
+
+    it('gives up after the last retry and says so', async () => {
+      mockGetAll.mockResolvedValue([weekNotice]);
+      mockCancel.mockRejectedValue(new Error('busy'));
+      const done = cancelChallengeWeekNotifications();
+      for (const delay of CANCEL_RETRY_DELAYS_MS) {
+        await jest.advanceTimersByTimeAsync(delay);
+      }
+      await expect(done).resolves.toBe(false);
+      expect(mockCancel).toHaveBeenCalledTimes(
+        CANCEL_RETRY_DELAYS_MS.length + 1
+      );
+      mockGetAll.mockResolvedValue([]);
+      mockCancel.mockResolvedValue(undefined);
+    });
+  });
+});
+
+describe('enqueueChallengeWeekNotificationTask', () => {
+  it('runs tasks one after another and keeps going after a failure', async () => {
+    const order: string[] = [];
+    let release: () => void = () => undefined;
+    const first = enqueueChallengeWeekNotificationTask(
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => {
+            order.push('first');
+            resolve();
+          };
+        })
+    );
+    const failing = enqueueChallengeWeekNotificationTask(async () => {
+      throw new Error('nope');
+    });
+    const last = enqueueChallengeWeekNotificationTask(async () => {
+      order.push('last');
+    });
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    release();
+    await Promise.all([first, failing, last]);
+    expect(order).toEqual(['first', 'last']);
   });
 });
