@@ -119,7 +119,7 @@ describe('foodRepository snapshot functions', () => {
       );
     const updateCall = () => sqlCalls()[1];
 
-    it('should execute UPDATE with all 30 params in correct order and return rowCount', async () => {
+    it('should execute UPDATE with all 32 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -160,7 +160,10 @@ describe('foodRepository snapshot functions', () => {
         userId,
         foodId,
         variantId,
-        // Images ride along as the 30th param whenever they are being synced.
+        // No entry changed unit, so nothing is converted.
+        [],
+        [],
+        // Images ride along as the 32nd param whenever they are being synced.
         JSON.stringify([]),
       ]);
     });
@@ -180,9 +183,9 @@ describe('foodRepository snapshot functions', () => {
       );
 
       const [sql, params] = updateCall();
-      expect(sql).toContain('images = $30::jsonb');
+      expect(sql).toContain('images = $32::jsonb');
       expect(sql).not.toContain('NOT EXISTS');
-      expect(params[29]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+      expect(params[31]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
     it('reads and overwrites in one transaction, locking the rows', async () => {
@@ -285,8 +288,8 @@ describe('foodRepository snapshot functions', () => {
 
     it('leaves the photo column out entirely for a nutrition-only sync', async () => {
       // Every entry keeps the photo it is showing, custom or inherited, so the
-      // statement must not bind a 27th parameter either — Postgres rejects a
-      // bind carrying more parameters than the statement references.
+      // statement must not bind the images parameter either — Postgres rejects
+      // a bind carrying more parameters than the statement references.
       mockClient.query.mockResolvedValue({ rowCount: 1 });
 
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -297,13 +300,63 @@ describe('foodRepository snapshot functions', () => {
         false
       );
 
-      // No pre-SELECT either: nothing is being replaced, so there is nothing
-      // to read or lock.
-      expect(sqlCalls()).toHaveLength(1);
-      const [sql, params] = sqlCalls()[0];
+      // The locking SELECT still runs: quantities may need converting.
+      expect(sqlCalls()).toHaveLength(2);
+      const [sql, params] = sqlCalls()[1];
       expect(sql).not.toContain('images =');
-      expect(params).toHaveLength(29);
+      expect(params).toHaveLength(31);
       expect(result.replacedEntryImages).toEqual([]);
+    });
+
+    it('converts logged quantities when the serving unit changes', async () => {
+      // 150 g logged against a 100 g serving; the food is now 1 oz per serving.
+      // Without converting, the entry would read as 150 oz.
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            // pg returns numeric columns as strings
+            {
+              id: 'e1',
+              quantity: '150',
+              serving_size: '100',
+              serving_unit: 'g',
+              images: [],
+            },
+            // already in the new unit: left alone
+            {
+              id: 'e2',
+              quantity: '2',
+              serving_size: '1',
+              serving_unit: 'oz',
+              images: [],
+            },
+            // a piece has no weight: keep the number of servings (1.5)
+            {
+              id: 'e3',
+              quantity: '3',
+              serving_size: '2',
+              serving_unit: 'piece',
+              images: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rowCount: 3 })
+        .mockResolvedValueOnce({}); // COMMIT
+
+      await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ serving_size: 1, serving_unit: 'oz' }),
+        false
+      );
+
+      const [sql, params] = sqlCalls()[1];
+      expect(sql).toContain('quantity = COALESCE(');
+      expect(sql).toContain('THEN $4');
+      expect(params[29]).toEqual(['e1', 'e3']);
+      expect(params[30]).toEqual([5.2911, 1.5]);
     });
 
     it('should default custom_nutrients to {} when null or undefined', async () => {

@@ -2,6 +2,7 @@ import { getClient, getSystemClient } from '../db/poolManager.js';
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
+import { convertEntryQuantity } from '../utils/foodEntryQuantityConversion.js';
 import {
   supplementScanWhere,
   supplementFixedAgg,
@@ -513,31 +514,62 @@ async function updateFoodEntriesSnapshot(
     // file: nothing would ever reference it again, and nothing would delete it.
     await client.query('BEGIN');
 
-    // Scoped to the same rows the UPDATE touches, and to diary-set paths only —
-    // an inherited path points at the food's own upload directory and must
-    // never be unlinked from here.
+    // Locks the rows the UPDATE touches and reads what it needs from them:
+    // each entry's current serving, so its logged quantity can be carried into
+    // the new serving unit, and (when photos are synced) its diary-set photos.
+    // Only diary-set paths are reported — an inherited path points at the
+    // food's own upload directory and must never be unlinked from here.
+    // The whole images column, not the unnested paths: FOR UPDATE cannot be
+    // applied to a set-returning function or a DISTINCT query.
+    const existing = await client.query(
+      `SELECT id, quantity, serving_size, serving_unit, images
+         FROM food_entries
+        WHERE user_id = $1
+          AND food_id = $2
+          AND variant_id = $3
+          FOR UPDATE`,
+      [userId, foodId, variantId]
+    );
+    const rows = (existing.rows ?? []) as {
+      id: string;
+      quantity: number | string | null;
+      serving_size: number | string | null;
+      serving_unit: string | null;
+      images: unknown;
+    }[];
+
     let replacedEntryImages: string[] = [];
     if (syncImages) {
-      // The whole column, not the unnested paths: FOR UPDATE cannot be applied
-      // to a set-returning function or a DISTINCT query, so the rows are locked
-      // as they are and filtered below.
-      const existing = await client.query(
-        `SELECT images
-           FROM food_entries
-          WHERE user_id = $1
-            AND food_id = $2
-            AND variant_id = $3
-            FOR UPDATE`,
-        [userId, foodId, variantId]
-      );
       const seen = new Set<string>();
-      for (const row of existing.rows as { images: unknown }[]) {
+      for (const row of rows) {
         for (const image of Array.isArray(row.images) ? row.images : []) {
           const path = String(image);
           if (path.startsWith('/uploads/food_entries/')) seen.add(path);
         }
       }
       replacedEntryImages = [...seen];
+    }
+
+    // Entries whose serving unit changes get their quantity converted (see
+    // convertEntryQuantity); everything else keeps the quantity it has.
+    const convertedIds: string[] = [];
+    const convertedQuantities: number[] = [];
+    const toNumber = (value: number | string | null | undefined) =>
+      value === null || value === undefined ? null : Number(value);
+    const newServingSize = toNumber(newSnapshotData.serving_size);
+    for (const row of rows) {
+      const quantity = toNumber(row.quantity);
+      if (quantity === null) continue;
+      const converted = convertEntryQuantity(
+        quantity,
+        toNumber(row.serving_size),
+        row.serving_unit,
+        newServingSize,
+        newSnapshotData.serving_unit ?? null
+      );
+      if (converted === null) continue;
+      convertedIds.push(String(row.id));
+      convertedQuantities.push(converted);
     }
 
     const result = await client.query(
@@ -568,10 +600,22 @@ async function updateFoodEntriesSnapshot(
           custom_nutrients = $23,
           caffeine_mg = $24,
           water_ml = $25,
-          alcohol_g = $26
+          alcohol_g = $26,
+          -- Right-hand sides read the row as it was, so serving_unit here is
+          -- the entry's old unit. Converted rows move to the new unit.
+          quantity = COALESCE(
+            (SELECT v.quantity
+               FROM unnest($30::text[], $31::numeric[]) AS v(id, quantity)
+              WHERE v.id = food_entries.id::text),
+            quantity
+          ),
+          unit = CASE
+            WHEN food_entries.id::text = ANY($30::text[]) THEN $4
+            ELSE unit
+          END
           -- The user picked "nutrition only", so the photo column is left out
           -- of the statement and every entry keeps the photo it shows today.
-          ${syncImages ? ', images = $30::jsonb' : ''}
+          ${syncImages ? ', images = $32::jsonb' : ''}
        WHERE user_id = $27 AND food_id = $28 AND variant_id = $29
        RETURNING id`,
       [
@@ -604,8 +648,10 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
+        convertedIds,
+        convertedQuantities,
         // Postgres rejects a bind with more parameters than the statement
-        // references, so $30 is only supplied when the SET clause uses it.
+        // references, so $32 is only supplied when the SET clause uses it.
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
