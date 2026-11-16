@@ -523,7 +523,15 @@ async function findFoodMatchCandidates(
     client.release();
   }
 }
-async function findFoodByBarcode(barcode: string, userId: string) {
+// Own foods always match. `includeFamily` also matches foods owned by people who
+// grant this user View Food Library, ranked after the user's own, so a household
+// can keep one copy of a barcoded food. Lookups opt in; the create-food dedup
+// stays own-only, since a family member's food is read-only to this user.
+async function findFoodByBarcode(
+  barcode: string,
+  userId: string,
+  options: { includeFamily?: boolean } = {}
+) {
   barcode = normalizeBarcode(barcode);
   const client = await getClient(userId);
   try {
@@ -533,10 +541,21 @@ async function findFoodByBarcode(barcode: string, userId: string) {
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
-      WHERE f.barcode = $1 AND f.user_id = $2 AND f.is_quick_food = FALSE
-      ORDER BY f.is_custom DESC NULLS LAST, f.updated_at DESC NULLS LAST, f.id ASC
+      WHERE f.barcode = $1 AND f.is_quick_food = FALSE
+        AND (
+          f.user_id = $2
+          OR ($3 AND f.user_id IN (
+            SELECT fa.owner_user_id
+            FROM family_access fa
+            WHERE fa.family_user_id = $2
+              AND fa.is_active = TRUE
+              AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
+              AND (fa.access_permissions->>'can_view_food_library')::boolean = TRUE
+          ))
+        )
+      ORDER BY (f.user_id = $2) DESC, f.is_custom DESC NULLS LAST, f.updated_at DESC NULLS LAST, f.id ASC
       LIMIT 1`,
-      [barcode, userId]
+      [barcode, userId, !!options.includeFamily]
     );
     return result.rows[0] || null;
   } finally {
