@@ -652,10 +652,11 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     if (!reparseTimerRef.current) return null;
     clearTimeout(reparseTimerRef.current);
     reparseTimerRef.current = null;
-    // Edited rows are the source of truth: a reparse would rebuild them from the
-    // (now-stale) file text and wipe the user's edits. Discard the reparse and
-    // save the edited rows as-is.
-    if (editedSinceParseRef.current) return csvData;
+    // A format change is pending and the table has edits: applying the new
+    // format would wipe the edits, while saving now would persist values from
+    // the previous format. Abort so the user lets the reparse settle and
+    // re-submits, rather than silently picking one.
+    if (editedSinceParseRef.current) return null;
     if (mappingConfirmed && rawCsvText) {
       const parsedData = parseCSV(rawCsvText, csvFormat.options, headerMapping);
       const parsedHeaders = parsedData[0];
@@ -734,8 +735,17 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       if (reparseTimerRef.current) {
         const flushed = flushPendingReparse();
         if (flushed === null) {
-          // The format change flipped the file into header-mapping mode; there's
-          // no savable table, so abort rather than persist stale rows.
+          // The pending reparse can't be applied safely (edits + format change,
+          // or the file flipped into header-mapping mode). Abort rather than
+          // persist stale rows; the user lets the reparse settle and retries.
+          toast({
+            title: t('foodCsvImport.reparsePendingTitle', 'Please Wait'),
+            description: t(
+              'foodCsvImport.reparsePendingDescription',
+              'A format change is still processing. Try again in a moment.'
+            ),
+            variant: 'default',
+          });
           return;
         }
         dataToSave = flushed;
