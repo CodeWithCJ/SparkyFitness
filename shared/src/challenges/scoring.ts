@@ -449,8 +449,12 @@ export function mergeChallengeDuplicates(
   const list = entries.filter(Boolean);
   const drop = new Set<string>();
   const out = new Map<string, ChallengeEntry>();
-  const differentSource = (a: ChallengeEntry, b: ChallengeEntry): boolean =>
-    a.source && b.source ? a.source !== b.source : hasHr(a) !== hasHr(b);
+  // Sources compared in one form ('Manual' and ' manual ' are one source)
+  const differentSource = (a: ChallengeEntry, b: ChallengeEntry): boolean => {
+    const sa = normalizeSource(a.source);
+    const sb = normalizeSource(b.source);
+    return sa && sb ? sa !== sb : hasHr(a) !== hasHr(b);
+  };
   /** The length gap when `a` and `b` are copies of one workout, else null. */
   const duplicateGap = (
     a: ChallengeEntry,
@@ -519,6 +523,10 @@ export function mergeChallengeDuplicates(
           merged.distanceM = other.distanceM;
         if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
           merged.bestE1rm = other.bestE1rm;
+        if (!(num(merged.activeCalories) > 0) && num(other.activeCalories) > 0)
+          merged.activeCalories = other.activeCalories;
+        if (!(num(merged.elevationM) > 0) && num(other.elevationM) > 0)
+          merged.elevationM = other.elevationM;
         drop.add(other.id);
       }
       out.set(keep!.id, merged);
@@ -548,9 +556,15 @@ export function challengeCountedEntries(
   rules: ChallengeRules
 ): ChallengeEntry[] {
   const a = rules.activities;
+  // Ignored manual entries go before duplicates are merged, so a timed copy
+  // of the same workout is kept rather than merged into a dropped one.
+  const eligible =
+    a.manualEntries === 'ignore'
+      ? entries.filter((e) => !isManualEntry(e))
+      : entries;
   let list = a.mergeDuplicates
-    ? mergeChallengeDuplicates(entries)
-    : [...entries];
+    ? mergeChallengeDuplicates(eligible)
+    : [...eligible];
   list = list.filter((e) => {
     const sport = challengeEntrySport(e);
     const effective: ActivitySport =

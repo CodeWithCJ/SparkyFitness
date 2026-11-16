@@ -27,6 +27,7 @@ import {
   effortAdjustedOneRepMaxKg,
   isValidTimeZone,
   isWarmupSetType,
+  isoWeekday,
   isWorkoutPlanGeneratedSource,
   parseChallengeRules,
   rankChallengeStandings,
@@ -62,6 +63,7 @@ import { isChallengesEnabled } from '../models/globalSettingsRepository.js';
 import heartRateZoneService from './heartRateZoneService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { log } from '../config/logging.js';
+import { isShuttingDown } from '../utils/shutdownHooks.js';
 
 /** An error the routes answer with its own status and code. */
 export class ChallengeError extends Error {
@@ -395,13 +397,15 @@ export async function updateRules(
     RULE_CHANGES_PER_WINDOW,
     RULE_CHANGE_WINDOW_MS
   );
-  await challengeRepository.updateRules(
+  const saved = await challengeRepository.updateRules(
     challengeId,
     userId,
     rules,
     effectiveFrom,
     CHALLENGE_RULES_VERSION
   );
+  // Hosting passed on while this request was on its way
+  if (!saved) throw hostOnly();
   return getChallenge(userId, challengeId);
 }
 
@@ -671,13 +675,15 @@ export async function getStandings(
     window.start
   );
   if (frozen.length) {
-    const group = frozen.reduce((s, r) => s + Number(r.total), 0);
+    // Rounded once, as the shared ranking does, for both fields
+    const group =
+      Math.round(frozen.reduce((s, r) => s + Number(r.total), 0) * 10) / 10;
     return {
       challenge_id: challengeId,
       period_start: window.start,
       period_end: window.end,
       final: true,
-      group_total: Math.round(group * 10) / 10,
+      group_total: group,
       group_reached:
         rules.format === 'group_goal' &&
         rules.target !== null &&
@@ -766,6 +772,8 @@ export function isPlannedEntryRow(row: MemberEntryRow): boolean {
   if (row.session) {
     return (
       !row.session.edited &&
+      // A started set means the session is under way, though not checked off
+      !row.session.sets.some((s) => (s.started_at ?? null) !== null) &&
       deriveWorkoutSessionStatus({
         source: row.session.source,
         finishedAt: row.session.finished_at,
@@ -823,7 +831,9 @@ function lookbackDays(rules: ChallengeRules): number {
     MIN_LOOKBACK_DAYS,
     p.pr?.lookbackDays ?? 0,
     p.beatAverage?.lookbackDays ?? 0,
-    (p.goal?.lookbackWeeks ?? 0) * 7 + 7
+    (p.goal?.lookbackWeeks ?? 0) * 7 + 7,
+    // A streak counts back through history up to its threshold
+    (p.streak?.fromDay ?? 0) + 1
   );
 }
 
@@ -920,13 +930,17 @@ async function recomputeMemberLocked(
   for (const run of runs) {
     const days = scoreChallengeDays(data, run.from, run.to, run.rules);
     const counted = challengeCountedEntries(entries, run.rules);
+    // The goal counts the same workouts as the day scores: manual entries
+    // ignored, duplicates merged, filters applied, and only on the weekdays
+    // the challenge counts (its own baseline weeks included).
+    const goalEntries = counted.filter((e) =>
+      run.rules.days.includes(isoWeekday(e.date))
+    );
     const points = pointsRules(run.rules);
     for (const d of days) {
-      // The goal counts the same workouts as the day scores (manual entries
-      // ignored, duplicates merged, filters applied).
       const goal = points?.goal
         ? challengeWeekGoal(
-            counted,
+            goalEntries,
             member.goal_type,
             challengeWeekStart(d.date),
             d.date,
@@ -1002,7 +1016,22 @@ export async function processScoreQueue(): Promise<number> {
   );
   let done = 0;
   const challenges = new Map<string, ChallengeRow | null>();
-  for (const batch of batches) {
+  for (const [i, batch] of batches.entries()) {
+    if (isShuttingDown()) {
+      // Hand the days not started back now rather than when the lease runs out.
+      for (const left of batches.slice(i)) {
+        try {
+          await challengeRepository.enqueueDays(
+            left.challenge_id,
+            left.user_id,
+            left.days
+          );
+        } catch {
+          // The lease runs out and the days come back on their own.
+        }
+      }
+      break;
+    }
     try {
       if (!challenges.has(batch.challenge_id)) {
         challenges.set(
@@ -1057,6 +1086,7 @@ export async function nightlyCatchUp(): Promise<void> {
   if (rehosted > 0)
     log('info', `[CHALLENGES] Passed hosting on for ${rehosted} challenge(s).`);
   for (const challenge of await challengeRepository.listOpenChallenges()) {
+    if (isShuttingDown()) break;
     try {
       const today = todayInZone(challenge.time_zone);
       const back = addDays(today, -(LATE_SYNC_DAYS + 1));
@@ -1089,6 +1119,7 @@ export async function finalizePeriods(): Promise<number> {
   if (!(await challengesEnabled())) return 0;
   let frozenCount = 0;
   for (const challenge of await challengeRepository.listOpenChallenges()) {
+    if (isShuttingDown()) break;
     try {
       frozenCount += await finalizeChallenge(challenge);
     } catch (error) {
@@ -1115,6 +1146,7 @@ export async function finalizeChallenge(
   );
   let count = 0;
   for (const window of windows) {
+    if (isShuttingDown()) break;
     if (frozen.has(window.start)) continue;
     if (addDays(window.end, LATE_SYNC_DAYS + 1) > today) break;
     const members = await challengeRepository.getMembers(challenge.id);

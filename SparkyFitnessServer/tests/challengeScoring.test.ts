@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHALLENGE_PRESETS,
   addDays,
+  challengeCountedEntries,
   challengeDayEffort,
   challengeEntryRate,
   challengeGoalType,
@@ -1387,5 +1388,50 @@ describe('preset windows', () => {
       '2026-11-16'
     );
     expect(challengePresetEndDate('all_rounder', '2026-11-16')).toBeNull();
+  });
+});
+
+describe('duplicate merge, second round', () => {
+  const run = (
+    id: string,
+    source: string,
+    extra: Partial<ChallengeEntry> = {}
+  ): ChallengeEntry => ({
+    id,
+    date: '2026-11-06',
+    durationMin: 30,
+    name: 'Run',
+    source,
+    ...extra,
+  });
+
+  it("'Manual' and ' manual ' are one source, so two such runs stay two", () => {
+    expect(
+      mergeChallengeDuplicates([run('a', 'Manual'), run('b', ' manual ')])
+    ).toHaveLength(2);
+  });
+
+  it('the kept copy takes calories and elevation from the other', () => {
+    const [kept] = mergeChallengeDuplicates([
+      run('hc', 'health_connect', { activeCalories: 200, elevationM: 50 }),
+      run('gm', 'garmin', { avgHr: 150 }),
+    ]);
+    expect(kept).toMatchObject({
+      id: 'gm',
+      activeCalories: 200,
+      elevationM: 50,
+    });
+  });
+
+  it('with manual entries ignored, the timed copy of the same workout is kept', () => {
+    const rules = rulesWith({
+      metric: 'active_minutes',
+      activities: { manualEntries: 'ignore' },
+    });
+    const counted = challengeCountedEntries(
+      [run('m', 'Manual'), run('s', 'sparky', { durationMin: 29 })],
+      rules
+    );
+    expect(counted.map((e) => e.id)).toEqual(['s']);
   });
 });

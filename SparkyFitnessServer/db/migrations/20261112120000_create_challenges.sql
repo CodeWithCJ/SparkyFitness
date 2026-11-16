@@ -217,7 +217,8 @@ $$;
 -- A row added, changed, moved or removed: its old and new day. Used for
 -- workouts (exercise_entries), a session being finished, reopened or given
 -- another source (exercise_preset_entries, which turns a planned workout into
--- a logged one) and steps (check_in_measurements, daily_health_metrics).
+-- a logged one), heart-rate zone rows (exercise_entry_hr_zones) and steps
+-- (check_in_measurements, daily_health_metrics).
 CREATE OR REPLACE FUNCTION public.queue_challenge_scores() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -253,6 +254,14 @@ CREATE TRIGGER queue_challenge_scores
     WHEN (OLD.finished_at IS DISTINCT FROM NEW.finished_at
           OR OLD.source IS DISTINCT FROM NEW.source
           OR (OLD.updated_at <= OLD.created_at AND NEW.updated_at > NEW.created_at))
+    EXECUTE FUNCTION public.queue_challenge_scores();
+
+-- Heart-rate zone rows can be written in their own transaction after the
+-- workout (the Intervals import), so they queue the day too.
+DROP TRIGGER IF EXISTS queue_challenge_scores ON public.exercise_entry_hr_zones;
+CREATE TRIGGER queue_challenge_scores
+    AFTER INSERT OR UPDATE OR DELETE ON public.exercise_entry_hr_zones
+    FOR EACH ROW
     EXECUTE FUNCTION public.queue_challenge_scores();
 
 -- A set checked off, un-checked, started, or moved to another workout: a

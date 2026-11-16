@@ -2246,6 +2246,89 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     await clearQueue();
   });
 
+  it('only the current host writes rules; results freeze only for the current members; zone rows queue their day', async () => {
+    // Not the host (a member, someone outside): nothing written
+    const before = await challengeRepository.getRuleChanges(challengeId);
+    expect(
+      await challengeRepository.updateRules(
+        challengeId,
+        AMY,
+        { version: 1, metric: 'steps', dailyCap: 1 },
+        '2026-11-30',
+        1
+      )
+    ).toBe(false);
+    expect(await challengeRepository.getRuleChanges(challengeId)).toHaveLength(
+      before.length
+    );
+
+    // Standings worked out for other members than the current ones (someone
+    // left or joined since) freeze nothing; the current members' do
+    const result = (user_id: string, i: number) => ({
+      user_id,
+      display_name: 'X',
+      rank: i + 1,
+      total: 10 - i,
+      minutes: 0,
+      is_winner: i === 0,
+      reached_on: null,
+      detail: {},
+    });
+    expect(
+      await challengeRepository.insertResults(
+        challengeId,
+        '2026-11-30',
+        '2026-11-30',
+        [AMY, OUTSIDER].map(result)
+      )
+    ).toBe(false);
+    expect(
+      await challengeRepository.insertResults(
+        challengeId,
+        '2026-11-30',
+        '2026-11-30',
+        [AMY].map(result)
+      )
+    ).toBe(false);
+    expect(
+      await challengeRepository.insertResults(
+        challengeId,
+        '2026-11-30',
+        '2026-11-30',
+        [AMY, HOST].map(result)
+      )
+    ).toBe(true);
+    const { rows } = await sys.query(
+      `SELECT COUNT(*)::int AS n FROM public.challenge_results
+        WHERE challenge_id = $1 AND period_start = '2026-11-30'`,
+      [challengeId]
+    );
+    expect(rows[0].n).toBe(2);
+    await sys.query(
+      "DELETE FROM public.challenge_results WHERE challenge_id = $1 AND period_start = '2026-11-30'",
+      [challengeId]
+    );
+
+    // Zone rows written after the workout queue its day again
+    const entry = await sys.query(
+      `INSERT INTO public.exercise_entries (user_id, entry_date, calories_burned, duration_minutes, exercise_name)
+       VALUES ($1, '2026-11-24', 100, 30, 'rls-challenge zoned run') RETURNING id`,
+      [AMY]
+    );
+    await clearQueue();
+    await sys.query(
+      `INSERT INTO public.exercise_entry_hr_zones
+         (user_id, exercise_entry_id, entry_date, zone_index, seconds_in_zone)
+       VALUES ($1, $2, '2026-11-24', 3, 1200)`,
+      [AMY, entry.rows[0].id]
+    );
+    expect(await queued()).toEqual(['amy 2026-11-24']);
+    await sys.query('DELETE FROM public.exercise_entries WHERE id = $1', [
+      entry.rows[0].id,
+    ]);
+    await clearQueue();
+  });
+
   it("deleting an account removes that person's challenge rows", async () => {
     await sys.query('DELETE FROM public."user" WHERE id = $1', [AMY]);
     const left = await sys.query(

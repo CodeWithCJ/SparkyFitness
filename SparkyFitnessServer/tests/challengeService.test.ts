@@ -53,6 +53,9 @@ vi.mock('../utils/timezoneLoader.js', () => ({
   loadUserTimezone: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../utils/shutdownHooks.js', () => ({
+  isShuttingDown: vi.fn(() => false),
+}));
 
 import challengeRepository, {
   type ChallengeMemberRow,
@@ -60,6 +63,7 @@ import challengeRepository, {
   type MemberEntryRow,
 } from '../models/challengeRepository.js';
 import { log } from '../config/logging.js';
+import { isShuttingDown } from '../utils/shutdownHooks.js';
 import rateLimitWindowRepository from '../models/rateLimitWindowRepository.js';
 import { isChallengesEnabled } from '../models/globalSettingsRepository.js';
 import heartRateZoneService from '../services/heartRateZoneService.js';
@@ -141,6 +145,8 @@ beforeEach(() => {
   repo.getMemberEntries.mockResolvedValue([]);
   repo.getMemberSteps.mockResolvedValue({});
   repo.setInvite.mockResolvedValue(true);
+  repo.updateRules.mockResolvedValue(true);
+  vi.mocked(isShuttingDown).mockReturnValue(false);
   repo.clearInvite.mockResolvedValue(true);
 });
 
@@ -1193,5 +1199,152 @@ describe('bot review follow-ups (PRs #3594 and #3595)', () => {
     // 40 + 20 + 15 = 75, plus the goal's 30 by Wednesday = 105
     expect(rows[0]!.reachedOn).toBe('2026-11-11');
     expect(rows[0]!.total).toBe(105);
+  });
+});
+
+describe('bot review follow-ups, second round', () => {
+  const diaryRow = (
+    overrides: Partial<MemberEntryRow> = {}
+  ): MemberEntryRow => ({
+    id: '44444444-4444-4444-8444-444444444444',
+    entry_date: '2026-11-07',
+    entry_time: '09:00',
+    duration_minutes: 60,
+    avg_heart_rate: null,
+    max_heart_rate: null,
+    exercise_name: 'Run',
+    category: 'Cardio',
+    source: 'garmin',
+    exercise_id: null,
+    distance: null,
+    active_calories: null,
+    calories_burned: null,
+    elevation_gain_meters: null,
+    zone_seconds: null,
+    edited: false,
+    sets: null,
+    session: null,
+    ...overrides,
+  });
+
+  it('a plan session with a started set is under way, so it counts', () => {
+    const session = {
+      source: 'Workout Plan',
+      finished_at: null,
+      edited: false,
+      has_plan_assignment: true,
+      sets: [{ completed_at: null, started_at: null }],
+    };
+    expect(service.isPlannedEntryRow(diaryRow({ session }))).toBe(true);
+    expect(
+      service.isPlannedEntryRow(
+        diaryRow({
+          session: {
+            ...session,
+            sets: [{ completed_at: null, started_at: '2026-11-07T09:01:00Z' }],
+          },
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('the weekly goal counts only workouts on the weekdays the challenge counts', async () => {
+    const weekdays = { ...allRounder, days: [1, 2, 3, 4, 5] };
+    const start = challenge({ start_date: '2026-11-02', rules: weekdays });
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', weekdays)]);
+    repo.getMemberEntries.mockResolvedValue([diaryRow()]); // a Saturday run
+    await service.recomputeMember(start, member('amy'), '2026-11-02');
+    const goalOn = (call: number, day: string) =>
+      (
+        repo.saveMemberDays.mock.calls[call]![4].find((d) => d.day === day)!
+          .detail.goal as { done: number }
+      ).done;
+    expect(goalOn(0, '2026-11-08')).toBe(0);
+    // The same run on a challenge that counts every day does count
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', allRounder)]);
+    await service.recomputeMember(
+      challenge({ start_date: '2026-11-02' }),
+      member('amy'),
+      '2026-11-02'
+    );
+    expect(goalOn(1, '2026-11-08')).toBeGreaterThan(0);
+  });
+
+  it('a long streak threshold reads enough history', async () => {
+    const rules = {
+      ...allRounder,
+      points: { ...allRounder.points!, streak: { fromDay: 60, bonus: 5 } },
+    };
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-09', rules)]);
+    await service.recomputeMember(
+      challenge({ rules }),
+      member('amy'),
+      '2026-11-12'
+    );
+    expect(repo.getMemberEntries.mock.calls[0]![1] <= '2026-09-12').toBe(true);
+  });
+
+  it('the queue job starts no member run once shutdown begins and hands the days back', async () => {
+    repo.takeQueuedDays.mockResolvedValue([
+      {
+        challenge_id: challenge().id,
+        user_id: 'amy',
+        days: ['2026-11-10'],
+        claim: 'lease-1',
+      },
+    ]);
+    vi.mocked(isShuttingDown).mockReturnValue(true);
+    expect(await service.processScoreQueue()).toBe(0);
+    expect(repo.saveMemberDays).not.toHaveBeenCalled();
+    expect(repo.enqueueDays).toHaveBeenCalledWith(challenge().id, 'amy', [
+      '2026-11-10',
+    ]);
+    repo.listOpenChallenges.mockResolvedValue([challenge()]);
+    repo.rehostOrphans.mockResolvedValue(0);
+    await service.nightlyCatchUp();
+    expect(repo.enqueueDaysForAllMembers).not.toHaveBeenCalled();
+    expect(await service.finalizePeriods()).toBe(0);
+  });
+
+  it('a frozen group goal compares the rounded group total with the target', async () => {
+    const group = {
+      ...allRounder,
+      metric: 'active_minutes' as const,
+      format: 'group_goal' as const,
+      target: 0.8,
+    };
+    repo.getMembership.mockResolvedValue(member('amy'));
+    repo.getForMember.mockResolvedValue(challenge({ rules: group }));
+    repo.getRuleChangesForMember.mockResolvedValue([
+      change('2026-11-09', group),
+    ]);
+    repo.getResultsForMember.mockResolvedValue(
+      [0.1, 0.7].map((total, i) => ({
+        challenge_id: challenge().id,
+        period_start: '2026-11-09',
+        period_end: '2026-11-15',
+        user_id: i ? 'host' : 'amy',
+        display_name: 'X',
+        rank: 1,
+        total,
+        minutes: 0,
+        is_winner: true,
+        reached_on: null,
+        detail: {},
+        finalized_at: new Date(),
+      }))
+    );
+    const res = await service.getStandings('amy', challenge().id);
+    expect(res.group_total).toBe(0.8);
+    expect(res.group_reached).toBe(true);
+  });
+
+  it('a rules change from a host who left meanwhile is refused', async () => {
+    repo.getMembership.mockResolvedValue(member('host', 'host'));
+    repo.getChallenge.mockResolvedValue(challenge());
+    repo.updateRules.mockResolvedValue(false);
+    await expect(
+      service.updateRules('host', challenge().id, allRounder)
+    ).rejects.toMatchObject({ status: 403, code: 'CHALLENGE_HOST_ONLY' });
   });
 });

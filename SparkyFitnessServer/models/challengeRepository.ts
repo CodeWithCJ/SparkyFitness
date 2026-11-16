@@ -145,7 +145,7 @@ export interface MemberEntryRow {
     /** Whether any exercise of the session is linked to a plan assignment. */
     has_plan_assignment: boolean;
     /** Every set of the session, for its lifecycle status. */
-    sets: Array<{ completed_at: string | null }>;
+    sets: Array<{ completed_at: string | null; started_at?: string | null }>;
   } | null;
 }
 
@@ -435,14 +435,22 @@ async function updateRules(
   rules: unknown,
   effectiveFrom: string,
   rulesVersion: number
-): Promise<void> {
-  await inTransaction(async (client) => {
-    // The rules being replaced, read under the row lock, so two overlapping
-    // changes log R0 -> R1 and R1 -> R2 rather than both from R0.
+): Promise<boolean> {
+  return inTransaction(async (client) => {
+    // The rules being replaced, read under the row lock (the lock leaving and
+    // passing on hosting take), so two overlapping changes log R0 -> R1 and
+    // R1 -> R2, and a host who left meanwhile cannot write.
     const locked = await client.query(
       'SELECT rules FROM challenges WHERE id = $1 FOR UPDATE',
       [challengeId]
     );
+    if (!locked.rowCount) return false;
+    const host = await client.query(
+      `SELECT 1 FROM challenge_members
+        WHERE challenge_id = $1 AND user_id = $2 AND role = 'host'`,
+      [challengeId, changedBy]
+    );
+    if (!host.rowCount) return false;
     const previous = (locked.rows[0] as { rules: unknown } | undefined)?.rules;
     await client.query(
       'UPDATE challenges SET rules = $2::jsonb, rules_version = $3, updated_at = now() WHERE id = $1',
@@ -467,6 +475,7 @@ async function updateRules(
        ON CONFLICT (challenge_id, user_id, day) DO UPDATE SET queued_at = EXCLUDED.queued_at`,
       [challengeId, effectiveFrom]
     );
+    return true;
   });
 }
 
@@ -956,6 +965,24 @@ async function insertResults(
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
       `challenge-results:${challengeId}:${periodStart}`,
     ]);
+    // Under the lock leaving and joining take: if the members are not the
+    // ones the standings were worked out from (someone left or joined since),
+    // nothing is frozen and the next run works them out again.
+    await client.query('SELECT id FROM challenges WHERE id = $1 FOR UPDATE', [
+      challengeId,
+    ]);
+    const current = await client.query(
+      'SELECT user_id FROM challenge_members WHERE challenge_id = $1',
+      [challengeId]
+    );
+    const members = new Set(
+      (current.rows as { user_id: string }[]).map((r) => r.user_id)
+    );
+    if (
+      members.size !== rows.length ||
+      !rows.every((r) => members.has(r.user_id))
+    )
+      return false;
     const already = await client.query(
       'SELECT 1 FROM challenge_results WHERE challenge_id = $1 AND period_start = $2 LIMIT 1',
       [challengeId, periodStart]
@@ -1025,7 +1052,8 @@ async function getMemberEntries(
                        AND pe_e.user_id = pe.user_id
                        AND pe_e.workout_plan_assignment_id IS NOT NULL),
                   'sets', COALESCE((
-                    SELECT json_agg(json_build_object('completed_at', pe_s.completed_at))
+                    SELECT json_agg(json_build_object(
+                             'completed_at', pe_s.completed_at, 'started_at', pe_s.started_at))
                       FROM exercise_entry_sets pe_s
                       JOIN exercise_entries pe_e ON pe_e.id = pe_s.exercise_entry_id
                      WHERE pe_e.exercise_preset_entry_id = pe.id
