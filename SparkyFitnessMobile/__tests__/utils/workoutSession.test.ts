@@ -72,12 +72,14 @@ import {
   isPrSet,
   setLoadKg,
   upcomingExercises,
+  resolveCurrentSetId,
 } from '../../src/utils/workoutSession';
 import { wodScoreFormat } from '../../src/utils/wodScore';
 import type {
   ExerciseEntryResponse,
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
+  PresetSessionResponse,
 } from '@workspace/shared';
 import {
   presetSessionExerciseRequestSchema,
@@ -7353,5 +7355,25 @@ describe('FOCUS_SUPERSET_PALETTE_VARS', () => {
     expect(FOCUS_SUPERSET_PALETTE_VARS).toHaveLength(
       SUPERSET_PALETTE_VARS.length
     );
+  });
+});
+
+describe('resolveCurrentSetId', () => {
+  const session = {
+    exercises: [{ id: 'e', sets: [{ id: 42 }, { id: 7 }] }],
+  } as unknown as PresetSessionResponse;
+
+  it('returns the id while the set still has it', () => {
+    expect(resolveCurrentSetId(session, {}, '7')).toBe('7');
+  });
+
+  it('follows a temporary id swapped for the server id', () => {
+    // -1 was replaced by 42; the store keeps -1 as the row's render key.
+    expect(resolveCurrentSetId(session, { '42': '-1' }, '-1')).toBe('42');
+  });
+
+  it('is null for a set that is gone', () => {
+    expect(resolveCurrentSetId(session, {}, '-9')).toBeNull();
+    expect(resolveCurrentSetId(null, {}, '7')).toBeNull();
   });
 });

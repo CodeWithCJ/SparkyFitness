@@ -4,6 +4,7 @@ import type { PresetSessionResponse } from '@workspace/shared';
 import {
   __resetActiveWorkoutStoreForTests,
   initWorkoutNotificationActions,
+  restSecAfterLoggingSet,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import {
@@ -1692,6 +1693,18 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeSet('402'); // finishes round 1
       expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(60);
       await flushPromises();
+    });
+
+    it('previews the rest completion will start (restSecAfterLoggingSet)', () => {
+      const { session, steps, completedSetIds } =
+        useActiveWorkoutStore.getState();
+      const rest = (id: string, done = completedSetIds) =>
+        restSecAfterLoggingSet(session!, steps, done, id);
+      // Partner in the same round: none. End of the round: the group rest.
+      expect(rest('301')).toBe(0);
+      expect(rest('401')).toBe(90);
+      // The very last set has no rest after it.
+      expect(rest('402', { 301: 1, 401: 1, 302: 1 })).toBeNull();
     });
 
     it('rests between rounds but not between partners when logged in order', async () => {

@@ -372,9 +372,7 @@ function ActiveWorkoutHeader({
       >
         <View
           className="flex-row items-center gap-2"
-          style={
-            inStatusRow ? { marginRight: STATUS_CLUSTER_WIDTH } : undefined
-          }
+          style={inStatusRow ? { marginRight: clusterReserve } : undefined}
         >
           <Pressable
             onPress={onBack}

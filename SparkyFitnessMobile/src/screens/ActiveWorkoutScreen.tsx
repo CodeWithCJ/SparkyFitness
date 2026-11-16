@@ -92,6 +92,7 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useVerticalBar } from '../hooks/useVerticalBar';
 import { getActiveServerConfig } from '../services/storage';
 import {
+  restSecAfterLoggingSet,
   useActiveWorkoutStore,
   type ActiveSetPatch,
 } from '../stores/activeWorkoutStore';
@@ -117,12 +118,10 @@ import {
   isMetricClampedToRpe,
   isWarmupSetType,
   quantizeSetWeightKg,
+  resolveCurrentSetId,
   SET_TYPE_OPTIONS,
 } from '../utils/workoutSession';
-import {
-  getDefaultRestSec,
-  useAppPreferencesStore,
-} from '../stores/appPreferencesStore';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { formatRest } from '../components/RestPeriodChip';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
@@ -147,6 +146,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
+  const steps = useActiveWorkoutStore((s) => s.steps);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
@@ -1159,13 +1159,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   // The focus view's Log set button names the rest that follows the set, and
   // its back button reopens the last logged set so it can be edited in place.
-  const activeRestSec = (() => {
-    for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === activeSetId);
-      if (set) return set.rest_time ?? getDefaultRestSec();
-    }
-    return null;
-  })();
+  // The rest logging the set would start, by the rule completeSet applies:
+  // none between back-to-back superset partners, before a drop set or after
+  // the final set.
+  const activeRestSec =
+    activeSetId != null
+      ? restSecAfterLoggingSet(session, steps, completedSetIds, activeSetId)
+      : null;
   const lastLoggedSetId = Object.entries(completedSetIds).reduce<string | null>(
     (latest, [id, at]) =>
       latest == null || at > completedSetIds[latest] ? id : latest,
@@ -1248,10 +1248,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   })();
 
   // The set behind the post-set effort sheet / PR card.
+  // `postSet.setId` is the id seen when the set was logged; autosave can swap
+  // it, so every read and write goes through the set's current id.
+  const postSetId =
+    postSet != null
+      ? resolveCurrentSetId(session, setRenderKeys, postSet.setId)
+      : null;
   const postSetTarget = (() => {
-    if (postSet == null) return null;
+    if (postSetId == null) return null;
     for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === postSet.setId);
+      const set = exercise.sets.find((s) => String(s.id) === postSetId);
       if (set) return { exercise, set };
     }
     return null;
@@ -1259,13 +1265,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const effortMetric: EffortMetric = metricColumn === 'rir' ? 'rir' : 'rpe';
   const finishEffortPrompt = (value: number | null) => {
     if (postSet == null) return;
-    if (value != null) {
+    if (value != null && postSetId != null) {
       handleCommitField(
-        postSet.setId,
+        postSetId,
         effortMetric === 'rir' ? { rir: value } : { rpe: value }
       );
     }
-    const isPr = useActiveWorkoutStore.getState().prSetIds[postSet.setId];
+    const isPr =
+      postSetId != null && useActiveWorkoutStore.getState().prSetIds[postSetId];
     setPostSet(isPr ? { setId: postSet.setId, stage: 'pr' } : null);
   };
   const prDetail = (() => {
@@ -1750,9 +1757,18 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           exerciseName={plateCalc?.exerciseName}
           setNumber={plateCalc?.setNumber}
           onUseWeight={(weight) => {
-            handleCommitField(plateCalc.setId, {
-              weight: quantizeSetWeightKg(weightToKg(weight, weightUnit)),
-            });
+            // The id the calculator opened with can have been swapped by
+            // autosave since.
+            const currentId = resolveCurrentSetId(
+              useActiveWorkoutStore.getState().session,
+              useActiveWorkoutStore.getState().setRenderKeys,
+              plateCalc.setId
+            );
+            if (currentId != null) {
+              handleCommitField(currentId, {
+                weight: quantizeSetWeightKg(weightToKg(weight, weightUnit)),
+              });
+            }
             setPlateCalc(null);
           }}
         />
