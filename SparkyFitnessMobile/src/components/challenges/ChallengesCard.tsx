@@ -92,7 +92,7 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         // count something else.
         const changes = ruleChanges.byId.get(challenge.id);
         const period = changes ? standings.byId.get(challenge.id) : undefined;
-        const logFailed = !changes && ruleChanges.isError;
+        const logFailed = !changes && ruleChanges.failedIds.has(challenge.id);
         const own = period ? ownStanding(period.rows) : null;
         const leader = period ? standingsLeader(period.rows) : null;
         const { metric } = rulesInEffect(

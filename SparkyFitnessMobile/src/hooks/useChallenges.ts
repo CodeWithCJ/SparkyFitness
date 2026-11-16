@@ -126,11 +126,15 @@ export function useChallengesRuleChanges(ids: readonly string[]) {
     })),
     combine: (results: UseQueryResult<ChallengeRuleChange[]>[]) => {
       const byId = new Map<string, ChallengeRuleChange[]>();
+      const failedIds = new Set<string>();
       results.forEach((result, i) => {
         if (result.data) byId.set(ids[i] as string, result.data);
+        else if (result.isError) failedIds.add(ids[i] as string);
       });
       return {
         byId: byId as ReadonlyMap<string, ChallengeRuleChange[]>,
+        /** Challenges whose log could not be read (and has nothing cached). */
+        failedIds: failedIds as ReadonlySet<string>,
         isLoading: results.some((result) => result.isLoading),
         isError: results.some((result) => result.isError),
         /** Reads the failed logs again. */
