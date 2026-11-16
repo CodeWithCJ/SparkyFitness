@@ -989,6 +989,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     preferenceWrites.current = run.catch(() => undefined);
     return run;
   }, []);
+  // The server writes to whoever the session is acting for when a queued save
+  // runs, so a save queued for one account or profile is dropped once another
+  // one has taken over.
+  const accountKey = user ? `${user.id}:${user.activeUserId}` : null;
+  const currentAccount = useRef(accountKey);
+  useEffect(() => {
+    currentAccount.current = accountKey;
+  }, [accountKey]);
+  // Edits of saves still in the queue. Two setters can run before React
+  // rerenders, so each new snapshot carries the earlier queued edits too, and
+  // only the save that empties the queue reloads, so a reload never shows the
+  // server's older value for an edit still waiting to be written.
+  const queuedSaves = useRef(0);
+  const pendingEdits = useRef<{
+    account: string | null;
+    edits: Partial<PreferencesContextType>;
+  }>({ account: null, edits: {} });
 
   const updatePreferences = useCallback(
     async (updates: Partial<DefaultPreferences>) => {
@@ -1075,122 +1092,133 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         'PreferencesProvider: Saving all preferences to backend.'
       );
 
+      const account = accountKey;
+      const edits: Partial<PreferencesContextType> = {
+        ...(pendingEdits.current.account === account
+          ? pendingEdits.current.edits
+          : {}),
+        ...newPrefs,
+      };
+      pendingEdits.current = { account, edits };
+
       const prefsToSave = {
-        default_weight_unit: newPrefs?.weightUnit ?? weightUnit,
-        default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
-        default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
-        date_format: newPrefs?.dateFormat ?? dateFormat,
-        time_format: newPrefs?.timeFormat ?? timeFormat,
-        auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
-        logging_level: newPrefs?.loggingLevel ?? loggingLevel,
+        default_weight_unit: edits.weightUnit ?? weightUnit,
+        default_measurement_unit: edits.measurementUnit ?? measurementUnit,
+        default_distance_unit: edits.distanceUnit ?? distanceUnit,
+        date_format: edits.dateFormat ?? dateFormat,
+        time_format: edits.timeFormat ?? timeFormat,
+        auto_clear_history: edits.autoClearHistory ?? autoClearHistory,
+        logging_level: edits.loggingLevel ?? loggingLevel,
         default_food_data_provider_id:
-          newPrefs?.defaultFoodDataProviderId !== undefined
-            ? newPrefs.defaultFoodDataProviderId
+          edits.defaultFoodDataProviderId !== undefined
+            ? edits.defaultFoodDataProviderId
             : defaultFoodDataProviderId,
         default_barcode_provider_id:
-          newPrefs?.defaultBarcodeProviderId !== undefined
-            ? newPrefs.defaultBarcodeProviderId
+          edits.defaultBarcodeProviderId !== undefined
+            ? edits.defaultBarcodeProviderId
             : defaultBarcodeProviderId,
         barcode_fallback_open_food_facts:
-          newPrefs?.barcodeFallbackOpenFoodFacts ??
-          barcodeFallbackOpenFoodFacts,
+          edits.barcodeFallbackOpenFoodFacts ?? barcodeFallbackOpenFoodFacts,
         food_search_all_providers_default:
-          newPrefs?.foodSearchAllProvidersDefault ??
-          foodSearchAllProvidersDefault,
-        timezone: newPrefs?.timezone ?? timezone,
-        item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
-        water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
-        language: newPrefs?.language ?? language,
+          edits.foodSearchAllProvidersDefault ?? foodSearchAllProvidersDefault,
+        timezone: edits.timezone ?? timezone,
+        item_display_limit: edits.itemDisplayLimit ?? itemDisplayLimit,
+        water_display_unit: edits.water_display_unit ?? waterDisplayUnit,
+        language: edits.language ?? language,
         calorie_goal_adjustment_mode:
-          newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
+          edits.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
         exercise_calorie_percentage:
-          newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
-        activity_level: newPrefs?.activityLevel ?? activityLevel,
+          edits.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
+        activity_level: edits.activityLevel ?? activityLevel,
         tdee_allow_negative_adjustment:
-          newPrefs?.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
-        energy_unit: newPrefs?.energyUnit ?? energyUnit,
+          edits.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
+        energy_unit: edits.energyUnit ?? energyUnit,
         auto_scale_open_food_facts_imports:
-          newPrefs?.autoScaleOpenFoodFactsImports ??
-          autoScaleOpenFoodFactsImports,
+          edits.autoScaleOpenFoodFactsImports ?? autoScaleOpenFoodFactsImports,
         auto_scale_online_imports:
-          newPrefs?.autoScaleOnlineImports ?? autoScaleOnlineImports,
-        bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
-        body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
+          edits.autoScaleOnlineImports ?? autoScaleOnlineImports,
+        bmr_algorithm: edits.bmrAlgorithm ?? bmrAlgorithm,
+        body_fat_algorithm: edits.bodyFatAlgorithm ?? bodyFatAlgorithm,
         include_bmr_in_net_calories:
-          newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
-        use_external_bmr: newPrefs?.useExternalBmr ?? useExternalBmr,
-        show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
+          edits.includeBmrInNetCalories ?? includeBmrInNetCalories,
+        use_external_bmr: edits.useExternalBmr ?? useExternalBmr,
+        show_net_carbs: edits.showNetCarbs ?? showNetCarbs,
         add_exercise_water_to_goal:
-          newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
+          edits.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
         add_food_water_to_intake:
-          newPrefs?.addFoodWaterToIntake ?? addFoodWaterToIntake,
+          edits.addFoodWaterToIntake ?? addFoodWaterToIntake,
         ai_assisted_conversions:
-          newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
+          edits.aiAssistedConversions ?? aiAssistedConversions,
         fat_breakdown_algorithm:
-          newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
+          edits.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
         mineral_calculation_algorithm:
-          newPrefs?.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
+          edits.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
         vitamin_calculation_algorithm:
-          newPrefs?.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
+          edits.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
         sugar_calculation_algorithm:
-          newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
-        added_sugar_algorithm:
-          newPrefs?.addedSugarAlgorithm ?? addedSugarAlgorithm,
-        selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
-        first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
+          edits.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
+        added_sugar_algorithm: edits.addedSugarAlgorithm ?? addedSugarAlgorithm,
+        selected_diet: edits.selectedDiet ?? selectedDiet,
+        first_day_of_week: edits.firstDayOfWeek ?? firstDayOfWeek,
         measurement_decimal_places:
-          newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
-        chart_scale_mode: newPrefs?.chartScaleMode ?? chartScaleMode,
-        default_temperature_unit: newPrefs?.temperatureUnit ?? temperatureUnit,
-        ...((newPrefs?.glucoseUnit ?? glucoseUnit) !== loadedGlucoseUnit.current
-          ? { default_glucose_unit: newPrefs?.glucoseUnit ?? glucoseUnit }
+          edits.measurementDecimalPlaces ?? measurementDecimalPlaces,
+        chart_scale_mode: edits.chartScaleMode ?? chartScaleMode,
+        default_temperature_unit: edits.temperatureUnit ?? temperatureUnit,
+        ...((edits.glucoseUnit ?? glucoseUnit) !== loadedGlucoseUnit.current
+          ? { default_glucose_unit: edits.glucoseUnit ?? glucoseUnit }
           : {}),
-        goal_mode: newPrefs?.goalMode ?? goalMode,
+        goal_mode: edits.goalMode ?? goalMode,
         goal_mode_calculation_method:
-          newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
+          edits.goalModeCalculationMethod ?? goalModeCalculationMethod,
         adaptive_activity_separate:
-          newPrefs?.adaptiveActivitySeparate ?? adaptiveActivitySeparate,
+          edits.adaptiveActivitySeparate ?? adaptiveActivitySeparate,
         adjust_macros_with_exercise:
-          newPrefs?.adjustMacrosWithExercise ?? adjustMacrosWithExercise,
-        calorie_cycling_mode:
-          newPrefs?.calorieCyclingMode ?? calorieCyclingMode,
+          edits.adjustMacrosWithExercise ?? adjustMacrosWithExercise,
+        calorie_cycling_mode: edits.calorieCyclingMode ?? calorieCyclingMode,
         calorie_cycling_offsets:
-          newPrefs?.calorieCyclingOffsets ?? calorieCyclingOffsets,
+          edits.calorieCyclingOffsets ?? calorieCyclingOffsets,
         goal_mode_custom_percentage:
-          newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
+          edits.goalModeCustomPercentage ?? goalModeCustomPercentage,
         goal_mode_weekly_change_kg:
-          newPrefs?.goalModeWeeklyChangeKg ?? goalModeWeeklyChangeKg,
+          edits.goalModeWeeklyChangeKg ?? goalModeWeeklyChangeKg,
         calorie_safety_floor_mode:
-          newPrefs?.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
+          edits.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
         calorie_safety_floor_value:
-          newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
-        standard_drink_grams:
-          newPrefs?.standardDrinkGrams ?? standardDrinkGrams,
+          edits.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
+        standard_drink_grams: edits.standardDrinkGrams ?? standardDrinkGrams,
         weekly_alcohol_limit_g:
-          newPrefs?.weeklyAlcoholLimitG !== undefined
-            ? newPrefs.weeklyAlcoholLimitG
+          edits.weeklyAlcoholLimitG !== undefined
+            ? edits.weeklyAlcoholLimitG
             : weeklyAlcoholLimitG,
         caffeine_half_life_hours:
-          newPrefs?.caffeineHalfLifeHours !== undefined
-            ? newPrefs.caffeineHalfLifeHours
+          edits.caffeineHalfLifeHours !== undefined
+            ? edits.caffeineHalfLifeHours
             : caffeineHalfLifeHours,
         target_bedtime:
-          newPrefs?.targetBedtime !== undefined
-            ? newPrefs.targetBedtime
+          edits.targetBedtime !== undefined
+            ? edits.targetBedtime
             : targetBedtime,
         bac_distribution_formula:
-          newPrefs?.bacDistributionFormula ?? bacDistributionFormula,
-        bac_elimination_rate:
-          newPrefs?.bacEliminationRate ?? bacEliminationRate,
-        bac_display_unit: newPrefs?.bacDisplayUnit ?? bacDisplayUnit,
+          edits.bacDistributionFormula ?? bacDistributionFormula,
+        bac_elimination_rate: edits.bacEliminationRate ?? bacEliminationRate,
+        bac_display_unit: edits.bacDisplayUnit ?? bacDisplayUnit,
       };
 
       try {
         // The reload stays in the queue too, so the last reload always runs
         // after the last save and the screen ends on the saved values.
+        queuedSaves.current += 1;
         await runInOrder(async () => {
-          await updatePreferences(prefsToSave);
-          await loadPreferences(); // Refresh local state from the newly saved data
+          try {
+            if (currentAccount.current !== account) return;
+            await updatePreferences(prefsToSave);
+            if (queuedSaves.current === 1) await loadPreferences();
+          } finally {
+            queuedSaves.current -= 1;
+            if (queuedSaves.current === 0) {
+              pendingEdits.current = { account: null, edits: {} };
+            }
+          }
         });
         info(
           loggingLevel,
@@ -1264,6 +1292,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bacDistributionFormula,
       bacEliminationRate,
       bacDisplayUnit,
+      accountKey,
       runInOrder,
       updatePreferences,
       loadPreferences,

@@ -38,6 +38,16 @@ export interface BloodAlcoholOptions {
 
 const HOUR_MS = 60 * 60 * 1000;
 
+/**
+ * How far back drinks can still carry into the day. A drinking episode whose
+ * level is still above zero at midnight keeps all its drinks, however long
+ * ago it started, up to the shared BAC_LOOKBACK_HOURS cap: a heavy evening at
+ * the slowest elimination rate can still be above zero more than a day later.
+ */
+const CARRY_OVER_LOOKBACK_HOURS = BAC_LOOKBACK_HOURS;
+/** Calendar days the query reaches back: one more than the cap spans, for a short (spring-forward) day. */
+const CARRY_OVER_LOOKBACK_DAYS = Math.ceil(CARRY_OVER_LOOKBACK_HOURS / 24) + 1;
+
 const positiveOrNull = (value: unknown): number | null => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -67,7 +77,7 @@ function carriedOverDoses(
       model,
       earlier[0]!.at,
       dayStartMs,
-      BAC_LOOKBACK_HOURS * 60
+      CARRY_OVER_LOOKBACK_HOURS * 60
     ).map((point) => [point.t, point.permille])
   );
   if ((levels.get(dayStartMs) ?? 0) === 0) return [];
@@ -96,10 +106,15 @@ export async function getBloodAlcoholEstimate(
     getUserPreferences(userId),
     getUserProfile(userId),
     getLatestCheckInMeasurementsOnOrBeforeDate(userId, date),
-    // Two calendar days back: the 24 h lookback from midnight reaches the day
-    // before yesterday when yesterday was short (spring-forward). Doses
-    // outside the lookback are dropped below by instant.
-    getNutrientDosesForWindow(userId, addDays(date, -2), date, 'alcohol_g'),
+    // One calendar day more than the carry-over lookback spans, so it is
+    // covered when a day in it was short (spring-forward). Doses outside the
+    // lookback are dropped below by instant.
+    getNutrientDosesForWindow(
+      userId,
+      addDays(date, -CARRY_OVER_LOOKBACK_DAYS),
+      date,
+      'alcohol_g'
+    ),
   ]);
 
   const chosenFormula = isBacDistributionFormula(
@@ -122,13 +137,20 @@ export async function getBloodAlcoholEstimate(
     heightCm: positiveOrNull(measurements?.height),
     weightKg: positiveOrNull(measurements?.weight),
   };
-  const missingInputs = missingBacInputs(chosenFormula, inputs);
+  const chosenMissing = missingBacInputs(chosenFormula, inputs);
   // Seidl and Forrest leave the plausible range for some real bodies; the
   // shared resolver then uses Watson and names the formula it replaced.
   const resolvedFactor =
-    missingInputs.length > 0
+    chosenMissing.length > 0
       ? null
       : resolveBacDistributionFactor(chosenFormula, inputs);
+  // When the chosen formula runs but does not fit and the Watson fallback
+  // lacks an input (age, for a man), that input is what is missing: the body
+  // is not implausible, the estimate just cannot be made yet.
+  const missingInputs =
+    chosenMissing.length === 0 && resolvedFactor === null
+      ? missingBacInputs(DEFAULT_BAC_DISTRIBUTION_FORMULA, inputs)
+      : chosenMissing;
   const distributionFactor = resolvedFactor?.factor ?? null;
   const status: BacEstimateStatus =
     missingInputs.length > 0
@@ -146,7 +168,7 @@ export async function getBloodAlcoholEstimate(
   const { start: dayStart, end: dayEnd } = dayToUtcRange(date, tz);
   const dayStartMs = dayStart.getTime();
   const dayEndMs = dayEnd.getTime();
-  const lookbackStartMs = dayStartMs - BAC_LOOKBACK_HOURS * HOUR_MS;
+  const lookbackStartMs = dayStartMs - CARRY_OVER_LOOKBACK_HOURS * HOUR_MS;
 
   const resolved = rawDoses
     .map((raw) => {

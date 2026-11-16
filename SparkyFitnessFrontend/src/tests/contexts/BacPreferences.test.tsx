@@ -6,7 +6,7 @@ import {
   usePreferences,
 } from '@/contexts/PreferencesContext';
 
-const mockUser = { id: 'owner' };
+let mockUser = { id: 'owner', activeUserId: 'owner' };
 const mockSave = jest.fn();
 const mockWater = jest.fn();
 jest.mock('@/hooks/useAuth', () => ({
@@ -24,46 +24,69 @@ jest.mock('@/hooks/Settings/useWaterContainers', () => ({
   useSetPrimaryWaterContainerMutation: () => ({ mutateAsync: mockWater }),
 }));
 
-test('overlapping BAC saves reach the server in order, so the last change is kept', async () => {
+// Every save answers only when released, so a test can hold a save in flight.
+async function setup() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  let saved: Record<string, unknown> = {
-    timezone: 'America/New_York',
-    time_format: 'HH:mm',
-    date_format: 'yyyy-MM-dd',
-    default_weight_unit: 'kg',
-    default_measurement_unit: 'cm',
-    default_distance_unit: 'km',
-    bac_distribution_formula: 'watson',
-    bac_elimination_rate: '0.150',
-    bac_display_unit: 'permille',
+  const state: { saved: Record<string, unknown> } = {
+    saved: {
+      timezone: 'America/New_York',
+      time_format: 'HH:mm',
+      date_format: 'yyyy-MM-dd',
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      default_distance_unit: 'km',
+      bac_distribution_formula: 'watson',
+      bac_elimination_rate: '0.150',
+      bac_display_unit: 'permille',
+    },
   };
   jest
     .spyOn(client, 'fetchQuery')
     .mockImplementation(async (options) =>
-      options.queryKey[0] === 'user' ? { ...saved } : []
+      options.queryKey[0] === 'user' ? { ...state.saved } : []
     );
-  // The first save answers slowly; without ordering the second one would
-  // commit first and then be overwritten by the older snapshot.
   const releases: (() => void)[] = [];
   let inFlight = 0;
   let maxInFlight = 0;
+  mockSave.mockReset();
   mockSave.mockImplementation(async (updates) => {
     inFlight += 1;
     maxInFlight = Math.max(maxInFlight, inFlight);
     await new Promise<void>((resolve) => releases.push(resolve));
-    saved = { ...saved, ...updates };
+    state.saved = { ...state.saved, ...updates };
     inFlight -= 1;
-    return saved;
+    return state.saved;
   });
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={client}>
       <PreferencesProvider>{children}</PreferencesProvider>
     </QueryClientProvider>
   );
-  const { result } = renderHook(() => usePreferences(), { wrapper });
-  await waitFor(() => expect(result.current.timeFormat).toBe('HH:mm'));
+  const hook = renderHook(() => usePreferences(), { wrapper });
+  await waitFor(() => expect(hook.result.current.timeFormat).toBe('HH:mm'));
+  const release = async (index: number) => {
+    await waitFor(() => expect(releases).toHaveLength(index + 1));
+    await act(async () => {
+      releases[index]!();
+    });
+  };
+  return {
+    ...hook,
+    client,
+    state,
+    release,
+    maxInFlight: () => maxInFlight,
+  };
+}
+
+afterEach(() => {
+  mockUser = { id: 'owner', activeUserId: 'owner' };
+});
+
+test('overlapping BAC saves reach the server in order, so the last change is kept', async () => {
+  const { result, client, state, release, maxInFlight } = await setup();
 
   act(() => {
     result.current.setBacDistributionFormula('forrest');
@@ -72,19 +95,59 @@ test('overlapping BAC saves reach the server in order, so the last change is kep
     result.current.setBacDisplayUnit('percent');
   });
 
-  await waitFor(() => expect(releases).toHaveLength(1));
-  await act(async () => {
-    releases[0]!();
-  });
-  await waitFor(() => expect(releases).toHaveLength(2));
-  await act(async () => {
-    releases[1]!();
-  });
+  await release(0);
+  await release(1);
 
   await waitFor(() => expect(result.current.bacDisplayUnit).toBe('percent'));
-  expect(maxInFlight).toBe(1);
-  expect(saved['bac_display_unit']).toBe('percent');
-  expect(saved['bac_distribution_formula']).toBe('forrest');
+  expect(maxInFlight()).toBe(1);
+  expect(state.saved['bac_display_unit']).toBe('percent');
+  expect(state.saved['bac_distribution_formula']).toBe('forrest');
   expect(result.current.bacDistributionFormula).toBe('forrest');
+  client.clear();
+});
+
+test('two setters before a rerender both reach the server', async () => {
+  const { result, client, state, release } = await setup();
+
+  // Both setters come from the same render, so the second one's snapshot
+  // would still hold the old formula without the queued edits.
+  act(() => {
+    result.current.setBacDistributionFormula('forrest');
+    result.current.setBacDisplayUnit('percent');
+  });
+
+  await release(0);
+  // The first save has landed; the unit is still waiting to be written and
+  // must not fall back to the server's older value meanwhile.
+  expect(result.current.bacDisplayUnit).toBe('percent');
+  await release(1);
+
+  await waitFor(() => expect(state.saved['bac_display_unit']).toBe('percent'));
+  expect(state.saved['bac_distribution_formula']).toBe('forrest');
+  expect(result.current.bacDistributionFormula).toBe('forrest');
+  expect(result.current.bacDisplayUnit).toBe('percent');
+  client.clear();
+});
+
+test('a save queued before another profile takes over is not sent', async () => {
+  const { result, rerender, client, release } = await setup();
+
+  act(() => {
+    result.current.setBacDistributionFormula('forrest');
+  });
+  act(() => {
+    result.current.setBacDisplayUnit('percent');
+  });
+  await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+
+  mockUser = { id: 'owner', activeUserId: 'family-member' };
+  rerender();
+  await release(0);
+
+  // Let the queue run; the second save belonged to the previous profile.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(mockSave).toHaveBeenCalledTimes(1);
   client.clear();
 });

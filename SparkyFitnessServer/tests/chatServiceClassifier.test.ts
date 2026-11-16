@@ -42,6 +42,7 @@ describe('classifyByKeywords', () => {
   it('sends blood alcohol questions to food (sparky_get_blood_alcohol)', () => {
     expect(classifyByKeywords('how drunk am I right now')).toContain('food');
     expect(classifyByKeywords('what is my BAC')).toContain('food');
+    expect(classifyByKeywords('how intoxicated am I')).toContain('food');
   });
 
   it('matches new exercise synonyms (swim/bike/yoga)', () => {
@@ -354,6 +355,9 @@ describe('heldBackChatTools', () => {
     ).not.toContain('sparky_get_caffeine_kinetics');
     expect(
       heldBackChatTools([user('how much alcohol is in my blood right now?')])
+    ).not.toContain('sparky_get_blood_alcohol');
+    expect(
+      heldBackChatTools([user('Estimate my intoxication after drinking')])
     ).not.toContain('sparky_get_blood_alcohol');
   });
 

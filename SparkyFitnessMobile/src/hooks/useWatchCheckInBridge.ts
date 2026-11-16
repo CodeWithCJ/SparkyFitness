@@ -1361,7 +1361,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(today),
           }),
-          invalidateIntakeKinetics(queryClient, today),
+          // The server also deletes a food entry linked to the log row (a
+          // drink container tied to a food, possibly alcoholic), and the
+          // delete carries no day: the row can be from an earlier day the
+          // watch still lists, so refresh every day's curves.
+          invalidateIntakeKinetics(queryClient),
         ]);
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');

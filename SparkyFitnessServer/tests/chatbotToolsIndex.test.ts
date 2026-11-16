@@ -196,6 +196,7 @@ describe('chat tool actor', () => {
       'sparky_manage_run_program',
       'sparky_compare_metrics',
       'sparky_food_assistant_state',
+      'sparky_get_blood_alcohol',
     ];
     const run = vi.mocked(withFixedActor);
     const original = run.getMockImplementation();
@@ -228,6 +229,7 @@ describe('chat tool actor', () => {
     'sparky_manage_run_program',
     'sparky_compare_metrics',
     'sparky_food_assistant_state',
+    'sparky_get_blood_alcohol',
   ])("refuses %s in a family member's account", async (name) => {
     vi.mocked(withFixedActor).mockClear();
     const { tools } = buildChatToolSurface('target-4', 'UTC', {

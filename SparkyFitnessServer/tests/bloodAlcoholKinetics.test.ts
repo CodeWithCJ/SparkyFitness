@@ -45,7 +45,8 @@ describe('bacDistributionFactor', () => {
     expect(bacDistributionFactor('seidl', man)).toBeCloseTo(0.764, 3);
     expect(bacDistributionFactor('seidl', woman)).toBeCloseTo(0.662, 3);
     expect(bacDistributionFactor('forrest', man)).toBeCloseTo(0.718, 3);
-    expect(bacDistributionFactor('forrest', woman)).toBeCloseTo(0.6, 3);
+    // BMI 22.0: 0.9367 - 0.0124 x 22.04 (Forrest via Searle 2015).
+    expect(bacDistributionFactor('forrest', woman)).toBeCloseTo(0.6634, 4);
   });
 
   it('returns null instead of guessing when an input is missing', () => {

@@ -126,19 +126,42 @@ export const formatDayRelativeTick = (
   return `${diffDays}d ${time}`;
 };
 
+/** Time since the last full hour of `timeZone` on its clock, in ms. */
+const pastFullHourMs = (instant: number, timeZone: string) => {
+  const { minute } = instantHourMinute(instant, timeZone);
+  // Zone offsets are whole minutes, so seconds and milliseconds are the same
+  // in every zone.
+  return minute * MINUTE_MS + (((instant % MINUTE_MS) + MINUTE_MS) % MINUTE_MS);
+};
+
+/** The first full hour of `timeZone` at or after `instant`. */
+const fullHourAtOrAfter = (instant: number, timeZone: string) => {
+  const pastMs = pastFullHourMs(instant, timeZone);
+  return pastMs === 0 ? instant : instant + (HOUR_MS - pastMs);
+};
+
 /** Ticks on each full hour of `timeZone` from `start` to `end`, both included. */
 export const hourlyTicks = (
   start: number,
   end: number,
   timeZone: string
 ): number[] => {
-  const { minute } = instantHourMinute(start, timeZone);
-  // Zone offsets are whole minutes, so seconds and milliseconds are the same
-  // in every zone.
-  const remainderMs =
-    minute * MINUTE_MS + (((start % MINUTE_MS) + MINUTE_MS) % MINUTE_MS);
-  const first = remainderMs === 0 ? start : start + (HOUR_MS - remainderMs);
   const ticks: number[] = [];
-  for (let t = first; t <= end; t += HOUR_MS) ticks.push(t);
+  let t = fullHourAtOrAfter(start, timeZone);
+  while (t <= end) {
+    ticks.push(t);
+    // One hour on is the next full hour unless the offset changed in between
+    // (e.g. Lord Howe's 30-minute DST). Then take the full hour just before
+    // it when that is still after this tick, else the next one.
+    const later = t + HOUR_MS;
+    const pastMs = pastFullHourMs(later, timeZone);
+    const before = later - pastMs;
+    t =
+      pastMs === 0
+        ? later
+        : before > t && pastFullHourMs(before, timeZone) === 0
+          ? before
+          : later + (HOUR_MS - pastMs);
+  }
   return ticks;
 };

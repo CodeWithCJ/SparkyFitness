@@ -25,14 +25,15 @@ jest.mock('react-i18next', () => ({
 jest.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light' }),
 }));
-// Defaults to the runner's own zone, so the local dates below describe the
-// viewed day; a test sets another profile zone to check the card follows it.
+// The fixtures are UTC instants, so the profile zone is UTC by default and the
+// tests pass in any runner zone. A test that builds local dates sets the
+// runner's own zone; another sets a profile zone to check the card follows it.
 const mockPrefs = {
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timezone: 'UTC',
   timeFormat: 'HH:mm',
   language: 'en',
 };
-const RUNNER_ZONE = mockPrefs.timezone;
+const RUNNER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => mockPrefs,
 }));
@@ -109,7 +110,7 @@ const expectNoSoberTime = (container: HTMLElement) => {
 describe('BloodAlcoholCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPrefs.timezone = RUNNER_ZONE;
+    mockPrefs.timezone = 'UTC';
     mockLanguage.current = 'en';
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-09-05T19:00:00.000Z'));
@@ -285,7 +286,8 @@ describe('BloodAlcoholCard', () => {
   });
 
   it("keeps the viewed day's evening drinks in view after a carried-over night", () => {
-    // Local times, because the card frames the viewed day in local time.
+    // Local dates, so the profile zone is the runner's own zone here.
+    mockPrefs.timezone = RUNNER_ZONE;
     const local = (day: number, hour: number) =>
       new Date(2026, 8, day, hour).toISOString();
     jest.setSystemTime(new Date(2026, 8, 5, 21));
@@ -335,7 +337,6 @@ describe('BloodAlcoholCard', () => {
 
   it('stops showing the current estimate once the profile day has passed', () => {
     // The cached response still has a current value from yesterday.
-    mockPrefs.timezone = 'UTC';
     jest.setSystemTime(new Date('2026-09-06T00:30:00.000Z'));
     renderCard(okData);
 

@@ -61,8 +61,13 @@ export const BAC_ELIMINATION_RATE_RANGE = { min: 0.1, max: 0.25 } as const;
 /** Absorption half-life of a drink on an average stomach; ~95% is absorbed after an hour. */
 export const BAC_ABSORPTION_HALF_LIFE_MINUTES = 15;
 
-/** Drinks older than this are gone at any allowed elimination rate up to ~2.4 per mille; the query window bound. */
-export const BAC_LOOKBACK_HOURS = 24;
+/**
+ * How far back drinks can still count for a day. At the slowest allowed
+ * elimination rate (0.1 per mille per hour) a single drinking episode lasts
+ * this long only above 7.2 per mille; drinking that never stops for longer
+ * than this can still lose its oldest drinks.
+ */
+export const BAC_LOOKBACK_HOURS = 72;
 
 /** Body inputs a formula can need, in the order they are reported missing. */
 export const BAC_BODY_INPUTS = ['sex', 'weight', 'height', 'age'] as const;
@@ -153,7 +158,9 @@ export function bacDistributionFactor(
       break;
     case 'forrest': {
       const bmi = weightKg / (heightCm / 100) ** 2;
-      r = male ? 1.0178 - 0.012127 * bmi : 0.8736 - 0.0124 * bmi;
+      // Women: 0.9367 - 0.0124 x BMI, as Searle (2015) restates Forrest's
+      // relation; Forrest's own table for women does not follow it.
+      r = male ? 1.0178 - 0.012127 * bmi : 0.9367 - 0.0124 * bmi;
       break;
     }
   }

@@ -64,4 +64,71 @@ describe('kineticsTime', () => {
       '2026-11-15T11:30:00.000Z',
     ]);
   });
+
+  it('keeps hourly ticks on full hours across a half-hour DST change', () => {
+    // Lord Howe moves from UTC+10:30 to UTC+11 at 02:00 on 2026-10-04, so its
+    // full hours move from :30 UTC to :00 UTC.
+    const zone = 'Australia/Lord_Howe';
+    const ticks = hourlyTicks(
+      Date.parse('2026-10-03T13:30:00.000Z'),
+      Date.parse('2026-10-03T18:00:00.000Z'),
+      zone
+    );
+    expect(ticks.map((t) => new Date(t).toISOString())).toEqual([
+      '2026-10-03T13:30:00.000Z', // 00:00 +10:30
+      '2026-10-03T14:30:00.000Z', // 01:00 +10:30
+      '2026-10-03T16:00:00.000Z', // 03:00 +11
+      '2026-10-03T17:00:00.000Z', // 04:00 +11
+      '2026-10-03T18:00:00.000Z', // 05:00 +11
+    ]);
+    const clock = kineticsClock(zone, 'HH:mm', 'en');
+    expect(ticks.map(clock.time)).toEqual([
+      '00:00',
+      '01:00',
+      '03:00',
+      '04:00',
+      '05:00',
+    ]);
+  });
+
+  it('steps one hour across a whole-hour DST change', () => {
+    // Berlin skips 02:00 to 03:00 on 2026-03-29 (01:00 UTC).
+    const ticks = hourlyTicks(
+      Date.parse('2026-03-29T00:00:00.000Z'),
+      Date.parse('2026-03-29T03:00:00.000Z'),
+      'Europe/Berlin'
+    );
+    expect(ticks.map((t) => new Date(t).toISOString())).toEqual([
+      '2026-03-29T00:00:00.000Z',
+      '2026-03-29T01:00:00.000Z',
+      '2026-03-29T02:00:00.000Z',
+      '2026-03-29T03:00:00.000Z',
+    ]);
+  });
+
+  it('keeps hourly ticks on full hours when a half-hour DST change ends', () => {
+    // Lord Howe moves back from UTC+11 to UTC+10:30 at 02:00 on 2026-04-05,
+    // so 01:30 to 02:00 happens twice.
+    const zone = 'Australia/Lord_Howe';
+    const ticks = hourlyTicks(
+      Date.parse('2026-04-04T13:00:00.000Z'),
+      Date.parse('2026-04-04T17:30:00.000Z'),
+      zone
+    );
+    expect(ticks.map((t) => new Date(t).toISOString())).toEqual([
+      '2026-04-04T13:00:00.000Z', // 00:00 +11
+      '2026-04-04T14:00:00.000Z', // 01:00 +11
+      '2026-04-04T15:30:00.000Z', // 02:00 +10:30
+      '2026-04-04T16:30:00.000Z', // 03:00 +10:30
+      '2026-04-04T17:30:00.000Z', // 04:00 +10:30
+    ]);
+    const clock = kineticsClock(zone, 'HH:mm', 'en');
+    expect(ticks.map(clock.time)).toEqual([
+      '00:00',
+      '01:00',
+      '02:00',
+      '03:00',
+      '04:00',
+    ]);
+  });
 });

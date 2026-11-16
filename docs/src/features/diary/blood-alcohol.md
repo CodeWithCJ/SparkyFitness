@@ -10,7 +10,7 @@ The value is calculated from averages, not measured in your blood. Your real val
 
 ## What the estimate uses
 
-- **Your logged drinks**: every food or drink in your diary with an alcohol amount (grams of alcohol), at the time you logged it. An entry without its own time uses the default time of its meal, or 12:00 when the meal has none; the card marks those drinks as having an assumed time. Drinks from up to 24 hours before the selected day also count, so a late drink the evening before still shows the next morning.
+- **Your logged drinks**: every food or drink in your diary with an alcohol amount (grams of alcohol), at the time you logged it. An entry without its own time uses the default time of its meal, or 12:00 when the meal has none; the card marks those drinks as having an assumed time. Drinks from up to 72 hours before the selected day also count while their level has not yet gone back to zero, so a late drink the evening before still shows the next morning.
 - **Your body**: sex, weight, height and age, depending on the formula you choose (see below). Set your gender, date of birth and height under **Settings → Profile & Account → Profile Information**, and log your weight in [Check-in](/features/check-in).
 
 When the chosen formula needs something your profile does not have, the card does not guess. It says which values are missing (sex, weight, height or age; sex is the **Gender** field in your profile) and where to set them. A weight or height that gives an impossible result (for example a typo) is also reported instead of being used.

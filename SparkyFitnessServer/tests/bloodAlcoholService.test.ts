@@ -59,12 +59,12 @@ describe('getBloodAlcoholEstimate', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads alcohol from two days before through the date', async () => {
+  it('reads alcohol from four days before through the date', async () => {
     await getBloodAlcoholEstimate(userId, { date: '2026-11-07' });
 
     expect(dosesSpy).toHaveBeenCalledWith(
       userId,
-      '2026-11-05',
+      '2026-11-03',
       '2026-11-07',
       'alcohol_g'
     );
@@ -73,13 +73,13 @@ describe('getBloodAlcoholEstimate', () => {
     ).toHaveBeenCalledWith(userId, '2026-11-07');
   });
 
-  // After a spring-forward day (23 h long) the 24 h lookback from midnight
-  // starts on the calendar day before yesterday.
+  // After a spring-forward day (23 h long) the 72 h lookback from midnight
+  // starts on the calendar day four days before.
   it('reads far enough back to cover the lookback after a spring-forward day', async () => {
     vi.mocked(timezoneLoader.loadUserTimezone).mockResolvedValue(
       'America/New_York'
     );
-    dosesSpy.mockResolvedValue([drink('2026-03-07', '23:30', 250, 'Late')]);
+    dosesSpy.mockResolvedValue([drink('2026-03-05', '23:30', 600, 'Late')]);
 
     const result = await getBloodAlcoholEstimate(userId, {
       date: '2026-03-09',
@@ -87,12 +87,45 @@ describe('getBloodAlcoholEstimate', () => {
 
     expect(dosesSpy).toHaveBeenCalledWith(
       userId,
-      '2026-03-07',
+      '2026-03-05',
       '2026-03-09',
       'alcohol_g'
     );
-    // 23:30 EST on March 7 is inside the 24 h before midnight EDT on March 9.
+    // 23:30 EST on March 5 is inside the 72 h before midnight EDT on March 9.
     expect(result.doses.map((d) => d.name)).toEqual(['Late']);
+  });
+
+  // A heavy evening at the slowest elimination rate is still above zero
+  // more than 24 h later; its drinks must not be cut off by a fixed day.
+  it('keeps an episode that started more than 24 h before midnight', async () => {
+    vi.mocked(preferenceRepo.getUserPreferences).mockResolvedValue({
+      bac_distribution_formula: 'widmark',
+      bac_elimination_rate: '0.100',
+    });
+    vi.mocked(userRepo.getUserProfile).mockResolvedValue({
+      gender: 'female',
+      date_of_birth: '1990-01-01',
+    });
+    vi.mocked(
+      measurementRepo.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({ weight: '50', height: '165' });
+    dosesSpy.mockResolvedValue([
+      drink('2026-11-07', '23:00', 40, 'a'),
+      drink('2026-11-07', '23:00', 40, 'b'),
+      drink('2026-11-07', '23:00', 40, 'c'),
+    ]);
+
+    const now = '2026-11-09T00:00:00.000Z';
+    const result = await getBloodAlcoholEstimate(userId, {
+      date: '2026-11-09',
+      now,
+    });
+
+    expect(result.doses.map((d) => d.name)).toEqual(['a', 'b', 'c']);
+    expect(result.estimated_now_permille).toBeGreaterThan(1.8);
+    expect(result.estimated_now_permille).toBe(
+      bloodAlcoholAt(result.doses, bacModelOf(result), now)
+    );
   });
 
   it('estimates today from the preferences and profile', async () => {
@@ -235,6 +268,32 @@ describe('getBloodAlcoholEstimate', () => {
     expect(result.missing_inputs).toEqual([]);
     expect(result.formula).toBe('seidl');
     expect(result.fell_back_from).toBeNull();
+    expect(result.distribution_factor).toBeNull();
+    expect(result.estimated_now_permille).toBeNull();
+  });
+
+  // Seidl gives a male body of 180 kg and 170 cm a factor below 0.3; the
+  // Watson fallback needs his age, so age is what is missing.
+  it('names the fallback formula’s missing input when the chosen one does not fit', async () => {
+    vi.mocked(preferenceRepo.getUserPreferences).mockResolvedValue({
+      bac_distribution_formula: 'seidl',
+    });
+    vi.mocked(userRepo.getUserProfile).mockResolvedValue({
+      gender: 'male',
+      date_of_birth: null,
+    });
+    vi.mocked(
+      measurementRepo.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({ weight: '180', height: '170' });
+    dosesSpy.mockResolvedValue([drink('2026-11-07', '20:00')]);
+
+    const result = await getBloodAlcoholEstimate(userId, {
+      date: '2026-11-07',
+      now: '2026-11-07T21:00:00.000Z',
+    });
+
+    expect(result.status).toBe('missing_inputs');
+    expect(result.missing_inputs).toEqual(['age']);
     expect(result.distribution_factor).toBeNull();
     expect(result.estimated_now_permille).toBeNull();
   });
