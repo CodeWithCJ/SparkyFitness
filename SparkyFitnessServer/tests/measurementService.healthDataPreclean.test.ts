@@ -190,7 +190,7 @@ describe('processHealthData pre-cleanup (#2938)', () => {
 // workout re-sync must not range-delete it (#3620).
 describe('processHealthData pre-cleanup keeps Active Calories (#3620)', () => {
   it.each(['HealthKit', 'Health Connect'])(
-    'excludes the Active Calories summary from the %s workout delete',
+    'keeps the Active Calories summary row out of the %s workout delete',
     async (source) => {
       await measurementService.processHealthData(
         [
@@ -209,6 +209,7 @@ describe('processHealthData pre-cleanup keeps Active Calories (#3620)', () => {
         deletedSource,
         excludedExerciseName,
         keepSourceIds,
+        keepDailySummaryName,
       ] = deleteMock().mock.calls[0];
       expect({ userId, startDate, endDate, deletedSource }).toEqual({
         userId: 'user-1',
@@ -216,7 +217,10 @@ describe('processHealthData pre-cleanup keeps Active Calories (#3620)', () => {
         endDate: '2026-10-16',
         deletedSource: source,
       });
-      expect(excludedExerciseName).toBe('Active Calories');
+      // The library-name exclusion stays unused, as on main; only the
+      // summary-shaped row is kept (7th argument).
+      expect(excludedExerciseName).toBeUndefined();
+      expect(keepDailySummaryName).toBe('Active Calories');
       expect([...keepSourceIds].sort()).toEqual([
         'synthetic-walk-1',
         'synthetic-walk-2',
@@ -232,9 +236,10 @@ describe('processHealthData pre-cleanup keeps Active Calories (#3620)', () => {
     );
 
     expect(deleteMock()).toHaveBeenCalledTimes(1);
-    const [, , , , excludedExerciseName, keepSourceIds] =
+    const [, , , , excludedExerciseName, keepSourceIds, keepDailySummaryName] =
       deleteMock().mock.calls[0];
-    expect(excludedExerciseName).toBe('Active Calories');
+    expect(excludedExerciseName).toBeUndefined();
     expect(keepSourceIds).toEqual([]);
+    expect(keepDailySummaryName).toBe('Active Calories');
   });
 });

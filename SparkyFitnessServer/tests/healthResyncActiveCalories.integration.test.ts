@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { endPool } from '../db/poolManager.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
 import measurementService from '../services/measurementService.js';
 
 function ownerClient() {
@@ -52,6 +53,7 @@ interface DayRow {
   source: string;
   source_id: string | null;
   calories_burned: number;
+  duration_minutes: number;
 }
 
 describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
@@ -68,13 +70,14 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
   const walk = (
     date: string,
     source: string,
-    sourceId: string,
-    caloriesBurned = 150
+    sourceId: string | undefined,
+    caloriesBurned = 150,
+    activityType = 'Walking'
   ) => ({
     type: 'Workout',
     source,
-    source_id: sourceId,
-    activityType: 'Walking',
+    ...(sourceId === undefined ? {} : { source_id: sourceId }),
+    activityType,
     caloriesBurned,
     duration: 1800,
     date,
@@ -94,7 +97,8 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
     (
       await db.query<DayRow>(
         `SELECT id, exercise_id, exercise_name, source, source_id,
-                calories_burned::float AS calories_burned
+                calories_burned::float AS calories_burned,
+                duration_minutes::float AS duration_minutes
          FROM public.exercise_entries
          WHERE user_id = $1 AND entry_date = $2
          ORDER BY created_at, id`,
@@ -104,6 +108,10 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
 
   const summaryOf = (rows: DayRow[]) =>
     rows.filter((row) => row.exercise_name === 'Active Calories');
+  const summaryShaped = (rows: DayRow[]) =>
+    summaryOf(rows).filter(
+      (row) => row.source_id === null && row.duration_minutes === 0
+    );
   const walksOf = (rows: DayRow[]) =>
     rows.filter((row) => row.exercise_name === 'Walking');
 
@@ -223,5 +231,111 @@ describe.runIf(RUN)('workout re-sync keeps the Active Calories summary', () => {
         .map((row) => row.source_id)
     ).toEqual(['synthetic-hk-walk-other']);
     expect(summaryOf(after)).toHaveLength(1);
+  });
+
+  it('still removes a stale workout named Active Calories', async () => {
+    const date = '2026-01-07';
+    await sync([
+      activeCalories(date, 400, 'HealthKit'),
+      walk(date, 'HealthKit', 'synthetic-hk-named', 200, 'Active Calories'),
+    ]);
+    const before = summaryOf(await dayRows(date));
+    expect(before).toHaveLength(2);
+    expect(summaryShaped(before)).toHaveLength(1);
+
+    await sync([walk(date, 'HealthKit', 'synthetic-hk-walk-other-day')]);
+
+    const rows = await dayRows(date);
+    const named = summaryOf(rows);
+    expect(named).toHaveLength(1);
+    expect(named[0].source_id).toBeNull();
+    expect(named[0].duration_minutes).toBe(0);
+    expect(named[0].calories_burned).toBe(400);
+    expect(walksOf(rows).map((row) => row.source_id)).toEqual([
+      'synthetic-hk-walk-other-day',
+    ]);
+  });
+
+  it('does not pile up workouts sent without a source_id', async () => {
+    const date = '2026-01-08';
+    await sync([activeCalories(date, 400, 'HealthKit')]);
+
+    for (let i = 0; i < 3; i += 1) {
+      await sync([walk(date, 'HealthKit', undefined)]);
+    }
+
+    const rows = await dayRows(date);
+    const walks = walksOf(rows);
+    expect(walks).toHaveLength(1);
+    expect(walks[0].source_id).toBeNull();
+    const summary = summaryOf(rows);
+    expect(summary).toHaveLength(1);
+    expect(summary[0].calories_burned).toBe(400);
+  });
+
+  it('updates the kept summary in place when it is sent again', async () => {
+    const date = '2026-01-09';
+    await sync([
+      activeCalories(date, 400, 'HealthKit'),
+      walk(date, 'HealthKit', 'synthetic-hk-walk-resend'),
+    ]);
+    const [stored] = summaryOf(await dayRows(date));
+    await sync([walk(date, 'HealthKit', 'synthetic-hk-walk-resend')]);
+
+    await sync([activeCalories(date, 450, 'HealthKit')]);
+
+    const summary = summaryOf(await dayRows(date));
+    expect(summary).toHaveLength(1);
+    expect(summary[0].id).toBe(stored.id);
+    expect(summary[0].calories_burned).toBe(450);
+  });
+
+  it('updates a kept orphaned summary in place when it is sent again', async () => {
+    const date = '2026-01-10';
+    await sync([
+      activeCalories(date, 400, 'HealthKit'),
+      walk(date, 'HealthKit', 'synthetic-hk-walk-orphan-resend'),
+    ]);
+    await db.query(
+      `UPDATE public.exercise_entries SET exercise_id = NULL
+       WHERE user_id = $1 AND entry_date = $2
+         AND exercise_name = 'Active Calories'`,
+      [userId, date]
+    );
+    const [stored] = summaryOf(await dayRows(date));
+    await sync([walk(date, 'HealthKit', 'synthetic-hk-walk-orphan-resend')]);
+
+    await sync([activeCalories(date, 500, 'HealthKit')]);
+
+    const summary = summaryOf(await dayRows(date));
+    expect(summary).toHaveLength(1);
+    expect(summary[0].id).toBe(stored.id);
+    expect(summary[0].calories_burned).toBe(500);
+  });
+
+  it('keeps the existing exclusion parameter as on main (Garmin)', async () => {
+    const date = '2026-01-11';
+    const inserted = await db.query<{ id: string }>(
+      `INSERT INTO public.exercise_entries
+         (user_id, entry_date, exercise_id, exercise_name, source,
+          duration_minutes, calories_burned)
+       VALUES ($1, $2, NULL, 'Active Calories', 'garmin', 0, 300)
+       RETURNING id`,
+      [userId, date]
+    );
+
+    await exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate(
+      userId,
+      date,
+      date,
+      'garmin',
+      'Active Calories'
+    );
+
+    const left = await db.query(
+      'SELECT id FROM public.exercise_entries WHERE id = $1',
+      [inserted.rows[0].id]
+    );
+    expect(left.rows).toHaveLength(0);
   });
 });

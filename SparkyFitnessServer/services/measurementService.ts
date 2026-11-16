@@ -69,8 +69,8 @@ import type {
   HandleBatchFn,
   PreparedHealthEntry,
 } from './healthDataHandlers.js';
-// Library exercise behind the per-day Active Calories summary entry written by
-// the `active_calories` handler (#3620).
+// Name of the per-day Active Calories summary entry written by the
+// `active_calories` handler (#3620).
 const ACTIVE_CALORIES_EXERCISE_NAME = 'Active Calories';
 /**
  * Resolve the entry date, timestamp, and hour for a health data record using
@@ -212,10 +212,12 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
 // the handler will reject (see `isRejected`) are skipped too, so a malformed
 // record cannot delete anything before it fails.
 //
-// `excludedExerciseName` keeps rows of that library exercise out of the delete.
-// Workouts pass the Active Calories summary (#3620): it is a separate per-day
-// record written by `active_calories`, not a workout, and is often not re-sent
-// in the same request, so deleting it here lost that day's summary for good.
+// `keepDailySummaryName` keeps the per-day summary row of that name (no
+// source_id, zero duration, no preset) out of the delete. Workouts pass Active
+// Calories (#3620): that summary is written by `active_calories`, not a
+// workout, and is often not re-sent in the same request, so deleting it here
+// lost that day's summary for good. Workouts that carry the same name are
+// still deleted.
 async function preCleanEntriesBySourceAndDate(
   entries: Record<string, unknown>[],
   fallbackTimezone: string,
@@ -227,10 +229,11 @@ async function preCleanEntriesBySourceAndDate(
     endDate: string,
     source: string,
     excludedExerciseName?: string,
-    keepSourceIds?: string[]
+    keepSourceIds?: string[],
+    keepDailySummaryName?: string
   ) => Promise<unknown>,
   isRejected: (entry: Record<string, unknown>) => boolean = () => false,
-  excludedExerciseName?: string
+  keepDailySummaryName?: string
 ) {
   if (entries.length === 0) return;
   // Maps, not plain objects: a source such as 'constructor' or '__proto__'
@@ -282,8 +285,9 @@ async function preCleanEntriesBySourceAndDate(
       startDate,
       endDate,
       source,
-      excludedExerciseName,
-      keepSourceIds
+      undefined,
+      keepSourceIds,
+      keepDailySummaryName
     );
   }
 }
@@ -323,8 +327,9 @@ async function processHealthData(
   // ingest is merge-based via upsertSleepStageEvent ON CONFLICT + aggregate
   // recompute (issue #1180). Nutrition is also excluded: it upserts each entry by
   // (source, source_id) in its handler, so it needs no range-delete and can be
-  // chunked freely by the client. The day's Active Calories summary is kept
-  // too: it is not a workout and is often not re-sent with the workouts (#3620).
+  // chunked freely by the client. The day's Active Calories summary row is
+  // kept too: it is not a workout and is often not re-sent with the workouts
+  // (#3620).
   await preCleanEntriesBySourceAndDate(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     healthDataArray.filter(
