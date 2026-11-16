@@ -5,7 +5,11 @@ import {
   DEFAULT_STRIDE_METERS,
   estimateDistanceMeters,
   isStepActivity,
+  isPlausibleStride,
+  strideFromDisplay,
   strideFromSample,
+  strideToDisplay,
+  treadmillCheckFromSteps,
 } from '../../src/utils/stride';
 
 describe('isStepActivity', () => {
@@ -78,6 +82,66 @@ describe('activeShare', () => {
     expect(activeShare(2000, 1800)).toBe(1);
     expect(activeShare(-5, 1800)).toBe(0);
     expect(activeShare(100, 0)).toBe(0);
+  });
+});
+
+describe('blendStride with a hand-set stride', () => {
+  it('counts a hand-set stride like a few learned ones', () => {
+    // Weight is a quarter, not a half, for the first real distance.
+    const next = blendStride({ meters: 1, samples: 0, manual: true }, 1.4);
+    expect(next.meters).toBeCloseTo(1.1);
+    expect(next.samples).toBe(1);
+    expect(next.manual).toBeUndefined();
+  });
+
+  it('still starts fresh when there is nothing', () => {
+    expect(blendStride({ meters: 1, samples: 0 }, 1.4)).toEqual({
+      meters: 1.4,
+      samples: 1,
+    });
+  });
+});
+
+describe('stride display units', () => {
+  it('keeps metres for km and shows feet for miles', () => {
+    expect(strideToDisplay(0.75, 'km')).toBe(0.75);
+    expect(strideToDisplay(0.75, 'miles')).toBeCloseTo(2.46, 2);
+  });
+
+  it('round-trips through the display unit', () => {
+    expect(
+      strideFromDisplay(strideToDisplay(0.9, 'miles'), 'miles')
+    ).toBeCloseTo(0.9);
+  });
+});
+
+describe('isPlausibleStride', () => {
+  it('accepts a person’s step and rejects the rest', () => {
+    expect(isPlausibleStride(0.8)).toBe(true);
+    expect(isPlausibleStride(0.1)).toBe(false);
+    expect(isPlausibleStride(3)).toBe(false);
+    expect(isPlausibleStride(NaN)).toBe(false);
+  });
+});
+
+describe('treadmillCheckFromSteps', () => {
+  it('works out the real distance from steps and how far the display read', () => {
+    // 5,000 steps at 1 m is 5 km; the treadmill showed 5.2 km.
+    expect(treadmillCheckFromSteps(5000, 1, 5200)).toEqual({
+      actualMeters: 5000,
+      percent: 4,
+    });
+  });
+
+  it('finds a display that reads short', () => {
+    expect(treadmillCheckFromSteps(4000, 0.75, 2925)?.percent).toBe(-2.5);
+  });
+
+  it('refuses too few steps, a bad stride or a typo', () => {
+    expect(treadmillCheckFromSteps(100, 1, 100)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 9, 45000)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 1, 50000)).toBeNull();
+    expect(treadmillCheckFromSteps(5000, 1, 0)).toBeNull();
   });
 });
 

@@ -1,3 +1,8 @@
+import { requireSelfActor } from '../middleware/requireSelfMiddleware.js';
+import {
+  getChatMcpServers,
+  updateChatMcpServers,
+} from '../services/chatMcpService.js';
 import express from 'express';
 // @ts-expect-error multer does not ship TypeScript declarations in this package.
 import multer from 'multer';
@@ -15,6 +20,8 @@ import {
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
 import {
+  chatApprovalCapabilitySchema,
+  updateChatMcpServersRequestSchema,
   testAiServiceConnectionRequestSchema,
   listOpenCodeGoModelsRequestSchema,
   normalizeChatToolCategories,
@@ -24,6 +31,85 @@ import {
   voiceTranscriptionRequestSchema,
 } from '@workspace/shared';
 const router = express.Router();
+/**
+ * @swagger
+ * /chat/mcp-servers:
+ *   get:
+ *     summary: List available outside tool servers and the owner's choices
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ *   put:
+ *     summary: Change one outside tool server choice for the owner
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [server_id, enabled, send_user_id]
+ *             properties:
+ *               server_id:
+ *                 type: string
+ *                 format: uuid
+ *               enabled:
+ *                 type: boolean
+ *               send_user_id:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       409:
+ *         description: Server changed or disappeared; returns the current list as in GET.
+ *       400:
+ *         description: Invalid server choices.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ */
+router.get(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    try {
+      res.json(await getChatMcpServers(req.userId));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.put(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    const parsed = updateChatMcpServersRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid server choices.' });
+      return;
+    }
+    try {
+      const result = await updateChatMcpServers(req.userId, parsed.data);
+      res.status(result.status).json(result.data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const voiceUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -338,6 +424,9 @@ router.post('/', authenticate, async (req, res, next) => {
 router.post('/stream', authenticate, async (req, res, next) => {
   const { messages, service_config_id } = req.body;
   const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
+  const capability = chatApprovalCapabilitySchema.safeParse(req.body);
+  if (!capability.success)
+    return res.status(400).json({ error: 'Invalid approval capability.' });
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const { stream } = await chatService.processChatMessageStream(
@@ -349,7 +438,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
       toolCategories,
       typeof req.body?.conversationId === 'string'
         ? req.body.conversationId
-        : undefined
+        : undefined,
+      capability.data.approvals
     );
 
     pipeUIMessageStreamToResponse({ response: res, stream });
@@ -373,7 +463,9 @@ router.post('/stream', authenticate, async (req, res, next) => {
  */
 router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearOldChatHistory(req.userId);
+    const result = await chatService.clearOldChatHistory(
+      req.authenticatedUserId
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -684,7 +776,7 @@ router.delete(
  * @swagger
  * /chat/sparky-chat-history:
  *   get:
- *     summary: Retrieve Sparky chat history for the authenticated user
+ *     summary: Retrieve the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -698,9 +790,9 @@ router.delete(
  */
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
+    // The signed-in person's conversation in the account they are working in.
     const history = await chatService.getSparkyChatHistory(
-      req.userId,
-
+      req.authenticatedUserId,
       req.userId
     );
     res.status(200).json(history);
@@ -751,7 +843,10 @@ router.get(
         .json({ error: 'Chat History Entry ID is required.' });
     }
     try {
-      const entry = await chatService.getSparkyChatHistoryEntry(req.userId, id);
+      const entry = await chatService.getSparkyChatHistoryEntry(
+        req.authenticatedUserId,
+        id
+      );
       res.status(200).json(entry);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -811,7 +906,7 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   }
   try {
     const updatedEntry = await chatService.updateSparkyChatHistoryEntry(
-      req.userId,
+      req.authenticatedUserId,
       id,
       updateData
     );
@@ -871,7 +966,7 @@ router.delete(
     }
     try {
       const result = await chatService.deleteSparkyChatHistoryEntry(
-        req.userId,
+        req.authenticatedUserId,
         id
       );
       res.status(200).json(result);
@@ -896,7 +991,7 @@ router.delete(
  * @swagger
  * /chat/clear-all-history:
  *   post:
- *     summary: Clear all Sparky chat history for the authenticated user
+ *     summary: Clear the authenticated user's Sparky chat history in the active profile
  *     tags: [AI & Insights]
  *     security:
  *       - cookieAuth: []
@@ -910,7 +1005,10 @@ router.delete(
  */
 router.post('/clear-all-history', authenticate, async (req, res, next) => {
   try {
-    const result = await chatService.clearAllSparkyChatHistory(req.userId);
+    const result = await chatService.clearAllSparkyChatHistory(
+      req.authenticatedUserId,
+      req.userId
+    );
     res.status(200).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -960,12 +1058,16 @@ router.post('/save-history', authenticate, async (req, res, next) => {
       .json({ error: 'Content and message type are required.' });
   }
   try {
-    const result = await chatService.saveSparkyChatHistory(req.userId, {
-      user_id: req.userId,
-      content,
-      messageType,
-      metadata,
-    });
+    const result = await chatService.saveSparkyChatHistory(
+      req.authenticatedUserId,
+      {
+        user_id: req.authenticatedUserId,
+        content,
+        messageType,
+        metadata,
+      },
+      req.userId
+    );
     res.status(201).json(result);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

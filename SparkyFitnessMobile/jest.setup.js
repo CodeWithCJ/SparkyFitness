@@ -763,8 +763,9 @@ jest.mock('react-native-maps', () => {
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
-  const { View, ScrollView } = require('react-native');
+  const { View, ScrollView, TextInput } = require('react-native');
   return {
+    BottomSheetTextInput: TextInput,
     BottomSheetModal: React.forwardRef(({ children }, ref) => {
       React.useImperativeHandle(ref, () => ({
         present: jest.fn(),
@@ -955,3 +956,20 @@ jest.mock('react-native-nfc-manager', () => ({
 jest.mock('./src/hooks/useEnergyUnit', () => ({
   useEnergyUnit: jest.fn(() => 'kcal'),
 }));
+
+// Components read safe-area insets (Duo vertical bars). Fall back to zero insets
+// when a test renders without a provider; a real provider still wins.
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  const zero = { top: 0, bottom: 0, left: 0, right: 0 };
+  return {
+    ...actual,
+    useSafeAreaInsets: () => {
+      try {
+        return actual.useSafeAreaInsets();
+      } catch {
+        return zero;
+      }
+    },
+  };
+});

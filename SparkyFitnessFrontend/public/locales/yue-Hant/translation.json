@@ -2161,7 +2161,6 @@
       "title": "致敏原綁定"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* 按您實際嘅新陳代謝動態調整每日目標，需要持續記錄食材同體重先可以有較高精度.",
       "burnedActivity": "活動（淨係運動同步數）",
       "burnedBmr": "活動 + BMR（您嘅基礎代謝）",
       "burnedTdee": "Health Connect 總熱量（BMR基礎代謝率 + 活動消耗回退）",
@@ -2328,13 +2327,9 @@
       "unsafeGainText": "每星期增重超過體重嘅 0.5% 代表增加嘅體重大部分係脂肪而唔係肌肉，慢啲嘅盈餘可以增建相似嘅肌肉量，而脂肪增加少好多.",
       "unsafeLossTitle": "唔安全嘅減重速度",
       "unsafeLossText": "每星期減重超過體重嘅 1.5% 當係過度，呢種速度會大幅增加嚴重肌肉流失、嗜睡、激素失衡同營養缺乏嘅風險，請揀冇咁激進嘅目標模式.",
-      "calibrationDescription": "Sparky 嘅自適應 每日總能量消耗TDEE 引擎需要至少 {{required}} 日嘅持續追蹤先可以準確計您嘅代謝（而家用緊回退估算），為咗加快校準：",
-      "calibrationWeightTip": "每星期至少記錄體重 3-4 次.",
-      "calibrationFoodTip": "每日記錄食材攝取（>200 千卡/日）.",
       "livePreviewSavedNote": "BMR基礎代謝率 同體脂會隨您改設定而更新，消耗量係由伺服器按您儲存嘅設定計，所以消耗量同最終目標要等您儲存之後先會變.",
       "kcalCalories": "kcal（卡路里）",
       "kJJoules": "kJ（焦耳）",
-      "adaptiveGoalTheGoldStandard": "<span>自適應目標：</span>「黃金標準」。SparkyFitness 會對比您過去 35 日嘅實際體重變化同卡路里攝取，嚟計您嘅 TDEE。佢會「學習」您獨特嘅新陳代謝.",
       "dynamicGoalYourCalorieGoal": "<span>動態目標：</span>您嘅卡路里目標會跟住每日活動量（例如運動、步數）動態調整。啱晒成日郁或者活動量日日都唔同嘅人.",
       "fixedGoalYourCalorieGoal": "<span>固定目標：</span>您嘅卡路里目標會一直固定，唔理每日活動量。啱晒活動量穩定或者鍾意固定目標嘅人.",
       "percentageEarnBackOnlyEarn": "<span>百分比回補：</span>只回補您運動卡路里嘅一定百分比。例如 50% 可以建立安全緩衝，避免因為高估消耗而食多咗.",
@@ -2344,7 +2339,6 @@
       "highCut20": "高度減脂（-20%）",
       "customMinimum": "自訂下限（{{energyUnitString}}）",
       "measuredAdaptiveTDEEDoesNot": "量度嘅自適應 TDEE：<span>{{energy}} {{energyUnitString}}</span>（唔會跟目標模式變）",
-      "inAdaptiveModeThisIs": "💡 喺自適應模式下，呢個係您有足夠追蹤數據之前嘅後備估算，之後仲會繼續用嚟設定合理性上限。您量度到嘅 TDEE 會限制喺 BMR × 呢個倍數嘅 ±500 kcal 範圍內，所以設得太低會壓住其實更高嘅消耗量.",
       "bodyRecomposition10Unreachable": "身體重組（-10%）— 達唔到",
       "cut15Unreachable": "減脂（-15%）— 達唔到",
       "highCut20Unreachable": "高度減脂（-20%）— 達唔到"
@@ -3339,7 +3333,6 @@
       "calorieLogRequirement": "• 用嚟 TDEE 計算嘅熱量記錄（7 日以上 ≥200 千卡）",
       "daysMissing": "❌ 缺失（已記錄 {{days}}/{{required}} 日）",
       "daysMet": "✓ 已滿足（已記錄 {{days}}/{{required}} 日）",
-      "stabilityRequirement": "• 用嚟目標預算穩定性嘅熱量記錄（{{required}}+ 日 ≥200 千卡）",
       "daysWarning": "⚠️ 缺失（已記錄 {{days}}/{{required}} 日）",
       "usingFallbackBmr": "用回退 BMR基礎代謝率 × 活動倍數：",
       "fallbackMath": "計算：BMR基礎代謝率（{{bmr}} kcal）× 活動倍數（{{multiplier}}）= {{result}} {{unit}}",

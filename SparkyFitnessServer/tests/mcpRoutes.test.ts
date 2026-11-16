@@ -64,6 +64,8 @@ const poolMocks = vi.hoisted(() => {
 vi.mock('../db/poolManager', () => ({
   getSystemClient: poolMocks.getSystemClient,
   getClient: poolMocks.getClient,
+  // MCP tools run without a fixed actor, so they act as the account itself.
+  actorUserIdFor: (userId: string) => userId,
   getPoolStats: poolMocks.getPoolStats,
   getRawOwnerPool: poolMocks.getRawOwnerPool,
   endPool: poolMocks.endPool,

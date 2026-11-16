@@ -60,6 +60,26 @@ jobs:
             echo "server.startupProbe=null should drop the probe"; exit 1
           fi
 
+      - name: Render — server readiness checks dependencies independently of liveness
+        run: |
+          check_path() {
+            local probe="$1" expected="$2"
+            awk -v probe="$probe:" '
+              $1 == probe { active = 1; next }
+              active && $1 == "path:" { print $2; exit }
+            ' | grep -Fx -- "$expected"
+          }
+          out=$(helm template t helm/chart --show-only templates/server/deployment.yaml)
+          check_path startupProbe /api/health <<< "$out"
+          check_path livenessProbe /api/health <<< "$out"
+          check_path readinessProbe /api/health/ready <<< "$out"
+          out=$(helm template t helm/chart --set server.readinessProbe.httpGet.path=/custom-ready --show-only templates/server/deployment.yaml)
+          check_path readinessProbe /custom-ready <<< "$out"
+          check_path livenessProbe /api/health <<< "$out"
+          if helm template t helm/chart --set server.readinessProbe=null --show-only templates/server/deployment.yaml | grep -q 'readinessProbe:'; then
+            echo "server.readinessProbe=null should drop the probe"; exit 1
+          fi
+
       - name: Render — external DB credentials reach the server
         run: |
           out=$(helm template t helm/chart \

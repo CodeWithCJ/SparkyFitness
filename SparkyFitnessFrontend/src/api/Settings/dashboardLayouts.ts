@@ -1,4 +1,6 @@
+import { WEB_TABS_PAGE_KEY, type WebHideableTabId } from '@workspace/shared';
 import { apiCall } from '@/api/api';
+import { knownHiddenWebTabs } from '@/constants/webTabs';
 import type { DashboardLayouts } from '@/utils/dashboardLayout';
 
 export interface SavedDashboardLayout {
@@ -29,6 +31,25 @@ export const saveDashboardLayout = async (
     method: 'PUT',
     body: payload,
   });
+};
+
+/** The main web tabs the person turned off; none saved means every tab shows. */
+export const getHiddenWebTabs = async (): Promise<WebHideableTabId[]> => {
+  const saved = await apiCall<{ hidden?: unknown } | null>(
+    `/dashboard-layouts/${WEB_TABS_PAGE_KEY}`,
+    { method: 'GET', suppress404Toast: true }
+  );
+  return knownHiddenWebTabs(saved?.hidden);
+};
+
+export const saveHiddenWebTabs = async (
+  hidden: WebHideableTabId[]
+): Promise<WebHideableTabId[]> => {
+  const saved = await apiCall<{ hidden?: unknown } | null>(
+    `/dashboard-layouts/${WEB_TABS_PAGE_KEY}`,
+    { method: 'PUT', body: { layout: {}, hidden } }
+  );
+  return knownHiddenWebTabs(saved?.hidden);
 };
 
 export const resetDashboardLayout = async (pageKey: string): Promise<void> => {

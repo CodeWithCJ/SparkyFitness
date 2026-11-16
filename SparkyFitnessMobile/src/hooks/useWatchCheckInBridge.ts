@@ -86,6 +86,7 @@ import { useRunProgram } from '../services/runProgramService';
 import { suggestedPaceRangesFromRace } from '../utils/suggestedRanges';
 import { buildWatchRunPlans } from '../utils/watchRunPlans';
 import { useZone2HeartRateBand } from './useZone2HeartRateBand';
+import { useWatchHeartRateZoneFloors } from './useWatchHeartRateZoneFloors';
 import {
   getWatchIndoorScale,
   onWatchIndoorScaleChange,
@@ -284,8 +285,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   );
   const watchUpNextPage = useAppPreferencesStore((s) => s.watchUpNextPage);
   const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
-  const watchClassicWorkout = useAppPreferencesStore(
-    (s) => s.watchClassicWorkout
+  const watchNewWorkout = useAppPreferencesStore((s) => s.watchNewWorkout);
+  const watchWorkoutCountdown = useAppPreferencesStore(
+    (s) => s.watchWorkoutCountdown
+  );
+  const watchHoldCountdown = useAppPreferencesStore(
+    (s) => s.watchHoldCountdown
+  );
+  const watchWorkoutTopLine = useAppPreferencesStore(
+    (s) => s.watchWorkoutTopLine
   );
   const watchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.watchDoubleTapEnabled
@@ -359,6 +367,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     [paceReferenceOnWatch, paceReferenceRace, programStatus]
   );
   const zone2Band = useZone2HeartRateBand(enabled);
+  const heartRateZoneFloors = useWatchHeartRateZoneFloors(enabled);
   const runPlans = useMemo(
     () =>
       buildWatchRunPlans(
@@ -896,7 +905,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         setScreenMetrics: watchSetScreenMetrics,
         upNextPage: watchUpNextPage,
         largerText: watchLargerText,
-        classicWorkout: watchClassicWorkout,
+        newWorkout: watchNewWorkout,
+        workoutCountdown: watchWorkoutCountdown,
+        holdCountdown: watchHoldCountdown,
+        workoutTopLine: watchWorkoutTopLine,
         // This build handles a skipped dose from the watch.
         medicationSkip: true,
         // ... and "do this exercise now" from the workout pages.
@@ -918,6 +930,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             }
           : {}),
         runPlans,
+        ...(heartRateZoneFloors ? { heartRateZoneFloors } : {}),
         ...(indoorDistanceScale ? { indoorDistanceScale } : {}),
         startableWorkouts,
         suggestedExercises,
@@ -968,8 +981,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     watchSetScreenMetrics,
     watchUpNextPage,
     watchLargerText,
-    watchClassicWorkout,
+    watchNewWorkout,
+    watchWorkoutCountdown,
+    watchHoldCountdown,
+    watchWorkoutTopLine,
     runPlans,
+    heartRateZoneFloors,
     indoorDistanceScale,
     startableWorkouts,
     suggestedExercises,

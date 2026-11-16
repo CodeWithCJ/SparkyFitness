@@ -125,6 +125,26 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
+  it('toggles "Focus the next set when a rest ends", on by default (#3581)', () => {
+    const { getByLabelText } = renderScreen();
+    const focusToggle = getByLabelText('Focus the next set when a rest ends');
+    expect(focusToggle.props.value).toBe(true);
+
+    fireEvent(focusToggle, 'valueChange', false);
+    expect(useAppPreferencesStore.getState().focusNextSetOnRestEnd).toBe(false);
+  });
+
+  it('toggles "Use planned values as placeholders", off by default (#3417)', () => {
+    const { getByLabelText } = renderScreen();
+    const plannedToggle = getByLabelText('Use planned values as placeholders');
+    expect(plannedToggle.props.value).toBe(false);
+
+    fireEvent(plannedToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().plannedValuesAsPlaceholders).toBe(
+      true
+    );
+  });
+
   it('saves the adaptive suggestions account setting from the switch', async () => {
     const {
       saveWorkoutCoachingSettings,

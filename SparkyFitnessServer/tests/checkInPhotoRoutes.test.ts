@@ -214,7 +214,26 @@ describe('GET /file/:id', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(checkInPhotoService.getPhotoFileById).toHaveBeenCalledWith(
       'test-user-id',
-      PHOTO_ID
+      PHOTO_ID,
+      'test-user-id'
+    );
+  });
+
+  it('passes the signed-in user, not only the switched context, to the access check', async () => {
+    const switchedApp = express();
+    switchedApp.use((req: any, _res: any, next: any) => {
+      req.originalUserId = 'family-member-id';
+      next();
+    });
+    switchedApp.use('/', checkInPhotoRoutes);
+    // @ts-expect-error mock
+    checkInPhotoService.getPhotoFileById.mockResolvedValue(null);
+    const res = await request(switchedApp).get(`/file/${PHOTO_ID}`);
+    expect(res.status).toBe(404);
+    expect(checkInPhotoService.getPhotoFileById).toHaveBeenCalledWith(
+      'test-user-id',
+      PHOTO_ID,
+      'family-member-id'
     );
   });
 

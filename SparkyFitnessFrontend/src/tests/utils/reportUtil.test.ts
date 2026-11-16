@@ -1,12 +1,21 @@
-import { exportFoodDiary } from '@/utils/reportUtil';
+import { exportBodyMeasurements, exportFoodDiary } from '@/utils/reportUtil';
 import { DailyFoodEntry } from '@/types/reports';
 import { UserCustomNutrient } from '@/types/customNutrient';
+import type { CheckInMeasurementsResponse } from '@workspace/shared';
 
 // Mock dependencies
 jest.mock('@/i18n', () => ({
   __esModule: true,
   default: {
-    t: (_key: string, defaultValue?: string) => defaultValue || _key,
+    t: (
+      _key: string,
+      defaultValue?: string,
+      options?: Record<string, string>
+    ) =>
+      (defaultValue || _key).replace(
+        /{{(\w+)}}/g,
+        (match, name) => options?.[name] ?? match
+      ),
     use: jest.fn().mockReturnThis(),
     init: jest.fn(),
   },
@@ -206,5 +215,68 @@ describe('exportFoodDiary', () => {
         variant: 'destructive',
       })
     );
+  });
+});
+
+describe('exportBodyMeasurements', () => {
+  it('writes values in the units named by the headers', async () => {
+    let csv = '';
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    jest.spyOn(global, 'Blob').mockImplementation((parts) => {
+      csv = String(parts?.[0]);
+      return {} as Blob;
+    });
+    global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
+    global.URL.revokeObjectURL = jest.fn();
+
+    await exportBodyMeasurements({
+      loggingLevel: 'ERROR',
+      startDate: '2026-11-01',
+      endDate: '2026-11-09',
+      measurementData: [
+        { entry_date: '2026-11-09', weight: 80, neck: 40 },
+      ] as unknown as CheckInMeasurementsResponse[],
+      defaultWeightUnit: 'lbs',
+      defaultMeasurementUnit: 'inches',
+      formatDateInUserTimezone: (date) => String(date),
+      convertWeight: (value) => value * 2,
+      convertMeasurement: (value) => value / 2,
+    });
+
+    expect(csv).toContain('"Weight (lbs)","Neck (inches)"');
+    expect(csv).toContain('"160.0","20.0"');
+  });
+
+  it('writes stones and pounds, and feet and inches, as the table shows them', async () => {
+    let csv = '';
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    jest.spyOn(global, 'Blob').mockImplementation((parts) => {
+      csv = String(parts?.[0]);
+      return {} as Blob;
+    });
+    global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
+    global.URL.revokeObjectURL = jest.fn();
+
+    await exportBodyMeasurements({
+      loggingLevel: 'ERROR',
+      startDate: '2026-11-01',
+      endDate: '2026-11-09',
+      measurementData: [
+        { entry_date: '2026-11-09', weight: 80, neck: 40, height: 178 },
+      ] as unknown as CheckInMeasurementsResponse[],
+      defaultWeightUnit: 'st_lbs',
+      defaultMeasurementUnit: 'ft_in',
+      formatDateInUserTimezone: (date) => String(date),
+      convertWeight: (value) => value,
+      convertMeasurement: (value, _from, to) => (to === 'cm' ? value : NaN),
+    });
+
+    expect(csv).toContain('Neck (cm)');
+    expect(csv).toContain('"12st 8.4lbs","40.0"');
+    expect(csv).toContain(`"5'10.1"""`);
   });
 });

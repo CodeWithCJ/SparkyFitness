@@ -40,6 +40,18 @@ function describeDbError(error: unknown): string | null {
   return null;
 }
 
+/**
+ * True for Postgres's permission refusal (SQLSTATE 42501), which row-level
+ * security raises when a family member's grant doesn't cover a write.
+ */
+export function isPermissionDenied(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    (error as { code?: unknown }).code === '42501'
+  );
+}
+
 // Standard error builders
 export const ERRORS = {
   INVALID_DATE: (val: string) =>
@@ -76,6 +88,7 @@ export const ERRORS = {
    * what actually broke is to grep the server log.
    */
   DB_ERROR: (error?: unknown) => {
+    if (isPermissionDenied(error)) return ERRORS.NOT_ALLOWED();
     const detail = describeDbError(error);
     return toolError(
       'DB_ERROR',
@@ -93,6 +106,19 @@ export const ERRORS = {
     toolError('UNAUTHORIZED', 'Authentication required. Please reconnect.'),
 
   FORBIDDEN: (reason: string) => toolError('FORBIDDEN', reason),
+
+  OWN_ACCOUNT_ONLY: () =>
+    toolError(
+      'FORBIDDEN',
+      "This only works in the user's own account, not in a family member's."
+    ),
+
+  NOT_ALLOWED: () =>
+    toolError(
+      'FORBIDDEN',
+      "The user's access to this account doesn't allow that.",
+      "Do NOT retry. Tell the user their access doesn't cover it, and stop."
+    ),
 
   INVALID_ACTION: (action: string, validActions: string[]) =>
     toolError(

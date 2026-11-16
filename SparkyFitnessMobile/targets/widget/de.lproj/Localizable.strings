@@ -34,3 +34,7 @@
 "widget.control.remove_water.description" = "Zieht einen Drink von der heutigen Wasseraufnahme ab, ohne SparkyFitness zu öffnen.";
 "widget.control.calories_left.name" = "Verbleibende Kalorien";
 "widget.control.calories_left.description" = "Zeigt an, wie viele Kalorien du heute noch übrig hast. Tippe darauf, um dein Ernährungstagebuch zu öffnen.";
+"widget.kj_left" = "kJ übrig";
+"widget.a11y.kj_left" = "%@ kJ übrig";
+"widget.kj" = "kJ";
+"widget.a11y.kj" = "%@ kJ";

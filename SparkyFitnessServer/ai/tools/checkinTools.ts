@@ -42,6 +42,7 @@ import {
   manageCheckinInput,
   type ManageCheckinInput,
 } from './schemas/checkin.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 interface BiometricsRow {
   entry_date: string;
@@ -225,12 +226,15 @@ export async function getBiometricsHistoryRows(
   startDate?: string,
   endDate?: string
 ): Promise<BiometricsRow[]> {
-  const prefs = await preferenceService.getUserPreferences(userId, userId);
+  const prefs = await preferenceService.getUserPreferences(
+    actorUserIdFor(userId),
+    userId
+  );
   const wUnit = prefs.default_weight_unit || 'kg';
   const mUnit = prefs.default_measurement_unit || 'cm';
 
   const rows = await measurementService.getCheckInMeasurementsByDateRange(
-    userId,
+    actorUserIdFor(userId),
     userId,
     startDate || '1970-01-01',
     endDate || '9999-12-31'
@@ -359,7 +363,7 @@ Actions:
           switch (args.action) {
             case 'log_biometrics': {
               const prefs = await preferenceService.getUserPreferences(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const defaultWeightUnit = prefs.default_weight_unit || 'kg';
@@ -428,7 +432,7 @@ Actions:
 
               await measurementService.upsertCheckInMeasurements(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 args.entry_date,
                 measurements
               );
@@ -460,7 +464,7 @@ Actions:
 
             case 'log_custom_metric': {
               const categories = await measurementService.getCustomCategories(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const category = categories.find(
@@ -475,7 +479,7 @@ Actions:
               }
               await measurementService.upsertCustomMeasurementEntry(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 {
                   category_id: category.id,
                   value: String(args.value),
@@ -490,7 +494,7 @@ Actions:
 
             case 'list_categories': {
               const rows = await measurementService.getCustomCategories(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               interface MappedCategoryRow {
@@ -518,12 +522,16 @@ Actions:
             }
 
             case 'create_category': {
-              await measurementService.createCustomCategory(userId, userId, {
-                name: args.category_name,
-                measurement_type: args.unit || 'unit',
-                data_type: args.data_type || 'numeric',
-                frequency: 'Daily',
-              });
+              await measurementService.createCustomCategory(
+                userId,
+                actorUserIdFor(userId),
+                {
+                  name: args.category_name,
+                  measurement_type: args.unit || 'unit',
+                  data_type: args.data_type || 'numeric',
+                  frequency: 'Daily',
+                }
+              );
               return formatConfirmation(
                 `Category "${args.category_name}" created${args.unit ? ` with measurement type "${args.unit}"` : ''}.`
               );
@@ -614,14 +622,19 @@ Actions:
                 throw new Error('Could not resolve bedtime and wake time.');
               }
 
-              await measurementService.processSleepEntry(userId, userId, {
-                entry_date: args.entry_date,
-                bedtime,
-                wake_time: wakeTime,
-                duration_in_seconds: duration,
-                source: args.source || 'manual',
-                record_utc_offset_minutes: recordUtcOffsetMinutes ?? undefined,
-              });
+              await measurementService.processSleepEntry(
+                userId,
+                actorUserIdFor(userId),
+                {
+                  entry_date: args.entry_date,
+                  bedtime,
+                  wake_time: wakeTime,
+                  duration_in_seconds: duration,
+                  source: args.source || 'manual',
+                  record_utc_offset_minutes:
+                    recordUtcOffsetMinutes ?? undefined,
+                }
+              );
 
               const parts: string[] = [];
               if (isSet(args.duration_seconds)) {
@@ -648,7 +661,7 @@ Actions:
               // editors, which would otherwise mislabel their source date here.
               const exactBiometricRows =
                 await measurementService.getCheckInMeasurementsByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   date,
                   date
@@ -682,12 +695,12 @@ Actions:
                 );
               const customRows =
                 await measurementService.getCustomMeasurementEntriesByDate(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   date
                 );
               const prefs = await preferenceService.getUserPreferences(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const wUnit = prefs.default_weight_unit || 'kg';
@@ -952,7 +965,7 @@ Actions:
               const [history, customMeasurements] = await Promise.all([
                 getBiometricsHistoryRows(userId, startDate, endDate),
                 measurementService.getCustomMeasurementEntriesByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   startDate,
                   endDate
@@ -996,7 +1009,7 @@ Actions:
                   : startDate;
               const history = await oralCareService.getHistory(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 clampedStart,
                 endDate
               );
@@ -1014,7 +1027,7 @@ Actions:
             case 'get_custom_metrics_history': {
               const history: CustomMeasurementEntryRow[] =
                 await measurementService.getCustomMeasurementEntriesByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   args.start_date || '1970-01-01',
                   args.end_date || '9999-12-31'

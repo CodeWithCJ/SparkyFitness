@@ -1058,6 +1058,80 @@ describe('activeWorkoutStore', () => {
         });
       });
 
+      it('builds interval phases from the planned work durations when the created session has none', () => {
+        // A live start strips set durations from the created session; the
+        // configured values only survive in plannedSetValues.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          workoutFormat: 'interval',
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 45 },
+              { weight: null, reps: null, duration: 20 },
+            ],
+            [{ weight: null, reps: null, duration: 30 }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([
+          45, 20, 30,
+        ]);
+      });
+
+      it('reads legacy duration-modality seconds stored in reps when building interval phases', () => {
+        const base = makeEmptySession();
+        const session: PresetSessionResponse = {
+          ...base,
+          exercises: base.exercises.map((e) => ({
+            ...e,
+            exercise_snapshot: {
+              ...e.exercise_snapshot,
+              modality: 'duration',
+            } as any,
+          })),
+        };
+        useActiveWorkoutStore.getState().startWorkout(session, {
+          createdByLiveStart: true,
+          workoutFormat: 'interval',
+          plannedSetValues: [
+            [
+              { weight: null, reps: 45, duration: null },
+              { weight: null, reps: 20, duration: null },
+            ],
+            [{ weight: null, reps: 30, duration: null }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([
+          45, 20, 30,
+        ]);
+      });
+
+      it('builds EMOM work phases from the first set planned durations when the session has none', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          workoutFormat: 'emom',
+          timeCapSeconds: 120,
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 40 },
+              { weight: null, reps: null, duration: 99 },
+            ],
+            [{ weight: null, reps: null, duration: 25 }],
+          ],
+        });
+        const workPhases = useActiveWorkoutStore
+          .getState()
+          .intervalPhases.filter((phase) => phase.kind === 'work');
+        // Two one-minute rounds alternate through the exercises' first sets;
+        // without the planned fallback each would fill the full 60 s.
+        expect(workPhases.map((phase) => phase.durationSec)).toEqual([40, 25]);
+      });
+
       it('clears the plan and captured history when a workout starts without them', () => {
         useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
           createdByLiveStart: true,
@@ -1177,6 +1251,81 @@ describe('activeWorkoutStore', () => {
           useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
         expect(set0.weight).toBe(80);
         expect(set0.reps).toBe(5);
+      });
+
+      it('adopts the plan over the history when it was started plan-first (#3417)', () => {
+        // The plan was raised to 110 x 5 after the last session (100 x 8):
+        // logging without typing records what the row showed, the plan.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 110, reps: 5, preferOverHistory: true },
+              { weight: 110, reps: 5, preferOverHistory: true },
+            ],
+            [{ weight: 120, reps: 3, preferOverHistory: true }],
+          ],
+        });
+        expect(
+          useActiveWorkoutStore.getState().plannedSetValues['101']
+        ).toEqual({ weight: 110, reps: 5, preferOverHistory: true });
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(110);
+        expect(set0.reps).toBe(5);
+      });
+
+      it('adopts the history over an unmarked plan, as before', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 110, reps: 5 },
+              { weight: 110, reps: 5 },
+            ],
+            [{ weight: 120, reps: 3 }],
+          ],
+        });
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
+      });
+
+      it('adopts the history when a session resumes without its plan', () => {
+        // A resumed diary workout has no live-start plan to prefer.
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [{ weight: 110, reps: 5, preferOverHistory: true }],
+          ],
+        });
+        useActiveWorkoutStore
+          .getState()
+          .startWorkoutAtSet(makeEmptySession(), '101');
+        expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({});
+        useActiveWorkoutStore
+          .getState()
+          .capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
       });
 
       it('adopts the ramped weight from the live-start preset config', () => {

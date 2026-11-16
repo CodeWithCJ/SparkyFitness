@@ -5,10 +5,25 @@ import {
 } from './helpers/mockDbClient.js';
 import checkInPhotoService from '../services/checkInPhotoService.js';
 import { getClient } from '../db/poolManager.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
+import { resolveUploadPath } from '../utils/uploadsPath.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
+vi.mock('../utils/permissionUtils', () => ({
+  canAccessUserData: vi.fn(),
+}));
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      promises: { ...actual.promises, access: vi.fn() },
+    },
+  };
+});
 
 describe('checkInPhotoService.getAllPhotosWithWeight', () => {
   let mockClient: MockDbClient;
@@ -158,5 +173,69 @@ describe('checkInPhotoService.getAllPhotosWithWeight', () => {
       checkInPhotoService.getAllPhotosWithWeight('user-1')
     ).rejects.toThrow('connection lost');
     expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('checkInPhotoService.getPhotoFileById', () => {
+  let mockClient: MockDbClient;
+  const PHOTO = 'photo-1';
+  const FILE_PATH = 'uploads/check-in/owner-1/2026-11-01/front.png';
+
+  // The row the query returns, as a deployment whose app role bypasses RLS
+  // would return it: whoever owns the photo.
+  const ownedBy = (ownerId: string) => {
+    mockClient.query.mockResolvedValue({
+      rows: [{ user_id: ownerId, file_path: FILE_PATH }],
+    });
+  };
+
+  beforeEach(() => {
+    mockClient = createMockDbClient([]);
+    // @ts-expect-error mock typing
+    getClient.mockResolvedValue(mockClient);
+    // @ts-expect-error mock typing
+    canAccessUserData.mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('serves the owner without a family access lookup', async () => {
+    ownedBy('owner-1');
+    await expect(
+      checkInPhotoService.getPhotoFileById('owner-1', PHOTO, 'owner-1')
+    ).resolves.toBe(resolveUploadPath(FILE_PATH));
+    expect(canAccessUserData).not.toHaveBeenCalled();
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses another user's photo when they have no check-in grant", async () => {
+    ownedBy('owner-1');
+    await expect(
+      checkInPhotoService.getPhotoFileById('stranger', PHOTO, 'stranger')
+    ).resolves.toBeNull();
+    expect(canAccessUserData).toHaveBeenCalledWith(
+      'owner-1',
+      'checkin',
+      'stranger'
+    );
+  });
+
+  it("serves another user's photo to a family member with check-in access", async () => {
+    ownedBy('owner-1');
+    // @ts-expect-error mock typing
+    canAccessUserData.mockResolvedValue(true);
+    await expect(
+      checkInPhotoService.getPhotoFileById('family-1', PHOTO, 'family-1')
+    ).resolves.toBe(resolveUploadPath(FILE_PATH));
+  });
+
+  it('returns null when the photo does not exist', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+    await expect(
+      checkInPhotoService.getPhotoFileById('owner-1', PHOTO, 'owner-1')
+    ).resolves.toBeNull();
+    expect(canAccessUserData).not.toHaveBeenCalled();
   });
 });

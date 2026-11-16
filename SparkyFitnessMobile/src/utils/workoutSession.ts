@@ -1103,6 +1103,18 @@ export interface AssumedSetValues {
   distance?: number | null;
 }
 
+/**
+ * A set's planned values, captured at live start from the plan or preset.
+ * `preferOverHistory` is set when Workout Settings → "Use planned values as
+ * placeholders" was on at that start: the planned fields then come before the
+ * last session and progression (see {@link resolveAssumedSetValues}). It
+ * rides on each planned set so every placeholder consumer (row, HUD, watch,
+ * completion adoption) resolves the same way and it survives a cold start.
+ */
+export interface PlannedSetValues extends AssumedSetValues {
+  preferOverHistory?: boolean;
+}
+
 type AssumableSet = Pick<
   WorkoutCardSet,
   'id' | 'set_type' | 'weight' | 'reps' | 'duration' | 'distance'
@@ -1147,6 +1159,11 @@ export interface AssumedSetOverrides {
  *   3. The preceding row's effective value — its entered value, else its
  *      resolved placeholder.
  *
+ * A planned set marked `preferOverHistory` swaps 1 and 2 for every field the
+ * plan sets: the planned value wins over history and over the progression
+ * bump and rep targets, which build on history. A field the plan leaves empty
+ * resolves as above. Unmarked plans (the default) keep history first.
+ *
  * With a ramp, the first ramp-eligible set (working or failure — warm-ups and
  * drop sets are skipped) resolves as above and becomes the base; each later
  * eligible set's weight is base + step × increment, rounded to a loadable
@@ -1182,7 +1199,7 @@ export function alignPreviousSets<T extends { setType?: string | null }>(
 export function resolveAssumedSetValues(
   sets: readonly AssumableSet[],
   previousSets: readonly ExerciseRecentSessionSet[] | undefined,
-  plannedBySetId?: Record<string, AssumedSetValues>,
+  plannedBySetId?: Record<string, PlannedSetValues>,
   overrides?: AssumedSetOverrides
 ): AssumedSetValues[] {
   const progressionIncrementKg = overrides?.progressionIncrementKg;
@@ -1211,6 +1228,7 @@ export function resolveAssumedSetValues(
     const tier = set.set_type === 'warmup' ? 'warmup' : 'working';
     const previous = alignedPrevious[index];
     const planned = plannedBySetId?.[String(set.id)];
+    const planFirst = planned?.preferOverHistory === true;
 
     const progressedPreviousWeight =
       tier === 'working' &&
@@ -1225,7 +1243,9 @@ export function resolveAssumedSetValues(
     // history yet — but never to the carried-forward value, which already
     // holds an adapted weight.
     const adaptiveLoadFactor = overrides?.adaptiveLoadFactor;
-    const sourceWeight = progressedPreviousWeight ?? planned?.weight;
+    const sourceWeight = planFirst
+      ? (planned?.weight ?? progressedPreviousWeight)
+      : (progressedPreviousWeight ?? planned?.weight);
     const adaptedSourceWeight =
       tier === 'working' && adaptiveLoadFactor != null && sourceWeight != null
         ? applyAdaptiveLoadFactorKg(
@@ -1256,21 +1276,23 @@ export function resolveAssumedSetValues(
       tier === 'working'
         ? overrides?.progressionRepTargets?.[workingIndex++]
         : undefined;
+    const historyReps = progressionReps ?? previous?.reps;
     const assumed: AssumedSetValues = {
       weight,
       reps:
-        progressionReps ??
-        previous?.reps ??
-        planned?.reps ??
-        lastEffective[tier].reps,
+        (planFirst
+          ? (planned?.reps ?? historyReps)
+          : (historyReps ?? planned?.reps)) ?? lastEffective[tier].reps,
       duration:
-        previous?.duration ??
-        planned?.duration ??
+        (planFirst
+          ? (planned?.duration ?? previous?.duration)
+          : (previous?.duration ?? planned?.duration)) ??
         lastEffective[tier].duration ??
         null,
       distance:
-        previous?.distance ??
-        planned?.distance ??
+        (planFirst
+          ? (planned?.distance ?? previous?.distance)
+          : (previous?.distance ?? planned?.distance)) ??
         lastEffective[tier].distance ??
         null,
     };
@@ -1395,7 +1417,7 @@ export function progressionIncrementKgFor(
 
 /** The live-start settings a placeholder resolves against. */
 export interface LiveAssumeSources {
-  plannedSetValues: Record<string, AssumedSetValues>;
+  plannedSetValues: Record<string, PlannedSetValues>;
   exerciseConfigs?: Record<string, LiveExerciseConfig>;
   weightUnit?: 'kg' | 'lbs';
   workoutFormat?: WorkoutFormat;
@@ -1693,7 +1715,10 @@ export function buildSessionDurationMinutes(
 export interface SessionExerciseTiming {
   /** Minutes per non-cardio entry; entries absent here keep their stored value. */
   durations: Map<string, number>;
-  /** Local wall-clock 'HH:MM' at which each entry's first timed span began. */
+  /**
+   * Local wall-clock 'HH:MM' at which each entry began: a strength entry's
+   * first timed span, a cardio entry's first completed set less its duration.
+   */
   startTimes: Map<string, string>;
 }
 
@@ -1741,7 +1766,10 @@ export function captureResumedDurations(
  * add up to start→last completion.
  *
  * An entry's start time is the beginning of its first gap. Cardio entries
- * are left out: their duration is the sum of their set durations.
+ * are left out of the gaps: their duration is the sum of their set durations,
+ * and their start time is their first completed set's completion less that
+ * set's own duration, so a tracker's heart rate can attach to them (#3285).
+ * A cardio entry whose first set has no duration gets no start time.
  *
  * An entry that still has completions from before the start and a captured
  * value in `resumedDurationMinutes` (see `captureResumedDurations`) gets that
@@ -1759,16 +1787,28 @@ export function buildSessionExerciseTiming(
   const completedCountByEntryId = new Map<string, number>();
   const resumedMinutesByEntryId = new Map<string, number>();
   const timeline: { ms: number; entryId: string }[] = [];
+  const cardioStartMsByEntryId = new Map<string, number>();
   for (const exercise of session.exercises) {
     const cardio = isCardioModality(
       resolveSnapshotModality(exercise.exercise_snapshot)
     );
     let count = 0;
+    // The first completed cardio set, by completion time.
+    let firstCardio: { ms: number; durationSec: number } | null = null;
+    let cardioCompletedBeforeStart = false;
     for (const s of exercise.sets) {
       const ms = completedSetIds[String(s.id)];
       if (ms == null) continue;
       if (ms > startedAtMs) anyCompletedAfterStart = true;
-      if (cardio) continue;
+      if (cardio) {
+        // Like a resumed strength entry, one begun before this run keeps
+        // its stored start time.
+        if (ms <= startedAtMs) cardioCompletedBeforeStart = true;
+        else if (firstCardio == null || ms < firstCardio.ms) {
+          firstCardio = { ms, durationSec: Number(s.duration) || 0 };
+        }
+        continue;
+      }
       count++;
       // Completions before the start (a resumed session) can't be placed on
       // this clock; their time is the captured resumed duration, or the
@@ -1782,6 +1822,16 @@ export function buildSessionExerciseTiming(
       }
     }
     if (!cardio) completedCountByEntryId.set(exercise.id, count);
+    else if (
+      firstCardio != null &&
+      firstCardio.durationSec > 0 &&
+      !cardioCompletedBeforeStart
+    ) {
+      cardioStartMsByEntryId.set(
+        exercise.id,
+        firstCardio.ms - firstCardio.durationSec * 1000
+      );
+    }
   }
   if (!anyCompletedAfterStart) return null;
 
@@ -1800,6 +1850,9 @@ export function buildSessionExerciseTiming(
       startTimes.set(entryId, toEntryTimeString(previousMs));
     }
     previousMs = ms;
+  }
+  for (const [entryId, ms] of cardioStartMsByEntryId) {
+    startTimes.set(entryId, toEntryTimeString(ms));
   }
   for (const [entryId, ms] of spanMs) {
     const minutes = (resumedMinutesByEntryId.get(entryId) ?? 0) + ms / 60_000;
@@ -2179,6 +2232,9 @@ export function makeDefaultStartSet(
 export function buildPresetStartExercisesPayload(
   preset: WorkoutPreset
 ): PresetSessionExerciseRequest[] {
+  // Interval presets schedule rest after each cardio work phase, so a cardio
+  // set's configured rest must survive; elsewhere cardio takes no set rest.
+  const keepCardioRest = preset.workout_format === 'interval';
   return preset.exercises.map((exercise, index) => {
     const modality = resolveSnapshotModality(exercise);
     return {
@@ -2202,10 +2258,12 @@ export function buildPresetStartExercisesPayload(
               distance: isCardioModality(modality)
                 ? (set.distance ?? null)
                 : null,
-              // Cardio takes no between-set rest.
-              rest_time: isCardioModality(modality)
-                ? 0
-                : (set.rest_time ?? null),
+              // Cardio takes no between-set rest, except in interval presets
+              // where an explicit rest is the interval's rest phase.
+              rest_time:
+                isCardioModality(modality) && !keepCardioRest
+                  ? 0
+                  : (set.rest_time ?? (isCardioModality(modality) ? 0 : null)),
               notes: set.notes ?? null,
               rpe: null,
               completed_at: null,
@@ -2214,15 +2272,25 @@ export function buildPresetStartExercisesPayload(
   });
 }
 
+/**
+ * The plan's values per set, positional with `exercises`, before
+ * {@link stripPlannedSetValues} empties them for the create payload.
+ * `preferOverHistory` marks every captured set so its placeholders show the
+ * plan before the last session (Workout Settings → "Use planned values as
+ * placeholders", read once at live start).
+ */
 export function extractPlannedSetValues(
-  exercises: PresetSessionExerciseRequest[]
-): AssumedSetValues[][] {
+  exercises: PresetSessionExerciseRequest[],
+  opts?: { preferOverHistory?: boolean }
+): PlannedSetValues[][] {
+  const preferOverHistory = opts?.preferOverHistory === true;
   return exercises.map((exercise) =>
-    (exercise.sets || []).map((set: any, i: number) => ({
+    (exercise.sets || []).map((set) => ({
       weight: set.weight ?? null,
       reps: set.reps ?? null,
       duration: set.duration ?? null,
       distance: set.distance ?? null,
+      ...(preferOverHistory ? { preferOverHistory: true } : {}),
     }))
   );
 }
@@ -2693,7 +2761,7 @@ export function buildPresetUpdateExercises(
   preset: WorkoutPreset,
   opts: {
     completedSetIds: CompletedSetMap;
-    plannedSetValues: Record<string, AssumedSetValues>;
+    plannedSetValues: Record<string, PlannedSetValues>;
     /**
      * The live placeholder inputs, so values the ramp or progression filled
      * in can be told apart from the lifter's own changes. Omitted: every
@@ -2966,3 +3034,29 @@ export function plateTargetKg(
   const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
   return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
 }
+
+/**
+ * Localized label for a derived workout session status (#1995 phase 1).
+ * The keys are static per branch so the i18n audit can verify them.
+ */
+export const getWorkoutSessionStatusLabel = (
+  t: (key: string, options?: Record<string, unknown>) => string,
+  status: string
+): string => {
+  switch (status) {
+    case 'planned':
+      return t('workout.sessionStatus.planned', { defaultValue: 'Planned' });
+    case 'in_progress':
+      return t('workout.sessionStatus.in_progress', {
+        defaultValue: 'In Progress',
+      });
+    case 'partial':
+      return t('workout.sessionStatus.partial', { defaultValue: 'Partial' });
+    case 'completed':
+      return t('workout.sessionStatus.completed', {
+        defaultValue: 'Completed',
+      });
+    default:
+      return status;
+  }
+};

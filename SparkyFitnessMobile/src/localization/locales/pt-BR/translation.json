@@ -2389,7 +2389,6 @@
     "adjustMacrosWithExerciseHint": "Aumenta as metas de proteína, carboidratos e gordura usando as suas porcentagens salvas quando o exercício acrescenta calorias ao saldo do dia. Respeita as configurações de compensação de calorias do exercício. Metas definidas em gramas não mudam. As alterações valem a partir de hoje; os dias anteriores mantêm a configuração que tinham.",
     "useMoveRingActiveCalories": "Usar o anel Movimento para as calorias ativas",
     "useMoveRingActiveCaloriesHint": "Desligado por padrão: as calorias ativas vêm do total de Energia Ativa do Apple Saúde. Ligado, elas vêm do seu anel Movimento e batem com o app Fitness. O anel conta o que o Apple Watch e o iPhone medem, e treinos salvos no Apple Saúde por outros apps também podem somar. Um dia sem anel, como quando o acesso à Atividade está desligado, usa o total de Energia Ativa. Vale para os dias sincronizados depois da mudança.",
-    "adaptiveFallbackWithUnit": "A estimativa alternativa até haver dados suficientes — e ela continua definindo os limites de plausibilidade depois. O seu GET medido fica limitado a ±{{amount}} {{unit}} da TMB × este multiplicador.",
     "energyUnitKj": "Quilojoules (kJ)",
     "energyUnitDescription": "Como a energia é mostrada e digitada no app, nos widgets e no relógio. Também muda o site.",
     "cycling": {

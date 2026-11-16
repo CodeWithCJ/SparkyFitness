@@ -76,6 +76,26 @@ To enable these services, open your `docker-compose.yml` file and uncomment the 
 
 Once all services are up and running, you can access the SparkyFitness frontend in your web browser at the URL you configured for `SPARKY_FITNESS_FRONTEND_URL` (e.g., `http://localhost:3004`).
 
+### IPv6 Access
+
+The production frontend listens on both IPv4 and IPv6 on the same container port
+(80 as root, 8080 as non-root, or `NGINX_LISTEN_PORT` when configured). IPv4 access
+continues to work. On kernels without IPv6 support, it keeps the IPv4 listener only.
+
+Your container network, published ports, and firewall must also allow IPv6. For
+the default published host port, test from the Docker host with:
+
+```bash
+curl --noproxy '*' -g 'http://[::1]:3004/'
+```
+
+From another machine, replace `::1` with the Docker host's reachable IPv6 address,
+for example `http://[2001:db8::10]:3004/` (substitute your actual address). IPv6
+addresses in URLs must be enclosed in brackets. Set `SPARKY_FITNESS_FRONTEND_URL`
+to the exact URL used by clients, preferably an HTTPS hostname with an AAAA record
+when using a reverse proxy. Adding a listener does not configure Docker IPv6
+networking or change the backend's bind address.
+
 ## Stopping and Removing Services
 
 To stop the running services without removing their data volumes:

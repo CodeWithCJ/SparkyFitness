@@ -2,12 +2,18 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { z } from 'zod';
 import {
   CALORIE_CYCLING_MAX_OFFSET,
   CALORIE_CYCLING_MODES,
   CHART_SCALE_MODES,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
+  recipeImportSaveRequestSchema,
+  recipeImportSuggestionRequestSchema,
+  recipeImportSyncPreviewSchema,
+  recipeImportSyncRequestSchema,
+  recipeImportSavedMappingsResponseSchema,
   MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
 } from '@workspace/shared';
 
@@ -56,6 +62,26 @@ const options = {
         },
       },
       schemas: {
+        RecipeImportSavedMappingsResponse: z.toJSONSchema(
+          recipeImportSavedMappingsResponseSchema,
+          { target: 'openapi-3.0', io: 'output' }
+        ),
+        RecipeImportSyncPreview: z.toJSONSchema(recipeImportSyncPreviewSchema, {
+          target: 'openapi-3.0',
+          io: 'output',
+        }),
+        RecipeImportSyncRequest: z.toJSONSchema(recipeImportSyncRequestSchema, {
+          target: 'openapi-3.0',
+          io: 'input',
+        }),
+        RecipeImportSaveRequest: z.toJSONSchema(recipeImportSaveRequestSchema, {
+          target: 'openapi-3.0',
+          io: 'input',
+        }),
+        RecipeImportSuggestionRequest: z.toJSONSchema(
+          recipeImportSuggestionRequestSchema,
+          { target: 'openapi-3.0', io: 'input' }
+        ),
         LabMarker: {
           type: 'object',
           additionalProperties: false,
@@ -1551,6 +1577,38 @@ const options = {
                 'When true, food search defaults to the aggregated "All Providers" mode rather than a single provider. Held separately from default_food_data_provider_id, which is a uuid and cannot store the aggregated sentinel, so the single-provider choice survives turning this off. Ignored while fewer than two food providers are active.',
             },
           },
+        },
+        FeatureChoicesResponse: {
+          type: 'object',
+          required: ['feature_choices'],
+          additionalProperties: false,
+          properties: {
+            feature_choices: {
+              type: 'object',
+              required: ['web', 'mobile'],
+              additionalProperties: false,
+              description:
+                'Optional features the person turned on or off explicitly, one map per platform: web is the website on any screen, mobile is the native app with its watch pages and widgets. A feature not listed is at its default. Read and written only through /user-preferences/features.',
+              properties: {
+                web: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+                mobile: {
+                  type: 'object',
+                  additionalProperties: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        FeatureChoicesPlatformPatch: {
+          type: 'object',
+          minProperties: 1,
+          maxProperties: 64,
+          description:
+            'true or false sets a feature, null resets it to its default; features not sent keep their value.',
+          additionalProperties: { type: 'boolean', nullable: true },
         },
         OnboardingStatus: {
           type: 'object',

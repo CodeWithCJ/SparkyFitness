@@ -34,6 +34,8 @@ struct GoalSummaryView: View {
                 }
             }
             .padding(.horizontal, 2)
+            // The page dots sit over the bottom of the screen.
+            .padding(.bottom, WatchStyle.s(16))
         }
     }
 

@@ -139,7 +139,7 @@ export function useSymptomMutations(fromDate: string, toDate: string) {
  * date range, the ongoing-episode banner, and the cycle hub, which reads
  * cycle-source entries from the same table.
  */
-const invalidateEntries = (queryClient: QueryClient) => {
+export const invalidateSymptomEntryCaches = (queryClient: QueryClient) => {
   queryClient.invalidateQueries({ queryKey: symptomEntriesRootQueryKey });
   queryClient.invalidateQueries({ queryKey: symptomOngoingQueryKey });
   queryClient.invalidateQueries({ queryKey: ['symptoms', 'entry'] });
@@ -270,7 +270,7 @@ export function useSymptomActions() {
   const logEntry = useMutation({
     mutationFn: (body: CreateSymptomEntryBody) => logSymptomEntry(body),
     onSuccess: (data) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       if (data?.id && data.started_at && !data.ended_at) {
         void scheduleOngoingEpisodeNudge(
           data.id,
@@ -288,7 +288,7 @@ export function useSymptomActions() {
     mutationFn: ({ id, body }: { id: string; body: UpdateSymptomEntryBody }) =>
       patchSymptomEntry(id, body),
     onSuccess: (data) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       if (data?.id && data.ended_at) {
         void cancelOngoingEpisodeNudge(data.id);
       }
@@ -304,7 +304,7 @@ export function useSymptomActions() {
     mutationFn: ({ id, body }: { id: string; body: EndSymptomEpisodeBody }) =>
       endSymptomEpisode(id, body),
     onSuccess: (_data, variables) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       void cancelOngoingEpisodeNudge(variables.id);
     },
     onError: onError(
@@ -315,7 +315,7 @@ export function useSymptomActions() {
   const addSeverity = useMutation({
     mutationFn: ({ id, severity }: { id: string; severity: number }) =>
       addSymptomSeverity(id, severity),
-    onSuccess: () => invalidateEntries(queryClient),
+    onSuccess: () => invalidateSymptomEntryCaches(queryClient),
     onError: onError(
       t('symptoms.severityFailed', {
         defaultValue: 'Could not update severity',
@@ -326,7 +326,7 @@ export function useSymptomActions() {
   const removeEntry = useMutation({
     mutationFn: (id: string) => deleteSymptomEntry(id),
     onSuccess: (_data, id) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       void cancelOngoingEpisodeNudge(id);
     },
     onError: onError(

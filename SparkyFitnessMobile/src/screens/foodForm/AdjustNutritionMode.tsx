@@ -7,6 +7,7 @@ import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import Switch from '../../components/ui/Switch';
+import { ScanNutritionLabelButton } from './ScanNutritionLabelButton';
 import { usePreferences } from '../../hooks';
 import {
   useCreateFoodVariant,
@@ -66,9 +67,11 @@ type AdjustNutritionParams = Extract<
 export function AdjustNutritionMode({
   params,
   navigation,
+  routeKey,
 }: {
   params: AdjustNutritionParams;
   navigation: FoodFormScreenProps['navigation'];
+  routeKey: string;
 }) {
   const {
     initialValues,
@@ -686,9 +689,17 @@ export function AdjustNutritionMode({
         onSubmit={handleSubmit}
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
+        nutritionLabelScan={params.pendingNutritionLabelScan}
         submitLabel={SAVE_LABEL}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
+        headerChildren={
+          <ScanNutritionLabelButton
+            navigation={navigation}
+            returnKey={routeKey}
+            disabled={isSubmitting}
+          />
+        }
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={

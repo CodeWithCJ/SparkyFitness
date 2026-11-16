@@ -54,6 +54,7 @@ import {
 } from './schemas/exercise.js';
 import { optionalDateSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 // Unrecognized root-level keys that are safe to drop in the small-model
 // salvage: non-data-bearing flags/dates published on the shared flat input
@@ -209,6 +210,8 @@ interface ExerciseCopySource {
   name: string;
   category?: string | null;
   modality?: ExerciseModality | null;
+  /** Health activity type override (#1750); a copy keeps it. */
+  health_activity_type?: string | null;
   calories_per_hour?: number | null;
   description?: string | null;
   level?: string | null;
@@ -409,12 +412,13 @@ const EXERCISE_ENTRY_DROP: readonly string[] = [
   'sort_order',
 ];
 // exercise_entry_sets dumps (`SELECT *`): audit timestamps and per-set
-// completion timestamps are token noise for the chatbot.
+// start and completion timestamps are token noise for the chatbot.
 // `exercise_entry_id` is kept so the model can map sets back to their entry.
 const EXERCISE_SET_DROP: readonly string[] = [
   'created_at',
   'updated_at',
   'completed_at',
+  'started_at',
 ];
 // exercises catalog rows (sparky_list_exercises) — drop the redundant caller id
 // and audit columns; keep descriptive catalog fields.
@@ -793,7 +797,7 @@ export function buildExerciseTools(userId: string, tz: string) {
 
 Actions:
 - search_exercises(searchTerm, muscleGroup?, equipment?, limit?, offset?)
-- create_exercise(name, category?, calories_per_hour?, description?, modality?:weight_reps|reps_only|bodyweight_reps|weight_duration|weight_distance|duration|duration_distance)
+- create_exercise(name, category?, calories_per_hour?, description?, modality?:weight_reps|reps_only|bodyweight_reps|weight_duration|weight_distance|duration|duration_distance, health_activity_type?)
 - duplicate_exercise(exercise_id?|exercise_name?, name?) — copies any visible exercise (own, System or public) into a new private custom exercise, e.g. to make a variation; name defaults to "<original> (copy)"
 - log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,distance,rest_time,set_type,rpe,rir,notes}]) — distance/avg_heart_rate/steps are for cardio; rpe is effort 0-10, rir is reps in reserve (0 = failure)
 - list_exercise_diary(entry_date) — returns diary entries with sets and WOD scores
@@ -982,6 +986,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
                   calories_per_hour: args.calories_per_hour || 300,
                   description: args.description || null,
                   modality: args.modality,
+                  health_activity_type: args.health_activity_type,
                   is_custom: true,
                   shared_with_public: false,
                   source: 'manual',
@@ -1022,6 +1027,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
                 name: args.name ?? `${original.name} (copy)`,
                 category: original.category ?? 'general',
                 modality: original.modality ?? undefined,
+                health_activity_type: original.health_activity_type ?? null,
                 calories_per_hour: original.calories_per_hour ?? 0,
                 description: original.description ?? null,
                 level: original.level ?? null,
@@ -1091,7 +1097,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               // the server's manual same-exercise/same-date upsert.
               await exerciseService.createExerciseEntry(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 {
                   exercise_id: exerciseId,
                   entry_date: args.entry_date,
@@ -1113,7 +1119,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
 
             case 'list_exercise_diary': {
               const grouped = (await exerciseService.getExerciseEntriesByDate(
-                userId,
+                actorUserIdFor(userId),
                 userId,
                 args.entry_date
               )) as DiaryEntryItem[];
@@ -1372,7 +1378,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
 
               const session = await exerciseService.logWorkoutPresetGrouped(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 presetId,
                 args.entry_date,
                 options
@@ -1397,7 +1403,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               try {
                 await exerciseService.updateExerciseEntry(
                   userId,
-                  userId,
+                  actorUserIdFor(userId),
                   args.entry_id,
                   {
                     entry_date: args.entry_date,
@@ -1631,7 +1637,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               });
               const result = await getExerciseAlternatives(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 String(exercise.id),
                 {
                   mode: args.alternative_mode ?? 'similar',
@@ -1649,7 +1655,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               try {
                 const saved = await setWorkoutFeedbackForEntry(
                   userId,
-                  userId,
+                  actorUserIdFor(userId),
                   args.entry_id,
                   args.scope,
                   {
@@ -1748,7 +1754,7 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               }
               const result = await getWorkoutCoachingSignals(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 targets.map((target) => target.id),
                 null
               );

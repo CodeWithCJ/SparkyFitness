@@ -1007,7 +1007,6 @@
       "requirementMet": "✓ Uppfyllt",
       "daysMissing": "❌ Saknas ({{days}}/{{required}} dagar loggade)",
       "daysMet": "✓ Uppfyllt ({{days}}/{{required}} dagar loggade)",
-      "stabilityRequirement": "• Kaloriloggar för stabilt mål ({{required}}+ dagar ≥ 200 kcal)",
       "daysWarning": "⚠️ Saknas ({{days}}/{{required}} dagar loggade)",
       "usingFallbackBmr": "Använder reserv-BMR × aktivitetsfaktor:",
       "fallbackMath": "Uträkning: BMR ({{bmr}} kcal) × aktivitetsfaktor ({{multiplier}}) = {{result}} {{unit}}",

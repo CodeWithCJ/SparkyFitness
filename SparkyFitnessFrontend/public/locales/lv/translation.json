@@ -1283,7 +1283,6 @@
       "title": "Alerģiju preferences"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dinamiski pielāgo jūsu dienas mērķi, pamatojoties uz jūsu faktisko metabolismu. Nepieciešama regulāra pārtikas un svara izsekošana augstai precizitātei.",
       "burnedActivity": "Aktivitāte (tikai vingrojumi un soļi)",
       "burnedBmr": "Aktivitāte + BMR (jūsu pamata metabolisms)",
       "burnedTitle": "Nodedzinātās kalorijas",
@@ -1444,9 +1443,6 @@
       "unsafeGainText": "Svara pieaugums, kas pārsniedz 0,5 % nedēļā, nozīmē, ka lielākā daļa no pieņemtajā svara būs tauki, nevis muskuļi. Lēnāks svara pieaugums nodrošina līdzīgu muskuļu apjomu, bet ar daudz mazāku tauku uzkrāšanos.",
       "unsafeLossTitle": "Pārāk ātrs svara zuduma ātrums",
       "unsafeLossText": "Svara zudēšana, kas pārsniedz 1,5% nedēļā, tiek uzskatīta par pārmērīgu. Šāda ātra svara zudēšana ievērojami palielina risku saslimt ar nopietnām muskuļu zudēšanas, letarģijas, hormonālo nelīdzsvarotību un uzturvielu deficīta problēmām. Lūdzu, izvēlieties mazāk agresīvu mērķa režīmu.",
-      "calibrationDescription": "Sparky adaptīvajam TDEE aprēķināšanas rīkam ir nepieciešams vismaz {{required}} dienu ilgs konsekvents datu ievadīšanas periods, lai precīzi aprēķinātu jūsu vielmaiņu (šobrīd tiek izmantoti standarta aprēķini). Lai paātrinātu kalibrēšanu:",
-      "calibrationWeightTip": "Reģistrējiet savu svaru vismaz 3–4 reizes nedēļā.",
-      "calibrationFoodTip": "Katru dienu reģistrējiet uzņemto ēdienu (>200 kcal/dienā).",
       "livePreviewSavedNote": "BMR un ķermeņa tauku saturs atjauninās, mainot iestatījumus. Iztēriņš tiek aprēķināts serverī, izmantojot jūsu saglabātos iestatījumus, tāpēc tas un galīgais mērķis mainīsies tikai pēc saglabāšanas."
     },
     "mfa": {
@@ -2078,7 +2074,6 @@
       "calorieLogRequirement": "• Kaloriju žurnāls TDEE aprēķināšanai (7+ dienas ≥ 200 kcal)",
       "daysMissing": "❌ Trūkst ({{days}}/{{required}} reģistrētas dienas)",
       "daysMet": "✓ Sasniegts ({{dienas}}/{{nepieciešamais}} reģistrēto dienu skaits)",
-      "stabilityRequirement": "• Kaloriju žurnāls, lai nodrošinātu mērķa budžeta stabilitāti ({{required}}+ dienas ≥ 200 kcal)",
       "daysWarning": "⚠️ Trūkst ({{days}}/{{required}} reģistrētas dienas)",
       "usingFallbackBmr": "Izmantojot rezerves BMR × aktivitātes koeficientu:",
       "fallbackMath": "Aprēķins: BMR ({{bmr}} kcal) × aktivitātes koeficients ({{multiplier}}) = {{result}} {{unit}}",

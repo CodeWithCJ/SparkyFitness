@@ -671,6 +671,9 @@ const EditExerciseEntryDialog = ({
     setSets((prev) => {
       const lastSet = prev[prev.length - 1] ?? {
         ...defaultSetForModality(modality),
+        notes: null,
+        is_pr: false,
+        completed_at: null,
         _dndId: uuidv4(),
       };
       return [
@@ -825,6 +828,12 @@ const EditExerciseEntryDialog = ({
           sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
             weight: set.weight ?? null,
+            reps: set.reps ?? null,
+            rest_time: set.rest_time ?? null,
+            duration: set.duration ?? null,
+            rpe: set.rpe ?? null,
+            rir: set.rir ?? null,
+            distance: set.distance ?? null,
             ...(cardioSetValues ?? {}),
           })),
           imageFile,

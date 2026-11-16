@@ -6,6 +6,8 @@ export interface Exercise {
   category: string | null;
   /** Absent/null on pre-modality servers; resolve via `resolveSnapshotModality`. */
   modality?: ExerciseModality | null;
+  /** Health activity type override (#1750); null/absent is Automatic. */
+  health_activity_type?: string | null;
   equipment: string[];
   primary_muscles: string[];
   secondary_muscles: string[];

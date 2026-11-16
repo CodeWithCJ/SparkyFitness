@@ -1616,5 +1616,10 @@
       "ring14Day": "14-денний",
       "noScheduledToday": "На сьогодні дози не передбачені."
     }
+  },
+  "barcodeLookup": {
+    "title": "Результати штрихкоду",
+    "fallback": "Резерв",
+    "basis": "на {{quantity}} {{unit}}"
   }
 }

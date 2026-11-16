@@ -186,14 +186,74 @@ export interface CsvImportOutcome<T = unknown> {
 // ── Header-mapping suggestion, shared by every importer's mapping dialog ───
 
 const normalizeHeader = (h: string): string =>
-  h.toLowerCase().replace(/[_ ]/g, '');
+  h
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '') // strip parenthetical units: "Protein (g)" -> "Protein"
+    .replace(/[^a-z0-9]/g, ''); // strip whitespace + punctuation, keep letters+digits
+
+// The parenthetical unit a header carries, lower-cased ("Fat (kcal)" -> "kcal"),
+// or undefined when there is none. Matching strips it (see normalizeHeader), so
+// this is the only place the unit survives — it must be checked here, not lost.
+const extractUnit = (h: string): string | undefined => {
+  const m = h.match(/\(([^)]*)\)/);
+  return m?.[1]?.trim().toLowerCase();
+};
+
+// Parenthetical units that denote energy rather than mass. A mass-based
+// nutrient field (fat, protein, carbs, ...) must never be bound to an
+// energy-labelled column: the unit is stripped during matching, so without
+// this check "Fat (kcal)" would silently store an energy value as grams.
+const ENERGY_UNITS = new Set([
+  'kcal',
+  'cal',
+  'kcals',
+  'cals',
+  'kj',
+  'kilocalorie',
+  'kilocalories',
+  'joules',
+  'kilojoules',
+  'joule',
+  'kilojoule',
+  'j',
+]);
+// Energy units that are kilocalorie-equivalent. The energy fields store kcal,
+// so a kJ/joule-labelled column must not bind to them without conversion.
+const KCAL_UNITS = new Set([
+  'kcal',
+  'cal',
+  'kcals',
+  'cals',
+  'kilocalorie',
+  'kilocalories',
+]);
+// The only fields that are themselves energy and thus accept an energy unit.
+const ENERGY_FIELDS = new Set(['calories', 'energy']);
+
+/**
+ * Known aliases for required headers, keyed by the normalized required header.
+ * Values are normalized alias forms. Covers vendor exports that name a field
+ * differently than the template (e.g. MFP "Carbohydrates" -> "carbs",
+ * "Fiber" -> "dietary_fiber", "Date" -> "entry_date"). Scoped per required
+ * header, so a file header that collides across importers (e.g. "Date") never
+ * cross-matches: it only matches whichever required header is present.
+ */
+const HEADER_ALIASES: Record<string, string[]> = {
+  entrydate: ['date'],
+  mealtype: ['meal'],
+  carbs: ['carbohydrates', 'carb'],
+  dietaryfiber: ['fiber'],
+  sugars: ['sugar'],
+  exercisename: ['exercise'],
+};
 
 /**
  * Best-effort initial guess at which file column corresponds to each
  * required header, for pre-filling a header-mapping dialog. Matches by
- * normalized name (case/underscore/space-insensitive) only — never guesses
- * from position or content, so an unmatched required header is left
- * unmapped rather than silently bound to the wrong column.
+ * normalized name (case/underscore/space/punctuation-insensitive, plus a
+ * per-field alias table) — never guesses from position or content, so an
+ * unmatched required header is left unmapped rather than silently bound to
+ * the wrong column.
  */
 export function suggestHeaderMapping(
   requiredHeaders: string[],
@@ -202,10 +262,38 @@ export function suggestHeaderMapping(
   const mapping: Record<string, string> = {};
   for (const required of requiredHeaders) {
     const normalizedRequired = normalizeHeader(required);
-    const match = fileHeaders.find(
-      (h) => normalizeHeader(h) === normalizedRequired
-    );
-    if (match) mapping[required] = match;
+    const aliases = HEADER_ALIASES[normalizedRequired] ?? [];
+    const isEnergyField = ENERGY_FIELDS.has(normalizedRequired);
+    const matches = fileHeaders.filter((h) => {
+      const nh = normalizeHeader(h);
+      if (!(nh === normalizedRequired || aliases.includes(nh))) return false;
+      // Reject a column whose parenthetical unit doesn't match the field's
+      // expected unit. The unit is stripped during name matching, so without
+      // this guard the sole candidate would be bound and the value stored in
+      // the wrong unit: a mass field (gram-based "fat") must never take an
+      // energy-labelled column ("Fat (kcal)"), and the energy fields (stored
+      // in kcal) must not take a kJ/joule column ("Calories (kJ)").
+      const unit = extractUnit(h);
+      if (unit && ENERGY_UNITS.has(unit)) {
+        if (!isEnergyField) return false;
+        if (!KCAL_UNITS.has(unit)) return false;
+      }
+      return true;
+    });
+    if (matches.length === 1) {
+      mapping[required] = matches[0] as string;
+      continue;
+    }
+    if (matches.length > 1) {
+      // Several columns normalize to the same required header (e.g. "Fat (g)"
+      // and "Fat (kcal)" both -> "fat"). Prefer the one without a parenthetical
+      // unit — the canonical column — and leave the header unmapped when
+      // several are equally ambiguous, honoring the "never silently bound to
+      // the wrong column" guarantee above.
+      const clean = matches.filter((h) => !h.includes('('));
+      const cleanMatch = clean.length === 1 ? clean[0] : undefined;
+      if (cleanMatch !== undefined) mapping[required] = cleanMatch;
+    }
   }
   return mapping;
 }

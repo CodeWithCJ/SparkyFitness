@@ -1,4 +1,9 @@
 import i18n from 'i18next';
+import type {
+  McpServerOptions,
+  McpServerToolsRequest,
+  McpServerToolsResponse,
+} from '@workspace/shared';
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall, HttpApiError } from '@/api/api';
 import { DataProvider } from '@/types/settings';
@@ -674,7 +679,13 @@ export const handleDisconnectLiftosaur = async (providerId?: string) => {
 
 const fetchIntervalsStatus = async (
   providerId: string
-): Promise<{ connected: boolean; lastSyncAt: string | null }> => {
+): Promise<{
+  connected: boolean;
+  lastSyncAt: string | null;
+  pushNutrition: boolean;
+  pushedDays: number;
+  pushedSince: string | null;
+}> => {
   return apiCall(
     `/integrations/intervals/status?providerId=${encodeURIComponent(providerId)}`
   );
@@ -786,6 +797,9 @@ export const getEnrichedProviders = async (): Promise<
               ? 'connected'
               : 'disconnected';
             enriched.intervals_last_sync_at = status.lastSyncAt;
+            enriched.intervals_push_nutrition = status.pushNutrition;
+            enriched.intervals_pushed_days = status.pushedDays;
+            enriched.intervals_pushed_since = status.pushedSince;
             break;
           }
           case 'strava': {
@@ -871,6 +885,7 @@ export interface CreateGlobalProviderPayload {
   app_key?: string | null;
   base_url?: string | null;
   is_active: boolean;
+  provider_options?: McpServerOptions;
 }
 
 export const getGlobalExternalProviders = async (): Promise<
@@ -897,6 +912,17 @@ export const updateGlobalExternalProvider = async (
   return apiCall(`/admin/external-data-providers/global/${providerId}`, {
     method: 'PUT',
     body: JSON.stringify(providerData),
+  });
+};
+
+// The form shows why the tools could not be loaded, so no toast.
+export const listMcpServerTools = async (
+  request: McpServerToolsRequest
+): Promise<McpServerToolsResponse> => {
+  return apiCall('/admin/external-data-providers/mcp-server/tools', {
+    method: 'POST',
+    body: JSON.stringify(request),
+    suppressErrorToast: true,
   });
 };
 

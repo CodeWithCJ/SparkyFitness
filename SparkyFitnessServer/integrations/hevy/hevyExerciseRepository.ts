@@ -1,5 +1,5 @@
 import { getClient } from '../../db/poolManager.js';
-import type { QueryResult } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
 
 export interface HevyLibraryExercise {
   id: string;
@@ -12,9 +12,10 @@ export interface HevyLibraryExercise {
 async function findOwnedByName(
   userId: string,
   name: string,
-  includeLinkedHevy = false
+  includeLinkedHevy = false,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -25,7 +26,7 @@ async function findOwnedByName(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -51,9 +52,10 @@ async function findTemplateIdsWithMuscles(
 
 async function findByTemplateId(
   userId: string,
-  templateId: string
+  templateId: string,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -63,7 +65,7 @@ async function findByTemplateId(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -72,10 +74,12 @@ async function fillMissingMuscles(
   exerciseId: string,
   templateId: string,
   primary: readonly string[],
-  secondary: readonly string[]
+  secondary: readonly string[],
+  existingClient?: PoolClient
 ): Promise<void> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
+    if (existingClient) await client.query('SAVEPOINT hevy_muscle_metadata');
     // Fill empty legacy columns in the same write that claims the template id.
     // Testing emptiness in SQL preserves edits committed while a sync is fetching.
     await client.query(
@@ -100,16 +104,25 @@ async function fillMissingMuscles(
         userId,
       ]
     );
+    if (existingClient)
+      await client.query('RELEASE SAVEPOINT hevy_muscle_metadata');
+  } catch (error) {
+    if (existingClient) {
+      await client.query('ROLLBACK TO SAVEPOINT hevy_muscle_metadata');
+      await client.query('RELEASE SAVEPOINT hevy_muscle_metadata');
+    }
+    throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
 async function findLegacyByName(
   userId: string,
-  name: string
+  name: string,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -120,7 +133,7 @@ async function findLegacyByName(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 

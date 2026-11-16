@@ -29,6 +29,12 @@ import {
   type WritebackDateRange,
   type WritebackRemovalResult,
 } from '../../WritebackMetrics';
+import {
+  EXERCISE_FILTER_OWN_PREF,
+  removeExerciseData,
+  writeExerciseForDate,
+} from './exerciseWriteback';
+import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -125,18 +131,15 @@ const recordsSignature = (records: HealthConnectRecord[]): string => {
   return hashString(projections.join('|'));
 };
 
+type GrantedPermission = { recordType?: string; accessType?: string };
+
 // Active metrics that also hold a granted write permission. getGrantedPermissions is
 // queried once per run, not per metric/date.
-const writableMetrics = async (
-  metrics: WritebackMetric[]
-): Promise<WritebackMetric[]> => {
-  let granted: { recordType?: string; accessType?: string }[];
-  try {
-    granted = await getGrantedPermissions();
-  } catch {
-    return [];
-  }
-  return metrics.filter((m) => {
+const writableMetrics = (
+  metrics: WritebackMetric[],
+  granted: GrantedPermission[]
+): WritebackMetric[] =>
+  metrics.filter((m) => {
     const ok = granted.some(
       (p) => p.recordType === m.recordType && p.accessType === 'write'
     );
@@ -147,7 +150,6 @@ const writableMetrics = async (
       );
     return ok;
   });
-};
 
 const writeNutritionForDate = async (
   date: string,
@@ -288,11 +290,22 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   const active = WRITEBACK_METRICS.filter((_, i) => enabled[i] === true);
   if (active.length === 0) return true;
 
-  const writable = await writableMetrics(active);
+  let granted: GrantedPermission[];
+  try {
+    granted = await getGrantedPermissions();
+  } catch {
+    return true;
+  }
+  const writable = writableMetrics(active, granted);
   if (writable.length === 0) return true;
 
   // Also the clientRecordId suffix, so each run writes fresh ids (see writebackMappers).
   const version = Date.now();
+
+  // Exercise needs the profile zone and the weight unit; loaded once per run.
+  const exerciseContext = writable.some((m) => m.id === 'exercise')
+    ? await loadExerciseWritebackContext()
+    : null;
 
   for (const date of dates) {
     let summary: DailySummary;
@@ -309,6 +322,19 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
       try {
         if (metric.id === 'nutrition') {
           await writeNutritionForDate(date, summary, version);
+        } else if (metric.id === 'exercise') {
+          if (exerciseContext) {
+            await writeExerciseForDate(
+              date,
+              summary.exerciseSessions ?? [],
+              version,
+              {
+                ...exerciseContext,
+                bmrKcalPerDay: summary.calorieBalance?.bmr ?? null,
+                granted,
+              }
+            );
+          }
         } else {
           await writeHydrationForDate(date, summary, version);
         }
@@ -383,7 +409,8 @@ export const removeWrittenData = async (
   const recordTypes = Array.from(
     new Set(
       WRITEBACK_METRICS.map((m) => m.recordType).filter(
-        (t): t is 'Nutrition' | 'Hydration' => t !== 'Toothbrushing'
+        (t): t is 'Nutrition' | 'Hydration' =>
+          t === 'Nutrition' || t === 'Hydration'
       )
     )
   );
@@ -395,7 +422,11 @@ export const removeWrittenData = async (
       }
     : { operator: 'before' as const, endTime: new Date().toISOString() };
 
-  let ok = true;
+  // Exercise write-back writes sessions plus energy and distance records.
+  const exerciseRemoved = WRITEBACK_METRICS.some((m) => m.id === 'exercise')
+    ? await removeExerciseData(filter)
+    : true;
+  let ok = exerciseRemoved;
   for (const recordType of recordTypes) {
     try {
       await deleteRecordsByTimeRange(recordType, filter);
@@ -409,13 +440,21 @@ export const removeWrittenData = async (
   }
 
   const keys = await AsyncStorage.getAllKeys();
-  const toClear = trackingKeysToClear(keys, range);
+  // When removing written workouts failed, keep their per-day id lists: they
+  // are what the next sync deletes before rewriting a day, so dropping them
+  // would leave the surviving records beside new copies. Signatures are still
+  // cleared, so that sync re-checks the day.
+  const toClear = trackingKeysToClear(keys, range).filter(
+    (k) => exerciseRemoved || !/writebackExercise\w+Ids:/.test(k)
+  );
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
   if (!range) {
     await Promise.all(
       WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false))
     );
+    // Nothing written is left, so the daily totals stop filtering for it.
+    if (ok) await saveHealthPreference(EXERCISE_FILTER_OWN_PREF, false);
   }
 
   addLog(

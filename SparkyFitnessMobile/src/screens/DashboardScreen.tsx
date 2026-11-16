@@ -78,12 +78,14 @@ import {
   labMarkersQueryKey,
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
+import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
   useMindfulnessMutations,
 } from '../hooks/useMindfulness';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { HealthTrendDateRange } from '../types/healthTrends';
@@ -162,6 +164,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   );
   const usesNativeTabs = useNativeIOSTabsActive();
   const insets = useSafeAreaInsets();
+  // The system's own vertical bar, not just side insets: a notched iPhone in
+  // landscape has insets and keeps horizontal bars.
+  const verticalBar = useVerticalBar();
+  // A live activity lengthens the status cluster in a side-bar pose and can
+  // push the date buttons onto the Add button; then only the calendar stays.
+  const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const datePastColor =
     (useCSSVariable('--color-date-past') as string) || '#f97316';
@@ -188,6 +196,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         dateTintColor,
+        compactCalendarButton: verticalBar,
+        collapseToCalendar: dateColumnCollapsed,
         accessibilityLabel: t('dashboard.chooseDate', {
           defaultValue: 'Choose dashboard date',
         }),
@@ -212,6 +222,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectedDate,
     t,
     usesNativeTabs,
+    verticalBar,
+    dateColumnCollapsed,
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -548,6 +560,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
+          // Room under the large title when a side bar is present.
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 0,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}

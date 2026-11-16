@@ -44,6 +44,10 @@ export function invalidateExerciseCache(
   void queryClient.invalidateQueries({
     queryKey: [...workoutSessionQueryKeyRoot],
   });
+  // A cardio session read from the list or already open (distance, stride,
+  // effort, pace series) and the trends built from the same entries.
+  void queryClient.invalidateQueries({ queryKey: ['cardioSessionDetail'] });
+  void queryClient.invalidateQueries({ queryKey: ['cardioSessions'] });
   void queryClient.invalidateQueries({
     queryKey: ['activeWorkoutPlan'],
   });

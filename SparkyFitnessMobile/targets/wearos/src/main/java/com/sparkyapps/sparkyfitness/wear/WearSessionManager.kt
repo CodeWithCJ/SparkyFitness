@@ -24,14 +24,15 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.google.android.gms.wearable.DataClient
+import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.WearableListenerService
+import com.SparkyApps.SparkyFitnessMobile.R
+import kotlinx.coroutines.CoroutineScope
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.Wearable
-import com.google.android.gms.wearable.WearableListenerService
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -719,7 +720,7 @@ class WorkoutSensorForegroundService : Service() {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm != null) {
         val channel = NotificationChannel(
           CHANNEL_ID,
-          "Workout Tracking",
+          getString(R.string.notification_channel_workout_tracking),
           NotificationManager.IMPORTANCE_LOW
         ).apply {
           setShowBadge(false)
@@ -742,8 +743,11 @@ class WorkoutSensorForegroundService : Service() {
         Notification.Builder(this)
       }
       val notification = builder
-        .setContentTitle("SparkyFitness")
-        .setContentText(if (enableGps) "Recording run & heart rate" else "Recording workout")
+        .setContentTitle(getString(R.string.app_name))
+        .setContentText(
+          if (enableGps) getString(R.string.notification_recording_run_hr)
+          else getString(R.string.notification_recording_workout)
+        )
         .setSmallIcon(android.R.drawable.ic_menu_compass)
         .setContentIntent(pi)
         .setOngoing(true)

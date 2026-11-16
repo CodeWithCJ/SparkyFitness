@@ -20,6 +20,7 @@ import { SET_ACCESSORY_BAR_HEIGHT } from '../../src/components/SetRowChrome';
 import type { ActionSheetItem } from '../../src/components/ActionSheet';
 import type { PresetSessionResponse } from '@workspace/shared';
 import { getActiveServerConfig } from '../../src/services/storage';
+import { getWorkout, updateWorkout } from '../../src/services/api/exerciseApi';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
@@ -53,6 +54,18 @@ jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
     flush: jest.fn(async () => true),
   })),
 }));
+
+// #1995 phase 1: the finish flow stamps the lifecycle end with a
+// finished_at-only PUT after the final flush; keep it off the network here.
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  getWorkout: jest.fn(),
+  updateWorkout: jest.fn(async () => null),
+  deleteWorkout: jest.fn(),
+}));
+const mockGetWorkout = getWorkout as jest.MockedFunction<typeof getWorkout>;
+const mockUpdateWorkout = updateWorkout as jest.MockedFunction<
+  typeof updateWorkout
+>;
 
 jest.mock('../../src/hooks/useSelectedExercise', () => ({
   useSelectedExercise: jest.fn(),
@@ -419,6 +432,7 @@ function makeSession(): PresetSessionResponse {
     description: null,
     notes: null,
     source: 'sparky',
+    revision: 1,
     total_duration_minutes: 60,
     activity_details: [],
     exercises: [
@@ -932,6 +946,21 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
       expect(bar().queryByText('Log')).toBeTruthy();
     });
 
+    it('keeps the keyboard closed when "Focus the next set when a rest ends" is off (#3581)', () => {
+      useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+      const { getByTestId } = renderScreen();
+      const bar = () =>
+        within(
+          getByTestId('set-accessory-sticky', { includeHiddenElements: true })
+        );
+
+      expireRest();
+
+      expect(bar().queryByText('Next')).toBeNull();
+      expect(bar().queryByText('Log')).toBeNull();
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+    });
+
     describe('in the focus view', () => {
       beforeEach(() => {
         useAppPreferencesStore.getState().setActiveWorkoutView('focus');
@@ -966,6 +995,23 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
 
         expect(bar().queryByText('Next')).toBeTruthy();
         expect(bar().queryByText('Log')).toBeTruthy();
+      });
+
+      it('leaves a mounted on-deck set alone when the setting is off (#3581)', () => {
+        useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+        const { getByTestId } = renderScreen();
+        const bar = () =>
+          within(
+            getByTestId('set-accessory-sticky', {
+              includeHiddenElements: true,
+            })
+          );
+        fireEvent.press(getByTestId('focus-mount-102'));
+
+        expireRest();
+
+        expect(bar().queryByText('Next')).toBeNull();
+        expect(bar().queryByText('Log')).toBeNull();
       });
     });
 
@@ -1269,6 +1315,23 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
       lastAlertButton('End Workout').onPress?.();
     });
   }
+
+  it('fetches the server revision before the finish stamp when a restored session lacks one', async () => {
+    mockGetWorkout.mockResolvedValue({ ...makeSession(), revision: 3 });
+    useActiveWorkoutStore.getState().startWorkout({
+      ...makeSession(),
+      revision: null,
+    } as any);
+    act(() => useActiveWorkoutStore.getState().completeSet('102'));
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    expect(mockGetWorkout).toHaveBeenCalledWith('session-1');
+    expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+    expect(mockUpdateWorkout.mock.calls[0][1].revision).toBe(3);
+    expect(navigation.replace).toHaveBeenCalledTimes(1);
+  });
 
   it('replaces to WorkoutComplete with a snapshot taken before clearing the store', async () => {
     useActiveWorkoutStore.getState().startWorkout(makeSession(), {

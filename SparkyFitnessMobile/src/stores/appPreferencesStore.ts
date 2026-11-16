@@ -45,6 +45,8 @@ import {
   WATCH_PAGE_KEYS,
   type WatchPageKey,
   type WatchSetInputStyle,
+  type WatchWorkoutCountdown,
+  type WatchWorkoutTopLine,
 } from '../constants/watchPages';
 import {
   DEFAULT_REPORT_NUTRIENTS,
@@ -56,10 +58,14 @@ import {
 import type { LanguagePreference } from '../localization';
 import type { TrendRange } from '../utils/trendRange';
 import type { OwnershipFilter } from '../utils/shareStatus';
+import {
+  clampTreadmillPercent,
+  type TreadmillCorrection,
+} from '../utils/treadmillCorrection';
 import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
 
 /**
  * Legacy per-key AsyncStorage entries that existed before this store was
@@ -143,12 +149,16 @@ export const PREFERENCE_DEFAULTS = {
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
+  treadmillCorrectionEnabled: false,
+  treadmillCorrectionPercent: 0,
   paceReferenceRace: null as PaceReferenceRace | null,
   paceReferenceOnWatch: false,
   restTimerSoundEnabled: true,
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
+  focusNextSetOnRestEnd: true,
+  plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
   warmupPlateRounding: { ...DEFAULT_WARMUP_PLATE_ROUNDING },
@@ -171,7 +181,10 @@ export const PREFERENCE_DEFAULTS = {
   watchSetScreenMetrics: true,
   watchUpNextPage: false,
   watchLargerText: false,
-  watchClassicWorkout: false,
+  watchNewWorkout: false,
+  watchWorkoutCountdown: 3 as WatchWorkoutCountdown,
+  watchHoldCountdown: true,
+  watchWorkoutTopLine: 'time' as WatchWorkoutTopLine,
   activeWorkoutNowCard: false,
   activeWorkoutView: 'list' as ActiveWorkoutView,
   focusMediaDefault: 'expanded' as FocusMediaDefault,
@@ -241,6 +254,13 @@ export type AppPreferencesData = {
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
   /**
+   * Treadmill display correction (device-local): when on, a distance typed or
+   * read from a treadmill is divided by `1 + percent / 100` before it is stored.
+   */
+  treadmillCorrectionEnabled: boolean;
+  /** How far the treadmill display reads over (positive) or under (negative) the true distance. */
+  treadmillCorrectionPercent: number;
+  /**
    * A recent race result the training paces are worked out from (device-local),
    * or null to use the pace of recent sessions.
    */
@@ -260,6 +280,19 @@ export type AppPreferencesData = {
    */
   duckMusicDuringCues: boolean;
   workoutKeepAwakeEnabled: boolean;
+  /**
+   * When a rest runs out on its own, put the cursor in the next set's first
+   * value cell and open the keyboard (#3581). On by default; off keeps the
+   * keyboard closed and the next set just becomes the active one.
+   */
+  focusNextSetOnRestEnd: boolean;
+  /**
+   * Live workouts started from a plan or saved workout show its planned
+   * values as placeholders before last session's (#3417). Read once at live
+   * start. Off by default: placeholders follow the last session and
+   * progression.
+   */
+  plannedValuesAsPlaceholders: boolean;
   /** Offer "Add warm-ups" on an exercise's menu. */
   warmupCalculatorEnabled: boolean;
   /** The warm-up ramp: percent of the working weight x reps, ascending. */
@@ -320,10 +353,15 @@ export type AppPreferencesData = {
   watchSetScreenMetrics: boolean;
   /** Whether the watch workout has the Up Next page after the set screen. */
   watchUpNextPage: boolean;
-  /** Whether the watch's Goals and Water pages use the larger-text layout. */
+  /** Whether the watch uses larger text. */
   watchLargerText: boolean;
-  /** Keep the original workout page while larger text is on. */
-  watchClassicWorkout: boolean;
+  /** Whether the watch workout uses the new workout view. */
+  watchNewWorkout: boolean;
+  /** Seconds of audible countdown before a rest or hold ends. 0 is off. */
+  watchWorkoutCountdown: WatchWorkoutCountdown;
+  watchHoldCountdown: boolean;
+  /** What the new workout view's top line shows first. */
+  watchWorkoutTopLine: WatchWorkoutTopLine;
   /** Whether the active workout pins the Now card under the exercise rail. */
   activeWorkoutNowCard: boolean;
   /** Active workout layout: every exercise in one list, or one at a time. */
@@ -395,10 +433,14 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDefaultRestSec: (value: number) => void;
   setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
   setPaceReferenceOnWatch: (value: boolean) => void;
+  setTreadmillCorrectionEnabled: (value: boolean) => void;
+  setTreadmillCorrectionPercent: (value: number) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setFocusNextSetOnRestEnd: (value: boolean) => void;
+  setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
   setWarmupPlateRounding: (unit: 'kg' | 'lbs', value: number) => void;
@@ -430,7 +472,10 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWatchSetScreenMetrics: (value: boolean) => void;
   setWatchUpNextPage: (value: boolean) => void;
   setWatchLargerText: (value: boolean) => void;
-  setWatchClassicWorkout: (value: boolean) => void;
+  setWatchNewWorkout: (value: boolean) => void;
+  setWatchWorkoutCountdown: (value: WatchWorkoutCountdown) => void;
+  setWatchHoldCountdown: (value: boolean) => void;
+  setWatchWorkoutTopLine: (value: WatchWorkoutTopLine) => void;
   setActiveWorkoutNowCard: (value: boolean) => void;
   setActiveWorkoutView: (value: ActiveWorkoutView) => void;
   setFocusMediaDefault: (value: FocusMediaDefault) => void;
@@ -455,8 +500,20 @@ export interface AppPreferencesState extends AppPreferencesData {
  */
 const legacyAwareStorage = {
   getItem: async (name: string): Promise<string | null> => {
+    // A failing AsyncStorage read rejects here and is reported by the persist
+    // layer; only malformed content is recovered from below.
     const stored = await AsyncStorage.getItem(name);
-    if (stored !== null) return stored;
+    if (stored !== null) {
+      try {
+        JSON.parse(stored);
+        return stored;
+      } catch {
+        // Corrupt blob: drop it so hydration completes with the defaults
+        // instead of rejecting on every launch.
+        await AsyncStorage.removeItem(name);
+        return null;
+      }
+    }
 
     // No combined key yet — check whether any legacy per-key values exist.
     const entries = await Promise.all(
@@ -494,6 +551,10 @@ function withMembership<K>(list: readonly K[], key: K, include: boolean): K[] {
   }
   return Array.from(members);
 }
+
+/** Set when the persist layer reports a storage error while hydrating. */
+let hydrationFailed = false;
+const hydrationFailureListeners = new Set<() => void>();
 
 export const useAppPreferencesStore = create<AppPreferencesState>()(
   persist(
@@ -568,6 +629,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
       setPaceReferenceOnWatch: (value) => set({ paceReferenceOnWatch: value }),
+      setTreadmillCorrectionEnabled: (value) =>
+        set({ treadmillCorrectionEnabled: value }),
+      setTreadmillCorrectionPercent: (value) =>
+        set({ treadmillCorrectionPercent: clampTreadmillPercent(value) }),
       setRestTimerSoundEnabled: (value) =>
         set({ restTimerSoundEnabled: value }),
       setRestChimeThroughSilent: (value) =>
@@ -575,6 +640,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
+      setFocusNextSetOnRestEnd: (value) =>
+        set({ focusNextSetOnRestEnd: value }),
+      setPlannedValuesAsPlaceholders: (value) =>
+        set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
         set({ warmupCalculatorEnabled: value }),
       setWarmupMethod: (steps) =>
@@ -705,7 +774,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ watchSetScreenMetrics: value }),
       setWatchUpNextPage: (value) => set({ watchUpNextPage: value }),
       setWatchLargerText: (value) => set({ watchLargerText: value }),
-      setWatchClassicWorkout: (value) => set({ watchClassicWorkout: value }),
+      setWatchNewWorkout: (value) => set({ watchNewWorkout: value }),
+      setWatchWorkoutCountdown: (value) =>
+        set({ watchWorkoutCountdown: value }),
+      setWatchHoldCountdown: (value) => set({ watchHoldCountdown: value }),
+      setWatchWorkoutTopLine: (value) => set({ watchWorkoutTopLine: value }),
       setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
       setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
       setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
@@ -736,6 +809,12 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       name: STORE_KEY,
       version: STORE_VERSION,
       storage: createJSONStorage(() => legacyAwareStorage),
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          hydrationFailed = true;
+          hydrationFailureListeners.forEach((listener) => listener());
+        }
+      },
       partialize: (state) => ({
         hapticsEnabled: state.hapticsEnabled,
         soundsEnabled: state.soundsEnabled,
@@ -782,12 +861,16 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
+        treadmillCorrectionEnabled: state.treadmillCorrectionEnabled,
+        treadmillCorrectionPercent: state.treadmillCorrectionPercent,
         paceReferenceRace: state.paceReferenceRace,
         paceReferenceOnWatch: state.paceReferenceOnWatch,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        focusNextSetOnRestEnd: state.focusNextSetOnRestEnd,
+        plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
         warmupMethod: state.warmupMethod,
         warmupPlateRounding: state.warmupPlateRounding,
@@ -810,7 +893,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         watchSetScreenMetrics: state.watchSetScreenMetrics,
         watchUpNextPage: state.watchUpNextPage,
         watchLargerText: state.watchLargerText,
-        watchClassicWorkout: state.watchClassicWorkout,
+        watchNewWorkout: state.watchNewWorkout,
+        watchWorkoutCountdown: state.watchWorkoutCountdown,
+        watchHoldCountdown: state.watchHoldCountdown,
+        watchWorkoutTopLine: state.watchWorkoutTopLine,
         activeWorkoutNowCard: state.activeWorkoutNowCard,
         activeWorkoutView: state.activeWorkoutView,
         focusMediaDefault: state.focusMediaDefault,
@@ -845,10 +931,20 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         }
         // v0 → v1: state was populated from legacy per-key storage by the custom
         // storage adapter. Field names are unchanged; apply defaults for any gaps.
-        return {
+        // v1 → v2: the original workout page switch became the new workout view
+        // switch. Anyone with larger text on and the original page off (the
+        // larger-text workout page) gets the new view; larger text itself stays
+        // its own setting. The countdown settings take their defaults.
+        const { watchClassicWorkout, ...rest } = {
           ...PREFERENCE_DEFAULTS,
           ...(persistedState as Partial<AppPreferencesData>),
-        } as AppPreferencesState;
+        } as Partial<AppPreferencesData> & { watchClassicWorkout?: boolean };
+        const state = {
+          ...rest,
+          watchNewWorkout:
+            rest.watchLargerText === true && !watchClassicWorkout,
+        };
+        return state as AppPreferencesState;
       },
     }
   )
@@ -862,6 +958,38 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
  */
 export function getDefaultRestSec(): number {
   return useAppPreferencesStore.getState().defaultRestSec;
+}
+
+/**
+ * Resolves once the persisted preferences have been read from storage. A slow
+ * read keeps the caller waiting; it resolves early only when the persist layer
+ * reports a storage error, so a failure cannot block the caller and the
+ * defaults are used only then. Code that runs before any screen mounts (a
+ * watch run delivered at launch) would otherwise read the defaults instead of
+ * what the person set.
+ */
+export function whenPreferencesHydrated(): Promise<void> {
+  const { persist: persistApi } = useAppPreferencesStore;
+  if (persistApi.hasHydrated() || hydrationFailed) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const unsubscribe = persistApi.onFinishHydration(done);
+    hydrationFailureListeners.add(done);
+    function done() {
+      unsubscribe();
+      hydrationFailureListeners.delete(done);
+      resolve();
+    }
+  });
+}
+
+/** The treadmill correction now in force, for non-React callers. */
+export function getTreadmillCorrection(): TreadmillCorrection {
+  const { treadmillCorrectionEnabled, treadmillCorrectionPercent } =
+    useAppPreferencesStore.getState();
+  return {
+    enabled: treadmillCorrectionEnabled,
+    percent: treadmillCorrectionPercent,
+  };
 }
 
 /**

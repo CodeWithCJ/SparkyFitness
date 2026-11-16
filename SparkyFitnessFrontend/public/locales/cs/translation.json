@@ -2075,7 +2075,6 @@
       "title": "Nastavení alergenů"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Dynamicky upravuje váš denní cíl podle skutečného metabolismu. Pro vysokou přesnost je potřeba pravidelně zaznamenávat jídlo a hmotnost.",
       "burnedActivity": "Aktivita (jen cvičení a kroky)",
       "burnedBmr": "Aktivita + BMR (váš bazální metabolismus)",
       "burnedTdee": "Celkový energetický výdej z Health Connect (náhradní výpočet: BMR + kalorie vydané aktivitou)",
@@ -2236,10 +2235,7 @@
       "unsafeGainTitle": "Rizikové tempo přibírání",
       "unsafeGainText": "Nárůst o více než 0,5 % tělesné hmotnosti týdně znamená, že většina přidané hmotnosti bude tuk, ne sval. Menší energetický nadbytek může umožnit podobný nárůst svalové hmoty při výrazně menším nárůstu tuku.",
       "unsafeLossTitle": "Rizikové tempo hubnutí",
-      "unsafeLossText": "Úbytek o více než 1,5 % tělesné hmotnosti týdně se považuje za nadměrný. Toto tempo výrazně zvyšuje riziko vážné ztráty svalů, letargie, hormonální nerovnováhy a nutričních nedostatků. Zvolte méně agresivní režim cíle.",
-      "calibrationDescription": "Adaptivní výpočet TDEE ve SparkyFitness potřebuje k přesnému odhadu celkového energetického výdeje alespoň {{required}} dní pravidelného zaznamenávání (nyní používá náhradní odhady). Kalibraci urychlíte:",
-      "calibrationWeightTip": "Zaznamenávejte hmotnost alespoň 3–4× týdně.",
-      "calibrationFoodTip": "Denně zaznamenávejte energetický příjem (> 200 kcal/den)."
+      "unsafeLossText": "Úbytek o více než 1,5 % tělesné hmotnosti týdně se považuje za nadměrný. Toto tempo výrazně zvyšuje riziko vážné ztráty svalů, letargie, hormonální nerovnováhy a nutričních nedostatků. Zvolte méně agresivní režim cíle."
     },
     "mfa": {
       "confirmPassword": "Pro pokračování potvrďte heslo",
@@ -2869,7 +2865,6 @@
       "calorieLogRequirement": "• Záznamy kalorií pro výpočet TDEE (alespoň 7 dní s ≥ 200 kcal)",
       "daysMissing": "❌ Chybí (zaznamenáno {{days}}/{{required}} dní)",
       "daysMet": "✓ Splněno (zaznamenáno {{days}}/{{required}} dní)",
-      "stabilityRequirement": "• Záznamy kalorií pro stabilitu cílového rozpočtu (alespoň {{required}} dní ≥ 200 kcal)",
       "daysWarning": "⚠️ Chybí (zaznamenáno {{days}}/{{required}} dní)",
       "usingFallbackBmr": "Používá se náhradní BMR × koeficient aktivity:",
       "fallbackMath": "Výpočet: BMR ({{bmr}} kcal) × koeficient aktivity ({{multiplier}}) = {{result}} {{unit}}",

@@ -881,6 +881,7 @@ const FoodDatabaseManager = () => {
         )}
         hideDatabaseTab={true}
         hideMealTab={true}
+        allowRecipeImport
       />
 
       <DeleteFoodDialog
