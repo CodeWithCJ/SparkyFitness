@@ -729,6 +729,25 @@ internal object WatchConnectivityHub {
     return getTelemetryOwner(context)
   }
 
+  private fun buildSetCompletedEvent(
+    payload: Map<String, Any?>,
+    fallbackSessionId: String = ""
+  ): Map<String, Any?> {
+    val sessionId = (payload["sessionId"] as? String)?.takeIf { it.isNotEmpty() } ?: fallbackSessionId
+    val event = mutableMapOf<String, Any?>(
+      "clientId" to (payload["clientId"] as? String ?: ""),
+      "sessionId" to sessionId,
+      "setId" to (payload["setId"] as? String ?: "")
+    )
+    asDouble(payload["weightKg"])?.let { event["weightKg"] = it }
+    asDouble(payload["reps"])?.let { event["reps"] = it }
+    asDouble(payload["rpe"])?.let { event["rpe"] = it }
+    asInt(payload["duration"])?.let { event["duration"] = it }
+    asDouble(payload["distanceKm"])?.let { event["distanceKm"] = it }
+    (payload["completedAt"] as? String)?.let { event["completedAt"] = it }
+    return event
+  }
+
   private fun routePayload(context: Context, payload: Map<String, Any?>, rawJson: String? = null) {
     val mod = activeModule
     when (payload["type"] as? String) {
@@ -882,19 +901,8 @@ internal object WatchConnectivityHub {
         }
       }
       "setCompleted" -> {
-        val event = mutableMapOf<String, Any?>(
-          "clientId" to (payload["clientId"] as? String ?: ""),
-          "sessionId" to (payload["sessionId"] as? String ?: ""),
-          "setId" to (payload["setId"] as? String ?: "")
-        )
-        asDouble(payload["weightKg"])?.let { event["weightKg"] = it }
-        asDouble(payload["reps"])?.let { event["reps"] = it }
-        asDouble(payload["rpe"])?.let { event["rpe"] = it }
-        asInt(payload["duration"])?.let { event["duration"] = it }
-        asDouble(payload["distanceKm"])?.let { event["distanceKm"] = it }
-        (payload["completedAt"] as? String)?.let { event["completedAt"] = it }
         if (mod != null) {
-          mod.emitEvent("onSetCompleted", event)
+          mod.emitEvent("onSetCompleted", buildSetCompletedEvent(payload))
         } else if (rawJson != null) {
           enqueueInboundJson(context, rawJson)
         }
@@ -967,9 +975,18 @@ internal object WatchConnectivityHub {
       }
       "workoutStop" -> {
         if (mod != null) {
+          val stopSessionId = payload["sessionId"] as? String ?: ""
+          for (completion in asMapList(payload["completedSets"])) {
+            val event = buildSetCompletedEvent(completion, fallbackSessionId = stopSessionId)
+            val setId = event["setId"] as? String ?: ""
+            val clientId = event["clientId"] as? String ?: ""
+            if (setId.isNotEmpty() && clientId.isNotEmpty()) {
+              mod.emitEvent("onSetCompleted", event)
+            }
+          }
           mod.emitEvent(
             "onWorkoutStop",
-            mapOf("sessionId" to (payload["sessionId"] as? String ?: ""))
+            mapOf("sessionId" to stopSessionId)
           )
         } else if (rawJson != null) {
           enqueueInboundJson(context, rawJson)

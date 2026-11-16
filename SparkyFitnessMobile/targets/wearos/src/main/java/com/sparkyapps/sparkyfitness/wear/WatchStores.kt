@@ -1121,6 +1121,7 @@ class WorkoutSessionStore(private val context: Context) {
   private val wristLoggedSetIds = mutableSetOf<String>()
   private val phoneConfirmedSetIds = mutableSetOf<String>()
   private val pendingUnlogs = mutableSetOf<String>()
+  private val unconfirmedCompletions = LinkedHashMap<String, CompletedSet>()
   private val celebratedPrSetIds = mutableSetOf<String>()
   private val hrReadings = mutableListOf<Double>()
 
@@ -1262,6 +1263,13 @@ class WorkoutSessionStore(private val context: Context) {
     }
     if (completedSetIds.contains(setId)) {
       recalculateTotalVolume()
+      unconfirmedCompletions[setId]?.let { existing ->
+        unconfirmedCompletions[setId] = existing.copy(
+          weightKg = weightKg ?: existing.weightKg,
+          reps = reps ?: existing.reps,
+          distanceKm = distanceKm ?: existing.distanceKm
+        )
+      }
     }
     if (notifyPhone && (weightKg != null || reps != null || distanceKm != null)) {
       val curPlan = _plan.value ?: return
@@ -1362,6 +1370,7 @@ class WorkoutSessionStore(private val context: Context) {
       wristLoggedSetIds.clear()
       phoneConfirmedSetIds.clear()
       pendingUnlogs.clear()
+      unconfirmedCompletions.clear()
       celebratedPrSetIds.clear()
       celebratedPrSetIds.addAll(incoming.prSetIds)
       _completedSetIds.value = emptySet()
@@ -1460,6 +1469,7 @@ class WorkoutSessionStore(private val context: Context) {
     wristLoggedSetIds.addAll(synced.wristLogged)
     pendingUnlogs.clear()
     pendingUnlogs.addAll(synced.pendingUnlogs)
+    unconfirmedCompletions.keys.retainAll(synced.wristLogged)
 
     val curStepBefore = currentStep
     completedSetIds.clear()
@@ -1879,10 +1889,19 @@ class WorkoutSessionStore(private val context: Context) {
         for (i in updatedExercises.indices) {
           val ex = updatedExercises[i]
           if (ex.sets.any { it.setId == action.setId }) {
+            var removed = false
             if (ex.sets.size > 1) {
               updatedExercises[i] = ex.copy(sets = ex.sets.filterNot { it.setId == action.setId })
+              removed = true
             } else if (updatedExercises.size > 1) {
               updatedExercises.removeAt(i)
+              removed = true
+            }
+            if (removed) {
+              unconfirmedCompletions.remove(action.setId)
+              if (pendingRpeQueue.removeAll { it.step.setId == action.setId }) {
+                _pendingRpe.value = pendingRpeQueue.firstOrNull()
+              }
             }
             break
           }
@@ -1918,7 +1937,17 @@ class WorkoutSessionStore(private val context: Context) {
       }
       is WorkoutEditAction.DeleteExercise -> {
         if (updatedExercises.size > 1) {
+          val removedSetIds = updatedExercises
+            .filter { it.exerciseEntryId == action.exerciseEntryId }
+            .flatMap { it.sets.map { s -> s.setId } }
+            .toSet()
           updatedExercises.removeAll { it.exerciseEntryId == action.exerciseEntryId }
+          if (removedSetIds.isNotEmpty()) {
+            unconfirmedCompletions.keys.removeAll(removedSetIds)
+            if (pendingRpeQueue.removeAll { it.step.setId in removedSetIds }) {
+              _pendingRpe.value = pendingRpeQueue.firstOrNull()
+            }
+          }
         }
       }
       else -> {}
@@ -2119,6 +2148,7 @@ class WorkoutSessionStore(private val context: Context) {
       rpe = rpe,
       completedAtMs = completedAtMs
     )
+    unconfirmedCompletions[step.setId] = completed
     session?.sendMessageOrQueue(OutboundPayloads.setCompleted(completed), "setCompleted")
   }
 
@@ -2131,6 +2161,7 @@ class WorkoutSessionStore(private val context: Context) {
     }
     completedSetIds.remove(step.setId)
     wristLoggedSetIds.remove(step.setId)
+    unconfirmedCompletions.remove(step.setId)
     if (!droppedUnsentRpe) {
       pendingUnlogs.add(step.setId)
     }
@@ -2292,6 +2323,8 @@ class WorkoutSessionStore(private val context: Context) {
     while (pendingRpeQueue.isNotEmpty()) {
       submitPendingRpe(null)
     }
+    val pendingCompletions = unconfirmedCompletions.values.toList()
+    unconfirmedCompletions.clear()
     tickerJob?.cancel()
     cancelGetReady()
     clearHold()
@@ -2318,7 +2351,13 @@ class WorkoutSessionStore(private val context: Context) {
           "presetUpdateAnswer"
         )
       }
-      session?.sendMessageOrQueue(OutboundPayloads.workoutStop(plan.sessionId), "workoutStop")
+      // Bundle any unconfirmed completions in workoutStop so the phone applies
+      // them before closing the session even if an earlier setCompleted fell
+      // back to a DataItem and arrives after a live workoutStop.
+      session?.sendMessageOrQueue(
+        OutboundPayloads.workoutStop(plan.sessionId, pendingCompletions),
+        "workoutStop"
+      )
     }
 
     _completedSummary.value = WorkoutSummary(
@@ -2367,6 +2406,7 @@ class WorkoutSessionStore(private val context: Context) {
   fun discardWorkout(notifyPhone: Boolean = true) {
     val plan = _plan.value
     clearPendingRpeQueue()
+    unconfirmedCompletions.clear()
     tickerJob?.cancel()
     cancelGetReady()
     clearHold()
@@ -2392,6 +2432,7 @@ class WorkoutSessionStore(private val context: Context) {
   }
 
   fun dismissSummary() {
+    unconfirmedCompletions.clear()
     _plan.value = null
     _steps.value = emptyList()
     _stepIndex.value = 0

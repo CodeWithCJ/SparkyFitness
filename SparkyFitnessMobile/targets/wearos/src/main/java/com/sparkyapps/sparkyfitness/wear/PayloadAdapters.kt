@@ -851,9 +851,19 @@ object OutboundPayloads {
       put("startedAt", startedAtMs.toDouble())
     }
 
-  fun workoutStop(sessionId: String): JSONObject = JSONObject().apply {
+  fun workoutStop(
+    sessionId: String,
+    completedSets: List<CompletedSet> = emptyList()
+  ): JSONObject = JSONObject().apply {
     put("type", "workoutStop")
     put("sessionId", sessionId)
+    if (completedSets.isNotEmpty()) {
+      val arr = JSONArray()
+      for (completed in completedSets) {
+        arr.put(setCompleted(completed))
+      }
+      put("completedSets", arr)
+    }
   }
 
   fun workoutDiscard(sessionId: String, armedAtMs: Long?): JSONObject = JSONObject().apply {

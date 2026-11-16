@@ -453,4 +453,39 @@ class WorkoutDomainTest {
         assertEquals("185", formatNumberClean(185.0, java.util.Locale.GERMANY))
         assertEquals("–", formatNumberClean(null, java.util.Locale.US))
     }
+
+    @Test
+    fun `workoutStop omits completedSets when empty and bundles pending completions in order`() {
+        val bare = OutboundPayloads.workoutStop("sess-1")
+        assertEquals("workoutStop", bare.getString("type"))
+        assertEquals("sess-1", bare.getString("sessionId"))
+        assertFalse(bare.has("completedSets"))
+
+        val c1 = CompletedSet(
+            clientId = "cid-1",
+            sessionId = "sess-1",
+            setId = "set-1",
+            weightKg = 60.0,
+            reps = 8.0,
+            rpe = 7.5,
+            completedAtMs = 1_700_000_001_000L
+        )
+        val c2 = CompletedSet(
+            clientId = "cid-2",
+            sessionId = "sess-1",
+            setId = "set-2",
+            duration = 45,
+            completedAtMs = 1_700_000_060_000L
+        )
+        val bundled = OutboundPayloads.workoutStop("sess-1", listOf(c1, c2))
+        val arr = bundled.getJSONArray("completedSets")
+        assertEquals(2, arr.length())
+        assertEquals("cid-1", arr.getJSONObject(0).getString("clientId"))
+        assertEquals("set-1", arr.getJSONObject(0).getString("setId"))
+        assertEquals(60.0, arr.getJSONObject(0).getDouble("weightKg"), 0.001)
+        assertEquals(7.5, arr.getJSONObject(0).getDouble("rpe"), 0.001)
+        assertEquals("cid-2", arr.getJSONObject(1).getString("clientId"))
+        assertEquals("set-2", arr.getJSONObject(1).getString("setId"))
+        assertEquals(45, arr.getJSONObject(1).getInt("duration"))
+    }
 }
