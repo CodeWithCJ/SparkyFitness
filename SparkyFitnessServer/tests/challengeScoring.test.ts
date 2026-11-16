@@ -16,7 +16,9 @@ import {
   challengeWeekStart,
   challengeWeeksIn,
   defaultPointsRules,
+  heartRateZoneFor,
   isDayString,
+  isManualEntry,
   isStrengthEntry,
   isoWeekday,
   mergeChallengeDuplicates,
@@ -796,6 +798,84 @@ describe('challenge metrics and filters', () => {
       score(
         // 25 and 15 manual minutes are capped at 30 together; the synced 20 stay
         [manual('m1', 25), manual('m2', 15), synced],
+        '2026-11-06',
+        '2026-11-06',
+        {},
+        cap
+      )[0]!.total
+    ).toBe(50);
+  });
+
+  it('an average heart rate is put in a zone by the shared heartRateZoneFor', () => {
+    for (const bpm of [60, 94, 95, 113, 114, 133, 151, 152, 170, 171, 200]) {
+      const rate = challengeEntryRate(
+        { id: 'a', date: '2026-11-06', durationMin: 30, avgHr: bpm },
+        zones,
+        pts
+      );
+      expect(rate.zone, String(bpm)).toBe(heartRateZoneFor(bpm, zones.floors));
+    }
+  });
+
+  it("diary rows stored as 'Manual' (any casing) are manual entries", () => {
+    const row = (source: string | null): ChallengeEntry => ({
+      id: 'r',
+      date: '2026-11-06',
+      durationMin: 30,
+      name: 'Run',
+      source,
+    });
+    for (const source of [
+      null,
+      '',
+      'Manual',
+      ' MANUAL ',
+      'manual',
+      'Workout Preset',
+      'Workout Plan',
+    ]) {
+      expect(isManualEntry(row(source)), String(source)).toBe(true);
+    }
+    // Synced, or timed live in the app
+    for (const source of ['garmin', 'HealthKit', 'sparky']) {
+      expect(isManualEntry(row(source)), source).toBe(false);
+    }
+    // A heart rate means it was measured, whatever the source says
+    expect(isManualEntry({ ...row('Manual'), avgHr: 140 })).toBe(false);
+
+    const diary = (id: string, min: number): ChallengeEntry => ({
+      ...row('Manual'),
+      id,
+      durationMin: min,
+    });
+    const synced: ChallengeEntry = {
+      id: 's',
+      date: '2026-11-06',
+      durationMin: 20,
+      name: 'Run',
+      source: 'garmin',
+      avgHr: 140,
+    };
+    const ignore = rulesWith({
+      metric: 'active_minutes',
+      activities: { manualEntries: 'ignore' },
+    });
+    expect(
+      score(
+        [diary('m', 45), synced],
+        '2026-11-06',
+        '2026-11-06',
+        {},
+        ignore
+      )[0]!.total
+    ).toBe(20);
+    const cap = rulesWith({
+      metric: 'active_minutes',
+      activities: { manualEntries: 'cap', manualMinutesCap: 30 },
+    });
+    expect(
+      score(
+        [diary('m1', 25), diary('m2', 15), synced],
         '2026-11-06',
         '2026-11-06',
         {},

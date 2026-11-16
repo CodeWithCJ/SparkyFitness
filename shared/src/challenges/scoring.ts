@@ -28,6 +28,8 @@ import {
   type ActivitySport,
   type PrSportGroup,
 } from '../utils/activitySport.ts';
+import { normalizeSource } from '../constants/exercise.ts';
+import { heartRateZoneFor } from '../utils/heartRateZones.ts';
 import { challengeWeekStart, isoWeekday } from './periods.ts';
 import {
   DEFAULT_CHALLENGE_GOAL_TYPE,
@@ -55,7 +57,7 @@ export interface ChallengeEntry {
   zoneSeconds?: readonly number[] | null;
   name?: string | null;
   category?: string | null;
-  /** Where the entry came from; empty or 'manual' means logged by hand. */
+  /** Where the entry came from, as stored ('Manual', 'garmin', ...); see isManualEntry. */
   source?: string | null;
   distanceM?: number | null;
   /** Best estimated one-rep max of the entry's sets, in kg. */
@@ -123,21 +125,21 @@ export function challengeEntryClass(e: ChallengeEntry): ChallengeEntryClass {
 const hasHr = (e: ChallengeEntry): boolean =>
   num(e.avgHr) > 0 || (e.zoneSeconds ?? []).some((s) => s > 0);
 
-/** Logged by hand: no sync source and no heart rate. */
-export function isManualEntry(e: ChallengeEntry): boolean {
-  return (!e.source || e.source === 'manual') && !hasHr(e);
-}
+/**
+ * Sources a member types in: the diary form ('Manual'), a logged preset and a
+ * workout from a plan. A live workout ('sparky') is timed by the app, so it is
+ * not one.
+ */
+const HAND_LOGGED_SOURCES: ReadonlySet<string> = new Set([
+  'manual',
+  'workout preset',
+  'workout plan',
+]);
 
-/** The zone (1-5) an average heart rate falls in, or 0 below zone 1. */
-export function zoneForHeartRate(
-  hr: number,
-  floors: readonly number[]
-): number {
-  let zone = 0;
-  floors.forEach((floor, i) => {
-    if (hr >= floor) zone = i + 1;
-  });
-  return zone;
+/** Logged by hand: no sync source (any casing) and no heart rate. */
+export function isManualEntry(e: ChallengeEntry): boolean {
+  const source = normalizeSource(e.source);
+  return (!source || HAND_LOGGED_SOURCES.has(source)) && !hasHr(e);
 }
 
 export type ChallengeRateBasis = 'zones' | 'average_hr' | 'no_hr';
@@ -191,7 +193,7 @@ export function challengeEntryRate(
     perMin = paid / minutes;
     basis = 'zones';
   } else if (num(e.avgHr) > 0) {
-    zone = zoneForHeartRate(num(e.avgHr), zones.floors);
+    zone = heartRateZoneFor(num(e.avgHr), zones.floors);
     perMin = zone > 0 ? (rules.zoneRates[zone - 1] ?? 0) : rules.belowZoneRate;
     basis = 'average_hr';
     buckets = [{ minutes, perMin }];
@@ -621,7 +623,7 @@ function metricValue(
         if (
           !hasBreakdown &&
           num(e.avgHr) > 0 &&
-          zoneForHeartRate(num(e.avgHr), data.zones.floors) >=
+          heartRateZoneFor(num(e.avgHr), data.zones.floors) >=
             rules.zoneMinutesFromZone
         ) {
           return s + Math.max(0, num(e.durationMin));
