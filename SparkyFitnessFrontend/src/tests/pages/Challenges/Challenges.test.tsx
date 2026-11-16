@@ -15,7 +15,12 @@ import {
   Routes,
   useNavigate,
 } from 'react-router-dom';
-import { addDays, challengePreset, todayInZone } from '@workspace/shared';
+import {
+  addDays,
+  challengePreset,
+  challengeWeekStart,
+  todayInZone,
+} from '@workspace/shared';
 import { HttpApiError } from '@/api/api';
 import * as challengesApi from '@/api/Challenges/challengesApi';
 import Challenges from '@/pages/Challenges/Challenges';
@@ -292,6 +297,24 @@ describe('Challenges page', () => {
       time_zone: 'UTC',
       display_name: 'Test',
       rules: { metric: 'steps', format: 'race', target: 100000 },
+    });
+  });
+
+  it('a weekend preset started on Monday runs to that Sunday', async () => {
+    api.createChallenge.mockResolvedValue(challenge());
+    renderAt('/challenges');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New challenge' })
+    );
+    fireEvent.click(screen.getByRole('radio', { name: /Weekend Warrior/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create challenge' }));
+
+    const monday = challengeWeekStart(todayInZone('UTC'));
+    await waitFor(() => expect(api.createChallenge).toHaveBeenCalled());
+    expect(api.createChallenge.mock.calls[0]?.[0]).toMatchObject({
+      preset: 'weekend_warrior',
+      start_date: monday,
+      end_date: addDays(monday, 6),
     });
   });
 

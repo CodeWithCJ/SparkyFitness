@@ -11,6 +11,7 @@ import {
   DEFAULT_CHALLENGE_PRESET_ID,
   addDays,
   challengePreset,
+  challengePresetEndDate,
   challengeRulesSchema,
   challengeWeekStart,
   todayInZone,
@@ -55,11 +56,13 @@ interface CreateChallengeDialogProps {
   onCreated: (challenge: ChallengeDetail) => void;
 }
 
-/** A preset's end day from the start, or '' when it runs until ended. */
-const presetEnd = (id: ChallengePresetId, start: string): string => {
-  const { lengthDays } = challengePreset(id);
-  return lengthDays === null ? '' : addDays(start, lengthDays - 1);
-};
+/**
+ * A preset's end day from the start, or '' when it runs until ended. The
+ * window holds the preset's length in days that count, so Weekend Warrior
+ * started on a Monday runs to that Sunday.
+ */
+const presetEnd = (id: ChallengePresetId, start: string): string =>
+  challengePresetEndDate(id, start) ?? '';
 
 /** Weekly challenges start on a Monday, so the first week is a whole one. */
 const presetStart = (id: ChallengePresetId, today: string): string =>
