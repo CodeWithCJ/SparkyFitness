@@ -37,6 +37,7 @@ import HydrationReminderReconciler from '../components/HydrationReminderReconcil
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
 import CaffeineCard from '../components/CaffeineCard';
+import BloodAlcoholCard from '../components/BloodAlcoholCard';
 import { useBackgroundWaterSync } from '../hooks/useBackgroundWaterSync';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
@@ -54,11 +55,11 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
-  caffeineActiveRootQueryKey,
   fastingRootQueryKey,
   medicationsRootQueryKey,
   useCustomNutrients,
   useDailySummary,
+  useBloodAlcohol,
   useCaffeineKinetics,
   useHealthTrends,
   useMeasurements,
@@ -70,6 +71,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { invalidateIntakeKinetics } from '../hooks/invalidateIntakeKinetics';
 import {
   moodEntriesRootQueryKey,
   labLatestQueryKey,
@@ -407,6 +409,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isCaffeineLoading,
     refetch: refetchCaffeine,
   } = useCaffeineKinetics(selectedDate, caffeineCardVisible);
+  const bloodAlcoholCardVisible = useAppPreferencesStore(
+    (s) => s.bloodAlcoholCardVisible
+  );
+  const {
+    estimate: bloodAlcoholEstimate,
+    nowMs: bloodAlcoholNowMs,
+    isLoading: isBloodAlcoholLoading,
+  } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
@@ -466,8 +476,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       refetchCaffeine(),
-      // CaffeineCard and FastingCard own their own queries; nudge them on pull-to-refresh.
-      queryClient.invalidateQueries({ queryKey: caffeineActiveRootQueryKey }),
+      // The intake curve cards and FastingCard own their own queries; nudge them on pull-to-refresh.
+      invalidateIntakeKinetics(queryClient),
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
@@ -834,6 +844,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   kinetics={caffeineKinetics}
                   nowMs={caffeineNowMs}
                   isLoading={isCaffeineLoading}
+                />
+              ) : null;
+            case 'bloodAlcohol':
+              return bloodAlcoholCardVisible ? (
+                <BloodAlcoholCard
+                  key="bloodAlcohol"
+                  date={selectedDate}
+                  estimate={bloodAlcoholEstimate}
+                  nowMs={bloodAlcoholNowMs}
+                  isLoading={isBloodAlcoholLoading}
                 />
               ) : null;
             case 'fasting':

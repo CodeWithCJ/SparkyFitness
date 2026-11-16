@@ -1,4 +1,8 @@
-import { addDays, todayInZone } from '@workspace/shared';
+import {
+  addDays,
+  todayInZone,
+  utcToLocalDateTimeInput,
+} from '@workspace/shared';
 
 // Matches an ISO timestamp so "2026-07-10T18:00:00Z" can be trimmed to its day.
 const ISO_TIMESTAMP_PREFIX = /^\d{4}-\d{2}-\d{2}[T ]/;
@@ -86,4 +90,18 @@ export function normalizeActionArgs(
 
   // 3. Normalize day keywords
   return normalizeDayKeywords(out, tz);
+}
+
+/**
+ * Replaces an item's UTC instant `at` with the user's local `date` and `time`.
+ * A model is not told the offset and gets UTC arithmetic in prose wrong, so
+ * every instant a tool returns is shown as the web UI shows it.
+ */
+export function withLocalDateTime<T extends { at: string }>(
+  item: T,
+  tz: string
+): Omit<T, 'at'> & { date: string; time: string } {
+  const { at, ...rest } = item;
+  const [date, time] = utcToLocalDateTimeInput(at, tz).split('T');
+  return { ...rest, date: date ?? '', time: time ?? '' };
 }

@@ -22,6 +22,15 @@ jest.mock('react-i18next', () => ({
 jest.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light' }),
 }));
+// The card frames the day in the profile's zone; these tests use the
+// runner's own zone, so local dates in them still describe that day.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timeFormat: 'HH:mm',
+    language: 'en',
+  }),
+}));
 
 // recharts' ResponsiveContainer needs a real layout to render children in
 // jsdom; stub the chart internals so this test exercises the card's own logic

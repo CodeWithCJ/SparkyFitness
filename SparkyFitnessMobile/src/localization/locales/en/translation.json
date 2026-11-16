@@ -1340,6 +1340,8 @@
     "customNutrientDisplay": "Custom Nutrient Display",
     "caffeine": "Caffeine",
     "caffeineSubtitle": "Show the active caffeine card on the Dashboard",
+    "bloodAlcohol": "Blood Alcohol Estimate",
+    "bloodAlcoholSubtitle": "Show a rough blood alcohol estimate from logged drinks on the Dashboard",
     "mindfulness": "Mindfulness",
     "mindfulnessSubtitle": "Show mindfulness sessions, breathing, and meditation on the Dashboard",
     "reorder": "Reorder {{name}}",
@@ -7206,6 +7208,22 @@
     "rangeA11y": "Choose how far back to play",
     "deltaBadge": "Δ {{value}}",
     "frameCountRanged": "{{current}} of {{total}} · {{range}}"
+  },
+  "bloodAlcohol": {
+    "title": "Estimated Blood Alcohol",
+    "estimatedNow": "Estimated now",
+    "peakAt": "Peak at {{time}}",
+    "unitPermille": "‰",
+    "unitPercent": "%",
+    "estimatedTimes": "Some drink times were estimated",
+    "disclaimer": "Rough estimate only. The real value can differ by 20% or more. Never use it to decide whether you are fit to drive.",
+    "missingInputs": "Add these to your profile to see an estimate:",
+    "missingSex": "Sex: set it in your profile on the web",
+    "missingWeight": "Weight: log it in Measurements",
+    "missingHeight": "Height: log it in Measurements",
+    "missingAge": "Age: set your date of birth in your profile on the web",
+    "implausibleInputs": "Your weight or height looks wrong, so there is no estimate. Check your latest weight and height in Measurements.",
+    "formulaFallback": "Your chosen formula does not fit your body measurements, so the Watson formula is used."
   },
   "caffeine": {
     "title": "Active Caffeine",

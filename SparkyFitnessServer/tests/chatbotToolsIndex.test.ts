@@ -35,6 +35,7 @@ const EXPECTED_TOOLS = [
   'sparky_generate_coaching_plan',
   'sparky_get_30_day_trends',
   'sparky_get_barcode',
+  'sparky_get_blood_alcohol',
   'sparky_get_caffeine_kinetics',
   'sparky_get_contextual_nudge',
   'sparky_get_daily_exercise_totals',
@@ -93,6 +94,7 @@ const EXPECTED_TOOLS = [
 const EXPECTED_CORE_TOOLS = [
   'sparky_food_assistant_state',
   'sparky_get_barcode',
+  'sparky_get_blood_alcohol',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
   'sparky_get_exercise_details',
@@ -194,6 +196,7 @@ describe('chat tool actor', () => {
       'sparky_manage_run_program',
       'sparky_compare_metrics',
       'sparky_food_assistant_state',
+      'sparky_get_blood_alcohol',
     ];
     const run = vi.mocked(withFixedActor);
     const original = run.getMockImplementation();
@@ -226,6 +229,7 @@ describe('chat tool actor', () => {
     'sparky_manage_run_program',
     'sparky_compare_metrics',
     'sparky_food_assistant_state',
+    'sparky_get_blood_alcohol',
   ])("refuses %s in a family member's account", async (name) => {
     vi.mocked(withFixedActor).mockClear();
     const { tools } = buildChatToolSurface('target-4', 'UTC', {

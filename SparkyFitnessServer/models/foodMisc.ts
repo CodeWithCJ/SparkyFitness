@@ -3,6 +3,7 @@ import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
 import {
+  doseScale,
   supplementScanWhere,
   supplementFixedAgg,
   supplementCountable,
@@ -641,21 +642,35 @@ async function clearUserIgnoredUpdate(userId: string, variantId: string) {
     client.release();
   }
 }
-export interface RawCaffeineDose {
+/** Nutrients read as timed doses for a kinetics curve. */
+type DoseNutrientField = Extract<
+  FoodVariantNutrientField,
+  'caffeine_mg' | 'alcohol_g'
+>;
+
+export interface RawNutrientDose {
   source: 'food' | 'supplement';
   entry_date: string;
   entry_time: string | null;
   meal_default_time: string | null;
   taken_at: Date | string | null;
-  caffeine_mg: number;
+  /** In the nutrient's own unit (mg of caffeine, g of alcohol). */
+  amount: number;
   name: string;
 }
 
-async function getCaffeineDosesForWindow(
+/**
+ * Every logged dose of one nutrient dated `startDate`..`endDate`: diary food
+ * scaled to the quantity eaten, plus supplements actually taken. `field` comes
+ * from the typed whitelist above, never from a request, so it is safe to
+ * interpolate as a column and JSON key.
+ */
+async function getNutrientDosesForWindow(
   userId: string,
   startDate: string,
-  endDate: string
-): Promise<RawCaffeineDose[]> {
+  endDate: string,
+  field: DoseNutrientField
+): Promise<RawNutrientDose[]> {
   const client = await getClient(userId);
   try {
     const foodSql = `
@@ -665,7 +680,7 @@ async function getCaffeineDosesForWindow(
         fe.entry_time::text AS entry_time,
         COALESCE(umv.default_time, mt.default_time)::text AS meal_default_time,
         NULL::timestamp AS taken_at,
-        (fe.caffeine_mg * fe.quantity / NULLIF(fe.serving_size, 0))::numeric AS caffeine_mg,
+        (fe.${field} * fe.quantity / NULLIF(fe.serving_size, 0))::numeric AS amount,
         COALESCE(fe.food_name, 'Food') AS name
       FROM food_entries fe
       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
@@ -679,8 +694,8 @@ async function getCaffeineDosesForWindow(
       WHERE fe.user_id = $1
         AND fe.entry_date >= $2
         AND fe.entry_date <= $3
-        AND fe.caffeine_mg IS NOT NULL
-        AND fe.caffeine_mg > 0
+        AND fe.${field} IS NOT NULL
+        AND fe.${field} > 0
         AND fe.quantity > 0
     `;
     const suppSql = `
@@ -690,15 +705,14 @@ async function getCaffeineDosesForWindow(
         NULL::text AS entry_time,
         NULL::text AS meal_default_time,
         me.taken_at,
-        (public.sf_try_numeric(me.nutrients_snapshot->>'caffeine_mg') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0))::numeric AS caffeine_mg,
+        (public.sf_try_numeric(me.nutrients_snapshot->>'${field}') * ${doseScale('me')})::numeric AS amount,
         COALESCE(me.med_name_snapshot, 'Supplement') AS name
       FROM medication_entries me
       WHERE me.user_id = $1
         AND me.entry_date >= $2
         AND me.entry_date <= $3
-        AND me.status IN ('taken', 'prn_taken')
-        AND me.nutrients_snapshot IS NOT NULL
-        AND public.sf_try_numeric(me.nutrients_snapshot->>'caffeine_mg') > 0
+        AND ${supplementCountable('me')}
+        AND public.sf_try_numeric(me.nutrients_snapshot->>'${field}') > 0
     `;
 
     const combinedSql = `
@@ -718,7 +732,7 @@ async function getCaffeineDosesForWindow(
         entry_time: string | null;
         meal_default_time: string | null;
         taken_at: Date | string | null;
-        caffeine_mg: string | number;
+        amount: string | number;
         name: string;
       }) => ({
         source: r.source,
@@ -731,7 +745,7 @@ async function getCaffeineDosesForWindow(
           ? String(r.meal_default_time).slice(0, 5)
           : null,
         taken_at: r.taken_at,
-        caffeine_mg: Number(r.caffeine_mg) || 0,
+        amount: Number(r.amount) || 0,
         name: r.name,
       })
     );
@@ -751,7 +765,7 @@ export { updateFoodEntriesSnapshot };
 export { clearUserIgnoredUpdate };
 export { getFoodDerivedWaterMlForDate };
 export { getFoodDerivedWaterMlByDateRange };
-export { getCaffeineDosesForWindow };
+export { getNutrientDosesForWindow };
 export default {
   getFoodDataProviderById,
   getRecentFoods,
@@ -767,5 +781,5 @@ export default {
   clearUserIgnoredUpdate,
   getFoodDerivedWaterMlForDate,
   getFoodDerivedWaterMlByDateRange,
-  getCaffeineDosesForWindow,
+  getNutrientDosesForWindow,
 };

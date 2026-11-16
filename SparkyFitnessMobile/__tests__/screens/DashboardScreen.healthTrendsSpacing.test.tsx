@@ -160,8 +160,13 @@ jest.mock('../../src/hooks', () => ({
     isLoading: false,
     refetch: jest.fn(),
   })),
+  useBloodAlcohol: jest.fn(() => ({
+    estimate: undefined,
+    nowMs: Date.now(),
+    isLoading: false,
+    refetch: jest.fn(),
+  })),
   useWidgetSync: jest.fn(),
-  caffeineActiveRootQueryKey: ['caffeine-active'],
   fastingRootQueryKey: ['fasting'],
   medicationsRootQueryKey: ['medications'],
 }));
@@ -224,6 +229,7 @@ describe('DashboardScreen Health Trends spacing', () => {
     store.setExerciseCardVisible(false);
     store.setHydrationCardVisible(false);
     store.setCaffeineCardVisible(false);
+    store.setBloodAlcoholCardVisible(false);
     store.setFastingCardVisible(false);
     store.setCycleCardVisible(false);
     store.setMedicationsCardVisible(false);

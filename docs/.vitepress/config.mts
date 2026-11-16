@@ -149,6 +149,7 @@ export default defineConfig({
             { text: 'Daily Calorie Goal', link: '/features/diary/daily-calorie-goal' },
             { text: 'Nutrition Summary', link: '/features/diary/nutrition-summary' },
             { text: 'Water Intake', link: '/features/diary/water-intake' },
+            { text: 'Estimated Blood Alcohol', link: '/features/diary/blood-alcohol' },
             { text: 'Meals & Logging', link: '/features/diary/meals' },
             { text: 'Exercise Diary', link: '/features/diary/exercise' },
           ],

@@ -6,6 +6,7 @@ import {
   presetKeys,
 } from '@/api/keys/exercises';
 import {
+  bloodAlcoholKeys,
   caffeineKeys,
   dailyProgressKeys,
   diaryReportKeys,
@@ -55,6 +56,7 @@ export const useDiaryInvalidation = () => {
     // A linked water container logs a coffee as a food entry, so pressing "+"
     // moves the caffeine curve as surely as logging one by hand does.
     queryClient.invalidateQueries({ queryKey: caffeineKeys.all });
+    queryClient.invalidateQueries({ queryKey: bloodAlcoholKeys.all });
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     queryClient.invalidateQueries({ queryKey: goalKeys.all });
@@ -92,8 +94,10 @@ export const useFoodEntryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
     // Caffeine kinetics is a derived view over the same entries: logging or
     // editing a coffee moves the whole curve, and its query is keyed by date
-    // rather than by entry, so nothing else would refresh it.
+    // rather than by entry, so nothing else would refresh it. The blood
+    // alcohol estimate is the same kind of view over the same entries.
     queryClient.invalidateQueries({ queryKey: caffeineKeys.all });
+    queryClient.invalidateQueries({ queryKey: bloodAlcoholKeys.all });
     // Fasting auto-calculation and check-in measurements/status derive from food logs.
     // Logging or updating foods directly shifts fasting windows, eating windows, and check-in state.
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
