@@ -7355,7 +7355,7 @@
     "skipped": "Skipped: {{skippedCount}}",
     "failed": "Failed: {{errorsCount}}",
     "fieldDescriptions": {
-      "date": "Date (YYYY-MM-DD) — the day the entry was logged.",
+      "date": "Date (ISO 8601: YYYY-MM-DD; a full datetime is accepted too, but only the date is kept — the time-of-day is dropped, and the timezone picks which day) — the day the entry was logged.",
       "source": "Text — where the data came from.",
       "notes": "Text — free-form notes.",
       "meal_type": "Text — one of your meal types (breakfast, lunch, dinner, snacks, …), case-insensitive.",
@@ -7381,7 +7381,7 @@
       "secondary_muscles": "Text — secondary muscles (comma-separated).",
       "instructions": "Text — how to perform the exercise.",
       "images": "Text — image URLs (comma-separated).",
-      "entry_date": "Date (YYYY-MM-DD) — the day the workout was performed.",
+      "entry_date": "Date (ISO 8601: YYYY-MM-DD; a full datetime is accepted too, but only the date is kept — the time-of-day is dropped, and the timezone picks which day) — the day the workout was performed.",
       "exercise_name": "Text — the exercise to match against your library or create.",
       "exercise_force": "Text — `pull`, `push`, or `static` (case-insensitive).",
       "exercise_level": "Text — `beginner`, `intermediate`, or `expert` (case-insensitive).",

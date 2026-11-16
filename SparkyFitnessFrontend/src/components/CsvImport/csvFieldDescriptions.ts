@@ -33,7 +33,8 @@ export const CSV_FIELD_DESCRIPTIONS: Record<string, CsvFieldDescription> = {
   // Shared across importers
   date: {
     key: sharedKey('date'),
-    fallback: 'Date (YYYY-MM-DD) — the day the entry was logged.',
+    fallback:
+      'Date (ISO 8601: YYYY-MM-DD; a full datetime is accepted too, but only the date is kept — the time-of-day is dropped, and the timezone picks which day) — the day the entry was logged.',
   },
   source: {
     key: sharedKey('source'),
@@ -150,7 +151,8 @@ export const CSV_FIELD_DESCRIPTIONS: Record<string, CsvFieldDescription> = {
   // Workout History (exercise entry history)
   entry_date: {
     key: sharedKey('entry_date'),
-    fallback: 'Date (YYYY-MM-DD) — the day the workout was performed.',
+    fallback:
+      'Date (ISO 8601: YYYY-MM-DD; a full datetime is accepted too, but only the date is kept — the time-of-day is dropped, and the timezone picks which day) — the day the workout was performed.',
   },
   exercise_name: {
     key: sharedKey('exercise_name'),
