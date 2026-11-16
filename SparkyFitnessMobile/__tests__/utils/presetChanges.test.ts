@@ -36,7 +36,7 @@ describe('describePresetChanges', () => {
         presetExercise('dips', 'Dips', 3),
       ],
     } as unknown as WorkoutPreset;
-    expect(describePresetChanges(session, preset, t)).toEqual([
+    expect(describePresetChanges(session, preset, t, {})).toEqual([
       'Bench Press 4 sets, was 3.',
       'Plank added.',
       'Dips removed.',
@@ -50,7 +50,7 @@ describe('describePresetChanges', () => {
     const preset = {
       exercises: [presetExercise('bench', 'Bench Press', 3)],
     } as unknown as WorkoutPreset;
-    expect(describePresetChanges(session, preset, t)).toEqual([]);
+    expect(describePresetChanges(session, preset, t, {})).toEqual([]);
   });
 });
 
@@ -72,14 +72,14 @@ describe('describePresetChanges (structure beyond counts)', () => {
     const preset = {
       exercises: [pre('a', null), pre('b', null)],
     } as unknown as WorkoutPreset;
-    expect(describePresetChanges(session, preset, t)).toEqual([
+    expect(describePresetChanges(session, preset, t, {})).toEqual([
       'b superset changed.',
       'a set types changed.',
     ]);
     const reordered = {
       exercises: [base('b', null), base('a', null)],
     } as unknown as PresetSessionResponse;
-    expect(describePresetChanges(reordered, preset, t)).toEqual([
+    expect(describePresetChanges(reordered, preset, t, {})).toEqual([
       'Exercise order changed.',
     ]);
     const placeholder = {
@@ -88,7 +88,11 @@ describe('describePresetChanges (structure beyond counts)', () => {
     const empty = {
       exercises: [presetExercise('a', 'a', 0)],
     } as unknown as WorkoutPreset;
-    expect(describePresetChanges(placeholder, empty, t)).toEqual([]);
+    expect(describePresetChanges(placeholder, empty, t, {})).toEqual([]);
+    // Logged, the same set is the lifter's own and gets its line.
+    expect(describePresetChanges(placeholder, empty, t, { '0': 1 })).toEqual([
+      'a 1 sets, was 0.',
+    ]);
     // A placeholder whose type was changed is the lifter's own set.
     const warmup = {
       exercises: [
@@ -98,7 +102,7 @@ describe('describePresetChanges (structure beyond counts)', () => {
         },
       ],
     } as unknown as PresetSessionResponse;
-    expect(describePresetChanges(warmup, empty, t)).toEqual([
+    expect(describePresetChanges(warmup, empty, t, {})).toEqual([
       'a 1 sets, was 0.',
     ]);
   });

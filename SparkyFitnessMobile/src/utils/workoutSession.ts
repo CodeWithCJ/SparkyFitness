@@ -2795,6 +2795,30 @@ function canonicalExerciseStructureEqual(
   );
 }
 
+/**
+ * A preset exercise saved without sets shows one fabricated set in the
+ * session. Left as it was (not logged, no values, still a normal set) it is
+ * that placeholder, not a set the lifter added.
+ */
+export function isUntouchedFabricatedSet(
+  presetSetCount: number,
+  sessionSets: PresetSessionResponse['exercises'][number]['sets'],
+  completedSetIds: CompletedSetMap
+): boolean {
+  if (presetSetCount !== 0 || sessionSets.length !== 1) return false;
+  const [only] = sessionSets;
+  return (
+    completedSetIds[String(only.id)] == null &&
+    // The fabricated set is a normal one; a changed type is the lifter's.
+    (only.set_type ?? 'normal') === 'normal' &&
+    only.weight == null &&
+    only.reps == null &&
+    only.duration == null &&
+    only.distance == null &&
+    only.notes == null
+  );
+}
+
 export function buildPresetUpdateExercises(
   session: PresetSessionResponse,
   preset: WorkoutPreset,
@@ -2857,19 +2881,13 @@ export function buildPresetUpdateExercises(
               ...opts.assumeSources,
               plannedSetValues: opts.plannedSetValues,
             });
-      const [only] = exercise.sets;
       const untouchedFabricatedSet =
         matched != null &&
-        matched.sets.length === 0 &&
-        exercise.sets.length === 1 &&
-        opts.completedSetIds[String(only.id)] == null &&
-        // The fabricated set is a normal one; a changed type is the lifter's.
-        (only.set_type ?? 'normal') === 'normal' &&
-        only.weight == null &&
-        only.reps == null &&
-        only.duration == null &&
-        only.distance == null &&
-        only.notes == null;
+        isUntouchedFabricatedSet(
+          matched.sets.length,
+          exercise.sets,
+          opts.completedSetIds
+        );
       return {
         exercise_id: exercise.exercise_id,
         image_url:
