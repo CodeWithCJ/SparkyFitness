@@ -367,6 +367,45 @@ export function useExerciseImport(
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Applies a pending reparse-on-format-change synchronously, so a save issued
+  // within the debounce window doesn't persist rows parsed under the previous
+  // format (e.g. a decimal-format change that hasn't re-parsed yet). Returns
+  // the freshly parsed rows, or null if the reparse can't produce savable rows
+  // (the format change flipped the file into header-mapping mode). Clears the
+  // pending timer.
+  const flushPendingReparse = (): ExerciseCSVData[] | null => {
+    if (!reparseTimerRef.current) return null;
+    clearTimeout(reparseTimerRef.current);
+    reparseTimerRef.current = null;
+    if (mappingConfirmed && rawCsvText) {
+      const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
+      const header = parsedData[0];
+      if (parsedData.length > 0 && header) {
+        setHeaders(Object.keys(header).filter((key) => key !== 'id'));
+        setCsvData(parsedData);
+        return parsedData;
+      }
+    } else if (loadedText && !showMapping) {
+      const { headers: parsedFileHeaders } = parseCsvHeaders(
+        loadedText,
+        csvFormat
+      );
+      const areHeadersValid = requiredHeaders.every((req) =>
+        parsedFileHeaders.includes(req)
+      );
+      if (areHeadersValid) {
+        const parsedData = parseCSV(loadedText, undefined, csvFormat);
+        const header = parsedData[0];
+        if (parsedData.length > 0 && header) {
+          setHeaders(Object.keys(header).filter((key) => key !== 'id'));
+          setCsvData(parsedData);
+          return parsedData;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (csvData.some((row) => !row.name || String(row.name).trim() === '')) {
@@ -385,16 +424,25 @@ export function useExerciseImport(
     }
     setLoading(true);
     try {
-      // A pending reparse (scheduled by a format-bar change) could fire after
-      // the save resolves and replace csvData with new row IDs, falsely marking
-      // the just-saved form dirty. Cancel it before stamping the snapshot.
+      // A pending reparse (scheduled by a format-bar change) would otherwise
+      // save rows parsed under the previous format. Apply it first so the
+      // saved values reflect the current format, and stamp the snapshot with
+      // the same rows so the form closes cleanly.
+      let dataToSave: ExerciseCSVData[];
       if (reparseTimerRef.current) {
-        clearTimeout(reparseTimerRef.current);
-        reparseTimerRef.current = null;
+        const flushed = flushPendingReparse();
+        if (flushed === null) {
+          // The format change flipped the file into header-mapping mode; there's
+          // no savable table, so abort rather than persist stale rows.
+          return;
+        }
+        dataToSave = flushed;
+      } else {
+        dataToSave = csvData;
       }
-      await onSave(csvData.map(({ id, ...rest }) => rest));
+      await onSave(dataToSave.map(({ id, ...rest }) => rest));
       // Saved: the table now matches what's stored, so closing shouldn't prompt.
-      setSavedSnapshot(csvData);
+      setSavedSnapshot(dataToSave);
     } catch (error) {
       console.error(error);
     } finally {
