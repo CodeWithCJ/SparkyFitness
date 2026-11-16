@@ -149,6 +149,11 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   // rebuild them from the (now-stale) file text. Reset on every fresh parse and
   // on clear.
   const editedSinceParseRef = useRef(false);
+  // The serialized format used for the last parse. Lets the reparse effects skip
+  // a redundant timer when the format hasn't changed since the table was last
+  // parsed (e.g. right after a fresh load) — arming it then would only re-parse
+  // the same file and wipe an edit made in the window.
+  const lastParsedFormatRef = useRef<string | null>(null);
 
   // The launcher confirms closing only while this form is dirty. A successful
   // save doesn't clear the table, so remember the saved csvData reference and
@@ -326,6 +331,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
         setCsvData(parsedData);
         editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(options);
       } else if (!silent) {
         toast({
           title: t('foodCsvImport.noDataTitle', 'No Data Found'),
@@ -417,6 +423,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
       setCsvData(parsedData);
       editedSinceParseRef.current = false;
+      lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
       setShowMapping(false);
       setMappingConfirmed(true);
     } else {
@@ -450,6 +457,11 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     // dialog there are no headers yet, and a delimiter fix in the format bar
     // is exactly what needs to re-evaluate the file.
     if (!loadedText || showMapping || mappingConfirmed) return;
+    // Arm the timer only when the format actually changed since the last parse.
+    // Right after a fresh load the format is unchanged, so a reparse would just
+    // re-parse the same file and wipe an edit made in the window.
+    if (lastParsedFormatRef.current === JSON.stringify(csvFormat.options))
+      return;
     const timer = setTimeout(() => {
       reparseTimerRef.current = null;
       evaluateAndParse(loadedText, { silent: true });
@@ -467,6 +479,9 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   // loadedText with no mapping, or headers would no longer line up.
   useEffect(() => {
     if (!mappingConfirmed || showMapping) return;
+    // Arm only on a real format change, same as the no-mapping path above.
+    if (lastParsedFormatRef.current === JSON.stringify(csvFormat.options))
+      return;
     const timer = setTimeout(() => {
       reparseTimerRef.current = null;
       const parsedData = parseCSV(rawCsvText, csvFormat.options, headerMapping);
@@ -475,6 +490,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
         setCsvData(parsedData);
         editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
       }
     }, REPARSE_DEBOUNCE_MS);
     reparseTimerRef.current = timer;
@@ -595,6 +611,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
 
   const clearData = () => {
     editedSinceParseRef.current = false;
+    lastParsedFormatRef.current = null;
     setCsvData([]);
     setHeaders([]);
     setLoadedText('');
@@ -665,6 +682,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
         setCsvData(parsedData);
         editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
         return parsedData;
       }
       // The format change broke the confirmed parse; reopen mapping so the user
@@ -683,6 +701,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
           setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
           setCsvData(parsedData);
           editedSinceParseRef.current = false;
+          lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
           return parsedData;
         }
       }
