@@ -10,6 +10,7 @@ import {
   isWeightDurationModality,
   rendersCardioEffortForm,
   resolveSnapshotModality,
+  type PlannedSetValues,
 } from '../utils/workoutSession';
 
 /** The 3-2-1 before a hold starts, as on the watch. */
@@ -43,7 +44,8 @@ interface TimedTarget {
 /** The active set when it is a timed hold (not a cardio form or a distance set). */
 function findTimedTarget(
   session: PresetSessionResponse | null,
-  activeSetId: string | null
+  activeSetId: string | null,
+  plannedSetValues: Record<string, PlannedSetValues>
 ): TimedTarget | null {
   if (session == null || activeSetId == null) return null;
   for (const exercise of session.exercises) {
@@ -55,7 +57,12 @@ function findTimedTarget(
     if (!timed || rendersCardioEffortForm(snapshot, exercise.sets.length)) {
       return null;
     }
-    const target = effectiveSetDurationSec(set, modality);
+    // The set's own length wins (an edit); a set started from a plan keeps
+    // its length in the planned values until then.
+    const planned = plannedSetValues[activeSetId];
+    const target =
+      effectiveSetDurationSec(set, modality) ??
+      (planned != null ? effectiveSetDurationSec(planned, modality) : null);
     return {
       setId: activeSetId,
       entryId: exercise.id,
@@ -86,7 +93,10 @@ export function useFocusHold({
   enabled: boolean;
   onFinish: (setId: string) => void;
 }): FocusHold {
-  const target = enabled ? findTimedTarget(session, activeSetId) : null;
+  const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
+  const target = enabled
+    ? findTimedTarget(session, activeSetId, plannedSetValues)
+    : null;
   const setId = target?.setId ?? null;
   const startedAt = useActiveWorkoutStore((s) =>
     setId != null ? (s.setTimerStartedAt[setId] ?? null) : null
