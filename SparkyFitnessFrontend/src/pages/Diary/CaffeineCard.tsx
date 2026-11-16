@@ -9,7 +9,8 @@ import { useNowTicker } from '@/hooks/useNowTicker';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ReferenceDot, ReferenceLine } from 'recharts';
 import { KineticsChart, KineticsDoseChips } from '@/components/KineticsChart';
-import { formatRelativeDateTime, localDayStartMs } from '@/utils/kineticsTime';
+import { useKineticsClock } from '@/hooks/useKineticsClock';
+import { formatRelativeDateTime, zonedDayBounds } from '@/utils/kineticsTime';
 import {
   activeCaffeineAt,
   caffeineCurve,
@@ -30,15 +31,18 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   const isDark = resolvedTheme === 'dark';
   const { data, isLoading } = useActiveCaffeineQuery(date, userId);
   const nowMs = useNowTicker();
+  const clock = useKineticsClock();
 
   // Derived above the early returns: hooks must run in the same order on every
   // render, and the card returns null on a day with no caffeine.
   const bedtimeMs = data ? new Date(data.bedtime_at).getTime() : 0;
 
-  // The calendar start of the viewed day in local time
+  // The calendar start of the viewed day in the profile's time zone
   const dayStartMs = useMemo(
-    () => localDayStartMs(date) ?? bedtimeMs - 24 * 60 * 60 * 1000,
-    [date, bedtimeMs]
+    () =>
+      zonedDayBounds(date, clock.timeZone)?.startMs ??
+      bedtimeMs - 24 * 60 * 60 * 1000,
+    [date, clock.timeZone, bedtimeMs]
   );
 
   // The plotted window belongs to the day on screen: an hour before its first
@@ -460,7 +464,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 {t('diary.caffeine.legendCutoff', {
                   defaultValue: 'Last {{dose}}mg dose {{time}}',
                   dose: Math.round(cutoff_dose_mg),
-                  time: formatRelativeDateTime(cutoffMs, date, {
+                  time: formatRelativeDateTime(cutoffMs, date, clock, {
                     yesterday: t('common.yesterday', 'Yesterday'),
                     tomorrow: t('common.tomorrow', 'Tomorrow'),
                   }),
@@ -484,7 +488,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               ? t('diary.caffeine.crossingNote', {
                   defaultValue: 'Back under {{threshold}}mg from {{time}}',
                   threshold: threshold_mg,
-                  time: formatRelativeDateTime(crossingAt, date, {
+                  time: formatRelativeDateTime(crossingAt, date, clock, {
                     yesterday: t('common.yesterday', 'Yesterday'),
                     tomorrow: t('common.tomorrow', 'Tomorrow'),
                   }),

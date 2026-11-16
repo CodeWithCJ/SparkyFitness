@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Info, Wine } from 'lucide-react';
 import { ReferenceDot } from 'recharts';
 import {
-  addDays,
   bacInDisplayUnit,
   bacModelOf,
   bloodAlcoholAt,
   bloodAlcoholChartWindow,
   bloodAlcoholCurve,
   DEFAULT_BAC_DISPLAY_UNIT,
+  instantToDay,
   type BacBodyInput,
   type BacDisplayUnit,
   type BacDistributionFormula,
@@ -22,8 +22,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KineticsChart, KineticsDoseChips } from '@/components/KineticsChart';
 import { useBloodAlcoholQuery } from '@/hooks/Diary/useBloodAlcohol';
+import { useKineticsClock } from '@/hooks/useKineticsClock';
 import { useNowTicker } from '@/hooks/useNowTicker';
-import { formatRelativeDateTime, localDayStartMs } from '@/utils/kineticsTime';
+import { formatRelativeDateTime, zonedDayBounds } from '@/utils/kineticsTime';
 
 // Indigo is alcohol's colour elsewhere in the app (Reports' weekly alcohol card).
 const BAC_COLOR = '#6366f1';
@@ -47,14 +48,20 @@ interface BloodAlcoholCardProps {
 }
 
 export const BloodAlcoholCard = ({ date }: BloodAlcoholCardProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, isLoading, isError } = useBloodAlcoholQuery(date);
   const nowMs = useNowTicker();
+  const clock = useKineticsClock();
 
-  const dayStartMs = localDayStartMs(date);
-  const dayEndMs = localDayStartMs(addDays(date, 1));
-  // The server decides "today" in the profile's time zone, as on mobile.
-  const isToday = data?.estimated_now_permille != null;
+  // The viewed day in the profile's time zone, the zone the Diary picks it in.
+  const dayBounds = zonedDayBounds(date, clock.timeZone);
+  const dayStartMs = dayBounds?.startMs ?? null;
+  const dayEndMs = dayBounds?.endMs ?? null;
+  // Rechecked on every tick, so a card left open past the profile's midnight
+  // stops showing "Estimated now" for the previous day.
+  const isToday =
+    data?.estimated_now_permille != null &&
+    instantToDay(nowMs, clock.timeZone) === date;
 
   const model = useMemo(() => (data ? bacModelOf(data) : null), [data]);
 
@@ -90,7 +97,12 @@ export const BloodAlcoholCard = ({ date }: BloodAlcoholCardProps) => {
     }));
   }, [data, model, chartWindow, unit]);
 
-  const formatDisplay = (value: number) => value.toFixed(BAC_DECIMALS[unit]);
+  const decimals = BAC_DECIMALS[unit];
+  const numberFormat = new Intl.NumberFormat(i18n.language || undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  const formatDisplay = (value: number) => numberFormat.format(value);
   const formatBac = (permille: number) =>
     formatDisplay(bacInDisplayUnit(permille, unit));
   const relativeLabels = {
@@ -273,7 +285,7 @@ export const BloodAlcoholCard = ({ date }: BloodAlcoholCardProps) => {
           </div>
           {peak && (
             <span className="text-[10px] text-muted-foreground mt-0.5">
-              {formatRelativeDateTime(peak.at, date, relativeLabels)}
+              {formatRelativeDateTime(peak.at, date, clock, relativeLabels)}
             </span>
           )}
         </div>

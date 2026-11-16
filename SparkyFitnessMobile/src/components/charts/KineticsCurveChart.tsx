@@ -14,6 +14,8 @@ type KineticsCurveChartProps = {
   data: KineticsCurvePoint[];
   testID: string;
   formatYLabel?: (value: number) => string;
+  /** IANA zone for the clock labels; the device zone when left out. */
+  timeZone?: string;
 } & (
   | { threshold?: undefined; curveLabel?: undefined }
   | {
@@ -31,6 +33,7 @@ const KineticsCurveChart: React.FC<KineticsCurveChartProps> = ({
   data,
   testID,
   formatYLabel,
+  timeZone,
   threshold,
   curveLabel,
 }) => {
@@ -63,7 +66,12 @@ const KineticsCurveChart: React.FC<KineticsCurveChartProps> = ({
             tickCount: 4,
             labelColor: textMuted,
             formatXLabel: (value: number) =>
-              formatDateToTimeLabel(new Date(value), preferences?.time_format),
+              formatDateToTimeLabel(
+                new Date(value),
+                preferences?.time_format,
+                undefined,
+                timeZone
+              ),
           }}
           yAxis={[
             {

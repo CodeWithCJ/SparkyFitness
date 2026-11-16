@@ -292,13 +292,13 @@ function bacSeries(
   let gridMs = startMs;
   let level = 0;
   let absorbed = 0;
-  let nextLevel: number | null = null;
 
-  const step = (): number => {
-    const nextAbsorbed = absorbedGrams(timed, gridMs + MINUTE_MS);
-    const inflow = (nextAbsorbed - absorbed) / gramsPerPermille;
-    absorbed = nextAbsorbed;
-    return Math.max(0, level + inflow - eliminatedPerStep);
+  // Level `fraction` of a minute past the grid point, given the grams absorbed
+  // by that instant. Absorption is counted only up to the instant itself, so a
+  // drink never shows before its own time.
+  const levelAfter = (absorbedThen: number, fraction: number): number => {
+    const inflow = (absorbedThen - absorbed) / gramsPerPermille;
+    return Math.max(0, level + inflow - eliminatedPerStep * fraction);
   };
 
   return timesMs.map((t) => {
@@ -306,13 +306,14 @@ function bacSeries(
     while (gridMs + MINUTE_MS <= t) {
       // Everything absorbed and nothing left: the level stays at zero.
       if (level === 0 && gridMs > settledMs) return 0;
-      level = nextLevel ?? step();
-      nextLevel = null;
-      gridMs += MINUTE_MS;
+      const nextMs = gridMs + MINUTE_MS;
+      const nextAbsorbed = absorbedGrams(timed, nextMs);
+      level = levelAfter(nextAbsorbed, 1);
+      absorbed = nextAbsorbed;
+      gridMs = nextMs;
     }
-    nextLevel ??= step();
-    const fraction = (t - gridMs) / MINUTE_MS;
-    return round(level + (nextLevel - level) * fraction);
+    if (t === gridMs) return round(level);
+    return round(levelAfter(absorbedGrams(timed, t), (t - gridMs) / MINUTE_MS));
   });
 }
 

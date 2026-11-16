@@ -100,7 +100,8 @@ const BloodAlcoholCard: React.FC<BloodAlcoholCardProps> = ({
     [estimate]
   );
 
-  // The server reads the day in the profile time zone, so the chart does too.
+  // The server reads the day in the profile time zone, so the chart window,
+  // its clock labels and the peak time do too.
   const profileTimezone = preferences?.timezone;
   const timezone =
     profileTimezone && isValidTimeZone(profileTimezone)
@@ -206,7 +207,9 @@ const BloodAlcoholCard: React.FC<BloodAlcoholCardProps> = ({
                     defaultValue: 'Peak at {{time}}',
                     time: formatDateToTimeLabel(
                       new Date(estimate.peak.at),
-                      preferences?.time_format
+                      preferences?.time_format,
+                      undefined,
+                      timezone
                     ),
                   })}
                 </Text>
@@ -225,6 +228,7 @@ const BloodAlcoholCard: React.FC<BloodAlcoholCardProps> = ({
             <KineticsCurveChart
               data={chartData}
               testID="blood-alcohol-chart"
+              timeZone={timezone}
               formatYLabel={(value) => formatInUnit(value, unit)}
             />
           ) : null}

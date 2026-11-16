@@ -10,6 +10,7 @@ import {
   bacModelOf,
   bloodAlcoholAt,
   bloodAlcoholChartWindow,
+  bloodAlcoholCurve,
   bloodAlcoholPeak,
   dayToUtcRange,
   instantToDay,
@@ -53,19 +54,30 @@ function carriedOverDoses(
   model: BacModel | null,
   dayStartMs: number
 ): AlcoholDose[] {
-  if (
-    !model ||
-    earlier.length === 0 ||
-    bloodAlcoholAt(earlier, model, dayStartMs) === 0
-  ) {
-    return [];
-  }
+  if (!model || earlier.length === 0) return [];
+  // One walk of the curve, sampled at midnight and at each drink's own time
+  // (the curve always samples the drinks' times; the step only adds grid
+  // points). A drink adds nothing at its own instant and later drinks nothing
+  // before theirs, so the level at a drink is the level of the drinks before
+  // it alone. Re-walking the curve once per drink made this quadratic in the
+  // number of drinks.
+  const levels = new Map(
+    bloodAlcoholCurve(
+      earlier,
+      model,
+      earlier[0]!.at,
+      dayStartMs,
+      BAC_LOOKBACK_HOURS * 60
+    ).map((point) => [point.t, point.permille])
+  );
+  if ((levels.get(dayStartMs) ?? 0) === 0) return [];
+
   let episodeStart = 0;
   for (let i = 1; i < earlier.length; i++) {
-    const at = earlier[i]!.at;
+    const atMs = Date.parse(earlier[i]!.at);
     if (
-      Date.parse(at) > Date.parse(earlier[i - 1]!.at) &&
-      bloodAlcoholAt(earlier.slice(0, i), model, at) === 0
+      atMs > Date.parse(earlier[i - 1]!.at) &&
+      (levels.get(atMs) ?? 0) === 0
     ) {
       episodeStart = i;
     }
@@ -84,7 +96,10 @@ export async function getBloodAlcoholEstimate(
     getUserPreferences(userId),
     getUserProfile(userId),
     getLatestCheckInMeasurementsOnOrBeforeDate(userId, date),
-    getNutrientDosesForWindow(userId, addDays(date, -1), date, 'alcohol_g'),
+    // Two calendar days back: the 24 h lookback from midnight reaches the day
+    // before yesterday when yesterday was short (spring-forward). Doses
+    // outside the lookback are dropped below by instant.
+    getNutrientDosesForWindow(userId, addDays(date, -2), date, 'alcohol_g'),
   ]);
 
   const chosenFormula = isBacDistributionFormula(

@@ -11,11 +11,11 @@ import {
   YAxis,
 } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useKineticsClock } from '@/hooks/useKineticsClock';
 import {
   formatDayRelativeTick,
   formatRelativeDateTime,
   hourlyTicks,
-  localDayStartMs,
 } from '@/utils/kineticsTime';
 
 type CurvePoint<K extends string> = { t: number } & Record<K, number>;
@@ -62,7 +62,7 @@ export function KineticsChart<K extends string>({
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
-  const dayStartMs = localDayStartMs(viewedDate);
+  const clock = useKineticsClock();
   const relativeLabels = {
     yesterday: t('common.yesterday', 'Yesterday'),
     tomorrow: t('common.tomorrow', 'Tomorrow'),
@@ -91,9 +91,9 @@ export function KineticsChart<K extends string>({
           type="number"
           scale="time"
           domain={[window.start, window.end]}
-          ticks={hourlyTicks(window.start, window.end)}
+          ticks={hourlyTicks(window.start, window.end, clock.timeZone)}
           tickFormatter={(instant: number) =>
-            formatDayRelativeTick(instant, dayStartMs)
+            formatDayRelativeTick(instant, viewedDate, clock)
           }
           stroke={axisColor}
           fontSize={11}
@@ -108,7 +108,12 @@ export function KineticsChart<K extends string>({
             fontSize: 12,
           }}
           labelFormatter={(value) =>
-            formatRelativeDateTime(Number(value), viewedDate, relativeLabels)
+            formatRelativeDateTime(
+              Number(value),
+              viewedDate,
+              clock,
+              relativeLabels
+            )
           }
           formatter={(
             value: string | number | ReadonlyArray<string | number> | undefined
@@ -153,6 +158,7 @@ export function KineticsDoseChips({
   viewedDate: string;
 }) {
   const { t } = useTranslation();
+  const clock = useKineticsClock();
   if (doses.length === 0) return null;
   return (
     <div className="space-y-1.5 pt-1">
@@ -167,7 +173,7 @@ export function KineticsDoseChips({
             <span>{dose.amount}</span>
             <span className="text-[10px] text-muted-foreground">
               (
-              {formatRelativeDateTime(dose.at, viewedDate, {
+              {formatRelativeDateTime(dose.at, viewedDate, clock, {
                 yesterday: t('common.yesterday', 'Yesterday'),
                 tomorrow: t('common.tomorrow', 'Tomorrow'),
               })}

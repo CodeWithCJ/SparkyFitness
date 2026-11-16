@@ -8,8 +8,10 @@ import { useBloodAlcoholQuery } from '@/hooks/Diary/useBloodAlcohol';
 jest.mock('@/hooks/Diary/useBloodAlcohol', () => ({
   useBloodAlcoholQuery: jest.fn(),
 }));
+const mockLanguage = { current: 'en' };
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
+    i18n: { language: mockLanguage.current },
     t: (key: string, second?: unknown) => {
       if (typeof second === 'string') return second;
       const opts = second as Record<string, unknown> | undefined;
@@ -22,6 +24,17 @@ jest.mock('react-i18next', () => ({
 }));
 jest.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light' }),
+}));
+// Defaults to the runner's own zone, so the local dates below describe the
+// viewed day; a test sets another profile zone to check the card follows it.
+const mockPrefs = {
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timeFormat: 'HH:mm',
+  language: 'en',
+};
+const RUNNER_ZONE = mockPrefs.timezone;
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => mockPrefs,
 }));
 // Same stubs as the caffeine card: the chart frame is shared, so these test
 // ids describe what each card hands it.
@@ -96,6 +109,8 @@ const expectNoSoberTime = (container: HTMLElement) => {
 describe('BloodAlcoholCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPrefs.timezone = RUNNER_ZONE;
+    mockLanguage.current = 'en';
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-09-05T19:00:00.000Z'));
   });
@@ -300,5 +315,38 @@ describe('BloodAlcoholCard', () => {
     expect(screen.getAllByTestId('dose-dot-estimated')).toHaveLength(1);
     expect(screen.getByText('Estimated times')).toBeInTheDocument();
     expect(screen.getByText('Assumed time')).toBeInTheDocument();
+  });
+
+  it('frames the viewed day in the profile time zone, not the browser zone', () => {
+    // 01:00 on Sep 5 in Kiritimati (UTC+14) is still Sep 4 in most zones.
+    mockPrefs.timezone = 'Pacific/Kiritimati';
+    jest.setSystemTime(new Date('2026-09-05T00:00:00.000Z'));
+    renderCard({
+      ...okData,
+      doses: [{ at: '2026-09-04T11:00:00.000Z', grams: 20, name: 'Beer' }],
+      peak: { at: '2026-09-04T11:45:00.000Z', permille: 0.31 },
+    });
+
+    expect(screen.getAllByTestId('dose-dot')).toHaveLength(1);
+    expect(screen.getByText('(01:00)')).toBeInTheDocument();
+    expect(screen.getByText('01:45')).toBeInTheDocument();
+    expect(screen.queryByText(/Yesterday/)).not.toBeInTheDocument();
+  });
+
+  it('stops showing the current estimate once the profile day has passed', () => {
+    // The cached response still has a current value from yesterday.
+    mockPrefs.timezone = 'UTC';
+    jest.setSystemTime(new Date('2026-09-06T00:30:00.000Z'));
+    renderCard(okData);
+
+    expect(screen.queryByText('Estimated now')).not.toBeInTheDocument();
+    expect(screen.getByText('Estimated peak')).toBeInTheDocument();
+  });
+
+  it('formats the values for the active language', () => {
+    mockLanguage.current = 'de';
+    renderCard(okData);
+
+    expect(screen.getByText('0,31')).toBeInTheDocument();
   });
 });

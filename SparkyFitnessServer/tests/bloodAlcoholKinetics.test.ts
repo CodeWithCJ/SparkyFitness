@@ -158,6 +158,32 @@ describe('bloodAlcoholAt', () => {
     );
   });
 
+  it('never counts a drink before its time, also between minute boundaries', () => {
+    const model: BacModel = {
+      distributionFactor: 0.68,
+      weightKg: 70,
+      eliminationRate: 0.15,
+    };
+    const first: AlcoholDose[] = [{ at: '2026-11-07T00:00:00.000Z', grams: 1 }];
+    const both: AlcoholDose[] = [
+      ...first,
+      { at: '2026-11-07T01:00:30.000Z', grams: 14 },
+    ];
+    for (const t of [
+      '2026-11-07T01:00:15.000Z',
+      '2026-11-07T01:00:29.000Z',
+      '2026-11-07T01:00:30.000Z',
+    ]) {
+      expect(bloodAlcoholAt(both, model, t)).toBe(
+        bloodAlcoholAt(first, model, t)
+      );
+      expect(bloodAlcoholAt(both, model, t)).toBe(0);
+    }
+    expect(
+      bloodAlcoholAt(both, model, '2026-11-07T01:00:45.000Z')
+    ).toBeGreaterThan(0);
+  });
+
   it('ignores invalid drinks', () => {
     const noisy = [
       ...oneDrink,

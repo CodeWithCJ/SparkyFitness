@@ -177,6 +177,15 @@ describe('BloodAlcoholCard', () => {
     );
   });
 
+  it('states the peak time on the profile time zone clock', () => {
+    mockPreferences = { time_format: 'HH:mm', timezone: 'Pacific/Kiritimati' };
+
+    renderCard(okEstimate);
+
+    // The peak is 20:30 UTC, which is 10:30 in Kiritimati (UTC+14).
+    expect(screen.getByText('Peak at 10:30')).toBeTruthy();
+  });
+
   it('says when the chosen formula did not fit and Watson was used', () => {
     renderCard({ ...okEstimate, fell_back_from: 'seidl' });
 

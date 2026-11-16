@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   bacModelOf,
+  bloodAlcoholAt,
   bloodAlcoholChartWindow,
   bloodAlcoholCurve,
 } from '@workspace/shared';
+import type { AlcoholDose, BacModel } from '@workspace/shared';
 import { getBloodAlcoholEstimate } from '../services/bloodAlcoholService.js';
 import * as foodMisc from '../models/foodMisc.js';
 import * as preferenceRepo from '../models/preferenceRepository.js';
@@ -57,18 +59,40 @@ describe('getBloodAlcoholEstimate', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads alcohol for the day before through the date', async () => {
+  it('reads alcohol from two days before through the date', async () => {
     await getBloodAlcoholEstimate(userId, { date: '2026-11-07' });
 
     expect(dosesSpy).toHaveBeenCalledWith(
       userId,
-      '2026-11-06',
+      '2026-11-05',
       '2026-11-07',
       'alcohol_g'
     );
     expect(
       measurementRepo.getLatestCheckInMeasurementsOnOrBeforeDate
     ).toHaveBeenCalledWith(userId, '2026-11-07');
+  });
+
+  // After a spring-forward day (23 h long) the 24 h lookback from midnight
+  // starts on the calendar day before yesterday.
+  it('reads far enough back to cover the lookback after a spring-forward day', async () => {
+    vi.mocked(timezoneLoader.loadUserTimezone).mockResolvedValue(
+      'America/New_York'
+    );
+    dosesSpy.mockResolvedValue([drink('2026-03-07', '23:30', 250, 'Late')]);
+
+    const result = await getBloodAlcoholEstimate(userId, {
+      date: '2026-03-09',
+    });
+
+    expect(dosesSpy).toHaveBeenCalledWith(
+      userId,
+      '2026-03-07',
+      '2026-03-09',
+      'alcohol_g'
+    );
+    // 23:30 EST on March 7 is inside the 24 h before midnight EDT on March 9.
+    expect(result.doses.map((d) => d.name)).toEqual(['Late']);
   });
 
   it('estimates today from the preferences and profile', async () => {
@@ -300,5 +324,129 @@ describe('getBloodAlcoholEstimate', () => {
     const highest = Math.max(...curve.map((p) => p.permille));
     expect(peak!.permille).toBe(highest);
     expect(curve.find((p) => p.t === peakMs)?.permille).toBe(highest);
+  });
+
+  describe('carried-over drinks', () => {
+    const supplement = (
+      takenAt: string,
+      grams: number,
+      name: string
+    ): RawNutrientDose => ({
+      source: 'supplement',
+      entry_date: takenAt.slice(0, 10),
+      entry_time: null,
+      meal_default_time: null,
+      taken_at: takenAt,
+      amount: grams,
+      name,
+    });
+
+    // The earlier walk: the level of the drinks before each one, re-walked
+    // per drink. The single-walk version must pick the same drinks.
+    function referenceCarriedOver(
+      earlier: AlcoholDose[],
+      model: BacModel | null,
+      dayStartMs: number
+    ): AlcoholDose[] {
+      if (
+        !model ||
+        earlier.length === 0 ||
+        bloodAlcoholAt(earlier, model, dayStartMs) === 0
+      ) {
+        return [];
+      }
+      let episodeStart = 0;
+      for (let i = 1; i < earlier.length; i++) {
+        const at = earlier[i]!.at;
+        if (
+          Date.parse(at) > Date.parse(earlier[i - 1]!.at) &&
+          bloodAlcoholAt(earlier.slice(0, i), model, at) === 0
+        ) {
+          episodeStart = i;
+        }
+      }
+      return earlier.slice(episodeStart);
+    }
+
+    const dayStartMs = Date.parse('2026-11-07T00:00:00.000Z');
+    const cases: Record<string, RawNutrientDose[]> = {
+      'one evening': [
+        drink('2026-11-06', '20:00', 14, 'a'),
+        drink('2026-11-06', '21:00', 14, 'b'),
+        drink('2026-11-06', '23:00', 28, 'c'),
+      ],
+      'lunch then evening': [
+        drink('2026-11-06', '12:00', 20, 'a'),
+        drink('2026-11-06', '21:00', 40, 'b'),
+        drink('2026-11-06', '22:30', 40, 'c'),
+      ],
+      'drinks at the same time': [
+        drink('2026-11-06', '09:00', 10, 'a'),
+        drink('2026-11-06', '21:00', 30, 'b'),
+        drink('2026-11-06', '21:00', 30, 'c'),
+        drink('2026-11-06', '23:00', 10, 'd'),
+      ],
+      'off the minute grid': [
+        supplement('2026-11-06T08:00:17.250Z', 5, 'a'),
+        supplement('2026-11-06T11:59:41.000Z', 10, 'b'),
+        drink('2026-11-06', '20:00', 30, 'c'),
+        supplement('2026-11-06T20:00:30.500Z', 2, 'd'),
+        drink('2026-11-06', '23:00', 30, 'e'),
+      ],
+      'tiny sips after sobering': [
+        drink('2026-11-06', '06:00', 30, 'a'),
+        supplement('2026-11-06T14:00:05.000Z', 0.5, 'b'),
+        supplement('2026-11-06T14:00:45.000Z', 0.5, 'c'),
+        drink('2026-11-06', '22:00', 40, 'd'),
+      ],
+      'gone by midnight': [drink('2026-11-06', '10:00', 20, 'a')],
+    };
+
+    it.each(Object.entries(cases))(
+      'keeps the same drinks as walking each drink: %s',
+      async (_name, rows) => {
+        dosesSpy.mockResolvedValue(rows);
+
+        const result = await getBloodAlcoholEstimate(userId, {
+          date: '2026-11-07',
+        });
+
+        const model = bacModelOf(result);
+        const earlier: AlcoholDose[] = rows
+          .map((row) => ({
+            at: new Date(
+              row.taken_at ?? `${row.entry_date}T${row.entry_time}:00Z`
+            ).toISOString(),
+            grams: Number(row.amount),
+            name: row.name,
+          }))
+          .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+        const expected = referenceCarriedOver(earlier, model, dayStartMs).map(
+          (d) => d.name
+        );
+        expect(result.doses.map((d) => d.name)).toEqual(expected);
+      }
+    );
+
+    it('handles a drink every minute of the day before quickly', async () => {
+      const rows: RawNutrientDose[] = [];
+      for (let minute = 0; minute < 1440; minute++) {
+        const at = new Date(
+          Date.parse('2026-11-06T00:00:00.000Z') + minute * 60_000
+        ).toISOString();
+        rows.push(supplement(at, 5, `sip ${minute}`));
+      }
+      dosesSpy.mockResolvedValue(rows);
+
+      const started = performance.now();
+      const result = await getBloodAlcoholEstimate(userId, {
+        date: '2026-11-07',
+      });
+      const elapsedMs = performance.now() - started;
+
+      expect(result.doses).toHaveLength(1440);
+      // Walking the curve once per drink took several seconds here.
+      expect(elapsedMs).toBeLessThan(1500);
+    });
   });
 });

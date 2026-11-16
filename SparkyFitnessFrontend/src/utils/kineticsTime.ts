@@ -2,38 +2,68 @@
  * Time helpers for the Diary's modeled-curve cards (active caffeine, estimated
  * blood alcohol). Their charts and labels describe the diary day on screen,
  * which is often not today, so every time is told relative to that day.
+ *
+ * The diary picks its day in the profile's time zone (todayInZone), so days,
+ * midnights and clock labels here use that zone too, never the browser's.
  */
+import { format } from 'date-fns';
+import {
+  dayToUtcRange,
+  daysBetween,
+  instantHourMinute,
+  instantToDay,
+  isDayString,
+} from '@workspace/shared';
+import { getDateLocale } from '@/utils/languageUtils';
+import { formatTimeInZone } from '@/utils/timeFormatters';
 
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const MINUTE_MS = 60 * 1000;
 
-/** Local HH:MM for an instant, in the viewer's own zone. */
-export const clockLabel = (instant: string | number) =>
-  new Date(instant).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** How instants are read and written: the profile's zone, time format and language. */
+export interface KineticsClock {
+  timeZone: string;
+  /** Time of day in the user's time format, e.g. "20:00" or "8:00 PM". */
+  time: (instant: number) => string;
+  /** Short date in the user's language, e.g. "Sep 5". */
+  shortDate: (instant: number) => string;
+}
 
-/** Local midnight of a YYYY-MM-DD day, or null when the string is not a day. */
-export const localDayStartMs = (dateStr: string): number | null => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return y && m && d ? new Date(y, m - 1, d, 0, 0, 0, 0).getTime() : null;
+export const kineticsClock = (
+  timeZone: string,
+  timeFormat: string,
+  language: string
+): KineticsClock => {
+  const zone = { kind: 'tz', tz: timeZone } as const;
+  const locale = getDateLocale(language);
+  return {
+    timeZone,
+    time: (instant) => formatTimeInZone(instant, zone, timeFormat),
+    shortDate: (instant) => {
+      if (!Number.isFinite(instant)) return '';
+      // The zone's calendar day at local noon, so no DST gap can move it.
+      const [y, m, d] = instantToDay(instant, timeZone).split('-').map(Number);
+      return format(new Date(y!, m! - 1, d!, 12), 'MMM d', { locale });
+    },
+  };
 };
 
-/** Whole local days from `dayStartMs` to the day `instant` falls on. */
-const daysFrom = (dayStartMs: number, instant: number) => {
-  const d = new Date(instant);
-  const instantMidnight = new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    0,
-    0,
-    0,
-    0
-  ).getTime();
-  return Math.round((instantMidnight - dayStartMs) / DAY_MS);
+/**
+ * The instants that bound a YYYY-MM-DD day in `timeZone` (midnight to next
+ * midnight), or null when the string is not a day.
+ */
+export const zonedDayBounds = (
+  day: string,
+  timeZone: string
+): { startMs: number; endMs: number } | null => {
+  if (!isDayString(day)) return null;
+  const { start, end } = dayToUtcRange(day, timeZone);
+  return { startMs: start.getTime(), endMs: end.getTime() };
 };
+
+/** Whole days from the viewed day to the day `instant` falls on, in the zone. */
+const daysFrom = (viewedDay: string, instant: number, timeZone: string) =>
+  daysBetween(viewedDay, instantToDay(instant, timeZone));
 
 /**
  * Formats an instant relative to the diary day being viewed (YYYY-MM-DD).
@@ -45,18 +75,17 @@ const daysFrom = (dayStartMs: number, instant: number) => {
 export const formatRelativeDateTime = (
   instant: string | number | Date,
   viewedDateStr: string,
+  clock: KineticsClock,
   labels?: {
     yesterday?: string;
     tomorrow?: string;
   }
 ) => {
-  const d = instant instanceof Date ? instant : new Date(instant);
-  const time = clockLabel(d.getTime());
+  const ms = (instant instanceof Date ? instant : new Date(instant)).getTime();
+  const time = clock.time(ms);
+  if (!Number.isFinite(ms) || !isDayString(viewedDateStr)) return time;
 
-  const viewedMidnight = localDayStartMs(viewedDateStr);
-  if (viewedMidnight === null) return time;
-
-  const diffDays = daysFrom(viewedMidnight, d.getTime());
+  const diffDays = daysFrom(viewedDateStr, ms, clock.timeZone);
   if (diffDays === 0) {
     return time;
   }
@@ -68,11 +97,7 @@ export const formatRelativeDateTime = (
     const tLabel = labels?.tomorrow || 'Tomorrow';
     return `${tLabel}, ${time}`;
   }
-  const dateStr = d.toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-  });
-  return `${dateStr}, ${time}`;
+  return `${clock.shortDate(ms)}, ${time}`;
 };
 
 /**
@@ -81,18 +106,19 @@ export const formatRelativeDateTime = (
  */
 export const formatDayRelativeTick = (
   instant: number,
-  dayStartMs: number | null
+  viewedDateStr: string,
+  clock: KineticsClock
 ) => {
-  if (dayStartMs === null) return clockLabel(instant);
-  const d = new Date(instant);
-  const diffDays = daysFrom(dayStartMs, instant);
+  const time = clock.time(instant);
+  if (!isDayString(viewedDateStr)) return time;
+  const diffDays = daysFrom(viewedDateStr, instant, clock.timeZone);
 
-  const time = clockLabel(instant);
   if (diffDays === 0) {
     return time;
   }
-  if (d.getHours() === 0 && d.getMinutes() === 0) {
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const { hour, minute } = instantHourMinute(instant, clock.timeZone);
+  if (hour === 0 && minute === 0) {
+    return clock.shortDate(instant);
   }
   if (diffDays > 0) {
     return `+${diffDays}d ${time}`;
@@ -100,12 +126,17 @@ export const formatDayRelativeTick = (
   return `${diffDays}d ${time}`;
 };
 
-/** Ticks on each full hour from `start` to `end`, both included. */
-export const hourlyTicks = (start: number, end: number): number[] => {
-  const startDate = new Date(start);
+/** Ticks on each full hour of `timeZone` from `start` to `end`, both included. */
+export const hourlyTicks = (
+  start: number,
+  end: number,
+  timeZone: string
+): number[] => {
+  const { minute } = instantHourMinute(start, timeZone);
+  // Zone offsets are whole minutes, so seconds and milliseconds are the same
+  // in every zone.
   const remainderMs =
-    (startDate.getMinutes() * 60 + startDate.getSeconds()) * 1000 +
-    startDate.getMilliseconds();
+    minute * MINUTE_MS + (((start % MINUTE_MS) + MINUTE_MS) % MINUTE_MS);
   const first = remainderMs === 0 ? start : start + (HOUR_MS - remainderMs);
   const ticks: number[] = [];
   for (let t = first; t <= end; t += HOUR_MS) ticks.push(t);

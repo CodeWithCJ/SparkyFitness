@@ -980,6 +980,16 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // --- Persistence and Updates ---
 
+  // Each save sends a whole snapshot and the server writes every field it
+  // gets, so overlapping saves must reach it in the order they were made:
+  // otherwise an older snapshot can land last and undo a newer change.
+  const preferenceWrites = useRef<Promise<unknown>>(Promise.resolve());
+  const runInOrder = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const run = preferenceWrites.current.then(task, task);
+    preferenceWrites.current = run.catch(() => undefined);
+    return run;
+  }, []);
+
   const updatePreferences = useCallback(
     async (updates: Partial<DefaultPreferences>) => {
       debug(
@@ -1176,8 +1186,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       try {
-        await updatePreferences(prefsToSave);
-        await loadPreferences(); // Refresh local state from the newly saved data
+        // The reload stays in the queue too, so the last reload always runs
+        // after the last save and the screen ends on the saved values.
+        await runInOrder(async () => {
+          await updatePreferences(prefsToSave);
+          await loadPreferences(); // Refresh local state from the newly saved data
+        });
         info(
           loggingLevel,
           'PreferencesProvider: All preferences saved successfully.'
@@ -1250,6 +1264,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bacDistributionFormula,
       bacEliminationRate,
       bacDisplayUnit,
+      runInOrder,
       updatePreferences,
       loadPreferences,
     ]
