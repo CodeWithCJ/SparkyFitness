@@ -6,12 +6,21 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  Link,
+  MemoryRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useNavigate,
+} from 'react-router-dom';
 import { addDays, challengePreset, todayInZone } from '@workspace/shared';
 import { HttpApiError } from '@/api/api';
 import * as challengesApi from '@/api/Challenges/challengesApi';
 import Challenges from '@/pages/Challenges/Challenges';
 import ChallengeJoinLink from '@/pages/Challenges/ChallengeJoinLink';
+import { useInviteAcrossSignIn } from '@/hooks/Challenges/useInviteAcrossSignIn';
 import {
   CHALLENGE_ID,
   INVITE_CODE,
@@ -373,5 +382,227 @@ describe('Challenges page', () => {
     ).toBeInTheDocument();
     fireEvent.blur(best);
     expect(best).toHaveValue(3);
+  });
+
+  it('holds the example day to a daily cap', async () => {
+    const capped = { ...challengePreset('all_rounder').rules, dailyCap: 1 };
+    api.getChallenge.mockResolvedValue(challenge({ rules: capped }));
+    api.getChallengeRuleChanges.mockResolvedValue([
+      {
+        id: 'c1',
+        changed_by_display_name: 'Test A',
+        effective_from: '2026-10-19',
+        rules: capped,
+        previous_rules: null,
+        created_at: '2026-10-18T10:00:00.000Z',
+      },
+    ]);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(
+      await screen.findByRole('tab', { name: 'How points work' })
+    );
+    expect(await screen.findByTestId('how-points-work')).toHaveTextContent(
+      'and 8,000 steps add 8: 98 points, held to the daily cap of 1.'
+    );
+  });
+
+  it('starts afresh when moving between cached challenges', async () => {
+    const OTHER = '22222222-2222-4222-8222-222222222222';
+    api.getChallenge.mockImplementation(async (id: string) =>
+      id === OTHER ? challenge({ id: OTHER, name: 'Family cup' }) : challenge()
+    );
+    api.createChallengeInvite.mockResolvedValue({
+      code: INVITE_CODE,
+      expires_at: '2026-11-21T00:00:00.000Z',
+    });
+    const { Wrapper } = wrapper();
+    render(
+      <Wrapper>
+        <MemoryRouter initialEntries={[`/challenges/${OTHER}`]}>
+          <Link to={`/challenges/${CHALLENGE_ID}`}>to first</Link>
+          <Link to={`/challenges/${OTHER}`}>to other</Link>
+          <Routes>
+            <Route path="/challenges/:challengeId" element={<Challenges />} />
+          </Routes>
+        </MemoryRouter>
+      </Wrapper>
+    );
+    // Both details cached, so the move below shows no loading state.
+    expect(await screen.findByText(/Family cup/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'to first' }));
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Members' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make an invite code' })
+    );
+    expect(await screen.findByDisplayValue(INVITE_CODE)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'to other' }));
+    expect(await screen.findByText(/Family cup/)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(INVITE_CODE)).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Standings' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('keeps invite create and revoke from running together', async () => {
+    api.getChallenge.mockResolvedValue(
+      challenge({
+        invite_active: true,
+        invite_expires_at: '2026-11-21T00:00:00.000Z',
+      })
+    );
+    let finishCreate: (v: { code: string; expires_at: string }) => void = () =>
+      undefined;
+    api.createChallengeInvite.mockReturnValue(
+      new Promise((resolve) => {
+        finishCreate = resolve;
+      })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Members' }));
+    const create = await screen.findByRole('button', {
+      name: 'Make a new code',
+    });
+    const revoke = screen.getByRole('button', { name: 'Turn off the code' });
+    fireEvent.click(create);
+    await waitFor(() => expect(revoke).toBeDisabled());
+    expect(create).toBeDisabled();
+    finishCreate({ code: INVITE_CODE, expires_at: '2026-11-21T00:00:00.000Z' });
+    await waitFor(() => expect(revoke).toBeEnabled());
+
+    let finishRevoke: () => void = () => undefined;
+    api.revokeChallengeInvite.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishRevoke = resolve;
+      }) as never
+    );
+    fireEvent.click(revoke);
+    await waitFor(() => expect(create).toBeDisabled());
+    expect(revoke).toBeDisabled();
+    finishRevoke();
+    await waitFor(() => expect(create).toBeEnabled());
+  });
+
+  it("waits for the rule history before showing a member's totals", async () => {
+    let finishLog: (v: never[]) => void = () => undefined;
+    api.getChallengeRuleChanges.mockReturnValue(
+      new Promise((resolve) => {
+        finishLog = resolve;
+      })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.click(await screen.findByRole('button', { name: /Test B/ }));
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() =>
+      expect(api.getChallengeStandings).toHaveBeenCalledWith(
+        CHALLENGE_ID,
+        '2026-10-19'
+      )
+    );
+    // Standings are in, the rules that scored them are not: no totals yet.
+    expect(within(dialog).queryByTestId('member-periods')).toBeNull();
+    finishLog([]);
+    expect(await within(dialog).findByTestId('member-periods')).toBeTruthy();
+  });
+
+  it('says the rule history failed in the member dialog, with a retry', async () => {
+    api.getChallengeRuleChanges.mockRejectedValue(new Error('down'));
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.click(await screen.findByRole('button', { name: /Test B/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      await within(dialog).findByText('Could not load the rule changes.')
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByTestId('member-periods')).toBeNull();
+    api.getChallengeRuleChanges.mockResolvedValue([]);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(await within(dialog).findByTestId('member-periods')).toBeTruthy();
+  });
+
+  it('says a period failed to load rather than that it has no score', async () => {
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    const member = await screen.findByRole('button', { name: /Test B/ });
+    api.getChallengeStandings.mockImplementation(async (_id, day) => {
+      if (day === '2026-10-19') throw new Error('down');
+      return standings();
+    });
+    fireEvent.click(member);
+    const list = await screen.findByTestId('member-periods');
+    const failed = await within(list).findByRole('alert');
+    expect(failed).toHaveTextContent('Could not load the standings.');
+    expect(within(list).queryByText('No score')).not.toBeInTheDocument();
+    api.getChallengeStandings.mockResolvedValue(standings());
+    fireEvent.click(within(failed).getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(within(list).queryByRole('alert')).not.toBeInTheDocument()
+    );
+  });
+
+  it('says the rule log failed to load, with a retry', async () => {
+    api.getChallengeRuleChanges.mockRejectedValue(new Error('down'));
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(
+      await screen.findByRole('tab', { name: 'Rule changes' })
+    );
+    expect(
+      await screen.findByText('Could not load the rule changes.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No rule changes.')).not.toBeInTheDocument();
+    api.getChallengeRuleChanges.mockResolvedValue([
+      {
+        id: 'c1',
+        changed_by_display_name: 'Test A',
+        effective_from: '2026-10-19',
+        rules: challengePreset('all_rounder').rules,
+        previous_rules: null,
+        created_at: '2026-10-18T10:00:00.000Z',
+      },
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByTestId('rule-change-log')).toBeInTheDocument();
+  });
+
+  it('resumes an invite link opened while signed out after sign-in', async () => {
+    let signedIn = false;
+    const Guard = () => {
+      useInviteAcrossSignIn(signedIn, false);
+      return signedIn ? <Outlet /> : <Navigate to="/login" />;
+    };
+    const Login = () => {
+      const navigate = useNavigate();
+      return (
+        <button
+          onClick={() => {
+            signedIn = true;
+            // Where Auth sends everyone after sign-in.
+            navigate('/');
+          }}
+        >
+          Sign in
+        </button>
+      );
+    };
+    sessionStorage.clear();
+    const { Wrapper } = wrapper();
+    render(
+      <Wrapper>
+        <MemoryRouter initialEntries={[`/challenges/join#${INVITE_CODE}`]}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Guard />}>
+              <Route index element={<p>Diary</p>} />
+              <Route path="challenges" element={<Challenges />} />
+              <Route path="challenges/join" element={<ChallengeJoinLink />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </Wrapper>
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByLabelText('Invite link or code')).toHaveValue(
+      INVITE_CODE
+    );
+    // Used once: a later visit does not open it again.
+    expect(sessionStorage.length).toBe(0);
   });
 });

@@ -86,6 +86,7 @@ describe('How points work', () => {
       steps: 8000,
       effort: 90,
       stepPoints: 8,
+      uncapped: 98,
       total: 98,
     });
     const tiered = rules({
@@ -97,6 +98,12 @@ describe('How points work', () => {
     // 30 full minutes at 2, then 15 at half rate.
     expect(pointsExample(tiered)?.effort).toBe(75);
     expect(pointsExample(challengePreset('workweek_hustle').rules)).toBeNull();
+  });
+
+  it("holds the example day to the challenge's daily cap", () => {
+    const capped = pointsExample(rules({ dailyCap: 1 }));
+    expect(capped?.uncapped).toBe(98);
+    expect(capped?.total).toBe(1);
   });
 
   it('describes race and group-goal targets in the metric unit', () => {
@@ -266,16 +273,39 @@ describe('the Diary card', () => {
   const summary = (
     id: string,
     start_date: string,
-    ended_at: string | null = null
-  ) => ({ id, start_date, ended_at }) as ChallengeSummary;
+    ended_at: string | null = null,
+    time_zone = 'UTC'
+  ) => ({ id, start_date, ended_at, time_zone }) as ChallengeSummary;
+  const now = new Date('2026-11-16T12:00:00Z');
 
-  it('shows only running challenges, newest first, at most two', () => {
+  it('shows only challenges not ended, newest first, at most two', () => {
     const list = [
       summary('old', '2026-10-01'),
       summary('done', '2026-11-10', '2026-11-12T00:00:00Z'),
       summary('new', '2026-11-09'),
     ];
-    expect(challengesForCard(list).map((c) => c.id)).toEqual(['new', 'old']);
+    expect(challengesForCard(list, now).map((c) => c.id)).toEqual([
+      'new',
+      'old',
+    ]);
+  });
+
+  it('keeps a running challenge ahead of scheduled ones', () => {
+    const list = [
+      summary('next-month', '2026-12-01'),
+      summary('running', '2026-11-02'),
+      summary('next-week', '2026-11-23'),
+    ];
+    expect(challengesForCard(list, now).map((c) => c.id)).toEqual([
+      'running',
+      'next-month',
+    ]);
+    // Started today in its own zone, though not yet in UTC.
+    const ahead = summary('kiribati', '2026-11-17', null, 'Pacific/Kiritimati');
+    expect(challengesForCard([list[0]!, ahead], now).map((c) => c.id)).toEqual([
+      'kiribati',
+      'next-month',
+    ]);
   });
 });
 

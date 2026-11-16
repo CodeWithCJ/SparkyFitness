@@ -4,8 +4,10 @@ export const challengeKeys = {
   status: () => [...challengeKeys.all, 'status'] as const,
   list: () => [...challengeKeys.all, 'list'] as const,
   detail: (id: string) => [...challengeKeys.all, 'detail', id] as const,
+  /** Standings of every challenge; a workout change can move any of them. */
+  allStandings: () => [...challengeKeys.all, 'standings'] as const,
   /** Every period's standings of one challenge. */
-  standingsOf: (id: string) => [...challengeKeys.all, 'standings', id] as const,
+  standingsOf: (id: string) => [...challengeKeys.allStandings(), id] as const,
   /** Standings of the period holding `date` (null: the current period). */
   standings: (id: string, date: string | null) =>
     [...challengeKeys.all, 'standings', id, date ?? 'current'] as const,

@@ -20,6 +20,7 @@ import { exerciseEntryKeys } from '@/api/keys/exercises';
 import { HttpApiError } from '@/api/api';
 import { dailyProgressKeys } from '@/api/keys/diary';
 import { goalKeys } from '@/api/keys/goals';
+import { challengeKeys } from '@/api/keys/challenges';
 import { shoeKeys } from '@/api/keys/shoes';
 import {
   SetCalorieLinkRequest,
@@ -154,6 +155,7 @@ export const useLogWorkoutPresetMutation = () => {
         queryKey: dailyProgressKeys.all,
       });
       queryClient.invalidateQueries({ queryKey: goalKeys.all });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
       queryClient.invalidateQueries({
         queryKey: ['workoutPlanTemplates'],
       });
@@ -181,6 +183,7 @@ export const useCreatePresetSessionMutation = () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       queryClient.invalidateQueries({ queryKey: goalKeys.all });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {
@@ -217,6 +220,7 @@ export const useUpdatePresetSessionMutation = () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       queryClient.invalidateQueries({ queryKey: goalKeys.all });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
     },
   });
 };
@@ -233,6 +237,7 @@ export const useDeleteExercisePresetEntryMutation = () => {
         queryKey: dailyProgressKeys.all,
       });
       queryClient.invalidateQueries({ queryKey: goalKeys.all });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {

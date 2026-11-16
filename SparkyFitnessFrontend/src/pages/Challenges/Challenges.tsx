@@ -128,8 +128,14 @@ const Challenges = () => {
         </div>
       );
     }
+    // Keyed by challenge: moving between cached challenges starts afresh,
+    // so one challenge's invite code or rules draft never shows on another.
     return (
-      <ChallengeDetailView challenge={detail.data} currentUserId={user?.id} />
+      <ChallengeDetailView
+        key={detail.data.id}
+        challenge={detail.data}
+        currentUserId={user?.id}
+      />
     );
   }
 

@@ -11231,6 +11231,7 @@
       "upcoming": "From {{day}}:",
       "exampleTitle": "Example day",
       "example": "A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{total}} points.",
+      "exampleCapped": "A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{uncapped}} points, held to the daily cap of {{total}}.",
       "what": "{{format}} of {{metric}}, scored {{period}}.",
       "race": "The first to reach {{target}} wins; later finishers rank by the day they got there.",
       "hitGoalDay": "Everyone who reaches {{target}} on every counted day wins.",
@@ -11527,6 +11528,7 @@
       "youShareLead": "You share the lead",
       "leader": "{{name}} leads with {{total}}"
     },
+    "retry": "Try again",
     "errors": {
       "load": "Could not load your challenges.",
       "loadOne": "Could not load this challenge.",

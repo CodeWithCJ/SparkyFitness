@@ -6,6 +6,7 @@ import {
   challengeDayEffort,
   challengeStepPoints,
   energyFromKcal,
+  instantToDay,
   type EnergyUnit,
   type ActivitySport,
   type ChallengeFormat,
@@ -622,13 +623,17 @@ export interface PointsExample {
   steps: number;
   effort: number;
   stepPoints: number;
+  /** The day's points before the challenge's daily cap. */
+  uncapped: number;
+  /** After the daily cap, as the day would score. */
   total: number;
 }
 
 /**
  * A worked example for the points metric, scored by the shared scorer with
  * this challenge's rules: a 45-minute workout all in zone 3, plus 8,000
- * steps. Null for any other metric.
+ * steps, held to the challenge's daily cap like a real day. Null for any
+ * other metric.
  */
 export function pointsExample(rules: ChallengeRules): PointsExample | null {
   if (rules.metric !== 'points' || !rules.points) return null;
@@ -653,13 +658,17 @@ export function pointsExample(rules: ChallengeRules): PointsExample | null {
     rules.points
   );
   const stepPoints = challengeStepPoints(steps, rules.points);
+  const uncapped = day.effort + stepPoints;
   return {
     workoutMinutes,
     zone,
     steps,
     effort: round1(day.effort),
     stepPoints,
-    total: round1(day.effort + stepPoints),
+    uncapped: round1(uncapped),
+    total: round1(
+      rules.dailyCap === null ? uncapped : Math.min(uncapped, rules.dailyCap)
+    ),
   };
 }
 
@@ -710,16 +719,27 @@ export function goalTypeLabel(t: TFunction, goal: ChallengeGoalType): string {
   }
 }
 
-/** Running challenges first, then the newest; at most this many on the card. */
+/** At most this many challenges on the card. */
 const CARD_CHALLENGES_SHOWN = 2;
 
-/** The challenges the card shows: ones still running, newest start first. */
+/**
+ * The challenges the card shows: ones not ended, those already running
+ * (started by today in their own time zone) before scheduled ones, newest
+ * start first within each.
+ */
 export function challengesForCard(
-  challenges: readonly ChallengeSummary[]
+  challenges: readonly ChallengeSummary[],
+  now: Date = new Date()
 ): ChallengeSummary[] {
+  const running = (c: ChallengeSummary) =>
+    c.start_date <= instantToDay(now, c.time_zone);
   return challenges
     .filter((c) => c.ended_at === null)
-    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+    .sort(
+      (a, b) =>
+        Number(running(b)) - Number(running(a)) ||
+        b.start_date.localeCompare(a.start_date)
+    )
     .slice(0, CARD_CHALLENGES_SHOWN);
 }
 

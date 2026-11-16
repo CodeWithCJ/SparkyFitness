@@ -32,6 +32,9 @@ const InvitePanel = ({
   const { formatDate } = usePreferences();
   const create = useCreateChallengeInvite();
   const revoke = useRevokeChallengeInvite();
+  // One at a time: a revoke racing a create could turn off the new code
+  // while it is still shown as shareable.
+  const busy = create.isPending || revoke.isPending;
   const link = invite
     ? challengeInviteLink(window.location.origin, invite.code)
     : null;
@@ -105,7 +108,7 @@ const InvitePanel = ({
           onClick={() =>
             create.mutate(challenge.id, { onSuccess: (r) => onInvite(r) })
           }
-          disabled={create.isPending || !!challenge.ended_at}
+          disabled={busy || !!challenge.ended_at}
         >
           {challenge.invite_active
             ? t('challenges.invite.newCode', 'Make a new code')
@@ -117,7 +120,7 @@ const InvitePanel = ({
             onClick={() =>
               revoke.mutate(challenge.id, { onSuccess: () => onInvite(null) })
             }
-            disabled={revoke.isPending}
+            disabled={busy}
           >
             <XCircle className="mr-2 h-4 w-4" />
             {t('challenges.invite.revoke', 'Turn off the code')}

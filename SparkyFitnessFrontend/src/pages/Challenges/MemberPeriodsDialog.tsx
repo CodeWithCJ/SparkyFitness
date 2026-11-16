@@ -16,6 +16,7 @@ import {
   useChallengeRuleChanges,
 } from '@/hooks/Challenges/useChallenges';
 import { metricValueText, type MetricUnits } from './challengeCopy';
+import LoadError from './LoadError';
 import {
   periodRangeText,
   recentPeriodStarts,
@@ -81,68 +82,92 @@ const MemberPeriodsDialog = ({
                 )}
           </DialogDescription>
         </DialogHeader>
-        <ul className="divide-y" data-testid="member-periods">
-          {starts.map((start, i) => {
-            const result = results[i];
-            const data = result?.data;
-            const row = data?.rows.find((r) => r.user_id === member?.user_id);
-            // Each period in the units of the rules that scored it.
-            const { metric } = rulesInEffect(
-              changes.data,
-              start,
-              challenge.rules
-            ).rules;
-            return (
-              <li
-                key={start}
-                className="flex items-center justify-between gap-2 py-2 text-sm"
-              >
-                <span>
-                  {data
-                    ? periodRangeText(
+        {/* A period's total reads in the units of the rules that scored it,
+            so nothing is formatted until the rule history is in; the
+            current rules are no stand-in for an older period's. */}
+        {changes.isPending ? (
+          <Skeleton className="h-24 w-full" />
+        ) : changes.isError && !changes.data ? (
+          <LoadError
+            message={t(
+              'challenges.errors.ruleChanges',
+              'Could not load the rule changes.'
+            )}
+            onRetry={() => void changes.refetch()}
+          />
+        ) : (
+          <ul className="divide-y" data-testid="member-periods">
+            {starts.map((start, i) => {
+              const result = results[i];
+              const data = result?.data;
+              const row = data?.rows.find((r) => r.user_id === member?.user_id);
+              // Each period in the units of the rules that scored it.
+              const { metric } = rulesInEffect(
+                changes.data,
+                start,
+                challenge.rules
+              ).rules;
+              return (
+                <li
+                  key={start}
+                  className="flex items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <span>
+                    {data
+                      ? periodRangeText(
+                          t,
+                          challenge.rules.period,
+                          data.period_start,
+                          data.period_end,
+                          formatDay
+                        )
+                      : formatDay(start, 'MMM d')}
+                  </span>
+                  {result?.isLoading ? (
+                    <Skeleton className="h-4 w-20" />
+                  ) : row ? (
+                    <span className="flex items-center gap-2 tabular-nums">
+                      {row.winner && data?.final && (
+                        <Crown
+                          className="h-4 w-4 text-amber-500"
+                          aria-label={t(
+                            'challenges.leaderboard.winner',
+                            'Winner'
+                          )}
+                        />
+                      )}
+                      <Badge variant="outline">
+                        {t('challenges.member.place', '#{{rank}}', {
+                          rank: row.rank,
+                        })}
+                      </Badge>
+                      {metricValueText(
                         t,
-                        challenge.rules.period,
-                        data.period_start,
-                        data.period_end,
-                        formatDay
-                      )
-                    : formatDay(start, 'MMM d')}
-                </span>
-                {result?.isLoading ? (
-                  <Skeleton className="h-4 w-20" />
-                ) : row ? (
-                  <span className="flex items-center gap-2 tabular-nums">
-                    {row.winner && data?.final && (
-                      <Crown
-                        className="h-4 w-4 text-amber-500"
-                        aria-label={t(
-                          'challenges.leaderboard.winner',
-                          'Winner'
-                        )}
-                      />
-                    )}
-                    <Badge variant="outline">
-                      {t('challenges.member.place', '#{{rank}}', {
-                        rank: row.rank,
-                      })}
-                    </Badge>
-                    {metricValueText(
-                      t,
-                      metric,
-                      row.total,
-                      units,
-                      i18n.language
-                    )}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {t('challenges.member.none', 'No score')}
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                        metric,
+                        row.total,
+                        units,
+                        i18n.language
+                      )}
+                    </span>
+                  ) : result?.isError ? (
+                    <LoadError
+                      compact
+                      message={t(
+                        'challenges.errors.standings',
+                        'Could not load the standings.'
+                      )}
+                      onRetry={() => void result.refetch()}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {t('challenges.member.none', 'No score')}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </DialogContent>
     </Dialog>
   );

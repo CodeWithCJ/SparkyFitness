@@ -36,3 +36,32 @@ export function inviteCodeFrom(text: string): string | null {
   }
   return null;
 }
+
+/** Where an invite opened while signed out waits for the sign-in. */
+const PENDING_INVITE_KEY = 'sparky.challenges.pendingInvite';
+
+/**
+ * Keeps the code of an invite link opened while signed out, so the join can
+ * resume after sign-in. Session storage stays in this tab (it survives an
+ * OIDC round trip) and the code never goes into a query parameter.
+ */
+export function rememberPendingInvite(hash: string): void {
+  const code = inviteCodeFrom(hash);
+  if (!code) return;
+  try {
+    sessionStorage.setItem(PENDING_INVITE_KEY, code);
+  } catch {
+    // Storage blocked: the person opens the link again after signing in.
+  }
+}
+
+/** The code kept by rememberPendingInvite, removed as it is read. */
+export function takePendingInvite(): string | null {
+  try {
+    const code = sessionStorage.getItem(PENDING_INVITE_KEY);
+    if (code !== null) sessionStorage.removeItem(PENDING_INVITE_KEY);
+    return code ? inviteCodeFrom(code) : null;
+  } catch {
+    return null;
+  }
+}

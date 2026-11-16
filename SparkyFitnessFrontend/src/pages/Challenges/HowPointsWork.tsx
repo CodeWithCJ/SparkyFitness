@@ -29,18 +29,32 @@ const HowPointsWork = ({
             {t('challenges.how.exampleTitle', 'Example day')}
           </p>
           <p>
-            {t(
-              'challenges.how.example',
-              'A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{total}} points.',
-              {
-                minutes: example.workoutMinutes,
-                zone: example.zone,
-                effort: example.effort,
-                steps: example.steps.toLocaleString(),
-                stepPoints: example.stepPoints,
-                total: example.total,
-              }
-            )}
+            {example.total < example.uncapped
+              ? t(
+                  'challenges.how.exampleCapped',
+                  'A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{uncapped}} points, held to the daily cap of {{total}}.',
+                  {
+                    minutes: example.workoutMinutes,
+                    zone: example.zone,
+                    effort: example.effort,
+                    steps: example.steps.toLocaleString(),
+                    stepPoints: example.stepPoints,
+                    uncapped: example.uncapped,
+                    total: example.total,
+                  }
+                )
+              : t(
+                  'challenges.how.example',
+                  'A {{minutes}}-minute workout in zone {{zone}} earns {{effort}}, and {{steps}} steps add {{stepPoints}}: {{total}} points.',
+                  {
+                    minutes: example.workoutMinutes,
+                    zone: example.zone,
+                    effort: example.effort,
+                    steps: example.steps.toLocaleString(),
+                    stepPoints: example.stepPoints,
+                    total: example.total,
+                  }
+                )}
           </p>
         </div>
       )}

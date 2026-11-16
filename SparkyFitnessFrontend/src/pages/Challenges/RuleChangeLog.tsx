@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useChallengeRuleChanges } from '@/hooks/Challenges/useChallenges';
 import { changedRuleLines, type MetricUnits } from './challengeCopy';
+import LoadError from './LoadError';
 
 /**
  * Every rules change, newest first, with who made it and the day it takes
@@ -20,6 +21,17 @@ const RuleChangeLog = ({
   const changes = useChallengeRuleChanges(challengeId);
 
   if (changes.isLoading) return <Skeleton className="h-24 w-full" />;
+  if (changes.isError && !changes.data) {
+    return (
+      <LoadError
+        message={t(
+          'challenges.errors.ruleChanges',
+          'Could not load the rule changes.'
+        )}
+        onRetry={() => void changes.refetch()}
+      />
+    );
+  }
   const list = [...(changes.data ?? [])].sort((a, b) =>
     b.created_at.localeCompare(a.created_at)
   );
