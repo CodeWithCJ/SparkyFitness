@@ -3679,6 +3679,20 @@ describe('FoodEntryAddScreen', () => {
       expect(payload).not.toHaveProperty('cooked_quantity');
     });
 
+    it('drops the calculated quantity when only the unit changes', () => {
+      const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
+      cookRice(screen);
+      returnFromAdjust(screen, riceAdjustment('100', 'kg'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('100');
+
+      fireEvent.press(screen.getByText('Add Food'));
+      const payload = mockAddEntry.mock.calls[0][0].createEntryPayload;
+      expect(payload).toEqual(
+        expect.objectContaining({ quantity: 100, unit: 'kg' })
+      );
+      expect(payload).not.toHaveProperty('cooked_quantity');
+    });
+
     it('sends no cooked weight while the switch is off', () => {
       const screen = renderScreen({ item: riceItem, date: '2026-11-15' });
       fireEvent.press(screen.getByText('Add Food'));

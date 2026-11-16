@@ -635,5 +635,62 @@ describe('FoodEntryViewScreen', () => {
         })
       );
     });
+
+    it('drops the calculated quantity when only the unit changes', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      // Back from Adjust nutrition with a different serving size.
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryViewScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'FoodEntryView-key',
+                name: 'FoodEntryView',
+                params: {
+                  entry: cookedRice,
+                  adjustedValues: {
+                    name: 'Rice',
+                    brand: '',
+                    servingSize: '100',
+                    servingUnit: 'kg',
+                    calories: '360000',
+                    protein: '14',
+                    carbs: '158',
+                    fat: '2',
+                    fiber: '',
+                    saturatedFat: '',
+                    sodium: '',
+                    sugars: '',
+                    transFat: '',
+                    potassium: '',
+                    calcium: '',
+                    iron: '',
+                    cholesterol: '',
+                    vitaminA: '',
+                    vitaminC: '',
+                  },
+                },
+              } as any
+            }
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe('100');
+
+      pressAction(screen, navigation, 'Done');
+      const payload = mockUpdateEntry.mock.calls[0][0];
+      expect(payload).toEqual(
+        expect.objectContaining({
+          quantity: 100,
+          unit: 'kg',
+          cooked_quantity: null,
+        })
+      );
+    });
   });
 });

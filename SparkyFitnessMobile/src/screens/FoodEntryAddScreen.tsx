@@ -873,14 +873,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       previousServingSize;
     // A raw quantity calculated from the cooked weight stays as it is while
     // the unit does not change. A new unit remounts the cooked section, so the
-    // quantity follows the serving size like any other entry.
+    // quantity starts again from the new serving size, even when the number
+    // is the same (100 g -> 100 kg).
     const previousServingUnit = servingUnitRef.current;
     const nextServingUnit =
       adjustedFromNav?.servingUnit ||
       adjustedUnitSelectionFromNav?.variant.serving_unit ||
       previousServingUnit;
-    const keepsCookedQuantity =
-      quantityLocked && nextServingUnit === previousServingUnit;
+    const resetsQuantity = quantityLocked
+      ? nextServingUnit !== previousServingUnit
+      : nextServingSize !== previousServingSize;
 
     if (adjustedUnitSelectionFromNav) {
       if (adjustedUnitSelectionFromNav.kind === 'draft') {
@@ -933,11 +935,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       setAdjustedCustomNutrients(adjustedCustomNutrientsFromNav);
     }
 
-    if (
-      !recipeImportTarget &&
-      !keepsCookedQuantity &&
-      nextServingSize !== previousServingSize
-    ) {
+    if (!recipeImportTarget && resetsQuantity) {
       setQuantityText(String(nextServingSize));
     }
 
