@@ -5314,6 +5314,9 @@ CREATE TABLE public.user_preferences (
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    bac_distribution_formula text DEFAULT 'watson'::text NOT NULL,
+    bac_elimination_rate numeric(4,3) DEFAULT 0.150 NOT NULL,
+    bac_display_unit text DEFAULT 'permille'::text NOT NULL,
     chat_mcp_server_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
@@ -5321,6 +5324,9 @@ CREATE TABLE public.user_preferences (
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
     CONSTRAINT chk_user_preferences_oral_care_target_seconds CHECK (((oral_care_target_seconds >= 30) AND (oral_care_target_seconds <= 600))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_bac_display_unit_check CHECK ((bac_display_unit = ANY (ARRAY['permille'::text, 'percent'::text]))),
+    CONSTRAINT user_preferences_bac_distribution_formula_check CHECK ((bac_distribution_formula = ANY (ARRAY['widmark'::text, 'watson'::text, 'seidl'::text, 'forrest'::text]))),
+    CONSTRAINT user_preferences_bac_elimination_rate_range CHECK (((bac_elimination_rate >= 0.1) AND (bac_elimination_rate <= 0.25))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_cycling_mode_check CHECK ((calorie_cycling_mode = ANY (ARRAY['off'::text, 'training_rest'::text, 'custom'::text]))),
     CONSTRAINT user_preferences_calorie_cycling_offsets_check CHECK (((cardinality(calorie_cycling_offsets) = 7) AND ('-40'::integer <= ALL (calorie_cycling_offsets)) AND (40 >= ALL (calorie_cycling_offsets)))),
@@ -5517,6 +5523,27 @@ COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPho
 --
 
 COMMENT ON COLUMN public.user_preferences.default_temperature_unit IS 'Unit temperatures are shown in: celsius or fahrenheit. Stored temperatures stay in °C.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_distribution_formula; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_distribution_formula IS 'How the estimated blood alcohol curve works out Widmark''s r from the profile: widmark, watson (default), seidl or forrest.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_elimination_rate; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_elimination_rate IS 'Alcohol elimination for the estimated blood alcohol curve, per mille per hour, 0.10-0.25, default 0.15. Population estimate, not a measurement.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_display_unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_display_unit IS 'Unit the estimated blood alcohol is shown in: permille (default) or percent. Display only; the server works in per mille.';
 
 
 --
