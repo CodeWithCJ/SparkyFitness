@@ -22,8 +22,12 @@ import {
   type MetricUnits,
 } from '@/pages/Challenges/challengeCopy';
 import {
+  PENDING_INVITE_MAX_AGE_MS,
   challengeInviteLink,
+  clearPendingInvite,
   inviteCodeFrom,
+  rememberPendingInvite,
+  takePendingInvite,
 } from '@/pages/Challenges/challengeLinks';
 import {
   nextPeriodDay,
@@ -306,6 +310,35 @@ describe('the Diary card', () => {
       'kiribati',
       'next-month',
     ]);
+  });
+
+  it('a time zone the browser does not know does not break the card', () => {
+    const odd = summary('odd', '2026-11-02', null, 'Not/AZone');
+    expect(
+      challengesForCard([summary('later', '2026-12-01'), odd], now).map(
+        (c) => c.id
+      )
+    ).toEqual(['odd', 'later']);
+  });
+});
+
+describe('an invite kept across sign-in', () => {
+  const code = 'AAAAAAAAAAAAAAAAAAAAAA';
+  const t0 = Date.parse('2026-11-16T12:00:00Z');
+  afterEach(() => sessionStorage.clear());
+
+  it('is handed over once, while fresh', () => {
+    rememberPendingInvite(`#${code}`, t0);
+    expect(takePendingInvite(t0 + 60_000)).toBe(code);
+    expect(takePendingInvite(t0 + 60_000)).toBeNull();
+  });
+
+  it('is dropped once stale or after sign-out, so a later sign-in in the tab does not get it', () => {
+    rememberPendingInvite(`#${code}`, t0);
+    expect(takePendingInvite(t0 + PENDING_INVITE_MAX_AGE_MS + 1)).toBeNull();
+    rememberPendingInvite(`#${code}`, t0);
+    clearPendingInvite();
+    expect(takePendingInvite(t0 + 1)).toBeNull();
   });
 });
 

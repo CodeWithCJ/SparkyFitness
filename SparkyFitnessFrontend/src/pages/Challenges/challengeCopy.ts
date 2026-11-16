@@ -731,13 +731,26 @@ export function challengesForCard(
   challenges: readonly ChallengeSummary[],
   now: Date = new Date()
 ): ChallengeSummary[] {
-  const running = (c: ChallengeSummary) =>
-    c.start_date <= instantToDay(now, c.time_zone);
+  // A zone this browser does not know falls back to the browser's own day
+  // rather than breaking the card.
+  const today = (zone: string): string => {
+    try {
+      return instantToDay(now, zone);
+    } catch {
+      return instantToDay(
+        now,
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      );
+    }
+  };
+  const running = new Map(
+    challenges.map((c) => [c.id, c.start_date <= today(c.time_zone)])
+  );
   return challenges
     .filter((c) => c.ended_at === null)
     .sort(
       (a, b) =>
-        Number(running(b)) - Number(running(a)) ||
+        Number(running.get(b.id)) - Number(running.get(a.id)) ||
         b.start_date.localeCompare(a.start_date)
     )
     .slice(0, CARD_CHALLENGES_SHOWN);
