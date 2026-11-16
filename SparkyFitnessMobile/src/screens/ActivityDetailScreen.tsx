@@ -61,7 +61,7 @@ import type { WorkoutDraftSet } from '../types/drafts';
 import type { ExerciseEntrySetResponse } from '@workspace/shared';
 import {
   canEditGroupedWorkout,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   energyFromKcal,
 } from '@workspace/shared';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
@@ -111,9 +111,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const normalizedDate = normalizeDate(entryDate);
   const { name, duration, calories } = getWorkoutSummary(session, t);
 
-  // Only a workout logged in the app can be linked to a synced one.
+  // App-logged workouts and stable Hevy imports can link to a synced session.
   const canLinkSynced =
-    isAppLoggedWorkoutSource(session.source) &&
+    isCalorieLinkWorkoutSource(session.source) &&
     session.exercise_snapshot?.name !== 'Active Calories';
 
   const firstImage = session.exercise_snapshot?.images?.[0];

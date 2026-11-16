@@ -23,6 +23,10 @@ interface CsvHeaderMappingDialogProps {
   onHeaderMappingChange: (next: Record<string, string>) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  // Only prompt on close while the importer's form is dirty (a file is loaded).
+  // This dialog is only reachable with a file in hand, so it confirms then;
+  // defaults to true to keep the historical always-confirm behavior.
+  confirmWhen?: boolean;
 }
 
 /**
@@ -48,12 +52,14 @@ const CsvHeaderMappingDialog = ({
   onHeaderMappingChange,
   onConfirm,
   onCancel,
+  confirmWhen = true,
 }: CsvHeaderMappingDialogProps) => {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         requireConfirmation
+        confirmWhen={confirmWhen}
         className="max-w-4xl max-h-[80vh] overflow-y-auto"
       >
         <DialogHeader>

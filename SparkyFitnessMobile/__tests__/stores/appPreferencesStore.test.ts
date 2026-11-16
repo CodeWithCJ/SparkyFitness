@@ -150,6 +150,37 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('focus the next set when a rest ends (#3581)', () => {
+    it('stays on for a persisted blob written before the setting existed', async () => {
+      const withoutSetting = { ...PREFERENCE_DEFAULTS } as Record<
+        string,
+        unknown
+      >;
+      delete withoutSetting.focusNextSetOnRestEnd;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...withoutSetting, soundsEnabled: false },
+          version: 1,
+        })
+      );
+
+      await useAppPreferencesStore.persist.rehydrate();
+
+      const state = useAppPreferencesStore.getState();
+      expect(state.soundsEnabled).toBe(false);
+      expect(state.focusNextSetOnRestEnd).toBe(true);
+    });
+
+    it('persists the choice', async () => {
+      useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().focusNextSetOnRestEnd).toBe(
+        false
+      );
+    });
+  });
+
   describe('report preferences', () => {
     it('defaults to every report, nothing hidden, opening on 30 days', () => {
       const state = useAppPreferencesStore.getState();
@@ -269,6 +300,7 @@ describe('appPreferencesStore', () => {
         'trainingLoad',
         'hydration',
         'caffeine',
+        'bloodAlcohol',
         'fasting',
         'cycle',
         'medications',
@@ -280,6 +312,16 @@ describe('appPreferencesStore', () => {
         'oralCare',
         'labResults',
       ]);
+    });
+
+    it('shows the blood alcohol estimate card by default and can hide it', () => {
+      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
+        true
+      );
+      useAppPreferencesStore.getState().setBloodAlcoholCardVisible(false);
+      expect(useAppPreferencesStore.getState().bloodAlcoholCardVisible).toBe(
+        false
+      );
     });
 
     it('updates dashboard card order', () => {
@@ -320,6 +362,65 @@ describe('appPreferencesStore', () => {
       const state = useAppPreferencesStore.getState();
       expect(state.soundsEnabled).toBe(false); // persisted values honoured
       expect(state.activeWorkoutMetricColumn).toBe('rpe'); // shallow-merge backfill
+    });
+  });
+
+  describe('larger text and the retired original workout page setting', () => {
+    const persist = async (state: Record<string, unknown>, version = 1) => {
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: { ...PREFERENCE_DEFAULTS, ...state },
+          version,
+        })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+    };
+
+    it('keeps larger text as its own setting and turns the new view on for the larger text workout page', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: false });
+      const state = useAppPreferencesStore.getState();
+      expect(state.watchLargerText).toBe(true);
+      expect(state.watchNewWorkout).toBe(true);
+    });
+
+    it('leaves the new view off when the original page was kept or larger text was off', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: true });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(true);
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
+      await persist({ watchLargerText: false, watchClassicWorkout: false });
+      expect(useAppPreferencesStore.getState().watchLargerText).toBe(false);
+      expect(useAppPreferencesStore.getState().watchNewWorkout).toBe(false);
+    });
+
+    it('drops the old original page key on the next write and keeps larger text', async () => {
+      await persist({ watchLargerText: true, watchClassicWorkout: false });
+      useAppPreferencesStore.getState().setWatchWorkoutCountdown(3);
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state).not.toHaveProperty('watchClassicWorkout');
+      expect(parsed.state.watchLargerText).toBe(true);
+      expect(parsed.state.watchNewWorkout).toBe(true);
+      expect(parsed.state.watchWorkoutCountdown).toBe(3);
+      expect(parsed.version).toBe(2);
+    });
+  });
+
+  describe('the countdown before holds setting', () => {
+    it('defaults to on, including for a blob saved before it existed', async () => {
+      const { watchHoldCountdown: _omit, ...withoutKey } = PREFERENCE_DEFAULTS;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({ state: withoutKey, version: 1 })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().watchHoldCountdown).toBe(true);
+    });
+
+    it('persists when turned off', async () => {
+      useAppPreferencesStore.getState().setWatchHoldCountdown(false);
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      expect(JSON.parse(raw!).state.watchHoldCountdown).toBe(false);
     });
   });
 

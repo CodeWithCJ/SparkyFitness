@@ -125,6 +125,15 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
+  it('toggles "Focus the next set when a rest ends", on by default (#3581)', () => {
+    const { getByLabelText } = renderScreen();
+    const focusToggle = getByLabelText('Focus the next set when a rest ends');
+    expect(focusToggle.props.value).toBe(true);
+
+    fireEvent(focusToggle, 'valueChange', false);
+    expect(useAppPreferencesStore.getState().focusNextSetOnRestEnd).toBe(false);
+  });
+
   it('toggles "Use planned values as placeholders", off by default (#3417)', () => {
     const { getByLabelText } = renderScreen();
     const plannedToggle = getByLabelText('Use planned values as placeholders');

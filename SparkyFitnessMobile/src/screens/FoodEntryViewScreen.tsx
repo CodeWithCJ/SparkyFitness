@@ -34,10 +34,14 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
-import { toHourMinute } from '@workspace/shared';
+import { clockInZone, toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { usableFoodImages } from '../utils/foodImages';
-import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
+import {
+  normalizeDate,
+  formatDateLabel,
+  getDeviceTimezone,
+} from '../utils/dateUtils';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
   useMealTypes,
@@ -49,6 +53,10 @@ import {
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useCopyFoodEntry } from '../hooks/useCopyFoodEntry';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
@@ -180,6 +188,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
+  const { copyFood, isPending: isCopyPending } = useCopyFoodEntry({
+    onSuccess: () => copySheetRef.current?.dismiss(),
+  });
 
   useEffect(() => {
     if (entry.food_entry_meal_id) {
@@ -1546,6 +1558,27 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ) : null}
         </Animated.View>
 
+        {canEdit && !isEditing ? (
+          <Button
+            variant="outline"
+            onPress={() =>
+              copySheetRef.current?.present(
+                normalizeDate(entry.entry_date),
+                entry.meal_type_id ?? null,
+                entry.meal_type,
+                { foodName: entry.food_name ?? '' }
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel={t('foodEntryView.copyEntry', {
+              defaultValue: 'Copy Food',
+            })}
+            className="mt-2"
+          >
+            {t('foodEntryView.copyEntry', { defaultValue: 'Copy Food' })}
+          </Button>
+        ) : null}
+
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="destructive"
@@ -1566,6 +1599,24 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
       </ScrollView>
 
+      {canEdit && (
+        <CopyMealSheet
+          ref={copySheetRef}
+          isPending={isCopyPending}
+          onCopy={(payload, { targetMealTypeId, quickTarget }) =>
+            copyFood({
+              entry,
+              targetDate: payload.targetDate,
+              targetMealTypeId,
+              // "Now" logs the copy at the current time; any other target
+              // keeps the time of day the food was first logged at.
+              ...(quickTarget === 'now'
+                ? { entryTime: clockInZone(getDeviceTimezone()) }
+                : {}),
+            })
+          }
+        />
+      )}
       {isEditing && (
         <CalendarSheet
           ref={calendarRef}

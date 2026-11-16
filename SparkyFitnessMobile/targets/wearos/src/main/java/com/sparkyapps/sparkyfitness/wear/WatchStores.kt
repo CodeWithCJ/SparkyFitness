@@ -64,10 +64,13 @@ class WatchRunSpeaker(context: Context) {
   private var ready = false
 
   init {
+    val appContext = context.applicationContext
     try {
-      tts = TextToSpeech(context.applicationContext) { status ->
+      tts = TextToSpeech(appContext) { status ->
         if (status == TextToSpeech.SUCCESS) {
-          val res = tts?.setLanguage(Locale.getDefault())
+          val tag = runCatching { appContext.getString(R.string.tts_language) }.getOrNull()
+          val targetLocale = tag?.takeIf { it.isNotBlank() }?.let { Locale.forLanguageTag(it) } ?: Locale.US
+          val res = tts?.setLanguage(targetLocale)
           if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
             tts?.language = Locale.US
           }

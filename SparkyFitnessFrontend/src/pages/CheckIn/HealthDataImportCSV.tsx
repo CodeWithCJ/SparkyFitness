@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import {
   Plus,
   Download,
@@ -27,7 +29,11 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { localDateToDay } from '@workspace/shared';
-import { HEALTH_IMPORT_CATEGORIES } from '@/constants/healthDataImport';
+import {
+  HEALTH_IMPORT_CATEGORIES,
+  WEIGHT_UNITS,
+  LENGTH_UNITS,
+} from '@/constants/healthDataImport';
 import { useHealthDataImport } from '@/hooks/CheckIn/useHealthDataImport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getMoodDisplay } from '@/utils/moodUtils';
@@ -139,7 +145,11 @@ const MoodTagsCell = ({
   );
 };
 
-const HealthDataImportCSV = () => {
+const HealthDataImportCSV = ({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
   const { t } = useTranslation();
   const csvFormat = useCsvFormat();
   const {
@@ -166,6 +176,12 @@ const HealthDataImportCSV = () => {
     handleAddNewRow,
     clearData,
     handleSubmit,
+    weightUnitOverride,
+    setWeightUnitOverride,
+    lengthUnitOverride,
+    setLengthUnitOverride,
+    needsWeightUnit,
+    needsLengthUnit,
   } = useHealthDataImport(csvFormat.options);
 
   const numericColumns = NUMERIC_COLUMNS_BY_CATEGORY[category];
@@ -173,6 +189,13 @@ const HealthDataImportCSV = () => {
     () => (loadedText ? csvFormat.parse(loadedText, { numericColumns }) : null),
     [loadedText, csvFormat, numericColumns]
   );
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import clears the rows, so a clean state closes freely.
+  const isDirty = csvData.length > 0 || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleFileUploadWithReset: typeof handleFileUpload = (event) => {
     csvFormat.resetForNewInput();
@@ -340,6 +363,65 @@ const HealthDataImportCSV = () => {
             onConfirm={handleConfirmMapping}
             onCancel={handleCancelMapping}
           />
+
+          {(needsWeightUnit || needsLengthUnit) && (
+            <div className="rounded-md border p-3 space-y-3">
+              <p className="text-sm font-medium">
+                {t(
+                  'healthDataImport.unitPrompt',
+                  'Your file has no unit column. Choose the unit for the values so they convert correctly.'
+                )}
+              </p>
+              {needsWeightUnit && (
+                <div className="space-y-1">
+                  <Label className="text-sm">
+                    {t('healthDataImport.weightUnitLabel', 'Weight unit')}
+                  </Label>
+                  <RadioGroup
+                    value={weightUnitOverride}
+                    onValueChange={setWeightUnitOverride}
+                    className="flex gap-4"
+                  >
+                    {WEIGHT_UNITS.map((u) => (
+                      <div key={u} className="flex items-center gap-2">
+                        <RadioGroupItem value={u} id={`weight-${u}`} />
+                        <Label
+                          htmlFor={`weight-${u}`}
+                          className="cursor-pointer"
+                        >
+                          {u}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
+              {needsLengthUnit && (
+                <div className="space-y-1">
+                  <Label className="text-sm">
+                    {t('healthDataImport.lengthUnitLabel', 'Length unit')}
+                  </Label>
+                  <RadioGroup
+                    value={lengthUnitOverride}
+                    onValueChange={setLengthUnitOverride}
+                    className="flex gap-4"
+                  >
+                    {LENGTH_UNITS.map((u) => (
+                      <div key={u} className="flex items-center gap-2">
+                        <RadioGroupItem value={u} id={`length-${u}`} />
+                        <Label
+                          htmlFor={`length-${u}`}
+                          className="cursor-pointer"
+                        >
+                          {u}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
+            </div>
+          )}
 
           {csvData.length > 0 && (
             <div className="overflow-x-auto">

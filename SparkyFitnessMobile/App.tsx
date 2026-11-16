@@ -64,6 +64,7 @@ import {
   SafeMealPlanForm,
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
+  SafeWorkoutPlanDetail,
   SafeWaterContainers,
   SafeWaterLog,
   SafeWaterContainerEdit,
@@ -95,6 +96,7 @@ import {
   SafeActivityAdd,
   SafeWorkoutDetail,
   SafeActiveWorkout,
+  SafeWorkoutReorder,
   SafeWorkoutComplete,
   SafeActivityDetail,
   SafeFastingDetail,
@@ -136,6 +138,7 @@ import {
   SafeCustomCategoryEdit,
   SafeWorkoutSettings,
   SafeWarmupSettings,
+  SafeTreadmillSettings,
   SafeHeartRateZonesSettings,
   SafeServerSettings,
   SafePasskeySettings,
@@ -751,6 +754,11 @@ function AppContent() {
             options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
+            name="WorkoutPlanDetail"
+            component={SafeWorkoutPlanDetail}
+            options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
             name="WaterContainers"
             component={SafeWaterContainers}
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
@@ -1076,6 +1084,13 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="WorkoutReorder"
+            component={SafeWorkoutReorder}
+            options={createStackScreenOptions(t('workoutReorder.title', { defaultValue: 'Reorder exercises' }), {
+              presentation: 'modal',
+            })}
+          />
+          <Stack.Screen
             name="WorkoutComplete"
             component={SafeWorkoutComplete}
             options={{
@@ -1300,6 +1315,11 @@ function AppContent() {
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
+          />
+          <Stack.Screen
+            name="TreadmillSettings"
+            component={SafeTreadmillSettings}
+            options={createStackScreenOptions(t('treadmillSettings.title', { defaultValue: 'Treadmill & Stride' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
           />
           <Stack.Screen
             name="HeartRateZonesSettings"

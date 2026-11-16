@@ -1,8 +1,11 @@
 import {
   deriveExerciseModality,
+  type HealthActivityType,
   isExerciseModality,
+  isHealthActivityType,
   resolveExerciseModality,
 } from '@workspace/shared';
+import type { PoolClient } from 'pg';
 
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
@@ -18,15 +21,36 @@ import {
   parseJsonArrayField,
   normalizeToStringArray,
 } from '../utils/exerciseJsonFields.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExerciseById(id: any, userId: any) {
-  const client = await getClient(userId);
+/**
+ * How a request's `health_activity_type` (#1750) is written. Omitted keeps the
+ * stored value; null, '' or 'automatic' clears it back to Automatic; a known
+ * key sets it. An unknown key is treated as omitted, like an unknown modality,
+ * so an arbitrary client string cannot reach the CHECK constraint as a 500.
+ */
+function healthActivityTypeWrite(value: unknown): {
+  provided: boolean;
+  value: HealthActivityType | null;
+} {
+  if (value === undefined) return { provided: false, value: null };
+  if (value === null || value === '' || value === 'automatic') {
+    return { provided: true, value: null };
+  }
+  return isHealthActivityType(value)
+    ? { provided: true, value }
+    : { provided: false, value: null };
+}
+async function getExerciseById(
+  id: string,
+  userId: string,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient = existingClient ?? (await getClient(userId));
   try {
     const result = await client.query(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              modality, created_at, updated_at
+              modality, health_activity_type, created_at, updated_at
        FROM exercises WHERE id = $1`,
       [id]
     );
@@ -41,7 +65,7 @@ async function getExerciseById(id: any, userId: any) {
     }
     return exercise;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -207,7 +231,7 @@ async function getExercisesWithPagination(
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
-             modality, created_at, updated_at
+             modality, health_activity_type, created_at, updated_at
       FROM exercises
       WHERE ${whereClauses.join(' AND ')}
       ORDER BY ${orderClause}
@@ -428,7 +452,7 @@ async function searchExercises(
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              modality
+              modality, health_activity_type
        FROM exercises
        WHERE ${whereClauses.join(' AND ')}
        ORDER BY ${orderClause}
@@ -528,7 +552,7 @@ async function searchExercisesPaginated(
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              modality
+              modality, health_activity_type
        FROM exercises
        WHERE ${whereSql}
        ORDER BY ${orderClause}
@@ -567,9 +591,42 @@ async function searchExercisesPaginated(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createExercise(exerciseData: any) {
-  const client = await getClient(exerciseData.user_id);
+/**
+ * What createExercise and updateExercise read from their callers (routes,
+ * CSV and provider imports, AI tools). The JSON-array columns accept a
+ * string or an array; both writers normalise them right before encoding.
+ */
+interface ExerciseWriteData {
+  // Strava's processor still annotates its (uuid) user id as a number.
+  user_id?: string | number | null;
+  source?: string | null;
+  id?: string;
+  source_id?: string | number | null;
+  name?: string;
+  force?: string | null;
+  level?: string | null;
+  mechanic?: string | null;
+  equipment?: unknown;
+  primary_muscles?: unknown;
+  secondary_muscles?: unknown;
+  instructions?: unknown;
+  images?: unknown;
+  category?: string | null;
+  calories_per_hour?: number | null;
+  description?: string | null;
+  is_custom?: boolean | null;
+  shared_with_public?: boolean | null;
+  is_quick_exercise?: unknown;
+  modality?: string | null;
+  health_activity_type?: unknown;
+}
+
+async function createExercise(
+  exerciseData: ExerciseWriteData,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient =
+    existingClient ?? (await getClient(exerciseData.user_id));
   try {
     log(
       'debug',
@@ -580,9 +637,9 @@ async function createExercise(exerciseData: any) {
         source, source_id, name, force, level, mechanic, equipment,
         primary_muscles, secondary_muscles, instructions, category, images,
         calories_per_hour, description, is_custom, user_id, shared_with_public,
-        modality, created_at, updated_at
+        modality, health_activity_type, created_at, updated_at
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, now(), now())
        RETURNING *`,
       [
         exerciseData.source,
@@ -625,16 +682,23 @@ async function createExercise(exerciseData: any) {
           exerciseData.category,
           normalizeToStringArray(exerciseData.equipment)
         ),
+        healthActivityTypeWrite(exerciseData.health_activity_type).value,
       ]
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateExercise(id: any, userId: any, updateData: any) {
+async function updateExercise(
+  id: string,
+  userId: string,
+  updateData: ExerciseWriteData
+) {
   const client = await getClient(userId);
+  const healthActivityTypeUpdate = healthActivityTypeWrite(
+    updateData.health_activity_type
+  );
   try {
     const result = await client.query(
       `UPDATE exercises SET
@@ -655,8 +719,9 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         is_quick_exercise = COALESCE($15, is_quick_exercise),
         modality = COALESCE($16, modality),
         source_id = COALESCE($17, source_id),
+        health_activity_type = CASE WHEN $18::boolean THEN $19::text ELSE health_activity_type END,
         updated_at = now()
-      WHERE id = $18
+      WHERE id = $20
       RETURNING *`,
       [
         updateData.name,
@@ -692,6 +757,8 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         // preserves it, and editing `category` alone never re-derives it.
         isExerciseModality(updateData.modality) ? updateData.modality : null,
         typeof updateData.source_id === 'string' ? updateData.source_id : null,
+        healthActivityTypeUpdate.provided,
+        healthActivityTypeUpdate.value,
         id,
       ]
     );
@@ -722,7 +789,7 @@ async function getRecentExercises(userId: any, limit: any) {
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
         e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-        e.modality, e.created_at, e.updated_at
+        e.modality, e.health_activity_type, e.created_at, e.updated_at
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
       WHERE ee.user_id = $1
@@ -730,7 +797,7 @@ async function getRecentExercises(userId: any, limit: any) {
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-               e.modality, e.created_at, e.updated_at
+               e.modality, e.health_activity_type, e.created_at, e.updated_at
       ORDER BY MAX(ee.entry_date) DESC, MAX(ee.created_at) DESC
       LIMIT $2`,
       [userId, limit]
@@ -772,7 +839,7 @@ async function getTopExercises(userId: any, limit: any) {
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
         e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-        e.modality, e.created_at, e.updated_at,
+        e.modality, e.health_activity_type, e.created_at, e.updated_at,
         COUNT(ee.exercise_id) AS usage_count
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
@@ -781,7 +848,7 @@ async function getTopExercises(userId: any, limit: any) {
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-               e.modality, e.created_at, e.updated_at
+               e.modality, e.health_activity_type, e.created_at, e.updated_at
       ORDER BY usage_count DESC
       LIMIT $2`,
       [userId, limit]
@@ -1064,7 +1131,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1089,7 +1156,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id
@@ -1118,7 +1185,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1138,7 +1205,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id

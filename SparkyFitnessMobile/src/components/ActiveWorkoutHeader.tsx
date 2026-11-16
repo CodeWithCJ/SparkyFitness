@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useClockTick } from '../hooks/useClockTick';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
@@ -49,6 +49,12 @@ interface ActiveWorkoutHeaderProps {
   openMenuRef?: React.MutableRefObject<(() => void) | null>;
   /** The header sits in the top status row, beside the clock and Wi-Fi cluster. */
   inStatusRow?: boolean;
+  /**
+   * With `inStatusRow`: the system status cluster's left edge, in window
+   * points (measured). A Live Activity widens it, and the title row, menu
+   * button included, stops at that edge instead of a fixed width.
+   */
+  statusCluster?: { left: number } | null;
 }
 
 /**
@@ -189,8 +195,14 @@ function ActiveWorkoutHeader({
   buttonsInStrip = false,
   openMenuRef,
   inStatusRow = false,
+  statusCluster = null,
 }: ActiveWorkoutHeaderProps) {
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const clusterReserve =
+    statusCluster != null
+      ? Math.max(STATUS_CLUSTER_WIDTH, windowWidth - statusCluster.left + 8)
+      : STATUS_CLUSTER_WIDTH;
   const [
     textPrimary,
     textMuted,
@@ -324,7 +336,7 @@ function ActiveWorkoutHeader({
     >
       <View
         className="flex-row items-center"
-        style={inStatusRow ? { marginRight: STATUS_CLUSTER_WIDTH } : undefined}
+        style={inStatusRow ? { marginRight: clusterReserve } : undefined}
       >
         {!buttonsInStrip && (
           <HeaderIconButton

@@ -33,7 +33,8 @@ import ExerciseSetRestSheet, {
   type ExerciseSetRestSheetRef,
   type ExerciseSetRestUpdate,
 } from './ExerciseSetRestSheet';
-import WorkoutReorderList from './WorkoutReorderList';
+import { navigationRef } from './ActiveWorkoutBar';
+import { setWorkoutReorderSource } from '../services/workoutReorderSource';
 import { weightFromKg } from '../utils/unitConversions';
 import {
   draftExerciseToCardExercise,
@@ -243,21 +244,26 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, weightUnit, distanceUnit]
   );
 
-  // Reorder overlay. The open trigger lives in the owning screen's header
+  // Reorder screen. The open trigger lives in the owning screen's header
   // (gated there on ≥2 draggable items via canReorderDraftExercises); this
-  // component only owns the overlay, exposed through the imperative handle.
-  const [reorderVisible, setReorderVisible] = useState(false);
+  // component hands its exercises to the native modal through the imperative
+  // handle.
   useImperativeHandle(
     ref,
     () => ({
       openReorder: () => {
-        // Commit a focused set input's edit before the overlay covers it.
+        // Commit a focused set input's edit before the modal covers it.
         onDeactivateSet();
         Keyboard.dismiss();
-        setReorderVisible(true);
+        if (!navigationRef.isReady()) return;
+        setWorkoutReorderSource({
+          exercises: cardExercises,
+          onMove: onReorderExercises,
+        });
+        navigationRef.navigate('WorkoutReorder');
       },
     }),
-    [onDeactivateSet]
+    [onDeactivateSet, cardExercises, onReorderExercises]
   );
 
   // Form cards default expanded; the map tracks explicit collapses.
@@ -961,14 +967,6 @@ const WorkoutFormExerciseList = forwardRef<
           equipment={plateCalc?.equipment}
         />
       )}
-
-      <WorkoutReorderList
-        visible={reorderVisible}
-        exercises={cardExercises}
-        getImageSource={getImageSource}
-        onMoveItem={onReorderExercises}
-        onDone={() => setReorderVisible(false)}
-      />
     </Animated.View>
   );
 });

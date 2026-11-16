@@ -32,101 +32,127 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     requireConfirmation?: boolean;
+    // When requireConfirmation is on, the confirm prompt only shows while
+    // confirmWhen is true (defaults to true, preserving the always-confirm
+    // behavior). Lets a form with a pristine state close without prompting.
+    confirmWhen?: boolean;
   }
->(({ className, children, requireConfirmation = false, ...props }, ref) => {
-  const { t } = useTranslation();
-  const [showConfirm, setShowConfirm] = React.useState(false);
-  const hiddenCloseRef = React.useRef<HTMLButtonElement>(null);
+>(
+  (
+    {
+      className,
+      children,
+      requireConfirmation = false,
+      confirmWhen = true,
+      ...props
+    },
+    ref
+  ) => {
+    const { t } = useTranslation();
+    const [showConfirm, setShowConfirm] = React.useState(false);
+    const hiddenCloseRef = React.useRef<HTMLButtonElement>(null);
+    const confirmActive = requireConfirmation && confirmWhen;
 
-  const handleCloseAttempt = (e: Event | React.MouseEvent) => {
-    if (requireConfirmation) {
-      e.preventDefault();
-      setShowConfirm(true);
-    }
-  };
+    // If confirmation becomes inactive while the prompt is open (e.g. an import
+    // finishes, flipping confirmWhen false), reset the flag so a later re-enable
+    // doesn't resurrect the stale prompt without a fresh close attempt.
+    React.useEffect(() => {
+      if (!confirmActive) setShowConfirm(false);
+    }, [confirmActive]);
 
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          'dialog-viewport-fit fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
-          className
-        )}
-        {...props}
-        onInteractOutside={(e) => {
-          props.onInteractOutside?.(e);
-          if (requireConfirmation && !e.defaultPrevented) handleCloseAttempt(e);
-        }}
-        onEscapeKeyDown={(e) => {
-          props.onEscapeKeyDown?.(e);
-          if (requireConfirmation && !e.defaultPrevented) handleCloseAttempt(e);
-        }}
-      >
-        {children}
+    const handleCloseAttempt = (e: Event | React.MouseEvent) => {
+      if (confirmActive) {
+        e.preventDefault();
+        setShowConfirm(true);
+      }
+    };
 
-        {requireConfirmation ? (
-          <button
-            type="button"
-            onClick={handleCloseAttempt}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            'dialog-viewport-fit fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+            className
+          )}
+          {...props}
+          onInteractOutside={(e) => {
+            props.onInteractOutside?.(e);
+            if (confirmActive && !e.defaultPrevented) handleCloseAttempt(e);
+          }}
+          onEscapeKeyDown={(e) => {
+            props.onEscapeKeyDown?.(e);
+            if (confirmActive && !e.defaultPrevented) handleCloseAttempt(e);
+          }}
+        >
+          {children}
+
+          {confirmActive ? (
+            <button
+              type="button"
+              onClick={handleCloseAttempt}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">{t('common.close', 'Close')}</span>
+            </button>
+          ) : (
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+              <X className="h-4 w-4" />
+              <span className="sr-only">{t('common.close', 'Close')}</span>
+            </DialogPrimitive.Close>
+          )}
+
+          <DialogPrimitive.Close ref={hiddenCloseRef} className="hidden" />
+        </DialogPrimitive.Content>
+
+        {confirmActive && (
+          <DialogPrimitive.Root
+            open={showConfirm}
+            onOpenChange={setShowConfirm}
           >
-            <X className="h-4 w-4" />
-            <span className="sr-only">{t('common.close', 'Close')}</span>
-          </button>
-        ) : (
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">{t('common.close', 'Close')}</span>
-          </DialogPrimitive.Close>
+            <DialogPrimitive.Portal>
+              <DialogOverlay className="z-60" />
+              <DialogPrimitive.Content className="dialog-viewport-fit fixed left-[50%] top-[50%] z-[60] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+                <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+                  <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
+                    {t('ui.dialog.closeWindow', 'Close Window')}
+                  </DialogPrimitive.Title>
+                  <DialogPrimitive.Description className="text-sm text-muted-foreground">
+                    {t(
+                      'ui.dialog.areYouSureYouWant',
+                      'Are you sure you want to close this? Any unsaved changes will be lost.'
+                    )}
+                  </DialogPrimitive.Description>
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(false)}
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  >
+                    {t('common.cancel', 'Cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConfirm(false);
+                      hiddenCloseRef.current?.click();
+                    }}
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                  >
+                    {t('common.close', 'Close')}
+                  </button>
+                </div>
+              </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+          </DialogPrimitive.Root>
         )}
-
-        <DialogPrimitive.Close ref={hiddenCloseRef} className="hidden" />
-      </DialogPrimitive.Content>
-
-      {requireConfirmation && (
-        <DialogPrimitive.Root open={showConfirm} onOpenChange={setShowConfirm}>
-          <DialogPrimitive.Portal>
-            <DialogOverlay className="z-60" />
-            <DialogPrimitive.Content className="dialog-viewport-fit fixed left-[50%] top-[50%] z-[60] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-              <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-                <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-                  {t('ui.dialog.closeWindow', 'Close Window')}
-                </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="text-sm text-muted-foreground">
-                  {t(
-                    'ui.dialog.areYouSureYouWant',
-                    'Are you sure you want to close this? Any unsaved changes will be lost.'
-                  )}
-                </DialogPrimitive.Description>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                >
-                  {t('common.cancel', 'Cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowConfirm(false);
-                    hiddenCloseRef.current?.click();
-                  }}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
-                >
-                  {t('common.close', 'Close')}
-                </button>
-              </div>
-            </DialogPrimitive.Content>
-          </DialogPrimitive.Portal>
-        </DialogPrimitive.Root>
-      )}
-    </DialogPortal>
-  );
-});
+      </DialogPortal>
+    );
+  }
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({

@@ -1,4 +1,5 @@
 import type {
+  FoodEntryCopyPayload,
   FoodPhotoLogRequest,
   FoodPhotoLogResponse,
 } from '@workspace/shared';
@@ -62,6 +63,18 @@ export const loadMiniNutritionTrendData = async (
 
 export const createFoodEntry = async (
   data: FoodEntryCreateData
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries', {
+    method: 'POST',
+    body: data,
+  });
+  return response;
+};
+
+// Logs a diary food again from its snapshot; the payload comes from the
+// shared buildFoodEntryCopyPayload so web and mobile copy alike.
+export const createFoodEntryCopy = async (
+  data: FoodEntryCopyPayload
 ): Promise<unknown> => {
   const response = await apiCall('/food-entries', {
     method: 'POST',

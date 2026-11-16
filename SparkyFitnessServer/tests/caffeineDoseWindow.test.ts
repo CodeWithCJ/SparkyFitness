@@ -24,7 +24,7 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
 
   it('queries a 3-day window (startDate = date - 2 days, endDate = date)', async () => {
     const getDosesSpy = vi
-      .spyOn(foodMisc, 'getCaffeineDosesForWindow')
+      .spyOn(foodMisc, 'getNutrientDosesForWindow')
       .mockResolvedValue([]);
 
     await getActiveCaffeineKinetics(userId, { date: '2026-09-05' });
@@ -32,19 +32,20 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
     expect(getDosesSpy).toHaveBeenCalledWith(
       userId,
       '2026-09-03',
-      '2026-09-05'
+      '2026-09-05',
+      'caffeine_mg'
     );
   });
 
   it('resolves explicit entry_time first without marking as estimated', async () => {
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([
       {
         source: 'food',
         entry_date: '2026-09-05',
         entry_time: '08:15',
         meal_default_time: '07:00',
         taken_at: null,
-        caffeine_mg: 95,
+        amount: 95,
         name: 'Coffee',
       },
     ]);
@@ -61,14 +62,14 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
   });
 
   it('falls back to meal_types.default_time when entry_time is NULL', async () => {
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([
       {
         source: 'food',
         entry_date: '2026-09-05',
         entry_time: null,
         meal_default_time: '07:30',
         taken_at: null,
-        caffeine_mg: 80,
+        amount: 80,
         name: 'Black Tea',
       },
     ]);
@@ -85,14 +86,14 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
   });
 
   it('falls back to 12:00 noon when both entry_time and meal_default_time are NULL', async () => {
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([
       {
         source: 'food',
         entry_date: '2026-09-05',
         entry_time: null,
         meal_default_time: null,
         taken_at: null,
-        caffeine_mg: 150,
+        amount: 150,
         name: 'Energy Drink',
       },
     ]);
@@ -109,14 +110,14 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
   });
 
   it('includes supplement doses with taken_at timestamp', async () => {
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([
       {
         source: 'supplement',
         entry_date: '2026-09-05',
         entry_time: null,
         meal_default_time: null,
         taken_at: new Date('2026-09-05T06:00:00.000Z'),
-        caffeine_mg: 200,
+        amount: 200,
         name: 'Pre-workout',
       },
     ]);
@@ -139,7 +140,7 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
       caffeine_half_life_hours: 5.0,
       target_bedtime: '00:00:00',
     } as any);
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([]);
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([]);
 
     const result = await getActiveCaffeineKinetics(userId, {
       date: '2026-09-05',
@@ -158,7 +159,7 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
       target_bedtime: '01:30:00',
     } as any);
     const getDosesSpy = vi
-      .spyOn(foodMisc, 'getCaffeineDosesForWindow')
+      .spyOn(foodMisc, 'getNutrientDosesForWindow')
       .mockResolvedValue([
         {
           source: 'food',
@@ -166,7 +167,7 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
           entry_time: '00:30',
           meal_default_time: null,
           taken_at: null,
-          caffeine_mg: 100,
+          amount: 100,
           name: 'Late Espresso',
         },
       ]);
@@ -178,7 +179,8 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
     expect(getDosesSpy).toHaveBeenCalledWith(
       userId,
       '2026-09-03',
-      '2026-09-06'
+      '2026-09-06',
+      'caffeine_mg'
     );
     expect(result.target_bedtime).toBe('01:30');
     expect(result.bedtime_at).toBe('2026-09-06T01:30:00.000Z');
@@ -194,14 +196,14 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
       caffeine_half_life_hours: 5.0,
       target_bedtime: '00:00:00',
     } as any);
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([
       {
         source: 'food',
         entry_date: '2026-09-06',
         entry_time: null,
         meal_default_time: null,
         taken_at: null,
-        caffeine_mg: 80,
+        amount: 80,
         name: 'Untimed Lunch Coffee on Next Day',
       },
     ]);
@@ -223,7 +225,7 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
       caffeine_half_life_hours: 5.0,
       target_bedtime: '23:59:00',
     } as any);
-    vi.spyOn(foodMisc, 'getCaffeineDosesForWindow').mockResolvedValue([]);
+    vi.spyOn(foodMisc, 'getNutrientDosesForWindow').mockResolvedValue([]);
 
     const result = await getActiveCaffeineKinetics(userId, {
       date: '2026-09-05',

@@ -59,12 +59,12 @@ import ExerciseSetRestSheet from '../components/ExerciseSetRestSheet';
 import WorkoutDurationSheet, {
   type WorkoutDurationSheetRef,
 } from '../components/WorkoutDurationSheet';
-import WorkoutReorderList from '../components/WorkoutReorderList';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
 import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
 import ActiveWorkoutRenameModal from '../components/ActiveWorkoutRenameModal';
 import ActiveWorkoutLocationModal from '../components/ActiveWorkoutLocationModal';
+import { setWorkoutReorderSource } from '../services/workoutReorderSource';
 import ActiveWorkoutOverflowSheet, {
   type OverflowMenuState,
 } from '../components/ActiveWorkoutOverflowSheet';
@@ -82,7 +82,13 @@ import {
   useActiveWorkoutStore,
   type ActiveSetPatch,
 } from '../stores/activeWorkoutStore';
-import { shouldPlaceHeaderInStatusRow } from '../utils/activeWorkoutHeaderLayout';
+import {
+  shouldPlaceHeaderInStatusRow,
+  statusRowCluster,
+  verticalStripBottom,
+} from '../utils/activeWorkoutHeaderLayout';
+import { useStatusOcclusion } from '../hooks/useStatusOcclusion';
+import { AnimatedStripBox } from '../components/AnimatedStripBox';
 import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
@@ -272,7 +278,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     );
   }, [session, activeSetId]);
 
-  const [reorderVisible, setReorderVisible] = useState(false);
   const reorderItemCount = useMemo(
     () => buildExerciseReorderItems(session?.exercises ?? []).length,
     [session]
@@ -371,8 +376,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleOpenReorder = useCallback(() => {
     Keyboard.dismiss();
-    setReorderVisible(true);
-  }, []);
+    // A reorder screen opened from a workout form can still be in the stack
+    // below this one, holding the form's list. `navigate` would return to it;
+    // push a new one, which finds no form source and edits this session.
+    setWorkoutReorderSource(null);
+    runNavigationAction(() => navigation.push('WorkoutReorder'));
+  }, [navigation, runNavigationAction]);
 
   const handleOpenWorkoutSettings = useCallback(() => {
     Keyboard.dismiss();
@@ -643,8 +652,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // value cell so the lifter can type without tapping. Skip / dismiss don't
   // stamp restExpiredAt, so they never steal focus, and neither does an
   // expiry while a set cell already has the keyboard: the lifter is typing
-  // there. A store subscription (not an effect on the value) because this
-  // reacts to an event, once.
+  // there. Turned off in Workout Settings (#3581), the rest ends with the
+  // keyboard closed. A store subscription (not an effect on the value)
+  // because this reacts to an event, once.
   const isFocusedRef = useRef(isFocused);
   useEffect(() => {
     isFocusedRef.current = isFocused;
@@ -658,6 +668,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         )
           return;
         if (
+          !useAppPreferencesStore.getState().focusNextSetOnRestEnd ||
           !isFocusedRef.current ||
           focusedSetKeyRef.current != null ||
           AppState.currentState !== 'active' ||
@@ -970,6 +981,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const handleOpenRename = useCallback(() => setRenameVisible(true), []);
   const handleOpenLocation = useCallback(() => setLocationVisible(true), []);
+  // The header's laid-out height: the strip buttons are placed from window
+  // coordinates, and the content they sit in starts right below it.
+  // UIKit's own reserved regions say where the status content ends, a running
+  // Live Activity included, which no inset reports. Read only where it matters.
+  const statusRegions = useStatusOcclusion(
+    railBeside ||
+      shouldPlaceHeaderInStatusRow({
+        os: Platform.OS,
+        railBeside,
+        topInset: insets.top,
+        windowWidth,
+      })
+  );
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const handleHeaderLayout = useCallback((e: LayoutChangeEvent) => {
+    setHeaderHeight(e.nativeEvent.layout.height);
+  }, []);
 
   const restBarVisible = restRunning || activeSetId != null;
   const scrollContentStyle = useMemo(() => {
@@ -996,11 +1024,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handleResumeRest = useCallback(() => {
     useActiveWorkoutStore.getState().resumeRest();
   }, []);
-
-  const handleReorderMove = useCallback((from: number, to: number) => {
-    useActiveWorkoutStore.getState().reorderExercises(from, to);
-  }, []);
-  const handleReorderDone = useCallback(() => setReorderVisible(false), []);
 
   if (session == null || sessionId == null) {
     return (
@@ -1064,7 +1087,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // The closed outer display (~466 pt wide) parks the clock and Wi-Fi cluster
   // lower than the inner display does (dots end ~150 pt down vs ~98 pt), so the
   // strip buttons start lower there to keep the same gap under it.
-  const stripButtonsTop = windowWidth < 500 ? 98 : 54;
+  const fallbackStripButtonsTop = windowWidth < 500 ? 98 : 54;
   // The tall inner pose has a status row across the top (82 pt inset) that is
   // empty left of the clock and Wi-Fi cluster. Draw the header in that row.
   const headerInStatusRow = shouldPlaceHeaderInStatusRow({
@@ -1073,6 +1096,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     topInset: insets.top,
     windowWidth,
   });
+  // Beside a bar the buttons start where the strip's status content ends (the
+  // region's frame already carries the ~25 pt gap App Settings uses), measured
+  // from the top of the content below the header. The rail takes the rest, and
+  // it scrolls, so a lengthened cluster just shortens the visible list.
+  const stripBottom = railBeside ? verticalStripBottom(statusRegions) : null;
+  const stripButtonsTop =
+    stripBottom != null
+      ? Math.max(0, stripBottom - (insets.top + headerHeight))
+      : fallbackStripButtonsTop;
+  // A Live Activity widens the tall pose's cluster leftwards. The header stays
+  // in the status row and its title row stops at the cluster's measured edge.
+  const statusCluster = headerInStatusRow
+    ? statusRowCluster(statusRegions, windowWidth)
+    : null;
   const railElement = (
     <ActiveWorkoutRail
       exercises={session.exercises}
@@ -1088,12 +1125,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   // Focus mode has no rail, but the header's back and menu buttons still move
   // into the strip beside a vertical bar, so mount them there on their own.
+  // The first measurement replaces the fixed guess used until it arrives; that
+  // is settling in, not movement, so it snaps like a change of window size.
+  const stripLayoutKey = `${windowWidth}x${windowHeight}:${stripBottom != null}`;
   const stripButtonsOnly = (
-    <View
+    <AnimatedStripBox
       pointerEvents="box-none"
+      top={stripButtonsTop}
+      layoutKey={stripLayoutKey}
       style={{
         position: 'absolute',
-        top: stripButtonsTop,
         alignItems: 'center',
         width: RAIL_WIDTH,
         ...(stripOnRight ? { right: -stripWidth } : { left: -stripWidth }),
@@ -1103,16 +1144,17 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onBack={safeGoBack}
         onMenu={() => openMenuRef.current?.()}
       />
-    </View>
+    </AnimatedStripBox>
   );
   const railInStrip = (
-    <View
+    <AnimatedStripBox
       pointerEvents="box-none"
+      // Measured: the status glyphs end ~98 pt down and App Settings' back
+      // button starts ~123 pt down; this puts the workout's at the same gap.
+      top={stripButtonsTop}
+      layoutKey={stripLayoutKey}
       style={{
         position: 'absolute',
-        // Measured: the status glyphs end ~98 pt down and App Settings' back
-        // button starts ~123 pt down; this puts the workout's at the same gap.
-        top: stripButtonsTop,
         bottom: 0,
         alignItems: 'center',
         width: RAIL_WIDTH,
@@ -1126,7 +1168,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       <View style={{ flex: 1, minHeight: 0, width: '100%', marginTop: 16 }}>
         {railElement}
       </View>
-    </View>
+    </AnimatedStripBox>
   );
 
   return (
@@ -1134,25 +1176,28 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       className="flex-1 bg-background"
       style={{ paddingTop: headerInStatusRow ? 0 : insets.top }}
     >
-      <ActiveWorkoutHeader
-        inStatusRow={headerInStatusRow}
-        name={session.name}
-        location={session.location}
-        startedAt={startedAt}
-        progress={progress}
-        progressInSubtitle={focusMode}
-        onBack={safeGoBack}
-        onDiscard={handleDiscard}
-        onEndWorkout={handleConfirmEnd}
-        onRename={handleOpenRename}
-        onEditLocation={handleOpenLocation}
-        onAddExercise={handleAddExercise}
-        onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
-        onOpenSettings={handleOpenWorkoutSettings}
-        onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
-        buttonsInStrip={railBeside}
-        openMenuRef={openMenuRef}
-      />
+      <View onLayout={handleHeaderLayout}>
+        <ActiveWorkoutHeader
+          inStatusRow={headerInStatusRow}
+          statusCluster={statusCluster}
+          name={session.name}
+          location={session.location}
+          startedAt={startedAt}
+          progress={progress}
+          progressInSubtitle={focusMode}
+          onBack={safeGoBack}
+          onDiscard={handleDiscard}
+          onEndWorkout={handleConfirmEnd}
+          onRename={handleOpenRename}
+          onEditLocation={handleOpenLocation}
+          onAddExercise={handleAddExercise}
+          onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
+          onOpenSettings={handleOpenWorkoutSettings}
+          onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
+          buttonsInStrip={railBeside}
+          openMenuRef={openMenuRef}
+        />
+      </View>
 
       {focusMode ? (
         <View className="flex-1">
@@ -1446,14 +1491,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           equipment={plateCalc?.equipment}
         />
       )}
-
-      <WorkoutReorderList
-        visible={reorderVisible}
-        exercises={session.exercises}
-        getImageSource={getImageSource}
-        onMoveItem={handleReorderMove}
-        onDone={handleReorderDone}
-      />
     </View>
   );
 }

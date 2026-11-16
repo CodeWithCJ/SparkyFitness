@@ -61,6 +61,10 @@ export const MEDICATION_TAKEN_ACTION = 'medication-taken';
 export const MEDICATION_SKIP_ACTION = 'medication-skip';
 export const MEDICATION_SNOOZE_ACTION = 'medication-snooze';
 
+export const SYMPTOM_EPISODE_NUDGE_CATEGORY = 'symptom-episode-nudge';
+export const SYMPTOM_END_EPISODE_ACTION = 'symptom-end-episode';
+export const SYMPTOM_STILL_ONGOING_ACTION = 'symptom-still-ongoing';
+
 export type AppNotificationPermission = 'granted' | 'denied' | 'undetermined';
 
 let initialized = false;
@@ -95,6 +99,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       enableVibrate: true,
     });
     await ensureMoodCheckinChannel();
+    await ensureSymptomReminderChannel();
     await Notifications.setNotificationChannelAsync(
       MEDICATION_REMINDER_CHANNEL_ID,
       {
@@ -172,6 +177,27 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         identifier: MEDICATION_SNOOZE_ACTION,
         buttonTitle: remindInTitle,
         options: { opensAppToForeground: false },
+      },
+    ]
+  );
+  // Built with notificationCopy like the others: this can run before i18n has
+  // loaded, and Android rejects an action whose buttonTitle is undefined.
+  // Both buttons open the app so initSymptomNotificationActions can act on them.
+  await Notifications.setNotificationCategoryAsync(
+    SYMPTOM_EPISODE_NUDGE_CATEGORY,
+    [
+      {
+        identifier: SYMPTOM_END_EPISODE_ACTION,
+        buttonTitle: notificationCopy('symptoms.actions.endNow', 'End now'),
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: SYMPTOM_STILL_ONGOING_ACTION,
+        buttonTitle: notificationCopy(
+          'symptoms.actions.stillOngoing',
+          'Still ongoing'
+        ),
+        options: { opensAppToForeground: true },
       },
     ]
   );

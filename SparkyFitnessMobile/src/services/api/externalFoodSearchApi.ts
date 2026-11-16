@@ -5,6 +5,7 @@ import type {
   FoodPhotoEstimateResponse,
   BarcodeLookupResponse,
   NormalizedFood,
+  NutritionLabelScanResult,
 } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
@@ -706,30 +707,8 @@ export async function lookupBarcodeV2(
 
 // --- Nutrition Label Scanning ---
 
-export interface LabelScanResult {
-  name: string;
-  brand: string;
-  serving_size: number;
-  serving_unit: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number | null;
-  saturated_fat: number | null;
-  trans_fat: number | null;
-  sodium: number | null;
-  sugars: number | null;
-  cholesterol: number | null;
-  potassium: number | null;
-  calcium: number | null;
-  iron: number | null;
-  caffeine_mg: number | null;
-  water_ml: number | null;
-  alcohol_g: number | null;
-  vitamin_a: number | null;
-  vitamin_c: number | null;
-}
+/** What a nutrition label scan reads; the server and on-device paths share it. */
+export type LabelScanResult = NutritionLabelScanResult;
 
 export async function scanNutritionLabel(
   base64Image: string,

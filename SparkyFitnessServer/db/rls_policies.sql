@@ -665,6 +665,7 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
 -- default_temperature_unit inherits the existing preference read/write rules.
 -- oral_care_daily_target and oral_care_target_seconds inherit the existing preference read/write rules.
+-- bac_distribution_formula, bac_elimination_rate and bac_display_unit inherit the existing preference read/write rules.
 -- feature_choices (optional features per platform, #3487) inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
@@ -745,6 +746,8 @@ USING (
 );
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
 
+-- Provider session identities (including Hevy source_id) use the same diary
+-- owner/delegate policy; a provider ID never grants access to another owner.
 SELECT create_diary_policy('exercise_preset_entries');
 
 -- Workout feedback (#1560) follows the diary rows it describes: readable by

@@ -12,7 +12,11 @@ const FoodFormScreen: React.FC<FoodFormScreenProps> = ({
 }) => {
   if (route.params.mode === 'adjust-entry-nutrition') {
     return (
-      <AdjustNutritionMode params={route.params} navigation={navigation} />
+      <AdjustNutritionMode
+        params={route.params}
+        navigation={navigation}
+        routeKey={route.key}
+      />
     );
   }
   if (route.params.mode === 'edit-food') {

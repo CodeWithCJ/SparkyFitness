@@ -593,7 +593,7 @@ it('explains a past day with the settings and weight it was calculated from', ()
   );
 
   // Today's settings are Maintain with Mifflin-St Jeor at 80 kg.
-  expect(screen.getByText(/14\.2 × 92 \+ 593/)).toBeInTheDocument();
+  expect(screen.getByText(/0\.0592 × 92 \+ 2\.48/)).toBeInTheDocument();
   expect(screen.getByText(/Cut Deficit \(-15%\)/)).toBeInTheDocument();
   expect(screen.queryByText('Maintain (0% change)')).not.toBeInTheDocument();
 });

@@ -93,6 +93,12 @@ export function useWorkoutCompletePresetSync({
     onSettledRef.current = onSettled;
     onNeedsUpdateRef.current = onNeedsUpdate;
   });
+  // Alert.alert cannot be dismissed from code: once the watch settles the
+  // question, the phone's open alert must not act on a stale choice.
+  const skipPromptRef = useRef(skipPrompt);
+  useEffect(() => {
+    skipPromptRef.current = skipPrompt;
+  });
   const announcedRef = useRef(false);
 
   useEffect(() => {
@@ -183,6 +189,12 @@ export function useWorkoutCompletePresetSync({
       return;
     }
     if (skipPrompt) return;
+    // The alert closed without settling (the watch took over, or the write
+    // failed): allow the prompt again once nothing else holds it back.
+    const rearmPrompt = () => {
+      promptedRef.current = false;
+      setPromptNonce((n) => n + 1);
+    };
     const timer = setTimeout(() => {
       promptedRef.current = true;
       Alert.alert(
@@ -200,13 +212,23 @@ export function useWorkoutCompletePresetSync({
               defaultValue: 'Keep Preset',
             }),
             style: 'cancel',
-            onPress: () => onSettledRef.current?.(),
+            onPress: () => {
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
+              onSettledRef.current?.();
+            },
           },
           {
             text: t('workoutComplete.actions.update', {
               defaultValue: 'Update',
             }),
             onPress: () => {
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
               void (async () => {
                 if (await applyUpdate()) {
                   onSettledRef.current?.();
@@ -214,8 +236,7 @@ export function useWorkoutCompletePresetSync({
                 }
                 // The alert is already gone. Ask again instead of dropping
                 // the question because the write failed.
-                promptedRef.current = false;
-                setPromptNonce((n) => n + 1);
+                rearmPrompt();
               })();
             },
           },

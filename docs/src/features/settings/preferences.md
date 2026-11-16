@@ -14,6 +14,12 @@ SparkyFitness always stores energy in kcal and converts it for display (1 kcal =
 
 ---
 
+## Estimated blood alcohol
+
+Three settings control the [estimated blood alcohol](/features/diary/blood-alcohol) card: the **distribution formula** (Watson, Widmark, Seidl or Forrest; default Watson), the **elimination rate** (0.10 to 0.25 ‰/h; default 0.15 ‰/h) and the **display unit** (per mille or percent; default per mille). Change them on the web under **Settings > Profile & Account**. They are saved to your account, so web and mobile show the same estimate. The value is always a rough estimate and must never be used to judge whether you are fit to drive.
+
+---
+
 ## Autoscaling OpenFoodFacts
 
 The **Auto-scale OpenFoodFacts imports** option scales measurements and nutrition values from OpenFoodFacts to their **serving size**.

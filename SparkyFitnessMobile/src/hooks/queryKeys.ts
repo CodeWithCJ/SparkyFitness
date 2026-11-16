@@ -27,6 +27,10 @@ export const caffeineActiveRootQueryKey = ['caffeineActive'] as const;
 export const caffeineActiveQueryKey = (date: string) =>
   ['caffeineActive', date] as const;
 
+export const bloodAlcoholRootQueryKey = ['bloodAlcohol'] as const;
+export const bloodAlcoholQueryKey = (date: string) =>
+  ['bloodAlcohol', date] as const;
+
 export const measurementsQueryKey = (date: string) =>
   ['measurements', date] as const;
 
@@ -534,3 +538,5 @@ export const compareSinceQueryKey = (p: CompareSinceParams) =>
 
 export const glucoseSamplesQueryKeyRoot = ['glucoseSamples'] as const;
 export const glucoseContextQueryKeyRoot = ['glucoseContext'] as const;
+
+export const chatMcpServersQueryKey = ['chatMcpServers'] as const;

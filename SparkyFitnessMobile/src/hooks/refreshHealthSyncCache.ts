@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
+  bloodAlcoholRootQueryKey,
   exerciseHistoryResetQueryKey,
   glucoseSamplesQueryKeyRoot,
   glucoseContextQueryKeyRoot,
@@ -28,6 +29,8 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: dailySummaryQueryFamily });
   void queryClient.invalidateQueries({ queryKey: ['goalsRange'] });
   void queryClient.invalidateQueries({ queryKey: measurementsQueryFamily });
+  // The blood alcohol estimate reads the latest weight and height.
+  void queryClient.invalidateQueries({ queryKey: bloodAlcoholRootQueryKey });
   void queryClient.invalidateQueries({
     queryKey: measurementsRangeQueryFamily,
   });

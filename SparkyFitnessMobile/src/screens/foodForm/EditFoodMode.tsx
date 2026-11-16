@@ -13,7 +13,7 @@ import {
 } from '../../utils/namedFoodPortions';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
-import Button from '../../components/ui/Button';
+import { ScanNutritionLabelButton } from './ScanNutritionLabelButton';
 import { usableFoodImages } from '../../utils/foodImages';
 import {
   pickerImagesDiffer,
@@ -868,21 +868,11 @@ export function EditFoodMode({
         hideSubmitButton={usesNativeHeader}
         headerChildren={
           <View className="mb-4">
-            <Button
-              variant="secondary"
+            <ScanNutritionLabelButton
+              navigation={navigation}
+              returnKey={routeKey}
               disabled={isSubmitting}
-              className="mb-4"
-              onPress={() =>
-                navigation.navigate('FoodScan', {
-                  mode: 'capture-label',
-                  returnKey: routeKey,
-                })
-              }
-            >
-              {t('foodForm.scanNutritionLabel', {
-                defaultValue: 'Scan nutrition label',
-              })}
-            </Button>
+            />
             <FoodImagePicker
               items={pickerImages}
               onItemsChange={setPickerImages}

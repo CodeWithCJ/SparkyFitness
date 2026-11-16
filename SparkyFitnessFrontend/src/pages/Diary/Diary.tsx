@@ -8,6 +8,7 @@ import NutritionSummaryCard, { DayTotals } from './NutritionSummaryCard';
 import DailyProgress from './DailyProgress';
 import WaterIntake from './WaterIntake';
 import CaffeineCard from './CaffeineCard';
+import BloodAlcoholCard from './BloodAlcoholCard';
 import MealCard from './MealCard';
 import ExerciseCard from './ExerciseCard';
 import DiaryWidgetGrid, { type DiaryWidget } from './DiaryWidgetGrid';
@@ -17,6 +18,7 @@ import {
   Salad,
   Droplet,
   Coffee,
+  Wine,
   UtensilsCrossed,
   Dumbbell,
   HeartPulse,
@@ -26,7 +28,9 @@ import { useDailyHealthMetrics } from '@/hooks/useGenericHealth';
 import { selectDisplayableHealthMetrics } from '@/utils/dailyHealthMetrics';
 import EditFoodEntryDialog from './EditFoodEntryDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
+import CopyFoodEntryDialog, {
+  type CopyQuickTarget,
+} from '@/pages/Diary/CopyFoodEntryDialog';
 import ConvertToMealDialog from '@/pages/Diary/ConvertToMealDialog';
 import EditMealFoodEntryDialog from './EditMealFoodEntryDialog';
 import CopyFamilyEntryDialog from '@/pages/Diary/CopyFamilyEntryDialog';
@@ -49,6 +53,7 @@ import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import {
   useCopyFoodEntriesMutation,
+  useCopySingleFoodEntryMutation,
   useCreateFoodEntryMutation,
   useDeleteFoodEntryMealMutation,
   useDeleteFoodEntryMutation,
@@ -56,14 +61,19 @@ import {
   useFoodEntries,
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
-import { todayInZone, prefillEntryTime } from '@workspace/shared';
+import {
+  buildFoodEntryCopyPayload,
+  clockInZone,
+  prefillEntryTime,
+  todayInZone,
+} from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const Diary = () => {
   const { t } = useTranslation();
-  const { activeUserId } = useActiveUser();
+  const { activeUserId, isActingOnBehalf } = useActiveUser();
   const location = useLocation();
   const navigate = useNavigate();
   const { timezone, loggingLevel, energyUnit, convertEnergy } =
@@ -144,6 +154,8 @@ const Diary = () => {
   const { mutateAsync: createFoodEntry } = useCreateFoodEntryMutation();
   const { mutateAsync: removeFoodEntry } = useDeleteFoodEntryMutation();
   const { mutateAsync: copyFoodEntries } = useCopyFoodEntriesMutation();
+  const { mutate: copySingleFoodEntry } = useCopySingleFoodEntryMutation();
+  const [copyingEntry, setCopyingEntry] = useState<FoodEntry | null>(null);
   const { mutateAsync: deleteFoodEntryMeal } = useDeleteFoodEntryMealMutation();
 
   const foodEntries = fetchedFoodEntries
@@ -194,6 +206,28 @@ const Diary = () => {
     setCopySourceMealType(mealType);
     setIsCopyDialogOpen(true);
     debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
+  };
+
+  const handleCopySingleFood = (
+    targetDate: string,
+    targetMealType: string,
+    quickTarget: CopyQuickTarget | null
+  ) => {
+    const entry = copyingEntry;
+    const mealType = availableMealTypes?.find(
+      (mt) => mt.name.toLowerCase() === targetMealType.toLowerCase()
+    );
+    if (!entry || !mealType || !currentUserId) return;
+    copySingleFoodEntry({
+      ...buildFoodEntryCopyPayload(
+        entry,
+        targetDate,
+        mealType.id,
+        quickTarget === 'now' ? clockInZone(timezone) : undefined
+      ),
+      // Copy into the diary being viewed, like adding a food does.
+      user_id: currentUserId,
+    });
   };
 
   const handleCopyFamilyClick = (mealType: string) => {
@@ -451,6 +485,7 @@ const Diary = () => {
             }
             getEntryNutrition={getEntryNutrition}
             onCopyClick={handleCopyClick}
+            onCopyEntry={setCopyingEntry}
             onCopyFamilyClick={handleCopyFamilyClick}
             onConvertToMealClick={handleConvertToMealClick}
             energyUnit={energyUnit}
@@ -489,6 +524,17 @@ const Diary = () => {
       render: () => <CaffeineCard date={selectedDate} userId={activeUserId} />,
     });
 
+    // Owner only: the estimate needs the person's own body data, and the
+    // server refuses it to a delegate.
+    if (!isActingOnBehalf) {
+      list.push({
+        key: 'bloodAlcohol',
+        title: t('diary.bloodAlcohol.title', 'Estimated Blood Alcohol'),
+        icon: Wine,
+        render: () => <BloodAlcoholCard date={selectedDate} />,
+      });
+    }
+
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -506,6 +552,7 @@ const Diary = () => {
     openFoodSearchForMealType,
     todaysHealthMetrics,
     loadingHealthMetrics,
+    isActingOnBehalf,
     t,
   ]);
 
@@ -579,6 +626,16 @@ const Diary = () => {
           onClose={() => setIsCopyDialogOpen(false)}
           onCopy={handleCopyFoodEntries}
           sourceMealType={copySourceMealType}
+        />
+      )}
+
+      {copyingEntry && (
+        <CopyFoodEntryDialog
+          isOpen={true}
+          onClose={() => setCopyingEntry(null)}
+          onCopy={handleCopySingleFood}
+          sourceMealType={copyingEntry.meal_type}
+          foodName={copyingEntry.food_name ?? ''}
         />
       )}
 

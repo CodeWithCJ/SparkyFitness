@@ -748,7 +748,11 @@ router.post('/scan-label', authenticate, async (req, res, next) => {
     );
     if (!result.success) {
       const status = LABEL_SCAN_ERROR_HTTP_STATUS[result.category] ?? 500;
-      return res.status(status).json({ error: result.error });
+      // `code` lets a client word its own message for each failure, such as
+      // pointing to the AI settings when no service is configured.
+      return res
+        .status(status)
+        .json({ error: result.error, code: result.category });
     }
     res.status(200).json(result.nutrition);
   } catch (error) {

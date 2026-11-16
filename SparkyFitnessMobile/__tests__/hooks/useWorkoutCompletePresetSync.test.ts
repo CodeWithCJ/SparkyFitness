@@ -178,4 +178,31 @@ describe('useWorkoutCompletePresetSync onSettled', () => {
       timeout: 3000,
     });
   });
+
+  it('asks again when the watch starts waiting after the alert opened and then never answers', async () => {
+    jest.restoreAllMocks();
+    Object.defineProperty(AppState, 'currentState', {
+      value: 'active',
+      configurable: true,
+    });
+    (buildPresetUpdateExercises as jest.Mock).mockReturnValue([{}]);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const onSettled = jest.fn();
+    const { rerender } = renderHook(
+      ({ skipPrompt }: { skipPrompt: boolean }) =>
+        useWorkoutCompletePresetSync({ ...args(onSettled), skipPrompt }),
+      { initialProps: { skipPrompt: false } }
+    );
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(1), {
+      timeout: 3000,
+    });
+    rerender({ skipPrompt: true });
+    const buttons = alert.mock.calls[0]![2]!;
+    act(() => buttons[0]!.onPress?.());
+    expect(onSettled).not.toHaveBeenCalled();
+    rerender({ skipPrompt: false });
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(2), {
+      timeout: 3000,
+    });
+  });
 });

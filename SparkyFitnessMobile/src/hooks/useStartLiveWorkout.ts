@@ -7,16 +7,29 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type {
+  GetPlateInventoryResponse,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
   WorkoutFormat,
 } from '@workspace/shared';
 import { useCreateWorkout } from './useExerciseMutations';
 import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
-import { serverConnectionQueryKey } from './queryKeys';
+import {
+  plateInventoryQueryKey,
+  preferencesQueryKey,
+  serverConnectionQueryKey,
+} from './queryKeys';
+import { queryClient } from './queryClient';
+import {
+  buildWatchPlateConfig,
+  watchEquipmentLabel,
+} from '../utils/watchPlates';
 import { defaultWorkoutName } from './useWorkoutForm';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  getDefaultRestSec,
+  useAppPreferencesStore,
+} from '../stores/appPreferencesStore';
 import { resolveWatchSetTargets } from './useWatchSetTargetsSync';
 import WatchConnectivity, {
   type WatchWorkoutStartPayload,
@@ -27,6 +40,7 @@ import {
 } from '../services/notifications';
 import { getActiveServerConfig } from '../services/storage';
 import { getTodayDate } from '../utils/dateUtils';
+import { watchDemoFields } from '../utils/watchExerciseImages';
 import { isBodyweightModality } from '@workspace/shared';
 import {
   extractPlannedSetValues,
@@ -77,6 +91,34 @@ export interface StartLiveWorkoutArgs {
 }
 
 /**
+ * The equipment line and, for a bar exercise, the plate data the watch's
+ * Plates tile needs. The plate inventory comes from the query cache (the
+ * standard set when none is saved or loaded yet); `useWatchPlanSync` resends
+ * the plan when it arrives.
+ */
+function watchPlateFields(equipment: readonly string[] | null | undefined) {
+  const label = watchEquipmentLabel(equipment);
+  const stored = queryClient.getQueryData<GetPlateInventoryResponse>(
+    plateInventoryQueryKey
+  )?.inventory;
+  const preferences = queryClient.getQueryData<{
+    default_weight_unit?: string;
+  }>(preferencesQueryKey);
+  const plates = buildWatchPlateConfig(
+    equipment,
+    stored,
+    preferences?.default_weight_unit === 'lbs' ||
+      preferences?.default_weight_unit === 'st_lbs'
+      ? 'lbs'
+      : 'kg'
+  );
+  return {
+    ...(label ? { equipment: label } : {}),
+    ...(plates ? { plates } : {}),
+  };
+}
+
+/**
  * Builds the plan a paired Apple Watch's Workout tab is armed with, from the
  * session and derived state `startWorkout` just committed to the store —
  * read back rather than recomputed so the watch's targets and rest agree
@@ -118,6 +160,8 @@ export function buildWatchWorkoutStartPayload(
       bodyweight: isBodyweightModality(
         resolveSnapshotModality(exercise.exercise_snapshot)
       ),
+      ...watchPlateFields(exercise.exercise_snapshot?.equipment),
+      ...watchDemoFields(exercise.exercise_snapshot),
       sets: exercise.sets.map((set) => {
         const setId = String(set.id);
         const target = targets.get(setId);
@@ -136,6 +180,7 @@ export function buildWatchWorkoutStartPayload(
           ...(isWeightDurationModality(modality) ? { weighted: true } : {}),
           targetDistanceKm: target?.distanceKm ?? null,
           restSeconds: restSecBySetId.get(setId) ?? 0,
+          restAfterSeconds: set.rest_time ?? getDefaultRestSec(),
           setType: set.set_type ?? null,
         };
       }),

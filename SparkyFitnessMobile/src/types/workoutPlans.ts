@@ -40,6 +40,13 @@ export interface WorkoutPlanTemplate {
     total: number;
     session_name?: string | null;
   } | null;
+  /**
+   * Server-reported outcome of regenerating this plan's upcoming diary
+   * entries after an update (phase 2 of #1995).
+   */
+  regenerated_entries?: { removed: number; created: number } | null;
+  /** True when the post-commit regeneration failed; the plan itself saved. */
+  regeneration_failed?: boolean | null;
 }
 
 /** What the plan form edits: the saved plan's fields as plain strings. */

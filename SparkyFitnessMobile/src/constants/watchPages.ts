@@ -55,3 +55,14 @@ export const DEFAULT_WATCH_NUTRIENTS = ['protein', 'carbs', 'fat'];
  */
 export const WATCH_SET_INPUT_STYLES = ['keypad', 'crown'] as const;
 export type WatchSetInputStyle = (typeof WATCH_SET_INPUT_STYLES)[number];
+
+/** What the new watch workout view's top line shows first: the elapsed time or live metrics. */
+export const WATCH_WORKOUT_TOP_LINES = ['time', 'metrics'] as const;
+export type WatchWorkoutTopLine = (typeof WATCH_WORKOUT_TOP_LINES)[number];
+
+/**
+ * Seconds of audible countdown the new watch workout view plays before a rest
+ * or a timed hold ends: 0 is off. Wire value, read by the watch's context.
+ */
+export const WATCH_WORKOUT_COUNTDOWNS = [0, 3, 5] as const;
+export type WatchWorkoutCountdown = (typeof WATCH_WORKOUT_COUNTDOWNS)[number];

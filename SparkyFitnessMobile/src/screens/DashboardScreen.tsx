@@ -37,6 +37,7 @@ import HydrationReminderReconciler from '../components/HydrationReminderReconcil
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
 import CaffeineCard from '../components/CaffeineCard';
+import BloodAlcoholCard from '../components/BloodAlcoholCard';
 import { useBackgroundWaterSync } from '../hooks/useBackgroundWaterSync';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
@@ -54,11 +55,11 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
-  caffeineActiveRootQueryKey,
   fastingRootQueryKey,
   medicationsRootQueryKey,
   useCustomNutrients,
   useDailySummary,
+  useBloodAlcohol,
   useCaffeineKinetics,
   useHealthTrends,
   useMeasurements,
@@ -70,6 +71,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { invalidateIntakeKinetics } from '../hooks/invalidateIntakeKinetics';
 import {
   moodEntriesRootQueryKey,
   labLatestQueryKey,
@@ -77,6 +79,7 @@ import {
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
 import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
+import { crossfadeHeaderColumn } from '../../modules/side-bar-metrics';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
@@ -168,6 +171,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // A live activity lengthens the status cluster in a side-bar pose and can
   // push the date buttons onto the Add button; then only the calendar stays.
   const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
+  const lastDateCollapsedRef = useRef<boolean | null>(null);
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const datePastColor =
     (useCSSVariable('--color-date-past') as string) || '#f97316';
@@ -176,6 +180,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
+    // Beside a vertical bar, wait for the first measurement: setting all three
+    // date buttons and collapsing a moment later makes the pill jump.
+    if (dateColumnCollapsed === null) return;
+    // The system swaps native bar items with no animation: when the group
+    // changes under an already-visible pill, dissolve it instead of popping.
+    // Only on the screen being looked at: the screen under a pushed one still
+    // follows the live activity (so its buttons are right on return), and the
+    // column on show then belongs to the screen on top.
+    if (
+      lastDateCollapsedRef.current !== null &&
+      lastDateCollapsedRef.current !== dateColumnCollapsed &&
+      navigation.isFocused()
+    ) {
+      crossfadeHeaderColumn();
+    }
+    lastDateCollapsedRef.current = dateColumnCollapsed;
 
     const relation = getDateRelationToToday(selectedDate);
     const dateTintColor =
@@ -195,7 +215,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         tintColor: nativeHeaderActionColor,
         dateTintColor,
         compactCalendarButton: verticalBar,
-        collapseToCalendar: dateColumnCollapsed,
+        collapseToCalendar: dateColumnCollapsed ?? false,
         accessibilityLabel: t('dashboard.chooseDate', {
           defaultValue: 'Choose dashboard date',
         }),
@@ -389,6 +409,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isCaffeineLoading,
     refetch: refetchCaffeine,
   } = useCaffeineKinetics(selectedDate, caffeineCardVisible);
+  const bloodAlcoholCardVisible = useAppPreferencesStore(
+    (s) => s.bloodAlcoholCardVisible
+  );
+  const {
+    estimate: bloodAlcoholEstimate,
+    nowMs: bloodAlcoholNowMs,
+    isLoading: isBloodAlcoholLoading,
+  } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
@@ -448,8 +476,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       refetchCaffeine(),
-      // CaffeineCard and FastingCard own their own queries; nudge them on pull-to-refresh.
-      queryClient.invalidateQueries({ queryKey: caffeineActiveRootQueryKey }),
+      // The intake curve cards and FastingCard own their own queries; nudge them on pull-to-refresh.
+      invalidateIntakeKinetics(queryClient),
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
@@ -816,6 +844,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   kinetics={caffeineKinetics}
                   nowMs={caffeineNowMs}
                   isLoading={isCaffeineLoading}
+                />
+              ) : null;
+            case 'bloodAlcohol':
+              return bloodAlcoholCardVisible ? (
+                <BloodAlcoholCard
+                  key="bloodAlcohol"
+                  date={selectedDate}
+                  estimate={bloodAlcoholEstimate}
+                  nowMs={bloodAlcoholNowMs}
+                  isLoading={isBloodAlcoholLoading}
                 />
               ) : null;
             case 'fasting':

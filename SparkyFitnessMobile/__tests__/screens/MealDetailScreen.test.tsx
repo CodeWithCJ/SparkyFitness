@@ -524,7 +524,7 @@ describe('MealDetailScreen', () => {
     await act(async () => {
       await i18n.changeLanguage('pl');
     });
-    expect(screen.getByText('Produkt', { exact: false })).toBeTruthy();
+    expect(screen.getByText(/^Produkt/)).toBeTruthy();
     expect(screen.queryByText('Food')).toBeNull();
     expect(screen.getByText('Dragon Brand', { exact: false })).toBeTruthy();
 

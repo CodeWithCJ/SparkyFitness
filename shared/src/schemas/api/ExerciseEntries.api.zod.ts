@@ -89,6 +89,8 @@ export const exerciseSnapshotResponseSchema = z
     updated_at: z.string().nullable().optional(),
     tags: z.array(z.string()).nullable().optional(),
     duration_min: z.number().nullable().optional(),
+    /** Health activity type override (#1750); null is Automatic. Optional: older servers omit it. */
+    health_activity_type: z.string().nullable().optional(),
   })
   .strict();
 
@@ -400,6 +402,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
      * leaves the duration and everything else on the entry alone.
      */
     strideLengthCm: z.number().positive().max(500).nullable().optional(),
+    /**
+     * Average cadence of the entry, in steps per minute; null clears it.
+     * Telemetry only, like `strideLengthCm`: a run filed before its steps had
+     * reached Apple Health gets its cadence filled in afterwards.
+     */
+    avgCadence: z.number().positive().max(400).nullable().optional(),
   })
   .strict()
   .refine(
@@ -407,11 +415,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
       body.hrSamples !== undefined ||
       body.activeEnergyKcal !== undefined ||
       body.strideLengthCm !== undefined ||
+      body.avgCadence !== undefined ||
       (body.durationMinutes !== undefined && body.durationMinutes > 0) ||
       (body.appleZones !== undefined && body.appleZones.length > 0),
     {
       message:
-        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, or appleZones is required.',
+        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, avgCadence, or appleZones is required.',
     }
   );
 
@@ -869,6 +878,8 @@ export const calorieLinkSuggestionsResponseSchema = z.object({
     .object({
       resolution: calorieLinkResolutionSchema,
       synced_entry_id: z.string().nullable(),
+      /** Persisted custom session total in kcal; absent for other resolutions. */
+      custom_calories: z.number().min(0).optional(),
     })
     .nullable(),
   candidates: z.array(calorieLinkCandidateSchema),

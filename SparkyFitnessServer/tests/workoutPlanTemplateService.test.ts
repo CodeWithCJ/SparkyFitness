@@ -2,8 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import workoutPlanTemplateService from '../services/workoutPlanTemplateService.js';
 import workoutPlanTemplateRepository from '../models/workoutPlanTemplateRepository.js';
 import exerciseRepository from '../models/exerciseRepository.js';
+import {
+  createExerciseEntriesFromTemplate,
+  deleteExerciseEntriesByTemplateIdWithClient,
+} from '../models/exerciseTemplate.js';
+import {
+  deleteWorkoutPlanTemplateWithClient,
+  updateWorkoutPlanTemplateWithClient,
+} from '../models/workoutPlanTemplateRepository.js';
+import { getClient } from '../db/poolManager.js';
 
 vi.mock('../models/workoutPlanTemplateRepository.js', () => ({
+  updateWorkoutPlanTemplateWithClient: vi.fn(),
+  deleteWorkoutPlanTemplateWithClient: vi.fn(),
   default: {
     createWorkoutPlanTemplate: vi.fn(),
     getWorkoutPlanTemplatesByUserId: vi.fn(),
@@ -30,6 +41,15 @@ vi.mock('../models/exerciseRepository.js', () => ({
   },
 }));
 
+vi.mock('../models/exerciseTemplate.js', () => ({
+  createExerciseEntriesFromTemplate: vi.fn(),
+  deleteExerciseEntriesByTemplateIdWithClient: vi.fn(),
+}));
+
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn(),
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
@@ -43,8 +63,14 @@ const OTHER_USER_ID = 'other-user-uuid-5678';
 const TEMPLATE_ID = 'template-uuid-9999';
 
 describe('workoutPlanTemplateService', () => {
+  const mockClient = {
+    query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+    release: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   describe('getWorkoutPlanTemplateById', () => {
@@ -129,13 +155,14 @@ describe('workoutPlanTemplateService', () => {
       vi.mocked(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId
       ).mockResolvedValue(USER_ID);
-      vi.mocked(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).mockResolvedValue({
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue({
         id: TEMPLATE_ID,
         plan_name: 'Updated Name',
         is_active: false,
       });
+      vi.mocked(deleteExerciseEntriesByTemplateIdWithClient).mockResolvedValue(
+        2
+      );
 
       const result = await workoutPlanTemplateService.updateWorkoutPlanTemplate(
         USER_ID,
@@ -146,17 +173,50 @@ describe('workoutPlanTemplateService', () => {
       expect(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId
       ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID);
-      expect(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).toHaveBeenCalledWith(
+      expect(getClient).toHaveBeenCalledWith(USER_ID);
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      // No stored template means the plan is treated as generating entries.
+      expect(deleteExerciseEntriesByTemplateIdWithClient).toHaveBeenCalledWith(
+        mockClient,
         TEMPLATE_ID,
         USER_ID,
-        {
-          plan_name: 'Updated Name',
-        },
+        '2026-09-10'
+      );
+      expect(updateWorkoutPlanTemplateWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID,
+        { plan_name: 'Updated Name' },
         false
       );
+      expect(mockClient.release).toHaveBeenCalled();
       expect(result.plan_name).toBe('Updated Name');
+      expect(result.regenerated_entries).toEqual({ removed: 2, created: 0 });
+    });
+
+    it('rolls back and wraps the error when the plan update fails', async () => {
+      vi.mocked(
+        workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId
+      ).mockResolvedValue(USER_ID);
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockRejectedValue(
+        new Error('db down')
+      );
+
+      await expect(
+        workoutPlanTemplateService.updateWorkoutPlanTemplate(
+          USER_ID,
+          TEMPLATE_ID,
+          {
+            plan_name: 'Renamed Plan',
+          }
+        )
+      ).rejects.toThrow('Failed to update workout plan template.');
+
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
@@ -189,28 +249,58 @@ describe('workoutPlanTemplateService', () => {
       );
     });
 
-    it('deletes template and cleans up entries when user is owner', async () => {
+    it('deletes template and cleans up entries in one transaction when user is owner', async () => {
       vi.mocked(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId
       ).mockResolvedValue(USER_ID);
-      vi.mocked(
-        workoutPlanTemplateRepository.deleteWorkoutPlanTemplate
-      ).mockResolvedValue({ id: TEMPLATE_ID });
+      vi.mocked(deleteWorkoutPlanTemplateWithClient).mockResolvedValue({
+        id: TEMPLATE_ID,
+      });
 
       const result = await workoutPlanTemplateService.deleteWorkoutPlanTemplate(
         USER_ID,
         TEMPLATE_ID
       );
 
-      expect(
-        exerciseRepository.deleteExerciseEntriesByTemplateId
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID, '2026-09-10');
-      expect(
-        workoutPlanTemplateRepository.deleteWorkoutPlanTemplate
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID);
+      expect(getClient).toHaveBeenCalledWith(USER_ID);
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(deleteExerciseEntriesByTemplateIdWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID,
+        '2026-09-10'
+      );
+      expect(deleteWorkoutPlanTemplateWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
       expect(result).toEqual({
         message: 'Workout plan template deleted successfully.',
       });
+    });
+
+    it('rolls back the entry deletion when deleting the plan fails', async () => {
+      vi.mocked(
+        workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId
+      ).mockResolvedValue(USER_ID);
+      vi.mocked(deleteWorkoutPlanTemplateWithClient).mockRejectedValue(
+        new Error('db down')
+      );
+
+      await expect(
+        workoutPlanTemplateService.deleteWorkoutPlanTemplate(
+          USER_ID,
+          TEMPLATE_ID
+        )
+      ).rejects.toThrow('Failed to delete workout plan template.');
+
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
@@ -396,9 +486,10 @@ describe('workoutPlanTemplateService', () => {
         schedule_type: 'weekly',
         assignments: [],
       });
-      vi.mocked(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).mockResolvedValue({
+      vi.mocked(deleteExerciseEntriesByTemplateIdWithClient).mockResolvedValue(
+        2
+      );
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue({
         id: TEMPLATE_ID,
         plan_name: 'Switched to Sequential',
         is_active: true,
@@ -416,12 +507,14 @@ describe('workoutPlanTemplateService', () => {
         }
       );
 
-      expect(
-        exerciseRepository.deleteExerciseEntriesByTemplateId
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID, '2026-09-10');
-      expect(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).toHaveBeenCalledWith(
+      expect(deleteExerciseEntriesByTemplateIdWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID,
+        '2026-09-10'
+      );
+      expect(updateWorkoutPlanTemplateWithClient).toHaveBeenCalledWith(
+        mockClient,
         TEMPLATE_ID,
         USER_ID,
         {
@@ -433,10 +526,9 @@ describe('workoutPlanTemplateService', () => {
         },
         true
       );
-      expect(
-        exerciseRepository.createExerciseEntriesFromTemplate
-      ).not.toHaveBeenCalled();
+      expect(createExerciseEntriesFromTemplate).not.toHaveBeenCalled();
       expect(result.schedule_type).toBe('sequential');
+      expect(result.regenerated_entries).toEqual({ removed: 2, created: 0 });
     });
 
     it('throws error when updating weekly plan with invalid day_of_week', async () => {
@@ -488,25 +580,23 @@ describe('workoutPlanTemplateService', () => {
         vi.mocked(
           workoutPlanTemplateRepository.getWorkoutPlanTemplateById
         ).mockResolvedValue(storedPlan('prompt'));
-        vi.mocked(
-          workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-        ).mockResolvedValue({
+        vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue({
           ...storedPlan('prompt'),
           ...updateData,
         });
 
-        await workoutPlanTemplateService.updateWorkoutPlanTemplate(
-          USER_ID,
-          TEMPLATE_ID,
-          updateData
-        );
+        const result =
+          await workoutPlanTemplateService.updateWorkoutPlanTemplate(
+            USER_ID,
+            TEMPLATE_ID,
+            updateData
+          );
 
         expect(
-          exerciseRepository.deleteExerciseEntriesByTemplateId
+          deleteExerciseEntriesByTemplateIdWithClient
         ).not.toHaveBeenCalled();
-        expect(
-          exerciseRepository.createExerciseEntriesFromTemplate
-        ).not.toHaveBeenCalled();
+        expect(createExerciseEntriesFromTemplate).not.toHaveBeenCalled();
+        expect(result.regenerated_entries).toEqual({ removed: 0, created: 0 });
       }
     );
 
@@ -514,9 +604,7 @@ describe('workoutPlanTemplateService', () => {
       vi.mocked(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateById
       ).mockResolvedValue(storedPlan('prompt', 'sequential'));
-      vi.mocked(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).mockResolvedValue({
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue({
         ...storedPlan('prompt', 'sequential'),
         plan_name: 'Renamed Plan',
       });
@@ -528,7 +616,7 @@ describe('workoutPlanTemplateService', () => {
       );
 
       expect(
-        exerciseRepository.deleteExerciseEntriesByTemplateId
+        deleteExerciseEntriesByTemplateIdWithClient
       ).not.toHaveBeenCalled();
     });
 
@@ -536,34 +624,69 @@ describe('workoutPlanTemplateService', () => {
       vi.mocked(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateById
       ).mockResolvedValue(storedPlan('prefill'));
-      vi.mocked(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).mockResolvedValue({
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue({
         ...storedPlan('prefill'),
         plan_name: 'Renamed Plan',
       });
+      vi.mocked(deleteExerciseEntriesByTemplateIdWithClient).mockResolvedValue(
+        3
+      );
+      vi.mocked(createExerciseEntriesFromTemplate).mockResolvedValue(4);
 
-      await workoutPlanTemplateService.updateWorkoutPlanTemplate(
+      const result = await workoutPlanTemplateService.updateWorkoutPlanTemplate(
         USER_ID,
         TEMPLATE_ID,
         { plan_name: 'Renamed Plan', is_active: true }
       );
 
-      expect(
-        exerciseRepository.deleteExerciseEntriesByTemplateId
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID, '2026-09-10');
-      expect(
-        exerciseRepository.createExerciseEntriesFromTemplate
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID, '2026-09-10');
+      expect(deleteExerciseEntriesByTemplateIdWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID,
+        '2026-09-10'
+      );
+      expect(createExerciseEntriesFromTemplate).toHaveBeenCalledWith(
+        TEMPLATE_ID,
+        USER_ID,
+        '2026-09-10'
+      );
+      expect(result.regenerated_entries).toEqual({ removed: 3, created: 4 });
+    });
+
+    it('reports regeneration_failed when the post-commit regeneration errors', async () => {
+      vi.mocked(
+        workoutPlanTemplateRepository.getWorkoutPlanTemplateById
+      ).mockResolvedValue(storedPlan('prefill'));
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue(
+        storedPlan('prefill')
+      );
+      vi.mocked(deleteExerciseEntriesByTemplateIdWithClient).mockResolvedValue(
+        1
+      );
+      vi.mocked(createExerciseEntriesFromTemplate).mockRejectedValue(
+        new Error('regeneration down')
+      );
+
+      const result = await workoutPlanTemplateService.updateWorkoutPlanTemplate(
+        USER_ID,
+        TEMPLATE_ID,
+        { plan_name: 'Existing Plan', is_active: true }
+      );
+
+      // The transactional part still committed; only the regeneration failed.
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.query).not.toHaveBeenCalledWith('ROLLBACK');
+      expect(result.regeneration_failed).toBe(true);
+      expect(result.regenerated_entries).toEqual({ removed: 1, created: 0 });
     });
 
     it('switching a prefill plan to prompt still removes the entries it generated', async () => {
       vi.mocked(
         workoutPlanTemplateRepository.getWorkoutPlanTemplateById
       ).mockResolvedValue(storedPlan('prefill'));
-      vi.mocked(
-        workoutPlanTemplateRepository.updateWorkoutPlanTemplate
-      ).mockResolvedValue(storedPlan('prompt'));
+      vi.mocked(updateWorkoutPlanTemplateWithClient).mockResolvedValue(
+        storedPlan('prompt')
+      );
 
       await workoutPlanTemplateService.updateWorkoutPlanTemplate(
         USER_ID,
@@ -571,12 +694,13 @@ describe('workoutPlanTemplateService', () => {
         { plan_name: 'Existing Plan', is_active: true, entry_mode: 'prompt' }
       );
 
-      expect(
-        exerciseRepository.deleteExerciseEntriesByTemplateId
-      ).toHaveBeenCalledWith(TEMPLATE_ID, USER_ID, '2026-09-10');
-      expect(
-        exerciseRepository.createExerciseEntriesFromTemplate
-      ).not.toHaveBeenCalled();
+      expect(deleteExerciseEntriesByTemplateIdWithClient).toHaveBeenCalledWith(
+        mockClient,
+        TEMPLATE_ID,
+        USER_ID,
+        '2026-09-10'
+      );
+      expect(createExerciseEntriesFromTemplate).not.toHaveBeenCalled();
     });
   });
 

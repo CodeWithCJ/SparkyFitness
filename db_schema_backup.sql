@@ -2224,9 +2224,11 @@ CREATE TABLE public.exercise_entries (
     calories_applied numeric,
     calorie_link_id uuid,
     calorie_link_resolution text,
+    health_activity_type text,
     CONSTRAINT chk_exercise_entries_calorie_link_resolution CHECK (((calorie_link_resolution IS NULL) OR (calorie_link_resolution = ANY (ARRAY['sparkyfitness'::text, 'synced'::text, 'higher'::text, 'lower'::text, 'average'::text, 'custom'::text])))),
     CONSTRAINT chk_exercise_entries_calories_applied CHECK (((calories_applied IS NULL) OR (calories_applied >= (0)::numeric))),
     CONSTRAINT chk_exercise_entries_workout_effort CHECK (((workout_effort IS NULL) OR ((workout_effort >= 1) AND (workout_effort <= 10)))),
+    CONSTRAINT exercise_entries_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
@@ -2257,6 +2259,13 @@ COMMENT ON COLUMN public.exercise_entries.entry_time IS 'Optional wall-clock loc
 --
 
 COMMENT ON COLUMN public.exercise_entries.record_timezone IS 'IANA timezone entry_time is expressed in (e.g. America/New_York). NULL when unknown; read paths fall back to the profile timezone.';
+
+
+--
+-- Name: COLUMN exercise_entries.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.health_activity_type IS 'Snapshot of exercises.health_activity_type when the entry was created (#1750); used once the exercise is deleted.';
 
 
 --
@@ -2465,6 +2474,7 @@ CREATE TABLE public.exercise_preset_entries (
     source text DEFAULT 'manual'::text NOT NULL,
     location character varying(255),
     workout_format character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    source_id text,
     finished_at timestamp with time zone,
     revision integer DEFAULT 1 NOT NULL,
     CONSTRAINT chk_exercise_preset_entries_format CHECK (((workout_format)::text = ANY ((ARRAY['standard'::character varying, 'interval'::character varying, 'tabata'::character varying, 'amrap'::character varying, 'emom'::character varying, 'for_time'::character varying])::text[])))
@@ -2527,8 +2537,17 @@ CREATE TABLE public.exercises (
     images text,
     is_quick_exercise boolean DEFAULT false,
     modality text DEFAULT 'weight_reps'::text NOT NULL,
+    health_activity_type text,
+    CONSTRAINT exercises_health_activity_type_format_check CHECK (((health_activity_type IS NULL) OR (health_activity_type ~ '^[a-z][a-z_]{1,39}$'::text))),
     CONSTRAINT exercises_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'bodyweight_reps'::text, 'weight_duration'::text, 'weight_distance'::text, 'duration'::text, 'duration_distance'::text])))
 );
+
+
+--
+-- Name: COLUMN exercises.health_activity_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercises.health_activity_type IS 'Apple Health / Health Connect activity type key for write-back (#1750); NULL = automatic.';
 
 
 --
@@ -2571,7 +2590,8 @@ CREATE TABLE public.external_data_providers (
     is_public boolean DEFAULT false NOT NULL,
     sync_started_at timestamp with time zone,
     fit_downloads_day date,
-    fit_downloads_used integer DEFAULT 0 NOT NULL
+    fit_downloads_used integer DEFAULT 0 NOT NULL,
+    provider_options jsonb
 );
 
 
@@ -5294,12 +5314,19 @@ CREATE TABLE public.user_preferences (
     oral_care_daily_target smallint DEFAULT 2 NOT NULL,
     oral_care_target_seconds integer DEFAULT 120 NOT NULL,
     intervals_push_nutrition boolean DEFAULT false NOT NULL,
+    bac_distribution_formula text DEFAULT 'watson'::text NOT NULL,
+    bac_elimination_rate numeric(4,3) DEFAULT 0.150 NOT NULL,
+    bac_display_unit text DEFAULT 'permille'::text NOT NULL,
+    chat_mcp_server_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     feature_choices jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT chk_user_preferences_oral_care_daily_target CHECK (((oral_care_daily_target >= 1) AND (oral_care_daily_target <= 6))),
     CONSTRAINT chk_user_preferences_oral_care_target_seconds CHECK (((oral_care_target_seconds >= 30) AND (oral_care_target_seconds <= 600))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_bac_display_unit_check CHECK ((bac_display_unit = ANY (ARRAY['permille'::text, 'percent'::text]))),
+    CONSTRAINT user_preferences_bac_distribution_formula_check CHECK ((bac_distribution_formula = ANY (ARRAY['widmark'::text, 'watson'::text, 'seidl'::text, 'forrest'::text]))),
+    CONSTRAINT user_preferences_bac_elimination_rate_range CHECK (((bac_elimination_rate >= 0.1) AND (bac_elimination_rate <= 0.25))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_cycling_mode_check CHECK ((calorie_cycling_mode = ANY (ARRAY['off'::text, 'training_rest'::text, 'custom'::text]))),
     CONSTRAINT user_preferences_calorie_cycling_offsets_check CHECK (((cardinality(calorie_cycling_offsets) = 7) AND ('-40'::integer <= ALL (calorie_cycling_offsets)) AND (40 >= ALL (calorie_cycling_offsets)))),
@@ -5496,6 +5523,27 @@ COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPho
 --
 
 COMMENT ON COLUMN public.user_preferences.default_temperature_unit IS 'Unit temperatures are shown in: celsius or fahrenheit. Stored temperatures stay in °C.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_distribution_formula; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_distribution_formula IS 'How the estimated blood alcohol curve works out Widmark''s r from the profile: widmark, watson (default), seidl or forrest.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_elimination_rate; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_elimination_rate IS 'Alcohol elimination for the estimated blood alcohol curve, per mille per hour, 0.10-0.25, default 0.15. Population estimate, not a measurement.';
+
+
+--
+-- Name: COLUMN user_preferences.bac_display_unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.bac_display_unit IS 'Unit the estimated blood alcohol is shown in: permille (default) or percent. Display only; the server works in per mille.';
 
 
 --
@@ -7888,6 +7936,13 @@ CREATE UNIQUE INDEX check_in_measurements_user_date_unique ON public.check_in_me
 --
 
 CREATE UNIQUE INDEX custom_categories_user_name_key ON public.custom_categories USING btree (user_id, name);
+
+
+--
+-- Name: exercise_preset_entries_provider_identity_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX exercise_preset_entries_provider_identity_idx ON public.exercise_preset_entries USING btree (user_id, source, source_id) WHERE (source_id IS NOT NULL);
 
 
 --

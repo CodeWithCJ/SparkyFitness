@@ -8,6 +8,7 @@ import { workoutPresetsQueryKey } from './queryKeys';
 import { fetchDailySummary } from '../services/api/dailySummaryApi';
 import { fetchActiveWorkoutPlans } from '../services/api/workoutPlansApi';
 import { getWorkoutPresetById } from '../services/api/workoutPresetsApi';
+import { addLog } from '../services/LogService';
 import { getActiveServerConfigId } from '../services/storage';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type { WorkoutPresetsResponse } from '../types/workoutPresets';
@@ -63,10 +64,24 @@ export function useWatchWorkoutStart(
       const serverId = payload.serverId;
       // A queued tap from before this field, or from another account, must
       // not start whatever preset now happens to have that id.
-      if (!Number.isFinite(presetId) || !serverId) return;
-      const activeServerId = await getActiveServerConfigId();
-      if (generation !== generationRef.current || activeServerId !== serverId)
+      if (!Number.isFinite(presetId) || !serverId) {
+        addLog(
+          `Watch workout start dropped: preset id "${payload.presetId}" ${
+            Number.isFinite(presetId) ? 'is valid' : 'is not numeric'
+          }, server id ${serverId ? 'present' : 'missing'}`,
+          'WARNING'
+        );
         return;
+      }
+      const activeServerId = await getActiveServerConfigId();
+      if (generation !== generationRef.current) return;
+      if (activeServerId !== serverId) {
+        addLog(
+          'Watch workout start dropped: server id does not match the active server',
+          'WARNING'
+        );
+        return;
+      }
       const cached = queryClient.getQueryData<WorkoutPresetsResponse>(
         workoutPresetsQueryKey
       );
