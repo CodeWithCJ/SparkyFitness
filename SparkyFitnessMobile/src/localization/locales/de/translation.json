@@ -650,7 +650,7 @@
       "loggedActivityDescription": "Alles, was du an diesem Tag eingenommen oder übersprungen hast.",
       "loadingHistory": "Verlauf wird geladen …",
       "prnTaken": "Bei Bedarf",
-      "snoozed": "Verschoben"
+      "snoozed": "Zurückgestellt"
     },
     "calendar": {
       "title": "Medikamenten-Protokollkalender",
@@ -1316,7 +1316,7 @@
       "personalRecords": "Persönliche Rekorde",
       "personalRecordsSubtitle": "Deine besten 1 km, 5 km, 10 km und mehr",
       "routes": "Routen",
-      "routesSubtitle": "Routen zeichnen, importieren und zum Nachlaufen speichern",
+      "routesSubtitle": "Routen zeichnen, importieren und für spätere Einheiten speichern",
       "equipment": "Ausrüstung",
       "equipmentSubtitle": "Schuhe und andere Ausrüstung",
       "labResults": "Laborwerte",
@@ -9785,7 +9785,7 @@
       "bun": "Harnstoff-Kreatinin-Quotient",
       "uric_acid": "Harnsäure",
       "albumin": "Albumin",
-      "total_protein": "Gesamtprotein",
+      "total_protein": "Gesamteiweiß",
       "alp": "Alkalische Phosphatase",
       "total_bilirubin": "Gesamtbilirubin",
       "ggt": "GGT",
@@ -9796,7 +9796,7 @@
       "transferrin_saturation": "Transferrin-Sättigung",
       "folate": "Folsäure",
       "crp": "hs-CRP",
-      "esr": "ESR",
+      "esr": "BSG",
       "homocysteine": "Homocystein",
       "cortisol": "Cortisol (morgens)",
       "psa": "PSA",
