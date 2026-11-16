@@ -387,13 +387,14 @@ export function useExerciseImport(
   // mode, where there's no confirmed table). Clears the pending timer.
   const flushPendingReparse = (): ExerciseCSVData[] | null => {
     if (!reparseTimerRef.current) return null;
-    clearTimeout(reparseTimerRef.current);
-    reparseTimerRef.current = null;
     // A format change is pending and the table has edits: applying the new
     // format would wipe the edits, while saving now would persist values from
-    // the previous format. Abort so the user lets the reparse settle and
-    // re-submits, rather than silently picking one.
+    // the previous format. Return null to block the save, but leave the timer
+    // alive so the reparse still fires and settles the conflict — clearing it
+    // here would let a retry save the stale old-format rows.
     if (editedSinceParseRef.current) return null;
+    clearTimeout(reparseTimerRef.current);
+    reparseTimerRef.current = null;
     if (mappingConfirmed && rawCsvText) {
       const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
       const header = parsedData[0];
