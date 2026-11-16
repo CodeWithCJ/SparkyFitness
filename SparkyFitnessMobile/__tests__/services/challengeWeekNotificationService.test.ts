@@ -160,4 +160,37 @@ describe('enqueueChallengeWeekNotificationTask', () => {
     await Promise.all([first, failing, last]);
     expect(order).toEqual(['first', 'last']);
   });
+
+  it('a cancel queued behind a reconcile that is still scheduling leaves nothing scheduled (account switch)', async () => {
+    // A native store of what is scheduled
+    const store = new Map<string, unknown>();
+    mockSchedule.mockImplementation(async (request: { content: unknown }) => {
+      const id = `n${store.size + 1}`;
+      store.set(id, { identifier: id, content: request.content });
+      return id;
+    });
+    mockGetAll.mockImplementation(async () => [...store.values()]);
+    mockCancel.mockImplementation(async (id: string) => {
+      store.delete(id);
+    });
+    let release: () => void = () => undefined;
+    const reconcile = enqueueChallengeWeekNotificationTask(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await scheduleChallengeWeekNotifications([notice]);
+    });
+    // What the identity-change handler queues
+    const cancel = enqueueChallengeWeekNotificationTask(
+      cancelChallengeWeekNotifications
+    );
+    await Promise.resolve();
+    release();
+    await Promise.all([reconcile, cancel]);
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+    expect(store.size).toBe(0);
+    mockSchedule.mockReset();
+    mockGetAll.mockReset();
+    mockCancel.mockReset();
+  });
 });

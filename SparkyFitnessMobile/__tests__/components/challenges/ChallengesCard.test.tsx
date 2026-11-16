@@ -49,6 +49,7 @@ describe('ChallengesCard', () => {
     });
     mockUseRuleChanges.mockReturnValue({
       byId: new Map([['c1', []]]),
+      failedIds: new Set(),
       isLoading: false,
       isError: false,
       retry: jest.fn(),
@@ -58,6 +59,7 @@ describe('ChallengesCard', () => {
   it('shows no total until the challenge’s rule log is read', () => {
     mockUseRuleChanges.mockReturnValue({
       byId: new Map(),
+      failedIds: new Set(),
       isLoading: true,
       isError: false,
       retry: jest.fn(),
@@ -72,6 +74,7 @@ describe('ChallengesCard', () => {
     const retry = jest.fn();
     mockUseRuleChanges.mockReturnValue({
       byId: new Map(),
+      failedIds: new Set(['c1']),
       isLoading: false,
       isError: true,
       retry,
@@ -84,6 +87,22 @@ describe('ChallengesCard', () => {
     );
     expect(retry).toHaveBeenCalled();
     expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('offers a retry only on the challenge whose rule log failed', () => {
+    mockUseRuleChanges.mockReturnValue({
+      byId: new Map(),
+      failedIds: new Set(['c2']),
+      isLoading: true,
+      isError: true,
+      retry: jest.fn(),
+    });
+    mockUseChallenges.mockReturnValue({
+      challenges: [makeChallenge(), makeChallenge({ id: 'c2', name: 'Other' })],
+    });
+    renderCard();
+    expect(screen.queryByTestId('challenges-card-retry-c1')).toBeNull();
+    expect(screen.getByTestId('challenges-card-retry-c2')).toBeTruthy();
   });
 
   it('shows the user’s place and the leader for the selected day', () => {
