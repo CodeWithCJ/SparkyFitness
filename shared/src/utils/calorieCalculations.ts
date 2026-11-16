@@ -607,6 +607,26 @@ export function isGainGoalMode(
   return getGoalModeAdjustment(goalMode, customPercentage) < 0;
 }
 
+export const KCAL_PER_MJ = 239;
+
+/**
+ * Oxford (Henry 2005) weight-only BMR equations, in MJ/day, by age band:
+ * 18-30, 30-60 and 60+. Younger users get the 18-30 band.
+ */
+export function getOxfordCoefficients(
+  age: number,
+  gender: 'male' | 'female'
+): { slope: number; intercept: number } {
+  if (gender === 'male') {
+    if (age < 30) return { slope: 0.0669, intercept: 2.28 };
+    if (age < 60) return { slope: 0.0592, intercept: 2.48 };
+    return { slope: 0.0563, intercept: 2.15 };
+  }
+  if (age < 30) return { slope: 0.0546, intercept: 2.33 };
+  if (age < 60) return { slope: 0.0407, intercept: 2.9 };
+  return { slope: 0.0424, intercept: 2.38 };
+}
+
 export type BmrCalculatorFn = (
   algorithm: string,
   weight: number,
@@ -645,7 +665,8 @@ export function calculateBmr(
   }
 
   if (algorithm === 'Oxford') {
-    return gender === 'male' ? 14.2 * weightKg + 593 : 10.9 * weightKg + 677;
+    const { slope, intercept } = getOxfordCoefficients(age, gender);
+    return KCAL_PER_MJ * (slope * weightKg + intercept);
   }
 
   // Default: Mifflin-St Jeor
