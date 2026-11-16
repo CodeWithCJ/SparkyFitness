@@ -151,3 +151,47 @@ test('a save queued before another profile takes over is not sent', async () => 
   expect(mockSave).toHaveBeenCalledTimes(1);
   client.clear();
 });
+
+test('a reload still waiting when another edit starts does not undo that edit', async () => {
+  const { result, client, state, release } = await setup();
+
+  // Hold every reload; each answers with what the server had when it was asked.
+  const reloads: (() => void)[] = [];
+  jest.spyOn(client, 'fetchQuery').mockImplementation(async (options) => {
+    if (options.queryKey[0] !== 'user') return [];
+    const snapshot = { ...state.saved };
+    await new Promise<void>((resolve) => reloads.push(resolve));
+    return snapshot;
+  });
+  const answerReload = async (index: number) => {
+    await waitFor(() => expect(reloads).toHaveLength(index + 1));
+    await act(async () => {
+      reloads[index]!();
+    });
+  };
+
+  act(() => {
+    result.current.setBacDistributionFormula('forrest');
+  });
+  await release(0);
+  // The first save has landed and its reload is waiting for the server.
+  await waitFor(() => expect(reloads).toHaveLength(1));
+
+  act(() => {
+    result.current.setBacDisplayUnit('percent');
+  });
+  expect(result.current.bacDisplayUnit).toBe('percent');
+
+  // The reload answers with the unit the server had before the new edit.
+  await answerReload(0);
+  expect(result.current.bacDisplayUnit).toBe('percent');
+
+  await release(1);
+  await answerReload(1);
+
+  await waitFor(() => expect(state.saved['bac_display_unit']).toBe('percent'));
+  expect(state.saved['bac_distribution_formula']).toBe('forrest');
+  expect(result.current.bacDisplayUnit).toBe('percent');
+  expect(result.current.bacDistributionFormula).toBe('forrest');
+  client.clear();
+});

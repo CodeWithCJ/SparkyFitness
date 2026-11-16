@@ -796,177 +796,189 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [user, loggingLevel, createWaterContainer, setPrimaryWaterContainer]);
 
-  const loadPreferences = useCallback(async () => {
-    if (!user) return;
-    try {
-      const data = await fetchUserPreferences();
-      if (data) {
-        setWeightUnitState(data.default_weight_unit);
-        setMeasurementUnitState(data.default_measurement_unit);
-        setDistanceUnitState(data.default_distance_unit);
-        setDateFormatState(
-          data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
+  // `isCurrent` lets a caller drop an answer that is out of date on arrival.
+  const loadPreferences = useCallback(
+    async (isCurrent?: () => boolean) => {
+      if (!user) return;
+      try {
+        const data = await fetchUserPreferences();
+        if (isCurrent && !isCurrent()) return;
+        if (data) {
+          setWeightUnitState(data.default_weight_unit);
+          setMeasurementUnitState(data.default_measurement_unit);
+          setDistanceUnitState(data.default_distance_unit);
+          setDateFormatState(
+            data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
+          );
+          setTimeFormatState(data.time_format || 'h:mm A');
+          setAutoClearHistoryState(data.auto_clear_history || 'never');
+          setLoggingLevelState(data.logging_level || 'INFO');
+          setDefaultFoodDataProviderIdState(
+            data.default_food_data_provider_id || null
+          );
+          setDefaultBarcodeProviderIdState(
+            data.default_barcode_provider_id || null
+          );
+          setBarcodeFallbackOpenFoodFactsState(
+            data.barcode_fallback_open_food_facts ?? false
+          );
+          setFoodSearchAllProvidersDefaultState(
+            data.food_search_all_providers_default ?? false
+          );
+          setTimezoneState(
+            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+          );
+          setItemDisplayLimitState(data.item_display_limit || 10);
+          setWaterDisplayUnitState(data.water_display_unit || 'ml');
+          setLanguageState(data.language || 'en');
+          setCalorieGoalAdjustmentModeState(
+            data.calorie_goal_adjustment_mode || 'dynamic'
+          );
+          setExerciseCaloriePercentageState(
+            data.exercise_calorie_percentage ?? 100
+          );
+          setActivityLevelState(
+            (data.activity_level as ActivityLevel) || 'not_much'
+          );
+          setTdeeAllowNegativeAdjustmentState(
+            data.tdee_allow_negative_adjustment ?? false
+          );
+          setEnergyUnitState(data.energy_unit || 'kcal');
+          setAutoScaleOpenFoodFactsImportsState(
+            data.auto_scale_open_food_facts_imports ?? false
+          );
+          setAutoScaleOnlineImportsState(
+            data.auto_scale_online_imports ?? true
+          );
+          setBmrAlgorithmState(
+            data.bmr_algorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
+          );
+          setBodyFatAlgorithmState(
+            data.body_fat_algorithm || BodyFatAlgorithm.US_NAVY
+          );
+          setIncludeBmrInNetCaloriesState(
+            data.include_bmr_in_net_calories ?? false
+          );
+          setUseExternalBmrState(data.use_external_bmr ?? false);
+          setShowNetCarbsState(data.show_net_carbs ?? false);
+          setAddExerciseWaterToGoalState(
+            data.add_exercise_water_to_goal ?? false
+          );
+          setAddFoodWaterToIntakeState(data.add_food_water_to_intake ?? false);
+          setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
+          setFatBreakdownAlgorithmState(
+            data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
+          );
+          setMineralCalculationAlgorithmState(
+            data.mineral_calculation_algorithm ||
+              MineralCalculationAlgorithm.RDA_STANDARD
+          );
+          setVitaminCalculationAlgorithmState(
+            data.vitamin_calculation_algorithm ||
+              VitaminCalculationAlgorithm.RDA_STANDARD
+          );
+          setSugarCalculationAlgorithmState(
+            data.sugar_calculation_algorithm ||
+              SugarCalculationAlgorithm.WHO_GUIDELINES
+          );
+          setAddedSugarAlgorithmState(
+            data.added_sugar_algorithm || AddedSugarAlgorithm.WHO_IDEAL
+          );
+          setSelectedDietState(data.selected_diet || 'balanced');
+          setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+          setMeasurementDecimalPlacesState(
+            data.measurement_decimal_places ?? 0
+          );
+          setChartScaleModeState(
+            data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
+          );
+          loadedGlucoseUnit.current = isGlucoseUnit(data.default_glucose_unit)
+            ? data.default_glucose_unit
+            : DEFAULT_GLUCOSE_UNIT;
+          setGlucoseUnitState(loadedGlucoseUnit.current);
+          setTemperatureUnitState(
+            isTemperatureUnit(data.default_temperature_unit)
+              ? data.default_temperature_unit
+              : DEFAULT_TEMPERATURE_UNIT
+          );
+          setGoalModeState(data.goal_mode || 'maintain');
+          setGoalModeCalculationMethodState(
+            data.goal_mode_calculation_method || 'manual'
+          );
+          setAdjustMacrosWithExerciseState(
+            data.adjust_macros_with_exercise ?? false
+          );
+          setCalorieCyclingModeState(data.calorie_cycling_mode ?? 'off');
+          setCalorieCyclingOffsetsState(
+            parseCalorieCyclingOffsets(data.calorie_cycling_offsets) ?? [
+              ...CALORIE_CYCLING_DEFAULT_OFFSETS,
+            ]
+          );
+          setAdaptiveActivitySeparateState(
+            data.adaptive_activity_separate ?? false
+          );
+          setGoalModeCustomPercentageState(
+            data.goal_mode_custom_percentage ?? 0
+          );
+          setGoalModeWeeklyChangeKgState(data.goal_mode_weekly_change_kg ?? 0);
+          setCalorieSafetyFloorModeState(
+            data.calorie_safety_floor_mode ?? 'standard'
+          );
+          setCalorieSafetyFloorValueState(
+            data.calorie_safety_floor_value ??
+              DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+          );
+          setStandardDrinkGramsState(
+            Number(data.standard_drink_grams) || DEFAULT_STANDARD_DRINK_GRAMS
+          );
+          setWeeklyAlcoholLimitGState(
+            data.weekly_alcohol_limit_g != null
+              ? Number(data.weekly_alcohol_limit_g)
+              : null
+          );
+          setCaffeineHalfLifeHoursState(
+            Number(data.caffeine_half_life_hours) ||
+              DEFAULT_CAFFEINE_HALF_LIFE_HOURS
+          );
+          setTargetBedtimeState(
+            data.target_bedtime
+              ? String(data.target_bedtime).slice(0, 5)
+              : '22:30'
+          );
+          setBacDistributionFormulaState(
+            isBacDistributionFormula(data.bac_distribution_formula)
+              ? data.bac_distribution_formula
+              : DEFAULT_BAC_DISTRIBUTION_FORMULA
+          );
+          // numeric(4,3) arrives from Postgres as a string.
+          setBacEliminationRateState(
+            Number(data.bac_elimination_rate) || DEFAULT_BAC_ELIMINATION_RATE
+          );
+          setBacDisplayUnitState(
+            isBacDisplayUnit(data.bac_display_unit)
+              ? data.bac_display_unit
+              : DEFAULT_BAC_DISPLAY_UNIT
+          );
+        } else {
+          await createDefaultPreferences();
+          await createDefaultWaterContainer();
+        }
+      } catch (err) {
+        error(
+          loggingLevel,
+          'PreferencesContext: Unexpected error in loadPreferences:',
+          err
         );
-        setTimeFormatState(data.time_format || 'h:mm A');
-        setAutoClearHistoryState(data.auto_clear_history || 'never');
-        setLoggingLevelState(data.logging_level || 'INFO');
-        setDefaultFoodDataProviderIdState(
-          data.default_food_data_provider_id || null
-        );
-        setDefaultBarcodeProviderIdState(
-          data.default_barcode_provider_id || null
-        );
-        setBarcodeFallbackOpenFoodFactsState(
-          data.barcode_fallback_open_food_facts ?? false
-        );
-        setFoodSearchAllProvidersDefaultState(
-          data.food_search_all_providers_default ?? false
-        );
-        setTimezoneState(
-          data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-        );
-        setItemDisplayLimitState(data.item_display_limit || 10);
-        setWaterDisplayUnitState(data.water_display_unit || 'ml');
-        setLanguageState(data.language || 'en');
-        setCalorieGoalAdjustmentModeState(
-          data.calorie_goal_adjustment_mode || 'dynamic'
-        );
-        setExerciseCaloriePercentageState(
-          data.exercise_calorie_percentage ?? 100
-        );
-        setActivityLevelState(
-          (data.activity_level as ActivityLevel) || 'not_much'
-        );
-        setTdeeAllowNegativeAdjustmentState(
-          data.tdee_allow_negative_adjustment ?? false
-        );
-        setEnergyUnitState(data.energy_unit || 'kcal');
-        setAutoScaleOpenFoodFactsImportsState(
-          data.auto_scale_open_food_facts_imports ?? false
-        );
-        setAutoScaleOnlineImportsState(data.auto_scale_online_imports ?? true);
-        setBmrAlgorithmState(
-          data.bmr_algorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
-        );
-        setBodyFatAlgorithmState(
-          data.body_fat_algorithm || BodyFatAlgorithm.US_NAVY
-        );
-        setIncludeBmrInNetCaloriesState(
-          data.include_bmr_in_net_calories ?? false
-        );
-        setUseExternalBmrState(data.use_external_bmr ?? false);
-        setShowNetCarbsState(data.show_net_carbs ?? false);
-        setAddExerciseWaterToGoalState(
-          data.add_exercise_water_to_goal ?? false
-        );
-        setAddFoodWaterToIntakeState(data.add_food_water_to_intake ?? false);
-        setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
-        setFatBreakdownAlgorithmState(
-          data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
-        );
-        setMineralCalculationAlgorithmState(
-          data.mineral_calculation_algorithm ||
-            MineralCalculationAlgorithm.RDA_STANDARD
-        );
-        setVitaminCalculationAlgorithmState(
-          data.vitamin_calculation_algorithm ||
-            VitaminCalculationAlgorithm.RDA_STANDARD
-        );
-        setSugarCalculationAlgorithmState(
-          data.sugar_calculation_algorithm ||
-            SugarCalculationAlgorithm.WHO_GUIDELINES
-        );
-        setAddedSugarAlgorithmState(
-          data.added_sugar_algorithm || AddedSugarAlgorithm.WHO_IDEAL
-        );
-        setSelectedDietState(data.selected_diet || 'balanced');
-        setFirstDayOfWeekState(data.first_day_of_week ?? 0);
-        setMeasurementDecimalPlacesState(data.measurement_decimal_places ?? 0);
-        setChartScaleModeState(
-          data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
-        );
-        loadedGlucoseUnit.current = isGlucoseUnit(data.default_glucose_unit)
-          ? data.default_glucose_unit
-          : DEFAULT_GLUCOSE_UNIT;
-        setGlucoseUnitState(loadedGlucoseUnit.current);
-        setTemperatureUnitState(
-          isTemperatureUnit(data.default_temperature_unit)
-            ? data.default_temperature_unit
-            : DEFAULT_TEMPERATURE_UNIT
-        );
-        setGoalModeState(data.goal_mode || 'maintain');
-        setGoalModeCalculationMethodState(
-          data.goal_mode_calculation_method || 'manual'
-        );
-        setAdjustMacrosWithExerciseState(
-          data.adjust_macros_with_exercise ?? false
-        );
-        setCalorieCyclingModeState(data.calorie_cycling_mode ?? 'off');
-        setCalorieCyclingOffsetsState(
-          parseCalorieCyclingOffsets(data.calorie_cycling_offsets) ?? [
-            ...CALORIE_CYCLING_DEFAULT_OFFSETS,
-          ]
-        );
-        setAdaptiveActivitySeparateState(
-          data.adaptive_activity_separate ?? false
-        );
-        setGoalModeCustomPercentageState(data.goal_mode_custom_percentage ?? 0);
-        setGoalModeWeeklyChangeKgState(data.goal_mode_weekly_change_kg ?? 0);
-        setCalorieSafetyFloorModeState(
-          data.calorie_safety_floor_mode ?? 'standard'
-        );
-        setCalorieSafetyFloorValueState(
-          data.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
-        );
-        setStandardDrinkGramsState(
-          Number(data.standard_drink_grams) || DEFAULT_STANDARD_DRINK_GRAMS
-        );
-        setWeeklyAlcoholLimitGState(
-          data.weekly_alcohol_limit_g != null
-            ? Number(data.weekly_alcohol_limit_g)
-            : null
-        );
-        setCaffeineHalfLifeHoursState(
-          Number(data.caffeine_half_life_hours) ||
-            DEFAULT_CAFFEINE_HALF_LIFE_HOURS
-        );
-        setTargetBedtimeState(
-          data.target_bedtime
-            ? String(data.target_bedtime).slice(0, 5)
-            : '22:30'
-        );
-        setBacDistributionFormulaState(
-          isBacDistributionFormula(data.bac_distribution_formula)
-            ? data.bac_distribution_formula
-            : DEFAULT_BAC_DISTRIBUTION_FORMULA
-        );
-        // numeric(4,3) arrives from Postgres as a string.
-        setBacEliminationRateState(
-          Number(data.bac_elimination_rate) || DEFAULT_BAC_ELIMINATION_RATE
-        );
-        setBacDisplayUnitState(
-          isBacDisplayUnit(data.bac_display_unit)
-            ? data.bac_display_unit
-            : DEFAULT_BAC_DISPLAY_UNIT
-        );
-      } else {
-        await createDefaultPreferences();
-        await createDefaultWaterContainer();
       }
-    } catch (err) {
-      error(
-        loggingLevel,
-        'PreferencesContext: Unexpected error in loadPreferences:',
-        err
-      );
-    }
-  }, [
-    user,
-    loggingLevel,
-    createDefaultPreferences,
-    createDefaultWaterContainer,
-    fetchUserPreferences,
-  ]);
+    },
+    [
+      user,
+      loggingLevel,
+      createDefaultPreferences,
+      createDefaultWaterContainer,
+      fetchUserPreferences,
+    ]
+  );
 
   const loadNutrientDisplayPreferences = useCallback(async () => {
     if (!user) return;
@@ -1212,7 +1224,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           try {
             if (currentAccount.current !== account) return;
             await updatePreferences(prefsToSave);
-            if (queuedSaves.current === 1) await loadPreferences();
+            // A save queued while the reload waits has newer edits and
+            // reloads itself, so this answer is dropped then.
+            if (queuedSaves.current === 1)
+              await loadPreferences(() => queuedSaves.current === 1);
           } finally {
             queuedSaves.current -= 1;
             if (queuedSaves.current === 0) {
