@@ -921,7 +921,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       setAdjustedCustomNutrients(adjustedCustomNutrientsFromNav);
     }
 
-    if (!recipeImportTarget && nextServingSize !== previousServingSize) {
+    // A raw quantity calculated from the cooked weight stays as it is.
+    if (
+      !recipeImportTarget &&
+      !quantityLocked &&
+      nextServingSize !== previousServingSize
+    ) {
       setQuantityText(String(nextServingSize));
     }
 
@@ -939,6 +944,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     isLocalFood,
     localUnitVariants,
     navigation,
+    quantityLocked,
   ]);
 
   useEffect(() => {
@@ -1151,7 +1157,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const buildFoodEntryPayload = (): CreateFoodEntryPayload => {
     const base = {
       meal_type_id: effectiveMealId!,
-      quantity,
+      // The raw quantity always comes from the same result as the cooked weight.
+      quantity:
+        quantityLocked && cookedResult ? cookedResult.rawQuantity : quantity,
       unit: displayValues.servingUnit,
       entry_date: selectedDate,
       entry_time: entryTime || null,

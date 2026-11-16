@@ -3,6 +3,7 @@ import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import {
+  COOKED_WEIGHT_DECIMALS,
   cookedYieldFactor,
   rawQuantityFromCooked,
   roundYieldFactor,
@@ -111,7 +112,12 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
           positiveOrUndefined(cookedBatchText)
         )
       : reusedYield;
-  const rawQuantity = rawQuantityFromCooked(eaten, yieldFactor);
+  // Reopening an entry keeps its stored raw quantity until an amount changes,
+  // so an untouched save does not round it.
+  const rawQuantity =
+    source === 'entry' && editingEntry && eaten === editingEntry.cookedQuantity
+      ? editingEntry.quantity
+      : rawQuantityFromCooked(eaten, yieldFactor);
 
   useEffect(() => {
     onChange(
@@ -246,7 +252,7 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
               ? t('foodEntryAdd.cooked.result', {
                   defaultValue: '= {{raw}} {{unit}} raw · {{energy}}',
                   raw: formatLocalizedNumber(rawQuantity, {
-                    maximumFractionDigits: 2,
+                    maximumFractionDigits: COOKED_WEIGHT_DECIMALS,
                   }),
                   unit,
                   energy:

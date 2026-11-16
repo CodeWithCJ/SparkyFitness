@@ -604,7 +604,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ...(adjustedCustomNutrientsFromNav !== undefined
         ? { adjustedCustomNutrients: adjustedCustomNutrientsFromNav }
         : {}),
-      ...(nextServingSize !== previousServingSize
+      // A raw quantity calculated from the cooked weight stays as it is.
+      ...(!quantityLocked && nextServingSize !== previousServingSize
         ? { quantityText: String(nextServingSize) }
         : {}),
     });
@@ -619,6 +620,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     adjustedCustomNutrientsFromNav,
     entry.food_id,
     navigation,
+    quantityLocked,
     updateEdit,
     variants,
   ]);
@@ -813,7 +815,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
   const handleSave = () => {
     const payload: UpdateFoodEntryPayload = {};
-    if (quantity !== entry.quantity) payload.quantity = quantity;
+    // The raw quantity always comes from the same result as the cooked weight.
+    const savedQuantity =
+      quantityLocked && cookedResult ? cookedResult.rawQuantity : quantity;
+    if (savedQuantity !== entry.quantity) payload.quantity = savedQuantity;
     if (displayValues.servingUnit !== entry.unit)
       payload.unit = displayValues.servingUnit;
     if ((entryTime || null) !== (toHourMinute(entry.entry_time) || null)) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  COOKED_WEIGHT_DECIMALS,
   cookedYieldFactor,
   rawQuantityFromCooked,
   roundYieldFactor,
@@ -102,7 +103,12 @@ export const CookedWeightSection = ({
         : null;
   const yieldFactor =
     source === 'batch' ? cookedYieldFactor(rawBatch, cookedBatch) : reusedYield;
-  const rawQuantity = rawQuantityFromCooked(eaten, yieldFactor);
+  // Reopening an entry keeps its stored raw quantity until an amount changes,
+  // so an untouched save does not round it.
+  const rawQuantity =
+    source === 'entry' && editingEntry && eaten === editingEntry.cookedQuantity
+      ? editingEntry.quantity
+      : rawQuantityFromCooked(eaten, yieldFactor);
 
   useEffect(() => {
     onChange(
@@ -184,7 +190,7 @@ export const CookedWeightSection = ({
                   allowExpressions
                   step="any"
                   min="0.01"
-                  decimals={2}
+                  decimals={COOKED_WEIGHT_DECIMALS}
                   value={rawBatch}
                   onValueChange={(value) => {
                     setTouched(true);
@@ -205,7 +211,7 @@ export const CookedWeightSection = ({
                   allowExpressions
                   step="any"
                   min="0.01"
-                  decimals={2}
+                  decimals={COOKED_WEIGHT_DECIMALS}
                   value={cookedBatch}
                   onValueChange={(value) => {
                     setTouched(true);
@@ -229,7 +235,7 @@ export const CookedWeightSection = ({
               allowExpressions
               step="any"
               min="0.01"
-              decimals={2}
+              decimals={COOKED_WEIGHT_DECIMALS}
               value={eaten}
               onValueChange={(value) => {
                 setTouched(true);

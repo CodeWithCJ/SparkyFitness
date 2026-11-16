@@ -469,5 +469,47 @@ describe('EditFoodEntryDialog', () => {
         })
       );
     });
+    it('saves an untouched kg entry with its stored raw quantity', async () => {
+      mockFoodData = {
+        id: 'food-1',
+        name: 'Rice',
+        is_custom: true,
+        default_variant: {
+          id: 'default-variant',
+          serving_size: 1,
+          serving_unit: 'kg',
+          calories: 3600,
+          protein: 70,
+          carbs: 790,
+          fat: 10,
+        },
+      };
+      render(
+        <EditFoodEntryDialog
+          entry={{
+            ...entry,
+            quantity: 0.125,
+            unit: 'kg',
+            cooked_quantity: 0.3,
+          }}
+          open
+          onOpenChange={jest.fn()}
+          availableMealTypes={mealTypes}
+        />
+      );
+      expect(
+        await screen.findByRole('switch', { name: 'Weighed it cooked' })
+      ).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      await waitFor(() =>
+        expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+          id: 'entry-1',
+          data: expect.objectContaining({
+            quantity: 0.125,
+            cooked_quantity: 0.3,
+          }),
+        })
+      );
+    });
   });
 });

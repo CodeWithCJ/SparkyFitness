@@ -374,7 +374,15 @@ async function createFoodEntry(
            entry_time = EXCLUDED.entry_time,
            caffeine_mg = EXCLUDED.caffeine_mg,
            water_ml = EXCLUDED.water_ml,
-           alcohol_g = EXCLUDED.alcohol_g
+           alcohol_g = EXCLUDED.alcohol_g,
+           -- A cooked weight the user added belongs to the old quantity: keep
+           -- it only while the re-sync leaves quantity and unit as they were.
+           cooked_quantity = CASE
+             WHEN food_entries.quantity IS DISTINCT FROM EXCLUDED.quantity
+               OR food_entries.unit IS DISTINCT FROM EXCLUDED.unit
+             THEN NULL
+             ELSE food_entries.cooked_quantity
+           END
            -- notes is deliberately absent: it is user-authored, so a provider
            -- re-sync must never overwrite what the user wrote on this entry.
        RETURNING *`,
@@ -431,8 +439,8 @@ async function createFoodEntry(
         snapshot.caffeine_mg,
         snapshot.water_ml,
         snapshot.alcohol_g,
-        // Cooked weight eaten (#3534). The route has already checked it, and
-        // provider re-syncs never send it, so it is absent from DO UPDATE.
+        // Cooked weight eaten (#3534). The route has already checked it;
+        // provider re-syncs never send it (see DO UPDATE above).
         entryData.cooked_quantity ?? null,
       ]
     );

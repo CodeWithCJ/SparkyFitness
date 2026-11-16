@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COOKED_WEIGHT_DECIMALS,
   COOKED_WEIGHT_UNITS,
   cookedYieldFactor,
   entryYieldFactor,
@@ -37,15 +38,25 @@ describe('cooked weight helpers (#3534)', () => {
     expect(cookedYieldFactor(200, null)).toBeNull();
   });
 
-  it('calculates the raw portion from the cooked weight eaten, rounded to 2 decimals', () => {
+  it('calculates the raw portion from the cooked weight eaten, rounded to 3 decimals', () => {
     // Rice at 2.5x: 300 g cooked on the plate is 120 g raw.
     expect(rawQuantityFromCooked(300, 2.5)).toBe(120);
     // Fried chicken thigh: 174 g cooked at 0.87 is 200 g raw.
     expect(rawQuantityFromCooked(174, 0.87)).toBe(200);
-    expect(rawQuantityFromCooked(100, 3)).toBe(33.33);
-    expect(rawQuantityFromCooked(100, cookedYieldFactor(3, 7))).toBe(42.86);
+    expect(rawQuantityFromCooked(100, 3)).toBe(33.333);
+    expect(rawQuantityFromCooked(100, cookedYieldFactor(3, 7))).toBe(42.857);
     expect(rawQuantityFromCooked(0, 2)).toBeNull();
     expect(rawQuantityFromCooked(100, null)).toBeNull();
+  });
+
+  it('gives the same raw weight for equivalent g and kg amounts', () => {
+    // Yield 2.5: 80 g cooked is 32 g raw, so 0.08 kg must be 0.032 kg.
+    expect(rawQuantityFromCooked(80, 2.5)).toBe(32);
+    expect(rawQuantityFromCooked(0.08, 2.5)).toBe(0.032);
+    // A small kg portion must not round to nothing.
+    expect(rawQuantityFromCooked(10, 2.5)).toBe(4);
+    expect(rawQuantityFromCooked(0.01, 2.5)).toBe(0.004);
+    expect(COOKED_WEIGHT_DECIMALS).toBe(3);
   });
 
   it('reads the yield back from a stored entry', () => {

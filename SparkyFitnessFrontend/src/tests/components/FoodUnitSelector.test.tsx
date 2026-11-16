@@ -799,5 +799,66 @@ describe('FoodUnitSelector', () => {
       await waitFor(() => expect(onSelect).toHaveBeenCalled());
       expect(onSelect.mock.calls[0][7]).toBeNull();
     });
+    it('keeps the calculated raw quantity when switching to another gram serving', async () => {
+      mockFetchQuery.mockResolvedValue([
+        createVariant({
+          id: 'rice-50g',
+          serving_size: 50,
+          serving_unit: 'g',
+          calories: 180,
+          serving_description: 'Half portion',
+        }),
+      ]);
+      const onSelect = jest.fn();
+      await renderSelector(rice(), { onSelect, showCookedWeight: true });
+      const toggle = screen.getByRole('switch', { name: 'Weighed it cooked' });
+      act(() => toggle.focus());
+      fireEvent.click(toggle);
+      fireEvent.change(screen.getByLabelText('Raw weight of batch (g)'), {
+        target: { value: '200' },
+      });
+      fireEvent.change(screen.getByLabelText('Cooked weight of batch (g)'), {
+        target: { value: '500' },
+      });
+      fireEvent.change(screen.getByLabelText('You ate (cooked, g)'), {
+        target: { value: '250' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Half portion/ }));
+      expect(screen.getByLabelText(/^Quantity$/i)).toHaveValue('100');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add to Meal' }));
+      await waitFor(() => expect(onSelect).toHaveBeenCalled());
+      expect(onSelect.mock.calls[0][1]).toBe(100);
+      expect(onSelect.mock.calls[0][7]).toBe(250);
+    });
+
+    it('accepts whole grams in kg', async () => {
+      const riceKg = createFood(
+        createVariant({
+          id: 'rice-kg',
+          serving_size: 1,
+          serving_unit: 'kg',
+          calories: 3600,
+        })
+      );
+      const onSelect = jest.fn();
+      await renderSelector(riceKg, { onSelect, showCookedWeight: true });
+      const toggle = screen.getByRole('switch', { name: 'Weighed it cooked' });
+      act(() => toggle.focus());
+      fireEvent.click(toggle);
+      fireEvent.change(screen.getByLabelText('Raw weight of batch (kg)'), {
+        target: { value: '1' },
+      });
+      fireEvent.change(screen.getByLabelText('Cooked weight of batch (kg)'), {
+        target: { value: '0.5' },
+      });
+      fireEvent.change(screen.getByLabelText('You ate (cooked, kg)'), {
+        target: { value: '0.125' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add to Meal' }));
+      await waitFor(() => expect(onSelect).toHaveBeenCalled());
+      expect(onSelect.mock.calls[0][1]).toBe(0.25);
+      expect(onSelect.mock.calls[0][7]).toBe(0.125);
+    });
   });
 });

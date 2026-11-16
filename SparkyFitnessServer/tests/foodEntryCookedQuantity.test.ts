@@ -40,7 +40,7 @@ describe('food_entries.cooked_quantity in the repository', () => {
     vi.clearAllMocks();
   });
 
-  it('writes cooked_quantity as $46 on create and keeps it out of the re-sync', async () => {
+  it('writes cooked_quantity as $46 on create and clears it on a re-sync that changes the amount', async () => {
     await foodEntryRepository.createFoodEntry(
       {
         user_id: 'user-1',
@@ -61,8 +61,13 @@ describe('food_entries.cooked_quantity in the repository', () => {
     expect(sql).toContain('$46');
     expect(params).toHaveLength(46);
     expect(params[45]).toBe(300);
+    // A re-sync keeps a user-added cooked weight only while quantity and unit
+    // stay the same.
     const doUpdate = sql.slice(sql.indexOf('DO UPDATE'));
-    expect(doUpdate).not.toContain('cooked_quantity');
+    expect(doUpdate).toMatch(
+      /cooked_quantity = CASE\s+WHEN food_entries\.quantity IS DISTINCT FROM EXCLUDED\.quantity\s+OR food_entries\.unit IS DISTINCT FROM EXCLUDED\.unit\s+THEN NULL\s+ELSE food_entries\.cooked_quantity\s+END/
+    );
+    expect(doUpdate).not.toContain('EXCLUDED.cooked_quantity');
   });
 
   it('writes null on create when the entry was not weighed cooked', async () => {

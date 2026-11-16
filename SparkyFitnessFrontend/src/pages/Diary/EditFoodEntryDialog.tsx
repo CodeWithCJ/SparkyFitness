@@ -381,9 +381,11 @@ const EditFoodEntryDialog = ({
     }
 
     if (cookedSectionShown && cookedEnabled && !cookedResult) return;
+    const cookedActive = cookedSectionShown && cookedEnabled && cookedResult;
     try {
       const updateData = {
-        quantity,
+        // The raw quantity always comes from the same result as the cooked weight.
+        quantity: cookedActive ? cookedResult.rawQuantity : quantity,
         unit: selectedVariant.serving_unit,
         meal_type_id: mealId,
         variant_id:
@@ -393,10 +395,7 @@ const EditFoodEntryDialog = ({
             : selectedVariant.id,
         entry_time: entryTime || null,
         notes: entryNotes.trim() || null,
-        cooked_quantity:
-          cookedSectionShown && cookedEnabled && cookedResult
-            ? cookedResult.cookedQuantity
-            : null,
+        cooked_quantity: cookedActive ? cookedResult.cookedQuantity : null,
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });

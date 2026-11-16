@@ -270,7 +270,14 @@ const FoodUnitSelector = ({
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
       setSelectedVariant(variant);
-      if (!preserveInitialAmountUnit) setQuantity(variant.serving_size);
+      // A calculated raw quantity stays valid for another variant of the same
+      // unit; resetting it would no longer match the cooked weight eaten.
+      const keepsCookedQuantity =
+        cookedEnabled &&
+        cookedResult !== null &&
+        variant.serving_unit === selectedVariant?.serving_unit;
+      if (!preserveInitialAmountUnit && !keepsCookedQuantity)
+        setQuantity(variant.serving_size);
     },
   });
   const selectedAiConfidence = getValidAiConfidence(
@@ -545,10 +552,10 @@ const FoodUnitSelector = ({
 
     if (quantity === undefined || recipeMissingCore) return;
     if (cookedSectionShown && cookedEnabled && !cookedResult) return;
-    const cookedQuantity =
-      cookedSectionShown && cookedEnabled && cookedResult
-        ? cookedResult.cookedQuantity
-        : null;
+    const cookedActive = cookedSectionShown && cookedEnabled && cookedResult;
+    const cookedQuantity = cookedActive ? cookedResult.cookedQuantity : null;
+    // The raw quantity always comes from the same result as the cooked weight.
+    const submitQuantity = cookedActive ? cookedResult.rawQuantity : quantity;
 
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
@@ -571,7 +578,7 @@ const FoodUnitSelector = ({
         };
         onSelect(
           food,
-          quantity,
+          submitQuantity,
           variantWithId.serving_unit,
           variantWithId,
           entryTime || null,
@@ -597,7 +604,7 @@ const FoodUnitSelector = ({
       });
       onSelect(
         food,
-        quantity,
+        submitQuantity,
         selectedVariant.serving_unit,
         selectedVariant,
         entryTime || null,

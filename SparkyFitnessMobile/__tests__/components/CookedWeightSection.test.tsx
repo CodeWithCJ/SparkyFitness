@@ -126,4 +126,23 @@ describe('CookedWeightSection (#3534)', () => {
       cookedQuantity: 300,
     });
   });
+
+  it('keeps the stored raw quantity of an untouched kg entry', () => {
+    const onChange = jest.fn();
+    render(
+      <CookedWeightSection
+        unit="kg"
+        foodName="Rice"
+        energyUnit="kcal"
+        editingEntry={{ quantity: 0.125, cookedQuantity: 0.3 }}
+        caloriesFor={() => null}
+        onChange={onChange}
+      />
+    );
+    // 0.3 / 2.4 would round, the stored 0.125 must come back unchanged.
+    expect(onChange).toHaveBeenLastCalledWith(true, {
+      rawQuantity: 0.125,
+      cookedQuantity: 0.3,
+    });
+  });
 });

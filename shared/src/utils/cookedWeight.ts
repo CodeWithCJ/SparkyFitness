@@ -37,8 +37,11 @@ export function isValidCookedQuantity(value: unknown): value is number | null {
   return value === null || isPositiveNumber(value);
 }
 
-/** Decimal places kept for a raw quantity calculated from a cooked weight. */
-const RAW_QUANTITY_DECIMALS = 2;
+/**
+ * Decimal places kept for a raw quantity calculated from a cooked weight, and
+ * accepted in the weight inputs: three, so a kg or lb amount keeps whole grams.
+ */
+export const COOKED_WEIGHT_DECIMALS = 3;
 
 /** Decimal places kept for a yield factor. */
 const YIELD_FACTOR_DECIMALS = 2;
@@ -63,7 +66,7 @@ export function cookedYieldFactor(
 
 /**
  * Raw weight of a portion from the cooked weight eaten and the batch yield,
- * rounded to two decimals. Null unless both are positive numbers.
+ * rounded to three decimals. Null unless both are positive numbers.
  */
 export function rawQuantityFromCooked(
   cookedQuantity: number | null | undefined,
@@ -71,7 +74,7 @@ export function rawQuantityFromCooked(
 ): number | null {
   if (!isPositiveNumber(cookedQuantity) || !isPositiveNumber(yieldFactor))
     return null;
-  const raw = roundTo(cookedQuantity / yieldFactor, RAW_QUANTITY_DECIMALS);
+  const raw = roundTo(cookedQuantity / yieldFactor, COOKED_WEIGHT_DECIMALS);
   return raw > 0 ? raw : null;
 }
 
