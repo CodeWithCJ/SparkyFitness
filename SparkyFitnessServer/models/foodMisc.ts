@@ -615,8 +615,11 @@ async function updateFoodEntriesSnapshot(
           END
           -- The user picked "nutrition only", so the photo column is left out
           -- of the statement and every entry keeps the photo it shows today.
-          ${syncImages ? ', images = $32::jsonb' : ''}
+          ${syncImages ? ', images = $33::jsonb' : ''}
        WHERE user_id = $27 AND food_id = $28 AND variant_id = $29
+         -- Only the rows locked and read above: an entry logged after that
+         -- read would otherwise get the new serving with an unconverted quantity.
+         AND food_entries.id::text = ANY($32::text[])
        RETURNING id`,
       [
         newSnapshotData.food_name,
@@ -650,8 +653,9 @@ async function updateFoodEntriesSnapshot(
         variantId,
         convertedIds,
         convertedQuantities,
+        rows.map((row) => String(row.id)),
         // Postgres rejects a bind with more parameters than the statement
-        // references, so $32 is only supplied when the SET clause uses it.
+        // references, so $33 is only supplied when the SET clause uses it.
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );

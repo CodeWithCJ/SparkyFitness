@@ -119,7 +119,7 @@ describe('foodRepository snapshot functions', () => {
       );
     const updateCall = () => sqlCalls()[1];
 
-    it('should execute UPDATE with all 32 params in correct order and return rowCount', async () => {
+    it('should execute UPDATE with all 33 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -163,7 +163,9 @@ describe('foodRepository snapshot functions', () => {
         // No entry changed unit, so nothing is converted.
         [],
         [],
-        // Images ride along as the 32nd param whenever they are being synced.
+        // The ids the locking SELECT returned (none here).
+        [],
+        // Images ride along as the 33rd param whenever they are being synced.
         JSON.stringify([]),
       ]);
     });
@@ -183,9 +185,9 @@ describe('foodRepository snapshot functions', () => {
       );
 
       const [sql, params] = updateCall();
-      expect(sql).toContain('images = $32::jsonb');
+      expect(sql).toContain('images = $33::jsonb');
       expect(sql).not.toContain('NOT EXISTS');
-      expect(params[31]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+      expect(params[32]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
     it('reads and overwrites in one transaction, locking the rows', async () => {
@@ -304,7 +306,7 @@ describe('foodRepository snapshot functions', () => {
       expect(sqlCalls()).toHaveLength(2);
       const [sql, params] = sqlCalls()[1];
       expect(sql).not.toContain('images =');
-      expect(params).toHaveLength(31);
+      expect(params).toHaveLength(32);
       expect(result.replacedEntryImages).toEqual([]);
     });
 
@@ -357,6 +359,9 @@ describe('foodRepository snapshot functions', () => {
       expect(sql).toContain('THEN $4');
       expect(params[29]).toEqual(['e1', 'e3']);
       expect(params[30]).toEqual([5.2911, 1.5]);
+      // The UPDATE is limited to the rows the SELECT locked.
+      expect(sql).toContain('ANY($32::text[])');
+      expect(params[31]).toEqual(['e1', 'e2', 'e3']);
     });
 
     it('should default custom_nutrients to {} when null or undefined', async () => {
