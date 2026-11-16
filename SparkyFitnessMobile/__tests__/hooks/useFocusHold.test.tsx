@@ -36,6 +36,7 @@ describe('useFocusHold', () => {
     useActiveWorkoutStore.setState({
       setTimerStartedAt: {},
       plannedSetValues: {},
+      setRenderKeys: {},
     });
     useAppPreferencesStore.setState({ watchHoldCountdown: true });
     (playIntervalCue as jest.Mock).mockClear();
@@ -84,6 +85,34 @@ describe('useFocusHold', () => {
     act(() => result.current.tap());
     expect(onFinish).toHaveBeenCalledWith('11');
     expect(result.current.phase).toBe('idle');
+  });
+
+  it('keeps Get ready when autosave swaps the set id under it', () => {
+    // Temporary id -1 is replaced by 11; the store keeps -1 as the render key.
+    useActiveWorkoutStore.setState({ setRenderKeys: { '11': '-1' } });
+    const session = makeSession(10);
+    let activeSetId = '-1';
+    const { result, rerender } = renderHook(() =>
+      useFocusHold({
+        session,
+        activeSetId,
+        enabled: true,
+        onFinish: jest.fn(),
+      })
+    );
+    // The cursor is on the same set under its old id until the swap lands.
+    session.exercises[0].sets[0].id = -1;
+    rerender({});
+    act(() => result.current.start());
+    expect(result.current.phase).toBe('getReady');
+    session.exercises[0].sets[0].id = 11;
+    activeSetId = '11';
+    rerender({});
+    expect(result.current.phase).toBe('getReady');
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(result.current.phase).toBe('running');
   });
 
   it('starts at once when the watch Get ready setting is off', () => {

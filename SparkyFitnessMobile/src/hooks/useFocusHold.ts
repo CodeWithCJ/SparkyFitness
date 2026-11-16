@@ -9,6 +9,7 @@ import {
   effectiveSetDurationSec,
   isWeightDurationModality,
   rendersCardioEffortForm,
+  resolveCurrentSetId,
   resolveSnapshotModality,
   type PlannedSetValues,
 } from '../utils/workoutSession';
@@ -97,6 +98,7 @@ export function useFocusHold({
   onFinish: (setId: string) => void;
 }): FocusHold {
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
+  const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const target = enabled
     ? findTimedTarget(session, activeSetId, plannedSetValues)
     : null;
@@ -118,13 +120,19 @@ export function useFocusHold({
     onFinishRef.current = onFinish;
   });
 
+  // Get ready was started for the id the set had then; autosave can swap it,
+  // so compare and run it by the set's current id.
+  const getReadyId =
+    getReady != null
+      ? resolveCurrentSetId(session, setRenderKeys, getReady.setId)
+      : null;
   // Moving the cursor off the set drops a pending Get ready.
-  if (getReady != null && getReady.setId !== setId) setGetReady(null);
+  if (getReady != null && getReadyId !== setId) setGetReady(null);
   // A timer started elsewhere (the watch) ends Get ready: the hold is already
   // running and is not this view's to own or log.
   if (getReady != null && startedAt != null) setGetReady(null);
   const activeGetReady =
-    getReady != null && getReady.setId === setId ? getReady : null;
+    getReady != null && getReadyId === setId ? getReady : null;
   const phase: FocusHold['phase'] =
     startedAt != null
       ? 'running'
@@ -148,13 +156,13 @@ export function useFocusHold({
   // Get ready runs out into the hold.
   const getReadyEndsAt = activeGetReady?.endsAt ?? null;
   useEffect(() => {
-    if (getReady == null || getReadyEndsAt == null) return;
+    if (getReadyId == null || getReadyEndsAt == null) return;
     const timer = setTimeout(
-      () => run(getReady.setId),
+      () => run(getReadyId),
       Math.max(0, getReadyEndsAt - Date.now())
     );
     return () => clearTimeout(timer);
-  }, [getReady, getReadyEndsAt, run]);
+  }, [getReadyId, getReadyEndsAt, run]);
 
   const finish = useCallback((id: string) => {
     useActiveWorkoutStore.getState().stopSetTimer(id);

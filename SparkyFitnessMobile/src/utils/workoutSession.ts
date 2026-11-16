@@ -778,6 +778,29 @@ export function rendersCardioEffortForm(
 }
 
 /**
+ * The set's current id for an id captured earlier. Autosave swaps a client-added
+ * set's temporary id (-1) for the server's, and the store keeps the old id as
+ * the row's stable render key (`setRenderKeys`: current id -> key). State a view
+ * holds across that swap (a pending Get ready, the effort prompt, the plate
+ * calculator) stores the id it saw and resolves it here before it reads or
+ * writes the set. Null when the set no longer exists.
+ */
+export function resolveCurrentSetId(
+  session: PresetSessionResponse | null,
+  setRenderKeys: Record<string, string>,
+  setId: string
+): string | null {
+  if (session == null) return null;
+  const exists = (id: string) =>
+    session.exercises.some((e) => e.sets.some((s) => String(s.id) === id));
+  if (exists(setId)) return setId;
+  for (const [currentId, key] of Object.entries(setRenderKeys)) {
+    if (key === setId && exists(currentId)) return currentId;
+  }
+  return null;
+}
+
+/**
  * Duration in seconds a set displays/fills/adopts. Legacy isometric rows hold
  * their seconds in `reps` (they predate the duration column), so `duration`
  * modality — and ONLY that modality — falls back to reps-as-seconds. The
