@@ -610,7 +610,7 @@ private fun ActiveWorkoutView(
         )
         if (step.supersetRun != null) {
           Text(
-            text = stringResource(R.string.workout_superset_badge, step.supersetRun),
+            text = stringResource(R.string.workout_superset_badge, kotlin.math.max(1, step.supersetRun + 1)),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = SparkyColors.Purple

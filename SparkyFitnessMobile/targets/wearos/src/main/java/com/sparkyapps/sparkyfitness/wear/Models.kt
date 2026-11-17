@@ -507,14 +507,8 @@ data class ActiveWorkoutPlan(
 ) {
   /** Maps each superset member's `exerciseEntryId` to its partner names. */
   fun supersetPartners(): Map<String, String> {
-    val grouped = LinkedHashMap<Int, MutableList<PlannedExercise>>()
-    for (ex in exercises) {
-      val run = ex.supersetRun ?: continue
-      grouped.getOrPut(run) { mutableListOf() }.add(ex)
-    }
     val partners = HashMap<String, String>()
-    for (members in grouped.values) {
-      if (members.size < 2) continue
+    for (members in adjacentSupersetRuns(exercises)) {
       for (member in members) {
         val others = members.filter { it.exerciseEntryId != member.exerciseEntryId }.map { it.name }
         if (others.isNotEmpty()) {
@@ -523,6 +517,145 @@ data class ActiveWorkoutPlan(
       }
     }
     return partners
+  }
+
+  /**
+   * Flattens [exercises] into the watch's linear step sequence:
+   * - Interleaves adjacent 2+ exercise `supersetRun` blocks round-robin so
+   *   supersets alternate exercises even when [setOrder] is empty or when new
+   *   sets are added locally on the watch before the phone echoes an update.
+   * - Clears `supersetRun` on dissolved 1-exercise singletons.
+   * - Honors [setOrder] for all phone-known set IDs while inserting any
+   *   locally-added watch sets right after their round-robin predecessor.
+   */
+  fun flattenSteps(): List<WorkoutStep> {
+    val normalizedExercises = normalizedSupersetExercises(exercises)
+    val partners = ActiveWorkoutPlan(
+      sessionId = sessionId,
+      workoutName = workoutName,
+      exercises = normalizedExercises,
+      setOrder = setOrder
+    ).supersetPartners()
+
+    fun buildStep(ex: PlannedExercise, idx: Int, set: PlannedSet): WorkoutStep = WorkoutStep(
+      setId = set.setId,
+      exerciseEntryId = ex.exerciseEntryId,
+      exerciseName = ex.name,
+      setIndexInExercise = idx + 1,
+      totalSetsInExercise = ex.sets.size,
+      setType = set.setType,
+      supersetRun = ex.supersetRun,
+      supersetWith = partners[ex.exerciseEntryId],
+      bodyweight = ex.bodyweight == true,
+      timed = set.timed == true,
+      carry = set.carry == true,
+      weighted = set.weighted == true,
+      targetWeightKg = set.targetWeightKg,
+      targetReps = set.targetReps,
+      targetDurationSec = set.targetDurationSec,
+      previousDurationSec = set.previousDurationSec,
+      targetDistanceKm = set.targetDistanceKm,
+      restSeconds = set.restSeconds,
+      restAfterSeconds = set.restAfterSeconds,
+      equipment = ex.equipment,
+      plates = ex.plates,
+      imageKey = ex.imageKey,
+      imageCount = ex.imageCount,
+      muscle = ex.muscle
+    )
+
+    val interleaved = ArrayList<WorkoutStep>()
+    var i = 0
+    while (i < normalizedExercises.size) {
+      val first = normalizedExercises[i]
+      val run = first.supersetRun
+      if (run == null) {
+        first.sets.forEachIndexed { idx, set ->
+          interleaved.add(buildStep(first, idx, set))
+        }
+        i += 1
+        continue
+      }
+      var end = i + 1
+      while (end < normalizedExercises.size && normalizedExercises[end].supersetRun == run) {
+        end += 1
+      }
+      val members = normalizedExercises.subList(i, end)
+      val roundCount = members.maxOfOrNull { it.sets.size } ?: 0
+      for (round in 0 until roundCount) {
+        for (member in members) {
+          val set = member.sets.getOrNull(round) ?: continue
+          interleaved.add(buildStep(member, round, set))
+        }
+      }
+      i = end
+    }
+
+    if (setOrder.isEmpty()) return interleaved
+    val byId = interleaved.associateBy { it.setId }
+    val ordered = ArrayList<WorkoutStep>(interleaved.size)
+    val seen = HashSet<String>(interleaved.size)
+    for (id in setOrder) {
+      val step = byId[id] ?: continue
+      if (seen.add(id)) ordered.add(step)
+    }
+    if (ordered.isEmpty()) return interleaved
+    if (ordered.size == interleaved.size) return ordered
+
+    for (idx in interleaved.indices) {
+      val step = interleaved[idx]
+      if (!seen.add(step.setId)) continue
+      val prevId = if (idx > 0) interleaved[idx - 1].setId else null
+      val insertAt = if (prevId != null) {
+        val prevPos = ordered.indexOfFirst { it.setId == prevId }
+        if (prevPos >= 0) prevPos + 1 else ordered.size
+      } else {
+        0
+      }
+      ordered.add(insertAt, step)
+    }
+    return ordered
+  }
+
+  companion object {
+    /** Returns maximal adjacent runs of 2+ exercises sharing a non-null `supersetRun`. */
+    fun adjacentSupersetRuns(list: List<PlannedExercise>): List<List<PlannedExercise>> {
+      val runs = ArrayList<List<PlannedExercise>>()
+      var i = 0
+      while (i < list.size) {
+        val run = list[i].supersetRun
+        if (run == null) {
+          i += 1
+          continue
+        }
+        var end = i + 1
+        while (end < list.size && list[end].supersetRun == run) {
+          end += 1
+        }
+        if (end - i >= 2) {
+          runs.add(list.subList(i, end))
+        }
+        i = end
+      }
+      return runs
+    }
+
+    /** Clears `supersetRun` on any exercise not part of an adjacent 2+ run. */
+    fun normalizedSupersetExercises(list: List<PlannedExercise>): List<PlannedExercise> {
+      val validEntryIds = adjacentSupersetRuns(list)
+        .flatten()
+        .mapTo(HashSet()) { it.exerciseEntryId }
+      if (list.none { it.supersetRun != null && it.exerciseEntryId !in validEntryIds }) {
+        return list
+      }
+      return list.map { ex ->
+        if (ex.supersetRun != null && ex.exerciseEntryId !in validEntryIds) {
+          ex.copy(supersetRun = null)
+        } else {
+          ex
+        }
+      }
+    }
   }
 }
 

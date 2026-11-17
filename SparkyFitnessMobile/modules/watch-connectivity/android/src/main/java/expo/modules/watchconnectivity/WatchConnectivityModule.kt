@@ -561,6 +561,7 @@ internal object WatchConnectivityHub {
 
       val reqExArr = JSONArray()
       val plannedTargetsByEx = mutableListOf<List<JSONObject>>()
+      val presetSupersetGroups = mutableListOf<Int?>()
 
       for (i in 0 until presetExArr.length()) {
         val pEx = presetExArr.optJSONObject(i) ?: continue
@@ -597,12 +598,16 @@ internal object WatchConnectivityHub {
           }
         }
         plannedTargetsByEx.add(plannedList)
+        val supersetGroup = if (pEx.has("superset_group") && !pEx.isNull("superset_group")) {
+          pEx.optInt("superset_group")
+        } else null
+        presetSupersetGroups.add(supersetGroup)
         val reqEx = JSONObject().apply {
           put("exercise_id", exId)
           put("sort_order", i)
           put("duration_minutes", 0)
-          if (pEx.has("superset_group") && !pEx.isNull("superset_group")) {
-            put("superset_group", pEx.opt("superset_group"))
+          if (supersetGroup != null) {
+            put("superset_group", supersetGroup)
           }
           put("sets", reqSets)
         }
@@ -633,8 +638,13 @@ internal object WatchConnectivityHub {
       if (sessionId.isEmpty()) return
       val sessionExercises = sessionObj.optJSONArray("exercises") ?: JSONArray()
 
-      val watchExercises = mutableListOf<Map<String, Any?>>()
-      val setOrder = mutableListOf<String>()
+      data class HeadlessBuiltExercise(
+        val supersetGroup: Int?,
+        val watchSets: List<MutableMap<String, Any?>>,
+        val exMap: MutableMap<String, Any?>
+      )
+
+      val builtExercises = mutableListOf<HeadlessBuiltExercise>()
 
       for (i in 0 until sessionExercises.length()) {
         val sEx = sessionExercises.optJSONObject(i) ?: continue
@@ -646,15 +656,19 @@ internal object WatchConnectivityHub {
         val isTimed = modality == "duration" || modality == "duration_distance" || modality == "weight_duration"
         val isCarry = modality == "weight_distance"
         val isWeightedTimed = modality == "weight_duration"
+        val supersetGroup = if (sEx.has("superset_group") && !sEx.isNull("superset_group")) {
+          sEx.optInt("superset_group")
+        } else {
+          presetSupersetGroups.getOrNull(i)
+        }
 
         val sSets = sEx.optJSONArray("sets") ?: JSONArray()
         val plannedSets = plannedTargetsByEx.getOrNull(i) ?: emptyList()
-        val watchSets = mutableListOf<Map<String, Any?>>()
+        val watchSets = mutableListOf<MutableMap<String, Any?>>()
 
         for (sIdx in 0 until sSets.length()) {
           val ss = sSets.optJSONObject(sIdx) ?: continue
           val setId = ss.opt("id")?.toString() ?: continue
-          setOrder.add(setId)
           val planned = plannedSets.getOrNull(sIdx)
           val targetReps = if (planned != null && planned.has("reps") && !planned.isNull("reps")) planned.optInt("reps") else null
           val targetWeightKg = if (planned != null && planned.has("weight") && !planned.isNull("weight")) planned.optDouble("weight") else null
@@ -697,8 +711,55 @@ internal object WatchConnectivityHub {
           exMap["imageKey"] = imageId
           exMap["imageCount"] = minOf(imagesArr.length(), 2)
         }
-        watchExercises.add(exMap)
+        builtExercises.add(HeadlessBuiltExercise(supersetGroup, watchSets, exMap))
       }
+
+      // Mirror getSupersetRuns + buildStepsFromSession on the phone: identify
+      // adjacent runs of 2+ exercises sharing a non-null superset_group, assign
+      // 0-based supersetRun indices, interleave setOrder round-robin, and set
+      // restSeconds to 0 inside a superset round (groupRest before each round).
+      val setOrder = mutableListOf<String>()
+      var nextSupersetRun = 0
+      var idx = 0
+      while (idx < builtExercises.size) {
+        val current = builtExercises[idx]
+        val group = current.supersetGroup
+        if (group != null) {
+          var end = idx + 1
+          while (end < builtExercises.size && builtExercises[end].supersetGroup == group) {
+            end += 1
+          }
+          if (end - idx >= 2) {
+            val runIdx = nextSupersetRun++
+            val members = builtExercises.subList(idx, end)
+            for (member in members) {
+              member.exMap["supersetRun"] = runIdx
+            }
+            val roundCount = members.maxOfOrNull { it.watchSets.size } ?: 0
+            for (round in 0 until roundCount) {
+              val groupRest = (members[0].watchSets.getOrNull(round)?.get("restAfterSeconds") as? Int) ?: 90
+              var firstInRound = true
+              for (member in members) {
+                val setMap = member.watchSets.getOrNull(round) ?: continue
+                val isDrop = (setMap["setType"] as? String).equals("drop", ignoreCase = true)
+                setMap["restSeconds"] = if (isDrop) 0 else if (firstInRound) groupRest else 0
+                firstInRound = false
+                setOrder.add(setMap["setId"] as String)
+              }
+            }
+            idx = end
+            continue
+          }
+        }
+        for (setMap in current.watchSets) {
+          val ownRest = (setMap["restAfterSeconds"] as? Int) ?: 0
+          val isDrop = (setMap["setType"] as? String).equals("drop", ignoreCase = true)
+          setMap["restSeconds"] = if (isDrop) 0 else ownRest
+          setOrder.add(setMap["setId"] as String)
+        }
+        idx += 1
+      }
+      val watchExercises = builtExercises.map { it.exMap }
 
       val nowMs = System.currentTimeMillis()
       val nowIso = Instant.ofEpochMilli(nowMs).toString()

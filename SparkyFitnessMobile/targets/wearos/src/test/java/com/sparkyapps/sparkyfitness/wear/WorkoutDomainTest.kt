@@ -536,4 +536,83 @@ class WorkoutDomainTest {
             )
         )
     }
+
+    @Test
+    fun `flattenSteps interleaves superset exercises round-robin and preserves local watch additions`() {
+        fun makeSet(id: String, rest: Int = 90) = PlannedSet(
+            setId = id,
+            targetReps = 10.0,
+            targetWeightKg = 60.0,
+            restSeconds = rest,
+            restAfterSeconds = rest
+        )
+
+        val squat = PlannedExercise(
+            exerciseEntryId = "ex-squat",
+            name = "Squat",
+            supersetRun = 0,
+            sets = listOf(makeSet("sq-1"), makeSet("sq-2"), makeSet("sq-3"))
+        )
+        val bench = PlannedExercise(
+            exerciseEntryId = "ex-bench",
+            name = "Bench Press",
+            supersetRun = 0,
+            sets = listOf(makeSet("bp-1"), makeSet("bp-2"), makeSet("bp-3"))
+        )
+        val rows = PlannedExercise(
+            exerciseEntryId = "ex-rows",
+            name = "Rows",
+            supersetRun = 0,
+            sets = listOf(makeSet("rw-1"), makeSet("rw-2"), makeSet("rw-3"))
+        )
+        val curl = PlannedExercise(
+            exerciseEntryId = "ex-curl",
+            name = "Bicep Curl",
+            supersetRun = null,
+            sets = listOf(makeSet("cu-1"), makeSet("cu-2"))
+        )
+
+        // Fallback when setOrder is empty (e.g. older phone payload) still interleaves round-robin
+        val withoutSetOrder = ActiveWorkoutPlan(
+            sessionId = "sess-ss",
+            workoutName = "Full Body Superset",
+            exercises = listOf(squat, bench, rows, curl),
+            setOrder = emptyList()
+        ).flattenSteps()
+        assertEquals(
+            listOf("sq-1", "bp-1", "rw-1", "sq-2", "bp-2", "rw-2", "sq-3", "bp-3", "rw-3", "cu-1", "cu-2"),
+            withoutSetOrder.map { it.setId }
+        )
+        assertEquals("Bench Press, Rows", withoutSetOrder[0].supersetWith)
+        // 0s rest within a superset round, 90s rest at the round boundary
+        assertEquals(0, RestRule.restAfter(withoutSetOrder[0].toRestStepFacts(), withoutSetOrder[1].toRestStepFacts()))
+        assertEquals(0, RestRule.restAfter(withoutSetOrder[1].toRestStepFacts(), withoutSetOrder[2].toRestStepFacts()))
+        assertEquals(90, RestRule.restAfter(withoutSetOrder[2].toRestStepFacts(), withoutSetOrder[3].toRestStepFacts()))
+        assertEquals(90, RestRule.restAfter(withoutSetOrder[8].toRestStepFacts(), withoutSetOrder[9].toRestStepFacts()))
+
+        // Adding a 4th set on the watch to Squat while setOrder has only the initial IDs places sq-4 before Curl
+        val initialOrder = withoutSetOrder.map { it.setId }
+        val squatWithAddedSet = squat.copy(sets = squat.sets + makeSet("watch_set_sq4"))
+        val withLocalAdd = ActiveWorkoutPlan(
+            sessionId = "sess-ss",
+            workoutName = "Full Body Superset",
+            exercises = listOf(squatWithAddedSet, bench, rows, curl),
+            setOrder = initialOrder
+        ).flattenSteps()
+        assertEquals(
+            listOf("sq-1", "bp-1", "rw-1", "sq-2", "bp-2", "rw-2", "sq-3", "bp-3", "rw-3", "watch_set_sq4", "cu-1", "cu-2"),
+            withLocalAdd.map { it.setId }
+        )
+
+        // Dissolving a 2-exercise superset down to 1 exercise clears supersetRun and supersetWith
+        val dissolved = ActiveWorkoutPlan(
+            sessionId = "sess-ss",
+            workoutName = "Dissolved",
+            exercises = listOf(squat, curl),
+            setOrder = emptyList()
+        ).flattenSteps()
+        assertEquals(listOf("sq-1", "sq-2", "sq-3", "cu-1", "cu-2"), dissolved.map { it.setId })
+        assertEquals(null, dissolved[0].supersetRun)
+        assertEquals(null, dissolved[0].supersetWith)
+    }
 }

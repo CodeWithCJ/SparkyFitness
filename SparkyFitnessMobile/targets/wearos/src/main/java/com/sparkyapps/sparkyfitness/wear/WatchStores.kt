@@ -1199,8 +1199,9 @@ class WorkoutSessionStore(private val context: Context) {
 
   fun supersetBadge(step: WorkoutStep): String? {
     val run = step.supersetRun ?: return null
-    val members = _plan.value?.exercises.orEmpty().filter { it.supersetRun == run }
-    if (members.size < 2) return null
+    val members = ActiveWorkoutPlan.adjacentSupersetRuns(_plan.value?.exercises.orEmpty())
+      .firstOrNull { group -> group.any { it.exerciseEntryId == step.exerciseEntryId } }
+      ?: return null
     val place = members.indexOfFirst { it.exerciseEntryId == step.exerciseEntryId }
     if (place < 0) return null
     val letter = ('A'.code + abs(run) % 26).toChar()
@@ -1345,13 +1346,16 @@ class WorkoutSessionStore(private val context: Context) {
 
     val isSameSession = _plan.value?.sessionId == incoming.sessionId && _phase.value != Phase.IDLE
     val prevStepId = currentStep?.setId
-    _plan.value = incoming
+    val normalizedIncoming = incoming.copy(
+      exercises = ActiveWorkoutPlan.normalizedSupersetExercises(incoming.exercises)
+    )
+    _plan.value = normalizedIncoming
 
     if (!isSameSession) {
       targetRevision = Double.NEGATIVE_INFINITY
       targetOverrides = emptyMap()
     }
-    val builtSteps = applyTargetOverrides(flattenSteps(incoming))
+    val builtSteps = applyTargetOverrides(flattenSteps(normalizedIncoming))
     _steps.value = builtSteps
     demoStore?.prune(activeDemoKeys())
 
@@ -1962,7 +1966,9 @@ class WorkoutSessionStore(private val context: Context) {
       }
       else -> {}
     }
-    val nextPlan = curPlan.copy(exercises = updatedExercises)
+    val nextPlan = curPlan.copy(
+      exercises = ActiveWorkoutPlan.normalizedSupersetExercises(updatedExercises)
+    )
     _plan.value = nextPlan
     val nextSteps = applyTargetOverrides(flattenSteps(nextPlan))
     _steps.value = nextSteps
@@ -2600,55 +2606,7 @@ class WorkoutSessionStore(private val context: Context) {
     _setTimerElapsedSeconds.value = 0
   }
 
-  private fun flattenSteps(plan: ActiveWorkoutPlan): List<WorkoutStep> {
-    val partners = plan.supersetPartners()
-    val flattened = mutableListOf<WorkoutStep>()
-    plan.exercises.forEach { ex ->
-      val totalSets = ex.sets.size
-      ex.sets.forEachIndexed { idx, set ->
-        flattened.add(
-          WorkoutStep(
-            setId = set.setId,
-            exerciseEntryId = ex.exerciseEntryId,
-            exerciseName = ex.name,
-            setIndexInExercise = idx + 1,
-            totalSetsInExercise = totalSets,
-            setType = set.setType,
-            supersetRun = ex.supersetRun,
-            supersetWith = partners[ex.exerciseEntryId],
-            bodyweight = ex.bodyweight == true,
-            timed = set.timed == true,
-            carry = set.carry == true,
-            weighted = set.weighted == true,
-            targetWeightKg = set.targetWeightKg,
-            targetReps = set.targetReps,
-            targetDurationSec = set.targetDurationSec,
-            previousDurationSec = set.previousDurationSec,
-            targetDistanceKm = set.targetDistanceKm,
-            restSeconds = set.restSeconds,
-            restAfterSeconds = set.restAfterSeconds,
-            equipment = ex.equipment,
-            plates = ex.plates,
-            imageKey = ex.imageKey,
-            imageCount = ex.imageCount,
-            muscle = ex.muscle
-          )
-        )
-      }
-    }
-    if (plan.setOrder.isEmpty()) return flattened
-    val byId = flattened.associateBy { it.setId }
-    val ordered = mutableListOf<WorkoutStep>()
-    val seen = HashSet<String>()
-    for (id in plan.setOrder) {
-      val step = byId[id] ?: continue
-      if (seen.add(id)) ordered.add(step)
-    }
-    for (step in flattened) {
-      if (seen.add(step.setId)) ordered.add(step)
-    }
-    return ordered
-  }
+  private fun flattenSteps(plan: ActiveWorkoutPlan): List<WorkoutStep> = plan.flattenSteps()
 
   companion object {
     const val GET_READY_SECONDS = 3
