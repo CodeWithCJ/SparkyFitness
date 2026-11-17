@@ -8,7 +8,6 @@ import i18n from '../localization/i18n';
 import {
   challengesQueryKeyRoot,
   useChallenges,
-  useChallengesRuleChanges,
   useChallengesStandings,
 } from '../hooks/useChallenges';
 import { usePreferences } from '../hooks/usePreferences';
@@ -23,7 +22,6 @@ import {
   buildChallengeWeekNotices,
   challengeState,
   challengeToday,
-  rulesInEffect,
   type ChallengeDistanceUnit,
 } from '../utils/challenges';
 
@@ -69,7 +67,6 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   const hasWeekly = weekly.length > 0;
   const weeklyIds = weekly.map((c) => c.id);
   const standings = useChallengesStandings(weeklyIds, null);
-  const ruleChanges = useChallengesRuleChanges(weeklyIds);
   // Still loading, or a read failed: keep what is scheduled rather than
   // cancel it on a launch without data (nothing here is persisted).
   const waiting =
@@ -77,8 +74,7 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
     (list.isLoading ||
       list.isError ||
       standings.isLoading ||
-      standings.isError ||
-      ruleChanges.isLoading);
+      standings.isError);
   const { preferences } = usePreferences({ enabled: hasWeekly });
   const energyUnit = useEnergyUnit();
   const distanceUnit: ChallengeDistanceUnit =
@@ -86,15 +82,7 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
 
   // Cheap to rebuild; the signature below decides whether anything changed.
   const notices = buildChallengeWeekNotices(
-    // Totals in the units of the rules that score this week.
-    weekly.map((c) => ({
-      ...c,
-      rules: rulesInEffect(
-        ruleChanges.byId.get(c.id),
-        standings.byId.get(c.id)?.period_start ?? c.start_date,
-        c.rules
-      ),
-    })),
+    weekly,
     standings.byId,
     { distanceUnit, energyUnit },
     t,

@@ -8,7 +8,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from '../Icon';
 import {
   useChallenges,
-  useChallengesRuleChanges,
   useChallengesStandings,
 } from '../../hooks/useChallenges';
 import { useEnergyUnit } from '../../hooks/useEnergyUnit';
@@ -19,7 +18,6 @@ import {
   ownStanding,
   sortChallenges,
   isLeading,
-  rulesInEffect,
   standingsLeader,
   type ChallengeUnits,
 } from '../../utils/challenges';
@@ -60,7 +58,6 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
   );
   const ids = useMemo(() => running.map((c) => c.id), [running]);
   const standings = useChallengesStandings(ids, selectedDate);
-  const ruleChanges = useChallengesRuleChanges(ids);
   const { preferences } = usePreferences({ enabled: running.length > 0 });
   const energyUnit = useEnergyUnit();
   const units: ChallengeUnits = {
@@ -87,19 +84,12 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         <Icon name="chevron-forward" size={14} color={accentPrimary} />
       </View>
       {running.map((challenge, index) => {
-        // A total is shown in the units of the rules that scored its period,
-        // so it waits for the challenge's rule log; the current rules can
-        // count something else.
-        const changes = ruleChanges.byId.get(challenge.id);
-        const period = changes ? standings.byId.get(challenge.id) : undefined;
-        const logFailed = !changes && ruleChanges.failedIds.has(challenge.id);
+        const period = standings.byId.get(challenge.id);
         const own = period ? ownStanding(period.rows) : null;
         const leader = period ? standingsLeader(period.rows) : null;
-        const { metric } = rulesInEffect(
-          changes,
-          period?.period_start ?? selectedDate,
-          challenge.rules
-        );
+        // In the units of the rules that scored the period, sent with it
+        // (totals are formatted only once the period is in).
+        const metric = (period ?? challenge).rules.metric;
         const line = !period
           ? ' '
           : own
@@ -152,20 +142,6 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
               <Text className="text-xs text-text-muted mt-0.5">
                 {leaderLine}
               </Text>
-            ) : null}
-            {logFailed ? (
-              <Pressable
-                testID={`challenges-card-retry-${challenge.id}`}
-                onPress={ruleChanges.retry}
-                hitSlop={8}
-                accessibilityRole="button"
-              >
-                <Text className="text-xs text-accent-primary mt-0.5">
-                  {t('challenges.card.loadFailed', {
-                    defaultValue: 'Could not load the score. Tap to retry.',
-                  })}
-                </Text>
-              </Pressable>
             ) : null}
           </Pressable>
         );

@@ -5,7 +5,6 @@ import {
   type ChallengeFormat,
   type ChallengeMetric,
   type ChallengePeriod,
-  type ChallengeRuleChange,
   type ChallengeRules,
   type ChallengeStandingsResponse,
   type ChallengeSummary,
@@ -251,28 +250,6 @@ export function parseInviteCode(text: string): string | null {
   return matches?.[matches.length - 1] ?? null;
 }
 
-/**
- * The rules that score `day`, picked from the change log as the server does:
- * the last change in effect by then, else the earliest. The log comes from the
- * server in effective-day then write order, and the sort is stable. Falls
- * back to `current` (the newest saved rules) while the log is loading.
- */
-export function rulesInEffect(
-  changes: readonly ChallengeRuleChange[] | undefined,
-  day: string,
-  current: ChallengeRules
-): ChallengeRules {
-  if (!changes?.length) return current;
-  const ordered = [...changes].sort((a, b) =>
-    a.effective_from.localeCompare(b.effective_from)
-  );
-  let chosen = ordered[0] as ChallengeRuleChange;
-  for (const change of ordered) {
-    if (change.effective_from <= day) chosen = change;
-  }
-  return chosen.rules;
-}
-
 /** The challenge's today, in its own time zone (as the server counts days). */
 export function challengeToday(
   challenge: Pick<ChallengeSummary, 'time_zone'>,
@@ -378,7 +355,8 @@ export function buildChallengeWeekNotices(
     const fireAt = weekLeaderNotificationDate(challenge, standings, now);
     const leader = standingsLeader(standings.rows);
     if (!fireAt || !leader) continue;
-    const metric = challenge.rules.metric;
+    // In the units of the rules that score this week, sent with its standings
+    const metric = standings.rules.metric;
     const own = ownStanding(standings.rows);
     const leaderIsMe = isLeading(own);
     notices.push({

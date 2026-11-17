@@ -1,4 +1,5 @@
 import React from 'react';
+import { challengeRulesSchema } from '@workspace/shared';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,14 +16,12 @@ import {
 const mockUseChallenges = jest.fn();
 const mockUseChallenge = jest.fn();
 const mockUseStandings = jest.fn();
-const mockUseRuleChanges = jest.fn();
 const mockLeave = jest.fn();
 jest.mock('../../src/hooks/useChallenges', () => ({
   useChallenges: () => mockUseChallenges(),
   useChallenge: () => mockUseChallenge(),
   useChallengeStandings: (id: string, date: string | null) =>
     mockUseStandings(id, date),
-  useChallengeRuleChanges: () => mockUseRuleChanges(),
   useChallengeMutations: () => ({
     leaveChallenge: mockLeave,
   }),
@@ -217,20 +216,10 @@ describe('ChallengeDetailScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
-    mockUseRuleChanges.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: false,
-      refetch: jest.fn(),
-    });
   });
 
-  it('reads the rule log again on focus with the challenge and standings', () => {
-    const refetches = [
-      mockUseChallenge,
-      mockUseStandings,
-      mockUseRuleChanges,
-    ].map((hook) => {
+  it('reads the challenge and its standings again on focus', () => {
+    const refetches = [mockUseChallenge, mockUseStandings].map((hook) => {
       const refetch = jest.fn();
       hook.mockReturnValue({ ...hook(), refetch });
       return refetch;
@@ -241,34 +230,18 @@ describe('ChallengeDetailScreen', () => {
     for (const refetch of refetches) expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('waits for the rule log before showing any total', () => {
-    mockUseRuleChanges.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-      refetch: jest.fn(),
+  it('shows a period in the units of the rules its standings carry', () => {
+    // The challenge counts points today; the period shown was scored by steps
+    const standings = mockUseStandings();
+    mockUseStandings.mockReturnValue({
+      ...standings,
+      data: makeStandings({
+        rules: challengeRulesSchema.parse({ version: 1, metric: 'steps' }),
+      }),
     });
     renderDetail();
+    expect(screen.getByText('400 steps')).toBeTruthy();
     expect(screen.queryByText('400 pts')).toBeNull();
-    expect(screen.queryByText('Points · Weekly · Leaderboard')).toBeNull();
-  });
-
-  it('offers a retry instead of totals when the rule log fails', () => {
-    const refetch = jest.fn();
-    mockUseRuleChanges.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: true,
-      refetch,
-    });
-    renderDetail();
-    expect(
-      screen.getByText('Could not load the rules that scored this period.')
-    ).toBeTruthy();
-    expect(screen.queryByText('400 pts')).toBeNull();
-    expect(screen.queryByText('250 pts')).toBeNull();
-    fireEvent.press(screen.getByText('Retry'));
-    expect(refetch).toHaveBeenCalled();
   });
 
   it('shows the open week’s standings with the user marked and no trophy', () => {
@@ -297,6 +270,22 @@ describe('ChallengeDetailScreen', () => {
     expect(screen.getAllByText('1')).toHaveLength(2);
     expect(screen.getByText('Sam (you)')).toBeTruthy();
     expect(screen.queryByTestId('icon-trophy')).toBeNull();
+  });
+
+  it('shows no rules line for an earlier period until its own rules are in', () => {
+    mockUseStandings.mockImplementation((_id: string, date: string | null) => ({
+      data: date === null ? makeStandings() : undefined,
+      isLoading: date !== null,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderDetail();
+    expect(
+      screen.getAllByText('Points · Weekly · Leaderboard').length
+    ).toBeGreaterThan(0);
+    fireEvent.press(screen.getByLabelText('Previous period'));
+    // Today's rules may not be the ones that scored last week
+    expect(screen.queryByText('Points · Weekly · Leaderboard')).toBeNull();
   });
 
   it('steps back to the previous week and forward again', () => {

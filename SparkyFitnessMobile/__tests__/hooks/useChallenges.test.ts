@@ -1,10 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { useChallenges } from '../../src/hooks/useChallenges';
 import {
-  useChallenges,
-  useChallengesRuleChanges,
-} from '../../src/hooks/useChallenges';
-import {
-  fetchChallengeRuleChanges,
   fetchChallenges,
   fetchChallengesStatus,
 } from '../../src/services/api/challengesApi';
@@ -16,14 +12,12 @@ jest.mock('../../src/services/api/challengesApi', () => ({
   fetchChallenges: jest.fn(),
   fetchChallenge: jest.fn(),
   fetchChallengeStandings: jest.fn(),
-  fetchChallengeRuleChanges: jest.fn(),
   joinChallenge: jest.fn(),
   leaveChallenge: jest.fn(),
 }));
 
 const mockStatus = fetchChallengesStatus as jest.Mock;
 const mockList = fetchChallenges as jest.Mock;
-const mockRuleChanges = fetchChallengeRuleChanges as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -48,26 +42,5 @@ describe('useChallenges', () => {
     expect(result.current.challenges).toEqual([]);
     // The list read before is still cached; it is just not handed out.
     expect(queryClient.getQueryData(['challenges', 'list'])).toHaveLength(1);
-  });
-});
-
-describe('useChallengesRuleChanges', () => {
-  it('reports a failed log and reads it again on retry', async () => {
-    const queryClient = createTestQueryClient();
-    mockRuleChanges.mockRejectedValueOnce(new Error('offline'));
-    const { result } = renderHook(() => useChallengesRuleChanges(['c1']), {
-      wrapper: createQueryWrapper(queryClient),
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.byId.has('c1')).toBe(false);
-
-    mockRuleChanges.mockResolvedValueOnce([]);
-    act(() => {
-      result.current.retry();
-    });
-
-    await waitFor(() => expect(result.current.byId.has('c1')).toBe(true));
-    expect(result.current.isError).toBe(false);
-    expect(mockRuleChanges).toHaveBeenCalledTimes(2);
   });
 });

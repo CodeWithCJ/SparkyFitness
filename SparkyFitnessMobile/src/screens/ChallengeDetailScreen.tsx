@@ -19,7 +19,6 @@ import ChallengeStandingsList from '../components/challenges/ChallengeStandingsL
 import {
   useChallenge,
   useChallengeMutations,
-  useChallengeRuleChanges,
   useChallengeStandings,
 } from '../hooks/useChallenges';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
@@ -33,7 +32,6 @@ import {
   challengeRulesSummary,
   challengeToday,
   formatChallengeValue,
-  rulesInEffect,
   type ChallengeUnits,
 } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -59,17 +57,12 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [periodDay, setPeriodDay] = useState<string | null>(null);
   const challengeQuery = useChallenge(id);
   const standingsQuery = useChallengeStandings(id, periodDay);
-  const ruleChangesQuery = useChallengeRuleChanges(id);
   const { refetch: refetchChallenge } = challengeQuery;
   const { refetch: refetchStandings } = standingsQuery;
-  const { refetch: refetchRuleChanges } = ruleChangesQuery;
-  // The rule log is read with the standings, or a rule changed since the
-  // last visit would show new totals in the old rules' units.
   const refetchOnFocus = useCallback(() => {
     void refetchChallenge();
     void refetchStandings();
-    void refetchRuleChanges();
-  }, [refetchChallenge, refetchStandings, refetchRuleChanges]);
+  }, [refetchChallenge, refetchStandings]);
   useRefetchOnFocus(refetchOnFocus, true);
   const { preferences } = usePreferences();
   const energyUnit = useEnergyUnit();
@@ -179,16 +172,12 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
     );
   } else {
-    // The rules that scored the period shown (a change counts from the next).
-    // Nothing rule-bound is shown until the rule log is read: the current
-    // rules can count another unit than the period's.
-    const rules = ruleChangesQuery.data
-      ? rulesInEffect(
-          ruleChangesQuery.data,
-          standings?.period_start ?? today,
-          challenge.rules
-        )
-      : null;
+    // The rules that scored the period shown come with its standings (a
+    // change counts from the next period). Until they are in, the current
+    // period can use the rules scoring today, sent with the challenge; an
+    // earlier one shows nothing rule-bound, as its rules may differ.
+    const rules =
+      standings?.rules ?? (periodDay === null ? challenge.rules : null);
     const dates = challenge.end_date
       ? t('challenges.dates.range', {
           defaultValue: '{{start}} to {{end}}',
@@ -326,23 +315,8 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           ) : null}
 
-          {standingsQuery.isLoading || ruleChangesQuery.isLoading ? (
+          {standingsQuery.isLoading ? (
             <ActivityIndicator className="my-4" />
-          ) : !rules ? (
-            <View className="items-center py-4">
-              <Text className="text-text-secondary text-sm mb-3">
-                {t('challenges.standings.rulesLoadFailed', {
-                  defaultValue:
-                    'Could not load the rules that scored this period.',
-                })}
-              </Text>
-              <Button
-                variant="secondary"
-                onPress={() => void ruleChangesQuery.refetch()}
-              >
-                {t('common.retry', { defaultValue: 'Retry' })}
-              </Button>
-            </View>
           ) : standingsQuery.isError || !standings ? (
             <View className="items-center py-4">
               <Text className="text-text-secondary text-sm mb-3">
@@ -360,7 +334,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : (
             <ChallengeStandingsList
               standings={standings}
-              rules={rules}
+              rules={standings.rules}
               units={units}
             />
           )}

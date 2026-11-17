@@ -6,13 +6,11 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import type {
-  ChallengeRuleChange,
   ChallengeStandingsResponse,
   JoinChallengeBody,
 } from '@workspace/shared';
 import {
   fetchChallenge,
-  fetchChallengeRuleChanges,
   fetchChallengeStandings,
   fetchChallenges,
   fetchChallengesStatus,
@@ -34,9 +32,6 @@ export const challengeDetailQueryKey = (id: string) =>
 /** `date` is any day of the period; null asks for the server's today. */
 export const challengeStandingsQueryKey = (id: string, date: string | null) =>
   [...challengesQueryKeyRoot, 'standings', id, date ?? 'today'] as const;
-export const challengeRuleChangesQueryKey = (id: string) =>
-  [...challengesQueryKeyRoot, 'ruleChanges', id] as const;
-
 /**
  * The user's challenges, once the server says the feature is on. A server
  * without Challenges (older, or turned off by the admin) reports
@@ -105,50 +100,6 @@ function combineStandings(
 }
 
 /**
- * The rules change log of a challenge. A change made mid-period counts from
- * the next one, so a period's totals are shown with the rules in effect then
- * (`rulesInEffect`), not the newest saved rules.
- */
-export function useChallengeRuleChanges(id: string) {
-  return useQuery({
-    queryKey: challengeRuleChangesQueryKey(id),
-    queryFn: () => fetchChallengeRuleChanges(id),
-    enabled: Boolean(id),
-  });
-}
-
-/** Rule change logs for several challenges, keyed by challenge id. */
-export function useChallengesRuleChanges(ids: readonly string[]) {
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: challengeRuleChangesQueryKey(id),
-      queryFn: () => fetchChallengeRuleChanges(id),
-    })),
-    combine: (results: UseQueryResult<ChallengeRuleChange[]>[]) => {
-      const byId = new Map<string, ChallengeRuleChange[]>();
-      const failedIds = new Set<string>();
-      results.forEach((result, i) => {
-        if (result.data) byId.set(ids[i] as string, result.data);
-        else if (result.isError) failedIds.add(ids[i] as string);
-      });
-      return {
-        byId: byId as ReadonlyMap<string, ChallengeRuleChange[]>,
-        /** Challenges whose log could not be read (and has nothing cached). */
-        failedIds: failedIds as ReadonlySet<string>,
-        isLoading: results.some((result) => result.isLoading),
-        isError: results.some((result) => result.isError),
-        /** Reads the failed logs again. */
-        retry: () => {
-          for (const result of results) {
-            if (result.isError) void result.refetch();
-          }
-        },
-      };
-    },
-  });
-}
-
-/**
  * Standings for several challenges at once (the dashboard card, the week
  * notification), keyed by challenge id.
  */
@@ -185,7 +136,6 @@ export function useChallengeMutations() {
       for (const queryKey of [
         challengeDetailQueryKey(id),
         [...challengesQueryKeyRoot, 'standings', id],
-        challengeRuleChangesQueryKey(id),
       ]) {
         void queryClient.cancelQueries({ queryKey });
         void queryClient.invalidateQueries({ queryKey, refetchType: 'none' });
