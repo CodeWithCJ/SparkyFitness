@@ -35,7 +35,7 @@ describe('meal model search query builder', () => {
     expect(params.slice(3, 7)).toEqual([
       'chicken rice bowl',
       'chicken rice bowl%',
-      '\\mchicken rice bowl\\M',
+      '(^|\\W)chicken rice bowl(\\W|$)',
       '%chicken rice bowl%',
     ]);
     // Limit should be last

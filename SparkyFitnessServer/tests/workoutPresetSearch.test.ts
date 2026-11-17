@@ -35,7 +35,7 @@ describe('searchWorkoutPresets query builder', () => {
     expect(params.slice(3, 7)).toEqual([
       'full body push',
       'full body push%',
-      '\\mfull body push\\M',
+      '(^|\\W)full body push(\\W|$)',
       '%full body push%',
     ]);
     // Limit should be last

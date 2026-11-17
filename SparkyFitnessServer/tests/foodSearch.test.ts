@@ -42,7 +42,7 @@ describe('food model search query builder', () => {
       expect(params[2]).toBe('%gold%');
       expect(params[3]).toBe('whey protein gold');
       expect(params[4]).toBe('whey protein gold%');
-      expect(params[5]).toBe('\\mwhey protein gold\\M');
+      expect(params[5]).toBe('(^|\\W)whey protein gold(\\W|$)');
       expect(params[6]).toBe('%whey protein gold%');
       // Limit, offset
       expect(params[7]).toBe(10);
@@ -77,7 +77,7 @@ describe('food model search query builder', () => {
           'usda',
           'whey protein',
           'whey protein%',
-          '\\mwhey protein\\M',
+          '(^|\\W)whey protein(\\W|$)',
           '%whey protein%',
           10,
           0,
@@ -183,7 +183,7 @@ describe('food model search query builder', () => {
         '%Kartoffel%',
         'Kartoffel',
         'Kartoffel%',
-        '\\mKartoffel\\M',
+        '(^|\\W)Kartoffel(\\W|$)',
         '%Kartoffel%',
         10,
         0,
@@ -221,7 +221,25 @@ describe('food model search query builder', () => {
 
       const [, params] = mockClient.query.mock.calls[0];
 
-      expect(params).toContain('\\mKartoffel \\(roh\\) gekocht\\M');
+      expect(params).toContain('(^|\\W)Kartoffel \\(roh\\) gekocht(\\W|$)');
+    });
+
+    it('matches a whole phrase that ends in punctuation', async () => {
+      await foodDb.getFoodsWithPagination(
+        'milk (raw)',
+        null,
+        'user-1',
+        10,
+        0,
+        null
+      );
+
+      const [, params] = mockClient.query.mock.calls[0];
+      // eslint-disable-next-line security/detect-non-literal-regexp
+      const wholeWord = new RegExp(params[4], 'i');
+
+      expect(wholeWord.test('Z milk (raw)')).toBe(true);
+      expect(wholeWord.test('A buttermilk (raw)')).toBe(false);
     });
   });
 

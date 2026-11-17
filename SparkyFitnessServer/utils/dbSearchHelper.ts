@@ -52,7 +52,7 @@ export function buildSqlRelevanceOrder(
     queryParams: [
       term,
       `${term}%`,
-      `\\m${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`,
+      `(^|\\W)${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\W|$)`,
       `%${term}%`,
     ],
     nextParamIndex: i + 4,

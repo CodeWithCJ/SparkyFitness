@@ -64,7 +64,7 @@ describe('exercise model search query builder', () => {
       expect(params.slice(2, 6)).toEqual([
         'lunge barbell',
         'lunge barbell%',
-        '\\mlunge barbell\\M',
+        '(^|\\W)lunge barbell(\\W|$)',
         '%lunge barbell%',
       ]);
 
@@ -131,7 +131,7 @@ describe('exercise model search query builder', () => {
       expect(params.slice(2, 6)).toEqual([
         'lunge barbell',
         'lunge barbell%',
-        '\\mlunge barbell\\M',
+        '(^|\\W)lunge barbell(\\W|$)',
         '%lunge barbell%',
       ]);
       expect(sql).toContain(
@@ -180,7 +180,7 @@ describe('exercise model search query builder', () => {
         '%barbell%',
         'lunge barbell',
         'lunge barbell%',
-        '\\mlunge barbell\\M',
+        '(^|\\W)lunge barbell(\\W|$)',
         '%lunge barbell%',
         5,
         10,
