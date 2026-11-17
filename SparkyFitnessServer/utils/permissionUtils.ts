@@ -1,4 +1,5 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function canAccessUserData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   targetUserId: any,
@@ -36,7 +37,7 @@ async function canAccessUserData(
         return true;
       }
     } catch (error) {
-      console.error('Error checking same-email permission:', error);
+      log('error', 'Error checking same-email permission:', error);
     } finally {
       systemClient.release();
     }
