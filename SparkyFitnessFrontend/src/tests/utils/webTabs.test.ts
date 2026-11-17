@@ -84,7 +84,13 @@ describe('visibleModuleTabs', () => {
 
   it('shows Challenges only while they are available', () => {
     expect(ids(none)).not.toContain('challenges');
-    const withChallenges = visibleModuleTabs(t, none, cycleOn, true);
+    const withChallenges = visibleModuleTabs(
+      t,
+      none,
+      allOn,
+      cycleSettings,
+      true
+    );
     expect(withChallenges.map((tab) => tab.id)).toContain('challenges');
     expect(withChallenges.find((tab) => tab.id === 'challenges')).toMatchObject(
       { path: '/challenges', label: 'Challenges', inPlusMenu: true }
@@ -93,7 +99,8 @@ describe('visibleModuleTabs', () => {
       visibleModuleTabs(
         t,
         new Set<WebHideableTabId>(['challenges']),
-        cycleOn,
+        allOn,
+        cycleSettings,
         true
       ).map((tab) => tab.id)
     ).not.toContain('challenges');

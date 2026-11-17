@@ -3,8 +3,7 @@ import {
   addDays,
   challengePeriodsUpTo,
   type ChallengePeriod,
-  type ChallengeRuleChange,
-  type ChallengeRules,
+  type ChallengePointsRules,
 } from '@workspace/shared';
 
 type FormatDay = (day: string, pattern: string) => string;
@@ -68,27 +67,14 @@ export function recentPeriodStarts(
 }
 
 /**
- * The rules that score `day`, from the rule log (as the server picks them):
- * the newest change in effect by then, else the earliest one. Falls back to
- * `current` while the log is loading. `upcoming` is a change that has been
- * made but does not count yet.
+ * The points builder without its weekly goal on a daily period, which the
+ * shared rules refuse (the goal would pay only on the days it lands on).
  */
-export function rulesInEffect(
-  changes: readonly ChallengeRuleChange[] | undefined,
-  day: string,
-  current: ChallengeRules
-): { rules: ChallengeRules; upcoming: ChallengeRuleChange | null } {
-  if (!changes?.length) return { rules: current, upcoming: null };
-  // The server lists changes by effective_from, then write order (seq);
-  // the sort is stable, so same-day changes keep that order.
-  const ordered = [...changes].sort((a, b) =>
-    a.effective_from.localeCompare(b.effective_from)
-  );
-  let chosen = ordered[0] as ChallengeRuleChange;
-  let upcoming: ChallengeRuleChange | null = null;
-  for (const change of ordered) {
-    if (change.effective_from <= day) chosen = change;
-    else upcoming = change;
-  }
-  return { rules: chosen.rules, upcoming };
+export function pointsWithoutDailyGoal(
+  points: ChallengePointsRules | null,
+  period: ChallengePeriod
+): ChallengePointsRules | null {
+  return points && period === 'day' && points.goal
+    ? { ...points, goal: null }
+    : points;
 }

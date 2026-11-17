@@ -7,11 +7,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import i18n from 'i18next';
-import {
-  todayInZone,
-  type ChallengeRules,
-  type ChallengeSummary,
-} from '@workspace/shared';
+import type { ChallengeSummary } from '@workspace/shared';
 import type {
   ChallengeRulesInput,
   CreateChallengeBody,
@@ -23,7 +19,6 @@ import { challengeKeys } from '@/api/keys/challenges';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MetricUnits } from '@/pages/Challenges/challengeCopy';
-import { rulesInEffect } from '@/pages/Challenges/challengePeriods';
 
 /** The server's error code (`CHALLENGE_FULL`, ...) of a failed request. */
 export const challengeErrorCode = (error: unknown): string | undefined =>
@@ -232,23 +227,4 @@ export const useChallengeUnits = (): MetricUnits => {
     }),
     [distanceUnit, energyUnit, getEnergyUnitString]
   );
-};
-
-/**
- * The rules that score the period holding `day` (default: the current one).
- * A change made mid-period applies from the next period, so standings are
- * shown in the units of the rules in effect, not the newest saved ones.
- */
-export const useRulesInEffect = (
-  challenge: Pick<
-    ChallengeSummary,
-    'id' | 'rules' | 'start_date' | 'time_zone'
-  >,
-  day?: string
-): ChallengeRules => {
-  const changes = useChallengeRuleChanges(challenge.id);
-  const today = todayInZone(challenge.time_zone);
-  const at =
-    day ?? (today < challenge.start_date ? challenge.start_date : today);
-  return rulesInEffect(changes.data, at, challenge.rules).rules;
 };

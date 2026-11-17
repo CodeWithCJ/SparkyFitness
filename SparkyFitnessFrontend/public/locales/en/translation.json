@@ -11341,6 +11341,7 @@
       "beatAverage": "Beat-your-average bonus",
       "beatAverageBonus": "Points",
       "goal": "Self-adjusting weekly goal bonus",
+      "goalNeedsWeek": "The weekly goal needs a challenge scored by the week or longer.",
       "goalMax": "Most points",
       "goalStretch": "Above own average (%)",
       "activities": "Which workouts count",

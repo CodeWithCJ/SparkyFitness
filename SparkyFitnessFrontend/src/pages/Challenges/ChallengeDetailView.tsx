@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Settings2, Users } from 'lucide-react';
 import {
-  todayInZone,
   type ChallengeDetail,
   type ChallengeInviteResponse,
 } from '@workspace/shared';
@@ -14,7 +13,6 @@ import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
-  useChallengeRuleChanges,
   useChallengeUnits,
   useLeaveChallenge,
 } from '@/hooks/Challenges/useChallenges';
@@ -25,7 +23,6 @@ import InvitePanel from './InvitePanel';
 import MemberPeriodsDialog from './MemberPeriodsDialog';
 import RuleChangeLog from './RuleChangeLog';
 import { formatLabel, metricLabel, periodLabel } from './challengeCopy';
-import { rulesInEffect } from './challengePeriods';
 
 interface ChallengeDetailViewProps {
   challenge: ChallengeDetail;
@@ -40,7 +37,6 @@ const ChallengeDetailView = ({
   const navigate = useNavigate();
   const { formatDateInUserTimezone } = usePreferences();
   const units = useChallengeUnits();
-  const changes = useChallengeRuleChanges(challenge.id);
   const leave = useLeaveChallenge();
   const [member, setMember] = useState<{
     row: StandingRow;
@@ -49,12 +45,9 @@ const ChallengeDetailView = ({
   const [editing, setEditing] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [invite, setInvite] = useState<ChallengeInviteResponse | null>(null);
-  const today = todayInZone(challenge.time_zone);
-  const { rules, upcoming } = rulesInEffect(
-    changes.data,
-    today < challenge.start_date ? challenge.start_date : today,
-    challenge.rules
-  );
+  // The server sends the rules scoring today and a saved change that waits
+  // for the next period.
+  const { rules, pending_rules: upcoming } = challenge;
   const day = (d: string) => formatDateInUserTimezone(d, 'MMM d, yyyy');
   const isLastMember = challenge.member_count <= 1;
 
@@ -223,7 +216,7 @@ const ChallengeDetailView = ({
       </Tabs>
 
       <MemberPeriodsDialog
-        challenge={{ ...challenge, rules }}
+        challenge={challenge}
         member={member?.row ?? null}
         upToPeriodStart={member?.periodStart ?? challenge.start_date}
         units={units}

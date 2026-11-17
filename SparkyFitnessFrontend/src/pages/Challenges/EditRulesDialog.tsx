@@ -40,7 +40,11 @@ const EditRulesDialog = ({
   const { formatDateInUserTimezone } = usePreferences();
   const units = useChallengeUnits();
   const update = useUpdateChallengeRules();
-  const [rules, setRules] = useState<ChallengeRules>(challenge.rules);
+  // The host edits from their newest save, which may still be waiting for
+  // the next period.
+  const [rules, setRules] = useState<ChallengeRules>(
+    challenge.pending_rules?.rules ?? challenge.rules
+  );
   const today = todayInZone(challenge.time_zone);
   const started = today >= challenge.start_date;
   const effectiveFrom = challengeRulesEffectiveFrom(

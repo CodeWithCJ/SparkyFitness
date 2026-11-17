@@ -46,6 +46,7 @@ import {
   weekdayLabel,
   type MetricUnits,
 } from './challengeCopy';
+import { pointsWithoutDailyGoal } from './challengePeriods';
 
 interface ChallengeRulesEditorProps {
   rules: ChallengeRules;
@@ -144,15 +145,19 @@ const OptionalPart = ({
   on,
   onToggle,
   disabled,
+  note,
   children,
 }: {
   label: string;
   on: boolean;
   onToggle: (on: boolean) => void;
   disabled?: boolean;
+  /** Why the switch is off and cannot be turned on, shown under it. */
+  note?: string;
   children?: ReactNode;
 }) => {
   const id = useId();
+  const noteId = useId();
   return (
     <div className="space-y-2 rounded-md border p-3">
       <div className="flex items-center justify-between gap-4">
@@ -164,8 +169,14 @@ const OptionalPart = ({
           checked={on}
           disabled={disabled}
           onCheckedChange={onToggle}
+          aria-describedby={note ? noteId : undefined}
         />
       </div>
+      {note ? (
+        <p id={noteId} className="text-sm text-muted-foreground">
+          {note}
+        </p>
+      ) : null}
       {on && children ? (
         <div className="grid gap-3 sm:grid-cols-2">{children}</div>
       ) : null}
@@ -240,12 +251,17 @@ const ChallengeRulesEditor = ({
   const windowStartId = useId();
   const windowEndId = useId();
 
+  // The weekly goal needs a period of a week or longer (the rules refuse it
+  // on a daily one), so a daily period turns it off.
   const changeMetric = (metric: ChallengeMetric) =>
     set({
       metric,
       // Points needs its builder; other metrics ignore it. Targets and caps
       // are in the metric's unit, so they do not carry over.
-      points: metric === 'points' ? (points ?? defaultPointsRules()) : null,
+      points:
+        metric === 'points'
+          ? pointsWithoutDailyGoal(points ?? defaultPointsRules(), rules.period)
+          : null,
       target: null,
       dailyCap: null,
     });
@@ -310,7 +326,9 @@ const ChallengeRulesEditor = ({
               value={rules.period}
               options={CHALLENGE_PERIODS}
               optionLabel={(p) => periodLabel(t, p)}
-              onChange={(period) => set({ period })}
+              onChange={(period) =>
+                set({ period, points: pointsWithoutDailyGoal(points, period) })
+              }
               disabled={disabled || periodLocked}
             />
             {rules.format !== 'leaderboard' && (
@@ -841,7 +859,15 @@ const ChallengeRulesEditor = ({
               )}
               on={points.goal !== null}
               onToggle={(on) => setPoints({ goal: on ? defaults.goal : null })}
-              disabled={disabled}
+              disabled={disabled || rules.period === 'day'}
+              note={
+                rules.period === 'day'
+                  ? t(
+                      'challenges.editor.goalNeedsWeek',
+                      'The weekly goal needs a challenge scored by the week or longer.'
+                    )
+                  : undefined
+              }
             >
               {points.goal && (
                 <>

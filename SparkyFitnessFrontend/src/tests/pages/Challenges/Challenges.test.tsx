@@ -18,8 +18,8 @@ import {
 import {
   addDays,
   challengePreset,
-  challengeWeekStart,
   todayInZone,
+  weekStartOf,
 } from '@workspace/shared';
 import { HttpApiError } from '@/api/api';
 import * as challengesApi from '@/api/Challenges/challengesApi';
@@ -309,7 +309,7 @@ describe('Challenges page', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Weekend Warrior/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create challenge' }));
 
-    const monday = challengeWeekStart(todayInZone('UTC'));
+    const monday = weekStartOf(todayInZone('UTC'), 1);
     await waitFor(() => expect(api.createChallenge).toHaveBeenCalled());
     expect(api.createChallenge.mock.calls[0]?.[0]).toMatchObject({
       preset: 'weekend_warrior',
@@ -407,19 +407,48 @@ describe('Challenges page', () => {
     expect(best).toHaveValue(3);
   });
 
+  it('explains the rules scoring today, and a pending change from its first day, without the rule log', async () => {
+    const later = { ...challengePreset('all_rounder').rules, dailyCap: 1 };
+    api.getChallenge.mockResolvedValue(
+      challenge({
+        pending_rules: { rules: later, effective_from: '2026-11-16' },
+      })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(
+      await screen.findByRole('tab', { name: 'How points work' })
+    );
+    expect(await screen.findByText('From Nov 16, 2026:')).toBeInTheDocument();
+    const how = screen.getAllByTestId('how-points-work');
+    expect(how).toHaveLength(2);
+    expect(how[0]).not.toHaveTextContent('daily cap');
+    expect(how[1]).toHaveTextContent('held to the daily cap of 1.');
+    expect(api.getChallengeRuleChanges).not.toHaveBeenCalled();
+  });
+
+  it('the host edits from the change still waiting, not the rules scoring today', async () => {
+    const later = { ...challengePreset('all_rounder').rules, dailyCap: 1 };
+    api.getChallenge.mockResolvedValue(
+      challenge({
+        pending_rules: { rules: later, effective_from: '2026-11-16' },
+      })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change the rules' })
+    );
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Days and times' })
+    );
+    expect(
+      within(dialog).getByRole('switch', { name: 'Cap what one day can add' })
+    ).toBeChecked();
+  });
+
   it('holds the example day to a daily cap', async () => {
     const capped = { ...challengePreset('all_rounder').rules, dailyCap: 1 };
     api.getChallenge.mockResolvedValue(challenge({ rules: capped }));
-    api.getChallengeRuleChanges.mockResolvedValue([
-      {
-        id: 'c1',
-        changed_by_display_name: 'Test A',
-        effective_from: '2026-10-19',
-        rules: capped,
-        previous_rules: null,
-        created_at: '2026-10-18T10:00:00.000Z',
-      },
-    ]);
     renderAt(`/challenges/${CHALLENGE_ID}`);
     fireEvent.mouseDown(
       await screen.findByRole('tab', { name: 'How points work' })
@@ -506,40 +535,28 @@ describe('Challenges page', () => {
     await waitFor(() => expect(create).toBeEnabled());
   });
 
-  it("waits for the rule history before showing a member's totals", async () => {
-    let finishLog: (v: never[]) => void = () => undefined;
-    api.getChallengeRuleChanges.mockReturnValue(
-      new Promise((resolve) => {
-        finishLog = resolve;
-      })
+  it("shows each of a member's periods in the units of the rules that scored it, without the rule log", async () => {
+    // The oldest week was scored by steps; the server says so with its standings
+    api.getChallengeStandings.mockImplementation(async (_id, day) =>
+      day === '2026-10-19'
+        ? standings({
+            period_start: '2026-10-19',
+            period_end: '2026-10-25',
+            rules: {
+              ...challengePreset('all_rounder').rules,
+              metric: 'steps',
+              points: null,
+            },
+          })
+        : standings()
     );
     renderAt(`/challenges/${CHALLENGE_ID}`);
+    const callsBefore = api.getChallengeRuleChanges.mock.calls.length;
     fireEvent.click(await screen.findByRole('button', { name: /Test B/ }));
-    const dialog = await screen.findByRole('dialog');
-    await waitFor(() =>
-      expect(api.getChallengeStandings).toHaveBeenCalledWith(
-        CHALLENGE_ID,
-        '2026-10-19'
-      )
-    );
-    // Standings are in, the rules that scored them are not: no totals yet.
-    expect(within(dialog).queryByTestId('member-periods')).toBeNull();
-    finishLog([]);
-    expect(await within(dialog).findByTestId('member-periods')).toBeTruthy();
-  });
-
-  it('says the rule history failed in the member dialog, with a retry', async () => {
-    api.getChallengeRuleChanges.mockRejectedValue(new Error('down'));
-    renderAt(`/challenges/${CHALLENGE_ID}`);
-    fireEvent.click(await screen.findByRole('button', { name: /Test B/ }));
-    const dialog = await screen.findByRole('dialog');
-    expect(
-      await within(dialog).findByText('Could not load the rule changes.')
-    ).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('member-periods')).toBeNull();
-    api.getChallengeRuleChanges.mockResolvedValue([]);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
-    expect(await within(dialog).findByTestId('member-periods')).toBeTruthy();
+    const list = await screen.findByTestId('member-periods');
+    expect(await within(list).findByText(/121 steps/)).toBeInTheDocument();
+    expect(within(list).getAllByText(/120\.5 pts/).length).toBeGreaterThan(0);
+    expect(api.getChallengeRuleChanges.mock.calls.length).toBe(callsBefore);
   });
 
   it('says a period failed to load rather than that it has no score', async () => {

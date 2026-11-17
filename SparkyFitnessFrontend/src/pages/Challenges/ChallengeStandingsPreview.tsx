@@ -5,7 +5,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   useChallengeStandings,
   useChallengeUnits,
-  useRulesInEffect,
 } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
 import { metricValueText, ownStanding } from './challengeCopy';
@@ -21,7 +20,7 @@ const ChallengeStandingsPreview = ({
   const { t, i18n } = useTranslation();
   const units = useChallengeUnits();
   const standings = useChallengeStandings(challenge.id);
-  const { metric } = useRulesInEffect(challenge, standings.data?.period_start);
+  const { metric } = standings.data?.rules ?? challenge.rules;
   if (standings.isLoading) return <Skeleton className="h-16 w-full" />;
   const rows = standings.data?.rows ?? [];
   if (!rows.length) {

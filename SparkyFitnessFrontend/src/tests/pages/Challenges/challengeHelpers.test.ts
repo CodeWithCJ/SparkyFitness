@@ -2,7 +2,6 @@ import type { TFunction } from 'i18next';
 import {
   challengePreset,
   challengeRulesSchema,
-  type ChallengeRuleChange,
   type ChallengeRules,
   type ChallengeStandingsResponse,
   type ChallengeSummary,
@@ -31,9 +30,9 @@ import {
 } from '@/pages/Challenges/challengeLinks';
 import {
   nextPeriodDay,
+  pointsWithoutDailyGoal,
   previousPeriodDay,
   recentPeriodStarts,
-  rulesInEffect,
 } from '@/pages/Challenges/challengePeriods';
 import { translateForTest } from '@/tests/mocks/reactI18next';
 
@@ -213,6 +212,23 @@ describe('periods', () => {
     expect(nextPeriodDay('2026-11-08', '2026-11-08', '2026-11-14')).toBeNull();
   });
 
+  it('turns the weekly goal off for a daily period, which the rules refuse', () => {
+    const points = challengePreset('all_rounder').rules.points!;
+    // Picking a daily period on All-Rounder
+    const daily = pointsWithoutDailyGoal(points, 'day');
+    expect(daily!.goal).toBeNull();
+    expect(
+      challengeRulesSchema.safeParse({
+        ...challengePreset('all_rounder').rules,
+        period: 'day',
+        points: daily,
+      }).success
+    ).toBe(true);
+    // Weekly and longer keep it; no builder stays none
+    expect(pointsWithoutDailyGoal(points, 'week')).toBe(points);
+    expect(pointsWithoutDailyGoal(null, 'day')).toBeNull();
+  });
+
   it('lists the starts of a member recent weeks, newest first', () => {
     expect(
       recentPeriodStarts('week', '2026-10-19', null, '2026-11-11', 7)
@@ -223,53 +239,6 @@ describe('periods', () => {
     expect(
       recentPeriodStarts('week', '2026-12-01', null, '2026-11-14', 3)
     ).toEqual([]);
-  });
-
-  it('picks the rules in effect on a day and the change still to come', () => {
-    const change = (
-      id: string,
-      effective_from: string,
-      r: ChallengeRules
-    ): ChallengeRuleChange => ({
-      id,
-      changed_by_display_name: 'Ana',
-      effective_from,
-      rules: r,
-      previous_rules: null,
-      created_at: `${effective_from}T00:00:00.000Z`,
-    });
-    const later = rules({ bestDaysPerWeek: 3 });
-    const log = [
-      change('b', '2026-11-16', later),
-      change('a', '2026-11-02', allRounder),
-    ];
-    expect(rulesInEffect(log, '2026-11-14', later)).toEqual({
-      rules: allRounder,
-      upcoming: log[0],
-    });
-    expect(rulesInEffect(log, '2026-11-16', later).upcoming).toBeNull();
-    expect(rulesInEffect(undefined, '2026-11-14', later).rules).toBe(later);
-  });
-
-  it('keeps the server order (write order) for changes on the same day', () => {
-    const first = rules({ bestDaysPerWeek: 3 });
-    const second = rules({ bestDaysPerWeek: 4 });
-    const change = (id: string, r: ChallengeRules, created_at: string) =>
-      ({
-        id,
-        changed_by_display_name: 'Ana',
-        effective_from: '2026-11-16',
-        rules: r,
-        previous_rules: null,
-        created_at,
-      }) as ChallengeRuleChange;
-    // Written second, but its transaction started first.
-    const log = [
-      change('a', allRounder, '2026-11-02T00:00:00.000Z'),
-      change('b', first, '2026-11-12T10:00:05.000Z'),
-      change('c', second, '2026-11-12T10:00:01.000Z'),
-    ];
-    expect(rulesInEffect(log, '2026-11-16', allRounder).rules).toBe(second);
   });
 });
 

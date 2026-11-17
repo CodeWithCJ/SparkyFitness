@@ -13,12 +13,12 @@ import {
   challengePreset,
   challengePresetEndDate,
   challengeRulesSchema,
-  challengeWeekStart,
   todayInZone,
   type ChallengeDetail,
   type ChallengeGoalType,
   type ChallengePresetId,
   type ChallengeRules,
+  weekStartOf,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,9 +66,7 @@ const presetEnd = (id: ChallengePresetId, start: string): string =>
 
 /** Weekly challenges start on a Monday, so the first week is a whole one. */
 const presetStart = (id: ChallengePresetId, today: string): string =>
-  challengePreset(id).rules.period === 'week'
-    ? challengeWeekStart(today)
-    : today;
+  challengePreset(id).rules.period === 'week' ? weekStartOf(today, 1) : today;
 
 const CreateChallengeDialog = ({
   open,
