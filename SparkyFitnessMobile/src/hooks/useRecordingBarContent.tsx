@@ -6,14 +6,12 @@ import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import { formatLocalizedNumber } from '../localization';
 import {
+  discardRecording,
   elapsedSeconds,
   pauseRecording,
   resumeRecording,
   type RecordingSession,
 } from '../services/gpsRecordingService';
-import { discardRecordingAndEntry } from '../services/gpsRecordingSave';
-import { invalidateExerciseCache } from './invalidateExerciseCache';
-import { queryClient } from './queryClient';
 import { addLog } from '../services/LogService';
 import {
   formatClock,
@@ -156,19 +154,14 @@ export function useRecordingBarContent({
           }),
           style: 'destructive',
           onPress: () => {
-            discardRecordingAndEntry()
-              .then((deletedDay) => {
-                if (deletedDay)
-                  invalidateExerciseCache(queryClient, deletedDay);
-              })
-              .catch((error: unknown) =>
-                report(
-                  t('recordActivity.errors.discard', {
-                    defaultValue: 'Could not discard recording',
-                  }),
-                  error
-                )
-              );
+            discardRecording({ discarded: true }).catch((error: unknown) =>
+              report(
+                t('recordActivity.errors.discard', {
+                  defaultValue: 'Could not discard recording',
+                }),
+                error
+              )
+            );
           },
         },
       ]

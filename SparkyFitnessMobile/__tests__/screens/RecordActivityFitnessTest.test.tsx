@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RecordActivityScreen from '../../src/screens/RecordActivityScreen';
 import {
   discardRecording,
+  markRecordingSaveComplete,
   elapsedSeconds,
   startRecording,
   useGpsRecording,
@@ -46,6 +47,7 @@ jest.mock('../../src/services/gpsRecordingService', () => {
     setRecordingAudioCues: jest.fn(() => Promise.resolve()),
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
+    markRecordingSaveComplete: jest.fn(() => Promise.resolve()),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
     elapsedSeconds: jest.fn(() => 300),
     getRecordingPreferences: jest.fn(() =>
@@ -355,6 +357,12 @@ describe('RecordActivityScreen fitness test', () => {
       expect(
         jest.mocked(saveRecordedActivity).mock.invocationCallOrder[0]
       ).toBeLessThan(jest.mocked(saveFitnessTest).mock.invocationCallOrder[0]);
+      // Complete only once the test is filed too.
+      expect(
+        jest.mocked(saveFitnessTest).mock.invocationCallOrder[0]
+      ).toBeLessThan(
+        jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+      );
       expect(discardRecording).toHaveBeenCalled();
     });
 
@@ -409,6 +417,8 @@ describe('RecordActivityScreen fitness test', () => {
       await waitFor(() => expect(saveFitnessTest).toHaveBeenCalled());
       expect(discardRecording).not.toHaveBeenCalled();
       expect(navigation.replace).not.toHaveBeenCalled();
+      // Half-saved: a Discard must still be able to delete the entry (#3470).
+      expect(markRecordingSaveComplete).not.toHaveBeenCalled();
     });
 
     it('files no test for an ordinary run', async () => {
